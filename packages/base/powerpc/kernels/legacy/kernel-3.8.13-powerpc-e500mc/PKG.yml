@@ -1,0 +1,25 @@
+prerequisites:
+  submodules:
+    - { root : "${ONL}", path : packages/base/any/kernels/legacy/linux-3.8.13 }
+
+common:
+  arch: powerpc
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-kernel-3.8.13-powerpc-e500mc
+    version: 1.0.0
+    summary: Open Network Linux Legacy 3.8.13 Kernel PowerPC e500mc platforms.
+
+    files:
+      builds/kernel-e500mc.bin.gz : $$PKG_INSTALL/kernel-3.8.13-powerpc-e500mc.bin.gz
+      builds/linux-e500mc-dtbs : $$PKG_INSTALL/dtbs
+      builds/linux-e500mc-headers : $$PKG_INSTALL/mbuilds
+
+    changelog:  Change changes changes.,
+
+
+
+
