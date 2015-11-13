@@ -1,0 +1,2668 @@
+Device driver patches for accton as7512 (fan/psu/cpld/led/sfp)
+
+diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
+index 1ff287b..c410426 100644
+--- a/drivers/hwmon/Kconfig
++++ b/drivers/hwmon/Kconfig
+@@ -1465,6 +1465,43 @@ config SENSORS_ACCTON_AS6712_32x_PSU
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called accton_as6712_32x_psu.
+ 
++config SENSORS_ACCTON_I2C_CPLD
++	tristate "Accton i2c cpld"
++	depends on I2C
++	help
++	  If you say yes here you get support for Accton i2c cpld.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_i2c_cpld.
++
++config SENSORS_ACCTON_AS7512_32x_FAN
++        tristate "Accton as7512 32x fan"
++        depends on I2C && SENSORS_ACCTON_I2C_CPLD
++        help
++          If you say yes here you get support for Accton as7512 32x fan.
++
++          This driver can also be built as a module. If so, the module will
++          be called accton_as7512_32x_fan.
++
++config SENSORS_ACCTON_AS7512_32x_PSU
++	tristate "Accton as7512 32x psu"
++	depends on I2C && SENSORS_ACCTON_I2C_CPLD
++	help
++	  If you say yes here you get support for Accton as7512 32x psu.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_as7512_32x_psu.
++
++config SENSORS_YM2651Y
++	tristate "3Y Power YM-2651Y Power Module"
++	depends on I2C
++	help
++	  If you say yes here you get support for 3Y Power YM-2651Y
++	  Power Module.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called ym2651y.
++
+ if ACPI
+ 
+ comment "ACPI drivers"
+diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
+index dbbb5ee..f8ee399 100644
+--- a/drivers/hwmon/Makefile
++++ b/drivers/hwmon/Makefile
+@@ -25,6 +25,9 @@ obj-$(CONFIG_SENSORS_ACCTON_AS5712_54x_FAN)    += accton_as5712_54x_fan.o
+ obj-$(CONFIG_SENSORS_ACCTON_AS5712_54x_PSU)    += accton_as5712_54x_psu.o
+ obj-$(CONFIG_SENSORS_ACCTON_AS6712_32x_FAN)    += accton_as6712_32x_fan.o
+ obj-$(CONFIG_SENSORS_ACCTON_AS6712_32x_PSU)    += accton_as6712_32x_psu.o
++obj-$(CONFIG_SENSORS_ACCTON_AS7512_32x_FAN)    += accton_as7512_32x_fan.o
++obj-$(CONFIG_SENSORS_ACCTON_AS7512_32x_PSU)    += accton_as7512_32x_psu.o
++obj-$(CONFIG_SENSORS_ACCTON_I2C_CPLD)          += accton_i2c_cpld.o
+ obj-$(CONFIG_SENSORS_AD7314)	+= ad7314.o
+ obj-$(CONFIG_SENSORS_AD7414)	+= ad7414.o
+ obj-$(CONFIG_SENSORS_AD7418)	+= ad7418.o
+@@ -136,6 +139,7 @@ obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
+ obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
+ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
+ obj-$(CONFIG_SENSORS_QUANTA_LY_HWMON)	+= quanta-ly-hwmon.o
++obj-$(CONFIG_SENSORS_YM2651Y)   += ym2651y.o
+ 
+ obj-$(CONFIG_PMBUS)		+= pmbus/
+ 
+diff --git a/drivers/hwmon/accton_as7512_32x_fan.c b/drivers/hwmon/accton_as7512_32x_fan.c
+new file mode 100644
+index 0000000..be323b5
+--- /dev/null
++++ b/drivers/hwmon/accton_as7512_32x_fan.c
+@@ -0,0 +1,510 @@
++/*
++ * A hwmon driver for the Accton as7512 32x fan
++ *
++ * Copyright (C) 2014 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++#include <linux/dmi.h>
++
++#define DRVNAME "as7512_32x_fan"
++
++static struct as7512_32x_fan_data *as7512_32x_fan_update_device(struct device *dev);
++static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count);
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++/* fan related data, the index should match sysfs_fan_attributes
++ */
++static const u8 fan_reg[] = {
++	0x0F,	   /* fan 1-6 present status */
++	0x10,	   /* fan 1-6 direction(0:B2F 1:F2B) */
++	0x11,	   /* fan PWM(for all fan) */
++	0x12,	   /* front fan 1 speed(rpm) */
++	0x13,	   /* front fan 2 speed(rpm) */
++	0x14,	   /* front fan 3 speed(rpm) */
++	0x15,	   /* front fan 4 speed(rpm) */
++	0x16,	   /* front fan 5 speed(rpm) */
++	0x17,	   /* front fan 6 speed(rpm) */
++	0x22,	   /* rear fan 1 speed(rpm) */
++	0x23,	   /* rear fan 2 speed(rpm) */
++	0x24,	   /* rear fan 3 speed(rpm) */
++	0x25,	   /* rear fan 4 speed(rpm) */
++	0x26,	   /* rear fan 5 speed(rpm) */
++	0x27,	   /* rear fan 6 speed(rpm) */
++};
++
++/* Each client has this additional data */
++struct as7512_32x_fan_data {
++	struct device   *hwmon_dev;
++	struct mutex	 update_lock;
++	char			 valid;		   /* != 0 if registers are valid */
++	unsigned long	 last_updated;	/* In jiffies */
++	u8			     reg_val[ARRAY_SIZE(fan_reg)]; /* Register value */
++};
++
++enum fan_id {
++	FAN1_ID,
++	FAN2_ID,
++	FAN3_ID,
++	FAN4_ID,
++	FAN5_ID,
++	FAN6_ID
++};
++
++enum sysfs_fan_attributes {
++	FAN_PRESENT_REG,
++	FAN_DIRECTION_REG,
++	FAN_DUTY_CYCLE_PERCENTAGE, /* Only one CPLD register to control duty cycle for all fans */
++	FAN1_FRONT_SPEED_RPM,
++	FAN2_FRONT_SPEED_RPM,
++	FAN3_FRONT_SPEED_RPM,
++	FAN4_FRONT_SPEED_RPM,
++	FAN5_FRONT_SPEED_RPM,
++	FAN6_FRONT_SPEED_RPM,
++	FAN1_REAR_SPEED_RPM,
++	FAN2_REAR_SPEED_RPM,
++	FAN3_REAR_SPEED_RPM,
++	FAN4_REAR_SPEED_RPM,
++	FAN5_REAR_SPEED_RPM,
++	FAN6_REAR_SPEED_RPM,
++	FAN1_DIRECTION,
++	FAN2_DIRECTION,
++	FAN3_DIRECTION,
++	FAN4_DIRECTION,
++	FAN5_DIRECTION,
++	FAN6_DIRECTION,
++	FAN1_PRESENT,
++	FAN2_PRESENT,
++	FAN3_PRESENT,
++	FAN4_PRESENT,
++	FAN5_PRESENT,
++	FAN6_PRESENT,
++	FAN1_FAULT,
++	FAN2_FAULT,
++	FAN3_FAULT,
++	FAN4_FAULT,
++	FAN5_FAULT,
++	FAN6_FAULT
++};
++
++/* Define attributes
++ */
++#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
++#define DECLARE_FAN_FAULT_ATTR(index)	  &sensor_dev_attr_fan##index##_fault.dev_attr.attr
++
++#define DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_direction, S_IRUGO, fan_show_value, NULL, FAN##index##_DIRECTION)
++#define DECLARE_FAN_DIRECTION_ATTR(index)  &sensor_dev_attr_fan##index##_direction.dev_attr.attr
++
++#define DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_duty_cycle_percentage, S_IWUSR | S_IRUGO, fan_show_value, set_duty_cycle, FAN##index##_DUTY_CYCLE_PERCENTAGE)
++#define DECLARE_FAN_DUTY_CYCLE_ATTR(index) &sensor_dev_attr_fan##index##_duty_cycle_percentage.dev_attr.attr
++
++#define DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_present, S_IRUGO, fan_show_value, NULL, FAN##index##_PRESENT)
++#define DECLARE_FAN_PRESENT_ATTR(index)	  &sensor_dev_attr_fan##index##_present.dev_attr.attr
++
++#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_front_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_FRONT_SPEED_RPM);\
++	static SENSOR_DEVICE_ATTR(fan##index##_rear_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM)
++#define DECLARE_FAN_SPEED_RPM_ATTR(index)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
++										   &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr
++
++/* 6 fan fault attributes in this platform */
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(3);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(4);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(5);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(6);
++
++#if 0
++/* 6 fan direction attribute in this platform */
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(2);
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(3);
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(4);
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(5);
++DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(6);
++#endif
++
++/* 6 fan speed(rpm) attributes in this platform */
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(3);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(4);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(5);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(6);
++/* 6 fan present attributes in this platform */
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(2);
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(3);
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(4);
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(5);
++DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(6);
++/* 1 fan duty cycle attribute in this platform */
++DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
++
++static struct attribute *as7512_32x_fan_attributes[] = {
++	/* fan related attributes */
++	DECLARE_FAN_FAULT_ATTR(1),
++	DECLARE_FAN_FAULT_ATTR(2),
++	DECLARE_FAN_FAULT_ATTR(3),
++	DECLARE_FAN_FAULT_ATTR(4),
++	DECLARE_FAN_FAULT_ATTR(5),
++	DECLARE_FAN_FAULT_ATTR(6),
++#if 0	
++	DECLARE_FAN_DIRECTION_ATTR(1),
++	DECLARE_FAN_DIRECTION_ATTR(2),
++	DECLARE_FAN_DIRECTION_ATTR(3),
++	DECLARE_FAN_DIRECTION_ATTR(4),
++	DECLARE_FAN_DIRECTION_ATTR(5),
++	DECLARE_FAN_DIRECTION_ATTR(6),
++#endif	
++	DECLARE_FAN_SPEED_RPM_ATTR(1),
++	DECLARE_FAN_SPEED_RPM_ATTR(2),
++	DECLARE_FAN_SPEED_RPM_ATTR(3),
++	DECLARE_FAN_SPEED_RPM_ATTR(4),
++	DECLARE_FAN_SPEED_RPM_ATTR(5),
++	DECLARE_FAN_SPEED_RPM_ATTR(6),
++	DECLARE_FAN_PRESENT_ATTR(1),
++	DECLARE_FAN_PRESENT_ATTR(2),
++	DECLARE_FAN_PRESENT_ATTR(3),
++	DECLARE_FAN_PRESENT_ATTR(4),
++	DECLARE_FAN_PRESENT_ATTR(5),
++	DECLARE_FAN_PRESENT_ATTR(6),
++	DECLARE_FAN_DUTY_CYCLE_ATTR(),
++	NULL
++};
++
++#define FAN_DUTY_CYCLE_REG_MASK		 	0x0F
++#define FAN_MAX_DUTY_CYCLE			  	100
++#define FAN_REG_VAL_TO_SPEED_RPM_STEP   100
++
++static int as7512_32x_fan_read_value(struct i2c_client *client, u8 reg)
++{
++	return i2c_smbus_read_byte_data(client, reg);
++}
++
++static int as7512_32x_fan_write_value(struct i2c_client *client, u8 reg, u8 value)
++{
++	return i2c_smbus_write_byte_data(client, reg, value);
++}
++
++/* fan utility functions
++ */
++static u32 reg_val_to_duty_cycle(u8 reg_val)
++{
++	reg_val &= FAN_DUTY_CYCLE_REG_MASK;
++	return (u32)(reg_val+1) * 625 / 100;
++}
++
++static u8 duty_cycle_to_reg_val(u8 duty_cycle)
++{
++	return ((u32)duty_cycle * 100 / 625) - 1;
++}
++
++static u32 reg_val_to_speed_rpm(u8 reg_val)
++{
++	return (u32)reg_val * FAN_REG_VAL_TO_SPEED_RPM_STEP;
++}
++
++static u8 reg_val_to_direction(u8 reg_val, enum fan_id id)
++{
++	u8 mask = (1 << id);
++
++	reg_val &= mask;
++
++	return reg_val ? 1 : 0;
++}
++
++static u8 reg_val_to_is_present(u8 reg_val, enum fan_id id)
++{
++	u8 mask = (1 << id);
++
++	reg_val &= mask;
++
++	return reg_val ? 0 : 1;
++}
++
++static u8 is_fan_fault(struct as7512_32x_fan_data *data, enum fan_id id)
++{
++	u8 ret = 1;
++	int front_fan_index = FAN1_FRONT_SPEED_RPM + id;
++	int rear_fan_index  = FAN1_REAR_SPEED_RPM  + id;
++
++	/* Check if the speed of front or rear fan is ZERO,
++	 */
++	if (reg_val_to_speed_rpm(data->reg_val[front_fan_index]) &&
++		reg_val_to_speed_rpm(data->reg_val[rear_fan_index]))  {
++		ret = 0;
++	}
++
++	return ret;
++}
++
++static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	int error, value;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as7512_32x_fan_data *data = i2c_get_clientdata(client);
++
++	error = kstrtoint(buf, 10, &value);
++	if (error) {
++		return error;
++	}
++
++	if (value < 0 || value > FAN_MAX_DUTY_CYCLE) {
++		return -EINVAL;
++	}
++	
++	/* Disable the watchdog timer
++	 */
++	error = as7512_32x_fan_write_value(client, 0x33, 0);
++	
++	if (error != 0) {
++		dev_dbg(&client->dev, "Unable to disable the watchdog timer\n");
++		return error;
++	}	
++
++	as7512_32x_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
++	data->valid = 0;
++
++	return count;
++}
++
++static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct as7512_32x_fan_data *data = as7512_32x_fan_update_device(dev);
++	ssize_t ret = 0;
++
++	if (data->valid) {
++		switch (attr->index) {
++			case FAN_DUTY_CYCLE_PERCENTAGE:
++			{
++				u32 duty_cycle = reg_val_to_duty_cycle(data->reg_val[FAN_DUTY_CYCLE_PERCENTAGE]);
++				ret = sprintf(buf, "%u\n", duty_cycle);
++				break;
++			}
++			case FAN1_FRONT_SPEED_RPM:
++			case FAN2_FRONT_SPEED_RPM:
++			case FAN3_FRONT_SPEED_RPM:
++			case FAN4_FRONT_SPEED_RPM:
++			case FAN5_FRONT_SPEED_RPM:
++			case FAN6_FRONT_SPEED_RPM:
++			case FAN1_REAR_SPEED_RPM:
++			case FAN2_REAR_SPEED_RPM:
++			case FAN3_REAR_SPEED_RPM:
++			case FAN4_REAR_SPEED_RPM:
++			case FAN5_REAR_SPEED_RPM:
++			case FAN6_REAR_SPEED_RPM:
++				ret = sprintf(buf, "%u\n", reg_val_to_speed_rpm(data->reg_val[attr->index]));
++				break;
++			case FAN1_DIRECTION:
++			case FAN2_DIRECTION:
++			case FAN3_DIRECTION:
++			case FAN4_DIRECTION:
++			case FAN5_DIRECTION:
++			case FAN6_DIRECTION:
++				ret = sprintf(buf, "%d\n",
++							  reg_val_to_direction(data->reg_val[FAN_DIRECTION_REG],
++							  attr->index - FAN1_DIRECTION));
++				break;
++			case FAN1_PRESENT:
++			case FAN2_PRESENT:
++			case FAN3_PRESENT:
++			case FAN4_PRESENT:
++			case FAN5_PRESENT:
++			case FAN6_PRESENT:
++				ret = sprintf(buf, "%d\n",
++							  reg_val_to_is_present(data->reg_val[FAN_PRESENT_REG],
++							  attr->index - FAN1_PRESENT));
++				break;
++			case FAN1_FAULT:
++			case FAN2_FAULT:
++			case FAN3_FAULT:
++			case FAN4_FAULT:
++			case FAN5_FAULT:
++			case FAN6_FAULT:
++				ret = sprintf(buf, "%d\n", is_fan_fault(data, attr->index - FAN1_FAULT));
++				break;
++			default:
++				break;
++		}
++	}
++
++	return ret;
++}
++
++static const struct attribute_group as7512_32x_fan_group = {
++	.attrs = as7512_32x_fan_attributes,
++};
++
++static struct as7512_32x_fan_data *as7512_32x_fan_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as7512_32x_fan_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2) ||
++		!data->valid) {
++		int i;
++
++		dev_dbg(&client->dev, "Starting as7512_32x_fan update\n");
++		data->valid = 0;
++
++		/* Update fan data
++		 */
++		for (i = 0; i < ARRAY_SIZE(data->reg_val); i++) {
++			int status = as7512_32x_fan_read_value(client, fan_reg[i]);
++
++			if (status < 0) {
++				data->valid = 0;
++				mutex_unlock(&data->update_lock);
++				dev_dbg(&client->dev, "reg %d, err %d\n", fan_reg[i], status);
++				return data;
++			}
++			else {
++				data->reg_val[i] = status;
++			}
++		}
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int as7512_32x_fan_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct as7512_32x_fan_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct as7512_32x_fan_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	i2c_set_clientdata(client, data);
++	data->valid = 0;
++	mutex_init(&data->update_lock);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &as7512_32x_fan_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&client->dev, "%s: fan '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_fan_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int as7512_32x_fan_remove(struct i2c_client *client)
++{
++	struct as7512_32x_fan_data *data = i2c_get_clientdata(client);
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_fan_group);
++
++	return 0;
++}
++
++/* Addresses to scan */
++static const unsigned short normal_i2c[] = { 0x66, I2C_CLIENT_END };
++
++static const struct i2c_device_id as7512_32x_fan_id[] = {
++	{ "as7512_32x_fan", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, as7512_32x_fan_id);
++
++static struct i2c_driver as7512_32x_fan_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name	= DRVNAME,
++	},
++	.probe		= as7512_32x_fan_probe,
++	.remove	    = as7512_32x_fan_remove,
++	.id_table	= as7512_32x_fan_id,
++	.address_list = normal_i2c,
++};
++
++static int __init as7512_32x_fan_init(void)
++{
++	extern int platform_accton_as7512_32x(void);
++	if (!platform_accton_as7512_32x()) {
++		return -ENODEV;
++	}
++
++	return i2c_add_driver(&as7512_32x_fan_driver);
++}
++
++static void __exit as7512_32x_fan_exit(void)
++{
++	i2c_del_driver(&as7512_32x_fan_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("as7512_32x_fan driver");
++MODULE_LICENSE("GPL");
++
++module_init(as7512_32x_fan_init);
++module_exit(as7512_32x_fan_exit);
+diff --git a/drivers/hwmon/accton_as7512_32x_psu.c b/drivers/hwmon/accton_as7512_32x_psu.c
+new file mode 100644
+index 0000000..5873833
+--- /dev/null
++++ b/drivers/hwmon/accton_as7512_32x_psu.c
+@@ -0,0 +1,291 @@
++/*
++ * An hwmon driver for accton as7512_32x Power Module
++ *
++ * Copyright (C) 2014 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++#include <linux/delay.h>
++
++static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
++static int as7512_32x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { 0x50, 0x53, I2C_CLIENT_END };
++
++/* Each client has this additional data
++ */
++struct as7512_32x_psu_data {
++	struct device	   *hwmon_dev;
++	struct mutex		update_lock;
++	char				valid;			 /* !=0 if registers are valid */
++	unsigned long		last_updated;	 /* In jiffies */
++	u8	index;			 /* PSU index */
++	u8	status;			 /* Status(present/power_good) register read from CPLD */
++	char model_name[9]; /* Model name, read from eeprom */
++};
++
++static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *dev);
++
++enum as7512_32x_psu_sysfs_attributes {
++	PSU_PRESENT,
++	PSU_MODEL_NAME,
++	PSU_POWER_GOOD
++};
++
++/* sysfs attributes for hwmon
++ */
++static SENSOR_DEVICE_ATTR(psu_present,	  S_IRUGO, show_status,	   NULL, PSU_PRESENT);
++static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
++static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,	   NULL, PSU_POWER_GOOD);
++
++static struct attribute *as7512_32x_psu_attributes[] = {
++	&sensor_dev_attr_psu_present.dev_attr.attr,
++	&sensor_dev_attr_psu_model_name.dev_attr.attr,
++	&sensor_dev_attr_psu_power_good.dev_attr.attr,
++	NULL
++};
++
++static ssize_t show_status(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct as7512_32x_psu_data *data = as7512_32x_psu_update_device(dev);
++	u8 status = 0;
++
++	if (attr->index == PSU_PRESENT) {
++		status = !(data->status >> ((2 - data->index) + 2) & 0x1);
++	}
++	else { /* PSU_POWER_GOOD */
++		status = (data->status >> (2 - data->index)) & 0x1;
++	}
++
++	return sprintf(buf, "%d\n", status);
++}
++
++static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct as7512_32x_psu_data *data = as7512_32x_psu_update_device(dev);
++
++	return sprintf(buf, "%s\n", data->model_name);
++}
++
++static const struct attribute_group as7512_32x_psu_group = {
++	.attrs = as7512_32x_psu_attributes,
++};
++
++static int as7512_32x_psu_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct as7512_32x_psu_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct as7512_32x_psu_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	i2c_set_clientdata(client, data);
++	data->valid = 0;
++	mutex_init(&data->update_lock);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &as7512_32x_psu_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	/* Update PSU index */
++	if (client->addr == 0x50) {
++		data->index = 1;
++	}
++	else if (client->addr == 0x53) {
++		data->index = 2;
++	}
++
++	dev_info(&client->dev, "%s: psu '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_psu_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int as7512_32x_psu_remove(struct i2c_client *client)
++{
++	struct as7512_32x_psu_data *data = i2c_get_clientdata(client);
++
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_psu_group);
++	kfree(data);
++
++	return 0;
++}
++
++static const struct i2c_device_id as7512_32x_psu_id[] = {
++	{ "as7512_32x_psu", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, as7512_32x_psu_id);
++
++static struct i2c_driver as7512_32x_psu_driver = {
++	.class		  = I2C_CLASS_HWMON,
++	.driver = {
++		.name	  = "as7512_32x_psu",
++	},
++	.probe		  = as7512_32x_psu_probe,
++	.remove		  = as7512_32x_psu_remove,
++	.id_table	  = as7512_32x_psu_id,
++	.address_list = normal_i2c,
++};
++
++static int as7512_32x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,
++			  int data_len)
++{
++	int result = 0;
++	int retry_count = 5;
++
++	while (retry_count) {
++		retry_count--;
++
++		result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
++
++		if (unlikely(result < 0)) {
++			msleep(10);
++			continue;
++		}
++
++		if (unlikely(result != data_len)) {
++			result = -EIO;
++			msleep(10);
++			continue;
++		}
++
++		result = 0;
++		break;
++	}
++
++	return result;
++}
++
++static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as7512_32x_psu_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
++		|| !data->valid) {
++		int status;
++		int power_good = 0;
++
++		dev_dbg(&client->dev, "Starting as7512_32x update\n");
++
++		/* Read psu status */
++		status = accton_i2c_cpld_read(0x60, 0x2);
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
++		}
++		else {
++			data->status = status;
++		}
++
++		/* Read model name */
++		memset(data->model_name, 0, sizeof(data->model_name));
++		power_good = (data->status >> (2 - data->index)) & 0x1;
++
++		if (power_good) {
++			status = as7512_32x_psu_read_block(client, 0x20, data->model_name,
++											   ARRAY_SIZE(data->model_name)-1);
++
++			if (status < 0) {
++				data->model_name[0] = '\0';
++				dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
++			}
++			else {
++				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
++			}
++		}
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int __init as7512_32x_psu_init(void)
++{
++	extern int platform_accton_as7512_32x(void);
++	if (!platform_accton_as7512_32x()) {
++		return -ENODEV;
++	}
++
++	return i2c_add_driver(&as7512_32x_psu_driver);
++}
++
++static void __exit as7512_32x_psu_exit(void)
++{
++	i2c_del_driver(&as7512_32x_psu_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("as7512_32x_psu driver");
++MODULE_LICENSE("GPL");
++
++module_init(as7512_32x_psu_init);
++module_exit(as7512_32x_psu_exit);
+diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
+new file mode 100644
+index 0000000..96e3490
+--- /dev/null
++++ b/drivers/hwmon/accton_i2c_cpld.c
+@@ -0,0 +1,209 @@
++/*
++ * A hwmon driver for the accton_i2c_cpld
++ *
++ * Copyright (C) 2013 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/i2c.h>
++#include <linux/slab.h>
++#include <linux/list.h>
++#include <linux/dmi.h>
++
++static LIST_HEAD(cpld_client_list);
++static struct mutex	 list_lock;
++
++struct cpld_client_node {
++	struct i2c_client *client;
++	struct list_head   list;
++};
++
++/* Addresses scanned for accton_i2c_cpld
++ */
++static const unsigned short normal_i2c[] = { 0x31, 0x35, 0x60, 0x61, 0x62, I2C_CLIENT_END };
++
++static void accton_i2c_cpld_add_client(struct i2c_client *client)
++{
++	struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node), GFP_KERNEL);
++	
++	if (!node) {
++		dev_dbg(&client->dev, "Can't allocate cpld_client_node (0x%x)\n", client->addr);
++		return;
++	}
++	
++	node->client = client;
++	
++	mutex_lock(&list_lock);
++	list_add(&node->list, &cpld_client_list);
++	mutex_unlock(&list_lock);
++}
++
++static void accton_i2c_cpld_remove_client(struct i2c_client *client)
++{
++	struct list_head		*list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int found = 0;
++	
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++		
++		if (cpld_node->client == client) {
++			found = 1;
++			break;
++		}
++	}
++	
++	if (found) {
++		list_del(list_node);
++		kfree(cpld_node);
++	}
++	
++	mutex_unlock(&list_lock);
++}
++
++static int accton_i2c_cpld_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
++		dev_dbg(&client->dev, "i2c_check_functionality failed (0x%x)\n", client->addr);
++		status = -EIO;
++		goto exit;
++	}
++
++	dev_info(&client->dev, "chip found\n");
++	accton_i2c_cpld_add_client(client);
++	
++	return 0;
++
++exit:
++	return status;
++}
++
++static int accton_i2c_cpld_remove(struct i2c_client *client)
++{
++	accton_i2c_cpld_remove_client(client);
++	
++	return 0;
++}
++
++static const struct i2c_device_id accton_i2c_cpld_id[] = {
++	{ "accton_i2c_cpld", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, accton_i2c_cpld_id);
++
++static struct i2c_driver accton_i2c_cpld_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name = "accton_i2c_cpld",
++	},
++	.probe		= accton_i2c_cpld_probe,
++	.remove	   	= accton_i2c_cpld_remove,
++	.id_table	= accton_i2c_cpld_id,
++	.address_list = normal_i2c,
++};
++
++int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
++{
++	struct list_head   *list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int ret = -EPERM;
++	
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++		
++		if (cpld_node->client->addr == cpld_addr) {
++			ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
++			break;
++		}
++	}
++	
++	mutex_unlock(&list_lock);
++
++	return ret;
++}
++EXPORT_SYMBOL(accton_i2c_cpld_read);
++
++int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
++{
++	struct list_head   *list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int ret = -EIO;
++	
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++		
++		if (cpld_node->client->addr == cpld_addr) {
++			ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
++			break;
++		}
++	}
++	
++	mutex_unlock(&list_lock);
++
++	return ret;
++}
++EXPORT_SYMBOL(accton_i2c_cpld_write);
++
++static int __init accton_i2c_cpld_init(void)
++{
++	mutex_init(&list_lock);
++	return i2c_add_driver(&accton_i2c_cpld_driver);
++}
++
++static void __exit accton_i2c_cpld_exit(void)
++{
++	i2c_del_driver(&accton_i2c_cpld_driver);
++}
++	
++static struct dmi_system_id as7512_dmi_table[] = {
++	{
++		.ident = "Accton AS7512",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "AS7512"),
++		},
++	}
++};
++
++int platform_accton_as7512_32x(void)
++{
++	return dmi_check_system(as7512_dmi_table);
++}
++EXPORT_SYMBOL(platform_accton_as7512_32x);
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("accton_i2c_cpld driver");
++MODULE_LICENSE("GPL");
++
++module_init(accton_i2c_cpld_init);
++module_exit(accton_i2c_cpld_exit);
+diff --git a/drivers/hwmon/ym2651y.c b/drivers/hwmon/ym2651y.c
+new file mode 100644
+index 0000000..2fe455b
+--- /dev/null
++++ b/drivers/hwmon/ym2651y.c
+@@ -0,0 +1,631 @@
++/*
++ * An hwmon driver for the 3Y Power YM-2651Y Power Module
++ *
++ * Copyright (C) 2014 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++
++#define MAX_FAN_DUTY_CYCLE 100
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { 0x58, 0x5b, I2C_CLIENT_END };
++
++/* Each client has this additional data
++ */
++struct ym2651y_data {
++	struct device	  *hwmon_dev;
++	struct mutex		update_lock;
++	char				valid;		   /* !=0 if registers are valid */
++	unsigned long	   last_updated;	/* In jiffies */
++	u8   capability;	 /* Register value */
++	u16  status_word;	/* Register value */
++	u8   fan_fault;	  /* Register value */
++	u8   over_temp;	  /* Register value */
++	u16  v_out;		  /* Register value */
++	u16  i_out;		  /* Register value */
++	u16  p_out;		  /* Register value */
++	u16  temp;		   /* Register value */
++	u16  fan_speed;	  /* Register value */
++	u16  fan_duty_cycle[2];  /* Register value */
++	u8   fan_dir[5];	 /* Register value */
++	u8   pmbus_revision; /* Register value */
++	u8   mfr_id[10];	 /* Register value */
++	u8   mfr_model[10];  /* Register value */
++	u8   mfr_revsion[3]; /* Register value */
++	u16  mfr_vin_min;	/* Register value */
++	u16  mfr_vin_max;	/* Register value */
++	u16  mfr_iin_max;	/* Register value */
++	u16  mfr_iout_max;   /* Register value */
++	u16  mfr_pin_max;	/* Register value */
++	u16  mfr_pout_max;   /* Register value */
++	u16  mfr_vout_min;   /* Register value */
++	u16  mfr_vout_max;   /* Register value */
++};
++
++static ssize_t show_byte(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_word(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_linear(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_fan_fault(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_over_temp(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static struct ym2651y_data *ym2651y_update_device(struct device *dev);
++static ssize_t set_fan_duty_cycle(struct device *dev, struct device_attribute *da,
++			 const char *buf, size_t count);
++static int ym2651y_write_word(struct i2c_client *client, u8 reg, u16 value);
++
++enum ym2651y_sysfs_attributes {
++	PSU_POWER_ON = 0,
++	PSU_TEMP_FAULT,
++	PSU_POWER_GOOD,
++	PSU_FAN1_FAULT,
++	PSU_FAN_DIRECTION,
++	PSU_OVER_TEMP,
++	PSU_V_OUT,
++	PSU_I_OUT,
++	PSU_P_OUT,
++	PSU_TEMP1_INPUT,
++	PSU_FAN1_SPEED,
++	PSU_FAN1_DUTY_CYCLE,
++	PSU_PMBUS_REVISION,
++	PSU_MFR_ID,
++	PSU_MFR_MODEL,
++	PSU_MFR_REVISION,
++	PSU_MFR_VIN_MIN,
++	PSU_MFR_VIN_MAX,
++	PSU_MFR_VOUT_MIN,
++	PSU_MFR_VOUT_MAX,
++	PSU_MFR_IIN_MAX,
++	PSU_MFR_IOUT_MAX,
++	PSU_MFR_PIN_MAX,
++	PSU_MFR_POUT_MAX
++};
++
++/* sysfs attributes for hwmon
++ */
++static SENSOR_DEVICE_ATTR(psu_power_on,		S_IRUGO, show_word,	  NULL, PSU_POWER_ON);
++static SENSOR_DEVICE_ATTR(psu_temp_fault,  	S_IRUGO, show_word,	  NULL, PSU_TEMP_FAULT);
++static SENSOR_DEVICE_ATTR(psu_power_good,  	S_IRUGO, show_word,	  NULL, PSU_POWER_GOOD);
++static SENSOR_DEVICE_ATTR(psu_fan1_fault,  	S_IRUGO, show_fan_fault, NULL, PSU_FAN1_FAULT);
++static SENSOR_DEVICE_ATTR(psu_over_temp,   	S_IRUGO, show_over_temp, NULL, PSU_OVER_TEMP);
++static SENSOR_DEVICE_ATTR(psu_v_out,	   	S_IRUGO, show_linear,	NULL, PSU_V_OUT);
++static SENSOR_DEVICE_ATTR(psu_i_out,	   	S_IRUGO, show_linear,	NULL, PSU_I_OUT);
++static SENSOR_DEVICE_ATTR(psu_p_out,		S_IRUGO, show_linear,	NULL, PSU_P_OUT);
++static SENSOR_DEVICE_ATTR(psu_temp1_input, 	S_IRUGO, show_linear,	NULL, PSU_TEMP1_INPUT);
++static SENSOR_DEVICE_ATTR(psu_fan1_speed_rpm, S_IRUGO, show_linear, NULL, PSU_FAN1_SPEED);
++static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUSR | S_IRUGO, show_linear, set_fan_duty_cycle, PSU_FAN1_DUTY_CYCLE);
++static SENSOR_DEVICE_ATTR(psu_fan_dir,	 	 S_IRUGO, show_ascii,	 NULL, PSU_FAN_DIRECTION);
++static SENSOR_DEVICE_ATTR(psu_pmbus_revision,S_IRUGO, show_byte,   NULL, PSU_PMBUS_REVISION);
++static SENSOR_DEVICE_ATTR(psu_mfr_id,		S_IRUGO, show_ascii,  NULL, PSU_MFR_ID);
++static SENSOR_DEVICE_ATTR(psu_mfr_model,	S_IRUGO, show_ascii,  NULL, PSU_MFR_MODEL);
++static SENSOR_DEVICE_ATTR(psu_mfr_revision,	S_IRUGO, show_ascii, NULL, PSU_MFR_REVISION);
++static SENSOR_DEVICE_ATTR(psu_mfr_vin_min,	S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MIN);
++static SENSOR_DEVICE_ATTR(psu_mfr_vin_max,	S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_vout_min,	S_IRUGO, show_linear, NULL, PSU_MFR_VOUT_MIN);
++static SENSOR_DEVICE_ATTR(psu_mfr_vout_max,	S_IRUGO, show_linear, NULL, PSU_MFR_VOUT_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_iin_max,	S_IRUGO, show_linear, NULL, PSU_MFR_IIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_iout_max,	S_IRUGO, show_linear, NULL, PSU_MFR_IOUT_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_pin_max,	S_IRUGO, show_linear, NULL, PSU_MFR_PIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_pout_max,	S_IRUGO, show_linear, NULL, PSU_MFR_POUT_MAX);
++
++static struct attribute *ym2651y_attributes[] = {
++	&sensor_dev_attr_psu_power_on.dev_attr.attr,
++	&sensor_dev_attr_psu_temp_fault.dev_attr.attr,
++	&sensor_dev_attr_psu_power_good.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_fault.dev_attr.attr,
++	&sensor_dev_attr_psu_over_temp.dev_attr.attr,
++	&sensor_dev_attr_psu_v_out.dev_attr.attr,
++	&sensor_dev_attr_psu_i_out.dev_attr.attr,
++	&sensor_dev_attr_psu_p_out.dev_attr.attr,
++	&sensor_dev_attr_psu_temp1_input.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_speed_rpm.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_duty_cycle_percentage.dev_attr.attr,
++	&sensor_dev_attr_psu_fan_dir.dev_attr.attr,
++	&sensor_dev_attr_psu_pmbus_revision.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_id.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_model.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_revision.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vin_min.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_pout_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_iin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_pin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vout_min.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vout_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_iout_max.dev_attr.attr,
++	NULL
++};
++
++static ssize_t show_byte(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	
++	if (!data->valid) {
++		return 0;
++	}
++
++	return (attr->index == PSU_PMBUS_REVISION) ? sprintf(buf, "%d\n", data->pmbus_revision) :
++								 sprintf(buf, "0\n");
++}
++
++static ssize_t show_word(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	u16 status = 0;
++	
++	if (!data->valid) {
++		return 0;
++	}
++
++	switch (attr->index) {
++	case PSU_POWER_ON: /* psu_power_on, low byte bit 6 of status_word, 0=>ON, 1=>OFF */
++		status = (data->status_word & 0x40) ? 0 : 1;
++		break;
++	case PSU_TEMP_FAULT: /* psu_temp_fault, low byte bit 2 of status_word, 0=>Normal, 1=>temp fault */
++		status = (data->status_word & 0x4) >> 2;
++		break;
++	case PSU_POWER_GOOD: /* psu_power_good, high byte bit 3 of status_word, 0=>OK, 1=>FAIL */
++		status = (data->status_word & 0x800) ? 0 : 1;
++		break;
++	}
++
++	return sprintf(buf, "%d\n", status);
++}
++
++static int two_complement_to_int(u16 data, u8 valid_bit, int mask)
++{
++	u16  valid_data  = data & mask;
++	bool is_negative = valid_data >> (valid_bit - 1);
++
++	return is_negative ? (-(((~valid_data) & mask) + 1)) : valid_data;
++}
++
++static ssize_t set_fan_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct i2c_client *client = to_i2c_client(dev);
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++	int nr = (attr->index == PSU_FAN1_DUTY_CYCLE) ? 0 : 1;
++	long speed;
++	int error;
++
++	error = kstrtol(buf, 10, &speed);
++	if (error)
++		return error;
++
++	if (speed < 0 || speed > MAX_FAN_DUTY_CYCLE)
++		return -EINVAL;
++
++	mutex_lock(&data->update_lock);
++	data->fan_duty_cycle[nr] = speed;
++	ym2651y_write_word(client, 0x3B + nr, data->fan_duty_cycle[nr]);
++	mutex_unlock(&data->update_lock);
++
++	return count;
++}
++
++static ssize_t show_linear(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	u16 value = 0;
++	int exponent, mantissa;
++	int multiplier = 1000;
++
++	if (!data->valid) {
++		return 0;
++	}	
++	
++	switch (attr->index) {
++	case PSU_V_OUT:
++		value = data->v_out;
++		break;
++	case PSU_I_OUT:
++		value = data->i_out;
++		break;
++	case PSU_P_OUT:
++		value = data->p_out;
++		break;
++	case PSU_TEMP1_INPUT:
++		value = data->temp;
++		break;
++	case PSU_FAN1_SPEED:
++		value = data->fan_speed;
++		multiplier = 1;
++		break;
++	case PSU_FAN1_DUTY_CYCLE:
++		value = data->fan_duty_cycle[0];
++		multiplier = 1;
++		break;
++	case PSU_MFR_VIN_MIN:
++		value = data->mfr_vin_min;
++		break;
++	case PSU_MFR_VIN_MAX:
++		value = data->mfr_vin_max;
++		break;
++	case PSU_MFR_VOUT_MIN:
++		value = data->mfr_vout_min;
++		break;
++	case PSU_MFR_VOUT_MAX:
++		value = data->mfr_vout_max;
++		break;
++	case PSU_MFR_PIN_MAX:
++		value = data->mfr_pin_max;
++		break;
++	case PSU_MFR_POUT_MAX:
++		value = data->mfr_pout_max;
++		break;
++	case PSU_MFR_IOUT_MAX:
++		value = data->mfr_iout_max;
++		break;
++	case PSU_MFR_IIN_MAX:
++		value = data->mfr_iin_max;
++		break;
++	}
++
++	exponent = two_complement_to_int(value >> 11, 5, 0x1f);
++	mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
++
++	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
++							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));
++}
++
++static ssize_t show_fan_fault(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	u8 shift;
++
++	if (!data->valid) {
++		return 0;
++	}	
++	
++	shift = (attr->index == PSU_FAN1_FAULT) ? 7 : 6;
++
++	return sprintf(buf, "%d\n", data->fan_fault >> shift);
++}
++
++static ssize_t show_over_temp(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	if (!data->valid) {
++		return 0;
++	}	
++	
++	return sprintf(buf, "%d\n", data->over_temp >> 7);
++}
++
++static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	u8 *ptr = NULL;
++
++	if (!data->valid) {
++		return 0;
++	}	
++	
++	switch (attr->index) {
++	case PSU_FAN_DIRECTION: /* psu_fan_dir */
++		ptr = data->fan_dir + 1;  /* Skip the first byte since it is the length of string. */
++		break;
++	case PSU_MFR_ID: /* psu_mfr_id */
++			ptr = data->mfr_id + 1; /* The first byte is the count byte of string. */;
++		break;
++	case PSU_MFR_MODEL: /* psu_mfr_model */
++			ptr = data->mfr_model + 1; /* The first byte is the count byte of string. */
++		break;
++	case PSU_MFR_REVISION: /* psu_mfr_revision */
++			ptr = data->mfr_revsion + 1; /* The first byte is the count byte of string. */
++		break;
++	default:
++		return 0;
++	}
++
++	return sprintf(buf, "%s\n", ptr);
++}
++
++static const struct attribute_group ym2651y_group = {
++	.attrs = ym2651y_attributes,
++};
++
++static int ym2651y_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct ym2651y_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter,
++		I2C_FUNC_SMBUS_BYTE_DATA |
++		I2C_FUNC_SMBUS_WORD_DATA |
++		I2C_FUNC_SMBUS_I2C_BLOCK)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct ym2651y_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	i2c_set_clientdata(client, data);
++	mutex_init(&data->update_lock);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &ym2651y_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&client->dev, "%s: psu '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &ym2651y_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int ym2651y_remove(struct i2c_client *client)
++{
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &ym2651y_group);
++	kfree(data);
++
++	return 0;
++}
++
++static const struct i2c_device_id ym2651y_id[] = {
++	{ "ym2651", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, ym2651y_id);
++
++static struct i2c_driver ym2651y_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name	= "ym2651",
++	},
++	.probe	  = ym2651y_probe,
++	.remove	  = ym2651y_remove,
++	.id_table = ym2651y_id,
++	.address_list = normal_i2c,
++};
++
++static int ym2651y_read_byte(struct i2c_client *client, u8 reg)
++{
++	return i2c_smbus_read_byte_data(client, reg);
++}
++
++static int ym2651y_read_word(struct i2c_client *client, u8 reg)
++{
++	return i2c_smbus_read_word_data(client, reg);
++}
++
++static int ym2651y_write_word(struct i2c_client *client, u8 reg, u16 value)
++{
++	return i2c_smbus_write_word_data(client, reg, value);
++}
++
++static int ym2651y_read_block(struct i2c_client *client, u8 command, u8 *data,
++			  int data_len)
++{
++	int result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
++
++	if (unlikely(result < 0))
++		goto abort;
++	if (unlikely(result != data_len)) {
++		result = -EIO;
++		goto abort;
++	}
++
++	result = 0;
++
++abort:
++	return result;
++}
++
++struct reg_data_byte {
++	u8   reg;
++	u8  *value;
++};
++
++struct reg_data_word {
++	u8   reg;
++	u16 *value;
++};
++
++static struct ym2651y_data *ym2651y_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
++		|| !data->valid) {
++		int i, status;
++		u8 command;
++		struct reg_data_byte regs_byte[] = { {0x19, &data->capability},
++											 {0x7d, &data->over_temp},
++											 {0x81, &data->fan_fault},
++											 {0x98, &data->pmbus_revision}};
++		struct reg_data_word regs_word[] = { {0x79, &data->status_word},
++											 {0x8b, &data->v_out},
++											 {0x8c, &data->i_out},
++											 {0x96, &data->p_out},
++											 {0x8d, &data->temp},
++											 {0x3b, &(data->fan_duty_cycle[0])},
++											 {0x3c, &(data->fan_duty_cycle[1])},
++											 {0x90, &data->fan_speed},
++											 {0xa0, &data->mfr_vin_min},
++											 {0xa1, &data->mfr_vin_max},
++											 {0xa2, &data->mfr_iin_max},
++											 {0xa3, &data->mfr_pin_max},
++											 {0xa4, &data->mfr_vout_min},
++											 {0xa5, &data->mfr_vout_max},
++											 {0xa6, &data->mfr_iout_max},
++											 {0xa7, &data->mfr_pout_max}};
++
++		dev_dbg(&client->dev, "Starting ym2651 update\n");
++		data->valid = 0;
++
++		/* Read byte data */
++		for (i = 0; i < ARRAY_SIZE(regs_byte); i++) {
++			status = ym2651y_read_byte(client, regs_byte[i].reg);
++
++			if (status < 0) {
++				dev_dbg(&client->dev, "reg %d, err %d\n",
++						regs_byte[i].reg, status);
++				goto exit;
++			}
++			else {
++				*(regs_byte[i].value) = status;
++			}
++		}
++
++		/* Read word data */
++		for (i = 0; i < ARRAY_SIZE(regs_word); i++) {
++			status = ym2651y_read_word(client, regs_word[i].reg);
++
++			if (status < 0) {
++				dev_dbg(&client->dev, "reg %d, err %d\n",
++						regs_word[i].reg, status);
++				goto exit;
++			}
++			else {
++				*(regs_word[i].value) = status;
++			}
++		}
++
++		/* Read fan_direction */
++		command = 0xC3;
++		status = ym2651y_read_block(client, command, data->fan_dir,
++										 ARRAY_SIZE(data->fan_dir)-1);
++		data->fan_dir[ARRAY_SIZE(data->fan_dir)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		/* Read mfr_id */
++		command = 0x99;
++		status = ym2651y_read_block(client, command, data->mfr_id,
++										 ARRAY_SIZE(data->mfr_id)-1);
++		data->mfr_id[ARRAY_SIZE(data->mfr_id)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		/* Read mfr_model */
++		command = 0x9a;
++		status = ym2651y_read_block(client, command, data->mfr_model,
++										 ARRAY_SIZE(data->mfr_model)-1);
++		data->mfr_model[ARRAY_SIZE(data->mfr_model)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		/* Read mfr_revsion */
++		command = 0x9b;
++		status = ym2651y_read_block(client, command, data->mfr_revsion,
++										 ARRAY_SIZE(data->mfr_revsion)-1);
++		data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int __init ym2651y_init(void)
++{
++	return i2c_add_driver(&ym2651y_driver);
++}
++
++static void __exit ym2651y_exit(void)
++{
++	i2c_del_driver(&ym2651y_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("3Y Power YM-2651Y driver");
++MODULE_LICENSE("GPL");
++
++module_init(ym2651y_init);
++module_exit(ym2651y_exit);
++
+diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
+index a5ccde1..fb48975 100644
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -54,6 +54,13 @@ config LEDS_ACCTON_AS6712_32x
+ 	  This option enables support for the LEDs on the Accton as6712 32x.
+ 	  Say Y to enable LEDs on the Accton as6712 32x.
+ 
++config LEDS_ACCTON_AS7512_32x
++        tristate "LED support for the Accton as7512 32x"
++        depends on LEDS_CLASS && SENSORS_ACCTON_I2C_CPLD
++        help
++          This option enables support for the LEDs on the Accton as7512 32x.
++          Say Y to enable LEDs on the Accton as7512 32x.
++
+ config LEDS_LM3530
+ 	tristate "LCD Backlight driver for LM3530"
+ 	depends on LEDS_CLASS
+diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
+index d952f0f..dff0462 100644
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -45,6 +45,7 @@ obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
+ obj-$(CONFIG_LEDS_RENESAS_TPU)		+= leds-renesas-tpu.o
+ obj-$(CONFIG_LEDS_ACCTON_AS5712_54x) += leds-accton_as5712_54x.o
+ obj-$(CONFIG_LEDS_ACCTON_AS6712_32x) += leds-accton_as6712_32x.o
++obj-$(CONFIG_LEDS_ACCTON_AS7512_32x) += leds-accton_as7512_32x.o
+ 
+ # LED SPI Drivers
+ obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
+diff --git a/drivers/leds/leds-accton_as7512_32x.c b/drivers/leds/leds-accton_as7512_32x.c
+new file mode 100644
+index 0000000..3dc5def
+--- /dev/null
++++ b/drivers/leds/leds-accton_as7512_32x.c
+@@ -0,0 +1,503 @@
++/*
++ * A LED driver for the accton_as7512_32x_led
++ *
++ * Copyright (C) 2014 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++/*#define DEBUG*/
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/platform_device.h>
++#include <linux/err.h>
++#include <linux/leds.h>
++#include <linux/slab.h>
++#include <linux/dmi.h>
++
++extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++#define DRVNAME "as7512_32x_led"
++#define NUM_OF_LED_REG  5
++
++struct accton_as7512_32x_led_data {
++	struct platform_device *pdev;
++	struct mutex	 update_lock;
++	char			 valid;		/* != 0 if registers are valid */
++	unsigned long	last_updated; /* In jiffies */
++	u8			   reg_val[NUM_OF_LED_REG];  /* 5 LED registers */
++};
++
++static struct accton_as7512_32x_led_data *ledctl = NULL;
++
++/* LED related data
++ */
++
++#define LED_CNTRLER_I2C_ADDRESS	(0x60)
++/*
++#define LED_TYPE_DIAG_REG_MASK	 (0x3)
++#define LED_MODE_DIAG_GREEN_VALUE  (0x02)
++#define LED_MODE_DIAG_RED_VALUE	(0x01)
++#define LED_MODE_DIAG_AMBER_VALUE  (0x00)
++#define LED_MODE_DIAG_OFF_VALUE	(0x03)
++#define LED_TYPE_DIAG_REG_MASK	  0xFF
++#define LED_MODE_DIAG_GREEN_VALUE 0xFF
++#define LED_MODE_DIAG_RED_VALUE   0xFF
++#define LED_MODE_DIAG_OFF_VALUE   0
++
++#define LED_TYPE_LOC_REG_MASK	  0xFF
++#define LED_MODE_LOC_ON_VALUE	  0x0
++#define LED_MODE_LOC_OFF_VALUE	  0xFF
++*/
++/*
++#define LED_TYPE_FAN_REG_MASK	  0xFF
++#define LED_MODE_FAN_GREEN_VALUE  0xFF
++#define LED_MODE_FAN_RED_VALUE	  0xFF
++#define LED_MODE_FAN_OFF_VALUE	  0
++*/
++#define LED_BRIGHTNESS_ON_VALUE   0x0
++#define LED_BRIGHTNESS_OFF_VALUE  0xFF
++
++static const u8 led_reg[NUM_OF_LED_REG] =
++{
++	0x41,	   /* Diag LED-Green. */
++	0x42,	   /* Diag LED-Red. */
++	0x43,	   /* FAN LED-Green. */
++	0x44,	   /* FAN LED-Red. */
++	0x45,	   /* LOC LED. */
++	//0x1C,		/* FAN 1-4 LED */
++	//0x1D		/* FAN 5-6 LED */
++};
++
++enum led_type {
++	LED_TYPE_DIAG_GREEN,
++	LED_TYPE_DIAG_RED,
++	LED_TYPE_LOC,
++	LED_TYPE_FAN_GREEN,
++	LED_TYPE_FAN_RED
++};
++
++struct led_reg {
++	u32  types;
++	u8   reg_addr;
++};
++
++enum led_light_mode {
++	LED_MODE_OFF = 0,
++	LED_MODE_GREEN,
++	LED_MODE_AMBER,
++	LED_MODE_RED,
++	LED_MODE_BLUE,
++	LED_MODE_GREEN_BLINK,
++	LED_MODE_AMBER_BLINK,
++	LED_MODE_RED_BLINK,
++	LED_MODE_BLUE_BLINK,
++	LED_MODE_AUTO,
++	LED_MODE_UNKNOWN
++};
++
++#if 0
++struct led_type_mode {
++	enum led_type type;
++	enum led_light_mode mode;
++	int  reg_bit_mask;
++	int  mode_value;
++};
++
++struct led_type_mode led_type_mode_data[] = {
++{LED_TYPE_LOC,  LED_MODE_OFF,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_OFF_VALUE},
++{LED_TYPE_LOC,  LED_MODE_BLUE,   LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_ON_VALUE},
++{LED_TYPE_DIAG_GREEN, LED_MODE_OFF,   LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_OFF_VALUE},
++{LED_TYPE_DIAG_GREEN, LED_MODE_GREEN, LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_GREEN_VALUE},
++{LED_TYPE_DIAG_RED,   LED_MODE_OFF,   LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_OFF_VALUE},
++{LED_TYPE_DIAG_RED,   LED_MODE_RED,   LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_RED_VALUE},
++{LED_TYPE_FAN_GREEN, LED_MODE_OFF,   LED_TYPE_FAN_REG_MASK, LED_MODE_FAN_OFF_VALUE},
++{LED_TYPE_FAN_GREEN, LED_MODE_GREEN, LED_TYPE_FAN_REG_MASK, LED_MODE_FAN_GREEN_VALUE},
++{LED_TYPE_FAN_RED,   LED_MODE_OFF,   LED_TYPE_FAN_REG_MASK, LED_MODE_FAN_OFF_VALUE},
++{LED_TYPE_FAN_RED,   LED_MODE_RED,   LED_TYPE_FAN_REG_MASK, LED_MODE_FAN_RED_VALUE},
++};
++#endif
++
++/*
++static int accton_getLedReg(enum led_type type, u8 *reg)
++{
++	int i;
++	for (i = 0; i < ARRAY_SIZE(led_reg_map); i++) {
++		if(led_reg_map[i].types & (type<<1)){
++			*reg = led_reg_map[i].reg_addr;
++			return 0;
++		}
++	}
++	return 1;
++}
++*/
++
++#if 0
++static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
++
++		if (type != led_type_mode_data[i].type)
++			continue;
++
++		if ((led_type_mode_data[i].reg_bit_mask & reg_val) ==
++			 led_type_mode_data[i].mode_value)
++		{
++			return led_type_mode_data[i].mode;
++		}
++	}
++
++	return LED_MODE_UNKNOWN;
++}
++
++static u8 led_light_mode_to_reg_val(enum led_type type,
++									enum led_light_mode mode, u8 reg_val)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
++		if (type != led_type_mode_data[i].type)
++			continue;
++
++		if (mode != led_type_mode_data[i].mode)
++			continue;
++
++		reg_val = led_type_mode_data[i].mode_value |
++					 (reg_val & (~led_type_mode_data[i].reg_bit_mask));
++		break;
++	}
++
++	return reg_val;
++}
++#endif
++
++static int accton_as7512_32x_led_read_value(u8 reg)
++{
++	return accton_i2c_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
++}
++
++static int accton_as7512_32x_led_write_value(u8 reg, u8 value)
++{
++	return accton_i2c_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
++}
++
++static void accton_as7512_32x_led_update(void)
++{
++	mutex_lock(&ledctl->update_lock);
++
++	if (time_after(jiffies, ledctl->last_updated + HZ + HZ / 2)
++		|| !ledctl->valid) {
++		int i;
++
++		dev_dbg(&ledctl->pdev->dev, "Starting accton_as7512_32x_led update\n");
++		ledctl->valid = 0;
++
++		/* Update LED data
++		 */
++		for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
++			int status = accton_as7512_32x_led_read_value(led_reg[i]);
++
++			if (status < 0) {
++				dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg[i], status);
++				goto exit;
++			}
++			else {
++				ledctl->reg_val[i] = status;
++			}
++		}
++
++		ledctl->last_updated = jiffies;
++		ledctl->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&ledctl->update_lock);
++}
++
++#if 0
++static void accton_as7512_32x_led_set(struct led_classdev *led_cdev,
++									  enum led_brightness led_light_mode,
++									  u8 reg, enum led_type type)
++{
++	int reg_val;
++	
++	mutex_lock(&ledctl->update_lock);
++
++	reg_val = accton_as7512_32x_led_read_value(reg);
++
++	if (reg_val < 0) {
++		dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", reg, reg_val);
++		goto exit;
++	}
++	
++	reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);
++	accton_as7512_32x_led_write_value(reg, reg_val);
++
++	/* to prevent the slow-update issue */
++	ledctl->valid = 0;
++
++exit:
++	mutex_unlock(&ledctl->update_lock);
++}
++#endif
++
++static void accton_as7512_32x_led_diag_set(struct led_classdev *led_cdev,
++										   enum led_brightness led_light_mode)
++{
++	if (LED_MODE_OFF == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[0], LED_BRIGHTNESS_OFF_VALUE);
++		accton_as7512_32x_led_write_value(led_reg[1], LED_BRIGHTNESS_OFF_VALUE);
++		return;
++	}
++	
++	if (LED_MODE_GREEN == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[0], LED_BRIGHTNESS_ON_VALUE);
++		accton_as7512_32x_led_write_value(led_reg[1], LED_BRIGHTNESS_OFF_VALUE);
++		return;
++	}
++	
++	if (LED_MODE_RED == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[0], LED_BRIGHTNESS_OFF_VALUE);
++		accton_as7512_32x_led_write_value(led_reg[1], LED_BRIGHTNESS_ON_VALUE);
++		return;
++	}
++	
++	if (LED_MODE_AMBER == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[0], LED_BRIGHTNESS_ON_VALUE);
++		accton_as7512_32x_led_write_value(led_reg[1], LED_BRIGHTNESS_ON_VALUE);
++		return;
++	}
++}
++
++static enum led_brightness accton_as7512_32x_led_diag_get(struct led_classdev *cdev)
++{
++	u8 is_green_reg_on, is_red_reg_on;
++
++	accton_as7512_32x_led_update();
++
++	is_green_reg_on = (ledctl->reg_val[0] == LED_BRIGHTNESS_OFF_VALUE) ? 0 : 1;
++	is_red_reg_on   = (ledctl->reg_val[1] == LED_BRIGHTNESS_OFF_VALUE) ? 0 : 1;
++
++	if (is_green_reg_on && is_red_reg_on) {
++	    return LED_MODE_AMBER;
++	}
++	
++	if (is_green_reg_on) {
++		return LED_MODE_GREEN;
++	}
++	
++	if (is_red_reg_on) {
++		return LED_MODE_RED;
++	}
++
++	return LED_MODE_OFF;
++}
++
++static void accton_as7512_32x_led_loc_set(struct led_classdev *led_cdev,
++										  enum led_brightness led_light_mode)
++{
++	if (LED_MODE_OFF == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[4], LED_BRIGHTNESS_OFF_VALUE);
++		return;
++	}
++	
++	if (LED_MODE_BLUE == (enum led_light_mode)led_light_mode) {
++		accton_as7512_32x_led_write_value(led_reg[4], LED_BRIGHTNESS_ON_VALUE);
++		return;
++	}	
++}
++
++static enum led_brightness accton_as7512_32x_led_loc_get(struct led_classdev *cdev)
++{
++	accton_as7512_32x_led_update();
++	
++	if (ledctl->reg_val[0] == LED_BRIGHTNESS_OFF_VALUE) {
++		return LED_MODE_OFF;
++	}
++	
++	return LED_MODE_BLUE;
++}
++
++static enum led_brightness accton_as7512_32x_led_auto_get(struct led_classdev *cdev)
++{
++	return LED_MODE_AUTO;
++}
++
++static struct led_classdev accton_as7512_32x_leds[] = {
++	[0] = {
++		.name			 = "accton_as7512_32x_led::diag",
++		.default_trigger = "unused",
++		.brightness_set	 = accton_as7512_32x_led_diag_set,
++		.brightness_get	 = accton_as7512_32x_led_diag_get,
++		.flags			 = LED_CORE_SUSPENDRESUME,
++		.max_brightness	 = LED_MODE_RED,
++	},
++	[1] = {
++		.name			 = "accton_as7512_32x_led::loc",
++		.default_trigger = "unused",
++		.brightness_set	 = accton_as7512_32x_led_loc_set,
++		.brightness_get	 = accton_as7512_32x_led_loc_get,
++		.flags			 = LED_CORE_SUSPENDRESUME,
++		.max_brightness	 = LED_MODE_BLUE,
++	},
++	[2] = {
++		.name			 = "accton_as7512_32x_led::fan",
++		.default_trigger = "unused",
++		.brightness_set	 = NULL,
++		.brightness_get  = accton_as7512_32x_led_auto_get,
++		.flags			 = LED_CORE_SUSPENDRESUME,
++		.max_brightness  = LED_MODE_AUTO,
++	},
++	[3] = {
++		.name			 = "accton_as7512_32x_led::psu1",
++		.default_trigger = "unused",
++		.brightness_set	 = NULL,
++		.brightness_get  = accton_as7512_32x_led_auto_get,
++		.flags			 = LED_CORE_SUSPENDRESUME,
++		.max_brightness  = LED_MODE_AUTO,
++	},
++	[4] = {
++		.name			 = "accton_as7512_32x_led::psu2",
++		.default_trigger = "unused",
++		.brightness_set	 = NULL,
++		.brightness_get  = accton_as7512_32x_led_auto_get,
++		.flags			 = LED_CORE_SUSPENDRESUME,
++		.max_brightness  = LED_MODE_AUTO,
++	},
++};
++
++static int accton_as7512_32x_led_suspend(struct platform_device *dev,
++		pm_message_t state)
++{
++	int i = 0;
++
++	for (i = 0; i < ARRAY_SIZE(accton_as7512_32x_leds); i++) {
++		led_classdev_suspend(&accton_as7512_32x_leds[i]);
++	}
++
++	return 0;
++}
++
++static int accton_as7512_32x_led_resume(struct platform_device *dev)
++{
++	int i = 0;
++
++	for (i = 0; i < ARRAY_SIZE(accton_as7512_32x_leds); i++) {
++		led_classdev_resume(&accton_as7512_32x_leds[i]);
++	}
++
++	return 0;
++}
++
++static int accton_as7512_32x_led_probe(struct platform_device *pdev)
++{
++	int ret, i;
++
++	for (i = 0; i < ARRAY_SIZE(accton_as7512_32x_leds); i++) {
++		ret = led_classdev_register(&pdev->dev, &accton_as7512_32x_leds[i]);
++
++		if (ret < 0)
++			break;
++	}
++
++	/* Check if all LEDs were successfully registered */
++	if (i != ARRAY_SIZE(accton_as7512_32x_leds)){
++		int j;
++
++		/* only unregister the LEDs that were successfully registered */
++		for (j = 0; j < i; j++) {
++			led_classdev_unregister(&accton_as7512_32x_leds[i]);
++		}
++	}
++
++	return ret;
++}
++
++static int accton_as7512_32x_led_remove(struct platform_device *pdev)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(accton_as7512_32x_leds); i++) {
++		led_classdev_unregister(&accton_as7512_32x_leds[i]);
++	}
++
++	return 0;
++}
++
++static struct platform_driver accton_as7512_32x_led_driver = {
++	.probe	 = accton_as7512_32x_led_probe,
++	.remove	 = accton_as7512_32x_led_remove,
++	.suspend = accton_as7512_32x_led_suspend,
++	.resume  = accton_as7512_32x_led_resume,
++	.driver  = {
++		.name	= DRVNAME,
++		.owner	= THIS_MODULE,
++	},
++};
++
++static int __init accton_as7512_32x_led_init(void)
++{
++	int ret;
++
++	extern int platform_accton_as7512_32x(void);
++	if (!platform_accton_as7512_32x()) {
++		return -ENODEV;
++	}	
++	
++	ret = platform_driver_register(&accton_as7512_32x_led_driver);
++	if (ret < 0) {
++		goto exit;
++	}
++
++	ledctl = kzalloc(sizeof(struct accton_as7512_32x_led_data), GFP_KERNEL);
++	if (!ledctl) {
++		ret = -ENOMEM;
++		platform_driver_unregister(&accton_as7512_32x_led_driver);
++		goto exit;
++	}
++
++	mutex_init(&ledctl->update_lock);
++
++	ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
++	if (IS_ERR(ledctl->pdev)) {
++		ret = PTR_ERR(ledctl->pdev);
++		platform_driver_unregister(&accton_as7512_32x_led_driver);
++		kfree(ledctl);
++		goto exit;
++	}
++
++exit:
++	return ret;
++}
++
++static void __exit accton_as7512_32x_led_exit(void)
++{
++	platform_device_unregister(ledctl->pdev);
++	platform_driver_unregister(&accton_as7512_32x_led_driver);
++	kfree(ledctl);
++}
++
++module_init(accton_as7512_32x_led_init);
++module_exit(accton_as7512_32x_led_exit);
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("accton_as7512_32x_led driver");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
+index 6e025e9..8e959c7 100644
+--- a/drivers/misc/eeprom/Kconfig
++++ b/drivers/misc/eeprom/Kconfig
+@@ -91,6 +91,15 @@ config EEPROM_ACCTON_AS6712_32x_SFP
+           This driver can also be built as a module. If so, the module will
+           be called accton_as6712_32x_sfp.
+ 
++config EEPROM_ACCTON_AS7512_32x_SFP
++        tristate "Accton as7512 32x sfp"
++        depends on I2C && SENSORS_ACCTON_I2C_CPLD
++        help
++          If you say yes here you get support for Accton as7512 32x sfp.
++
++          This driver can also be built as a module. If so, the module will
++          be called accton_as7512_32x_sfp.
++
+ config EEPROM_93CX6
+ 	tristate "EEPROM 93CX6 support"
+ 	help
+diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
+index 9001de9..0386999 100644
+--- a/drivers/misc/eeprom/Makefile
++++ b/drivers/misc/eeprom/Makefile
+@@ -8,4 +8,5 @@ obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
+ obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
+ obj-$(CONFIG_EEPROM_ACCTON_AS5712_54x_SFP) += accton_as5712_54x_sfp.o
+ obj-$(CONFIG_EEPROM_ACCTON_AS6712_32x_SFP) += accton_as6712_32x_sfp.o
++obj-$(CONFIG_EEPROM_ACCTON_AS7512_32x_SFP) += accton_as7512_32x_sfp.o
+ obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
+diff --git a/drivers/misc/eeprom/accton_as7512_32x_sfp.c b/drivers/misc/eeprom/accton_as7512_32x_sfp.c
+new file mode 100644
+index 0000000..1468961
+--- /dev/null
++++ b/drivers/misc/eeprom/accton_as7512_32x_sfp.c
+@@ -0,0 +1,356 @@
++/*
++ * An hwmon driver for accton as7512_32x sfp
++ *
++ * Copyright (C) 2014 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++
++#define BIT_INDEX(i) (1UL << (i))
++
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { 0x50, I2C_CLIENT_END };
++
++/* Each client has this additional data
++ */
++struct as7512_32x_sfp_data {
++	struct device	   *hwmon_dev;
++	struct mutex		update_lock;
++	char				valid;			 /* !=0 if registers are valid */
++	unsigned long		last_updated;	 /* In jiffies */
++	int					port;			 /* Front port index */
++	char				eeprom[256];	 /* eeprom data */
++	u32					is_present;		 /* present status */
++};
++
++static struct as7512_32x_sfp_data *as7512_32x_sfp_update_device(struct device *dev);
++static ssize_t show_port_number(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t show_present(struct device *dev, struct device_attribute *da,char *buf);
++static ssize_t show_eeprom(struct device *dev, struct device_attribute *da, char *buf);
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++enum as7512_32x_sfp_sysfs_attributes {
++	SFP_PORT_NUMBER,
++	SFP_IS_PRESENT,
++	SFP_IS_PRESENT_ALL,
++	SFP_EEPROM
++};
++
++/* sysfs attributes for hwmon
++ */
++static SENSOR_DEVICE_ATTR(sfp_port_number,    S_IRUGO, show_port_number, NULL, SFP_PORT_NUMBER);
++static SENSOR_DEVICE_ATTR(sfp_is_present,     S_IRUGO, show_present,     NULL, SFP_IS_PRESENT);
++static SENSOR_DEVICE_ATTR(sfp_is_present_all, S_IRUGO, show_present,     NULL, SFP_IS_PRESENT_ALL);
++static SENSOR_DEVICE_ATTR(sfp_eeprom,	      S_IRUGO, show_eeprom,      NULL, SFP_EEPROM);
++
++static struct attribute *as7512_32x_sfp_attributes[] = {
++	&sensor_dev_attr_sfp_port_number.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present_all.dev_attr.attr,
++	&sensor_dev_attr_sfp_eeprom.dev_attr.attr,
++	NULL
++};
++
++static ssize_t show_port_number(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as7512_32x_sfp_data *data = i2c_get_clientdata(client);
++
++	return sprintf(buf, "%d\n", data->port+1);
++}
++
++/* Error-check the CPLD read results. */
++#define VALIDATED_READ(_buf, _rv, _read_expr, _invert)  \
++do {                                                \
++    _rv = (_read_expr);                             \
++    if(_rv < 0) {                                   \
++        return sprintf(_buf, "READ ERROR\n");       \
++    }                                               \
++    if(_invert) {                                   \
++        _rv = ~_rv;                                 \
++    }                                               \
++    _rv &= 0xFF;                                    \
++} while(0)
++
++static ssize_t show_present(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++
++	if(attr->index == SFP_IS_PRESENT_ALL) {
++		int values[4];
++		/*
++		 * Report the SFP_PRESENCE status for all ports.
++		 */
++
++		/* SFP_PRESENT Ports 1-8 */
++		VALIDATED_READ(buf, values[0], accton_i2c_cpld_read(0x60, 0x30), 1);
++		/* SFP_PRESENT Ports 9-16 */
++		VALIDATED_READ(buf, values[1], accton_i2c_cpld_read(0x60, 0x31), 1);
++		/* SFP_PRESENT Ports 17-24 */
++		VALIDATED_READ(buf, values[2], accton_i2c_cpld_read(0x60, 0x32), 1);
++		/* SFP_PRESENT Ports 25-32 */
++		VALIDATED_READ(buf, values[3], accton_i2c_cpld_read(0x60, 0x33), 1);
++
++		/* Return values 1 -> 32 in order */
++		return sprintf(buf, "%.2x %.2x %.2x %.2x\n",
++					   values[0], values[1], values[2], values[3]);
++	}
++	else { /* SFP_IS_PRESENT */
++		struct as7512_32x_sfp_data *data = as7512_32x_sfp_update_device(dev);
++
++		if (!data->valid) {
++			return -EIO;
++		}
++	
++		return sprintf(buf, "%d\n", data->is_present);
++	}
++}
++
++static ssize_t show_eeprom(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct as7512_32x_sfp_data *data = as7512_32x_sfp_update_device(dev);
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	if (!data->is_present) {
++		return 0;
++	}
++
++	memcpy(buf, data->eeprom, sizeof(data->eeprom));
++
++	return sizeof(data->eeprom);
++}
++
++static const struct attribute_group as7512_32x_sfp_group = {
++	.attrs = as7512_32x_sfp_attributes,
++};
++
++static int as7512_32x_sfp_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct as7512_32x_sfp_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct as7512_32x_sfp_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	mutex_init(&data->update_lock);
++	data->port = dev_id->driver_data;
++	i2c_set_clientdata(client, data);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &as7512_32x_sfp_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&client->dev, "%s: sfp '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_sfp_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int as7512_32x_sfp_remove(struct i2c_client *client)
++{
++	struct as7512_32x_sfp_data *data = i2c_get_clientdata(client);
++
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &as7512_32x_sfp_group);
++	kfree(data);
++
++	return 0;
++}
++
++enum port_numbers {
++as7512_32x_sfp1, as7512_32x_sfp2, as7512_32x_sfp3, as7512_32x_sfp4,
++as7512_32x_sfp5, as7512_32x_sfp6, as7512_32x_sfp7, as7512_32x_sfp8,
++as7512_32x_sfp9, as7512_32x_sfp10,as7512_32x_sfp11,as7512_32x_sfp12,
++as7512_32x_sfp13,as7512_32x_sfp14,as7512_32x_sfp15,as7512_32x_sfp16,
++as7512_32x_sfp17,as7512_32x_sfp18,as7512_32x_sfp19,as7512_32x_sfp20,
++as7512_32x_sfp21,as7512_32x_sfp22,as7512_32x_sfp23,as7512_32x_sfp24,
++as7512_32x_sfp25,as7512_32x_sfp26,as7512_32x_sfp27,as7512_32x_sfp28,
++as7512_32x_sfp29,as7512_32x_sfp30,as7512_32x_sfp31,as7512_32x_sfp32
++};
++
++static const struct i2c_device_id as7512_32x_sfp_id[] = {
++{ "as7512_32x_sfp1",  as7512_32x_sfp1 },  { "as7512_32x_sfp2",	as7512_32x_sfp2 },
++{ "as7512_32x_sfp3",  as7512_32x_sfp3 },  { "as7512_32x_sfp4",	as7512_32x_sfp4 },
++{ "as7512_32x_sfp5",  as7512_32x_sfp5 },  { "as7512_32x_sfp6",	as7512_32x_sfp6 },
++{ "as7512_32x_sfp7",  as7512_32x_sfp7 },  { "as7512_32x_sfp8",	as7512_32x_sfp8 },
++{ "as7512_32x_sfp9",  as7512_32x_sfp9 },  { "as7512_32x_sfp10", as7512_32x_sfp10 },
++{ "as7512_32x_sfp11", as7512_32x_sfp11 }, { "as7512_32x_sfp12", as7512_32x_sfp12 },
++{ "as7512_32x_sfp13", as7512_32x_sfp13 }, { "as7512_32x_sfp14", as7512_32x_sfp14 },
++{ "as7512_32x_sfp15", as7512_32x_sfp15 }, { "as7512_32x_sfp16", as7512_32x_sfp16 },
++{ "as7512_32x_sfp17", as7512_32x_sfp17 }, { "as7512_32x_sfp18", as7512_32x_sfp18 },
++{ "as7512_32x_sfp19", as7512_32x_sfp19 }, { "as7512_32x_sfp20", as7512_32x_sfp20 },
++{ "as7512_32x_sfp21", as7512_32x_sfp21 }, { "as7512_32x_sfp22", as7512_32x_sfp22 },
++{ "as7512_32x_sfp23", as7512_32x_sfp23 }, { "as7512_32x_sfp24", as7512_32x_sfp24 },
++{ "as7512_32x_sfp25", as7512_32x_sfp25 }, { "as7512_32x_sfp26", as7512_32x_sfp26 },
++{ "as7512_32x_sfp27", as7512_32x_sfp27 }, { "as7512_32x_sfp28", as7512_32x_sfp28 },
++{ "as7512_32x_sfp29", as7512_32x_sfp29 }, { "as7512_32x_sfp30", as7512_32x_sfp30 },
++{ "as7512_32x_sfp31", as7512_32x_sfp31 }, { "as7512_32x_sfp32", as7512_32x_sfp32 },
++{}
++};
++MODULE_DEVICE_TABLE(i2c, as7512_32x_sfp_id);
++
++static struct i2c_driver as7512_32x_sfp_driver = {
++	.class		  = I2C_CLASS_HWMON,
++	.driver = {
++		.name	  = "as7512_32x_sfp",
++	},
++	.probe		  = as7512_32x_sfp_probe,
++	.remove		  = as7512_32x_sfp_remove,
++	.id_table	  = as7512_32x_sfp_id,
++	.address_list = normal_i2c,
++};
++
++static int as7512_32x_sfp_read_block(struct i2c_client *client, u8 command, u8 *data,
++			  int data_len)
++{
++	int result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
++
++	if (unlikely(result < 0))
++		goto abort;
++	if (unlikely(result != data_len)) {
++		result = -EIO;
++		goto abort;
++	}
++
++	result = 0;
++
++abort:
++	return result;
++}
++
++static struct as7512_32x_sfp_data *as7512_32x_sfp_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as7512_32x_sfp_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
++		|| !data->valid) {
++		int status = -1;
++		int i = 0;
++        u8 cpld_reg = 0x30 + (data->port/8);
++
++		data->valid = 0;
++
++		/* Read present status of the specified port number */
++		data->is_present = 0;
++		status = accton_i2c_cpld_read(0x60, cpld_reg);
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "cpld(0x60) reg(0x%x) err %d\n", cpld_reg, status);
++			goto exit;
++		}
++
++		data->is_present = (status & (1 << (data->port % 8))) ? 0 : 1;
++
++		/* Read eeprom data based on port number */
++		memset(data->eeprom, 0, sizeof(data->eeprom));
++
++		/* Check if the port is present */
++		if (data->is_present) {
++			/* read eeprom */
++			for (i = 0; i < sizeof(data->eeprom)/I2C_SMBUS_BLOCK_MAX; i++) {
++				status = as7512_32x_sfp_read_block(client, i*I2C_SMBUS_BLOCK_MAX,
++												   data->eeprom+(i*I2C_SMBUS_BLOCK_MAX),
++												   I2C_SMBUS_BLOCK_MAX);
++				if (status < 0) {
++					dev_dbg(&client->dev, "unable to read eeprom from port(%d)\n", data->port);
++					goto exit;
++				}
++			}
++		}
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int __init as7512_32x_sfp_init(void)
++{
++	extern int platform_accton_as7512_32x(void);
++	if (!platform_accton_as7512_32x()) {
++		return -ENODEV;
++	}
++
++	return i2c_add_driver(&as7512_32x_sfp_driver);
++}
++
++static void __exit as7512_32x_sfp_exit(void)
++{
++	i2c_del_driver(&as7512_32x_sfp_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("accton as7512_32x_sfp driver");
++MODULE_LICENSE("GPL");
++
++module_init(as7512_32x_sfp_init);
++module_exit(as7512_32x_sfp_exit);

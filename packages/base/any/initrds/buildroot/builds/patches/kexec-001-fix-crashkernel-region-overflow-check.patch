@@ -1,0 +1,24 @@
+Subject:    [PATCH] kexec-elf-ppc: Fix crashkernel region overflow check
+From:       Anders Hedlund <anders.j.hedlund () gmail ! com>
+Date:       2012-12-17 22:11:48
+
+Signed-off-by: Anders Hedlund <anders.j.hedlund@gmail.com>
+---
+ kexec/arch/ppc/kexec-elf-ppc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/kexec/arch/ppc/kexec-elf-ppc.c b/kexec/arch/ppc/kexec-elf-ppc.c
+index 314eb1e..8e408cc 100644
+--- a/kexec/arch/ppc/kexec-elf-ppc.c
++++ b/kexec/arch/ppc/kexec-elf-ppc.c
+@@ -382,7 +382,7 @@ int elf_ppc_load(int argc, char **argv,	const char *buf, off_t len,
+ 			(ramdisk_base > crash_base + crash_size) ) {
+ 			printf("WARNING: ramdisk is above crashkernel region!\n");
+ 		}
+-		else if (ramdisk_base + initrd_size > crash_base + crash_size) {
++		else if (ramdisk_base + ramdisk_size > crash_base + crash_size) {
+ 			printf("WARNING: ramdisk overflows crashkernel region!\n");
+ 		}
+ 	}
+-- 
+1.7.10.4

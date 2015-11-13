@@ -1,0 +1,4 @@
+config BR2_PACKAGE_JQ
+       bool "jq"
+       help
+         Include the 'jq' command-line json tool

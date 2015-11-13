@@ -1,0 +1,102 @@
+diff -BurN busybox-1.20.2.orig/include/applets.src.h busybox-1.20.2/include/applets.src.h
+--- busybox-1.20.2.orig/include/applets.src.h	2012-07-02 07:08:25.000000000 -0700
++++ busybox-1.20.2/include/applets.src.h	2013-02-17 22:44:52.391965779 -0800
+@@ -89,6 +89,7 @@
+ IF_CHAT(APPLET(chat, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_CHATTR(APPLET(chattr, BB_DIR_BIN, BB_SUID_DROP))
+ IF_CHCON(APPLET(chcon, BB_DIR_USR_BIN, BB_SUID_DROP))
++IF_CHECKPASS(APPLET(checkpass, BB_DIR_BIN, BB_SUID_DROP))
+ IF_CHGRP(APPLET_NOEXEC(chgrp, chgrp, BB_DIR_BIN, BB_SUID_DROP, chgrp))
+ IF_CHMOD(APPLET_NOEXEC(chmod, chmod, BB_DIR_BIN, BB_SUID_DROP, chmod))
+ IF_CHOWN(APPLET_NOEXEC(chown, chown, BB_DIR_BIN, BB_SUID_DROP, chown))
+diff -BurN busybox-1.20.2.orig/libbb/Kbuild.src busybox-1.20.2/libbb/Kbuild.src
+--- busybox-1.20.2.orig/libbb/Kbuild.src	2012-06-26 06:35:45.000000000 -0700
++++ busybox-1.20.2/libbb/Kbuild.src	2013-02-17 22:44:18.244878185 -0800
+@@ -147,6 +147,7 @@
+ lib-$(CONFIG_CHPASSWD) += pw_encrypt.o update_passwd.o
+ lib-$(CONFIG_CRYPTPW) += pw_encrypt.o
+ lib-$(CONFIG_SULOGIN) += pw_encrypt.o
++lib-$(CONFIG_CHECKPASS) += pw_encrypt.o
+ lib-$(CONFIG_VLOCK) += pw_encrypt.o correct_password.o
+ lib-$(CONFIG_SU) += pw_encrypt.o correct_password.o
+ lib-$(CONFIG_LOGIN) += pw_encrypt.o correct_password.o
+diff -BurN busybox-1.20.2.orig/loginutils/checkpass.c busybox-1.20.2/loginutils/checkpass.c
+--- busybox-1.20.2.orig/loginutils/checkpass.c	1969-12-31 16:00:00.000000000 -0800
++++ busybox-1.20.2/loginutils/checkpass.c	2013-02-17 22:47:59.523281983 -0800
+@@ -0,0 +1,51 @@
++/* vi: set sw=4 ts=4: */
++/*
++ * Mini checkpass for busybox
++ *
++ * Copyright 2013 Big Switch Networks, Inc.
++ *
++ * Licensed under GPLv2 or later, see file LICENSE in this source tree.
++ */
++
++//usage:#define checkpass_trivial_usage
++//usage:       "[-p PROMPT] [-t TRIES] ENCRYPTED_PASSWORD"
++//usage:#define checkpass_full_usage "\n\n"
++//usage:       "Prompt the user for a password and check it against ENCRYPTED_PASSWORD,\n"
++//usage:       "returning 0 if the password matches or 1 otherwise"
++//usage:       "\n\nOptions:"
++//usage:       "\n      -p PROMPT       Use PROMPT instead of \"Password:\""
++//usage:       "\n      -t TRIES        Prompt TRIES times before giving up"
++
++#include "libbb.h"
++
++int checkpass_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
++int checkpass_main(int argc, char **argv)
++{
++	char *passwd;
++	unsigned int tries = 3;
++	char *opt_tries = NULL;
++	char *opt_prompt = (char *) "Password:";
++	unsigned int opt;
++
++	opt = getopt32(argv, "t:p:", &opt_tries, &opt_prompt);
++	argc -= optind;
++	argv += optind;
++
++	passwd = argv[0];
++	if (opt_tries)
++		tries = xatou(opt_tries);
++
++	if (argc != 1 || tries < 1)
++		bb_show_usage();
++
++	for (unsigned int try = 0; try < tries; try++) {
++		char *input = bb_ask_stdin(opt_prompt);
++		if (input && !strcmp(pw_encrypt(input, passwd,1), passwd))
++			return 0;
++
++		bb_do_delay(LOGIN_FAIL_DELAY);
++		puts("incorrect password");
++	}
++
++	return 1;
++}
+diff -BurN busybox-1.20.2.orig/loginutils/Config.src busybox-1.20.2/loginutils/Config.src
+--- busybox-1.20.2.orig/loginutils/Config.src	2012-06-26 06:35:45.000000000 -0700
++++ busybox-1.20.2/loginutils/Config.src	2013-02-17 22:44:18.240880167 -0800
+@@ -319,6 +319,13 @@
+ 	  sulogin is invoked when the system goes into single user
+ 	  mode (this is done through an entry in inittab).
+ 
++config CHECKPASS
++	bool "checkpass"
++	default n
++	help
++	  checkpass prompts the user for a password and checks it against the
++	  encrypted parameter.
++
+ config VLOCK
+ 	bool "vlock"
+ 	default y
+diff -BurN busybox-1.20.2.orig/loginutils/Kbuild.src busybox-1.20.2/loginutils/Kbuild.src
+--- busybox-1.20.2.orig/loginutils/Kbuild.src	2012-06-26 06:35:45.000000000 -0700
++++ busybox-1.20.2/loginutils/Kbuild.src	2013-02-17 22:44:18.240880167 -0800
+@@ -19,3 +19,4 @@
+ lib-$(CONFIG_VLOCK)	+= vlock.o
+ lib-$(CONFIG_DELUSER)	+= deluser.o
+ lib-$(CONFIG_DELGROUP)	+= deluser.o
++lib-$(CONFIG_CHECKPASS)	+= checkpass.o

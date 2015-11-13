@@ -1,0 +1,47 @@
+#!/bin/bash -ex
+############################################################
+# <bsn.cl fy=2013 v=none>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+#
+#
+# </bsn.cl>
+############################################################
+#
+# post-build
+#
+############################################################
+TARGET=$1
+[ -d "${TARGET}" ] || { echo "Usage: $0 TARGET_DIR" >&2; exit 1; }
+
+rm -f ${TARGET}/linuxrc
+
+rm -f ${TARGET}/etc/hostname
+rm -f ${TARGET}/etc/inputrc
+rm -f ${TARGET}/etc/issue
+rm -rf ${TARGET}/etc/ld.so.conf*
+rm -f ${TARGET}/etc/mtab
+rm -rf ${TARGET}/etc/network
+rm -f ${TARGET}/etc/nsswitch.conf
+rm -f ${TARGET}/etc/os-release
+rm -f ${TARGET}/etc/protocols
+rm -f ${TARGET}/etc/random-seed
+rm -f ${TARGET}/etc/securetty
+rm -f ${TARGET}/etc/services
+rm -rf ${TARGET}/etc/init.d
+
+rm -rf ${TARGET}/home
+rm -rf ${TARGET}/media
+rm -rf ${TARGET}/opt
+rm -rf ${TARGET}/root
+
+rm -f ${TARGET}/sbin/udhcpc
+rm -f ${TARGET}/sbin/zcip
+
+rm -f ${TARGET}/var/lib/misc
+rm -f ${TARGET}/var/lib/pcmcia
+rm -f ${TARGET}/var/pcmcia
+
+mkdir -p ${TARGET}/lib/modules
+

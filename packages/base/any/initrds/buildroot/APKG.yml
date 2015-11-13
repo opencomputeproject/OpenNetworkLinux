@@ -1,0 +1,31 @@
+############################################################
+#
+# Buildroot Package Template
+#
+# Requires: ARCH
+#
+############################################################
+prerequisites:
+  submodules:
+    - { root: "${ONL}", path : packages/base/any/initrds/buildroot/builds/buildroot-mirror, recursive: true }
+
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-buildroot-initrd
+    version: 1.0.0
+    summary: Open Network Linux Base Buildroot Initrd CPIO ($ARCH)
+
+    files:
+      builds/onl-buildroot-initrd-$ARCH.cpio.gz : $$PKG_INSTALL/
+      builds/makedevs                           : $$PKG_INSTALL/buildroot-makedevs
+
+    changelog:  Change changes changes.,
+
+
+
+

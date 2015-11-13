@@ -1,0 +1,24 @@
+Index: busybox-1.18.1/init/init.c
+===================================================================
+--- busybox-1.18.1.orig/init/init.c
++++ busybox-1.18.1/init/init.c
+@@ -721,16 +721,16 @@ static void run_shutdown_and_kill_proces
+ 	 * shut things down gracefully... */
+ 	run_actions(SHUTDOWN);
+ 
+-	message(L_CONSOLE | L_LOG, "The system is going down NOW!");
++	dbg_message(L_CONSOLE | L_LOG, "The system is going down NOW!");
+ 
+ 	/* Send signals to every process _except_ pid 1 */
+ 	kill(-1, SIGTERM);
+-	message(L_CONSOLE | L_LOG, "Sent SIG%s to all processes", "TERM");
++	dbg_message(L_CONSOLE | L_LOG, "Sent SIG%s to all processes", "TERM");
+ 	sync();
+ 	sleep(1);
+ 
+ 	kill(-1, SIGKILL);
+-	message(L_CONSOLE, "Sent SIG%s to all processes", "KILL");
++	dbg_message(L_CONSOLE, "Sent SIG%s to all processes", "KILL");
+ 	sync();
+ 	/*sleep(1); - callers take care about making a pause */
+ }
