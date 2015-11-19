@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=accton PLATFORM=x86-64-accton-as5712-54x-r0

@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=powerpc VENDOR=accton PLATFORM=powerpc-accton-as5710-54x-r0

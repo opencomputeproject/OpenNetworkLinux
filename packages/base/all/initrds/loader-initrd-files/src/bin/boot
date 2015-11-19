@@ -1,0 +1,149 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=onl>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# boot
+#
+# Handle booting SWI image locators.
+#
+############################################################
+set -e
+unset testonly help cache
+
+while [ "$1" ]; do
+    case "$1" in
+        -h|--help)     help=1 ;;
+        -t|--testonly) testonly=1 ;;
+        --cache)       shift; cache="$1" ;;
+        *)             break ;;
+    esac
+    shift
+done
+SWI=$1
+
+mkdir -p /etc/onl
+
+if [ ! "${SWI}" ] || [ "${help}" ]; then
+    cat <<EOF
+Usage: $0 [-h|--help] [-t|--testonly] [--rootfs ROOTFS] --cache LOCATION [SWI]
+
+    Loads and boots a software image (SWI).  The load method depends on the
+    format of the SWI argument:
+
+    DEV:PATH
+    /mnt/DEV/PATH
+        Loads a SWI file from local storage device DEV (e.g. flash).
+    http://[USER:PASSWORD@]SERVER[:PORT]/PATH
+    ftp://[USER:PASSWORD@]SERVER[:PORT]/PATH
+    ssh|scp://USER:PASSWORD[:PORT]@SERVER/PATH
+    tftp://SERVER[:PORT]/PATH
+        Downloads a SWI file via HTTP, FTP, SSH or TFTP.
+    nfs://SERVER[:PORT]/PATH
+        If PATH is a file, mounts the parent directory via NFS and loads the
+        SWI file.  If PATH is a directory, mounts the directory and loads
+        the SWI without unpacking (PATH must end with / and the directory
+        must contain an unpacked SWI).
+
+EOF
+    exit 1
+fi
+
+shift
+
+[ ! "${testonly}" ] || set -x
+
+unset swipath host port dir file dev user password
+case "${SWI}" in
+    http:*|ftp:*)
+        echo "Downloading ${SWI}"
+        wget -O /tmp/swi0 "${SWI}"
+	mv /tmp/swi0 /tmp/swi
+        swipath=/tmp/swi
+        ;;
+    scp:*|ssh:*)
+	echo "Downloading ${SWI}"
+	eval $(echo "${SWI}" | sed -n 's#\(scp\|ssh\)://\([^:]*\):\([^@]*\)@\([^/:]*\)\(:\([0-9]\+\)\)\?/\(.*\)#user="\2" password="\3" host="\4" port="\6" file="\7"#p')
+	[ "${port}" ] || port=22
+	DROPBEAR_PASSWORD="${password}" dbclient -y -p ${port} -l "${user}" "${host}" "cat /${file}" >/tmp/swi0
+	mv /tmp/swi0 /tmp/swi
+	swipath=/tmp/swi
+	;;
+    tftp:*)
+        echo "Downloading ${SWI}"
+        eval $(echo "${SWI}" | sed -n 's#tftp://\([^/:]*\|\[[^]/]*\]\)\(:\([0-9]\+\)\)\?/\(.*\)#host="\1" port="\3" file="\4"#p')
+        tftp -g -r "${file}" -l /tmp/swi0 "${host}" ${port}
+	mv /tmp/swi0 /tmp/swi
+        swipath=/tmp/swi
+        ;;
+    nfs:*)
+        eval $(echo "${SWI}" | sed -n 's#nfs://\([^/:]*\|\[[^]/]*\]\)\(:\([0-9]\+\)\)\?\(.*\)/\(.*\)#host="\1" port="\3" dir="\4" file="\5"#p')
+        [ "${dir}" ] || dir=/
+        [ "${port}" ] || port=0
+        echo "Mounting nfs://${host}:${port}${dir}"
+        umount -l /tmp/nfs 2>/dev/null || :
+        mkdir -p /tmp/nfs
+        mount -t nfs -o "nolock,port=${port}" "${host}:${dir}" /tmp/nfs
+        if [ "${file}" ]; then
+            swipath="/tmp/nfs/${file}"
+            [ ! -d ${swipath} ] || { echo "${SWI} must be a SWI file (use ${SWI}/ for a SWI directory)"; exit 1; }
+        else
+            swipath=/tmp/nfs
+            [ -d "${swipath}/${rootfs}" ] || { echo "${SWI}${rootfs} must be an unpacked rootfs"; exit 1; }
+            mount -t nfs -o "nolock,port=${port}" "${host}:${dir}/${rootfs}" "${swipath}/${rootfs}"
+        fi
+        ;;
+    *)
+        # Parse dev:file or dev:/file or /mnt/dev/file
+        parselocal='s#\(\([^:/]*\):/\?\|/mnt/\([^/]*\)/\)\?\(.*\)#dev="\2\3" file="\4"#p'
+        eval $(echo "${SWI}" | sed -n "${parselocal}")
+        if [ "${dev}" ] ; then
+            # Wait for /mnt/dev to show up
+            waitforblockdev "/mnt/${dev}"
+        else
+            # Assume file is relative, parse absolutified file
+            eval $(realpath "${file}" | sed -n "${parselocal}")
+            SWI="${dev}:${file}"
+        fi
+        swipath="/mnt/${dev}/${file}"
+        [ -f "${swipath}" ] || { echo "${SWI} not found or not a file"; exit 1; }
+        ;;
+esac
+
+echo "SWI=${SWI}" >/etc/onl/boot-config
+echo "CONSOLESPEED=$(stty speed)" >>/etc/onl/boot-config
+PASSWORD=$(cat /etc/onl/PASSWORD)
+[ ! "${PASSWORD}" ] || echo "PASSWORD=${PASSWORD}" >>/etc/onl/boot-config
+if [ "${swipath#/tmp/nfs}" != "${swipath}" ]; then
+    ifget
+    cat /etc/onl/NET >>/etc/onl/boot-config
+fi
+
+#
+# Cache the SWI if necessary.
+#
+if [ -n "$cache" ]; then
+    python /bin/swicache.py "${swipath}" "${cache}"
+fi
+
+. /lib/boot1
+
+echo "Boot failed"
+exit 1

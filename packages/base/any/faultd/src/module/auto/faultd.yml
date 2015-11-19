@@ -1,0 +1,86 @@
+############################################################
+# <bsn.cl fy=2013 v=onl>
+# 
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.        
+# 
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+# 
+#        http://www.eclipse.org/legal/epl-v10.html
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+# 
+# </bsn.cl>
+############################################################
+#
+# faultd Autogeneration Definitions.
+#
+############################################################
+
+cdefs: &cdefs
+- FAULTD_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- FAULTD_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- FAULTD_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- FAULTD_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- FAULTD_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- FAULTD_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: FAULTD_CONFIG_PORTING_STDLIB
+- FAULTD_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- FAULTD_CONFIG_PIPE_NAME_DEFAULT:
+    doc: "Default named pipe."
+    default: "\"/var/run/faultd.pipe\""
+- FAULTD_CONFIG_BINARY_SIZE:
+    doc: "Maximum binary name size."
+    default: 255
+- FAULTD_CONFIG_BACKTRACE_SIZE_MAX:
+    doc: "Maximum backtrace size."
+    default: 32
+- FAULTD_CONFIG_SERVICE_PIPES_MAX:
+    doc: "Maximum number of simulatanous service pipes."
+    default: 8
+- FAULTD_CONFIG_BACKTRACE_SYMBOLS_SIZE:
+    doc: "Maximum backtrace symbols size"
+    default: 4096
+- FAULTD_CONFIG_INCLUDE_MAIN:
+    doc: "Include faultd_main() for standard faultd daemon build."
+    default: 0
+- FAULTD_CONFIG_INCLUDE_AIM_MAIN:
+    doc: "Include aim_main() as faultd_main()."
+    default: FAULTD_CONFIG_INCLUDE_MAIN
+- FAULTD_CONFIG_MAIN_PIPENAME:
+    doc: "Default pipename used by faultd_main() if included."
+    default: "\"/var/run/faultd.fifo\""
+
+
+definitions:
+  cdefs:
+    FAULTD_CONFIG_HEADER: 
+      defs: *cdefs
+      basename: faultd_config
+
+  portingmacro:
+    FAULTD:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+        - strlen

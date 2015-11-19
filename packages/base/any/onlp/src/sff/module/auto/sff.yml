@@ -1,0 +1,130 @@
+###############################################################################
+#
+# sff Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- SFF_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- SFF_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- SFF_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- SFF_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- SFF_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- SFF_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: SFF_CONFIG_PORTING_STDLIB
+- SFF_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- SFF_CONFIG_INCLUDE_SFF_TOOL:
+    doc: "Include the SFF tool main entry point."
+    default: 0
+- SFF_CONFIG_INCLUDE_EXT_CC_CHECK:
+    doc: "Include extended checksum verification."
+    default: 0
+
+sff_media_types: &sff_media_types
+- COPPER:
+    desc: "Copper"
+- FIBER:
+    desc: "Fiber"
+
+sff_module_types: &sff_module_types
+- 40G_BASE_CR4:
+    desc: "40GBASE-CR4"
+- 40G_BASE_SR4:
+    desc: "40GBASE-SR4"
+- 40G_BASE_LR4:
+    desc: "40GBASE-LR4"
+- 40G_BASE_ACTIVE:
+    desc: "40GBASE-ACTIVE"
+- 40G_BASE_CR:
+    desc: "40GBASE-CR"
+- 40G_BASE_SR2:
+    desc: "40GBASE-SR2"
+- 10G_BASE_SR:
+    desc: "10GBASE-SR"
+- 10G_BASE_LR:
+    desc: "10GBASE-LR"
+- 10G_BASE_LRM:
+    desc: "10GBASE-LRM"
+- 10G_BASE_ER:
+    desc: "10GBASE-ER"
+- 10G_BASE_CR:
+    desc: "10GBASE-CR"
+- 10G_BASE_SX:
+    desc: "10GBASE-SX"
+- 10G_BASE_LX:
+    desc: "10GBASE-LX"
+- 10G_BASE_ZR:
+    desc: "10GBASE-ZR"
+- 10G_BASE_SRL:
+    desc: "10GBASE-SRL"
+- 1G_BASE_SX:
+    desc: "1GBASE-SX"
+- 1G_BASE_LX:
+    desc: "1GBASE-LX"
+- 1G_BASE_CX:
+    desc: "1GBASE-CX"
+- 1G_BASE_T:
+    desc: "1GBASE-T"
+- 100_BASE_LX:
+    desc: "100BASE-LX"
+- 100_BASE_FX:
+    desc: "100BASE-FX"
+
+sff_module_caps: &sff_module_caps
+- F_100  : 0x1
+- F_1G   : 0x2
+- F_10G  : 0x4
+- F_40G  : 0x8
+- F_100G : 0x10
+
+sff_sfp_types: &sff_sfp_types
+- SFP:
+    desc: "SFP"
+- QSFP:
+    desc: "QSFP"
+- QSFP_PLUS:
+    desc: "QSFP+"
+
+
+definitions:
+  cdefs:
+    SFF_CONFIG_HEADER:
+      defs: *cdefs
+      basename: sff_config
+
+  portingmacro:
+    SFF:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+        - strncmp
+        - strlen
+        - snprintf
+
+  enum: &enums
+    sff_sfp_type:
+      members: *sff_sfp_types
+    sff_module_type:
+      members: *sff_module_types
+    sff_module_caps:
+      members: *sff_module_caps
+    sff_media_type:
+      members: *sff_media_types
+
+  xenum:
+      SFF_ENUMERATION_ENTRY:
+        members: *enums

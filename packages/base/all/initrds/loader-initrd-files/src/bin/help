@@ -1,0 +1,50 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=onl>
+# 
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.        
+# 
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+# 
+#        http://www.eclipse.org/legal/epl-v10.html
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+# 
+# </bsn.cl>
+############################################################
+#
+# help
+#
+# Loader Help
+#
+############################################################
+
+cat <<EOF
+
+Commonly-used loader commands
+
+ls      Prints a list of the files in the current working directory
+cd      Changes the current working directory
+cp      Copies a file
+more    Prints the contents of a file one page at a time
+vi      Edits a text file
+boot    Boots a SWI
+swiinfo Prints information about a SWI
+recover Recovers the factory-default configuration
+reboot  Reboots the switch
+netconf Configures a network interface manually (IPv4 or IPv6)
+udhcpc  Configures a network interface automatically via DHCP (IPv4 only)
+wget    Transfers a file from an HTTP or FTP server
+scp     Transfers a file to or from a server running SSH
+
+Run 'command -h' for brief help on a specific command.
+See http://busybox.net/ for additional help on many commands.
+
+EOF

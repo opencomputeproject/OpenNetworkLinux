@@ -1,0 +1,116 @@
+###############################################################################
+#
+# onlp_snmp Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- ONLP_SNMP_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- ONLP_SNMP_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- ONLP_SNMP_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- ONLP_SNMP_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- ONLP_SNMP_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- ONLP_SNMP_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: ONLP_SNMP_CONFIG_PORTING_STDLIB
+- ONLP_SNMP_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- ONLP_SNMP_CONFIG_MAX_NAME_LENGTH:
+    doc: "Maximum object name length."
+    default: 32
+- ONLP_SNMP_CONFIG_MAX_DESC_LENGTH:
+    doc: "Maximum object description length."
+    default: ONLP_OID_DESC_SIZE
+- ONLP_SNMP_CONFIG_UPDATE_PERIOD:
+    doc: "Default update period in seconds."
+    default: 5
+- ONLP_SNMP_CONFIG_DEV_BASE_INDEX:
+    doc: "Base index."
+    default: 1
+- ONLP_SNMP_CONFIG_DEV_MAX_INDEX:
+    doc: "Maximum index."
+    default: 100
+- ONLP_SNMP_CONFIG_INCLUDE_THERMALS:
+    doc: "Include Thermals."
+    default: 1
+- ONLP_SNMP_CONFIG_INCLUDE_FANS:
+    doc: "Include Fans."
+    default: 1
+- ONLP_SNMP_CONFIG_INCLUDE_PSUS:
+    doc: "Include PSUS."
+    default: 1
+- ONLP_SNMP_CONFIG_INCLUDE_LEDS:
+    doc: "Include LEDs."
+    default: 1
+- ONLP_SNMP_CONFIG_INCLUDE_PLATFORM:
+    doc: "Include ONLP Platform MIB"
+    default: 1
+- ONLP_SNMP_CONFIG_AS_SUBAGENT:
+    doc: "Configure as an snmp_subagent client."
+    default: 0
+
+definitions:
+  cdefs:
+    ONLP_SNMP_CONFIG_HEADER:
+      defs: *cdefs
+      basename: onlp_snmp_config
+
+  portingmacro:
+    ONLP_SNMP:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+
+  enum:
+
+    ############################################################
+    #
+    # The following must match the ONLP-SENSOR-MIB values.
+    #
+    ############################################################
+    onlp_snmp_sensor_type:
+        tag: mib
+        members:
+          - temp : 1
+          - fan  : 2
+          - psu  : 3
+          - led  : 4
+          - misc : 5
+          - max  : 5
+
+    onlp_snmp_sensor_status:
+        tag: mib
+        members:
+          - missing   : 0
+          - good      : 1
+          - failed    : 2
+          - unplugged : 3
+
+    onlp_snmp_fan_flow_type:
+        tag: mib
+        members:
+          - unknown   : 0
+          - b2f       : 1
+          - f2b       : 2
+
+    onlp_snmp_psu_type:
+        tag: mib
+        members:
+          - unknown   : 0
+          - ac        : 1
+          - dc12      : 2
+          - dc48      : 3
+
+

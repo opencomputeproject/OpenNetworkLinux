@@ -1,0 +1,49 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=onl>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# ifget
+#
+# Scrape network interface settings into /etc/onl/NET
+#
+############################################################
+: >/etc/onl/NET
+
+NETDEV=$(ip -o link show up | sed -n -e '/LOOPBACK/d' -e 's/^[0-9]\+: \([^:]\+\): .*/\1/p' | head -n 1)
+[ "${NETDEV}" ] || exit 0
+
+echo "NETDEV=${NETDEV}" >>/etc/onl/NET
+
+if [ -f /tmp/udhcpc.pid ]; then
+    echo "NETAUTO=dhcp" >>/etc/onl/NET
+else
+    set -- $(ip -o addr show dev ${NETDEV} | sed -n 's/^[0-9]\+: [^ ]\+ \+\([^ ]\+ [^ ]\+\) scope global.*/\1/p' | tail -n 1)
+    echo "NETIP=$2" >>/etc/onl/NET
+    if [ "$1" ]; then
+        echo "NETGW=$(ip -o -f $1 route show | sed -n 's/^default via \([^ ]\+\).*/\1/p')" >>/etc/onl/NET
+    fi
+    if [ -f /etc/resolv.conf ]; then
+        echo "NETDOMAIN=$(sed -n 's/search \+\([a-zA-Z0-9\.-]\+\).*/\1/p' /etc/resolv.conf)" >>/etc/onl/NET
+        echo "NETDNS=$(sed -n 's/nameserver \+\([0-9\.]\+\).*/\1/p' /etc/resolv.conf)" >>/etc/onl/NET
+    fi
+fi
+
+echo "NETHW=$(ip -o link show dev ${NETDEV} | sed -n 's/^.*link\/ether \([0-9a-fA-F:]\+\).*/\1/p')" >>/etc/onl/NET

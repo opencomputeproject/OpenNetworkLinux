@@ -1,0 +1,18 @@
+** Package Group: /home/jeff/ws/branches/ONL-NEXT-GEN/packages/platforms/accton/powerpc-accton-as4600-54t/platform-config/r0/PKG.yml
+packages:
+- arch: powerpc
+  changelog: Changes
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  depends: onl-platform-config-accton
+  files:
+    src/lib: /lib/platform-config/powerpc-accton-as4600-54t-r0/onl
+    src/python: /usr/lib/python2.7/dist-packages/onl/platform/
+  maintainer: support@bigswitch.com
+  name: onl-platform-config-powerpc-accton-as4600-54t-r0
+  summary: ONL Platform Configuration Package for the powerpc-accton-as4600-54t-r0
+  version: 1.0.0
+prerequisites:
+  packages:
+  - onl-vendor-config-accton:all
+
+

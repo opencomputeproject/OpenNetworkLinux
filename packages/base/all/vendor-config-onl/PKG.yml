@@ -1,0 +1,15 @@
+packages:
+  - name: onl-vendor-config-onl
+    depends: python-yaml
+    version: 1.0.0
+    arch: all
+    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+    maintainer: support@bigswitch.com
+    summary: ONL Base Configuration Package
+
+    files:
+      src/python/onl : $PY_INSTALL/onl
+      src/init.d : /etc/init.d
+      src/bin : /usr/bin
+
+    changelog: Changes

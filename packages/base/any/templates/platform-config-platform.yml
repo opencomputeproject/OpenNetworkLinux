@@ -1,0 +1,22 @@
+############################################################
+#
+# PKG template for all platform-config packages.
+#
+############################################################
+prerequisites:
+  packages: [ "onl-vendor-config-${VENDOR}:all" ]
+
+packages:
+  - name: onl-platform-config-${PLATFORM}
+    depends: onl-vendor-config-${VENDOR}
+    version: 1.0.0
+    arch: $ARCH
+    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+    maintainer: support@bigswitch.com
+    summary: ONL Platform Configuration Package for the ${PLATFORM}
+
+    files:
+      src/lib: /lib/platform-config/${PLATFORM}/onl
+      src/python : ${PY_INSTALL}/onl/platform/
+
+    changelog: Changes

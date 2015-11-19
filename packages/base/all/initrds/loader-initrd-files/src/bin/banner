@@ -1,0 +1,42 @@
+#!/bin/sh
+. /lib/msgs
+. /lib/customize.sh
+
+field()
+{
+    if [ -n "$1" ]; then
+        echo "* $2"
+    fi
+
+}
+ONL_PLATFORM=$(cat /etc/onl/platform)
+MA1_ADDR=$(ifconfig ma1 | awk '/HWaddr/ { print tolower($5)}')
+
+echo "************************************************************"
+echo "*"
+echo "* $LOADER_SYSTEM_NAME $LOADER_LOADER_NAME"
+echo "* "
+field "$VERSION_ID"           "       Version: $VERSION_ID"
+field "$VERSION_ID"           "            Id: $BUILD_ID"
+echo "*"
+field "$ONL_PLATFORM"             "      Platform: $ONL_PLATFORM"
+field "MA1_ADDR"                  "           ma1: $MA1_ADDR"
+echo "*"
+echo "************************************************************"
+if [ -f /mnt/flash/boot-config ]; then
+    msg_info "boot-config"
+    cat /mnt/flash/boot-config
+else
+
+    if [ -f /bin/boot-config.py ]; then
+        if /bin/boot-config.py configure; then
+            echo "The system will now reboot to apply your configuration."
+            reboot
+	else
+	    echo "The boot-config script failed." >> /etc/onl/abort
+	fi
+    else
+        msg_info "No boot-config"
+    fi
+fi
+

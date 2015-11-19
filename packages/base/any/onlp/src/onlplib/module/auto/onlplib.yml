@@ -1,0 +1,73 @@
+############################################################
+# <bsn.cl fy=2014 v=onl>
+#
+#        Copyright 2014, 2015 Big Switch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# onlplib Autogeneration Definitions.
+#
+############################################################
+
+cdefs: &cdefs
+- ONLPLIB_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- ONLPLIB_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- ONLPLIB_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- ONLPLIB_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- ONLPLIB_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- ONLPLIB_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: ONLPLIB_CONFIG_PORTING_STDLIB
+- ONLPLIB_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- ONLPLIB_CONFIG_INCLUDE_I2C:
+    doc: "Include Userspace I2C support."
+    default: 1
+- ONLPLIB_CONFIG_I2C_BLOCK_SIZE:
+    doc: "Maximum read and write block size."
+    default: 32
+- ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER:
+    doc: "Include the custom i2c header (include/linux/i2c-devices.h) to avoid conflicts with the kernel and i2c-dev packages."
+    default: 1
+
+definitions:
+  cdefs:
+    ONLPLIB_CONFIG_HEADER:
+      defs: *cdefs
+      basename: onlplib_config
+
+  portingmacro:
+    ONLPLIB:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen
+        - atoi

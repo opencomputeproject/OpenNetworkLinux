@@ -1,0 +1,47 @@
+###############################################################################
+#
+# quanta_sys_eeprom Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- QUANTA_SYS_EEPROM_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- QUANTA_SYS_EEPROM_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- QUANTA_SYS_EEPROM_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- QUANTA_SYS_EEPROM_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- QUANTA_SYS_EEPROM_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- QUANTA_SYS_EEPROM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: QUANTA_SYS_EEPROM_CONFIG_PORTING_STDLIB
+- QUANTA_SYS_EEPROM_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+
+
+definitions:
+  cdefs:
+    QUANTA_SYS_EEPROM_CONFIG_HEADER:
+      defs: *cdefs
+      basename: quanta_sys_eeprom_config
+
+  portingmacro:
+    QUANTA_SYS_EEPROM:
+      macros:
+        - malloc
+        - free
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen

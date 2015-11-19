@@ -1,0 +1,24 @@
+prerequisites:
+  broken: true
+
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-rootfs
+    version: 1.0.0
+    summary: Open Network Linux Root Filesystem
+
+    files:
+      builds/rootfs-$ARCH.cpio.gz : $$PKG_INSTALL/
+      builds/rootfs-$ARCH.sqsh : $$PKG_INSTALL/
+      builds/manifest.json : $$PKG_INSTALL/
+
+    changelog:  Change changes changes.,
+
+
+
+

@@ -1,0 +1,6 @@
+powerpc-accton-as5710-54x-r0:
+  flat_image_tree:
+    kernel: onl-kernel-3.8.13-powerpc-e500mc:powerpc, kernel-3.8.13-powerpc-e500mc.bin.gz
+    dtb: onl-kernel-3.8.13-powerpc-e500mc:powerpc, powerpc-accton-as5710-54x-r0.dtb
+
+

@@ -1,0 +1,4 @@
+#!/usr/bin/python
+from onl.platform.current import OnlPlatform
+print OnlPlatform()
+

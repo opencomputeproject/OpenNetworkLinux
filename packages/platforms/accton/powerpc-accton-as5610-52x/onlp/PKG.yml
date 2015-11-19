@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=powerpc-accton-as5610-52x-r0 ARCH=powerpc TOOLCHAIN=powerpc-linux-gnu

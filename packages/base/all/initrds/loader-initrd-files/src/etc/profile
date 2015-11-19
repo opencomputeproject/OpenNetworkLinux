@@ -1,0 +1,21 @@
+#!/bin/sh
+. /lib/customize.sh
+
+PS1=${ONL_PROMPT:-"loader# "}
+
+if [ -f /etc/onl/abort ]; then
+    PS1="loader(aborted)# "
+    echo
+    echo "************************************************************"
+    echo "*** Booting cannot continue."
+    echo "***"
+    echo "*** $(cat /etc/onl/abort)"
+    echo "***"
+    echo "************************************************************"
+    echo
+fi
+
+echo
+echo "Welcome to the $ONL_SYSTEM_NAME $ONL_SYSTEM_LOADER_NAME shell."
+echo "Type 'help' for command help."
+echo

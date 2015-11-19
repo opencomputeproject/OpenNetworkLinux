@@ -1,0 +1,31 @@
+############################################################
+#
+# ONLP Package Build Template
+#
+# Requires: ARCH, TOOLCHAIN
+#
+############################################################
+variables:
+  libdir: /lib/${TOOLCHAIN}
+
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onlp
+    version: 1.0.0
+    summary: Open Network Linux Platform Infrastructure
+
+    files:
+      builds/onlp/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp.so : $libdir/
+      builds/onlp-platform/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform.so : $libdir/
+      builds/onlp-platform-defaults/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform-defaults.so : $libdir/
+
+    changelog:  Change changes changes.,
+
+
+
+

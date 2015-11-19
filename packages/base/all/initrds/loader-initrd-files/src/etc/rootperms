@@ -1,0 +1,33 @@
+# See package/makedevs/README for details
+#
+# This device table is used to assign proper ownership and permissions
+# on various files. It doesn't create any device file, as it is used
+# in both static device configurations (where /dev/ is static) and in
+# dynamic configurations (where devtmpfs, mdev or udev are used).
+#
+# <name>				<type>	<mode>	<uid>	<gid>	<major>	<minor>	<start>	<inc>	<count>
+/dev					d	755	0	0	-	-	-	-	-
+/tmp					d	1777	0	0	-	-	-	-	-
+/etc					d	755	0	0	-	-	-	-	-
+/etc/shadow				f	600	0	0	-	-	-	-	-
+/etc/passwd				f	644	0	0	-	-	-	-	-
+/bin/autoboot				f	755	0	0	-	-	-	-	-
+/bin/boot				f	755	0	0	-	-	-	-	-
+/bin/discoverbootconf			f	755	0	0	-	-	-	-	-
+/bin/help				f	755	0	0	-	-	-	-	-
+/bin/ifget				f	755	0	0	-	-	-	-	-
+/bin/ifup				f	755	0	0	-	-	-	-	-
+/bin/initblockdev			f	755	0	0	-	-	-	-	-
+/bin/initnetdev				f	755	0	0	-	-	-	-	-
+/bin/login				f	755	0	0	-	-	-	-	-
+/bin/netconf				f	755	0	0	-	-	-	-	-
+/bin/recover				f	755	0	0	-	-	-	-	-
+/bin/swiinfo				f	755	0	0	-	-	-	-	-
+/bin/switchroot				f	755	0	0	-	-	-	-	-
+/bin/sysinit				f	755	0	0	-	-	-	-	-
+/bin/udhcpc				f	755	0	0	-	-	-	-	-
+/bin/waitforblockdev			f	755	0	0	-	-	-	-	-
+/bin/wipe				f	755	0	0	-	-	-	-	-
+/bin/zcip				f	755	0	0	-	-	-	-	-
+/lib/udhcpc-script			f	755	0	0	-	-	-	-	-
+/lib/zcip-script			f	755	0	0	-	-	-	-	-

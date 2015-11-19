@@ -1,0 +1,87 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=onl>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# platform-detect
+#
+# This script attempts to detect the current platform.
+#
+# Under normal circumstances the platform installer
+# will have already set the platform in the boot arguments.
+#
+# This is a fallback for older platforms, corrupt
+# boot arguments, or possible detection of misconfiguration.
+#
+############################################################
+. /lib/msgs
+
+platform_priority_detect() {
+    if [ ! -f /etc/onl/platform ]; then
+        for d in `find /lib/platform-config -name $1`; do
+            chmod +x ${d}
+            ${d}
+            if [ -f /etc/onl/platform ]; then
+                echo "platform auto-detect: $(cat /etc/onl/platform)"
+                break
+            fi
+         done
+     fi
+}
+
+############################################################
+#
+# Priority0 detection.
+#
+# Any platforms that want to preempt other platform detection
+# routines should be named detect0.sh
+#
+platform_priority_detect detect0.sh
+
+############################################################
+#
+# Normal priority detection.
+platform_priority_detect detect.sh
+
+############################################################
+#
+# Voluntary deprioritization wrt existing platforms.
+platform_priority_detect detect1.sh
+
+if [ ! -f /etc/onl/platform ]; then
+    echo "unknown" > /etc/onl/platform
+fi
+
+touch /etc/onl/net /etc/onl/block /etc/onl/mounts
+
+platform="$(cat /etc/onl/platform)"
+
+if [ -d /lib/platform-config/${platform} ]; then
+    # Grab and source the platform boot configuration file
+    x=/lib/platform-config/${platform}/onl/boot/${platform}
+    if [ -f $x ]; then
+        . $x
+    else
+        echo "The platform boot configuration for the current platform is broken, invalid, or missing." > /etc/onl/abort
+    fi
+else
+    echo "The current platform (${platform}) is not supported in this version." > /etc/onl/abort
+fi
+

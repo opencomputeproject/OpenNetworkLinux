@@ -1,0 +1,35 @@
+############################################################
+#
+# Bootmode: SWI
+#
+# Boot a SWI URL from the SWI BOOTPARAM value.
+#
+############################################################
+. /lib/msgs
+. /etc/onl/BOOTPARAMS
+
+if [ ! "${SWI}" ]; then
+   msg_error "No SWI specified in the boot configuration. SWI booting cannot continue."
+   # Do not continue the autoboot sequence, nothing can be resolved automatically here.
+   exit 200
+fi
+
+if [ "${SWI}" = "flash2::latest" ]; then
+   # Boot the latest (by mtime) SWI in the flash2 partition.
+   SWI=`ls /mnt/flash2/*.swi -t | head -n1`
+   if [ -z "${SWI}" ]; then
+      msg_error "No SWI available in /mnt/flash2. SWI booting cannot continue."
+      exit 200
+   fi
+fi
+
+
+#
+# The SWI setting can be a list of URLs
+#
+for url in $SWI; do
+    msg_info "Trying ${url}..."
+    timeout -t 60 boot "${url}" && exit 0
+done
+
+exit 1

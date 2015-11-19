@@ -1,0 +1,2 @@
+!include $ONL/packages/base/any/rootfs/APKG.yml ARCH=powerpc
+

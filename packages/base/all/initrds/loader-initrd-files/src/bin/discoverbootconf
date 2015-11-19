@@ -1,0 +1,119 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=onl>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# discoverbootconf
+#
+# Discover the current boot configuration.
+#
+############################################################
+
+. /lib/loader-functions || exit 1
+
+intf=$1
+
+if [ ! ${intf} ]; then
+    echo "Usage: $0 INTERFACE"
+    exit 1
+fi
+
+if ! ifconfig ${intf} >/dev/null 2>&1; then
+    echo "Interface ${intf} not found; can't discover boot configuration"
+    exit 1
+fi
+
+ifconfig ${intf} up
+ip route add to 224.0.0.0/4 dev ${intf}
+
+zcip ${intf}
+
+rm -f /tmp/udhcpc.boot_file /tmp/udhcpc.pid
+udhcpc -i ${intf} -b -t 1 -A 3
+
+trap "exit 1" SIGINT
+trap "kill \$(cat /tmp/udhcpc.pid); ifconfig ${intf} down" EXIT
+
+macaddr=$(ifconfig ${intf} | awk '/HWaddr/ { print tolower($5) }')
+platform=$(cat /etc/onl/platform)
+
+# see if we are in (or if we want to be in) ZTN mode
+# retrieve the cached state of the previous swi
+swi_url_orig=$(sed -n -e 's/^SWI=\(.*\)/\1/p' /etc/onl/boot-config)
+case "$swi_url_orig" in
+    "")
+        ZTN=1
+        swi_url_orig="flash2:.ztn-onl.swi"
+    ;;
+    flash2:.ztn-onl.swi)
+        ZTN=1
+    ;;
+    /mnt/flash2/.ztn-onl.swi)
+        ZTN=1
+        swi_url_orig="flash2:.ztn-onl.swi"
+    ;;
+esac
+
+if [ "$ZTN" ]; then
+
+    waitforblockdev /mnt/flash2
+
+    if [ -f /mnt/flash2/.ztn-onl.swi ]; then
+        swi_md5_orig=$(md5sum /mnt/flash2/.ztn-onl.swi 2>/dev/null | awk '{print $1}')
+    fi
+
+    if [ -f /mnt/flash2/.ztn-startup-config ]; then
+        cfg_md5_orig=$(md5sum /mnt/flash2/.ztn-startup-config 2>/dev/null | awk '{print $1}')
+    fi
+
+fi
+
+while true; do
+    echo "Looking for boot configuration; press Control-C to stop"
+
+    dsc_dhcp_boot $intf $macaddr && exit
+
+    if [ "$ZTN" ]; then
+        # borrow liberally from ONIE (rootconf/default/bin/discover)
+
+        # ha ha, the wget IPv6 link local syntax is screwy
+        # (and also does not match upstream GNU wget)
+        ping6 -I ${intf} -c 3 ff02::1 > /dev/null 2>&1
+        neighs6=$(ip -6 neigh show | awk '{printf("%s%%'$intf'\n", $1)}')
+
+        ping -I ${intf} -w 2 -c 3 -q 255.255.255.255 > /dev/null 2>&1
+        neighs=$(ip -4 neigh show | awk '{print $1}')
+    fi
+
+    for a in $neighs6 $neighs; do
+        dsc_swi_manifest $macaddr $a && exit
+    done
+
+    bootservers=$(cat /tmp/udhcpc.boot_file 2>/dev/null)
+    for a in ${bootservers} ff02::fb 224.0.0.251; do
+        dsc_dnssd $macaddr $a && exit
+    done
+
+done
+
+# Local variables:
+# indent-tabs-mode: nil
+# sh-basic-offset: 4
+# End:

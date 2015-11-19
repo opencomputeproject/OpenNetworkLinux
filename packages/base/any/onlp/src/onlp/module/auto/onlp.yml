@@ -1,0 +1,299 @@
+############################################################
+# <bsn.cl fy=2014 v=onl>
+#
+#        Copyright 2014, 2015 Big Switch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+# onlp Autogeneration Definitions.
+#
+############################################################
+
+cdefs: &cdefs
+- ONLP_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- ONLP_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- ONLP_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- ONLP_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- ONLP_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- ONLP_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: ONLP_CONFIG_PORTING_STDLIB
+- ONLP_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- ONLP_CONFIG_INCLUDE_PLATFORM_ERROR_CHECK:
+    doc: "Include platform error checking at initialization."
+    default: 1
+- ONLP_CONFIG_INCLUDE_SHLOCK_GLOBAL_INIT:
+    doc: "Include global shlock initialization at module init time."
+    default: 0
+- ONLP_CONFIG_INCLUDE_PLATFORM_STATIC:
+    doc: "Specify the platform name directly as a compile-time option."
+    default: 0
+- ONLP_CONFIG_PLATFORM_STATIC:
+    doc: "The name of the static platform if configured."
+    default: "\"unknown\""
+- ONLP_CONFIG_PLATFORM_FILENAME:
+    doc: "The local filename containing the current platform identifier."
+    default: "\"/etc/onl/platform\""
+- ONLP_CONFIG_INCLUDE_PLATFORM_OVERRIDES:
+    doc: "Allow support for local overrides of all platform OID values (testing)."
+    default: 1
+- ONLP_CONFIG_CONFIGURATION_FILENAME:
+    doc: "The filename for the (optional) ONLP JSON configuration file."
+    default: "\"/etc/onlp.conf\""
+- ONLP_CONFIG_CONFIGURATION_ENV:
+    doc: "Environment variable to check for configuration filenames. Overrides default."
+    default: "\"ONLP_CONF\""
+- ONLP_CONFIG_INCLUDE_API_LOCK:
+    doc: "Include exclusive locking for all API calls."
+    default: 1
+- ONLP_CONFIG_API_LOCK_GLOBAL_SHARED:
+    doc: "If 0, the API lock is a simple semaphore. If 1, the API lock is a global shared mutex."
+    default: 0
+- ONLP_CONFIG_API_LOCK_TIMEOUT:
+    doc: "The maximum amount of time (in usecs) to wait while attempting to acquire the API lock. Failure to acquire is fatal. A value of zero disables this feature. "
+    default: 60000000
+- ONLP_CONFIG_INFO_STR_MAX:
+    doc: "The maximum size of static information string buffers."
+    default: 64
+
+# Error codes
+onlp_status: &onlp_status
+- OK : 0
+- E_UNSUPPORTED : -1
+- E_MISSING : -2
+- E_INVALID : -3
+- E_INTERNAL : -4
+- E_PARAM : -5
+
+# OID Types
+oid_types: &oid_types
+- SYS : 1
+- THERMAL : 2
+- FAN : 3
+- PSU : 4
+- LED : 5
+- MODULE : 6
+- RTC : 7
+
+# SFP Control
+sfp_control: &sfp_control
+- RESET
+- RESET_STATE
+- RX_LOS
+- TX_FAULT
+- TX_DISABLE
+- LP_MODE
+- POWER_OVERRIDE
+
+# Fan modes
+fan_modes: &fan_modes
+- 'OFF'
+- SLOW
+- NORMAL
+- FAST
+- MAX
+
+# Fan Capabilities
+fan_caps: &fan_caps
+- B2F : (1 << 0)
+- F2B : (1 << 1)
+- SET_RPM : (1 << 2)
+- SET_PERCENTAGE : (1 << 3)
+- GET_RPM : (1 << 4)
+- GET_PERCENTAGE : (1 << 5)
+
+# Fan Direction
+fan_dirs: &fan_dirs
+- B2F
+- F2B
+
+# Fan status
+fan_status: &fan_status
+- PRESENT : (1 << 0)
+- FAILED  : (1 << 1)
+- B2F     : (1 << 2)
+- F2B     : (1 << 3)
+
+# Thermal status
+thermal_status: &thermal_status
+- PRESENT : (1 << 0)
+- FAILED  : (1 << 1)
+
+# Thermal caps
+thermal_caps: &thermal_caps
+- GET_TEMPERATURE        : (1 << 0)
+- GET_WARNING_THRESHOLD  : (1 << 1)
+- GET_ERROR_THRESHOLD    : (1 << 2)
+- GET_SHUTDOWN_THRESHOLD : (1 << 3)
+
+# LED caps
+led_caps: &led_caps
+- ON_OFF : (1 << 0)
+- RED : (1 << 10)
+- RED_BLINKING : (1 << 11)
+- ORANGE : (1 << 12)
+- ORANGE_BLINKING : (1 << 13)
+- YELLOW : ( 1 << 14)
+- YELLOW_BLINKING : (1 << 15)
+- GREEN : (1 << 16)
+- GREEN_BLINKING : (1 << 17)
+- BLUE : (1 << 18)
+- BLUE_BLINKING : (1 << 19)
+- PURPLE: (1 << 20)
+- PURPLE_BLINKING : (1 << 21)
+- AUTO : (1 << 22)
+
+# LED status
+led_status: &led_status
+- PRESENT : (1 << 0)
+- FAILED : (1 << 1)
+- 'ON' : (1 << 2)
+
+# LED modes
+# The enumerations MUST match the CAP bit positions.
+led_mode: &led_mode
+- 'OFF'
+- 'ON'
+- 'BLINKING'
+- 'RED' : 10
+- 'RED_BLINKING' : 11
+- 'ORANGE' : 12
+- 'ORANGE_BLINKING' : 13
+- 'YELLOW' : 14
+- 'YELLOW_BLINKING' : 15
+- 'GREEN' : 16
+- 'GREEN_BLINKING' : 17
+- 'BLUE' : 18
+- 'BLUE_BLINKING' : 19
+- 'PURPLE' : 20
+- 'PURPLE_BLINKING' : 21
+- 'AUTO' : 22
+
+# PSU Status
+psu_status: &psu_status
+- PRESENT   : (1 << 0)
+- FAILED    : (1 << 1)
+- UNPLUGGED : (1 << 2)
+
+# PSU caps
+psu_caps: &psu_caps
+- AC :   (1 << 0)
+- DC12 : (1 << 1)
+- DC48 : (1 << 2)
+- VIN  : (1 << 3)
+- VOUT : (1 << 4)
+- IIN  : (1 << 5)
+- IOUT : (1 << 6)
+- PIN  : (1 << 7)
+- POUT : (1 << 8)
+
+definitions:
+  cdefs:
+    ONLP_CONFIG_HEADER:
+      defs: *cdefs
+      basename: onlp_config
+
+  enum: &enums
+    onlp_status:
+      tag: onlp
+      members: *onlp_status
+    onlp_oid_type:
+      tag: oid
+      members: *oid_types
+    onlp_thermal_status:
+      tag: thermal
+      members: *thermal_status
+    onlp_thermal_caps:
+      tag: thermal
+      members: *thermal_caps
+    onlp_sfp_control:
+      tag: sfp1
+      members:
+        - RESET
+        - RESET_STATE
+        - RX_LOS
+        - TX_FAULT
+        - TX_DISABLE
+        - LP_MODE
+        - POWER_OVERRIDE
+    onlp_sfp_control_flag:
+      tag: sfp2
+      members:
+        - RESET :          (1 << ONLP_SFP_CONTROL_RESET)
+        - RESET_STATE :    ( 1 << ONLP_SFP_CONTROL_RESET_STATE )
+        - RX_LOS :         ( 1 << ONLP_SFP_CONTROL_RX_LOS )
+        - TX_FAULT :       ( 1 << ONLP_SFP_CONTROL_TX_FAULT )
+        - TX_DISABLE :     ( 1 << ONLP_SFP_CONTROL_TX_DISABLE )
+        - LP_MODE :        ( 1 << ONLP_SFP_CONTROL_LP_MODE )
+        - POWER_OVERRIDE : ( 1 << ONLP_SFP_CONTROL_POWER_OVERRIDE )
+    onlp_fan_mode:
+      tag: fan
+      members: *fan_modes
+    onlp_fan_status:
+      tag: fan
+      members: *fan_status
+    onlp_fan_dir:
+      tag: fan
+      members: *fan_dirs
+    onlp_fan_caps:
+      tag: fan
+      members: *fan_caps
+    onlp_led_caps:
+      tag: led
+      members: *led_caps
+    onlp_led_status:
+      tag: led
+      members: *led_status
+    onlp_led_mode:
+      tag: led
+      members: *led_mode
+    onlp_psu_status:
+      tag: psu
+      members: *psu_status
+    onlp_psu_caps:
+      tag: psu
+      members: *psu_caps
+
+  portingmacro:
+    ONLP:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+        - strlen
+
+  xenum:
+    ONLP_ENUMERATION_ENTRY:
+      members: *enums
+
+  xmacro:
+    ONLP_OID_TYPE_ENTRY:
+      members: *oid_types
+
+

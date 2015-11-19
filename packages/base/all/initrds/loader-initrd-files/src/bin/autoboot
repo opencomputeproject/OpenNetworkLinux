@@ -1,0 +1,121 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=none>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+#
+#
+# </bsn.cl>
+############################################################
+#
+# autoboot
+#
+# Automatic boot sequence.
+#
+############################################################
+. /lib/msgs
+
+if [ -f /etc/onl/abort ]; then
+    sleep 3
+    exit 1
+fi
+
+
+#
+# The maximum number of times we will retry autobooting before
+# rebooting the system.
+#
+AUTOBOOT_MAX=50
+AUTOBOOT_COUNTER=/var/run/autoboot.count
+
+tryagain() {
+    # The timeout call to the boot script does not always kill stalled wgets properly.
+    # If there are any lingering wgets because of a timeout in downloading
+    # lets make sure they die a proper death.
+    killall -9 wget > /dev/null 2>&1
+
+    # Get the current retry count.
+    autoboot_count=0
+    if [ -f "$AUTOBOOT_COUNTER" ]; then
+        . "$AUTOBOOT_COUNTER"
+    fi
+    let "autoboot_count=autoboot_count+1"
+    echo "autoboot_count=$autoboot_count" > "$AUTOBOOT_COUNTER"
+    if [ "$autoboot_count" -gt "$AUTOBOOT_MAX" ]; then
+        # Reboot
+        msg_info "The Maximum number of autoboot attempts has been reached. Restarting..."
+        sleep 3
+        reboot
+    fi
+    exec $0 "$@"
+}
+
+if [ "$1" != "now" ]; then
+   if [ -f /bin/banner ]; then
+      /bin/banner
+      if [ -f /etc/onl/abort ]; then
+	  sleep 3
+	  exit 1
+      fi
+   fi
+   echo
+   echo
+   echo "Press Control-C now to enter the interactive loader shell."
+   sleep 3
+   echo
+   msg_info "Starting Autoboot"
+fi
+
+#
+# Apply any network settings indicated in the boot-config.
+#
+msg_info "Configuring Interfaces"
+
+if ! ifup; then
+    msg_error "The network settings indicated in the boot-config could not be applied."
+    echo $(cat /etc/onl/NET)
+    echo
+    tryagain
+fi
+
+
+#
+# Bootmode selection.
+#
+if [ ! -f /etc/onl/BOOTMODE ]; then
+    msg_error "There is no BOOTMODE setting. Autobooting cannot continue."
+    exit 1
+fi
+
+BOOTMODE=$(cat /etc/onl/BOOTMODE)
+if [ ! "$BOOTMODE" ]; then
+    msg_error "The BOOTMODE setting is empty. Autobooting cannot continue."
+    exit 1
+fi
+
+BOOTMODE=$(echo $BOOTMODE | tr '[:upper:]' '[:lower:]')
+msg_info "BOOTMODE is $BOOTMODE."
+
+if [ -f "/bootmodes/$BOOTMODE" ]; then
+    "/bootmodes/$BOOTMODE"
+    rv=$?
+    #
+    # If successful the BOOTMODE handler should not even return.
+    # If we get here its because of some sort of error.
+    #
+    if [ $rv -eq 0 ]; then
+        msg_error "The $BOOTMODE boot handler returned successfully. This is likely a bug. Autobooting cannot continue."
+        exit 1
+    elif [ $rv -eq 200 ]; then
+        msg_error "The $BOOTMODE boot handler indicates an unrecoverable error. Autobooting cannot continue."
+        exit 1
+    else
+        # Potentially recoverable error. Continue trying.
+        tryagain
+    fi
+else
+    msg_error "BOOTMODE $BOOTMODE is not implemented. Autobooting cannot continue."
+    exit 1
+fi
+

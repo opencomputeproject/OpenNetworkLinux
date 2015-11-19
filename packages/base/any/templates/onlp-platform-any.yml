@@ -1,0 +1,31 @@
+############################################################
+#
+# ONLP Platform Package Template
+#
+# Requires: PLATFORM, ARCH
+#
+############################################################
+
+variables:
+  install: /lib/platform-config/$PLATFORM/onl
+
+common:
+  version: 1.0.0
+  arch: $ARCH
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onlp-${PLATFORM}
+    summary: ONLP Package for the ${PLATFORM} platform.
+    platform-config: True
+
+    files:
+      builds/lib/$BUILD_DIR/$TOOLCHAIN/bin/libonlp-${PLATFORM}.so : ${install}/lib/
+      builds/onlpdump/$BUILD_DIR/$TOOLCHAIN/bin/onlpdump : ${install}/bin/
+
+    changelog:  Change changes changes.,
+
+
+
+

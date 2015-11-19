@@ -1,0 +1,22 @@
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-faultd
+    version: 1.0.0
+    summary: Fault Reporting Daemon
+    provides: [ faultd ]
+
+    files:
+      builds/$BUILD_DIR/${TOOLCHAIN}/bin/faultd.bin : /usr/bin/faultd
+
+    init: ${ONL}/packages/base/any/faultd/faultd.init
+
+    changelog:  Change changes changes.,
+
+
+
+

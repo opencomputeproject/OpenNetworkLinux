@@ -1,0 +1,212 @@
+# -*- sh -*-
+############################################################
+# <bsn.cl fy=2013 v=onl>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#        http://www.eclipse.org/legal/epl-v10.html
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+#
+# </bsn.cl>
+############################################################
+#
+#
+# loader-functions
+#
+# Loader support routines.
+#
+############################################################
+
+##############################
+#
+# dsc_dhcp_boot INTF
+#
+# Grovel through the dhcp lease (udhcp) for a boot file entry.
+# Return '0' for success (discovery can cease)
+# Return '2' for undetermined (continue discovery)
+# Anything else is an error
+#
+##############################
+
+dsc_dhcp_boot()
+{
+    local intf macaddr bootservers
+    intf=$1; shift
+    macaddr=$1; shift
+    bootservers=$(cat /tmp/udhcpc.boot_file 2>/dev/null)
+    case "$bootservers" in
+        SWI=*)
+            echo "Discovered boot configuration from DHCP"
+            echo "${bootservers#SWI=}" | sed "s/__macaddr__/${macaddr}/g;s/__platform__/${platform}/g" >/etc/onl/SWI
+            echo "NETDEV=${intf}" >/etc/onl/NET
+            echo "NETAUTO=dhcp" >>/etc/onl/NET
+            return 0
+            ;;
+    esac
+
+    # else, nothing to see here
+    return 2
+}
+
+##############################
+#
+# dsc_swi_manifest
+#
+# Download a SWI manifest and its components.
+# Return '0' for success (discovery can cease)
+# Return '2' for undetermined (continue discovery)
+# Anything else is an error
+#
+# Enviromnent:
+#   $swi_md5_orig
+#   $cfg_md5_orig
+#
+##############################
+
+dsc_swi_manifest()
+{
+    local macaddr neigh
+    macaddr=$1; shift
+    neigh=$1; shift
+
+    local url
+    local swi_url_mf swi_md5_new swi_md5_dl
+    local cfg_url_mf cfg_md5_new cfg_md5_dl
+
+    rm -f /tmp/mf0 /tmp/swi0 /tmp/cfg0
+
+    url="http://${neigh}/ztn/switch/${macaddr}/switch_light_manifest"
+    echo "Trying $url"
+    wget -O /tmp/mf0 "$url" 1>/dev/null 2>&1
+    test $? -eq 0 || return 2
+
+    echo "Discovered ONL manifest from neighbor discovery ($neigh)"
+    swi_url_mf=$(jq -M -r '.swi_url' < /tmp/mf0)
+    test "$swi_url_mf" || return 2
+
+    # see if there is a locally-cached SWI
+    swi_md5_new=$(jq -M -r '.swi_md5' < /tmp/mf0)
+    if [ "$swi_md5_new" = "$swi_md5_orig" ]; then
+        echo "Using cached ZTN SWI ($swi_url_orig)"
+    else
+        echo "Downloading new ZTN SWI $swi_url_mf"
+        wget -O /tmp/swi0 "$swi_url_mf" 1>/dev/null 2>&1
+        test $? -eq 0 || return 2
+        swi_md5_dl=$(md5sum /tmp/swi0 | awk '{print $1}')
+        if [ "$swi_md5_dl" != "$swi_md5_new" ]; then
+            echo "MD5 mismatch in downloaded SWI"
+            return 2
+        fi
+    fi
+
+    # Try to get a startup-config too
+    cfg_url_mf=$(jq -M -r '.startup_config_url' < /tmp/mf0)
+    if [ "$cfg_url_mf" ]; then
+        cfg_md5_new=$(jq -M -r '.startup_config_md5' < /tmp/mf0)
+        if [ "$cfg_md5_orig" = "$cfg_md5_new" ]; then
+            echo "Using cached ZTN startup-config"
+        else
+            echo "Downloading new startup-config $cfg_url_mf"
+            wget -O /tmp/cfg0 "$cfg_url_mf" 1>/dev/null 2>&1
+            test $? -eq 0 || return 2
+            cfg_md5_dl=$(md5sum /tmp/cfg0 | awk '{print $1}')
+            if [ "$cfg_md5_dl" != "$cfg_md5_new" ]; then
+                echo "MD5 mismatch in downloaded startup-config"
+                return 2
+            fi
+        fi
+    fi
+
+    if [ -f /tmp/swi0 ]; then
+        echo "Caching ZTN SWI $swi_url_mf --> /mnt/flash2/.ztn-onl.swi"
+        rm -f /mnt/flash2/.ztn-onl.swi
+        mv /tmp/swi0 /mnt/flash2/.ztn-onl.swi
+    fi
+    echo "$swi_url_orig" > /etc/onl/SWI
+    echo "$swi_url_mf" > /mnt/flash2/.ztn-onl.swi.url
+
+    # startup-config is optional here
+    if [ -f /tmp/cfg0 ]; then
+        echo "Caching ZTN startup-config $cfg_url_mf --> /mnt/flash2/.ztn-startup-config"
+        rm -f /mnt/flash2/.ztn-startup-config
+        mv /tmp/cfg0 /mnt/flash2/.ztn-startup-config
+    fi
+    if [ "$cfg_url_mf" ]; then
+        echo "$cfg_url_mf" > /mnt/flash2/.ztn-startup-config.url
+    else
+        rm -f /mnt/flash2/.ztn-startup-config /mnt/flash2/.ztn-startup-config.url
+    fi
+
+    return 0
+}
+
+##############################
+#
+# dsc_dsnssd
+#
+# Try to discover switch config (net and/or SWI) from DNS-SD
+#
+##############################
+
+dsc_dnssd()
+{
+    local macaddr dns
+    macaddr=$1; shift
+    dns=$1; shift
+
+    local txt word key val
+
+    echo "Trying $dns"
+    txt=$(dig +short +time=5 +tries=1 @$dns -p5353 ${macaddr}._slconfig._udp.local TXT)
+    test $? -eq 0 || return 2
+
+    echo "Discovered boot configuration from DNS-SD"
+    cp /dev/null /etc/onl/NET
+    for word in $txt; do
+        # words may be quoted
+        word=$(expr "$word" : '["]\?\(.*[^"]\)["]\?')
+        case "$word" in
+            *=*)
+                key=${word%%=*}; val=${word#$key=}
+                ;;
+            *)
+                key=$word; val=
+                ;;
+        esac
+        case "$key" in
+            SWI)
+                echo "$val" >/etc/onl/SWI
+                ;;
+            NET*)
+                echo "$val" >> /etc/onl/NET
+                ;;
+            FLASH)
+                echo "Getting flash::${val}..."
+                mkdir -p /tmp/flash
+                cd /tmp/flash && wget "$val"
+
+                mv /tmp/flash/* /mnt/flash
+                rmdir /tmp/flash
+                ;;
+        esac
+    done
+
+    # valid DNS-SD config for this platform, stop here
+    return 0
+}
+
+# Local variables:
+# mode: sh
+# indent-tabs-mode: nil
+# sh-basic-offset: 4
+# End:
