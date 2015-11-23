@@ -1,0 +1,155 @@
+#!/usr/bin/python
+
+import os
+import sys
+import argparse
+import datetime
+import getpass
+import subprocess
+import logging
+import pwd
+
+logging.basicConfig()
+logger = logging.getLogger('onlbuilder')
+logger.setLevel(logging.INFO)
+
+g_current_user = getpass.getuser()
+g_current_uid  = os.getuid()
+g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
+
+g_default_image_name="opennetworklinux/builder7:1.0"
+g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
+g_default_user="%s:%s" % (g_current_user, g_current_uid)
+
+ap = argparse.ArgumentParser("ONL Docker Build")
+
+ap.add_argument("--dry",
+                help="Dry run.",
+                action='store_true')
+
+ap.add_argument("--verbose", "-v",
+                help="Verbose logging.",
+                action='store_true')
+
+ap.add_argument("--image", "-i",
+                help="The docker image to use. The default is %s." % g_default_image_name,
+                default=g_default_image_name)
+
+ap.add_argument("--exec", "-e",
+                help="Execute in running container instead of starting a new one.",
+                metavar='CONTAINER|NAME',
+                dest='exec_')
+
+ap.add_argument("--user", "-u",
+                help="Run as the given user:uid. Create if necessary. The default is you (%s)" % g_default_user,
+                default=g_default_user,
+                metavar='USERNAME:UID')
+
+ap.add_argument("--adduser", "-a",
+                help="Add additional user(s). These users will only be added to the container.",
+                nargs="+",
+                metavar='USENAME:UID')
+
+ap.add_argument("--name", "-n",
+                help="Set the container name. The default will be your username concatenated with the current timestamp (%s)." % g_default_container_name,
+                default=g_default_container_name)
+
+ap.add_argument("--workdir", "-w",
+                help="Set the working directory. The default will be the current working directory.",
+                default=os.getcwd())
+
+ap.add_argument("--no-ssh",
+                help="Do not include current SSH Agent credentials. The default is to include them if present.",
+                action='store_true')
+
+ap.add_argument("--use-running", "-r",
+                help="Use an existing, matching, running container instead of starting a new one (if available).",
+                action='store_true'),
+
+ap.add_argument("--isolate",
+                help="Build isolation mode. Only the isolate directories are mounted, and a new network namespace is used. The --hostname becomes active in this mode.",
+                nargs='*')
+
+ap.add_argument("--hostname",
+                help="Change hostname in isolation mode.")
+ap.add_argument("--non-interactive",
+                help="Non-interactive mode.",
+                action='store_true')
+
+ap.add_argument("--volumes",
+                help="Mount additional volumes.",
+                nargs='+',
+                metavar='DIRECTORY',
+                default=[])
+
+ap.add_argument("--command", "-c",
+                help="Explicit command to run. All arguments after -c are considered to be part of the command.",
+                nargs=argparse.REMAINDER,
+                default=['bash'])
+
+ops = ap.parse_args()
+
+if ops.verbose or ops.dry:
+   logger.setLevel(logging.DEBUG)
+
+logger.debug('arguments: %s\n' % vars(ops))
+
+if ops.use_running:
+   sys.stderr.write("The --r option is not yet implemented.")
+   # Todo -- query running containers that match and set ops.exec_cid
+   sys.exit(1)
+
+g_ssh_options = ''
+g_ssh_auth_sock = os.getenv('SSH_AUTH_SOCK')
+if g_ssh_auth_sock and not ops.no_ssh:
+   g_ssh_dir = os.path.dirname(g_ssh_auth_sock)
+   g_ssh_options = '-v %s:%s -e SSH_AUTH_SOCK=%s' % (g_ssh_dir, g_ssh_dir, g_ssh_auth_sock)
+
+g_arg_d=vars(ops)
+
+g_arg_d['username'] = g_arg_d['user'].split(':')[0]
+g_arg_d['ssh_options'] = g_ssh_options
+g_arg_d['interactive'] = " " if ops.non_interactive else " -i "
+g_arg_d['commands'] = " ".join(ops.command)
+
+# Get the home directory of the requested user.
+try:
+   passwd = pwd.getpwnam(g_arg_d['username'])
+   g_arg_d['home'] = passwd.pw_dir
+except KeyError:
+   # Not a local user. Just skip setting $HOME
+   pass
+
+if ops.exec_:
+   g_docker_arguments = "docker exec %(interactive)s -t %(exec_)s /bin/docker_shell --user %(user)s" % g_arg_d
+else:
+
+   ops.volumes += [ '/lib/modules' ]
+   g_arg_d['volume_options']  = " ".join( [ " -v %s:%s " % (v, v) for v in ops.volumes ] )
+
+   g_docker_arguments = "docker run --privileged %(interactive)s -t -e DOCKER_IMAGE=%(image)s  --name %(name)s %(ssh_options)s %(volume_options)s  " % g_arg_d
+
+   if ops.isolate is not None:
+      if len(ops.isolate) is 0:
+         ops.isolate.append(os.getcwd())
+
+      isolates = [ os.path.abspath(i) for i in ops.isolate ]
+      g_docker_arguments += " -e HOME=%s -w %s " % (isolates[0], isolates[0])
+      for d in isolates:
+         g_docker_arguments += " -v %s:%s " % (d,d)
+
+      if ops.hostname:
+         g_docker_arguments += " -h %s" % ops.hostname
+
+   else:
+      # Development host mode
+      g_docker_arguments += "-e USER=%(username)s --net host -w %(workdir)s " % g_arg_d
+      if 'home' in g_arg_d:
+         g_docker_arguments += " -e HOME=%(home)s -v %(home)s:%(home)s" % g_arg_d
+
+g_docker_arguments += " %(image)s /bin/docker_shell --user %(user)s -c %(commands)s" % g_arg_d
+
+g_docker_arguments = " ".join(g_docker_arguments.split())
+logger.debug("running: %s" % g_docker_arguments)
+if not ops.dry:
+   sys.exit(subprocess.call(g_docker_arguments, shell=True))
