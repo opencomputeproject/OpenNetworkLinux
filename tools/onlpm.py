@@ -19,6 +19,7 @@ import onlyaml
 import onlu
 from string import Template
 import re
+import json
 
 logger = onlu.init_logging('onlpm')
 
@@ -1048,7 +1049,14 @@ if __name__ == '__main__':
     ap.add_argument("--skip-missing", action='store_true')
     ap.add_argument("--try-arches", nargs='+', metavar='ARCH')
     ap.add_argument("--in-repo", nargs='+', metavar='PACKAGE')
+    ap.add_argument("--include-env-json", default=os.environ.get('ONLPM_OPTION_INCLUDE_ENV_JSON', None))
     ops = ap.parse_args()
+
+    if ops.include_env_json:
+        for j in ops.include_env_json.split(':'):
+            data = json.load(open(j))
+            for (k, v) in data.iteritems():
+                os.environ[k] = v
 
     #
     # The packagedirs and repo options can be inherited from the environment
