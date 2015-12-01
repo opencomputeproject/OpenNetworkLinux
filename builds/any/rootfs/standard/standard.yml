@@ -8,8 +8,8 @@
 #
 ############################################################
 Packages: &Packages
-  - !include $ONL/packages/base/any/rootfs/common/common-packages.yml
-  - !include $ONL/packages/base/any/rootfs/common/${ARCH}-packages.yml
+  - !include $ONL/builds/any/rootfs/common/common-packages.yml
+  - !include $ONL/builds/any/rootfs/common/${ARCH}-packages.yml
   - !script  $ONL/tools/onl-platform-pkgs.py ${PLATFORM_LIST}
 
 Multistrap:
@@ -39,7 +39,7 @@ Multistrap:
 
 Configure:
   overlays:
-    - ${ONL}/packages/base/any/rootfs/common/overlay
+    - ${ONL}/builds/any/rootfs/common/overlay
 
   update-rc.d:
     - 'initdev defaults'
