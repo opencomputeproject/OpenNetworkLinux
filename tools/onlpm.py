@@ -209,6 +209,16 @@ class OnlPackage(object):
             p = filename
         else:
             p = os.path.join(self.dir, filename)
+
+        # Globs that result in a single file are allowed:
+        g = glob.glob(p)
+        if len(g) is 0:
+            raise OnlPackageError("'%s' did not match any files." % p)
+        elif len(g) > 1:
+            raise OnlPackageError("'%s' matched too many files %s" % (p, g))
+        else:
+            p = g[0]
+
         logger.debug("package file: %s" % p)
         return p
 
@@ -571,6 +581,7 @@ class OnlPackageGroup(object):
             self.gmake_locked("", 'Build')
             for p in self.packages:
                 products.append(p.build(dir_=dir_))
+
 
         return products
 
