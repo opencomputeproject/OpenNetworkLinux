@@ -17,6 +17,7 @@ FILENAMER := $(ONL)/tools/filenamer.py
 endif
 
 swi: FORCE
+	$(ONL_V_at) rm -rf *.swi*
 	$(ONL_V_at) $(ONLPM) $(LINK_OPTIONS)
 	$(ONL_V_at) zip -n rootfs-$(ARCH).sqsh - rootfs-$(ARCH).sqsh manifest.json > $@
 	$(ONL_V_at) mv $@ `$(FILENAMER) --type swi --manifest manifest.json $@`
