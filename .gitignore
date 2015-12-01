@@ -15,6 +15,7 @@ dependmodules.x
 
 # Local module manifest.
 .manifest.mk
+RELEASE/
 
 
 
