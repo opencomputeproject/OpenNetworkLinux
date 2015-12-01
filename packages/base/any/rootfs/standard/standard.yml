@@ -30,11 +30,11 @@ Multistrap:
     omitdebsrc: true
 
   Local-All:
-    source: ${ONL}/REPO/packages/all
+    source: ${ONL}/REPO/${DEBIAN_SUITE}/packages/all
     omitdebsrc: true
 
   Local-Arch:
-    source: ${ONL}/REPO/packages/${ARCH}
+    source: ${ONL}/REPO/${DEBIAN_SUITE}/packages/${ARCH}
     omitdebsrc: true
 
 Configure:
