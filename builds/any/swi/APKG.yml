@@ -16,6 +16,7 @@ packages:
     files:
       builds/*.swi          : $$PKG_INSTALL/
       builds/*.md5sum       : $$PKG_INSTALL/
+      builds/manifest.json  : $$PKG_INSTALL/
 
     changelog:  Change changes changes.,
 
