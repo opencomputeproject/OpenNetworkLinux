@@ -19,6 +19,10 @@ import onlyaml
 import onlu
 from string import Template
 import re
+import json
+import lsb_release
+
+g_dist_codename = lsb_release.get_distro_information().get('CODENAME')
 
 logger = onlu.init_logging('onlpm')
 
@@ -200,58 +204,12 @@ class OnlPackage(object):
         return True
 
 
-
-    def filepath(self, filename):
-        """Return the file path for a given package file."""
-        p = None
-        if os.path.isabs(filename):
-            p = filename
-        else:
-            p = os.path.join(self.dir, filename)
-        logger.debug("package file: %s" % p)
-        return p
-
-
     def _validate_files(self):
         """Validate the existence of the required input files for the current package."""
-
-        files = []
-        if type(self.pkg['files']) is dict:
-            for (s,d) in self.pkg['files'].iteritems():
-                files.append((s,d))
-        elif type(self.pkg['files']) is list:
-            for e in self.pkg['files']:
-                if type(e) is dict:
-                    for (s,d) in e.iteritems():
-                        files.append((s,d))
-                elif type(e) in [ list, tuple ]:
-                    if len(e) != 2:
-                        raise OnlPackageError("Too many filenames: '%s'" % (e))
-                    else:
-                        files.append((e[0], e[1]))
-                else:
-                    raise OnlPackageError("File entry '%s' is invalid." % (e))
-
-        #
-        # Make sure all source files exist.
-        #
-        for f in files:
-            fp = self.filepath(f[0])
-            if not os.path.exists(fp):
-                raise OnlPackageError("Source file or directory '%s' does not exist." % fp)
-
-        #
-        # Perform destination-file substitutions.
-        #
-        flist = []
-        for f in files:
-            s = Template(f[1])
-            dst = s.substitute(dict(PKG=self.pkg['name'], PKG_INSTALL='/usr/share/onl/packages/%s/%s' % (self.pkg['arch'], self.pkg['name'])))
-            flist.append((f[0], dst))
-
-        self.pkg['files'] = flist
-
-
+        self.pkg['files'] = onlu.validate_src_dst_file_tuples(self.dir,
+                                                              self.pkg['files'],
+                                                              dict(PKG=self.pkg['name'], PKG_INSTALL='/usr/share/onl/packages/%s/%s' % (self.pkg['arch'], self.pkg['name'])),
+                                                              OnlPackageError)
     def _validate(self):
         """Validate the package contents."""
 
@@ -319,8 +277,6 @@ class OnlPackage(object):
 
             if dst.startswith('/'):
                 dst = dst[1:]
-
-            src = self.filepath(src)
 
             if os.path.isdir(src):
                 #
@@ -571,6 +527,20 @@ class OnlPackageGroup(object):
             for p in self.packages:
                 products.append(p.build(dir_=dir_))
 
+
+        if 'release' in self._pkgs:
+            release_list = onlu.validate_src_dst_file_tuples(self._pkgs['__directory'],
+                                                      self._pkgs['release'],
+                                                      dict(),
+                                                      OnlPackageError)
+            for f in release_list:
+                # Todo -- customize
+                dst = os.path.join(os.getenv('ONL'), 'RELEASE', g_dist_codename, f[1])
+                if not os.path.exists(dst):
+                    os.makedirs(dst)
+                logger.info("Releasing %s -> %s" % (os.path.basename(f[0]), dst))
+                shutil.copy(f[0], dst)
+
         return products
 
     def clean(self, dir_=None):
@@ -595,7 +565,7 @@ class OnlPackageRepo(object):
 
         root : The root directory that should be used for this repository."""
 
-        self.root = root
+        root = os.path.join(root, g_dist_codename)
 
         if not os.path.exists(root):
             os.makedirs(root)
@@ -1048,7 +1018,14 @@ if __name__ == '__main__':
     ap.add_argument("--skip-missing", action='store_true')
     ap.add_argument("--try-arches", nargs='+', metavar='ARCH')
     ap.add_argument("--in-repo", nargs='+', metavar='PACKAGE')
+    ap.add_argument("--include-env-json", default=os.environ.get('ONLPM_OPTION_INCLUDE_ENV_JSON', None))
     ops = ap.parse_args()
+
+    if ops.include_env_json:
+        for j in ops.include_env_json.split(':'):
+            data = json.load(open(j))
+            for (k, v) in data.iteritems():
+                os.environ[k] = v
 
     #
     # The packagedirs and repo options can be inherited from the environment

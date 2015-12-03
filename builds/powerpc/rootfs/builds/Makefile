@@ -6,7 +6,7 @@ include $(ONL)/make/config.powerpc.mk
 #
 export PLATFORM_LIST=$(shell onlpm --list-platforms --arch powerpc --csv )
 
-RFS_CONFIG := $(ONL)/packages/base/any/rootfs/standard/standard.yml
+RFS_CONFIG := $(ONL)/builds/any/rootfs/standard/standard.yml
 RFS_DIR := rootfs-powerpc.d
 RFS_CPIO := rootfs-powerpc.cpio.gz
 RFS_SQUASH := rootfs-powerpc.sqsh

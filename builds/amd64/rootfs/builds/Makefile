@@ -6,7 +6,7 @@ include $(ONL)/make/config.amd64.mk
 #
 export PLATFORM_LIST=$(shell onlpm --list-platforms --arch amd64 --csv )
 
-RFS_CONFIG := $(ONL)/packages/base/any/rootfs/standard/standard.yml
+RFS_CONFIG := $(ONL)/builds/any/rootfs/standard/standard.yml
 RFS_DIR := rootfs-amd64.d
 RFS_CPIO := rootfs-amd64.cpio.gz
 RFS_SQUASH := rootfs-amd64.sqsh
