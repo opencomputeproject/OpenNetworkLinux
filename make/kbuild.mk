@@ -28,6 +28,13 @@ $(error $$ARCH must be set)
 endif
 
 #
+# The kernel major version
+#
+ifndef K_MAJOR_VERSION
+$(error $$K_MAJOR_VERSION must be set)
+endif
+
+#
 # The kernel patchlevel.
 #
 ifndef K_PATCH_LEVEL
@@ -77,7 +84,7 @@ endif
 ############################################################
 ONL_KERNELS := $(ONL)/packages/base/any/kernels
 
-K_VERSION := 3.$(K_PATCH_LEVEL).$(K_SUB_LEVEL)$(K_SUFFIX)
+K_VERSION := $(K_MAJOR_VERSION).$(K_PATCH_LEVEL).$(K_SUB_LEVEL)$(K_SUFFIX)
 K_NAME := linux-$(K_VERSION)
 ifndef K_ARCHIVE_EXT
 K_ARCHIVE_EXT := tar.xz
