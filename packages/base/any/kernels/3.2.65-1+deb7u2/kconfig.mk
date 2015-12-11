@@ -23,7 +23,7 @@
 #
 ############################################################
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-
+K_MAJOR_VERSION := 3
 K_PATCH_LEVEL := 2
 K_SUB_LEVEL := 65
 K_SUFFIX := -1+deb7u2
