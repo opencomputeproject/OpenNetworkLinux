@@ -1,8 +1,3 @@
-############################################################
-#
-# Common AMD64 Installer
-#
-############################################################
 include $(ONL)/make/config.amd64.mk
 
 KERNELS := $(shell $(ONLPM) --find-file onl-kernel-3.9.6-x86-64-all:amd64 kernel-3.9.6-x86-64-all) \
@@ -16,7 +11,7 @@ MKSHAR_OPTS = --lazy --unzip-pad --fixup-perms autoperms.sh
 MKSHAR_PERMS = autoperms.sh
 
 
-# Hardcoded to match ONL File nameing conventions.
+# Hardcoded to match ONL File naming conventions.
 include $(ONL)/make/version-onl.mk
 INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_INSTALLER
 
@@ -37,7 +32,7 @@ __installer:
 	$(ONL_V_at)echo "set -e" >> $(MKSHAR_PERMS)
 	$(ONL_V_at)echo "set -x" >> $(MKSHAR_PERMS)
 	$(MKSHAR) $(MKSHAR_OPTS) "$(INSTALLER_NAME)" $(ONL)/tools/scripts/sfx.sh.in amd64-installer.sh $(notdir $(KERNELS)) initrd-amd64 lib *.swi version-onl.sh boot-config
-	$(ONL_V_at)rm -rf installer.sh ./lib ./usr kernel-* initrd-amd64 $(ZTN_MANIFEST) *.swi version-onl.sh autoperms.sh
+	$(ONL_V_at)rm -rf ./lib ./usr kernel-* initrd-amd64 $(ZTN_MANIFEST) *.swi version-onl.sh autoperms.sh
 	md5sum "$(INSTALLER_NAME)" | awk '{ print $$1 }' > "$(INSTALLER_NAME).md5sum"
 
 

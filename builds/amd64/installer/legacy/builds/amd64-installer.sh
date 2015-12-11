@@ -337,7 +337,6 @@ else
   | unzip - -x $installer_script
 fi
 
-# Replaced during build packaging with the current version.
 if [ -f "${installer_dir}/versions.sh" ]; then
     . "${installer_dir}/versions.sh"
     installer_say "${VERSION_STRING} Installer"
