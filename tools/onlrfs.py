@@ -392,7 +392,7 @@ rm -f /usr/sbin/policy-rc.d
                     if os.path.exists(manifest['platforms']):
                         md['platforms'] = yaml.load(open(manifest['platforms']))
                     else:
-                        md['platforms'] = manifest['platforms'].split()
+                        md['platforms'] = manifest['platforms'].split(',')
                     with open(mname, "w") as f:
                         json.dump(md, f, indent=2)
                     onlu.execute("sudo chmod a-w %s" % mname)
