@@ -20,7 +20,7 @@ versions['UARCH'] = manifest['arch'].upper()
 if ops.type == 'swi':
     print "%(FNAME_PRODUCT_VERSION)s_ONL-OS_%(FNAME_BUILD_ID)s_%(UARCH)s.swi" % versions
 elif ops.type == 'installer':
-    print "%(FNAME_PRODUCT_VERSION)s_ONL-OS_%(FNAME_BUILD_ID)s_%(UARCH)s_SWI-INSTALLER" % versions
+    print "%(FNAME_PRODUCT_VERSION)s_ONL-OS_%(FNAME_BUILD_ID)s_%(UARCH)s_INSTALLER" % versions
 else:
     raise ValueError("Unknown type '%s'" % ops.type)
 
