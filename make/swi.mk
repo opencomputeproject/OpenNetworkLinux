@@ -19,7 +19,7 @@ endif
 swi: FORCE
 	$(ONL_V_at) rm -rf *.swi* manifest.json
 	$(ONL_V_at) $(ONLPM) $(LINK_OPTIONS)
-	$(ONL_V_at) zip -n rootfs-$(ARCH).sqsh - rootfs-$(ARCH).sqsh manifest.json > $@
+	$(ONL_V_at) $(ONL)/tools/switool.py --create --rootfs rootfs-$(ARCH).sqsh --manifest manifest.json $@
 	$(ONL_V_at) mv $@ `$(FILENAMER) --type swi --manifest manifest.json $@`
 	$(ONL_V_at) for f in `ls *.swi`; do md5sum $$f > $$f.md5sum; done
 	$(ONL_V_at) rm -rf rootfs-$(ARCH).sqsh
