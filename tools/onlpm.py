@@ -1019,6 +1019,8 @@ if __name__ == '__main__':
     ap.add_argument("--try-arches", nargs='+', metavar='ARCH')
     ap.add_argument("--in-repo", nargs='+', metavar='PACKAGE')
     ap.add_argument("--include-env-json", default=os.environ.get('ONLPM_OPTION_INCLUDE_ENV_JSON', None))
+    ap.add_argument("--platform-manifest", metavar=('PACKAGE'))
+
     ops = ap.parse_args()
 
     if ops.include_env_json:
@@ -1192,6 +1194,13 @@ if __name__ == '__main__':
                 pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
                 pm.opr.contents(p)
 
+
+        if ops.platform_manifest:
+            pm.require(ops.platform_manifest, force=ops.force, build_missing=not ops.no_build_missing)
+            path = pm.opr.get_file(ops.platform_manifest, 'manifest.json')
+            if path:
+                m = json.load(open(path))
+                print " ".join(m['platforms'])
 
 
         ############################################################
