@@ -19,14 +19,27 @@ Multistrap:
     noauth: true
     explicitsuite: false
     unpack: true
-    debootstrap: Debian Local-All Local-Arch
-    aptsources: Debian
+    debootstrap: Debian-Local Local-All Local-Arch ONL
+    aptsources: Debian ONL
 
   Debian:
+    packages: *Packages
+    source: http://${DEBIAN_MIRROR}
+    suite: ${DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  Debian-Local:
     packages: *Packages
     source: http://${APT_CACHE}${DEBIAN_MIRROR}
     suite: ${DEBIAN_SUITE}
     keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  ONL:
+    packages: *Packages
+    source: http://apt.opennetlinux.org/debian
+    suite: unstable
     omitdebsrc: true
 
   Local-All:
