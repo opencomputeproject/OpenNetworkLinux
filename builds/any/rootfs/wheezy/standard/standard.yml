@@ -1,0 +1,95 @@
+############################################################
+#
+# Standard ONL Debian 7 Root Filesystem Configuration.
+#
+# Requires:
+#     ARCH, PLATFORM_LIST
+#
+#
+############################################################
+Packages: &Packages
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/common-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-packages.yml
+  - !script  $ONL/tools/onl-platform-pkgs.py ${PLATFORM_LIST}
+
+Multistrap:
+  General:
+    arch: ${ARCH}
+    cleanup: true
+    noauth: true
+    explicitsuite: false
+    unpack: true
+    debootstrap: Debian-Local Local-All Local-Arch ONL
+    aptsources: Debian ONL
+
+  Debian:
+    packages: *Packages
+    source: http://${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  Debian-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  ONL:
+    packages: *Packages
+    source: http://apt.opennetlinux.org/debian
+    suite: unstable
+    omitdebsrc: true
+
+  Local-All:
+    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/all
+    omitdebsrc: true
+
+  Local-Arch:
+    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/${ARCH}
+    omitdebsrc: true
+
+Configure:
+  overlays:
+    - ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/common/overlay
+
+  update-rc.d:
+    - 'initdev defaults'
+    - 'onl-platform-baseconf defaults'
+    - 'faultd defaults'
+    - 'snmpd remove'
+    - 'ssh defaults'
+    - 'openbsd-inetd remove'
+    - 'ntp remove'
+    - 'nfs-common remove'
+    - 'rpcbind remove'
+    - 'motd remove'
+    - 'kexec remove'
+    - 'kexec-load remove'
+    - 'mountall-bootclean.sh remove'
+    - 'mountall.sh remove'
+    - 'checkfs.sh remove'
+    - 'mtab.sh remove'
+    - 'checkroot-bootclean.sh remove'
+    - 'checkroot.sh remove'
+    - 'mountnfs-bootclean.sh remove'
+    - 'mountnfs.sh remove'
+    - 'lm-sensors remove'
+    - 'netplug defaults'
+    - 'watchdog defaults'
+    - 'wd_keepalive remove'
+
+  options:
+    clean: True
+    securetty: False
+    ttys: False
+    console: True
+
+  users:
+    root:
+      password: onl
+
+  manifest:
+    version: $ONL/make/version-onl.json
+    platforms: $PLATFORM_LIST
