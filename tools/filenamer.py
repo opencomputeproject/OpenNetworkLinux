@@ -15,7 +15,8 @@ ops = ap.parse_args()
 
 manifest = json.load(open(ops.manifest))
 versions = manifest['version']
-versions['UARCH'] = manifest['arch'].upper()
+versions['UARCH'] = manifest['arch'].upper().replace("POWERPC","PPC")
+
 
 if ops.type == 'swi':
     print "%(FNAME_PRODUCT_VERSION)s_ONL-OS_%(FNAME_BUILD_ID)s_%(UARCH)s.swi" % versions
