@@ -23,7 +23,7 @@ export BUILD_DIR_BASE=BUILD/$(ONL_DEBIAN_SUITE)
 
 
 # Generate manifest if necessary
-export MODULEMANIFEST := $(shell $(ONL)/tools/scripts/manifest.sh $(ONL) $(BUILDER))
+export MODULEMANIFEST := $(shell $(BUILDER)/tools/mmg.py --dirs $(ONL) $(ONLPM_OPTION_PACKAGEDIRS) --out $(ONL)/make/module-manifest.mk --only-if-missing make)
 
 #
 # Default make options.
