@@ -90,7 +90,7 @@ class OnlPackage(object):
         'PY_INSTALL' : '/usr/lib/python2.7/dist-packages',
 
         # Default Builder build directory name. Must match setup.env
-        'BUILD_DIR' : 'BUILD',
+        'BUILD_DIR' : 'BUILD/%s' % g_dist_codename,
 
         # Default Templates Location
         'ONL_TEMPLATES' : "%s/packages/base/any/templates" % os.getenv("ONL")
