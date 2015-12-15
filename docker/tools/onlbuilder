@@ -17,11 +17,21 @@ g_current_user = getpass.getuser()
 g_current_uid  = os.getuid()
 g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
 
-g_default_image_name="opennetworklinux/builder7:1.0"
+g_builder7_image_name="opennetworklinux/builder7:1.0"
+g_builder8_image_name="opennetworklinux/builder8:1.0"
+
+g_default_image_name=g_builder7_image_name
 g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
 g_default_user="%s:%s" % (g_current_user, g_current_uid)
 
 ap = argparse.ArgumentParser("ONL Docker Build")
+
+ap.add_argument('--8', '-8',
+                help="Run the Debian 8 version.",
+                action='store_true', dest='debian8')
+ap.add_argument('--7', '-7',
+                help="Run the debian 7 version.",
+                action='store_true', dest='debian7')
 
 ap.add_argument("--dry",
                 help="Dry run.",
@@ -88,6 +98,13 @@ ap.add_argument("--command", "-c",
                 default=['bash'])
 
 ops = ap.parse_args()
+
+if ops.debian7:
+   ops.image = g_builder7_image_name
+
+if ops.debian8:
+   ops.image = g_builder8_image_name
+
 
 if ops.verbose or ops.dry:
    logger.setLevel(logging.DEBUG)
