@@ -275,7 +275,7 @@ class OnlPackage(object):
         # The package file will be built into the workdir
         self.pkg['__workdir'] = workdir
 
-        for (src,dst) in self.pkg['files']:
+        for (src,dst) in self.pkg.get('files', {}):
 
             if dst.startswith('/'):
                 dst = dst[1:]
