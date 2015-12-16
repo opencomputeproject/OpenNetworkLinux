@@ -158,6 +158,8 @@ class OnlPackage(object):
 
         return self.pkg['name'] + ':' + self.pkg['arch']
 
+    def arch(self):
+        return self.pkg['arch']
 
     @staticmethod
     def idparse(pkgid, ex=True):
@@ -406,6 +408,14 @@ class OnlPackageGroup(object):
     def __init__(self):
         self.filtered = False
 
+    def archcheck(self, arches):
+        if arches is None:
+            return True
+        else:
+            for p in self.packages:
+                if p.arch() not in arches:
+                    return False
+            return True
 
     def prerequisite_packages(self):
         return list(onlu.sflatten(self._pkgs.get('prerequisites', {}).get('packages', [])))
@@ -749,11 +759,12 @@ class OnlPackageManager(object):
         self.opr = OnlPackageRepo(repodir, ops.repo_package_dir)
 
 
-    def filter(self, subdir=None, arch=None, substr=None):
+    def filter(self, subdir=None, arches=None, substr=None):
 
         for pg in self.package_groups:
-
             if subdir and not pg.is_child(subdir):
+                pg.filtered = True
+            if not pg.archcheck(arches):
                 pg.filtered = True
 
 
@@ -995,6 +1006,7 @@ if __name__ == '__main__':
     ap.add_argument("--csv", action='store_true')
     ap.add_argument("--show-group", action='store_true')
     ap.add_argument("--arch")
+    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'all']),
     ap.add_argument("--pmake", action='store_true')
     ap.add_argument("--prereq-packages", action='store_true')
     ap.add_argument("--lookup", metavar='PACKAGE')
@@ -1022,6 +1034,12 @@ if __name__ == '__main__':
     ap.add_argument("--platform-manifest", metavar=('PACKAGE'))
 
     ops = ap.parse_args()
+
+    archlist = []
+    for a in ops.arches:
+        al = a.split(',')
+        archlist = archlist + al
+    ops.arches = archlist
 
     if ops.include_env_json:
         for j in ops.include_env_json.split(':'):
@@ -1100,7 +1118,7 @@ if __name__ == '__main__':
         if ops.list_all:
             print pm
 
-        pm.filter(subdir = ops.subdir)
+        pm.filter(subdir = ops.subdir, arches=ops.arches)
 
         if ops.list:
             print pm
