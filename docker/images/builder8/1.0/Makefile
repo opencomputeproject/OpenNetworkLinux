@@ -14,3 +14,6 @@ build: check_version
 # when a new image is built but the VERSION variable is not updated.
 #
 check_version:
+
+push:
+	docker push $(USER)/$(REPO):$(VERSION)
