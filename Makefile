@@ -6,6 +6,7 @@
 include $(ONL)/make/config.mk
 
 all: amd64 ppc
+	$(MAKE) -C REPO build-clean
 
 onl-amd64 onl-x86 x86 x86_64 amd64:
 	$(MAKE) -C packages/base ARCHES=amd64,all
@@ -21,7 +22,3 @@ onl-ppc ppc:
 
 rpc rebuild:
 	$(ONLPM) --rebuild-pkg-cache
-
-
-
-
