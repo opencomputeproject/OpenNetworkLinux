@@ -13,12 +13,16 @@ include $(ONL)/make/config.mk
 # Invoke onlpm to build all packages in the current
 # directory tree.
 #
+ifndef ARCHES
+ARCHES := amd64 powerpc all
+endif
+
 pkgall:
-	$(ONL_V_at) MAKE=$(MAKE) onlpm.py --build all
+	$(ONL_V_at) MAKE=$(MAKE) onlpm.py --build all --arches $(ARCHES)
 
 
 clean:
-	$(ONL_V_at) MAKE=$(MAKE) onlpm.py --clean all
+	$(ONL_V_at) MAKE=$(MAKE) onlpm.py --clean all --arches $(ARCHES)
 
 rebuild:
 	$(ONL_V_at) MAKE=$(MAKE) onlpm.py --rebuild-pkg-cache
@@ -37,7 +41,7 @@ subdir:
 # Package construction only (no build step)
 #
 pkg:
-	$(ONL_V_at) MAKE=$(MAKE) NOBUILD=1 onlpm.py --build all
+	$(ONL_V_at) MAKE=$(MAKE) NOBUILD=1 onlpm.py --build all --arches $(ARCHES)
 
 
 
