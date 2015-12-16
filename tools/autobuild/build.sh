@@ -73,7 +73,7 @@ cd $ONL && git checkout $BUILD_BRANCH
 cd $ONL
 . setup.env
 
-if false && make all; then
+if ! make all; then
     echo Build Failed.
     exit 1
 fi
