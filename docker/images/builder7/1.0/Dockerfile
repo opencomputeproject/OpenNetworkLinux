@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y \
         apt-file \
         apt-utils \
         autoconf \
-        automake1.9 \
+	automake1.9 \
         autotools-dev \
-        bash-completion \
+	bash-completion \
         bc \
         bind9-host \
         binfmt-support \
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y \
         debhelper \
         debhelper \
         debhelper \
-        device-tree-compiler \
+	device-tree-compiler \
         devscripts \
         devscripts \
         dialog \
@@ -42,9 +42,9 @@ RUN apt-get update && apt-get install -y \
         less \
         libc6-dev \
         libedit-dev \
-        libevent-dev \
+	libevent-dev \
         libi2c-dev \
-        libpam-dev \
+	libpam-dev \
         libsnmp-dev \
         libtool \
         locales \
@@ -72,15 +72,15 @@ RUN apt-get update && apt-get install -y \
         realpath \
         realpath \
         rsyslog \
-        rubygems \
-        screen \
+	rubygems \
+	screen \
         squashfs-tools \
         sshpass \
         sudo \
-        syslinux \
-        texinfo=4.13a.dfsg.1-10 \
+	syslinux \
+	texinfo=4.13a.dfsg.1-10 \
         traceroute \
-        uboot-mkimage \
+	uboot-mkimage \
         vim-tiny \
         wget \
         xapt \
