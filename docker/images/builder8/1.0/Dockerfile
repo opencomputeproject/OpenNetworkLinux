@@ -8,10 +8,11 @@ RUN apt-get update && apt-get install -y \
         apt-file \
         apt-utils \
         autoconf \
-        automake \
+	automake \
         autotools-dev \
 	bash-completion \
         bc \
+        bind9-host \
         binfmt-support \
         binfmt-support \
         bison \
@@ -29,6 +30,7 @@ RUN apt-get update && apt-get install -y \
         dialog \
         dosfstools \
         dpkg-sig \
+        emacs \
         file \
         flex \
         gcc \
@@ -51,6 +53,8 @@ RUN apt-get update && apt-get install -y \
 	libnuma-dev \
 	libsasl2-dev \
 	libsnappy-dev \
+	libpam-dev \
+        libsnmp-dev \
 	libssl-dev \
 	libstdc++6=4.9.2-10 \
         libtool \
@@ -73,6 +77,7 @@ RUN apt-get update && apt-get install -y \
         psmisc \
         python \
         python-debian \
+        python-dnspython \
         python-yaml \
         qemu \
         qemu-user-static \
@@ -84,15 +89,16 @@ RUN apt-get update && apt-get install -y \
 	rubygems \
 	screen \
         squashfs-tools \
+        sshpass \
         sudo \
-        syslinux-utils \
+	syslinux-utils \
         traceroute \
-        u-boot-tools \
+	u-boot-tools \
         vim-tiny \
         wget \
         zile \
         zip
-RUN     gem install --version 1.3.3 fpm 
+RUN     gem install --version 1.3.3 fpm
 
 # Now the unstable deps and cross compilers
 # NOTE 1: texinfo 5.x and above breaks the buildroot build, thus the specific 4.x version
@@ -123,7 +129,7 @@ RUN echo 'APT::Get::AllowUnauthenticated "true";\nAPT::Get::Assume-Yes "true";' 
    dpkg -i xapt_2.2.19_all.deb && \
 
     xapt -a powerpc libedit-dev ncurses-dev libsensors4-dev libwrap0-dev libssl-dev libsnmp-dev
-#    update-alternatives --install /usr/bin/powerpc-linux-gnu-gcc powerpc-linux-gnu-gcc 10 && 
+#    update-alternatives --install /usr/bin/powerpc-linux-gnu-gcc powerpc-linux-gnu-gcc 10 &&
 
 #
 # The i2c-dev.h user/kernel header conflict is a nightmare.
@@ -133,7 +139,7 @@ RUN echo 'APT::Get::AllowUnauthenticated "true";\nAPT::Get::Assume-Yes "true";' 
 #
 RUN cp /usr/include/linux/i2c-dev.h /usr/include/linux/i2c-devices.h && \
     cp /usr/include/linux/i2c-dev.h /usr/powerpc-linux-gnu/include/linux/i2c-devices.h
- 
+
 RUN rm /etc/apt/apt.conf.d/docker-* && \
     wget "https://launchpad.net/ubuntu/+source/qemu/1.4.0+dfsg-1expubuntu3/+build/4336762/+files/qemu-user-static_1.4.0%2Bdfsg-1expubuntu3_amd64.deb" && \
     dpkg -i qemu-user-static_1.4.0+dfsg-1expubuntu3_amd64.deb
