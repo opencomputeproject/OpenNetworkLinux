@@ -25,9 +25,11 @@ Build ONL Summary
     user@system:/path/to/OpenNetworkLinux$ source setup.env    # import variables necessary to build OpenNetworkLinux
     #> make onl-x86 onl-powerpc 				# make onl for $platform (currently x86 or powerpc)
 The resulting ONIE installers are in
-$ONL/builds/installer/$ARCH/all/onl-$VERSION-all.installer,
+$ONL/RELEASE/$SUITE/$ARCH/ONL-2.*INSTALLER, i.e. 
+RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64_INSTALLER
 and the SWI files (if you want them) are in
-$ONL/builds/swi/$ARCH/all/onl-$VERSION-all.swi.
+$ONL/RELEASE/$SUITE/$ARCH/ONL*.swi. i.e.
+RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64.swi
 
 
 
@@ -89,10 +91,11 @@ The list of packages for a given SWI are in
 
 Build a software image (SWI) for all powerpc platforms:
 ------------------------------------------------------------
-    #> cd $ONL/builds/swi/powerpc/all
+    #> cd $ONL/builds/powerpc/swi
     #> make
+    #> cd builds
     #> ls *.swi
-    onl-27f67f6-powerpc-all-2014.01.27.10.59.swi  onl-27f67f6-powerpc-all.swi
+    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC.swi
     #>
 
 Build an ONIE-compatible installer for all powerpc platforms.
@@ -100,8 +103,9 @@ This will incorporate the SWI you just built or build it dynamically if not.
 
 This installer image can be served to ONIE on Quanta or Accton platforms:
 ------------------------------------------------------------
-    #> cd $ONL/builds/installer/powerpc/all
+    #> cd $ONL/builds/powerpc/installer/legacy
     #> make
-    #> ls *.installer
-    latest.installer  onl-27f67f6-powerpc-all.2014.01.27.11.05.installer
+    #> cd builds
+    #> ls *INSTALLER
+    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC_INSTALLER
     #>
