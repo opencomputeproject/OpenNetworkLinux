@@ -82,5 +82,4 @@ _rsync() {
 sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER mkdir -p $REMOTE_DIR
 _rsync $ONL/RELEASE/* $REMOTE_SERVER:$REMOTE_DIR
 
-make -C $ONL/REPO build-clean
 _rsync $ONL/REPO $REMOTE_SERVER:$REMOTE_DIR
