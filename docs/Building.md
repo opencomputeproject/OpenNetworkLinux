@@ -19,11 +19,24 @@ All of the testing is done with Debian, other Linux distributions may work, but 
 
 Build ONL Summary
 ------------------------------------------------------------
+The easiest way to build is to use the autobuild script:
+
+    #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
+    #> tools/autobuild/build.sh
+
+This will build a Debian 7 based ONL from the master branch
+
+To build a Debian 8 based ONL simply run:
+
+    #> tools/autobuild/build.sh -8
+
+If you would like to build by hand you can do the following:
+
     #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
     #> cd OpenNetworkLinux
     #> make docker                                              # enter the docker workspace
-    user@system:/path/to/OpenNetworkLinux$ source setup.env    # import variables necessary to build OpenNetworkLinux
-    #> make onl-x86 onl-powerpc 				# make onl for $platform (currently x86 or powerpc)
+    #> make amd64 ppc                           # make onl for $platform (currently amd64 or powerpc)
+
 The resulting ONIE installers are in
 $ONL/RELEASE/$SUITE/$ARCH/ONL-2.*INSTALLER, i.e. 
 RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64_INSTALLER
