@@ -1,0 +1,16 @@
+############################################################
+#
+# Platform: Quanta LY2
+#
+############################################################
+
+INTERVAL=10
+DEVPATH=hwmon0=devices/soc.0/ffe03000.i2c/i2c-0/i2c-4/4-002e
+DEVNAME=hwmon0=quanta_ly_hwmon
+FCTEMPS=hwmon0/device/pwm5=hwmon0/device/temp1_input hwmon0/device/pwm6=hwmon0/device/temp1_input hwmon0/device/pwm7=hwmon0/device/temp1_input hwmon0/device/pwm8=hwmon0/device/temp1_input
+FCFANS=hwmon0/device/pwm5=hwmon0/device/fan5_input hwmon0/device/pwm6=hwmon0/device/fan6_input hwmon0/device/pwm7=hwmon0/device/fan7_input hwmon0/device/pwm8=hwmon0/device/fan8_input
+MINTEMP=hwmon0/device/pwm5=20 hwmon0/device/pwm6=20 hwmon0/device/pwm7=20 hwmon0/device/pwm8=20
+MAXTEMP=hwmon0/device/pwm5=60 hwmon0/device/pwm6=60 hwmon0/device/pwm7=60 hwmon0/device/pwm8=60
+MINSTART=hwmon0/device/pwm5=150 hwmon0/device/pwm6=150 hwmon0/device/pwm7=150 hwmon0/device/pwm8=150
+MINSTOP=hwmon0/device/pwm5=0 hwmon0/device/pwm6=0 hwmon0/device/pwm7=0 hwmon0/device/pwm8=0
+MAXPWM=hwmon0/device/pwm5=254 hwmon0/device/pwm6=254 hwmon0/device/pwm7=254 hwmon0/device/pwm8=254

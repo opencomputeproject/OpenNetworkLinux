@@ -15,6 +15,8 @@ class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta):
         return "powerpc-quanta-ly2-r0"
 
     def baseconfig(self):
+        subprocess.check_call("%s/sbin/gpio_init" % self.basedir_onl())
+
         fan_dir='/sys/devices/soc.0/ffe03000.i2c/i2c-0/i2c-4/4-002e/fan_dir'
         if os.path.exists(fan_dir):
             with open(fan_dir) as f:
@@ -35,7 +37,6 @@ class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta):
         else:
             sys.exit(1)
 
-        subprocess.call("%s/sbin/gpio_init" % self.basedir_onl())
         return True
 
     def sys_oid_platform(self):

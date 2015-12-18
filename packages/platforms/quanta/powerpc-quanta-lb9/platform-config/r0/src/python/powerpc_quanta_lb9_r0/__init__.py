@@ -33,7 +33,6 @@ class OnlPlatform_powerpc_quanta_lb9_r0(OnlPlatformQuanta):
         else:
             sys.exit(1)
 
-        subprocess.call("%s/sbin/gpio_init" % self.basedir_onl())
         return True
 
     def sys_oid_platform(self):

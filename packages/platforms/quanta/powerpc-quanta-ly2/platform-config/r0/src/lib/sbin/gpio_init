@@ -1,0 +1,209 @@
+#!/bin/sh
+set -e
+
+# fport 1 (pport 0.1) MOD_ABS --> gpio168
+echo "168" > /sys/class/gpio/export
+# fport 1 (pport 0.1) RESET missing
+
+# fport 2 (pport 0.2) MOD_ABS --> gpio169
+echo "169" > /sys/class/gpio/export
+# fport 2 (pport 0.2) RESET missing
+
+# fport 3 (pport 0.3) MOD_ABS --> gpio170
+echo "170" > /sys/class/gpio/export
+# fport 3 (pport 0.3) RESET missing
+
+# fport 4 (pport 0.4) MOD_ABS --> gpio171
+echo "171" > /sys/class/gpio/export
+# fport 4 (pport 0.4) RESET missing
+
+# fport 5 (pport 0.5) MOD_ABS --> gpio172
+echo "172" > /sys/class/gpio/export
+# fport 5 (pport 0.5) RESET missing
+
+# fport 6 (pport 0.6) MOD_ABS --> gpio173
+echo "173" > /sys/class/gpio/export
+# fport 6 (pport 0.6) RESET missing
+
+# fport 7 (pport 0.7) MOD_ABS --> gpio174
+echo "174" > /sys/class/gpio/export
+# fport 7 (pport 0.7) RESET missing
+
+# fport 8 (pport 0.8) MOD_ABS --> gpio175
+echo "175" > /sys/class/gpio/export
+# fport 8 (pport 0.8) RESET missing
+
+# fport 9 (pport 0.9) MOD_ABS --> gpio176
+echo "176" > /sys/class/gpio/export
+# fport 9 (pport 0.9) RESET missing
+
+# fport 10 (pport 0.10) MOD_ABS --> gpio177
+echo "177" > /sys/class/gpio/export
+# fport 10 (pport 0.10) RESET missing
+
+# fport 11 (pport 0.11) MOD_ABS --> gpio178
+echo "178" > /sys/class/gpio/export
+# fport 11 (pport 0.11) RESET missing
+
+# fport 12 (pport 0.12) MOD_ABS --> gpio179
+echo "179" > /sys/class/gpio/export
+# fport 12 (pport 0.12) RESET missing
+
+# fport 13 (pport 0.13) MOD_ABS --> gpio180
+echo "180" > /sys/class/gpio/export
+# fport 13 (pport 0.13) RESET missing
+
+# fport 14 (pport 0.14) MOD_ABS --> gpio181
+echo "181" > /sys/class/gpio/export
+# fport 14 (pport 0.14) RESET missing
+
+# fport 15 (pport 0.15) MOD_ABS --> gpio182
+echo "182" > /sys/class/gpio/export
+# fport 15 (pport 0.15) RESET missing
+
+# fport 16 (pport 0.16) MOD_ABS --> gpio183
+echo "183" > /sys/class/gpio/export
+# fport 16 (pport 0.16) RESET missing
+
+# fport 17 (pport 0.17) MOD_ABS --> gpio144
+echo "144" > /sys/class/gpio/export
+# fport 17 (pport 0.17) RESET missing
+
+# fport 18 (pport 0.18) MOD_ABS --> gpio145
+echo "145" > /sys/class/gpio/export
+# fport 18 (pport 0.18) RESET missing
+
+# fport 19 (pport 0.19) MOD_ABS --> gpio146
+echo "146" > /sys/class/gpio/export
+# fport 19 (pport 0.19) RESET missing
+
+# fport 20 (pport 0.20) MOD_ABS --> gpio147
+echo "147" > /sys/class/gpio/export
+# fport 20 (pport 0.20) RESET missing
+
+# fport 21 (pport 0.21) MOD_ABS --> gpio148
+echo "148" > /sys/class/gpio/export
+# fport 21 (pport 0.21) RESET missing
+
+# fport 22 (pport 0.22) MOD_ABS --> gpio149
+echo "149" > /sys/class/gpio/export
+# fport 22 (pport 0.22) RESET missing
+
+# fport 23 (pport 0.23) MOD_ABS --> gpio150
+echo "150" > /sys/class/gpio/export
+# fport 23 (pport 0.23) RESET missing
+
+# fport 24 (pport 0.24) MOD_ABS --> gpio151
+echo "151" > /sys/class/gpio/export
+# fport 24 (pport 0.24) RESET missing
+
+# fport 25 (pport 0.25) MOD_ABS --> gpio152
+echo "152" > /sys/class/gpio/export
+# fport 25 (pport 0.25) RESET missing
+
+# fport 26 (pport 0.26) MOD_ABS --> gpio153
+echo "153" > /sys/class/gpio/export
+# fport 26 (pport 0.26) RESET missing
+
+# fport 27 (pport 0.27) MOD_ABS --> gpio154
+echo "154" > /sys/class/gpio/export
+# fport 27 (pport 0.27) RESET missing
+
+# fport 28 (pport 0.28) MOD_ABS --> gpio155
+echo "155" > /sys/class/gpio/export
+# fport 28 (pport 0.28) RESET missing
+
+# fport 29 (pport 0.29) MOD_ABS --> gpio156
+echo "156" > /sys/class/gpio/export
+# fport 29 (pport 0.29) RESET missing
+
+# fport 30 (pport 0.30) MOD_ABS --> gpio157
+echo "157" > /sys/class/gpio/export
+# fport 30 (pport 0.30) RESET missing
+
+# fport 31 (pport 0.31) MOD_ABS --> gpio158
+echo "158" > /sys/class/gpio/export
+# fport 31 (pport 0.31) RESET missing
+
+# fport 32 (pport 0.32) MOD_ABS --> gpio159
+echo "159" > /sys/class/gpio/export
+# fport 32 (pport 0.32) RESET missing
+
+# fport 33 (pport 0.33) MOD_ABS --> gpio120
+echo "120" > /sys/class/gpio/export
+# fport 33 (pport 0.33) RESET missing
+
+# fport 34 (pport 0.34) MOD_ABS --> gpio121
+echo "121" > /sys/class/gpio/export
+# fport 34 (pport 0.34) RESET missing
+
+# fport 35 (pport 0.35) MOD_ABS --> gpio122
+echo "122" > /sys/class/gpio/export
+# fport 35 (pport 0.35) RESET missing
+
+# fport 36 (pport 0.36) MOD_ABS --> gpio123
+echo "123" > /sys/class/gpio/export
+# fport 36 (pport 0.36) RESET missing
+
+# fport 37 (pport 0.37) MOD_ABS --> gpio124
+echo "124" > /sys/class/gpio/export
+# fport 37 (pport 0.37) RESET missing
+
+# fport 38 (pport 0.38) MOD_ABS --> gpio125
+echo "125" > /sys/class/gpio/export
+# fport 38 (pport 0.38) RESET missing
+
+# fport 39 (pport 0.39) MOD_ABS --> gpio126
+echo "126" > /sys/class/gpio/export
+# fport 39 (pport 0.39) RESET missing
+
+# fport 40 (pport 0.40) MOD_ABS --> gpio127
+echo "127" > /sys/class/gpio/export
+# fport 40 (pport 0.40) RESET missing
+
+# fport 41 (pport 0.41) MOD_ABS --> gpio128
+echo "128" > /sys/class/gpio/export
+# fport 41 (pport 0.41) RESET missing
+
+# fport 42 (pport 0.42) MOD_ABS --> gpio129
+echo "129" > /sys/class/gpio/export
+# fport 42 (pport 0.42) RESET missing
+
+# fport 43 (pport 0.43) MOD_ABS --> gpio130
+echo "130" > /sys/class/gpio/export
+# fport 43 (pport 0.43) RESET missing
+
+# fport 44 (pport 0.44) MOD_ABS --> gpio131
+echo "131" > /sys/class/gpio/export
+# fport 44 (pport 0.44) RESET missing
+
+# fport 45 (pport 0.45) MOD_ABS --> gpio132
+echo "132" > /sys/class/gpio/export
+# fport 45 (pport 0.45) RESET missing
+
+# fport 46 (pport 0.46) MOD_ABS --> gpio133
+echo "133" > /sys/class/gpio/export
+# fport 46 (pport 0.46) RESET missing
+
+# fport 47 (pport 0.47) MOD_ABS --> gpio134
+echo "134" > /sys/class/gpio/export
+# fport 47 (pport 0.47) RESET missing
+
+# fport 48 (pport 0.48) MOD_ABS --> gpio135
+echo "135" > /sys/class/gpio/export
+# fport 48 (pport 0.48) RESET missing
+
+# fport 49 (pport 0.49) MOD_ABS missing
+# fport 49 (pport 0.49) RESET missing
+
+# fport 50 (pport 0.50) MOD_ABS missing
+# fport 50 (pport 0.50) RESET missing
+
+# fport 51 (pport 0.51) MOD_ABS missing
+# fport 51 (pport 0.51) RESET missing
+
+# fport 52 (pport 0.52) MOD_ABS missing
+# fport 52 (pport 0.52) RESET missing
+
+
+exit 0

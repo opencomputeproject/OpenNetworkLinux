@@ -13,3 +13,4 @@ MINTEMP=hwmon0/device/pwm1=20 hwmon0/device/pwm2=20 hwmon0/device/pwm3=20 hwmon0
 MAXTEMP=hwmon0/device/pwm1=60 hwmon0/device/pwm2=60 hwmon0/device/pwm3=60 hwmon0/device/pwm4=60
 MINSTART=hwmon0/device/pwm1=150 hwmon0/device/pwm2=150 hwmon0/device/pwm3=150 hwmon0/device/pwm4=150
 MINSTOP=hwmon0/device/pwm1=0 hwmon0/device/pwm2=0 hwmon0/device/pwm3=0 hwmon0/device/pwm4=0
+MAXPWM=hwmon0/device/pwm1=254 hwmon0/device/pwm2=254 hwmon0/device/pwm3=254 hwmon0/device/pwm4=254
