@@ -78,8 +78,6 @@ unzip -oq "${swipath}" swi-data.tar.gz -d /tmp
 if [ -s /tmp/swi-data.tar.gz ]; then
     echo "Installing SWI data into /boot..."
     tar -C /newroot/boot -xzf /tmp/swi-data.tar.gz
-else
-    echo "No SWI data to install."
 fi
 
 # If there is a SWI version file put it in /etc/onl/swi_version
