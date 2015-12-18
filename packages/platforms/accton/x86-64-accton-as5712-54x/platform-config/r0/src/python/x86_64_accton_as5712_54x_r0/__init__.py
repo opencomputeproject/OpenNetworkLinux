@@ -49,8 +49,8 @@ class OnlPlatform_x86_64_accton_as5712_54x_r0(OnlPlatformAccton):
                 ('as5712_54x_psu', 0x3b, 58),
                 ('cpr_4011_4mxx',  0x3f, 58),
 
-		# initiate PSU-1 DC Power
-		('as5712_54x_psu', 0x50, 57)
+                # initiate PSU-1 DC Power
+                ('as5712_54x_psu', 0x50, 57)
 
                 # initiate PSU-1 DC Power
                 ('as5712_54x_psu', 0x53, 58)
