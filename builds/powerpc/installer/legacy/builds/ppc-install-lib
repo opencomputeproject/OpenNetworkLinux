@@ -198,38 +198,38 @@ installer_platform_loader() {
     local blockdev=$1
     local partno=$2
 
+
     if [ -f "${installer_dir}/${installer_platform}.itb" ]; then
-        # Platform-specfic FIT Image
+        #
+        # Platform-specfic FIT Image already provided.
+        #
         local loader="${installer_dir}/${installer_platform}.itb"
+
     elif [ -f "${installer_dir}/onl-loader-fit.itb" ]; then
-        # Common FIT Image
+        #
+        # Common FIT image.
+        #
         local loader="${installer_dir}/onl-loader-fit.itb";
-    elif [ "${platform_loader}" ]; then
-        # Platform specific override
-        local loader="${platform_loader}"
     else
-        # Default platform loader
-        local loader="${installer_dir}/switchlight.${installer_platform}.loader"
-    fi
-
-    if [ "${platform_loader_dst_name}" ]; then
-        local loaderdst="${platform_loader_dst_name}"
-    else
-        local loaderdst="switchlight-loader"
-    fi
-
-
-    if [ -f "${loader}" ]; then
-        installer_say "Installing the Switchlight Loader..."
-
-        if [ "${platform_loader_raw}" ]; then
-            installer_partition_dd ${blockdev} ${partno} ${loader}
-        else
-            installer_partition_cp ${blockdev} ${partno} ${loader} ${loaderdst}
-        fi
-    else
-        installer_say "The platform loader file is missing. This is unexpected - ${loader}"
+        installer_say "There is not FIT image available in the installer. This is a bug."
         exit 1
+    fi
+
+    #
+    # Cannonical name for all ITB files for each platform
+    # is <platform>.itb.
+    #
+    # This allows you to use the ONL platform configuration settings
+    # with your own initrd with constant and consistent naming.
+    #
+    loaderdst="${installer_platform}.itb"
+
+    installer_say "Installing the Open Network Linux Loader..."
+
+    if [ "${platform_loader_raw}" ]; then
+        installer_partition_dd ${blockdev} ${partno} ${loader}
+    else
+        installer_partition_cp ${blockdev} ${partno} ${loader} ${loaderdst}
     fi
 }
 
@@ -286,10 +286,10 @@ installer_platform_swi() {
         if [ ! ${SWIDST} ]; then
             SWIDST="$(basename ${SWISRC})"
         fi
-        installer_say "Installing SwitchLight Software Image (${SWIDST})..."
+        installer_say "Installing Open Network Linux Software Image (${SWIDST})..."
         installer_partition_cp ${blockdev} ${partno} ${SWISRC} ${SWIDST}
     else
-        installer_say "No SwitchLight Software Image available for installation. Post-install ZTN installation will be required."
+        installer_say "No Open Network Linux Software Image available for installation. Post-install ZTN installation will be required."
     fi
 }
 

@@ -49,7 +49,7 @@ mount -o remount,size=1024M /tmp || true
 
 
 # Unpack our distribution
-installer_say "Unpacking SwitchLight installer files..."
+installer_say "Unpacking Open Network Linux installer files..."
 installer_dir=`pwd`
 if test "$SFX_PAD"; then
   # ha ha, busybox cannot exclude multiple files
@@ -75,6 +75,7 @@ installer_say "Detected platform: ${installer_platform}"
 installer_platform_dir="${installer_dir}/lib/platform-config/${installer_platform}"
 if [ -d "${installer_platform_dir}" ]; then
     # Source the installer scriptlet
+    ONL_PLATFORM=${installer_platform}
     . "${installer_platform_dir}/onl/install/${installer_platform}.sh"
 else
     installer_say "This installer does not support the ${installer_platform} platform."
@@ -88,11 +89,12 @@ fi
 # The platform script must provide this function. This performs the actual install for the platform.
 platform_installer
 
-installer_say "Setting ONIE nos_bootcmd to boot Switch Light"
+installer_say "Configuring system to boot Open Network Linux..."
 envf=/tmp/.env
 cp /dev/null "${envf}"
 echo "nos_bootcmd ${platform_bootcmd}" >> "${envf}"
-installer_say "Install finished.  Rebooting to Switch Light."
+fw_setenv_f_s "${envf}"
+installer_say "Install finished.  Rebooting to Open Network Linux."
 sleep 3
 reboot
 exit
