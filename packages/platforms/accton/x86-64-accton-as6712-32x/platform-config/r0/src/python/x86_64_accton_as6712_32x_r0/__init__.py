@@ -37,13 +37,19 @@ class OnlPlatform_x86_64_accton_as6712_32x_r0(OnlPlatformAccton):
                 # initiate multiplexer (PCA9548)
                 ('pca9548', 0x70, 1),
 
-                # initiate PSU-1
+                # initiate PSU-1 AC Power
                 ('as6712_32x_psu', 0x38, 35),
                 ('cpr_4011_4mxx',  0x3C, 35),
 
-                # initiate PSU-2
+                # initiate PSU-2 AC Power
                 ('as6712_32x_psu', 0x3b, 36),
                 ('cpr_4011_4mxx',  0x3F, 36),
+
+                # initiate PSU-1 DC Power
+                ('as6712_32x_psu', 0x50, 35),
+
+                # initiate PSU-2 DC Power
+                ('as6712_32x_psu', 0x53, 36),
 
                 # initiate lm75
                 ('lm75', 0x48, 38),
