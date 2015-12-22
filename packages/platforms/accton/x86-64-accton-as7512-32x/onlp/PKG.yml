@@ -1,0 +1,19 @@
+variables:
+  platform: x86-64-accton-as7512-32x-r0
+  install: /lib/platform-config/${platform}/onl
+
+common:
+  version: 1.0.0
+  arch: amd64
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onlp-${platform}
+    summary: ONLP Package for the ${platform} platform.
+
+    files:
+      builds/lib/$BUILD_DIR/x86_64-linux-gnu/bin/libonlp-${platform}.so : ${install}/lib/
+      builds/onlpdump/$BUILD_DIR/x86_64-linux-gnu/bin/onlpdump : ${install}/lib/bin/
+
+    changelog:  Change changes changes.,
