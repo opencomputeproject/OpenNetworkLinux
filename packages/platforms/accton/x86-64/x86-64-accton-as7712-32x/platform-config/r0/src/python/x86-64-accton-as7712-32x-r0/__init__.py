@@ -14,12 +14,55 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton):
 
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
+        # initialize multiplexer (PCA9548)
+        self.new_i2c_devices(
+            [
+                ('pca9458', 0x76, 0),
+                ]
+            )
+
+        # initiate chassis fan
+        self.new_i2c_devices(
+            [
+                ('as7712_32x_fan', 0x66, 2),
+                ]
+            )
+
+        # inititate LM75
+        self.new_i2c_devices(
+            [
+                ('lm75', 0x48, 3),
+                ('lm75', 0x49, 3),
+                ('lm75', 0x4a, 3),
+                ]
+            )
         # initialize CPLD
         self.new_i2c_devices(
             [
-                ('as7712_32x_cpld1', 0x60, 4),
-                ('as7712_32x_cpld2', 0x62, 5),
-                ('as7712_32x_cpld3', 0x64, 6),
+                ('accton_i2c_cpld', 0x60, 4),
+                ('accton_i2c_cpld', 0x62, 5),
+                ('accton_i2c_cpld', 0x64, 6),
+                ]
+            )
+        ########### initialize I2C bus 1 ###########
+        self.new_i2c_devices(
+            [
+                # initiate multiplexer (PCA9548)
+                ('pca9548', 0x71, 1),
+
+                # initiate PSU-1
+                ('as7712_32x_psu1', 0x53, 11),
+                ('ym2651', 0x5b, 11),
+
+                # initiate PSU-2
+                ('as7712_32x_psu2', 0x50, 10),
+                ('ym2651', 0x58, 10),
+
+                # initiate multiplexer (PCA9548)
+                ('pca9548', 0x72, 1),
+                ('pca9548', 0x73, 1),
+                ('pca9548', 0x74, 1),
+                ('pca9548', 0x75, 1),
                 ]
             )
 
@@ -57,32 +100,6 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton):
         self.new_i2c_device('as7712_54x_sfp30, 0x50, 43)
         self.new_i2c_device('as7712_54x_sfp31, 0x50, 44)
         self.new_i2c_device('as7712_54x_sfp32, 0x50, 45)
-
-        ########### initialize I2C bus 1 ###########
-        self.new_i2c_devices(
-            [
-                # initiate multiplexer (PCA9548)
-                ('pca9548', 0x71, 1),
-                ('pca9548', 0x72, 1),
-                ('pca9548', 0x73, 1),
-                ('pca9548', 0x74, 1),
-                ('pca9548', 0x75, 1),
-
-                # initiate PSU-1
-                ('as7712_32x_psu', 0x54, 11),
-                ('cpr_4011_4mxx',  0x5b, 11),
-
-                # initiate PSU-2
-                ('as7712_32x_psu', 0x50, 10),
-                ('cpr_4011_4mxx',  0x58, 10),
-
-                # initiate lm75
-                ('lm75', 0x48, 3),
-                ('lm75', 0x49, 3),
-                ('lm75', 0x4a, 3),
-
-                # System eeprom.
-                ('24c02', 0x57, 1),
                 ]
             )
 
