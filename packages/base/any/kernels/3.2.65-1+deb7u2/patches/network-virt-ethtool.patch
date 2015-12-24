@@ -4,19 +4,21 @@ diff --git a/drivers/net/tun.c b/drivers/net/tun.c
 index adc6269..078c36c 100644
 --- a/drivers/net/tun.c
 +++ b/drivers/net/tun.c
-@@ -350,6 +350,8 @@ static void tun_net_uninit(struct net_device *dev)
+@@ -350,6 +350,9 @@ static void tun_net_uninit(struct net_device *dev)
  	struct tun_struct *tun = netdev_priv(dev);
  	struct tun_file *tfile = tun->tfile;
  
++	void port_uninit_ethtool_stats(struct net_device *dev);
 +	port_uninit_ethtool_stats(dev);
 +
  	/* Inform the methods they need to stop using the dev.
  	 */
  	if (tfile) {
-@@ -473,6 +475,8 @@ static u32 tun_net_fix_features(struct net_device *dev, u32 features)
+@@ -473,6 +476,9 @@ static u32 tun_net_fix_features(struct net_device *dev, u32 features)
  {
  	struct tun_struct *tun = netdev_priv(dev);
  
++	void port_init_ethtool_stats(struct net_device *dev);
 +	port_init_ethtool_stats(dev);
 +
  	return (features & tun->set_features) | (features & ~TUN_USER_FEATURES);

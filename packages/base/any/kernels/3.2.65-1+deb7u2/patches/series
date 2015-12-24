@@ -241,3 +241,6 @@ overlayfs_notify.patch
 platform-accton-as7512_32x-device-drivers.patch
 driver-pca954x-i2c-mux-deselect-on-exit-config-option.patch
 platform-accton-as7712_32x-device-drivers.patch
+platform-accton-as5812_54x-device-drivers.patch
+platform-accton-as6812_32x-device-drivers.patch
+platform-accton-as5812_54t-device-drivers.patch
