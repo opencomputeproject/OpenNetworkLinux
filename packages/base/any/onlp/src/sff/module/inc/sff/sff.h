@@ -65,6 +65,10 @@ extern aim_map_si_t sff_media_type_desc_map[];
 
 /** sff_module_type */
 typedef enum sff_module_type_e {
+    SFF_MODULE_TYPE_100G_AOC,
+    SFF_MODULE_TYPE_100G_BASE_CR4,
+    SFF_MODULE_TYPE_100G_BASE_SR4,
+    SFF_MODULE_TYPE_100G_BASE_LR4,
     SFF_MODULE_TYPE_40G_BASE_CR4,
     SFF_MODULE_TYPE_40G_BASE_SR4,
     SFF_MODULE_TYPE_40G_BASE_LR4,
@@ -94,6 +98,10 @@ typedef enum sff_module_type_e {
 /** Strings macro. */
 #define SFF_MODULE_TYPE_STRINGS \
 {\
+    "100G_AOC", \
+    "100G_BASE_CR4", \
+    "100G_BASE_SR4", \
+    "100G_BASE_LR4", \
     "40G_BASE_CR4", \
     "40G_BASE_SR4", \
     "40G_BASE_LR4", \
@@ -139,7 +147,8 @@ typedef enum sff_sfp_type_e {
     SFF_SFP_TYPE_SFP,
     SFF_SFP_TYPE_QSFP,
     SFF_SFP_TYPE_QSFP_PLUS,
-    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_QSFP_PLUS,
+    SFF_SFP_TYPE_QSFP28,
+    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_QSFP28,
     SFF_SFP_TYPE_COUNT,
     SFF_SFP_TYPE_INVALID = -1,
 } sff_sfp_type_t;
@@ -150,6 +159,7 @@ typedef enum sff_sfp_type_e {
     "SFP", \
     "QSFP", \
     "QSFP_PLUS", \
+    "QSFP28", \
 }
 /** Enum names. */
 const char* sff_sfp_type_name(sff_sfp_type_t e);
@@ -162,7 +172,7 @@ const char* sff_sfp_type_desc(sff_sfp_type_t e);
 
 /** validator */
 #define SFF_SFP_TYPE_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_QSFP_PLUS))
+    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_QSFP28))
 
 /** sff_sfp_type_map table. */
 extern aim_map_si_t sff_sfp_type_map[];

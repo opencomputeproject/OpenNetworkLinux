@@ -40,6 +40,14 @@ sff_media_types: &sff_media_types
     desc: "Fiber"
 
 sff_module_types: &sff_module_types
+- 100G_AOC:
+    desc: "100G-AOC"
+- 100G_BASE_CR4:
+    desc: "100GBASE-CR4"
+- 100G_BASE_SR4:
+    desc: "100GBASE-SR4"
+- 100G_BASE_LR4:
+    desc: "100GBASE-LR4"
 - 40G_BASE_CR4:
     desc: "40GBASE-CR4"
 - 40G_BASE_SR4:
@@ -97,7 +105,8 @@ sff_sfp_types: &sff_sfp_types
     desc: "QSFP"
 - QSFP_PLUS:
     desc: "QSFP+"
-
+- QSFP28:
+    desc: "QSFP28"
 
 definitions:
   cdefs:

@@ -25,6 +25,7 @@
 #include <sff/sff.h>
 #include <sff/8472.h>
 #include <sff/8436.h>
+#include <sff/8636.h>
 #include "sff_log.h"
 #include <ctype.h>
 
@@ -38,6 +39,9 @@ sff_sfp_type_get(const uint8_t* idprom)
         if(SFF8436_MODULE_QSFP_PLUS_V2(idprom)) {
             return SFF_SFP_TYPE_QSFP_PLUS;
         }
+        if(SFF8636_MODULE_QSFP28(idprom)) {
+            return SFF_SFP_TYPE_QSFP28;
+        }
     }
     return SFF_SFP_TYPE_INVALID;
 }
@@ -45,6 +49,26 @@ sff_sfp_type_get(const uint8_t* idprom)
 sff_module_type_t
 sff_module_type_get(const uint8_t* idprom)
 {
+    if (SFF8636_MODULE_QSFP28(idprom)
+        && SFF8636_MEDIA_EXTENDED(idprom)
+        && SFF8636_MEDIA_100GE_AOC(idprom))
+        return SFF_MODULE_TYPE_100G_AOC;
+
+    if (SFF8636_MODULE_QSFP28(idprom)
+        && SFF8636_MEDIA_EXTENDED(idprom)
+        && SFF8636_MEDIA_100GE_SR4(idprom))
+        return SFF_MODULE_TYPE_100G_BASE_SR4;
+
+    if (SFF8636_MODULE_QSFP28(idprom)
+        && SFF8636_MEDIA_EXTENDED(idprom)
+        && SFF8636_MEDIA_100GE_LR4(idprom))
+        return SFF_MODULE_TYPE_100G_BASE_LR4;
+
+    if (SFF8636_MODULE_QSFP28(idprom)
+        && SFF8636_MEDIA_EXTENDED(idprom)
+        && SFF8636_MEDIA_100GE_CR4(idprom))
+        return SFF_MODULE_TYPE_100G_BASE_CR4;
+ 
     if (SFF8436_MODULE_QSFP_PLUS_V2(idprom)
         && SFF8436_MEDIA_40GE_CR4(idprom))
         return SFF_MODULE_TYPE_40G_BASE_CR4;
@@ -179,6 +203,7 @@ sff_media_type_get(const uint8_t* idprom)
 
     switch(mt)
         {
+        case SFF_MODULE_TYPE_100G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR:
         case SFF_MODULE_TYPE_10G_BASE_CR:
@@ -186,6 +211,9 @@ sff_media_type_get(const uint8_t* idprom)
         case SFF_MODULE_TYPE_1G_BASE_T:
             return SFF_MEDIA_TYPE_COPPER;
 
+        case SFF_MODULE_TYPE_100G_AOC:
+        case SFF_MODULE_TYPE_100G_BASE_SR4:
+        case SFF_MODULE_TYPE_100G_BASE_LR4:
         case SFF_MODULE_TYPE_40G_BASE_SR4:
         case SFF_MODULE_TYPE_40G_BASE_LR4:
         case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
@@ -225,6 +253,13 @@ sff_module_caps_get(const uint8_t* idprom, uint32_t *caps)
 
     switch(mt)
         {
+        case SFF_MODULE_TYPE_100G_AOC:
+        case SFF_MODULE_TYPE_100G_BASE_SR4:
+        case SFF_MODULE_TYPE_100G_BASE_LR4:
+        case SFF_MODULE_TYPE_100G_BASE_CR4:
+            *caps |= SFF_MODULE_CAPS_F_100G;
+            return 0;
+
         case SFF_MODULE_TYPE_40G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_SR4:
         case SFF_MODULE_TYPE_40G_BASE_LR4:
@@ -267,7 +302,8 @@ void
 sff_module_show(const uint8_t* idprom, aim_pvs_t* pvs)
 {
 
-    if (SFF8436_MODULE_QSFP_PLUS_V2(idprom)) {
+    if (SFF8436_MODULE_QSFP_PLUS_V2(idprom) ||
+        SFF8636_MODULE_QSFP28(idprom)) {
         aim_printf(pvs,
                    "%-12.12s  %-16.16s  %-16.16s  %-16.16s\n",
                    sff_module_type_desc(sff_module_type_get(idprom)),
@@ -318,7 +354,8 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
             rv->cc_base = (rv->cc_base + rv->eeprom[i]) & 0xFF;
         for (i = 64, rv->cc_ext = 0; i < 95; ++i)
             rv->cc_ext = (rv->cc_ext + rv->eeprom[i]) & 0xFF;
-    } else if (SFF8436_MODULE_QSFP_PLUS_V2(rv->eeprom)) {
+    } else if (SFF8436_MODULE_QSFP_PLUS_V2(rv->eeprom) ||
+               SFF8636_MODULE_QSFP28(rv->eeprom)) {
         /* See SFF-8436 pp72, pp73 */
         int i;
         for (i = 128, rv->cc_base = 0; i < 191; ++i)
@@ -356,6 +393,7 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
     case SFF_MEDIA_TYPE_COPPER:
         switch (rv->sfp_type) {
         case SFF_SFP_TYPE_QSFP_PLUS:
+        case SFF_SFP_TYPE_QSFP28:
             rv->length = rv->eeprom[146];
             break;
         case SFF_SFP_TYPE_SFP:
@@ -367,13 +405,25 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
         }
         break;
     case SFF_MEDIA_TYPE_FIBER:
-        aoc_length = _sff8436_qsfp_40g_aoc_length(rv->eeprom);
-        if (aoc_length < 0)
-            aoc_length = _sff8472_sfp_10g_aoc_length(rv->eeprom);
-        if (aoc_length > 0)
+        switch (rv->sfp_type) {
+        case SFF_SFP_TYPE_QSFP28:
+            aoc_length = _sff8636_qsfp28_100g_aoc_length(rv->eeprom);
             rv->length = aoc_length;
-        else
+            break;
+        case SFF_SFP_TYPE_QSFP_PLUS:
+        case SFF_SFP_TYPE_SFP:
+            aoc_length = _sff8436_qsfp_40g_aoc_length(rv->eeprom);
+            if (aoc_length < 0)
+                aoc_length = _sff8472_sfp_10g_aoc_length(rv->eeprom);
+            if (aoc_length > 0)
+                rv->length = aoc_length;
+            else
+                rv->length = -1;
+            break;
+        default:
             rv->length = -1;
+            break;
+        }
         break;
     default:
         rv->length = -1;
@@ -384,6 +434,7 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
     switch(rv->sfp_type)
         {
         case SFF_SFP_TYPE_QSFP_PLUS:
+        case SFF_SFP_TYPE_QSFP28:
             vendor=rv->eeprom+148;
             model=rv->eeprom+168;
             serial=rv->eeprom+196;
@@ -479,7 +530,8 @@ sff_info_invalidate(sff_info_t *info)
 int
 sff_info_valid(sff_info_t *info, int verbose)
 {
-    if (SFF8436_MODULE_QSFP_PLUS_V2(info->eeprom)) {
+    if (SFF8436_MODULE_QSFP_PLUS_V2(info->eeprom) ||
+        SFF8636_MODULE_QSFP28(info->eeprom)) {
 
         if (info->cc_base != info->eeprom[191]) {
             if (verbose) {

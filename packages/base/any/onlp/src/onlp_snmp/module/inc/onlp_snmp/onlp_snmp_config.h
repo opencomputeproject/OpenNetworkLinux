@@ -182,6 +182,16 @@
 #endif
 
 /**
+ * ONLP_SNMP_CONFIG_INCLUDE_PLATFORM
+ *
+ * Include ONLP Platform MIB */
+
+
+#ifndef ONLP_SNMP_CONFIG_INCLUDE_PLATFORM
+#define ONLP_SNMP_CONFIG_INCLUDE_PLATFORM 1
+#endif
+
+/**
  * ONLP_SNMP_CONFIG_AS_SUBAGENT
  *
  * Configure as an snmp_subagent client. */
