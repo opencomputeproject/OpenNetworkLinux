@@ -15,14 +15,14 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton):
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
         # initialize multiplexer (PCA9548)
-        self.new_i2c_devices(
+        self.new_i2c_device(
             [
                 ('pca9458', 0x76, 0),
                 ]
             )
 
         # initiate chassis fan
-        self.new_i2c_devices(
+        self.new_i2c_device(
             [
                 ('as7512_32x_fan', 0x66, 2),
                 ]
