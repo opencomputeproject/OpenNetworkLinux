@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH=master
 
-while getopts ":b:v78" opt; do
+while getopts ":b:s:d:u:p:vc78" opt; do
     case $opt in
         7)
             ONLB_OPTIONS=--7
@@ -23,11 +23,16 @@ while getopts ":b:v78" opt; do
                 echo "Selecting Debian 8 build..."
             fi
             ;;
+        c)
+            cd $ONL && git submodule update --init --recursive packages/platforms-closed
+            ;;
         b)
             BUILD_BRANCH=$OPTARG
             ;;
         v)
             set -x
+            ;;
+        *)
             ;;
     esac
 done
@@ -38,6 +43,7 @@ if [ -z "$ONLB_OPTIONS" ]; then
     $AUTOBUILD_SCRIPT --8 $@
     exit $?
 fi
+
 
 
 
