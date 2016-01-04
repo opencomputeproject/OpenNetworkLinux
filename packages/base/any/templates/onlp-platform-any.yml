@@ -3,11 +3,12 @@
 # ONLP Platform Package Template
 #
 # Requires: PLATFORM, ARCH
+# Assumes revision r0
 #
 ############################################################
 
 variables:
-  install: /lib/platform-config/$PLATFORM/onl
+  install: /lib/platform-config/${PLATFORM}-r0/onl
 
 common:
   version: 1.0.0
@@ -16,8 +17,8 @@ common:
   maintainer: support@bigswitch.com
 
 packages:
-  - name: onlp-${PLATFORM}
-    summary: ONLP Package for the ${PLATFORM} platform.
+  - name: onlp-${PLATFORM}-r0
+    summary: ONLP Package for the ${PLATFORM}-r0 platform.
     platform-config: True
 
     files:
