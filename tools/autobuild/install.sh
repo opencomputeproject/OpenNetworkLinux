@@ -71,15 +71,23 @@ fi
 . $ONL/make/version-onl.sh
 REMOTE_DIR="$REMOTE_BASE_DIR/$BUILD_BRANCH/$FNAME_BUILD_ID"
 
+workdir=$(mktemp -d -t update-XXXXXX)
+do_cleanup() {
+    cd /tmp
+    /bin/rm -fr $workdir
+}
+trap "do_cleanup" 0 1
+
+RSYNC_OPTS=${RSYNC_OPTS}${RSYNC_OPTS:+" "}"--exclude-from=$workdir/git.exclude"
 
 RSYNC=rsync
-RSYNC_OPTS=" -v --copy-links --delete -a"
+RSYNC_OPTS=" -v --copy-links --delete -a --exclude-from=$workdir/git.exclude --exclude .lock"
 
 _rsync() {
+    cd $1 && git ls-files --cached > $workdir/git.exclude
     $RSYNC $RSYNC_OPTS --rsh="sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER" $1 $2
 }
 
 sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER mkdir -p $REMOTE_DIR
 _rsync $ONL/RELEASE $REMOTE_SERVER:$REMOTE_DIR
-
 _rsync $ONL/REPO $REMOTE_SERVER:$REMOTE_DIR
