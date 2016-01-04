@@ -42,12 +42,19 @@ def baseconfig():
         msg("Could not determine the current host type.\n", fatal=True)
 
     DEFAULT_ONLP_LIB = "/lib/%s/libonlp-platform.so" % DEB_GNU_HOST_TYPE
-    PLATFORM_ONLP_LIB = "%s/lib/libonlp-%s.so" % (platform.basedir_onl(), platform.platform())
 
-    if os.path.exists(PLATFORM_ONLP_LIB):
-        if os.path.exists(DEFAULT_ONLP_LIB):
-            os.unlink(DEFAULT_ONLP_LIB)
-        os.symlink(PLATFORM_ONLP_LIB, DEFAULT_ONLP_LIB)
+    PLATFORM_ONLP_LIBS = [
+        # Look for full platform and revision library
+        "%s/lib/libonlp-%s.so" % (platform.basedir_onl(), platform.platform()),
+        # Look for common platform library
+        "%s/lib/libonlp-%s.so" % (platform.basedir_onl(), platform.baseplatform()),
+        ]
+
+    for l in PLATFORM_ONLP_LIBS:
+        if os.path.exists(l):
+            if os.path.exists(DEFAULT_ONLP_LIB):
+                os.unlink(DEFAULT_ONLP_LIB)
+            os.symlink(l, DEFAULT_ONLP_LIB)
 
     ONLPDUMP = "%s/bin/onlpdump" % (platform.basedir_onl())
 

@@ -13,6 +13,7 @@ import pprint
 import yaml
 import json
 import os
+import re
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -145,6 +146,11 @@ class OnlPlatformBase(object):
 
     def platform(self):
         raise Exception("Platform is not set.")
+
+    def baseplatform(self):
+        p = self.platform()
+        p = re.sub(r'-r\d$', '', p)
+        return p
 
     def description(self):
         return "%s %s (%s)" % (self.manufacturer(), self.model(),
