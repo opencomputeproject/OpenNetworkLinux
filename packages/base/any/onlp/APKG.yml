@@ -7,6 +7,7 @@
 ############################################################
 variables:
   libdir: /lib/${TOOLCHAIN}
+  bindir: /bin
 
 common:
   arch: $ARCH
@@ -23,6 +24,7 @@ packages:
       builds/onlp/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp.so : $libdir/
       builds/onlp-platform/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform.so : $libdir/
       builds/onlp-platform-defaults/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform-defaults.so : $libdir/
+      builds/onlpd/$BUILD_DIR/${TOOLCHAIN}/bin/onlpd : $bindir/
 
     changelog:  Change changes changes.,
 
