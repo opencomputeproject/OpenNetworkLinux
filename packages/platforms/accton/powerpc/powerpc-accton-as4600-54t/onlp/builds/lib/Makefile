@@ -23,7 +23,7 @@
 ############################################################
 include $(ONL)/make/config.powerpc.mk
 
-MODULE := libonlp-powerpc-as4600-54t-r0
+MODULE := libonlp-powerpc-accton-as4600-54t
 include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM IOF powerpc_accton_as4600_54t onlplib
@@ -31,7 +31,7 @@ DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-powerpc-accton-as4600-54t-r0.so
+SHAREDLIB := libonlp-powerpc-accton-as4600-54t.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)

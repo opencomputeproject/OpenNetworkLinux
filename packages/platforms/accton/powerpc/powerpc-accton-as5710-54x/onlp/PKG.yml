@@ -18,7 +18,7 @@ packages:
     summary: ONLP Package for the ${r0_platform}-r0 platform.
 
     files:
-      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}-rX.so : ${r0_install}/lib/libonlp-${r0_platform}-r0.so
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0_install}/lib/libonlp-${r0_platform}.so
       builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlpdump : ${r0_install}/bin/
 
     changelog:  Change changes changes.,
@@ -28,7 +28,7 @@ packages:
     summary: ONLP Package for the ${r0b_platform1}-r0b platform.
 
     files:
-      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}-rX.so : ${r0b_install1}/lib/libonlp-${r0b_platform1}-r0b.so
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0b_install1}/lib/libonlp-${r0b_platform1}-r0b.so
       builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlpdump : ${r0b_install1}/bin/
 
     changelog:  Change changes changes.,
@@ -37,7 +37,7 @@ packages:
     summary: ONLP Package for the ${r0b_platform2}-r0b platform.
 
     files:
-      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}-rX.so : ${r0b_install2}/lib/libonlp-${r0b_platform2}-r0b.so
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0b_install2}/lib/libonlp-${r0b_platform2}-r0b.so
       builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlpdump : ${r0b_install2}/bin/
 
     changelog:  Change changes changes.,

@@ -23,7 +23,7 @@
 ############################################################
 include $(ONL)/make/config.powerpc.mk
 
-MODULE := libonlp-powerpc-as5610-52x-r0
+MODULE := libonlp-powerpc-accton-as5610-52x
 include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM IOF powerpc_accton_as5610_52x onlplib
@@ -31,7 +31,7 @@ DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-powerpc-accton-as5610-52x-r0.so
+SHAREDLIB := libonlp-powerpc-accton-as5610-52x.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)

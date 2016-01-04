@@ -25,14 +25,14 @@
 ############################################################
 include $(ONL)/make/config.powerpc.mk
 
-MODULE := libonlp-powerpc-quanta-ly2-r0
+MODULE := libonlp-powerpc-quanta-ly2
 include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM IOF powerpc_quanta_ly2 onlplib sff cjson cjson_util quanta_sys_eeprom
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-powerpc-quanta-ly2-r0.so
+SHAREDLIB := libonlp-powerpc-quanta-ly2.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)

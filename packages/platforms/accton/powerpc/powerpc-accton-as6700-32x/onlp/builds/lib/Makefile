@@ -23,7 +23,7 @@
 ############################################################
 include $(ONL)/make/config.powerpc.mk
 
-MODULE := libonlp-powerpc-as6700-32x-rX
+MODULE := libonlp-powerpc-accton-as6700-32x
 include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM IOF powerpc_accton_as6700_32x onlplib
@@ -31,7 +31,7 @@ DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-powerpc-accton-as6700-32x-rX.so
+SHAREDLIB := libonlp-powerpc-accton-as6700-32x.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)

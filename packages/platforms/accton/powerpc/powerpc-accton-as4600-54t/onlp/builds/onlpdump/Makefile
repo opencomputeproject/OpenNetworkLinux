@@ -26,7 +26,7 @@ include $(ONL)/make/config.powerpc.mk
 
 .DEFAULT_GOAL := onlpdump
 
-MODULE := onlpdump-module
+MODULE := onlpdump
 include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM IOF onlp powerpc_accton_as4600_54t onlplib onlp_platform_defaults sff cjson cjson_util timer_wheel OS

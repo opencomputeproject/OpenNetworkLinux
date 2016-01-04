@@ -1,1 +1,1 @@
-!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=powerpc-quanta-lb9-r0 ARCH=powerpc TOOLCHAIN=powerpc-linux-gnu
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=powerpc-quanta-lb9 ARCH=powerpc TOOLCHAIN=powerpc-linux-gnu
