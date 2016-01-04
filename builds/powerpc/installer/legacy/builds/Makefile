@@ -18,8 +18,10 @@ __installer:
 	$(ONL_V_at)cp $(FIT_IMAGE_ALL) .
 	$(foreach p,$(PLATFORMS), $(ONLPM) --extract-dir onl-platform-config-$(p):powerpc .;)
 	# Fixme
+ifndef NO_SWI
 	$(ONLPM) --extract-dir onl-swi:powerpc .
 	mv ./usr/share/onl/packages/powerpc/onl-swi/*.swi .
+endif
 	rm -rf ./usr
 	$(ONL_V_at)cp /dev/null $(MKSHAR_PERMS)
 	$(ONL_V_at) cp $(ONL)/make/version-onl.sh .
