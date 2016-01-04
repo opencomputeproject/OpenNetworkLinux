@@ -50,19 +50,20 @@ class OnlPlatform_x86_64_accton_as5712_54x_r0(OnlPlatformAccton):
                 ('cpr_4011_4mxx',  0x3f, 58),
 
                 # initiate PSU-1 DC Power
-                ('as5712_54x_psu', 0x50, 57)
+                ('as5712_54x_psu', 0x50, 57),
 
                 # initiate PSU-2 DC Power
-                ('as5712_54x_psu', 0x53, 58)
+                ('as5712_54x_psu', 0x53, 58),
 
 
                 # initiate lm75
                 ('lm75', 0x48, 61),
                 ('lm75', 0x49, 62),
                 ('lm75', 0x4a, 63),
+
+                # System EEPROM
+                ('24c02', 0x57, 1),
                 ]
             )
 
-        # ONIE System EEPROM
-        self.new_device('24c02', 0x57, '/sys/devices/pci0000:00/0000:00:13.0/i2c-1', '1-0057')
         return True
