@@ -15,18 +15,10 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton):
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
         # initialize multiplexer (PCA9548)
-        self.new_i2c_device(
-            [
-                ('pca9458', 0x76, 0),
-                ]
-            )
+        self.new_i2c_device('pca9458', 0x76, 0)
 
         # initiate chassis fan
-        self.new_i2c_device(
-            [
-                ('as7512_32x_fan', 0x66, 2),
-                ]
-            )
+        self.new_i2c_device('as7512_32x_fan', 0x66, 2)
 
         # inititate LM75
         self.new_i2c_devices(
@@ -83,29 +75,29 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton):
         self.new_i2c_device('as7512_32x_sfp7', 0x50, 24)
         self.new_i2c_device('as7512_32x_sfp8', 0x50, 25)
         self.new_i2c_device('as7512_32x_sfp9', 0x50, 26)
-        self.new_i2c_device('as7512_32x_sfp10, 0x50, 27)
-        self.new_i2c_device('as7512_32x_sfp11, 0x50, 28)
-        self.new_i2c_device('as7512_32x_sfp12, 0x50, 29)
-        self.new_i2c_device('as7512_32x_sfp13, 0x50, 30)
-        self.new_i2c_device('as7512_32x_sfp14, 0x50, 31)
-        self.new_i2c_device('as7512_32x_sfp15, 0x50, 32)
-        self.new_i2c_device('as7512_32x_sfp16, 0x50, 33)
-        self.new_i2c_device('as7512_32x_sfp17, 0x50, 34)
-        self.new_i2c_device('as7512_32x_sfp18, 0x50, 35)
-        self.new_i2c_device('as7512_32x_sfp19, 0x50, 36)
-        self.new_i2c_device('as7512_32x_sfp20, 0x50, 37)
-        self.new_i2c_device('as7512_32x_sfp21, 0x50, 38)
-        self.new_i2c_device('as7512_32x_sfp22, 0x50, 39)
-        self.new_i2c_device('as7512_32x_sfp23, 0x50, 40)
-        self.new_i2c_device('as7512_32x_sfp24, 0x50, 41)
-        self.new_i2c_device('as7512_32x_sfp25, 0x50, 42)
-        self.new_i2c_device('as7512_32x_sfp26, 0x50, 43)
-        self.new_i2c_device('as7512_32x_sfp27, 0x50, 44)
-        self.new_i2c_device('as7512_32x_sfp28, 0x50, 45)
-        self.new_i2c_device('as7512_32x_sfp29, 0x50, 46)
-        self.new_i2c_device('as7512_32x_sfp30, 0x50, 47)
-        self.new_i2c_device('as7512_32x_sfp31, 0x50, 48)
-        self.new_i2c_device('as7512_32x_sfp32, 0x50, 49)
+        self.new_i2c_device('as7512_32x_sfp10', 0x50, 27)
+        self.new_i2c_device('as7512_32x_sfp11', 0x50, 28)
+        self.new_i2c_device('as7512_32x_sfp12', 0x50, 29)
+        self.new_i2c_device('as7512_32x_sfp13', 0x50, 30)
+        self.new_i2c_device('as7512_32x_sfp14', 0x50, 31)
+        self.new_i2c_device('as7512_32x_sfp15', 0x50, 32)
+        self.new_i2c_device('as7512_32x_sfp16', 0x50, 33)
+        self.new_i2c_device('as7512_32x_sfp17', 0x50, 34)
+        self.new_i2c_device('as7512_32x_sfp18', 0x50, 35)
+        self.new_i2c_device('as7512_32x_sfp19', 0x50, 36)
+        self.new_i2c_device('as7512_32x_sfp20', 0x50, 37)
+        self.new_i2c_device('as7512_32x_sfp21', 0x50, 38)
+        self.new_i2c_device('as7512_32x_sfp22', 0x50, 39)
+        self.new_i2c_device('as7512_32x_sfp23', 0x50, 40)
+        self.new_i2c_device('as7512_32x_sfp24', 0x50, 41)
+        self.new_i2c_device('as7512_32x_sfp25', 0x50, 42)
+        self.new_i2c_device('as7512_32x_sfp26', 0x50, 43)
+        self.new_i2c_device('as7512_32x_sfp27', 0x50, 44)
+        self.new_i2c_device('as7512_32x_sfp28', 0x50, 45)
+        self.new_i2c_device('as7512_32x_sfp29', 0x50, 46)
+        self.new_i2c_device('as7512_32x_sfp30', 0x50, 47)
+        self.new_i2c_device('as7512_32x_sfp31', 0x50, 48)
+        self.new_i2c_device('as7512_32x_sfp32', 0x50, 49)
                 ]
             )
 
