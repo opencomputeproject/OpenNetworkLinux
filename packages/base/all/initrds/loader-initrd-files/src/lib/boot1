@@ -60,9 +60,20 @@ else
         echo "${swipath} does not contain a rootfs image for the current architecture ($uarch). Booting cannot continue."
         exit 1
     fi
-    mount -t squashfs -o loop /tmp/rootfs /newroot.lower
-    mount -t tmpfs -o size=15%,mode=0755 none /newroot.upper
-    mount -t overlayfs -o lowerdir=/newroot.lower,upperdir=/newroot.upper none /newroot
+
+    if grep -q overlayfs /proc/filesystems; then
+        mount -t squashfs -o loop /tmp/rootfs /newroot.lower
+        mount -t tmpfs -o size=15%,mode=0755 none /newroot.upper
+        mount -t overlayfs -o lowerdir=/newroot.lower,upperdir=/newroot.upper none /newroot
+    elif grep -q overlay /proc/filesystems; then
+        mount -t squashfs -o loop /tmp/rootfs /newroot.lower
+        mount -t tmpfs -o size=15%,mode=0755 none /newroot.upper
+        mkdir /newroot.upper/upper
+        mkdir /newroot.upper/work
+        mount -t overlay  -olowerdir=/newroot.lower,upperdir=/newroot.upper/upper,workdir=/newroot.upper/work  overlay /newroot
+    else
+        echo "OverlayFS not found in kernel"
+    fi
 fi
 
 mkdir -p /newroot/etc/onl
