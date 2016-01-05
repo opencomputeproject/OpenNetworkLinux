@@ -129,11 +129,11 @@ class OnlPlatformBase(object):
                                 self.configs[subsys] = {}
                             self.configs[subsys][config] = json.load(f)
 
-    def basedir(self):
-        return os.path.join(self.CONFIG_DIR, self.platform())
+    def basedir(self, *args):
+        return os.path.join(self.CONFIG_DIR, self.platform(), *args)
 
-    def basedir_onl(self):
-        return os.path.join(self.basedir(), 'onl')
+    def basedir_onl(self, *args):
+        return self.basedir('onl', *args)
 
     def baseconfig(self):
         return True
