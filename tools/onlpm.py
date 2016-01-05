@@ -598,7 +598,7 @@ class OnlPackageRepo(object):
                 logger.info("adding package '%s'..." % p)
                 underscores = p.split('_')
                 # Package name is the first entry
-                package = underscores[0]
+                package = os.path.split(underscores[0])[1]
                 # Architecture is the last entry (.deb)
                 arch = underscores[-1].split('.')[0]
                 logger.debug("+ /bin/cp %s %s/%s", p, self.repo, arch)
@@ -606,6 +606,12 @@ class OnlPackageRepo(object):
                 if not os.path.exists(dstdir):
                     os.makedirs(dstdir)
                 logger.info("dstdir=%s"% dstdir)
+
+                # Remove any existing versions of this package.
+                for existing in glob.glob(os.path.join(dstdir, "%s_*.deb" % package)):
+                    logger.debug("Removing existing package %s" % existing)
+                    os.unlink(existing)
+
                 shutil.copy(p, dstdir)
                 extract_dir = os.path.join(self.extracts, arch, package)
                 if os.path.exists(extract_dir):
