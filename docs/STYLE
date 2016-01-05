@@ -307,7 +307,7 @@ quickly figure out where a given module fits into the larger system.
        system headers that must be included in a particular order, in
        which case that order must take precedence.)
 
-    3. Other Big Switch headers in alphabetical order.
+    3. Other headers in alphabetical order.
 
 
 HEADER FILES
