@@ -62,8 +62,61 @@ onlp_api_unlock(void)
 }
 
 #else
-#error GLOBAL_SHARED API Lock support is not yet implemented.
+
+#include <onlplib/shlocks.h>
+
+void
+onlp_api_lock_init(void)
+{
+    onlp_shlock_global_init();
+}
+
+void
+onlp_api_lock(const char* api)
+{
+    onlp_shlock_global_take();
+}
+void
+onlp_api_unlock(void)
+{
+    onlp_shlock_global_give();
+}
+
 #endif
+
+
+/*
+ * This function will perform a sanity test on the API locking implementation.
+ */
+#include <onlplib/file.h>
+
+static int
+onlp_api_lock_test_locked__(void)
+{
+    static int counter__ = 1;
+    int readback = 0;
+    const char* fname = "/tmp/onlp_api_lock_test";
+
+    fclose(fopen(fname, "w"));
+    onlp_file_write_int(counter__, fname, NULL);
+    onlp_file_read_int(&readback, fname, NULL);
+    if(readback != counter__) {
+        fprintf(stderr, "API LOCK TEST: write=%d read=%d", counter__, readback);
+        return -1;
+    }
+    counter__++;
+    return 0;
+}
+ONLP_LOCKED_API0(onlp_api_lock_test);
+
+#else
+
+int
+onlp_api_lock_test(void)
+{
+    fprintf(stderr, "API Locking support not available in this build.\n");
+    return 2;
+}
 
 #endif /* ONLP_CONFIG_INCLUDE_API_LOCK */
 
