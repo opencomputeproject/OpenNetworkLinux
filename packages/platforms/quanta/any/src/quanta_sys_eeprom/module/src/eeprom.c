@@ -158,3 +158,26 @@ quanta_sys_eeprom_show(aim_pvs_t* pvs, quanta_sys_eeprom_t* e)
     return 0;
 }
 
+int
+quanta_onie_sys_eeprom_custom_format(onlp_onie_info_t* onie)
+{
+    char buf[512];
+
+    if(onie == NULL) {
+        return -1;
+    }
+
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d.%d.%d.%d (0x%02x%02x)",
+        ((onie->diag_version[0] & 0xf0) >> 4),
+        (onie->diag_version[0] & 0x0f),
+        ((onie->diag_version[1] & 0xf0) >> 4),
+        (onie->diag_version[1] & 0x0f),
+        (onie->diag_version[2] & 0xff),
+        (onie->diag_version[3] & 0xff));
+    aim_free((void*) onie->diag_version);
+    onie->diag_version = aim_zmalloc(strlen(buf) + 1);
+    memcpy((void*) onie->diag_version, buf, strlen(buf));
+
+    return 0;
+}

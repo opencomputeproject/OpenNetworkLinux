@@ -64,4 +64,11 @@ int quanta_sys_eeprom_to_onie(const quanta_sys_eeprom_t* src,
 
 int quanta_sys_eeprom_show(aim_pvs_t* pvs, quanta_sys_eeprom_t* e);
 
+/**
+ * @brief Convert Quanta ONIE sys-eeprom with specified format
+ * @param onie The onie eeprom structure.
+ */
+
+int quanta_onie_sys_eeprom_custom_format(onlp_onie_info_t* onie);
+
 #endif /* __QUANTA_SYS_EEPROM_EEPROM_H__ */
