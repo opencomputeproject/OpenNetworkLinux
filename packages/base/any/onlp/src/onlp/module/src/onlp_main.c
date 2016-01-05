@@ -164,10 +164,11 @@ onlpdump_main(int argc, char* argv[])
     int p = 0;
     int x = 0;
     int S = 0;
+    int l = 0;
     const char* O = NULL;
     const char* t = NULL;
 
-    while( (c = getopt(argc, argv, "srehdojmipxSt:O:")) != -1) {
+    while( (c = getopt(argc, argv, "srehdojmipxlSt:O:")) != -1) {
         switch(c)
             {
             case 's': show=1; break;
@@ -184,6 +185,7 @@ onlpdump_main(int argc, char* argv[])
             case 't': t = optarg; break;
             case 'O': O = optarg; break;
             case 'S': S=1; break;
+            case 'l': l=1; break;
             default: help=1; rv = 1; break;
             }
     }
@@ -202,7 +204,8 @@ onlpdump_main(int argc, char* argv[])
         printf("  -p   Show SFP presence.\n");
         printf("  -t   <file>  Decode TlvInfo data.\n");
         printf("  -O   <oid> Dump OID.\n");
-        printf("   -S   Decode SFP Inventory\n");
+        printf("  -S   Decode SFP Inventory\n");
+        printf("  -l   API Lock test.\n");
         return rv;
     }
 
@@ -223,6 +226,17 @@ onlpdump_main(int argc, char* argv[])
     }
 
     onlp_init();
+
+    if(l) {
+        extern int onlp_api_lock_test(void);
+        int i;
+        for(i = 1; i; i++) {
+            if(onlp_api_lock_test() != 0) {
+                return 1;
+            }
+            aim_printf(&aim_pvs_stdout, "%d\r", i);
+        }
+    }
 
     if(S) {
         show_inventory__(&aim_pvs_stdout);
