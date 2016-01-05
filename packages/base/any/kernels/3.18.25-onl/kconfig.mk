@@ -19,24 +19,13 @@
 # </bsn.cl>
 ############################################################
 #
-# Default 3.18.25-deb8 configuration for x86_64 platforms.
+# 3.18.25 Kernel Builds
 #
 ############################################################
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-include $(ONL)/make/config.mk
-
-export ARCH := x86_64
-ifndef K_TARGET_DIR
-K_TARGET_DIR := $(THIS_DIR)
-endif
-
-include ../../kconfig.mk
-K_CONFIG := x86_64-all.config
-K_BUILD_TARGET := bzImage
-K_COPY_SRC := arch/x86/boot/bzImage
-ifndef K_COPY_DST
-K_COPY_DST := kernel-3.18-deb8-x86_64-all
-endif
-
-include $(ONL)/make/kbuild.mk
-
+K_MAJOR_VERSION := 3
+K_PATCH_LEVEL := 18
+K_SUB_LEVEL := 25
+K_SUFFIX := -onl
+K_PATCH_DIR := $(THIS_DIR)/patches
+K_ARCHIVE_URL := http://opennetlinux.org/tarballs/linux-3.18.25-onl.tar.xz
