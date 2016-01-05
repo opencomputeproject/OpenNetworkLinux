@@ -1,5 +1,0 @@
-echo "pci0000:00/0000:00:14.0 ma1" >/etc/onl/net
-
-cp /dev/null /etc/onl_mounts
-echo "LABEL=FLASH * flash" >> /etc/onl/mounts
-echo "LABEL=FLASH2 * flash2" >> /etc/onl/mounts
