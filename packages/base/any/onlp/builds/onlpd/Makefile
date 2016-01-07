@@ -22,13 +22,7 @@
 #
 #
 ############################################################
-include $(ONL)/make/config.mk
-
-ifndef TOOLCHAIN
-$(error $$TOOLCHAIN must be specified.)
-else
-export TOOLCHAIN
-endif
+include $(ONL)/make/any.mk
 
 MODULE := onlpd-module
 include $(BUILDER)/standardinit.mk
