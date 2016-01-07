@@ -1,12 +1,13 @@
 #!/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:        faultd
-# Required-Start:  $remote_fs $syslog
-# Required-Stop:   $remote_fs $syslog
+# Provides:        onlp-snmpd
+# Required-Start:  $snmpd $syslog
+# Required-Stop:   $snmpd $syslog
 # Default-Start:   2 3 4 5
 # Default-Stop:    0 1 6
 # Short-Description: Start ONLP SNMP Agent
+# Description:        NET SNMP AGENTX
 ### END INIT INFO
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
