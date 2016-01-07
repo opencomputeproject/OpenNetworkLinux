@@ -1,0 +1,5 @@
+!include $ONL/packages/base/any/onlp-snmpd/APKG.yml ARCH=powerpc TOOLCHAIN=powerpc-linux-gnu
+
+
+
+

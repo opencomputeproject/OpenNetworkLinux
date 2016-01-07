@@ -1,0 +1,21 @@
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onlp-snmpd
+    version: 1.0.0
+    summary: ONL Platform SNMP Daemon
+
+    files:
+      builds/$BUILD_DIR/${TOOLCHAIN}/bin/onlp-snmpd: /usr/bin/onlp-snmpd
+
+    init: ${ONL}/packages/base/any/onlp-snmpd/onlp-snmpd.init
+
+    changelog:  Change changes changes.,
+
+
+
+

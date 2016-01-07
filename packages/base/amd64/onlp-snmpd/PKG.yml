@@ -1,0 +1,5 @@
+!include $ONL/packages/base/any/onlp-snmpd/APKG.yml ARCH=amd64 TOOLCHAIN=x86_64-linux-gnu
+
+
+
+
