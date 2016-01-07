@@ -63,6 +63,36 @@ extern aim_map_si_t sff_media_type_map[];
 /** sff_media_type_desc_map table. */
 extern aim_map_si_t sff_media_type_desc_map[];
 
+/** sff_module_caps */
+typedef enum sff_module_caps_e {
+    SFF_MODULE_CAPS_F_100 = 1,
+    SFF_MODULE_CAPS_F_1G = 2,
+    SFF_MODULE_CAPS_F_10G = 4,
+    SFF_MODULE_CAPS_F_40G = 8,
+    SFF_MODULE_CAPS_F_100G = 16,
+} sff_module_caps_t;
+
+/** Enum names. */
+const char* sff_module_caps_name(sff_module_caps_t e);
+
+/** Enum values. */
+int sff_module_caps_value(const char* str, sff_module_caps_t* e, int substr);
+
+/** Enum descriptions. */
+const char* sff_module_caps_desc(sff_module_caps_t e);
+
+/** Enum validator. */
+int sff_module_caps_valid(sff_module_caps_t e);
+
+/** validator */
+#define SFF_MODULE_CAPS_VALID(_e) \
+    (sff_module_caps_valid((_e)))
+
+/** sff_module_caps_map table. */
+extern aim_map_si_t sff_module_caps_map[];
+/** sff_module_caps_desc_map table. */
+extern aim_map_si_t sff_module_caps_desc_map[];
+
 /** sff_module_type */
 typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_100G_AOC,
@@ -178,36 +208,6 @@ const char* sff_sfp_type_desc(sff_sfp_type_t e);
 extern aim_map_si_t sff_sfp_type_map[];
 /** sff_sfp_type_desc_map table. */
 extern aim_map_si_t sff_sfp_type_desc_map[];
-
-/** sff_module_caps */
-typedef enum sff_module_caps_e {
-    SFF_MODULE_CAPS_F_100 = 1,
-    SFF_MODULE_CAPS_F_1G = 2,
-    SFF_MODULE_CAPS_F_10G = 4,
-    SFF_MODULE_CAPS_F_40G = 8,
-    SFF_MODULE_CAPS_F_100G = 16,
-} sff_module_caps_t;
-
-/** Enum names. */
-const char* sff_module_caps_name(sff_module_caps_t e);
-
-/** Enum values. */
-int sff_module_caps_value(const char* str, sff_module_caps_t* e, int substr);
-
-/** Enum descriptions. */
-const char* sff_module_caps_desc(sff_module_caps_t e);
-
-/** Enum validator. */
-int sff_module_caps_valid(sff_module_caps_t e);
-
-/** validator */
-#define SFF_MODULE_CAPS_VALID(_e) \
-    (sff_module_caps_valid((_e)))
-
-/** sff_module_caps_map table. */
-extern aim_map_si_t sff_module_caps_map[];
-/** sff_module_caps_desc_map table. */
-extern aim_map_si_t sff_module_caps_desc_map[];
 /* <auto.end.enum(ALL).header> */
 
 /**

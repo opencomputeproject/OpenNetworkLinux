@@ -61,6 +61,72 @@ sff_media_type_desc(sff_media_type_t e)
 }
 
 
+aim_map_si_t sff_module_caps_map[] =
+{
+    { "F_100", SFF_MODULE_CAPS_F_100 },
+    { "F_1G", SFF_MODULE_CAPS_F_1G },
+    { "F_10G", SFF_MODULE_CAPS_F_10G },
+    { "F_40G", SFF_MODULE_CAPS_F_40G },
+    { "F_100G", SFF_MODULE_CAPS_F_100G },
+    { NULL, 0 }
+};
+
+aim_map_si_t sff_module_caps_desc_map[] =
+{
+    { "None", SFF_MODULE_CAPS_F_100 },
+    { "None", SFF_MODULE_CAPS_F_1G },
+    { "None", SFF_MODULE_CAPS_F_10G },
+    { "None", SFF_MODULE_CAPS_F_40G },
+    { "None", SFF_MODULE_CAPS_F_100G },
+    { NULL, 0 }
+};
+
+const char*
+sff_module_caps_name(sff_module_caps_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, sff_module_caps_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'sff_module_caps'";
+    }
+}
+
+int
+sff_module_caps_value(const char* str, sff_module_caps_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, sff_module_caps_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+sff_module_caps_desc(sff_module_caps_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, sff_module_caps_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'sff_module_caps'";
+    }
+}
+
+int
+sff_module_caps_valid(sff_module_caps_t e)
+{
+    return aim_map_si_i(NULL, e, sff_module_caps_map, 0) ? 1 : 0;
+}
+
+
 aim_map_si_t sff_module_type_map[] =
 {
     { "100G_AOC", SFF_MODULE_TYPE_100G_AOC },
@@ -216,72 +282,6 @@ sff_sfp_type_desc(sff_sfp_type_t e)
     else {
         return "-invalid value for enum type 'sff_sfp_type'";
     }
-}
-
-
-aim_map_si_t sff_module_caps_map[] =
-{
-    { "F_100", SFF_MODULE_CAPS_F_100 },
-    { "F_1G", SFF_MODULE_CAPS_F_1G },
-    { "F_10G", SFF_MODULE_CAPS_F_10G },
-    { "F_40G", SFF_MODULE_CAPS_F_40G },
-    { "F_100G", SFF_MODULE_CAPS_F_100G },
-    { NULL, 0 }
-};
-
-aim_map_si_t sff_module_caps_desc_map[] =
-{
-    { "None", SFF_MODULE_CAPS_F_100 },
-    { "None", SFF_MODULE_CAPS_F_1G },
-    { "None", SFF_MODULE_CAPS_F_10G },
-    { "None", SFF_MODULE_CAPS_F_40G },
-    { "None", SFF_MODULE_CAPS_F_100G },
-    { NULL, 0 }
-};
-
-const char*
-sff_module_caps_name(sff_module_caps_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, sff_module_caps_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'sff_module_caps'";
-    }
-}
-
-int
-sff_module_caps_value(const char* str, sff_module_caps_t* e, int substr)
-{
-    int i;
-    AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, sff_module_caps_map, 0)) {
-        /* Enum Found */
-        *e = i;
-        return 0;
-    }
-    else {
-        return -1;
-    }
-}
-
-const char*
-sff_module_caps_desc(sff_module_caps_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, sff_module_caps_desc_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'sff_module_caps'";
-    }
-}
-
-int
-sff_module_caps_valid(sff_module_caps_t e)
-{
-    return aim_map_si_i(NULL, e, sff_module_caps_map, 0) ? 1 : 0;
 }
 
 /* <auto.end.enum(ALL).source> */

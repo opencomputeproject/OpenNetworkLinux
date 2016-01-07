@@ -30,12 +30,6 @@
 #include <onlp/oids.h>
 
 /* <auto.start.enum(tag:thermal).define> */
-/** onlp_thermal_status */
-typedef enum onlp_thermal_status_e {
-    ONLP_THERMAL_STATUS_PRESENT = (1 << 0),
-    ONLP_THERMAL_STATUS_FAILED = (1 << 1),
-} onlp_thermal_status_t;
-
 /** onlp_thermal_caps */
 typedef enum onlp_thermal_caps_e {
     ONLP_THERMAL_CAPS_GET_TEMPERATURE = (1 << 0),
@@ -43,6 +37,12 @@ typedef enum onlp_thermal_caps_e {
     ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD = (1 << 2),
     ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD = (1 << 3),
 } onlp_thermal_caps_t;
+
+/** onlp_thermal_status */
+typedef enum onlp_thermal_status_e {
+    ONLP_THERMAL_STATUS_PRESENT = (1 << 0),
+    ONLP_THERMAL_STATUS_FAILED = (1 << 1),
+} onlp_thermal_status_t;
 /* <auto.end.enum(tag:thermal).define> */
 
 /**
@@ -143,27 +143,6 @@ void onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags);
  *****************************************************************************/
 /* <auto.start.enum(tag:thermal).supportheader> */
 /** Enum names. */
-const char* onlp_thermal_status_name(onlp_thermal_status_t e);
-
-/** Enum values. */
-int onlp_thermal_status_value(const char* str, onlp_thermal_status_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_thermal_status_desc(onlp_thermal_status_t e);
-
-/** Enum validator. */
-int onlp_thermal_status_valid(onlp_thermal_status_t e);
-
-/** validator */
-#define ONLP_THERMAL_STATUS_VALID(_e) \
-    (onlp_thermal_status_valid((_e)))
-
-/** onlp_thermal_status_map table. */
-extern aim_map_si_t onlp_thermal_status_map[];
-/** onlp_thermal_status_desc_map table. */
-extern aim_map_si_t onlp_thermal_status_desc_map[];
-
-/** Enum names. */
 const char* onlp_thermal_caps_name(onlp_thermal_caps_t e);
 
 /** Enum values. */
@@ -183,6 +162,27 @@ int onlp_thermal_caps_valid(onlp_thermal_caps_t e);
 extern aim_map_si_t onlp_thermal_caps_map[];
 /** onlp_thermal_caps_desc_map table. */
 extern aim_map_si_t onlp_thermal_caps_desc_map[];
+
+/** Enum names. */
+const char* onlp_thermal_status_name(onlp_thermal_status_t e);
+
+/** Enum values. */
+int onlp_thermal_status_value(const char* str, onlp_thermal_status_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_thermal_status_desc(onlp_thermal_status_t e);
+
+/** Enum validator. */
+int onlp_thermal_status_valid(onlp_thermal_status_t e);
+
+/** validator */
+#define ONLP_THERMAL_STATUS_VALID(_e) \
+    (onlp_thermal_status_valid((_e)))
+
+/** onlp_thermal_status_map table. */
+extern aim_map_si_t onlp_thermal_status_map[];
+/** onlp_thermal_status_desc_map table. */
+extern aim_map_si_t onlp_thermal_status_desc_map[];
 /* <auto.end.enum(tag:thermal).supportheader> */
 
 #endif /* __ONLP_THERMAL_H__ */

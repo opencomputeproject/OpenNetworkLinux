@@ -29,26 +29,6 @@
 #include <onlp/onlp.h>
 
 /* <auto.start.enum(tag:fan).define> */
-/** onlp_fan_status */
-typedef enum onlp_fan_status_e {
-    ONLP_FAN_STATUS_PRESENT = (1 << 0),
-    ONLP_FAN_STATUS_FAILED = (1 << 1),
-    ONLP_FAN_STATUS_B2F = (1 << 2),
-    ONLP_FAN_STATUS_F2B = (1 << 3),
-} onlp_fan_status_t;
-
-/** onlp_fan_mode */
-typedef enum onlp_fan_mode_e {
-    ONLP_FAN_MODE_OFF,
-    ONLP_FAN_MODE_SLOW,
-    ONLP_FAN_MODE_NORMAL,
-    ONLP_FAN_MODE_FAST,
-    ONLP_FAN_MODE_MAX,
-    ONLP_FAN_MODE_LAST = ONLP_FAN_MODE_MAX,
-    ONLP_FAN_MODE_COUNT,
-    ONLP_FAN_MODE_INVALID = -1,
-} onlp_fan_mode_t;
-
 /** onlp_fan_caps */
 typedef enum onlp_fan_caps_e {
     ONLP_FAN_CAPS_B2F = (1 << 0),
@@ -67,6 +47,26 @@ typedef enum onlp_fan_dir_e {
     ONLP_FAN_DIR_COUNT,
     ONLP_FAN_DIR_INVALID = -1,
 } onlp_fan_dir_t;
+
+/** onlp_fan_mode */
+typedef enum onlp_fan_mode_e {
+    ONLP_FAN_MODE_OFF,
+    ONLP_FAN_MODE_SLOW,
+    ONLP_FAN_MODE_NORMAL,
+    ONLP_FAN_MODE_FAST,
+    ONLP_FAN_MODE_MAX,
+    ONLP_FAN_MODE_LAST = ONLP_FAN_MODE_MAX,
+    ONLP_FAN_MODE_COUNT,
+    ONLP_FAN_MODE_INVALID = -1,
+} onlp_fan_mode_t;
+
+/** onlp_fan_status */
+typedef enum onlp_fan_status_e {
+    ONLP_FAN_STATUS_PRESENT = (1 << 0),
+    ONLP_FAN_STATUS_FAILED = (1 << 1),
+    ONLP_FAN_STATUS_B2F = (1 << 2),
+    ONLP_FAN_STATUS_F2B = (1 << 3),
+} onlp_fan_status_t;
 /* <auto.end.enum(tag:fan).define> */
 
 /**
@@ -180,54 +180,6 @@ void onlp_fan_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags);
  *****************************************************************************/
 /* <auto.start.enum(tag:fan).supportheader> */
 /** Enum names. */
-const char* onlp_fan_status_name(onlp_fan_status_t e);
-
-/** Enum values. */
-int onlp_fan_status_value(const char* str, onlp_fan_status_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_fan_status_desc(onlp_fan_status_t e);
-
-/** Enum validator. */
-int onlp_fan_status_valid(onlp_fan_status_t e);
-
-/** validator */
-#define ONLP_FAN_STATUS_VALID(_e) \
-    (onlp_fan_status_valid((_e)))
-
-/** onlp_fan_status_map table. */
-extern aim_map_si_t onlp_fan_status_map[];
-/** onlp_fan_status_desc_map table. */
-extern aim_map_si_t onlp_fan_status_desc_map[];
-
-/** Strings macro. */
-#define ONLP_FAN_MODE_STRINGS \
-{\
-    "OFF", \
-    "SLOW", \
-    "NORMAL", \
-    "FAST", \
-    "MAX", \
-}
-/** Enum names. */
-const char* onlp_fan_mode_name(onlp_fan_mode_t e);
-
-/** Enum values. */
-int onlp_fan_mode_value(const char* str, onlp_fan_mode_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_fan_mode_desc(onlp_fan_mode_t e);
-
-/** validator */
-#define ONLP_FAN_MODE_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= ONLP_FAN_MODE_MAX))
-
-/** onlp_fan_mode_map table. */
-extern aim_map_si_t onlp_fan_mode_map[];
-/** onlp_fan_mode_desc_map table. */
-extern aim_map_si_t onlp_fan_mode_desc_map[];
-
-/** Enum names. */
 const char* onlp_fan_caps_name(onlp_fan_caps_t e);
 
 /** Enum values. */
@@ -271,6 +223,54 @@ const char* onlp_fan_dir_desc(onlp_fan_dir_t e);
 extern aim_map_si_t onlp_fan_dir_map[];
 /** onlp_fan_dir_desc_map table. */
 extern aim_map_si_t onlp_fan_dir_desc_map[];
+
+/** Strings macro. */
+#define ONLP_FAN_MODE_STRINGS \
+{\
+    "OFF", \
+    "SLOW", \
+    "NORMAL", \
+    "FAST", \
+    "MAX", \
+}
+/** Enum names. */
+const char* onlp_fan_mode_name(onlp_fan_mode_t e);
+
+/** Enum values. */
+int onlp_fan_mode_value(const char* str, onlp_fan_mode_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_fan_mode_desc(onlp_fan_mode_t e);
+
+/** validator */
+#define ONLP_FAN_MODE_VALID(_e) \
+    ( (0 <= (_e)) && ((_e) <= ONLP_FAN_MODE_MAX))
+
+/** onlp_fan_mode_map table. */
+extern aim_map_si_t onlp_fan_mode_map[];
+/** onlp_fan_mode_desc_map table. */
+extern aim_map_si_t onlp_fan_mode_desc_map[];
+
+/** Enum names. */
+const char* onlp_fan_status_name(onlp_fan_status_t e);
+
+/** Enum values. */
+int onlp_fan_status_value(const char* str, onlp_fan_status_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_fan_status_desc(onlp_fan_status_t e);
+
+/** Enum validator. */
+int onlp_fan_status_valid(onlp_fan_status_t e);
+
+/** validator */
+#define ONLP_FAN_STATUS_VALID(_e) \
+    (onlp_fan_status_valid((_e)))
+
+/** onlp_fan_status_map table. */
+extern aim_map_si_t onlp_fan_status_map[];
+/** onlp_fan_status_desc_map table. */
+extern aim_map_si_t onlp_fan_status_desc_map[];
 /* <auto.end.enum(tag:fan).supportheader> */
 
 
