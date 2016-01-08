@@ -152,6 +152,12 @@ thermal_caps: &thermal_caps
 - GET_ERROR_THRESHOLD    : (1 << 2)
 - GET_SHUTDOWN_THRESHOLD : (1 << 3)
 
+# Thermal threshold, in milli-celsius
+thermal_threshold: &thermal_threshold
+- WARNING_DEFAULT  : 45000
+- ERROR_DEFAULT    : 55000
+- SHUTDOWN_DEFAULT : 60000
+
 # LED caps
 led_caps: &led_caps
 - ON_OFF : (1 << 0)
@@ -232,6 +238,9 @@ definitions:
     onlp_thermal_caps:
       tag: thermal
       members: *thermal_caps
+    onlp_thermal_threshold:
+      tag: thermal
+      members: *thermal_threshold
     onlp_sfp_control:
       tag: sfp1
       members:

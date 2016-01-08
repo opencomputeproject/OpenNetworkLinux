@@ -56,6 +56,7 @@ ONLP_ENUMERATION_ENTRY(onlp_sfp_control_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_status, "")
 ONLP_ENUMERATION_ENTRY(onlp_thermal_caps, "")
 ONLP_ENUMERATION_ENTRY(onlp_thermal_status, "")
+ONLP_ENUMERATION_ENTRY(onlp_thermal_threshold, "")
 #undef ONLP_ENUMERATION_ENTRY
 #endif
 /* <auto.end.xenum(ALL).define> */

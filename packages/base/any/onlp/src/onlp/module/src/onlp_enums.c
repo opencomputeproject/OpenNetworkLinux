@@ -1044,5 +1044,67 @@ onlp_thermal_status_valid(onlp_thermal_status_t e)
     return aim_map_si_i(NULL, e, onlp_thermal_status_map, 0) ? 1 : 0;
 }
 
+
+aim_map_si_t onlp_thermal_threshold_map[] =
+{
+    { "WARNING_DEFAULT", ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT },
+    { "ERROR_DEFAULT", ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT },
+    { "SHUTDOWN_DEFAULT", ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_thermal_threshold_desc_map[] =
+{
+    { "None", ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT },
+    { "None", ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT },
+    { "None", ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT },
+    { NULL, 0 }
+};
+
+const char*
+onlp_thermal_threshold_name(onlp_thermal_threshold_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_thermal_threshold_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_thermal_threshold'";
+    }
+}
+
+int
+onlp_thermal_threshold_value(const char* str, onlp_thermal_threshold_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_thermal_threshold_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_thermal_threshold_desc(onlp_thermal_threshold_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_thermal_threshold_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_thermal_threshold'";
+    }
+}
+
+int
+onlp_thermal_threshold_valid(onlp_thermal_threshold_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_thermal_threshold_map, 0) ? 1 : 0;
+}
+
 /* <auto.end.enum(ALL).source> */
 
