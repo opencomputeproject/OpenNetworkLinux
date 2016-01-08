@@ -71,24 +71,43 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv)
 
     static onlp_thermal_info_t info[] = {
         { }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(1),  "Chassis Thermal 1",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(2),  "Chassis Thermal 2",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(3),  "Chassis Thermal 3",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(4),  "Chassis Thermal 4",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(5),  "Chassis Thermal 5",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(6),  "Chassis Thermal 6",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(7),  "Chassis Thermal 7",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(8),  "Chassis Thermal 8",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(9),  "Chassis Thermal 9",  0}, ONLP_THERMAL_STATUS_PRESENT, },
-	{ { ONLP_THERMAL_ID_CREATE(10), "Chassis Thermal 10", 0}, ONLP_THERMAL_STATUS_PRESENT, },
+        { { ONLP_THERMAL_ID_CREATE(1),  "Chassis Thermal 1",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(2),  "Chassis Thermal 2",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(3),  "Chassis Thermal 3",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(4),  "Chassis Thermal 4",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(5),  "Chassis Thermal 5",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(6),  "Chassis Thermal 6",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(7),  "Chassis Thermal 7",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(8),  "Chassis Thermal 8",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(9),  "Chassis Thermal 9",  0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(10), "Chassis Thermal 10", 0}, ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(11), "PSU-1 Thermal 1", 0 } },
+        { { ONLP_THERMAL_ID_CREATE(12), "PSU-1 Thermal 2", 0 } },
+        { { ONLP_THERMAL_ID_CREATE(13), "PSU-1 Thermal 3", 0 } },
 
-	{ { ONLP_THERMAL_ID_CREATE(11), "PSU-1 Thermal 1", 0 } },
-	{ { ONLP_THERMAL_ID_CREATE(12), "PSU-1 Thermal 2", 0 } },
-	{ { ONLP_THERMAL_ID_CREATE(13), "PSU-1 Thermal 3", 0 } },
-
-	{ { ONLP_THERMAL_ID_CREATE(14), "PSU-2 Thermal 1", 0 } },
-	{ { ONLP_THERMAL_ID_CREATE(15), "PSU-2 Thermal 2", 0 } },
-	{ { ONLP_THERMAL_ID_CREATE(16), "PSU-2 Thermal 3", 0 } },
+        { { ONLP_THERMAL_ID_CREATE(14), "PSU-2 Thermal 1", 0 } },
+        { { ONLP_THERMAL_ID_CREATE(15), "PSU-2 Thermal 2", 0 } },
+        { { ONLP_THERMAL_ID_CREATE(16), "PSU-2 Thermal 3", 0 } },
     };
 
     *rv = info[tid];
