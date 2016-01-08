@@ -59,6 +59,7 @@ Configure:
     - 'onl-platform-baseconf defaults'
     - 'faultd defaults'
     - 'snmpd remove'
+    - 'onlp-snmpd remove'
     - 'ssh defaults'
     - 'openbsd-inetd remove'
     - 'ntp remove'
