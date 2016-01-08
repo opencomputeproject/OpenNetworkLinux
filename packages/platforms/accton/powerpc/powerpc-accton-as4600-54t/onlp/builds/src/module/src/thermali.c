@@ -127,11 +127,21 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv)
     /* Static values */
     onlp_thermal_info_t info[] = {
         { }, /* Not used */
-        { { ONLP_THERMAL_ID_CREATE(1), "Chassis Thermal Sensor 1 (Nearby FAN 2)", 0}, 0x0, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-        { { ONLP_THERMAL_ID_CREATE(2), "Chassis Thermal Sensor 2 (CPU)", 0}, 0x0, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-        { { ONLP_THERMAL_ID_CREATE(3), "Chassis Thermal Sensor 3 (Nearby BCM MAC(56540) chip)", 0}, 0x0, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-        { { ONLP_THERMAL_ID_CREATE(4), "PSU-1 Thermal Sensor 1", 0}, 0x0, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-        { { ONLP_THERMAL_ID_CREATE(5), "PSU-2 Thermal Sensor 1", 0}, 0x0, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 }
+        { { ONLP_THERMAL_ID_CREATE(1), "Chassis Thermal Sensor 1 (Nearby FAN 2)", 0}, 0x0,
+          ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(2), "Chassis Thermal Sensor 2 (CPU)", 0}, 0x0,
+          ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(3), "Chassis Thermal Sensor 3 (Nearby BCM MAC(56540) chip)", 0}, 0x0,
+          ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(4), "PSU-1 Thermal Sensor 1", 0}, 0x0,
+          ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+        { { ONLP_THERMAL_ID_CREATE(5), "PSU-2 Thermal Sensor 1", 0}, 0x0,
+          ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        }
     };
     unsigned int bus_id = 1,tid = ONLP_OID_ID_GET(id);
     unsigned char i2c_addr, temp, temp_ext2, data[2]={0};

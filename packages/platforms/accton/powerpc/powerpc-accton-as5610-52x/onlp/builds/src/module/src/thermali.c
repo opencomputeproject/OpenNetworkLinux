@@ -193,16 +193,36 @@ onlp_thermali_init(void)
 /* Static values */
 static onlp_thermal_info_t tinfo[] = {
 { }, /* Not used */
-{ { ONLP_THERMAL_ID_CREATE(1),  "Chassis Thermal Sensor 1 (near right-upper side of CPU)", 0},         0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(2),  "Chassis Thermal Sensor 2 (near right side of MAX6581)", 0},           0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(3),  "Chassis Thermal Sensor 3 (near right side of MAC(Trident+)", 0},      0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(4),  "Chassis Thermal Sensor 4 (near left down side of Equalizer_U57)", 0}, 0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(5),  "Chassis Thermal Sensor 5 (near right down side of MAC)", 0},          0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(6),  "Chassis Thermal Sensor 6 (near upper side of Equalizer_U49)", 0},     0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(7),  "Chassis Thermal Sensor 7 (near left down side of PCB)", 0},           0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(8),  "Chassis Thermal Sensor 8 (inside CPU)", 0},                           0x1, ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0 },
-{ { ONLP_THERMAL_ID_CREATE(9),  "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(1)},     0x1, 0 },
-{ { ONLP_THERMAL_ID_CREATE(10), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(2)},     0x1, 0 }
+{ { ONLP_THERMAL_ID_CREATE(1),  "Chassis Thermal Sensor 1 (near right-upper side of CPU)", 0},         0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(2),  "Chassis Thermal Sensor 2 (near right side of MAX6581)", 0},           0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(3),  "Chassis Thermal Sensor 3 (near right side of MAC(Trident+)", 0},      0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(4),  "Chassis Thermal Sensor 4 (near left down side of Equalizer_U57)", 0}, 0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(5),  "Chassis Thermal Sensor 5 (near right down side of MAC)", 0},          0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(6),  "Chassis Thermal Sensor 6 (near upper side of Equalizer_U49)", 0},     0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(7),  "Chassis Thermal Sensor 7 (near left down side of PCB)", 0},           0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(8),  "Chassis Thermal Sensor 8 (inside CPU)", 0},                           0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(9),  "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(1)},     0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(10), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(2)},     0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+}
 };
 
 /*
