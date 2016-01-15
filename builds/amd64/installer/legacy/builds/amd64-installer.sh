@@ -143,12 +143,16 @@ do_handle_partitions()
 
   installer_say "Examining $DEV part $part"
 
-  if [ "$label" = "ONIE-BOOT" ] || [ "$label" = "PLATFORM-DIAG" ] || [ "$label" = "GRUB-BOOT" ]; then
-      installer_say "Partition $DEV$part: $label: Preserving..."
-  else
-      installer_say "Partition $DEV$part: $label: Deleting..."
-      parted $DEV rm $part || return 1
-  fi
+
+  case "$label" in
+      ONIE-BOOT|GRUB-BOOT|*-DIAG)
+          installer_say "Partition $DEV$part: $label: Preserving..."
+          ;;
+      *)
+          installer_say "Partition $DEV$part: $label: Deleting..."
+          parted $DEV rm $part || return 1
+          ;;
+  esac
 
   return 0
 }
