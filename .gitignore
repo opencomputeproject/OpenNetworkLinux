@@ -18,3 +18,4 @@ dependmodules.x
 RELEASE/
 
 .bash_history
+.buildroot-ccache
