@@ -3,6 +3,12 @@
 # Rudimentary work in progress.
 #
 ############################################################
+ifneq ($(MAKECMDGOALS),docker)
+
+ifndef ONL
+$(error Please source the setup.env script at the root of the ONL tree)
+endif
+
 include $(ONL)/make/config.mk
 
 all: amd64 ppc
@@ -22,3 +28,18 @@ onl-ppc ppc:
 
 rpc rebuild:
 	$(ONLPM) --rebuild-pkg-cache
+
+endif
+
+
+.PHONY: docker
+
+ifndef VERSION
+VERSION:=7
+endif
+
+docker_check:
+	@which docker > /dev/null || (echo "*** Docker appears to be missing. Please install docker.io in order to build OpenNetworkLinux." && exit 1)
+
+docker: docker_check
+	@docker/tools/onlbuilder -$(VERSION) --isolate --hostname onlbuilder$(VERSION) --pull
