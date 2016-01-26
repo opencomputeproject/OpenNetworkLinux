@@ -33,6 +33,10 @@ ap.add_argument('--7', '-7',
                 help="Run the debian 7 version.",
                 action='store_true', dest='debian7')
 
+ap.add_argument("--pull",
+                help="Pull the docker image before running to make sure it is up to date.",
+                action='store_true')
+
 ap.add_argument("--dry",
                 help="Dry run.",
                 action='store_true')
@@ -110,6 +114,15 @@ if ops.verbose or ops.dry:
    logger.setLevel(logging.DEBUG)
 
 logger.debug('arguments: %s\n' % vars(ops))
+
+if ops.pull:
+   try:
+      print "Pulling %s..." % ops.image
+      x = subprocess.check_output(('docker', 'pull', ops.image), stderr=subprocess.STDOUT)
+      print "done."
+   except subprocess.CalledProcessError, e:
+      sys.stderr.write("** Failed to pull the docker image %s (%d):\n\n%s\n" % (ops.image, e.returncode, e.output))
+      sys.exit(1)
 
 if ops.use_running:
    sys.stderr.write("The --r option is not yet implemented.")
