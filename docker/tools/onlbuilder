@@ -177,7 +177,9 @@ else:
       if 'home' in g_arg_d:
          g_docker_arguments += " -e HOME=%(home)s -v %(home)s:%(home)s" % g_arg_d
 
-g_docker_arguments += " %(image)s /bin/docker_shell --user %(user)s -c %(commands)s" % g_arg_d
+g_arg_d['cacher'] = "--start-cacher" if ops.isolate else ""
+
+g_docker_arguments += " %(image)s /bin/docker_shell --user %(user)s %(cacher)s -c %(commands)s" % g_arg_d
 
 g_docker_arguments = " ".join(g_docker_arguments.split())
 logger.debug("running: %s" % g_docker_arguments)
