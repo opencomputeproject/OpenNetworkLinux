@@ -24,7 +24,7 @@ KERNEL_DIR := $(ONL)/packages/base/any/kernels/legacy/linux-3.8.13
 
 $(COMPDIR)/kernel-e500mc: $(KERNEL_DIR)/arch/powerpc/configs/$(DEFCONFIG)
 	mkdir -p $(COMPDIR)/linux-build-e500mc
-	$(MAKE) -C $(KERNEL_DIR) $(DEFCONFIG) ARCH=powerpc O=$(COMPDIR)/linux-build-e500mc
+	$(MAKE) -C $(KERNEL_DIR) $(DEFCONFIG) ARCH=powerpc O=$(COMPDIR)/linux-build-e500mc $(ONL_MAKE_PARALLEL)
 	PATH=$$PATH:$(SWITCHLIGHT)/tools $(MAKE) -C $(KERNEL_DIR) uImage ARCH=powerpc O=$(COMPDIR)/linux-build-e500mc
 	powerpc-linux-gnu-strip -o $(COMPDIR)/kernel-e500mc $(COMPDIR)/linux-build-e500mc/vmlinux
 	cp $(COMPDIR)/linux-build-e500mc/vmlinux.bin.gz $(COMPDIR)/kernel-e500mc.bin.gz
