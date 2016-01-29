@@ -12,29 +12,36 @@ ONL builds with Docker so the only requirements on the build system is:
 - docker			# to grab the build workspace
 - binfmt-support		# kernel support for ppc builds
 - About 40G of disk free space 	# to build all images
+- At least 4G of ram and 4G of swap # compilation is memory intensive
 
 All of the testing is done with Debian, other Linux distributions may work, but we suggest using Debian 8.
-    # apt-get install lxc-docker binfmt-support
+    # apt-get install binfmt-support
+    then follow the instructions at: https://docs.docker.com/engine/installation/debian/
 
 
 Build ONL Summary
 ------------------------------------------------------------
-The easiest way to build is to use the autobuild script:
+The easiest way to build is to use the make docker command:
 
     #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
-    #> tools/autobuild/build.sh
+    #> make docker
 
 This will build a Debian 7 based ONL from the master branch
 
-To build a Debian 8 based ONL simply run:
+To build a Debian 8 based ONL run:
 
-    #> tools/autobuild/build.sh -8
+    #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
+    #> cd OpenNetworkLinux
+    #> export VERSION=8
+    #> make docker
+    
 
 If you would like to build by hand you can do the following:
 
     #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
     #> cd OpenNetworkLinux
-    #> make docker                                              # enter the docker workspace
+    #> docker/tools/onlbuilder (-8)                                        # enter the docker workspace
+    #> source setup.env				# pull in necessary environment variables
     #> make amd64 ppc                           # make onl for $platform (currently amd64 or powerpc)
 
 The resulting ONIE installers are in
@@ -49,9 +56,6 @@ RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64.swi
 #Installing Docker Gotchas
 
 Docker installer oneliner (for reference: see docker.com for details)
-
-    # apt-get install -y lxc-docker
-or
 
     # wget -qO- https://get.docker.com/ | sh
 
