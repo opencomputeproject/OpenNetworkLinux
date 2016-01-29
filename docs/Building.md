@@ -24,6 +24,7 @@ Build ONL Summary
 The easiest way to build is to use the make docker command:
 
     #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
+    #> cd OpenNetworkLinux
     #> make docker
 
 This will build a Debian 7 based ONL from the master branch
