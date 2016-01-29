@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Buildroot 2013.02-rc2-dirty Configuration
+# Buildroot 2013.02-rc2-g5e1a5c1-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_ARCH_IS_64=y
@@ -456,7 +456,11 @@ BR2_PACKAGE_MTD_UBIRMVOL=y
 BR2_PACKAGE_MTD_UBIUPDATEVOL=y
 # BR2_PACKAGE_NFS_UTILS is not set
 # BR2_PACKAGE_NTFS_3G is not set
-# BR2_PACKAGE_SQUASHFS is not set
+BR2_PACKAGE_SQUASHFS=y
+BR2_PACKAGE_SQUASHFS_GZIP=y
+# BR2_PACKAGE_SQUASHFS_LZMA is not set
+# BR2_PACKAGE_SQUASHFS_LZO is not set
+# BR2_PACKAGE_SQUASHFS_XZ is not set
 # BR2_PACKAGE_SSHFS is not set
 # BR2_PACKAGE_UNIONFS is not set
 # BR2_PACKAGE_XFSPROGS is not set
