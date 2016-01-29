@@ -96,6 +96,10 @@ ap.add_argument("--volumes",
                 metavar='DIRECTORY',
                 default=[])
 
+ap.add_argument("--autobuild",
+                help="Automatic build in isolation mode.",
+                action='store_true')
+
 ap.add_argument("--command", "-c",
                 help="Explicit command to run. All arguments after -c are considered to be part of the command.",
                 nargs=argparse.REMAINDER,
@@ -170,6 +174,9 @@ else:
 
       if ops.hostname:
          g_docker_arguments += " -h %s" % ops.hostname
+
+      if ops.autobuild:
+         g_docker_arguments += " -e ONL_AUTOBUILD=1 "
 
    else:
       # Development host mode
