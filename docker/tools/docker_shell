@@ -154,6 +154,17 @@ for u in ops.addusers:
 if ops.start_cacher:
     execute("/etc/init.d/apt-cacher-ng start", "The apt-cacher-ng service could not be started.")
 
+logger.debug("checking if qemu-ppc exists")
+
+if os.path.isfile("/proc/sys/fs/binfmt_misc/qemu-ppc"):
+   logger.debug("qemu-ppc already exists")
+else:
+   if os.path.ismount("/proc/sys/fs/binfmt_misc"):
+      execute("sudo /etc/init.d/binfmt-support start", "The binfmt-support service could not be started.")
+   else:
+      execute("sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc", "The binfmt_misc system could not be mounted.")
+      execute("sudo /etc/init.d/binfmt-support start", "The binfmt-support service could not be started.")
+
 # Fixme: change this to os.execvp()
 c = "/usr/bin/sudo -E -u %s %s" % (g_user.name, " ".join(ops.command))
 sys.exit(execute(c))
