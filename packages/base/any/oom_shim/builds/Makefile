@@ -15,9 +15,9 @@ OUTDIR=$(ONL)/packages/base/$(ARCH)/$(PACKAGE)/builds/BUILD/$(RELEASE)/$(TOOLCHA
 
 VPATH=$(ONL)/packages/base/any/$(PACKAGE)/src
 
-$(OUTDIR)/liboom_shim.so: oom_shim.c
+$(OUTDIR)/liboom_south.so: oom_shim.c
 	@mkdir -p $(OUTDIR) || true
-	@$(CC) -o $(OUTDIR)/liboom_shim.so -shared -fPIC $+
+	@$(CC) -o $(OUTDIR)/liboom_south.so -shared -fPIC $+
 
 .PHONY: deb
 deb:

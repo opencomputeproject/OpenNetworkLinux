@@ -23,7 +23,7 @@ packages:
     provides: [ oom_shim ]
 
     files:
-      builds/$BUILD_DIR/${TOOLCHAIN}/liboom_shim.so : $libdir/
+      builds/$BUILD_DIR/${TOOLCHAIN}/liboom_south.so : $libdir/
 
     changelog:  Initial code for 2016 OCP Demo
 
