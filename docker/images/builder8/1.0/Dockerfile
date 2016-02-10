@@ -127,8 +127,7 @@ RUN echo 'APT::Get::AllowUnauthenticated "true";\nAPT::Get::Assume-Yes "true";' 
    dpkg -i texinfo_4.13a.dfsg.1-10_amd64.deb && \
    wget "http://ftp.us.debian.org/debian/pool/main/e/emdebian-crush/xapt_2.2.19_all.deb" && \
    dpkg -i xapt_2.2.19_all.deb && \
-
-    xapt -a powerpc libedit-dev ncurses-dev libsensors4-dev libwrap0-dev libssl-dev libsnmp-dev
+   xapt -a powerpc libedit-dev ncurses-dev libsensors4-dev libwrap0-dev libssl-dev libsnmp-dev
 #    update-alternatives --install /usr/bin/powerpc-linux-gnu-gcc powerpc-linux-gnu-gcc 10 &&
 
 #
