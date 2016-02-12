@@ -17,13 +17,13 @@ common:
 
 
 packages:
-  - name: oom_shim
+  - name: oom-shim
     version: 1.0.0
     summary: Open Optical Module Wrapper library around ONLP
     provides: [ oom_shim ]
 
     files:
-      builds/$BUILD_DIR/${TOOLCHAIN}/liboom_shim.so : $libdir/
+      builds/$BUILD_DIR/${TOOLCHAIN}/bin/liboom-south.so : $libdir/
 
     changelog:  Initial code for 2016 OCP Demo
 
