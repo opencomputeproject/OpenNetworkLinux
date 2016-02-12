@@ -98,7 +98,5 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton):
         self.new_i2c_device('as7512_32x_sfp30', 0x50, 47)
         self.new_i2c_device('as7512_32x_sfp31', 0x50, 48)
         self.new_i2c_device('as7512_32x_sfp32', 0x50, 49)
-                ]
-            )
 
         return True
