@@ -31,6 +31,7 @@ onl-ppc ppc:
 	$(MAKE) -C packages/base/powerpc/onlp
 	$(MAKE) -C packages/base/powerpc/onlp-snmpd
 	$(MAKE) -C packages/base/powerpc/faultd
+	$(MAKE) -C packages/base/powerpc/fit
 	$(MAKE) -C builds/powerpc/rootfs
 	$(MAKE) -C builds/powerpc/swi
 	$(MAKE) -C builds/powerpc/installer/legacy
