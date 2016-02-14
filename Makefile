@@ -4,6 +4,7 @@
 #
 ############################################################
 ifneq ($(MAKECMDGOALS),docker)
+ifneq ($(MAKECMDGOALS),docker-debug)
 
 ifndef ONL
 $(error Please source the setup.env script at the root of the ONL tree)
@@ -30,6 +31,7 @@ rpc rebuild:
 	$(ONLPM) --rebuild-pkg-cache
 
 endif
+endif
 
 
 .PHONY: docker
@@ -43,3 +45,7 @@ docker_check:
 
 docker: docker_check
 	@docker/tools/onlbuilder -$(VERSION) --isolate --hostname onlbuilder$(VERSION) --pull --autobuild --non-interactive
+
+# create an interative docker shell, for debugging builds
+docker-debug: docker_check
+	@docker/tools/onlbuilder -$(VERSION) --isolate --hostname onlbuilder$(VERSION) --pull

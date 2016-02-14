@@ -1533,7 +1533,7 @@ new file mode 100644
 index 0000000..0985c80
 --- /dev/null
 +++ b/drivers/misc/eeprom/accton_as5812_54t_sfp.c
-@@ -0,0 +1,332 @@
+@@ -0,0 +1,318 @@
 +/*
 + * An hwmon driver for accton as5812_54t sfp
 + *
@@ -1768,20 +1768,6 @@ index 0000000..0985c80
 +    return result;
 +}
 +
-+static int convert_cpld_present_value_in_port_order(int value)
-+{
-+    int ret = 0;
-+	
-+    ret |= (value & BIT_INDEX(0)) << 5;
-+    ret |= (value & BIT_INDEX(1)) << 1;
-+    ret |= (value & BIT_INDEX(2)) >> 1;	
-+    ret |= (value & BIT_INDEX(3)) << 1;
-+    ret |= (value & BIT_INDEX(4)) >> 4;
-+    ret |= (value & BIT_INDEX(5)) >> 2;
-+
-+    return ret;
-+}
-+
 +static struct as5812_54t_sfp_data *as5812_54t_sfp_update_device(struct device *dev, int update_eeprom)
 +{
 +    struct i2c_client *client = to_i2c_client(dev);
@@ -1812,7 +1798,7 @@ index 0000000..0985c80
 +            dev_dbg(&client->dev, "cpld(0x60) reg(0x22) err %d\n", status);
 +        }
 +        else {
-+            data->status = convert_cpld_present_value_in_port_order(status); /* (u32)status */
++            data->status = status & 0x3F; /* (u32)status */
 +        }
 +
 +        if (update_eeprom) {
