@@ -1,2 +1,0 @@
-!include $ONL/packages/base/any/oom_shim/APKG.yml ARCH=powerpc TOOLCHAIN=powerpc-linux-gnu
-
