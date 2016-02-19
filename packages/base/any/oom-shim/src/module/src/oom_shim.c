@@ -85,34 +85,35 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
 
 
 int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int len, uint8_t* data){
-    int rv,cur_offset;
+    int rv;
     unsigned int port_num; 
     uint8_t* idprom = NULL;
 
     port_num = (unsigned int)(uintptr_t)port->handle;
     port_num -= 1;
-    rv = onlp_sfp_eeprom_read(port_num, &idprom);/*place holder implementation until onlp_sfp_eeprom_read() can be improved to handle subpages*/
-    if(rv < 0) {
-        aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
-        return -1;
-    }
 
-#if SFF_EEPROM_DATA_DEBUG == 1 
-    aim_printf(&aim_pvs_stdout, "eeprom:\n%{data}\n", idprom, 256);/*print the hex data for debugging purpose*/
-#endif
+    if (offset >= 256)
+        return -1;  /* out of range */
+
+    /** 
+     * place holder implementation until onlp_sfp_eeprom_read() 
+     * can be improved to handle partial page gets
+     **/
 
     if (address == 0xa0) {
-        cur_offset = SFF_A0_BASE;
+        rv = onlp_sfp_eeprom_read(port_num, &idprom);
     } else if (address == 0xa2) {
-        cur_offset = SFF_A2_BASE;
+        rv = onlp_sfp_dom_read(port_num, &idprom);
     } else {
         aim_printf(&aim_pvs_stdout, "Error invalid address: 0x%02x\n", address);
         return -EINVAL;
     }
-    cur_offset += page * 128;
-    cur_offset += offset;
-    
-    memcpy(data, &idprom[cur_offset], len); 
+
+    if(rv < 0) {
+        aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
+        return -1;
+    }
+    memcpy(data, &idprom[offset], len); 
     aim_free(idprom);
     
     return 0;
