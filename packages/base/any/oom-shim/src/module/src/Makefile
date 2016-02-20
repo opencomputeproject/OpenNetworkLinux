@@ -26,5 +26,5 @@
 include ../../../../init.mk
 
 ucli:
-	$(SUBMODULE_BIGCODE)/tools/uclihandlers.py onlpie_ucli.c
+	$(SUBMODULE_BIGCODE)/tools/uclihandlers.py oom_shim_ucli.c
 
