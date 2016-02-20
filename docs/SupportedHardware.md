@@ -59,7 +59,7 @@ Dell
 <tr> <td> S4810-ON            <td> 48x10G  + 4x40G  <td> FreeScale P2020        <td> Broadcom BCM56845 (Trident)     <td> Yes   <td> Yes <td> Yes <td> No <td> No <td> No </tr>
 <tr> <td> S4048-ON            <td> 48x10G  + 6x40G  <td> Intel Atom C2338       <td> Broadcom BCM56854 (Trident2)     <td> Yes  <td> Yes <td> Yes <td> No <td> No <td> No </tr> 
 <tr> <td> S6000-ON            <td> 32x40G           <td> Intel Atom S1220       <td> Broadcom BCM56850 (Trident2)     <td> Yes  <td> Yes <td> Yes <td> No <td> No <td> No </tr>
-<tr> <td> z9100-ON            <td> 32x100G           <td> Intel       <td> Broadcom BCM56960 (Tomahawk)     <td> Yes  <td> Yes <td> No <td> No <td> No <td> No </tr>
+<tr> <td> Z9100-ON            <td> 32x100G           <td> Intel Atom C2538       <td> Broadcom BCM56960 (Tomahawk)     <td> Yes  <td> Yes <td> No <td> No <td> No <td> No </tr>
 </table>
 
 Interface Masters Technologies, Inc.
