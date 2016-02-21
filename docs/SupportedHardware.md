@@ -69,11 +69,11 @@ Interface Masters Technologies, Inc.
 <tr class="info">
      <th> Device          <th> Ports       <th> CPU        <th> Forwarding       <th> ONL Certified     <th> In Lab <th> ORC <th> OF-DPA <th> OpenNSL <th> SAI </tr>
 </thead>
-<tr> <td> Niagara 2948X12XLm   <td> 48x10G  + 12x40G  <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td> No <td> Yes*** <td> No <td> No </tr>
-<tr> <td> Niagara 2960X6XLm    <td> 60x10G  + 6x40G   <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td>  No <td> Yes*** <td> No <td> No </tr>
-<tr> <td> Niagara 2972Xm       <td> 72x10G            <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> Yes <td>  No <td> Yes*** <td> No <td> No </tr>
-<tr> <td> Niagara 2932XL       <td> 32x40G            <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td> No <td> Yes*** <td> No <td> No </tr>
-<tr> <td> Niagara 2948X6XL     <td> 48x10G  + 6x40G   <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td>  No <td> Yes*** <td> No <td> No </tr>
+<tr> <td> Niagara 2948X12XLm   <td> 48x10G  + 12x40G  <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td> No <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Niagara 2960X6XLm    <td> 60x10G  + 6x40G   <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td>  No <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Niagara 2972Xm       <td> 72x10G            <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> Yes <td>  No <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Niagara 2932XL       <td> 32x40G            <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td> No <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Niagara 2948X6XL     <td> 48x10G  + 6x40G   <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td>  No <td> Yes*** <td> Yes <td> No </tr>
 </table>
 
 Notes:
