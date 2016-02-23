@@ -30,6 +30,7 @@
 #include <sff/sff.h>
 #include <oom-shim/oom-shim.h>
 #include <oom-shim/oom_south.h>
+#include <oom-shim/oom_internal.h>
 
 int Initialized = 0;
 
@@ -68,7 +69,7 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
         
         pptr = &portlist[i];
         pptr->handle = (void *)(uintptr_t)port;
-        pptr->oom_class = OOM_PORT_CLASS_SFF;
+        pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
         sprintf(pptr->name, "port%d", port);
         i++;
         
@@ -79,24 +80,47 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
         }
 
         if(rv < 0){
-            printf("%4d  Error\n", port);
+            aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
             continue;
         }
 
         rv = onlp_sfp_eeprom_read(port, &data);
 
         if(rv < 0){
-            printf("%4d  Error}\n", port);
+            aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
             continue;
         }
      
         sff_info_t sff;
         sff_info_init(&sff, data);
-        if(!sff.supported) {
-            printf("%13d  UNK\n", port);
-            continue;
+      
+        if(sff.supported) {
+            pptr->oom_class = OOM_PORT_CLASS_SFF; 
         }
-        printf("The sfp_type is : %-14s",sff.sfp_type_name);
     }
     return 0;
+}
+
+int oom_get_function(oom_port_t* port, oom_functions_t function, int* rv){
+ return -1;   
+}
+
+int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int len, uint8_t* data){
+    int rv;
+    unsigned int port_num; 
+    uint8_t* idprom = NULL;
+
+    port_num = (unsigned int)(uintptr_t)port->handle;
+    rv = onlp_sfp_eeprom_read(port_num, &idprom);
+    if(rv < 0) {
+        aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
+    }
+    else {
+        aim_printf(&aim_pvs_stdout, "eeprom:\n%{data}\n", idprom, 128);
+        aim_free(idprom);
+    }
+    return 0;
+}
+int oom_get_memory_cfp(oom_port_t* port, int address, int len, uint16_t* data){
+    return -1;
 }
