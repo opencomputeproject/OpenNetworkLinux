@@ -52,7 +52,6 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
    
     if ((portlist == NULL) && (listsize == 0)){ /* asking # of ports */
         if(AIM_BITMAP_COUNT(&bitmap) == 0){
-            printf("No SFPs on this platform.\n");
             return 0;
         }
         else
@@ -61,37 +60,24 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
 
     AIM_BITMAP_ITER(&bitmap, port){
         int rv;
-        uint8_t* data;
         
         pptr = &portlist[i];
-        pptr->handle = (void *)(uintptr_t)port;
-        pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
-        sprintf(pptr->name, "port%d", port);
+        pptr->handle = (void *)(uintptr_t)port+1;
+        pptr->oom_class = OOM_PORT_CLASS_SFF; 
+        sprintf(pptr->name, "port%d", port+1);
         i++;
         
         rv = onlp_sfp_is_present(port);
         if(rv == 0){
             aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);
+            pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
             continue;
         }
 
         if(rv < 0){
             aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
+            pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
             continue;
-        }
-
-        rv = onlp_sfp_eeprom_read(port, &data);
-
-        if(rv < 0){
-            aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
-            continue;
-        }
-     
-        sff_info_t sff;
-        sff_info_init(&sff, data);
-      
-        if(sff.supported) {
-            pptr->oom_class = OOM_PORT_CLASS_SFF; 
         }
     }
     return 0;
@@ -104,7 +90,8 @@ int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int 
     uint8_t* idprom = NULL;
 
     port_num = (unsigned int)(uintptr_t)port->handle;
-    rv = onlp_sfp_eeprom_read(port_num, &idprom);
+    port_num -= 1;
+    rv = onlp_sfp_eeprom_read(port_num, &idprom);/*place holder implementation until onlp_sfp_eeprom_read() can be improved to handle subpages*/
     if(rv < 0) {
         aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
         return -1;
