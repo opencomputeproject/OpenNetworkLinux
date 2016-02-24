@@ -22,22 +22,21 @@
  *
  *
  ***********************************************************/
-#include <stdio.h>
-#include <stdlib.h>
 #include <errno.h>
 #include <onlp/onlp.h>
 #include <onlp/sfp.h>
 #include <sff/sff.h>
 #include <oom-shim/oom-shim.h>
 #include <oom-shim/oom_south.h>
-#include <oom-shim/oom_internal.h>
 
-int Initialized = 0;
 
-/*Initializing the SFP and ONLP modules*/
+/*
+*   Initializing the SFP and ONLP modules
+*   compiler calls this function while compiling 
+*/
+
 void __oom_shim_module_init__(void) {
     onlp_init();
-    Initialized = 1;
 }
 
 /*Gets the portlist of the SFP ports on the switch*/
@@ -46,9 +45,6 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
     int port,i=0;
     oom_port_t* pptr;
     
-    if(Initialized == 0){
-         __oom_shim_module_init__();
-    }
 
     onlp_sfp_bitmap_t bitmap;
     onlp_sfp_bitmap_t_init(&bitmap);
@@ -75,7 +71,7 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
         
         rv = onlp_sfp_is_present(port);
         if(rv == 0){
-            printf("module %d is not present\n", port);
+            aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);
             continue;
         }
 
@@ -101,12 +97,9 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
     return 0;
 }
 
-int oom_get_function(oom_port_t* port, oom_functions_t function, int* rv){
- return -1;   
-}
 
 int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int len, uint8_t* data){
-    int rv;
+    int rv,cur_offset;
     unsigned int port_num; 
     uint8_t* idprom = NULL;
 
@@ -114,13 +107,50 @@ int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int 
     rv = onlp_sfp_eeprom_read(port_num, &idprom);
     if(rv < 0) {
         aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
+        return -1;
     }
-    else {
-        aim_printf(&aim_pvs_stdout, "eeprom:\n%{data}\n", idprom, 128);
-        aim_free(idprom);
+
+#if SFF_EEPROM_DATA_DEBUG == 1 
+    aim_printf(&aim_pvs_stdout, "eeprom:\n%{data}\n", idprom, 256);/*print the hex data for debugging purpose*/
+#endif
+
+    if (address == 0xa0) {
+        cur_offset = SFF_A0_BASE;
+    } else if (address == 0xa2) {
+        cur_offset = SFF_A2_BASE;
+    } else {
+        aim_printf(&aim_pvs_stdout, "Error invalid address: 0x%02x\n", address);
+        return -EINVAL;
     }
+    cur_offset += page * 128;
+    cur_offset += offset;
+    
+    memcpy(data, &idprom[cur_offset], len); 
+    aim_free(idprom);
+    
     return 0;
 }
+
+int oom_get_function(oom_port_t* port, oom_functions_t function, int* rv){
+    //not implemented
+    return -1;
+}
+
 int oom_get_memory_cfp(oom_port_t* port, int address, int len, uint16_t* data){
+    //not implemented
+    return -1;
+}
+
+int oom_set_memory_sff(oom_port_t* port, int address, int page, int offset, int len, uint8_t* data){
+    //not implemented
+    return -1;
+}
+
+int oom_set_function(oom_port_t* port, oom_functions_t function, int value){
+    //not implemented
+    return -1;
+}
+int oom_set_memory_cfp(oom_port_t* port, int address, int len, uint16_t* data){
+    //not implemented
     return -1;
 }
