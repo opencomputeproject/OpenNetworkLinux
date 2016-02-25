@@ -60,24 +60,34 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
 
     AIM_BITMAP_ITER(&bitmap, port){
         int rv;
-        
+        uint8_t* data;
+    
         pptr = &portlist[i];
         pptr->handle = (void *)(uintptr_t)port+1;
-        pptr->oom_class = OOM_PORT_CLASS_SFF; 
+        pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
         sprintf(pptr->name, "port%d", port+1);
         i++;
         
         rv = onlp_sfp_is_present(port);
         if(rv == 0){
             aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);
-            pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
             continue;
         }
 
         if(rv < 0){
             aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
-            pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
             continue;
+        }
+        rv = onlp_sfp_eeprom_read(port, &data);
+        if(rv < 0){
+            aim_printf(&aim_pvs_stdout, "%4d  Error %{onlp_status}\n", port, rv);
+            continue;
+        } 
+        sff_info_t sff;
+        sff_info_init(&sff, data);
+        
+        if(sff.supported) {
+            pptr->oom_class = OOM_PORT_CLASS_SFF; 
         }
     }
     return 0;
