@@ -28,6 +28,10 @@
 #include <onlp/sys.h>
 #include <onlp/sfp.h>
 #include <sff/sff.h>
+#include <AIM/aim_log_handler.h>
+#include <syslog.h>
+
+static void platform_manager_daemon__(const char* pidfile);
 
 /**
  * Human-readable SFP inventory.
@@ -165,10 +169,12 @@ onlpdump_main(int argc, char* argv[])
     int x = 0;
     int S = 0;
     int l = 0;
+    int M = 0;
+    char* pidfile = NULL;
     const char* O = NULL;
     const char* t = NULL;
 
-    while( (c = getopt(argc, argv, "srehdojmipxlSt:O:")) != -1) {
+    while( (c = getopt(argc, argv, "srehdojmM:ipxlSt:O:")) != -1) {
         switch(c)
             {
             case 's': show=1; break;
@@ -180,6 +186,7 @@ onlpdump_main(int argc, char* argv[])
             case 'o': o=1; break;
             case 'x': x=1; break;
             case 'm': m=1; break;
+            case 'M': M=1; pidfile = optarg; break;
             case 'i': i=1; break;
             case 'p': p=1; show=-1; break;
             case 't': t = optarg; break;
@@ -188,6 +195,11 @@ onlpdump_main(int argc, char* argv[])
             case 'l': l=1; break;
             default: help=1; rv = 1; break;
             }
+    }
+
+    if(M) {
+        platform_manager_daemon__(pidfile);
+        exit(0);
     }
 
     if(help) {
@@ -200,6 +212,7 @@ onlpdump_main(int argc, char* argv[])
         printf("  -x   Dump Platform Info only.\n");
         printf("  -j   Dump ONIE data in JSON format.\n");
         printf("  -m   Run platform manager.\n");
+        printf("  -M   Run as platform manager daemon.\n");
         printf("  -i   Iterate OIDs.\n");
         printf("  -p   Show SFP presence.\n");
         printf("  -t   <file>  Decode TlvInfo data.\n");
@@ -302,10 +315,10 @@ onlpdump_main(int argc, char* argv[])
 
     if(m) {
         printf("Running the platform manager for 600 seconds...\n");
-        onlp_sys_platform_manage_start();
+        onlp_sys_platform_manage_start(0);
         sleep(600);
         printf("Stopping the platform manager.\n");
-        onlp_sys_platform_manage_stop();
+        onlp_sys_platform_manage_stop(1);
     }
 
     if(p) {
@@ -323,3 +336,75 @@ onlpdump_main(int argc, char* argv[])
 
     return 0;
 }
+
+#if AIM_CONFIG_INCLUDE_DAEMONIZE == 1
+
+#include <AIM/aim_daemon.h>
+#include <AIM/aim_pvs_syslog.h>
+#include <signal.h>
+#include <errno.h>
+
+void
+sighandler__(int signal)
+{
+    onlp_sys_platform_manage_stop(0);
+}
+
+static void
+platform_manager_daemon__(const char* pidfile)
+{
+    aim_pvs_t* aim_pvs_syslog = NULL;
+    aim_daemon_restart_config_t rconfig;
+    aim_daemon_config_t config;
+
+    memset(&config, 0, sizeof(config));
+    aim_daemon_restart_config_init(&rconfig, 1, 1);
+    AIM_BITMAP_CLR(&rconfig.signal_restarts, SIGTERM);
+    AIM_BITMAP_CLR(&rconfig.exit_restarts, 0);
+    rconfig.maximum_restarts=50;
+    rconfig.pvs = NULL;
+    config.wd = "/";
+
+    aim_daemonize(&config, &rconfig);
+    aim_log_handler_basic_init_all("onlpd",
+                               "/var/log/onlpd.log",
+                               1024*1024,
+                               99);
+    if(pidfile) {
+        FILE* fp = fopen(pidfile, "w");
+        if(fp == NULL) {
+            int e = errno;
+            aim_printf(aim_pvs_syslog, "fatal: open(%s): %s\n",
+                       pidfile, strerror(e));
+            aim_printf(&aim_pvs_stderr, "fatal: open(%s): %s\n",
+                       pidfile, strerror(e));
+
+            /* Don't attempt restart */
+            raise(SIGTERM);
+        }
+        fprintf(fp, "%d\n", getpid());
+        fclose(fp);
+    }
+
+    /** Signal handler for terminating the platform manager */
+    signal(SIGTERM, sighandler__);
+
+    /** Start and block in platform manager. */
+    onlp_sys_platform_manage_start(1);
+
+    /** Terminated via signal. Cleanup and exit. */
+    onlp_sys_platform_manage_stop(1);
+
+    aim_log_handler_basic_denit_all();
+    exit(0);
+}
+
+
+#else
+static void
+platform_manager_daemon__(const char* pidfile)
+{
+    fprintf(stderr, "Daemon mode not supported in this build.");
+    exit(1);
+}
+#endif
