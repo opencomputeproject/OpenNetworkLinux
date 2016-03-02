@@ -26,6 +26,8 @@ packages:
       builds/onlp-platform-defaults/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform-defaults.so : $libdir/
       builds/onlpd/$BUILD_DIR/${TOOLCHAIN}/bin/onlpd : $bindir/
 
+    init: $ONL/packages/base/any/onlp/src/onlpd.init
+
     changelog:  Change changes changes.,
 
 

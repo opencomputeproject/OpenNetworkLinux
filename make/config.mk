@@ -35,3 +35,11 @@ export MODULEMANIFEST := $(shell $(BUILDER)/tools/mmg.py --dirs $(ONL) $(ONLPM_O
 ONL_MAKE_FLAGS += --no-print-directory -s
 ONL_MAKE := $(MAKE) $(ONL_MAKE_FLAGS)
 ONL_V_at := @
+
+#
+# Some build and autogen tools require these settings.
+#
+export SUBMODULE_INFRA := $(ONL)/sm/infra
+export SUBMODULE_BIGCODE := $(ONL)/sm/bigcode
+
+
