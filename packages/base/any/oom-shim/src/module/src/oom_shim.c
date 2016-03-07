@@ -69,7 +69,7 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
         
         rv = onlp_sfp_is_present(port);
         if(rv == 0){
-            aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);
+            /* aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);*/
             pptr->oom_class = OOM_PORT_CLASS_UNKNOWN;
             continue;
         }
