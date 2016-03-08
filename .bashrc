@@ -13,8 +13,11 @@
 
 . setup.env
 
+set -e
+
 if [ -n "$ONL_AUTOBUILD" ]; then
     make all
+    exit 0
 else
     echo Ready to build OpenNetworkLinux.
 fi
