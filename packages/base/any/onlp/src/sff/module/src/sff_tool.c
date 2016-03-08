@@ -77,7 +77,7 @@ sff_tool(int argc, char* argv[])
         if(fread(data, 256, 1, stdin) == 1) {
             sff_info_t info;
             sff_info_init(&info, data);
-            if(info.supported) {
+            if(info.identified) {
                 sff_info_show(&info, &aim_pvs_stdout);
                 return 0;
             }

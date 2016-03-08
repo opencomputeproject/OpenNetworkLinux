@@ -81,7 +81,7 @@ show_inventory__(aim_pvs_t* pvs)
 
             sff_info_init(&sff, data);
 
-            if(!sff.supported) {
+            if(!sff.identified) {
                 /* Present but unidentified. */
                 aim_printf(pvs, "%13d  UNK\n", port);
                 continue;

@@ -983,8 +983,8 @@ aim_main(int argc, char* argv[])
         if( (rv=sff_info_init(&info, p->info.eeprom)) < 0) {
             AIM_DIE("index=%d sff_info_init=%d\n", i, rv);
         }
-        if (!info.supported) {
-            AIM_DIE("index=%d supported=0\n", i);
+        if (!info.identified) {
+            AIM_DIE("index=%d identified=0\n", i);
         }
 
         if(strcmp(info.vendor, p->info.vendor)) {

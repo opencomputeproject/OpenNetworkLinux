@@ -87,7 +87,7 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
         sff_info_t sff;
         sff_info_init(&sff, data);
         
-        if(sff.supported) {
+        if(sff.identified) {
             pptr->oom_class = OOM_PORT_CLASS_SFF; 
         }
     }
