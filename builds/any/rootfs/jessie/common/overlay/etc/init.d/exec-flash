@@ -1,0 +1,14 @@
+#! /bin/bash
+### BEGIN INIT INFO
+# Provides:        exec-flash
+# Required-Start:
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Execute script in /mnt/flash if it exists
+### END INIT INFO
+if [ -f /mnt/flash/init-script ]; then
+/mnt/flash/init-script
+else
+echo "No script found at /mnt/flash/init-script"
+fi
