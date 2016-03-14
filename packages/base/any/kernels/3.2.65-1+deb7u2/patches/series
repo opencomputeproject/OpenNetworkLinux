@@ -244,3 +244,5 @@ platform-accton-as7712_32x-device-drivers.patch
 platform-accton-as5812_54x-device-drivers.patch
 platform-accton-as6812_32x-device-drivers.patch
 platform-accton-as5812_54t-device-drivers.patch
+driver-mfd-lpc-ich.patch
+driver-watchdog-itco-wd.patch
