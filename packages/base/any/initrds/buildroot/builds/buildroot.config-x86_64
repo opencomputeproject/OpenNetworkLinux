@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Buildroot 2013.02-rc2-dirty Configuration
+# Buildroot 2013.02-rc2-g5e1a5c1-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_ARCH_IS_64=y
@@ -60,7 +60,7 @@ BR2_HOST_DIR="$(BASE_DIR)/host"
 # Mirrors and Download locations
 #
 BR2_PRIMARY_SITE="$(BUILDROOTMIRROR)"
-# BR2_PRIMARY_SITE_ONLY is not set
+BR2_PRIMARY_SITE_ONLY=y
 BR2_BACKUP_SITE="https://raw.githubusercontent.com/opennetworklinux/buildroot-download-cache/master/dl"
 BR2_KERNEL_MIRROR="http://www.kernel.org/pub/"
 BR2_GNU_MIRROR="http://ftp.gnu.org/pub/gnu"
@@ -456,7 +456,11 @@ BR2_PACKAGE_MTD_UBIRMVOL=y
 BR2_PACKAGE_MTD_UBIUPDATEVOL=y
 # BR2_PACKAGE_NFS_UTILS is not set
 # BR2_PACKAGE_NTFS_3G is not set
-# BR2_PACKAGE_SQUASHFS is not set
+BR2_PACKAGE_SQUASHFS=y
+BR2_PACKAGE_SQUASHFS_GZIP=y
+# BR2_PACKAGE_SQUASHFS_LZMA is not set
+# BR2_PACKAGE_SQUASHFS_LZO is not set
+# BR2_PACKAGE_SQUASHFS_XZ is not set
 # BR2_PACKAGE_SSHFS is not set
 # BR2_PACKAGE_UNIONFS is not set
 # BR2_PACKAGE_XFSPROGS is not set

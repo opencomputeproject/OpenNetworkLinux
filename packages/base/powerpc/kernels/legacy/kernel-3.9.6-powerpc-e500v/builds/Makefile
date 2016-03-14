@@ -24,7 +24,7 @@ KERNEL_DIR := $(ONL)/packages/base/any/kernels/legacy/linux-3.9.6
 
 $(BUILD_POWERPC_LINUX_85XX)/kernel-85xx: $(KERNEL_DIR)/arch/powerpc/configs/85xx/onl_mpc85xx_defconfig
 	mkdir -p $(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx
-	$(MAKE) -C $(KERNEL_DIR) 85xx/onl_mpc85xx_defconfig ARCH=powerpc O=$(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx
+	$(MAKE) -C $(KERNEL_DIR) 85xx/onl_mpc85xx_defconfig ARCH=powerpc O=$(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx $(ONL_MAKE_PARALLEL)
 	PATH=$$PATH:$(SWITCHLIGHT)/tools $(MAKE) -C $(KERNEL_DIR) uImage ARCH=powerpc O=$(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx
 	powerpc-linux-gnu-strip -o $(BUILD_POWERPC_LINUX_85XX)/kernel-85xx $(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx/vmlinux
 	cp $(BUILD_POWERPC_LINUX_85XX)/linux-build-85xx/vmlinux.bin.gz $(BUILD_POWERPC_LINUX_85XX)/kernel-85xx.bin.gz

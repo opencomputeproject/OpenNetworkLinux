@@ -5,9 +5,10 @@ Open Network Linux has a number of internal APIs to simplify porting to
 new hardware.  
 
 To support a new switch/device, there are three large software components
-that need device-specific drivers:
+that need device-specific drivers (information only known by the manufacturer
+of the switch/device):
 
-1. The ONL/ONIE installer -- how to actually install and boot ONL using ONIE
+1. The ONL/ONIE installer -- how to install and boot ONL using ONIE
 2. The ONLP platform drivers -- how to manage hardware once ONL is running
 3. Any packet forwarding device specific settings 
     (e.g., front panel port mappings, pre-emphesis settings)
@@ -69,7 +70,7 @@ directory structure for the installer driver is as follows:
                                             #       specific ONL OS abstractions (see below)
     ./$platform/$release/src/lib/install/$platform.sh    # Script called from installer.sh to partition
                                             # and install ONL and setup boot params (see below)
-    ./$platform/src/python/$plaform/__init__.py         # Platform specific python library (see below)
+    ./$platform/src/python/$platform/__init__.py         # Platform specific python library (see below)
 
 ONL Installer src/boot drivers
 ------------------------------

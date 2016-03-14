@@ -506,7 +506,7 @@ class OnlPackageGroup(object):
         for bp in buildpaths:
             if os.path.exists(bp):
                 MAKE = os.environ.get('MAKE', "make")
-                cmd = MAKE + ' -C ' + bp + " " + os.environ.get('ONLPM_MAKE_OPTIONS', "") + target
+                cmd = MAKE + ' -C ' + bp + " " + os.environ.get('ONLPM_MAKE_OPTIONS', "") + " " + os.environ.get('ONL_MAKE_PARALLEL', "") + " " + target
                 onlu.execute(cmd,
                              ex=OnlPackageError('%s failed.' % operation))
 

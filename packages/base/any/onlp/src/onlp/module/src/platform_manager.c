@@ -228,7 +228,7 @@ onlp_sys_platform_manage_thread__(void* vctrl)
 }
 
 int
-onlp_sys_platform_manage_start(void)
+onlp_sys_platform_manage_start(int block)
 {
     onlp_sys_platform_manage_init();
 
@@ -250,22 +250,39 @@ onlp_sys_platform_manage_start(void)
         return -1;
     }
 
+    if(block) {
+        onlp_sys_platform_manage_join();
+    }
+
     return 0;
 }
 
 int
-onlp_sys_platform_manage_stop(void)
+onlp_sys_platform_manage_stop(int block)
 {
     if(control__.eventfd > 0) {
         uint64_t zero = 1;
         /* Tell the thread to exit */
         write(control__.eventfd, &zero, sizeof(zero));
-        /* Wait for the thread to terminate */
-        pthread_join(control__.thread, NULL);
+
+        if(block) {
+            onlp_sys_platform_manage_join();
+        }
     }
     return 0;
 }
 
+int
+onlp_sys_platform_manage_join(void)
+{
+    if(control__.eventfd > 0) {
+        /* Wait for the thread to terminate */
+        pthread_join(control__.thread, NULL);
+        close(control__.eventfd);
+        control__.eventfd = -1;
+    }
+    return 0;
+}
 
 static int
 platform_psus_notify__(void)
@@ -273,6 +290,7 @@ platform_psus_notify__(void)
     static onlp_oid_t psu_oid_table[ONLP_OID_TABLE_SIZE] = {0};
     static onlp_psu_info_t psu_info_table[ONLP_OID_TABLE_SIZE];
     int i = 0;
+    static int flag[ONLP_OID_TABLE_SIZE] = {0};
 
     if(psu_oid_table[0] == 0) {
         /* We haven't retreived the system PSU oids yet. */
@@ -300,6 +318,26 @@ platform_psus_notify__(void)
             AIM_LOG_ERROR("Failure retreiving status of PSU ID %d",
                           pid);
             continue;
+        }
+
+        /* report initial failed state */
+        if ( !flag[i] ) {
+            if ( !(pi.status & 0x1) ) {
+                AIM_SYSLOG_WARN("PSU <id> is not present.",
+                                "The given PSU is not present.",
+                                "PSU %d is not present.", pid);
+            }
+            if ( pi.status & ONLP_PSU_STATUS_FAILED ) {
+                AIM_SYSLOG_CRIT("PSU <id> has failed.",
+                                "The given PSU has failed.",
+                                "PSU %d has failed.", pid);
+            }
+            if ((pi.status & 0x01) && !(pi.status & ONLP_PSU_STATUS_FAILED) && (pi.status & ONLP_PSU_STATUS_UNPLUGGED)) {
+                AIM_SYSLOG_WARN("PSU <id> power cord not plugged.",
+                                "The given PSU does not have power cord plugged.",
+                                "PSU %d power cord not plugged.", pid);
+            }
+            flag[i] = 1;
         }
 
         /*
@@ -363,6 +401,7 @@ platform_fans_notify__(void)
     static onlp_oid_t fan_oid_table[ONLP_OID_TABLE_SIZE] = {0};
     static onlp_fan_info_t fan_info_table[ONLP_OID_TABLE_SIZE];
     int i = 0;
+    static int flag[ONLP_OID_TABLE_SIZE] = {0};
 
     if(fan_oid_table[0] == 0) {
         /* We haven't retreived the system FAN oids yet. */
@@ -390,6 +429,21 @@ platform_fans_notify__(void)
             AIM_LOG_ERROR("Failure retreiving status of FAN ID %d",
                           fid);
             continue;
+        }
+
+        /* report initial failed state */
+        if ( !flag[i] ) {
+            if ( !(fi.status & 0x1) ) {
+                    AIM_SYSLOG_WARN("Fan <id> is not present.",
+                                "The given Fan is not present.",
+                                "Fan %d is not present.", fid);
+            }
+            if ( fi.status & ONLP_FAN_STATUS_FAILED ) {
+                    AIM_SYSLOG_CRIT("Fan <id> has failed.",
+                                "The given fan has failed.",
+                                "Fan %d has failed.", fid);
+            }
+           flag[i] = 1;
         }
 
         /*

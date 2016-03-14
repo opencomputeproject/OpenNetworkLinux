@@ -17,8 +17,8 @@ g_current_user = getpass.getuser()
 g_current_uid  = os.getuid()
 g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
 
-g_builder7_image_name="opennetworklinux/builder7:1.0"
-g_builder8_image_name="opennetworklinux/builder8:1.0"
+g_builder7_image_name="opennetworklinux/builder7:1.1"
+g_builder8_image_name="opennetworklinux/builder8:1.1"
 
 g_default_image_name=g_builder7_image_name
 g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
@@ -96,6 +96,10 @@ ap.add_argument("--volumes",
                 metavar='DIRECTORY',
                 default=[])
 
+ap.add_argument("--no-mount-current",
+                help="Do not mount the current working directory. The default is the current working directory and $HOME",
+                action='store_true')
+
 ap.add_argument("--autobuild",
                 help="Automatic build in isolation mode.",
                 action='store_true')
@@ -159,6 +163,11 @@ if ops.exec_:
 else:
 
    ops.volumes += [ '/lib/modules' ]
+
+   if not ops.no_mount_current:
+      # Add the current working directory to the volume list.
+      ops.volumes.append(os.getcwd())
+
    g_arg_d['volume_options']  = " ".join( [ " -v %s:%s " % (v, v) for v in ops.volumes ] )
 
    g_docker_arguments = "docker run --privileged %(interactive)s -t -e DOCKER_IMAGE=%(image)s  --name %(name)s %(ssh_options)s %(volume_options)s  " % g_arg_d

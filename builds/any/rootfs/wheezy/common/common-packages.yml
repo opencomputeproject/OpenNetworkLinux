@@ -68,5 +68,6 @@
 - onl-faultd
 - onl-loader-initscripts
 - onlp-snmpd
+- oom-shim
 
 

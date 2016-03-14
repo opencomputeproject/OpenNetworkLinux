@@ -62,16 +62,19 @@ ONL Manual Install
 
 2) Boot switch and choose "ONIE: Rescue" to go to ONIE''s interactive mode
 
-3) From the ONIE# prompt run "install_url http://opennetlinux.org/binaries/latest-wedge.installer"
+3) From the ONIE# prompt run "install_url http://opennetlinux.org/binaries/latest-wedge-2.0.installer"
 
 4) Wait for the install to finish and the system to reboot
 
 5) One the onl login prompt appears login with the username root and the
 password "onl"
 
-6) You can now change the root password
+6) Configure the ma1 interface either via dhcp (dhclient ma1) or manually
 
-7) Configure the ma1 interface either via dhcp (dhclient ma1) or manually
+7) Install fboss using the commands
+
+    #> apt-get update
+    #> apt-get install fboss
 
 8) From the command prompt you can start fboss by using the command 
 "service fboss_wedge_agent start"
@@ -126,19 +129,35 @@ Now press RETURN here to jump into ONIE''s manual installer mode.  You should se
 
 Then simply download the latest ONL wedge installer from the website and run it.
 
-        ONIE:/ # install_url http://opennetlinux.org/binaries/latest-wedge.installer
+        ONIE:/ # install_url http://opennetlinux.org/binaries/latest-wedge-2.0.installer
 
         Connecting to opennetlinux.org (107.170.237.53:80)
         Open Network Installer running under ONIE.
-        Installer Version: Open Network Linux 019421c (amd64.all,2015.11.17.06.23,019421c116940d87d5a41100d1b8a64cbba50252)
-        Detected platform: x86-64-accton-wedge-16x-r0
-        Installing in standalone mode.
-        Unpacking Open Network Linux installer files...
+        Installing Open Network Linux Software Image (ONL-2.0.0_ONL-OS_2016-02-12.2304-b9b7e50_AMD64.swi)...
+        Installation finished. No error reported.
+        Install finished.  Rebooting to Open Network Linux.
         ...
 
         Connecting tty=ttyS1 with /sbin/pgetty
 
-        Open Network Linux  019421c (amd64.all,2015.11.17.06.23,019421c116940d87d5a41100d1b8a64cbba50252)
+        Debian GNU/Linux 8 localhost ttyS1
 
-        onl-wedge login:
+        localhost login: root
+        Password:
+        Linux localhost 3.2.65-1+deb7u2-OpenNetworkLinux #1 SMP Fri Feb 12 23:10:15 UTC 2016 x86_64
 
+        root@localhost:~# apt-get update
+        root@localhost:~# apt-get install fboss
+        WARNING: The following packages cannot be authenticated!
+        folly wangle fbthrift fboss-py fboss-core fboss
+        Install these packages without verification? [y/N] y
+
+        root@localhost:~# service fboss_wedge_agent start
+        [....] Starting  Facebook FBOSS agent: fboss_wedge_agent
+        Error: OpenNSL library not found, attempting to grab from GitHub
+        Saving to: ‘/usr/local/lib/libopennsl.so.1’
+
+        OpenNSL library succesfully installed
+        [ ok --- Loading   linux-kernel-bde   linux-user-bde   linux-bcm-knet  ; Creating devices .
+        root@localhost:~# service fboss_wedge_agent status
+        [ ok ] fboss_wedge_agent is running.
