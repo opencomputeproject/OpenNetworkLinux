@@ -1156,17 +1156,18 @@ index 0000000..8feac78
 +
 +#endif
 diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
-index b2b6916..66a9bdf 100644
+index b2b6916..08f92c8 100644
 --- a/drivers/mfd/Kconfig
 +++ b/drivers/mfd/Kconfig
-@@ -658,6 +658,16 @@ config MFD_TIMBERDALE
- 	The timberdale FPGA can be found on the Intel Atom development board
- 	for in-vehicle infontainment, called Russellville.
- 
+@@ -658,6 +658,17 @@ config MFD_TIMBERDALE
+        The timberdale FPGA can be found on the Intel Atom development board
+        for in-vehicle infontainment, called Russellville.
+
 +config LPC_ICH
 +        tristate "Intel ICH LPC"
 +        depends on PCI
 +        select MFD_CORE
++        default y
 +        help
 +          The LPC bridge function of the Intel ICH provides support for
 +          many functional units. This driver provides needed support for
@@ -1174,8 +1175,8 @@ index b2b6916..66a9bdf 100644
 +          watchdog.
 +
  config LPC_SCH
- 	tristate "Intel SCH LPC"
- 	depends on PCI
+        tristate "Intel SCH LPC"
+        depends on PCI
 diff --git a/drivers/mfd/Makefile b/drivers/mfd/Makefile
 index b2292eb..4aaf80c 100644
 --- a/drivers/mfd/Makefile
