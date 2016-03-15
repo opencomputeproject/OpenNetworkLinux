@@ -1165,7 +1165,7 @@ index b2b6916..08f92c8 100644
 
 +config LPC_ICH
 +        tristate "Intel ICH LPC"
-+        depends on PCI
++        depends on PCI && X86_64
 +        select MFD_CORE
 +        default y
 +        help
