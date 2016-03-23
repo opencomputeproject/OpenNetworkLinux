@@ -38,8 +38,8 @@
 
 #include "platform_lib.h"
 
-#define NUM_OF_THERMAL_ON_MAIN_BROAD  3
-#define NUM_OF_FAN_ON_MAIN_BROAD      6
+#define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
+#define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
 #define NUM_OF_PSU_ON_MAIN_BROAD      2
 #define NUM_OF_LED_ON_MAIN_BROAD      5
 
