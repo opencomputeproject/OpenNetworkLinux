@@ -164,44 +164,64 @@ onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     iof_t iof;
     onlp_thermal_info_t ti;
     VALIDATENR(id);
+    int yaml;
 
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
 
 
     rv = onlp_thermal_info_get(id, &ti);
-    iof_push(&iof, "Thermal %d", ONLP_OID_ID_GET(id));
+
+    yaml = flags & ONLP_OID_SHOW_F_YAML;
+
+    if(yaml) {
+        iof_push(&iof, "- ");
+        iof_iprintf(&iof, "Name: Thermal %d", ONLP_OID_ID_GET(id));
+    }
+    else {
+        iof_push(&iof, "Thermal %d", ONLP_OID_ID_GET(id));
+    }
+
     if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+        if(yaml) {
+            iof_iprintf(&iof, "State: Error");
+            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
+        }
+        else {
+            onlp_oid_info_get_error(&iof, rv);
+        }
     }
     else {
         onlp_oid_show_description(&iof, &ti.hdr);
         if(ti.status & 0x1) {
             /* Present */
             if(ti.status & ONLP_THERMAL_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: Sensor FAILED");
+                iof_iprintf(&iof, "Status: Failed");
             }
             else {
-                iof_iprintf(&iof, "Status: Sensor Functional");
+                iof_iprintf(&iof, "Status: Functional");
                 if(ti.caps & ONLP_THERMAL_CAPS_GET_TEMPERATURE) {
-                    iof_iprintf(&iof, "Temperature: %d.%d C.",
+                    iof_iprintf(&iof, "Temperature: %d.%d C",
                                 ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.mcelsius));
                 }
+#if ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS == 1
+
                 if(ti.caps & ONLP_THERMAL_CAPS_GET_ANY_THRESHOLD) {
-                    iof_push(&iof, "Thresholds");
+                    iof_push(&iof, "Thresholds:");
                     if(ti.caps & ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD) {
-                        iof_iprintf(&iof, "Warning : %d.%d C.",
+                        iof_iprintf(&iof, "Warning : %d.%d C",
                                     ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.warning));
                     }
                     if(ti.caps & ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD) {
-                        iof_iprintf(&iof, "Error   : %d.%d C.",
+                        iof_iprintf(&iof, "Error   : %d.%d C",
                                     ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.error));
                     }
                     if(ti.caps & ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD) {
-                        iof_iprintf(&iof, "Shutdown: %d.%d C.",
+                        iof_iprintf(&iof, "Shutdown: %d.%d C",
                                     ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.shutdown));
                     }
                     iof_pop(&iof);
                 }
+#endif
             }
         }
         else {

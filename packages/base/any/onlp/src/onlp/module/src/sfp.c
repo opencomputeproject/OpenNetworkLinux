@@ -399,3 +399,34 @@ onlp_sfp_vioctl_locked__(int port, va_list vargs)
 ONLP_LOCKED_API2(onlp_sfp_vioctl, int, port, va_list, vargs);
 
 
+int
+onlp_sfp_dev_readb_locked__(int port, uint8_t devaddr, uint8_t addr)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_readb(port, devaddr, addr);
+}
+ONLP_LOCKED_API3(onlp_sfp_dev_readb, int, port, uint8_t, devaddr, uint8_t, addr);
+
+int
+onlp_sfp_dev_writeb_locked__(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_writeb(port, devaddr, addr, value);
+}
+ONLP_LOCKED_API4(onlp_sfp_dev_writeb, int, port, uint8_t, devaddr, uint8_t, addr, uint8_t, value);
+
+int
+onlp_sfp_dev_readw_locked__(int port, uint8_t devaddr, uint8_t addr)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_readw(port, devaddr, addr);
+}
+ONLP_LOCKED_API3(onlp_sfp_dev_readw, int, port, uint8_t, devaddr, uint8_t, addr);
+
+int
+onlp_sfp_dev_writew_locked__(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_writew(port, devaddr, addr, value);
+}
+ONLP_LOCKED_API4(onlp_sfp_dev_writew, int, port, uint8_t, devaddr, uint8_t, addr, uint16_t, value);

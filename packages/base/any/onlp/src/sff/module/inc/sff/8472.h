@@ -777,13 +777,18 @@ _sff8472_media_zr(const uint8_t *idprom)
     if (SFF8472_MEDIA_XGE_LRM(idprom)) return 0;
     if (SFF8472_MEDIA_XGE_ER(idprom)) return 0;
 
-    /* advertise media and tech as per FC */
-    if (_sff8472_tech_fc_ll(idprom) == 0) return 0;
-    if (_sff8472_fc_media_sm(idprom) == 0) return 0;
-
+    /* JSM-01ZWBA1 from JDSU does not have FC field(idprom[7~9] programmed,
+     * so check other fields first */
     /* at least 10GbE */
     if (!_sff8472_bitrate_xge(idprom)) return 0;
 
+    /* JSM-01ZWBA1 from JDSU is 80km */
+    if (idprom[14] == 80)
+        return 1;
+
+    /* advertise media and tech as per FC */
+    if (_sff8472_tech_fc_ll(idprom) == 0) return 0;
+    if (_sff8472_fc_media_sm(idprom) == 0) return 0;
     /* at least 40km of single-mode */
     if ((idprom[14] > 40) && (idprom[15] == 0xff))
         return 1;

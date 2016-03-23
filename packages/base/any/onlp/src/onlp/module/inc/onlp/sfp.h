@@ -143,6 +143,36 @@ int onlp_sfp_denit(void);
  */
 int onlp_sfp_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst);
 
+
+/**
+ * @brief Read a byte from an address on the given SFP port's bus.
+ * @param port The port number.
+ * @param devaddr The device address.
+ * @param addr The address.
+ */
+int onlp_sfp_dev_readb(int port, uint8_t devaddr, uint8_t addr);
+
+/**
+ * @brief Write a byte to an address on the given SFP port's bus.
+ */
+int onlp_sfp_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value);
+
+/**
+ * @brief Read a byte from an address on the given SFP port's bus.
+ * @param port The port number.
+ * @param devaddr The device address.
+ * @param addr The address.
+ */
+int onlp_sfp_dev_readw(int port, uint8_t devaddr, uint8_t addr);
+
+/**
+ * @brief Write a byte to an address on the given SFP port's bus.
+ */
+int onlp_sfp_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value);
+
+
+
+
 /**
  * @brief Dump the status of all SFPs
  * @param pvs The output pvs.

@@ -174,7 +174,15 @@ onlpdump_main(int argc, char* argv[])
     const char* O = NULL;
     const char* t = NULL;
 
-    while( (c = getopt(argc, argv, "srehdojmM:ipxlSt:O:")) != -1) {
+    /**
+     * debug trap
+     */
+    if(argc > 1 && !strcmp(argv[1], "debug")) {
+        onlp_init();
+        return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+    }
+
+    while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:")) != -1) {
         switch(c)
             {
             case 's': show=1; break;
@@ -193,13 +201,9 @@ onlpdump_main(int argc, char* argv[])
             case 'O': O = optarg; break;
             case 'S': S=1; break;
             case 'l': l=1; break;
+            case 'y': show=1; showflags |= ONLP_OID_SHOW_F_YAML; break;
             default: help=1; rv = 1; break;
             }
-    }
-
-    if(M) {
-        platform_manager_daemon__(pidfile);
-        exit(0);
     }
 
     if(help) {
@@ -208,6 +212,7 @@ onlpdump_main(int argc, char* argv[])
         printf("  -s   Use show() instead of dump().\n");
         printf("  -r   Recursive show(). Implies -s\n");
         printf("  -e   Extended show(). Implies -s\n");
+        printf("  -y   Yaml show(). Implies -s\n");
         printf("  -o   Dump ONIE data only.\n");
         printf("  -x   Dump Platform Info only.\n");
         printf("  -j   Dump ONIE data in JSON format.\n");
@@ -223,7 +228,7 @@ onlpdump_main(int argc, char* argv[])
     }
 
 
-    if(t){
+    if(t) {
         int rv;
         onlp_onie_info_t onie;
         rv = onlp_onie_decode_file(&onie, t);
@@ -239,6 +244,11 @@ onlpdump_main(int argc, char* argv[])
     }
 
     onlp_init();
+
+    if(M) {
+        platform_manager_daemon__(pidfile);
+        exit(0);
+    }
 
     if(l) {
         extern int onlp_api_lock_test(void);

@@ -48,6 +48,13 @@ onlp_sysi_platform_get(void)
     return ONLP_SYSI_PLATFORM_NAME_DEFAULT;
 }
 
+int __ONLP_DEFAULTI
+onlp_sysi_debug(aim_pvs_t* pvs, int argc, char* argv[])
+{
+    aim_printf(pvs, "This platform does not support debug features.\n");
+    return -1;
+}
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_platform_set(const char* p));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_onie_data_phys_addr_get(void** physaddr));

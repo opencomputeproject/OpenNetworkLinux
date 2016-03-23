@@ -49,12 +49,7 @@ onlp_oid_show_iof_init_default(iof_t* iof, aim_pvs_t* pvs, uint32_t flags)
         iof->level=1;
         iof->indent_terminator="";
         iof->pop_string = NULL;
-        if(flags & ONLP_OID_SHOW_F_YAML) {
-            iof->push_string = ":";
-        }
-        else {
-            iof->push_string = "";
-	    }
+        iof->push_string = "";
     }
 }
 

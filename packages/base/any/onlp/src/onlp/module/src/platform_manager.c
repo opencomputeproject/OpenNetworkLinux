@@ -284,6 +284,7 @@ onlp_sys_platform_manage_join(void)
     return 0;
 }
 
+
 static int
 platform_psus_notify__(void)
 {
