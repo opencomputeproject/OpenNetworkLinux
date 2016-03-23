@@ -42,14 +42,6 @@ index ea97f4a..818dd01 100644
  obj-$(CONFIG_SENSORS_AD7314)	+= ad7314.o
  obj-$(CONFIG_SENSORS_AD7414)	+= ad7414.o
  obj-$(CONFIG_SENSORS_AD7418)	+= ad7418.o
-@@ -141,7 +143,6 @@ obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
- obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
- obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
- obj-$(CONFIG_SENSORS_QUANTA_LY_HWMON)	+= quanta-ly-hwmon.o
--obj-$(CONFIG_SENSORS_YM2651Y)   += ym2651y.o
- 
- obj-$(CONFIG_PMBUS)		+= pmbus/
- 
 diff --git a/drivers/hwmon/accton_as5812_54x_fan.c b/drivers/hwmon/accton_as5812_54x_fan.c
 new file mode 100644
 index 0000000..3e25db1

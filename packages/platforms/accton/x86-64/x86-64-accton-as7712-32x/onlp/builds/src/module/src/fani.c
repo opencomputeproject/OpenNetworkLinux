@@ -57,7 +57,7 @@ typedef struct fan_path_S
 
 #define _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) \
     { #prj"fan"#id"_fault", #prj"fan"#id"_front_speed_rpm", \
-      #prj"fan"#id"_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
+      #prj"fan_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
 
 #define MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id)
 
@@ -74,8 +74,8 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_4_ON_MAIN_BOARD),
     MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_5_ON_MAIN_BOARD),
     MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_6_ON_MAIN_BOARD),
-    MAKE_FAN_PATH_ON_PSU(10-0058),
-    MAKE_FAN_PATH_ON_PSU(11-005b)
+    MAKE_FAN_PATH_ON_PSU(11-005b),
+    MAKE_FAN_PATH_ON_PSU(10-0058)
 };
 
 #define MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(id) \

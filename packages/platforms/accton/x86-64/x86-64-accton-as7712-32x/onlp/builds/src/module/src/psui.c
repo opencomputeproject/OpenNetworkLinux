@@ -193,6 +193,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         case PSU_TYPE_AC_B2F:
             ret = psu_ym2651y_info_get(info);
             break;
+        case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
+            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+            info->status &= ~ONLP_PSU_STATUS_FAILED;
+            ret = ONLP_STATUS_OK;
+            break;	
         default:
             ret = ONLP_STATUS_E_UNSUPPORTED;
             break;
