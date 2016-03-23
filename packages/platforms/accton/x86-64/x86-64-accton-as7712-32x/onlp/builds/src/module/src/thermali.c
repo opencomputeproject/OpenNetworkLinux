@@ -143,7 +143,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     VALIDATE(id);
 	
     local_id = ONLP_OID_ID_GET(id);
-    DEBUG_PRINT("\n[Debug][%s][%d][local_id: %d]", __FUNCTION__, __LINE__, local_id);			
 	
     /* Set the onlp_oid_hdr_t and capabilities */		
     *info = linfo[local_id];

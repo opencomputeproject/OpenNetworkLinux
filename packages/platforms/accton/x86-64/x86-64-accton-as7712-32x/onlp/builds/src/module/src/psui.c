@@ -197,7 +197,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             info->status |= ONLP_PSU_STATUS_UNPLUGGED;
             info->status &= ~ONLP_PSU_STATUS_FAILED;
             ret = ONLP_STATUS_OK;
-            break;	
+            break;
         default:
             ret = ONLP_STATUS_E_UNSUPPORTED;
             break;
