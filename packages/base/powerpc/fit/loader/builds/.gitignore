@@ -2,3 +2,4 @@ kernel-*
 *.itb
 *.its
 loader-initrd-powerpc
+manifest.json

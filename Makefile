@@ -58,3 +58,8 @@ docker: docker_check
 # create an interative docker shell, for debugging builds
 docker-debug: docker_check
 	@docker/tools/onlbuilder -$(VERSION) --isolate --hostname onlbuilder$(VERSION) --pull
+
+
+versions:
+	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
+
