@@ -34,11 +34,6 @@ class Loader_Upgrade(ubase.BaseUpgrade):
         self.next_version = self.load_json(NEXT_LOADER_VERSIONS_JSON,
                                            "version", {}).get('RELEASE_ID', None)
 
-        # These will be used by the derived class's implementation.
-        (udir, um, data) = self.platform.upgrade_manifest("loader")
-        self.manifest = data
-
-
     def summarize(self):
         self.logger.info("Current Loader Version: %s" % self.current_version)
         self.logger.info("   Next Loader Version: %s" % self.next_version)
@@ -52,41 +47,52 @@ class Loader_Upgrade(ubase.BaseUpgrade):
 
 class Loader_Upgrade_ppc(Loader_Upgrade):
 
-    PPC_FIT_UPGRADE_IMAGE_PLATFORM="/etc/onl/upgrade/ppc/%s.itb"
-    PPC_FIT_UPGRADE_IMAGE_ALL="/etc/onl/upgrade/ppc/all.itb"
-    PPC_FIT_LOADER_IMAGE_NAME="switchlight-loader"
-
     def do_upgrade(self, forced=False):
+
+        PPC_FIT_UPGRADE_IMAGE_PLATFORM="/etc/onl/upgrade/ppc/%s.itb" % self.platform.platform()
+        PPC_FIT_UPGRADE_IMAGE_ALL="/etc/onl/upgrade/ppc/onl-loader-fit.itb"
+        PPC_FIT_LOADER_IMAGE_NAME="%s.itb" % self.platform.platform()
 
         #
         # The upgrade/ppc directory must have a FIT image called $PPC_FIT_UPGRADE_IMAGE (see constants above)
-        # This is obviously janky.
+        # This is obviously a little janky.
         #
         fit_image = None
 
-        if os.path.exists(self.PPC_FIT_UPGRADE_IMAGE_PLATFORM % self.swlp.platform()):
-            fit_image = self.PPC_FIT_UPGRADE_IMAGE_PLATFORM % self.swlp.platform()
-        elif os.path.exists(self.PPC_FIT_UPGRADE_IMAGE_ALL):
-            fit_image = self.PPC_FIT_UPGRADE_IMAGE_ALL
+        if os.path.exists(PPC_FIT_UPGRADE_IMAGE_PLATFORM):
+            fit_image = PPC_FIT_UPGRADE_IMAGE_PLATFORM
+        elif os.path.exists(PPC_FIT_UPGRADE_IMAGE_ALL):
+            fit_image = PPC_FIT_UPGRADE_IMAGE_ALL
         else:
             self.abort("The PPC Upgrade FIT image is missing. Upgrade cannot continue.")
 
         #
-        # The manifest says which partition contains the loader, and whether
-        # the loader is stored as a file in that partition or written raw
-        # directly to it.
+        # The platform configuration file will describe which partition
+        # and which format should be used to store the FIT image.
         #
-        partition = self.manifest.get('partition', None)
-        if not partition:
-            self.abort("The platform upgrade manifest does not contain a valid partition key.")
+        partition = None
+        raw = False
+        pc = self.platform.platform_config
 
-        if self.manifest.get('raw', False):
+        if pc:
+            if 'loader' in pc and pc['loader']:
+                if 'partition' in pc['loader']:
+                    partition = pc['loader']['partition']
+                else:
+                    self.abort("No partition listed in the loader section of the platform configuration.")
+                raw = pc['loader'].get('raw', False)
+            else:
+                self.abort("No loader section listed in the platform configuration.")
+        else:
+            self.abort("No platform configuration.")
+
+        if raw:
             #
             # The loader file is written raw to the given partition.
             #
             print "Writing %s to %s..." % (fit_image, partition)
-            if os.system("dd of=/dev/%s if=%s" % (partition, fit_image)) != 0:
-                self.abort("Failure writing loader data to partition." % (partition))
+            if os.system("dd of=%s if=%s" % (partition, fit_image)) != 0:
+                self.abort("Failure writing loader data to partition %s." % (partition))
 
         else:
             #
@@ -94,7 +100,7 @@ class Loader_Upgrade_ppc(Loader_Upgrade):
             #
             mdir="/mnt/upgrade/loader"
             self.mount(mdir, partition=partition)
-            self.copyfile(fit_image, os.path.join(mdir, self.PPC_FIT_LOADER_IMAGE_NAME))
+            self.copyfile(fit_image, os.path.join(mdir, PPC_FIT_LOADER_IMAGE_NAME))
             self.umount(mdir)
 
         self.reboot()

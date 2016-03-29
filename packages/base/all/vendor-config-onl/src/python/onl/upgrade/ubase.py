@@ -353,7 +353,7 @@ If you choose not to perform this upgrade booting cannot continue.""" % self.aty
             os.makedirs(location)
 
         if partition:
-            cmd = "mount /dev/%s %s " % (partition,location)
+            cmd = "mount %s %s " % (partition,location)
             name = partition
 
         if label:
