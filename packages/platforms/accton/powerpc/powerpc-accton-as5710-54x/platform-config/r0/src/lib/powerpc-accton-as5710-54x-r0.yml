@@ -3,4 +3,7 @@ powerpc-accton-as5710-54x-r0:
     kernel: onl-kernel-3.8.13-powerpc-e500mc:powerpc, kernel-3.8.13-powerpc-e500mc.bin.gz
     dtb: onl-kernel-3.8.13-powerpc-e500mc:powerpc, powerpc-accton-as5710-54x-r0.dtb
 
+  loader:
+    partition: /dev/sda1
+    raw: True
 
