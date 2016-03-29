@@ -105,6 +105,16 @@ class OnlPlatformBase(object):
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(),
                            required=False)
 
+        # Load the platform config yaml file
+        y = os.path.join(self.basedir_onl(), "%s.yml" % self.platform())
+        if os.path.exists(y):
+            self.platform_config = yaml.load(open(y))
+            if self.platform() in self.platform_config:
+                self.platform_config = self.platform_config[self.platform()]
+        else:
+            self.platform_config = {}
+
+
     def add_info_dict(self, name, d, klass=None):
         setattr(self, name, OnlInfoObject(d, klass))
 
