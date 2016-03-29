@@ -191,6 +191,20 @@ class OnlPlatformBase(object):
                  self.sys_oid_vendor() +
                  self.sys_oid_platform());
 
+    def onie_version(self):
+        return self.onie_info.ONIE_VERSION
+
+    def upgrade_manifest(self, type_, override_dir=None):
+        if override_dir:
+            m = os.path.join(override_dir, "manifest.json")
+        else:
+            m = os.path.join(self.basedir_onl(), "upgrade", type_, "manifest.json")
+
+        if os.path.exists(m):
+            return (os.path.dirname(m), m, json.load(file(m)))
+        else:
+            return (None, None, None)
+
 
     def new_device(self, driver, addr, bus, devdir):
         if not os.path.exists(os.path.join(bus, devdir)):
