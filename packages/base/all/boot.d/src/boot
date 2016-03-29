@@ -12,7 +12,6 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 export PATH
 
 for script in `ls /etc/boot.d/[0-9]* | sort`; do
-    echo "boot.d: Running $script..."
     $script
 done
 
