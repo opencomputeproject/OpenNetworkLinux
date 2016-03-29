@@ -62,3 +62,4 @@ docker-debug: docker_check
 
 versions:
 	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
+
