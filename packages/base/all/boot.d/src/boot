@@ -15,4 +15,9 @@ for script in `ls /etc/boot.d/[0-9]* | sort`; do
     $script
 done
 
+#
+# Wait for console to flush prior to starting rc.S
+#
+sleep .1
+
 
