@@ -55,8 +55,6 @@ Configure:
     - ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/common/overlay
 
   update-rc.d:
-    - 'initdev defaults'
-    - 'onl-platform-baseconf defaults'
     - 'faultd defaults'
     - 'onlpd defaults'
     - 'snmpd remove'
