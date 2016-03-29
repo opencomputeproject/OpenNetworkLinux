@@ -18,6 +18,6 @@ done
 #
 # Wait for console to flush prior to starting rc.S
 #
-sleep .1
+sleep 1
 
 
