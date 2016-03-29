@@ -277,11 +277,11 @@ class BaseUpgrade(object):
 
 
     def __upgrade_optional(self):
-        instructions = """%s upgrade should be performed before continuing for optimal Switch Light
+        instructions = """%s upgrade should be performed before continuing for optimal
 performance on this system.
 
 While it is recommended that you perform this upgrade it is optional and you
-may continue booting Switch Light for testing purposes at this time.
+may continue booting for testing purposes at this time.
 
 Please note that you will be asked again each time at boot to perform
 this upgrade. Automatic booting will not be possible until the upgrade
@@ -294,9 +294,8 @@ is performed.""" % self.atype
             self.finish("Upgrade cancelled.")
 
     def __upgrade_required(self):
-        instructions = """%s upgrade must be performed before Switch Light can run on this system.
-If you choose not to perform this upgrade Switch Light cannot continue
-booting.""" % self.atype
+        instructions = """%s upgrade must be performed before the software can run on this system.
+If you choose not to perform this upgrade booting cannot continue.""" % self.atype
 
         if self.upgrade_prompt(instructions) == True:
             self.__do_upgrade()
