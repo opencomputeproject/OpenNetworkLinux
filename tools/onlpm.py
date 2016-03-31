@@ -1012,7 +1012,7 @@ if __name__ == '__main__':
     ap.add_argument("--csv", action='store_true')
     ap.add_argument("--show-group", action='store_true')
     ap.add_argument("--arch")
-    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'all']),
+    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'arm', 'all']),
     ap.add_argument("--pmake", action='store_true')
     ap.add_argument("--prereq-packages", action='store_true')
     ap.add_argument("--lookup", metavar='PACKAGE')
@@ -1238,5 +1238,3 @@ if __name__ == '__main__':
     except (OnlPackageError, onlyaml.OnlYamlError), e:
         logger.error(e)
         sys.exit(1)
-
-
