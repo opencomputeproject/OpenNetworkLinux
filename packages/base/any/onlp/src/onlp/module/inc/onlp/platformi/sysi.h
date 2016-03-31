@@ -154,4 +154,9 @@ int onlp_sysi_platform_info_get(onlp_platform_info_t* info);
  */
 void onlp_sysi_platform_info_free(onlp_platform_info_t* info);
 
+/**
+ * @brief Builtin platform debug tool.
+ */
+int onlp_sysi_debug(aim_pvs_t* pvs, int argc, char** argv);
+
 #endif /* __ONLP_SYSI_H__ */

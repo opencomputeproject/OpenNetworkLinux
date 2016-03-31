@@ -29,7 +29,7 @@
 #include "x86_64_accton_as7712_32x_log.h"
 
 #define CHASSIS_FAN_COUNT     6
-#define CHASSIS_THERMAL_COUNT 3
+#define CHASSIS_THERMAL_COUNT 5
 
 #define PSU1_ID 1
 #define PSU2_ID 2

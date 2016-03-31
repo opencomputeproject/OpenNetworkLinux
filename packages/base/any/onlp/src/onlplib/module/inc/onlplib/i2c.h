@@ -45,6 +45,23 @@
  */
 #define ONLP_I2C_F_PEC 0x4
 
+
+/**
+ * Do not deselect mux channels after device operations.
+ * The default is to deselect all intermediate muxes if possible.
+ */
+#define ONLP_I2C_F_NO_MUX_DESELECT 0x8
+
+/**
+ * Do not select mux channels prior to device operations.
+ * The default is to select all intermediate muxes.
+ *
+ * This option is useful if you want to manually select
+ * the mux channels for multiple operations.
+ */
+#define ONLP_I2C_F_NO_MUX_SELECT 0x10
+
+
 /**
  * @brief Open and prepare for reading or writing.
  * @param bus The i2c bus number.
@@ -148,6 +165,178 @@ int onlp_i2c_readw(int bus, uint8_t addr, uint8_t offset, uint32_t flags);
  */
 int onlp_i2c_writew(int bus, uint8_t addr, uint8_t offset, uint16_t word,
                     uint32_t flags);
+
+
+
+/****************************************************************************
+ *
+ * I2C Mux/Device Management.
+ *
+ *
+ ***************************************************************************/
+
+/**
+ * An i2c mux device driver.
+ */
+typedef struct onlp_i2c_mux_driver_s {
+    /** Driver Name */
+    const char* name;
+
+    /** Control register address for this mux. */
+    uint8_t control;
+
+    /** Channel select values. */
+    struct {
+        int channel;
+        uint8_t value;
+    } channels[16];
+
+} onlp_i2c_mux_driver_t;
+
+
+/**
+ * An i2c mux device.
+ *
+ */
+typedef struct onlp_i2c_mux_device_s {
+    /* Instance description. */
+    const char* name;
+
+    /** i2c bus number */
+    int bus;
+
+    /** i2c address for this instance */
+    uint8_t devaddr;
+
+    /** Mux device driver */
+    onlp_i2c_mux_driver_t* driver;
+
+} onlp_i2c_mux_device_t;
+
+
+/**
+ * Description of a channel.
+ */
+typedef struct onlp_i2c_mux_channel_s {
+    onlp_i2c_mux_device_t* mux;
+    int channel;
+} onlp_i2c_mux_channel_t;
+
+
+/**
+ * A set of i2c mux channels to program.
+ */
+typedef struct onlp_i2c_mux_channels_s {
+    onlp_i2c_mux_channel_t channels[8];
+} onlp_i2c_mux_channels_t;
+
+
+/**
+ * An i2c device.
+ *
+ * The device can be accessed only after selecting it's channel tree.
+ */
+typedef struct onlp_i2c_dev_s {
+    const char* name;
+
+    /**
+     * The sequence of mux channels can be specified
+     * inline or via pointer.
+     */
+    onlp_i2c_mux_channels_t  ichannels;
+    onlp_i2c_mux_channels_t* pchannels;
+
+    /**
+     * Bus and address for this device after channel tree selection.
+     */
+    int bus;
+    uint8_t addr;
+
+} onlp_i2c_dev_t;
+
+
+/**
+ * @brief Select a mux channel.
+ * @param muxdev The mux device instance.
+ * @param channel The channel number to select.
+ */
+int onlp_i2c_mux_select(onlp_i2c_mux_device_t* muxdev, int channel);
+
+/**
+ * @brief Deselect a mux channel.
+ * @param muxdev The mux device instance.
+ */
+int onlp_i2c_mux_deselect(onlp_i2c_mux_device_t* muxdev);
+
+/**
+ * @brief Select a mux channel.
+ */
+int onlp_i2c_mux_channel_select(onlp_i2c_mux_channel_t* mc);
+
+
+/**
+ * @brief Select a mux channel.
+ */
+int onlp_i2c_mux_channel_deselect(onlp_i2c_mux_channel_t* mc);
+
+
+/**
+ * @brief Select a mux channel tree.
+ */
+int onlp_i2c_mux_channels_select(onlp_i2c_mux_channels_t* channels);
+
+/**
+ * @brief Deselect a mux channel tree.
+ */
+int onlp_i2c_mux_channels_deselect(onlp_i2c_mux_channels_t* channels);
+
+/**
+ * @brief Select a device's mux channel tree.
+ */
+int onlp_i2c_dev_mux_channels_select(onlp_i2c_dev_t* dev);
+
+/**
+ * @brief Deselect a device's mux channel tree.
+ */
+int onlp_i2c_dev_mux_channels_deselect(onlp_i2c_dev_t* dev);
+
+
+/**
+ * @brief Read from an device.
+ */
+int onlp_i2c_dev_read(onlp_i2c_dev_t* dev, uint8_t offset, int size,
+                      uint8_t* rdata, uint32_t flags);
+
+/**
+ * @brief Write to a device.
+ */
+int onlp_i2c_dev_write(onlp_i2c_dev_t* dev,
+                       uint8_t offset, int size,
+                       uint8_t* data, uint32_t flags);
+
+int onlp_i2c_dev_readb(onlp_i2c_dev_t* dev,
+                       uint8_t offset, uint32_t flags);
+
+int onlp_i2c_dev_writeb(onlp_i2c_dev_t* dev,
+                        uint8_t offset, uint8_t byte, uint32_t flags);
+
+int onlp_i2c_dev_readw(onlp_i2c_dev_t* dev,
+                       uint8_t offset, uint32_t flags);
+
+int onlp_i2c_dev_writew(onlp_i2c_dev_t* dev,
+                        uint8_t offset, uint16_t word, uint32_t flags);
+
+/**************************************************************************//**
+ *
+ * Reusable MUX device drivers.
+ *
+ *****************************************************************************/
+extern onlp_i2c_mux_driver_t onlp_i2c_mux_driver_pca9547a;
+extern onlp_i2c_mux_driver_t onlp_i2c_mux_driver_pca9548;
+
+
+
+
 
 
 #endif /* ONLPLIB_CONFIG_INCLUDE_I2C */

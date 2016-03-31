@@ -105,6 +105,16 @@ class OnlPlatformBase(object):
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(),
                            required=False)
 
+        # Load the platform config yaml file
+        y = os.path.join(self.basedir_onl(), "%s.yml" % self.platform())
+        if os.path.exists(y):
+            self.platform_config = yaml.load(open(y))
+            if self.platform() in self.platform_config:
+                self.platform_config = self.platform_config[self.platform()]
+        else:
+            self.platform_config = {}
+
+
     def add_info_dict(self, name, d, klass=None):
         setattr(self, name, OnlInfoObject(d, klass))
 
@@ -190,6 +200,20 @@ class OnlPlatformBase(object):
         return ( self.opitv_oid() +
                  self.sys_oid_vendor() +
                  self.sys_oid_platform());
+
+    def onie_version(self):
+        return self.onie_info.ONIE_VERSION
+
+    def upgrade_manifest(self, type_, override_dir=None):
+        if override_dir:
+            m = os.path.join(override_dir, "manifest.json")
+        else:
+            m = os.path.join(self.basedir_onl(), "upgrade", type_, "manifest.json")
+
+        if os.path.exists(m):
+            return (os.path.dirname(m), m, json.load(file(m)))
+        else:
+            return (None, None, None)
 
 
     def new_device(self, driver, addr, bus, devdir):

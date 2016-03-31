@@ -66,7 +66,7 @@ int deviceNodeWriteInt(char *filename, int value, int data_len)
     char buf[8] = {0};
     sprintf(buf, "%d", value);
 
-    return deviceNodeWrite(filename, buf, sizeof(buf)-1, data_len);
+    return deviceNodeWrite(filename, buf, (int)strlen(buf), data_len);
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)

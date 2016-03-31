@@ -11,7 +11,7 @@ Quanta
 <tr class="info"> 
      <th> Device                  <th> Ports            <th> CPU                 <th> Forwarding             		<th> ONL Certified         <th> In Lab <th> ORC <th> OF-DPA <th> OpenNSL <th> SAI </tr>
 </thead>
-<tr> <td> QuantaMesh T1048-LB9    <td> 48x1G  + 4x10G   <td> FreeScale P2020       <td> Broadcom BCM56534 (Firebolt3)    	<td> Yes  <td> Yes <td> Yes <td> Yes <td> No <td> No </tr>
+<tr> <td> QuantaMesh T1048-LB9    <td> 48x1G  + 4x10G   <td> FreeScale P2020       <td> Broadcom BCM56534 (Firebolt3)    	<td> Yes  <td> Yes <td> Yes <td> No <td> No <td> No </tr>
 <tr> <td> QuantaMesh T3048-LY2    <td> 48x10G + 4x40G   <td> FreeScale P2020       <td> Broadcom BCM56846 (Trident+)     	<td> Yes   <td> Yes <td> Yes <td> Yes <td> No <td> No </tr> 
 <tr> <td> QuantaMesh T3048-LY8    <td> 48x10G + 6x40G   <td> Intel Rangely C2758 x86 <td> Broadcom BCM56854 (Trident2)            <td> Yes*  <td> No <td> No <td> No <td> No <td> No </tr> 
 <tr> <td> QuantaMesh T5032-LY6    <td> 32x40G  <td> Intel Rangely C2758 x86 <td> Broadcom BCM56850 (Trident2)            <td> Yes* <td> No <td> No <td> No <td> No <td> No </tr>

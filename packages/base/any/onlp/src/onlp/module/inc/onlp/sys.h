@@ -117,4 +117,6 @@ int onlp_sys_platform_manage_join(void);
 
 void onlp_sys_platform_manage_now(void);
 
+int onlp_sys_debug(aim_pvs_t* pvs, int argc, char** argv);
+
 #endif /* __ONLP_SYS_H_ */

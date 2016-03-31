@@ -1,14 +1,5 @@
 #!/bin/sh
 
-### BEGIN INIT INFO
-# Provides:        initdev
-# Required-Start:
-# Required-Stop:
-# Default-Start:   S
-# Default-Stop:
-# Short-Description: Set up block and net devices
-### END INIT INFO
-
 . /lib/lsb/init-functions
 
 log_action_begin_msg "Setting up block and net devices"

@@ -158,18 +158,36 @@ onlp_led_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     int rv;
     iof_t iof;
     onlp_led_info_t info;
+    int yaml;
 
     VALIDATENR(id);
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
-    iof_push(&iof, "LED %d", ONLP_OID_ID_GET(id));
+
+    yaml = flags & ONLP_OID_SHOW_F_YAML;
+
+    if(yaml) {
+        iof_push(&iof, " -");
+        iof_iprintf(&iof, "Name: LED %d", ONLP_OID_ID_GET(id));
+    }
+    else {
+        iof_push(&iof, "LED %d", ONLP_OID_ID_GET(id));
+    }
+
     rv = onlp_led_info_get(id, &info);
     if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+        if(yaml) {
+            iof_iprintf(&iof, "State: Error");
+            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
+        }
+        else {
+            onlp_oid_info_get_error(&iof, rv);
+        }
     }
     else {
         onlp_oid_show_description(&iof, &info.hdr);
         if(info.status & 1) {
             /* Present */
+            iof_iprintf(&iof, "State: Present");
             iof_iprintf(&iof, "Mode: %{onlp_led_mode}", info.mode);
         }
         else {

@@ -1,0 +1,11 @@
+echo "pci0000:00/0000:00:03.0 ma1" >/etc/onl/net
+
+cp /dev/null /etc/onl/mounts
+echo "block/sda sda flash" >> /etc/onl/mounts
+echo "block/vda vda flash" >> /etc/onl/mounts
+echo "LABEL=FLASH * flash" >> /etc/onl/mounts
+
+echo "block/sdb sdb flash2" >> /etc/onl/mounts
+echo "block/vdb vdb flash2" >> /etc/onl/mounts
+echo "LABEL=FLASH2 * flash2" >> /etc/onl/mounts
+

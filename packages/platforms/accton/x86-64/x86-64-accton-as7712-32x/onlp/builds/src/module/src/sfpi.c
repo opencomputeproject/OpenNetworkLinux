@@ -30,7 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 #define MAX_SFP_PATH 64
@@ -165,12 +165,6 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
-{
-    return ONLP_STATUS_OK;
-}
-
-int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     char* path = as7512_32x_sfp_get_port_path(port, "sfp_eeprom");
@@ -189,6 +183,34 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     }
 
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+    return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+    return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+    return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+    return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int

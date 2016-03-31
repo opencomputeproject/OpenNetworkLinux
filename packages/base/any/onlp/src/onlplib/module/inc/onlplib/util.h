@@ -39,7 +39,7 @@
     } while(0)
 
 #define ONLP_ACTIVE_LOW_MASKS_BIT(_enable, _bit, _andmask, _ormask)     \
-    ONLP_ACTIVE_LOAS_MASKS(_enable, (1 << (_bit)), _andmask, _ormask)
+    ONLP_ACTIVE_LOW_MASKS(_enable, (1 << (_bit)), _andmask, _ormask)
 
 /**
  * Set and & or masks for active high bits.

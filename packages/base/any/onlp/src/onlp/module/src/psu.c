@@ -129,13 +129,28 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     int rv;
     iof_t iof;
     onlp_psu_info_t pi;
+    int yaml;
 
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
     rv = onlp_psu_info_get(id, &pi);
 
-    iof_push(&iof, "PSU %d", ONLP_OID_ID_GET(id));
+    yaml = flags & ONLP_OID_SHOW_F_YAML;
+
+    if(yaml) {
+        iof_push(&iof, "- ");
+        iof_iprintf(&iof, "Name: PSU %d", ONLP_OID_ID_GET(id));
+    } else {
+        iof_push(&iof, "PSU %d", ONLP_OID_ID_GET(id));
+    }
+
     if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+        if(yaml) {
+            iof_iprintf(&iof, "State: Error");
+            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
+        }
+        else {
+            onlp_oid_info_get_error(&iof, rv);
+        }
     }
     else {
         onlp_oid_show_description(&iof, &pi.hdr);
@@ -146,10 +161,10 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
                 iof_iprintf(&iof, "Status: Unplugged");
             }
             else if(pi.status & ONLP_PSU_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: Unplugged or Failed.");
+                iof_iprintf(&iof, "Status: Unplugged or Failed");
             }
             else {
-                iof_iprintf(&iof, "Status: Running.");
+                iof_iprintf(&iof, "Status: Running");
                 iof_iprintf(&iof, "Model: %s", pi.model[0] ? pi.model : "Unknown");
                 if(pi.serial[0]) iof_iprintf(&iof, "SN: %s", pi.serial);
                 if(pi.caps & ONLP_PSU_CAPS_AC) {
@@ -162,7 +177,7 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
                     iof_iprintf(&iof, "Type: DC 48V");
                 }
                 else {
-                    iof_iprintf(&iof, "Type: Unknown.");
+                    iof_iprintf(&iof, "Type: Unknown");
                 }
                 if(pi.caps & ONLP_PSU_CAPS_VIN) {
                     iof_iprintf(&iof, "Vin: %d.%d",
@@ -197,11 +212,25 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
                      * Fans and Thermal Sensors.
                      */
                     onlp_oid_t* oidp;
+
+                    if(yaml) {
+                        iof_push(&iof, "Fans: ");
+                    }
                     ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, FAN) {
                         onlp_oid_show(*oidp, &iof.inherit, flags);
                     }
+                    if(yaml) {
+                        iof_pop(&iof);
+                    }
+
+                    if(yaml) {
+                        iof_push(&iof, "Thermals: ");
+                    }
                     ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, THERMAL) {
                         onlp_oid_show(*oidp, &iof.inherit, flags);
+                    }
+                    if(yaml) {
+                        iof_pop(&iof);
                     }
 
                     if(flags & ONLP_OID_SHOW_F_EXTENDED) {

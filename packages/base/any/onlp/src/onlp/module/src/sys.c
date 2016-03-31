@@ -181,7 +181,7 @@ onlp_sys_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         return;
     }
 
-    iof_push(&iof, "System Information");
+    iof_push(&iof, "System Information:");
     rv = onlp_sys_info_get(&si);
     if(rv < 0) {
         onlp_oid_info_get_error(&iof, rv);
@@ -227,7 +227,7 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     if(yaml ||
        flags & ONLP_OID_SHOW_F_EXTENDED ||
        (flags & ONLP_OID_SHOW_F_RECURSE) == 0) {
-        iof_push(&iof, "System Information");
+        iof_push(&iof, "System Information:");
         onlp_onie_show(&si.onie_info, &iof.inherit);
         iof_pop(&iof);
     }
@@ -237,21 +237,21 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         onlp_oid_t* oidp;
 
         /** Show all Chassis Fans */
-        YPUSH("Fans");
+        YPUSH("Fans:");
         ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, FAN) {
             onlp_oid_show(*oidp, &iof.inherit, flags);
         }
         YPOP();
 
         /** Show all System Thermals */
-        YPUSH("Thermals");
+        YPUSH("Thermals:");
         ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, THERMAL) {
             onlp_oid_show(*oidp, &iof.inherit, flags);
         }
         YPOP();
 
         /** Show all PSUs */
-        YPUSH("PSUs");
+        YPUSH("PSUs:");
         ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, PSU) {
             onlp_oid_show(*oidp, &iof.inherit, flags);
         }
@@ -259,7 +259,7 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
 
         if(flags & ONLP_OID_SHOW_F_EXTENDED) {
             /** Show all LEDs */
-            YPUSH("LEDs");
+            YPUSH("LEDs:");
             ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, LED) {
                 onlp_oid_show(*oidp, &iof.inherit, flags);
             }
@@ -287,3 +287,9 @@ onlp_sys_vioctl_locked__(int code, va_list vargs)
 }
 ONLP_LOCKED_API2(onlp_sys_vioctl, int, code, va_list, vargs);
 
+static int
+onlp_sys_debug_locked__(aim_pvs_t* pvs, int argc, char* argv[])
+{
+    return onlp_sysi_debug(pvs, argc, argv);
+}
+ONLP_LOCKED_API3(onlp_sys_debug, aim_pvs_t*, pvs, int, argc, char**, argv);

@@ -1,0 +1,23 @@
+#!/bin/sh
+############################################################
+#
+# Initial boot setup. Required before running
+# any concurrent service initialization in rcS
+#
+# This is designed to support early setup, platform,
+# and upgrade operations.
+#
+############################################################
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+
+for script in `ls /etc/boot.d/[0-9]* | sort`; do
+    $script
+done
+
+#
+# Wait for console to flush prior to starting rc.S
+#
+sleep 1
+
+

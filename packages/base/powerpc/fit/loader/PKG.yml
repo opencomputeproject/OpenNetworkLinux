@@ -14,7 +14,8 @@ packages:
     summary: Open Network Linux FIT Loader Image
 
     files:
-      builds/onl-loader-fit.itb : $$PKG_INSTALL/
+      builds/onl-loader-fit.itb : /etc/onl/upgrade/ppc/
+      builds/manifest.json      : /etc/onl/upgrade/ppc/
 
     changelog:  Change changes changes.,
 
