@@ -31,7 +31,9 @@ def baseconfig():
     HOST_TYPES = [ 'powerpc-linux-gnu',
                    'i486-linux-gnu',
                    'i386-linux-gnu',
-                   'x86_64-linux-gnu' ]
+                   'x86_64-linux-gnu',
+                   'arm-linux-gnueabi',
+                   ]
 
     for ht in HOST_TYPES:
         if os.path.exists('/lib/%s' % ht):
@@ -68,6 +70,3 @@ def baseconfig():
 
     msg("Setting up base platform configuration for %s: done\n" %
         platform.platform())
-
-
-
