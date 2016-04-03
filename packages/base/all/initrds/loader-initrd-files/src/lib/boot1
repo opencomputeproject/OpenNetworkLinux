@@ -41,20 +41,25 @@ else
     rm -f /tmp/rootfs
     uarch=`uname -m`
 
+    ARCH_LIST=
+    case $uarch in
+        ppc)
+            ARCH_LIST="ppc powerpc"
+            ;;
+        x86_64)
+            ARCH_LIST="x86_64 amd64"
+            ;;
+        armv7l)
+            ARCH_LIST="armel"
+            ;;
+        *)
+            ;;
+    esac
 
-    if [ "$uarch" == "ppc" ]; then
-        # Try both rootfs-ppc and rootfs-powerpc
-        for arch in ppc powerpc; do
-            unzip -pq "${swipath}" "rootfs-$arch.sqsh" >/tmp/rootfs
-            [ ! -s /tmp/rootfs  ] || break
-        done
-    elif [ "$uarch" == "x86_64" ]; then
-        # Try both rootfs-amd64 and rootfs-x86_64
-        for arch in x86_64 amd64; do
-            unzip -pq "${swipath}" "rootfs-$arch.sqsh" >/tmp/rootfs
-            [ ! -s /tmp/rootfs  ] || break
-        done
-    fi
+    for arch in $ARCH_LIST; do
+        unzip -pq "${swipath}" "rootfs-$arch.sqsh" >/tmp/rootfs
+        [ ! -s /tmp/rootfs  ] || break
+    done
 
     if [ ! -s /tmp/rootfs ]; then
         echo "${swipath} does not contain a rootfs image for the current architecture ($uarch). Booting cannot continue."
