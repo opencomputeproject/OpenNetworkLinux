@@ -7,7 +7,7 @@ class OnlPlatform_arm_qemu_armv7a_r0(OnlPlatformQEMU):
         return "QEMU ARMv7a"
 
     def platform(self):
-        return "arm-qemu-armv7a"
+        return "arm-qemu-armv7a-r0"
 
     def sys_oid_platform(self):
         return ".2"
