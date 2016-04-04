@@ -36,6 +36,18 @@ onl-ppc ppc: packages_base_all
 	$(MAKE) -C builds/powerpc/swi
 	$(MAKE) -C builds/powerpc/installer/legacy
 
+
+onl-arm arm: packages_base_all
+	@which arm-linux-gnueabi-gcc || (echo -n " \n * This container does not support building for the ARM architecture. Please use the Jessie onlbuilder8:1.2 container or later." && echo -n && exit 1)
+	$(MAKE) -C packages/base/armel/kernels
+	$(MAKE) -C packages/base/armel/initrds
+	$(MAKE) -C packages/base/armel/onlp
+	$(MAKE) -C packages/base/armel/onlp-snmpd
+	$(MAKE) -C packages/base/armel/faultd
+	$(MAKE) -C packages/base/armel/fit
+	$(MAKE) -C builds/armel/rootfs
+	$(MAKE) -C builds/armel/swi
+
 packages_base_all:
 	$(MAKE) -C packages/base/all
 
@@ -65,4 +77,3 @@ docker-debug: docker_check
 
 versions:
 	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
-
