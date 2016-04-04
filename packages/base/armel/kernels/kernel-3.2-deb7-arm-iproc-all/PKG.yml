@@ -13,5 +13,6 @@ packages:
     files:
       builds/kernel-3.2-deb7-arm-iproc-all.bin.gz : $$PKG_INSTALL/
       builds/linux-3.2.71-mbuild : $$PKG_INSTALL/mbuilds
+      builds/linux-3.2.71-dtbs : $$PKG_INSTALL/dtbs
 
     changelog:  Change changes changes.,
