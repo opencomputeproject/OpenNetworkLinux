@@ -1,10 +1,9 @@
 ############################################################
-#
-# Common packages for all PowerPC systems.
-#
+# <bsn.cl fy=2013 v=none>
+# 
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.        
+# 
+# 
+# 
+# </bsn.cl>
 ############################################################
-- u-boot-tools
-- onl-loader-fit
-
-
-

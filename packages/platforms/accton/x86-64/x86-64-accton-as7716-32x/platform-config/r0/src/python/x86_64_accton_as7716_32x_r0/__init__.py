@@ -19,7 +19,7 @@ class OnlPlatform_x86_64_accton_as7716_32x_r0(OnlPlatformAccton):
                 ('pca9548', 0x77, 0),
 
                 # initiate leaf multiplexer (PCA9548)
-                ('pca9548', 0x76 1),
+                ('pca9548', 0x76, 1),
 
                 # initiate chassis fan
                 ('as7716_32x_fan', 0x66, 9),
@@ -87,4 +87,4 @@ class OnlPlatform_x86_64_accton_as7716_32x_r0(OnlPlatformAccton):
                 ('24c02', 0x56, 0),
                 ])
 
-        return True),
+        return True

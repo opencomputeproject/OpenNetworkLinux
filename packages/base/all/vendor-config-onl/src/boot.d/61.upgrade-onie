@@ -1,0 +1,55 @@
+#!/usr/bin/python -u
+from onl.upgrade import ubase
+
+class ONIE_Upgrade(ubase.BaseOnieUpgrade):
+    name="onie"
+    Name="ONIE"
+    title="ONIE Upgrade Check"
+    atype="An ONIE"
+
+    current_version_key="Current ONIE Version"
+    next_version_key="Next ONIE Version"
+
+    def init_versions(self):
+
+        # Get the current platform ONIE version
+        self.current_version = self.platform.onie_version()
+        self.next_version = None
+        self.updater = None
+
+        (udir, um, data) = self.platform.upgrade_manifest("onie")
+        self.udir = udir
+        self.data = data
+
+        if data:
+            self.next_version = data.get('onie-version', None)
+
+        if data:
+            self.updater = data.get('onie-updater', None)
+
+        if self.updater is None:
+            self.finish("No ONIE updater available for the current platform.")
+
+    def summarize(self):
+        self.logger.info("Current ONIE Version: %s" % self.current_version)
+        self.logger.info("   Next ONIE Version: %s" % self.next_version)
+        self.logger.info("        Force-Update: %s" % self.data['force-update'])
+        self.logger.info("             Updater: %s" % self.updater)
+        self.logger.info("")
+
+    def upgrade_notes(self):
+        return """
+    * The system will reboot into ONIE to complete the update, and then reboot to return to Switch Light
+"""
+
+    def do_upgrade(self, forced=False):
+        self.install_onie_updater(self.udir, self.updater)
+        self.initiate_onie_update()
+
+    def do_no_upgrade(self):
+        self.clean_onie_updater()
+
+
+if __name__ == '__main__':
+    ONIE_Upgrade().main()
+

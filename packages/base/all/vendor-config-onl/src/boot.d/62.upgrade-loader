@@ -1,0 +1,153 @@
+#!/usr/bin/python
+############################################################
+#
+# ONL Loader Upgrade
+#
+############################################################
+import os
+import fnmatch
+from onl.upgrade import ubase
+
+class Loader_Upgrade(ubase.BaseUpgrade):
+    name="loader"
+    Name="Loader"
+    title="Loader Upgrade Check"
+    atype="A Loader"
+
+    current_version_key="Current Loader Version"
+    next_version_key="Next Loader Version"
+
+    def init_versions(self):
+        #
+        # Current Loader version file.
+        # If this file doesn't exist then in-place upgrade is not supported.
+        #
+        ETC_LOADER_VERSIONS_JSON = "/etc/onl/loader/versions.json"
+
+        # Upgrade Loader Version file.
+        NEXT_LOADER_VERSIONS_JSON = "/etc/onl/upgrade/%s/manifest.json" % self.arch
+
+        self.current_version = self.load_json(ETC_LOADER_VERSIONS_JSON,
+                                              "RELEASE_ID",
+                                              None)
+
+        self.next_version = self.load_json(NEXT_LOADER_VERSIONS_JSON,
+                                           "version", {}).get('RELEASE_ID', None)
+
+    def summarize(self):
+        self.logger.info("Current Loader Version: %s" % self.current_version)
+        self.logger.info("   Next Loader Version: %s" % self.next_version)
+        self.logger.info("")
+
+
+    def upgrade_notes(self):
+        return """
+    * A single reboot will be required to complete this upgrade.
+"""
+
+class Loader_Upgrade_ppc(Loader_Upgrade):
+
+    def do_upgrade(self, forced=False):
+
+        PPC_FIT_UPGRADE_IMAGE_PLATFORM="/etc/onl/upgrade/ppc/%s.itb" % self.platform.platform()
+        PPC_FIT_UPGRADE_IMAGE_ALL="/etc/onl/upgrade/ppc/onl-loader-fit.itb"
+        PPC_FIT_LOADER_IMAGE_NAME="%s.itb" % self.platform.platform()
+
+        #
+        # The upgrade/ppc directory must have a FIT image called $PPC_FIT_UPGRADE_IMAGE (see constants above)
+        # This is obviously a little janky.
+        #
+        fit_image = None
+
+        if os.path.exists(PPC_FIT_UPGRADE_IMAGE_PLATFORM):
+            fit_image = PPC_FIT_UPGRADE_IMAGE_PLATFORM
+        elif os.path.exists(PPC_FIT_UPGRADE_IMAGE_ALL):
+            fit_image = PPC_FIT_UPGRADE_IMAGE_ALL
+        else:
+            self.abort("The PPC Upgrade FIT image is missing. Upgrade cannot continue.")
+
+        #
+        # The platform configuration file will describe which partition
+        # and which format should be used to store the FIT image.
+        #
+        partition = None
+        raw = False
+        pc = self.platform.platform_config
+
+        if pc:
+            if 'loader' in pc and pc['loader']:
+                if 'partition' in pc['loader']:
+                    partition = pc['loader']['partition']
+                else:
+                    self.abort("No partition listed in the loader section of the platform configuration.")
+                raw = pc['loader'].get('raw', False)
+            else:
+                self.abort("No loader section listed in the platform configuration.")
+        else:
+            self.abort("No platform configuration.")
+
+        if raw:
+            #
+            # The loader file is written raw to the given partition.
+            #
+            print "Writing %s to %s..." % (fit_image, partition)
+            if os.system("dd of=%s if=%s" % (partition, fit_image)) != 0:
+                self.abort("Failure writing loader data to partition %s." % (partition))
+
+        else:
+            #
+            # Mount the loader partition and rewrite the loader image.
+            #
+            mdir="/mnt/upgrade/loader"
+            self.mount(mdir, partition=partition)
+            self.copyfile(fit_image, os.path.join(mdir, PPC_FIT_LOADER_IMAGE_NAME))
+            self.umount(mdir)
+
+        self.reboot()
+
+
+
+class Loader_Upgrade_x86_64(Loader_Upgrade):
+
+    X86_64_UPGRADE_DIR="/etc/onl/upgrade/x86_64/"
+    X86_64_UPGRADE_PATTERNS = [ "kernel-*", "initrd-*" ]
+
+    def do_upgrade(self, forced=False):
+        #
+        # Mount the ONL-BOOT partition
+        #
+        mdir="/mnt/onl-boot"
+        self.mount(mdir, label="ONL-BOOT")
+
+        for f in os.listdir(self.X86_64_UPGRADE_DIR):
+            for pattern in self.X86_64_UPGRADE_PATTERNS:
+                if fnmatch.fnmatch(f, pattern):
+                    self.copyfile(os.path.join(self.X86_64_UPGRADE_DIR, f), os.path.join(mdir, f))
+
+        src = "/lib/platform-config/current/onl/boot/grub.cfg"
+        dst = os.path.join(mdir, "grub/grub.cfg")
+        if os.path.exists(src):
+            self.copyfile(src, dst)
+
+        self.umount(mdir)
+        self.reboot()
+
+
+
+
+
+if __name__ == '__main__':
+    import platform
+
+    arch = platform.machine()
+    klass = None
+
+    if arch =='ppc':
+        klass = Loader_Upgrade_ppc
+    elif arch == 'x86_64':
+        klass = Loader_Upgrade_x86_64
+    else:
+        raise Exception("The current architecture (%s) is not supported for upgrade." % arch)
+
+    klass().main()
+
