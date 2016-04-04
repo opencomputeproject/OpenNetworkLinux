@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=arm-qemu-armv7a ARCH=armel TOOLCHAIN=arm-linux-gnueabi

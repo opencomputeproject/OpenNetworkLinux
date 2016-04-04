@@ -34,7 +34,11 @@ if [ -f "${PATCHDIR}/series" ]; then
     #
     for p in `cat ${PATCHDIR}/series`; do
         echo "Appying ${p}..."
-        patch --batch -p 1 -d ${KERNDIR} < "${PATCHDIR}/${p}"
+        if [ -x "${PATCHDIR}/${p}" ]; then
+            "${PATCHDIR}/${p}" "${KERNDIR}"
+        else
+            patch --batch -p 1 -d ${KERNDIR} < "${PATCHDIR}/${p}"
+        fi
     done
 else
     #
@@ -45,6 +49,3 @@ else
         patch --batch -p 1 -d ${KERNDIR} < ${p}
     done
 fi
-
-
-

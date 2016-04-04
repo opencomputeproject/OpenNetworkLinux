@@ -1,0 +1,7 @@
+ip link set dev eth0 name ma1
+
+echo "LABEL=FLASH * flash" > /etc/onl/mounts
+echo "LABEL=FLASH2 * flash2" >> /etc/onl/mounts
+
+echo "# MTD device name       Device offset   Env. size       Flash sector size"  > /etc/fw_env.config
+echo "/dev/mtd2               0x00000000      0x00002000         0x00010000"     >> /etc/fw_env.config

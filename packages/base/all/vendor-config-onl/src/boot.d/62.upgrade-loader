@@ -5,6 +5,7 @@
 #
 ############################################################
 import os
+import sys
 import fnmatch
 from onl.upgrade import ubase
 
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     elif arch == 'x86_64':
         klass = Loader_Upgrade_x86_64
     else:
-        raise Exception("The current architecture (%s) is not supported for upgrade." % arch)
+        sys.stderr.write("Loader Upgrade: The current architecture (%s) is not supported for upgrade.\n" % arch)
 
-    klass().main()
-
+    if klass:
+        klass().main()
