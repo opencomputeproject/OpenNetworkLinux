@@ -22,6 +22,7 @@ endif
 ifndef ONL_DEBIAN_SUITE
 $(error "The $$ONL_DEBIAN_SUITE value is not set. Please source $$ONL/setup.env")
 endif
+export ONL_DEBIAN_SUITE_$(ONL_DEBIAN_SUITE)=1
 
 export BUILD_DIR_BASE=BUILD/$(ONL_DEBIAN_SUITE)
 
