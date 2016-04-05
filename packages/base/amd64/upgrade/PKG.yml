@@ -17,10 +17,6 @@ packages:
     summary: Open Network Linux Upgrade package for AMD64 platforms.
 
     files:
-      builds/files : /etc/onl/upgrade/x86_64
+      builds/files : /etc/onl/upgrade/amd64
 
     changelog:  Change changes changes.,
-
-
-
-
