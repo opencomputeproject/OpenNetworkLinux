@@ -51,7 +51,7 @@ onl-arm arm: arm_toolchain_check packages_base_all
 	$(MAKE) -C packages/base/armel/fit
 	$(MAKE) -C builds/armel/rootfs
 	$(MAKE) -C builds/armel/swi
-
+	$(MAKE) -C builds/armel/installer/legacy
 else
 
 onl-arm arm:
@@ -90,3 +90,6 @@ docker-debug: docker_check
 
 versions:
 	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
+
+relclean:
+	@find $(ONL)/RELEASE -name "ONL-*" -delete
