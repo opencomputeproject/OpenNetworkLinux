@@ -12,7 +12,7 @@ endif
 
 include $(ONL)/make/config.mk
 
-all: amd64 ppc
+all: amd64 ppc arm
 	$(MAKE) -C REPO build-clean
 
 onl-amd64 onl-x86 x86 x86_64 amd64: packages_base_all
@@ -37,8 +37,12 @@ onl-ppc ppc: packages_base_all
 	$(MAKE) -C builds/powerpc/installer/legacy
 
 
-onl-arm arm: packages_base_all
-	@which arm-linux-gnueabi-gcc || (echo -n " \n * This container does not support building for the ARM architecture. Please use the Jessie onlbuilder8:1.2 container or later." && echo -n && exit 1)
+ifdef ONL_DEBIAN_SUITE_jessie
+
+arm_toolchain_check:
+	@which arm-linux-gnueabi-gcc || (/bin/echo -e "*\n* ERROR\n*\n* This container does not support building for the ARM architecture.\n* Please use opennetworklinux/onlbuilder8:1.2 later.\n*" && exit 1)
+
+onl-arm arm: arm_toolchain_check packages_base_all
 	$(MAKE) -C packages/base/armel/kernels
 	$(MAKE) -C packages/base/armel/initrds
 	$(MAKE) -C packages/base/armel/onlp
@@ -47,6 +51,15 @@ onl-arm arm: packages_base_all
 	$(MAKE) -C packages/base/armel/fit
 	$(MAKE) -C builds/armel/rootfs
 	$(MAKE) -C builds/armel/swi
+
+else
+
+onl-arm arm:
+	@/bin/echo -e "*\n* ERROR\n*\n* ARM Architecture support is only available in Jessie builds. Please use onbuilder -8.\n*"
+	@exit 1
+
+endif
+
 
 packages_base_all:
 	$(MAKE) -C packages/base/all
