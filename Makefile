@@ -1,4 +1,4 @@
-############################################################
+###########################################################
 #
 # Work in progress.
 #
@@ -55,8 +55,7 @@ onl-arm arm: arm_toolchain_check packages_base_all
 else
 
 onl-arm arm:
-	@/bin/echo -e "*\n* ERROR\n*\n* ARM Architecture support is only available in Jessie builds. Please use onbuilder -8.\n*"
-	@exit 1
+	@/bin/echo -e "*\n* Warning\n*\n* ARM Architecture support is only available in Jessie builds. Please use onbuilder -8.\n*"
 
 endif
 
