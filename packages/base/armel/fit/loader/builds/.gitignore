@@ -1,4 +1,5 @@
 kernel-*
 *.itb
 *.its
-loader-initrd-powerpc
+loader-initrd-armel
+manifest.json
