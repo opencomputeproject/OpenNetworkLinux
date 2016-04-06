@@ -778,7 +778,7 @@ class OnlPackageManager(object):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
 
         import cPickle as pickle
-        CACHE=os.path.join(basedir, '.PKGs.cache')
+        CACHE=os.path.join(basedir, '.PKGs.cache.%s' % g_dist_codename)
 
         # Lock the CACHE file
         with onlu.Lock(CACHE + ".lock"):

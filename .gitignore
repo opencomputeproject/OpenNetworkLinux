@@ -10,8 +10,7 @@ dependmodules.x
 
 # Package cache and lock files
 .lock
-.PKGs.cache
-.PKGs.cache.lock
+.PKGs.cache*
 
 # Local module manifest.
 .manifest.mk
