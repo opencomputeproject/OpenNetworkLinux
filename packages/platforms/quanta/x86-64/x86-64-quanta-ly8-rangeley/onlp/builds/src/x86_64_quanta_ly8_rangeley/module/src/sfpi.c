@@ -99,8 +99,8 @@ static sfpmap_t sfpmap__[] =
         { 50, QSFP_GPIO_PRSNT_50_N /* 430 */, "/sys/class/gpio/gpio428/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-81/81-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-81/81-0051/eeprom" },
         { 51, QSFP_GPIO_PRSNT_51_N /* 434 */, "/sys/class/gpio/gpio432/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-82/82-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-82/82-0051/eeprom" },
         { 52, QSFP_GPIO_PRSNT_52_N /* 438 */, "/sys/class/gpio/gpio436/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-83/83-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-21/i2c-83/83-0051/eeprom" },
-        { 69, QSFP_QDB_GPIO_PRSNT_69_N /* 442 */, "/sys/class/gpio/gpio432/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-88/88-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-88/88-0051/eeprom" },
-        { 70, QSFP_QDB_GPIO_PRSNT_70_N /* 446 */, "/sys/class/gpio/gpio436/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0051/eeprom" },
+        { 69, QSFP_QDB_GPIO_PRSNT_69_N /* 442 */, "/sys/class/gpio/gpio442/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-88/88-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-88/88-0051/eeprom" },
+        { 70, QSFP_QDB_GPIO_PRSNT_70_N /* 446 */, "/sys/class/gpio/gpio446/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0051/eeprom" },
   };
 
 int
