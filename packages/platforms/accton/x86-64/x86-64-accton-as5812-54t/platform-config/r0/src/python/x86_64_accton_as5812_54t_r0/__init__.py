@@ -51,6 +51,9 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton):
                 ('lm75', 0x48, 15),
                 ('lm75', 0x49, 16),
                 ('lm75', 0x4a, 17),
+
+                # System EEPROM
+                ('24c02', 0x57, 1),
                 ]
             )
         return True
