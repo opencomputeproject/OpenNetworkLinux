@@ -1,0 +1,15 @@
+#!/bin/bash
+############################################################
+#
+# Every time a merge is performed we should invalidate
+# the module manifest.
+#
+############################################################
+mm="$GIT_DIR/../make/module-manifest.mk"
+
+if [ -f "$mm" ]; then
+    echo "Removing module manifest after merge..."
+    rm "$mm"
+fi
+
+
