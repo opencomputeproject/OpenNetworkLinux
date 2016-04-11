@@ -1,4 +1,0 @@
-NETDEV=ma1
-NETAUTO=dhcp
-BOOTMODE=SWI
-SWI=flash2::latest

@@ -56,7 +56,7 @@ fi
 #
 if [ -z "$DOCKER_IMAGE" ]; then
     # Execute ourselves under the builder
-    ONLB=/usr/local/bin/onlbuilder
+    ONLB=$ONL/docker/tools/onlbuilder
     if [ -x $ONLB ]; then
         $ONLB $ONLB_OPTIONS --volumes $ONL --non-interactive -c $AUTOBUILD_SCRIPT $@
         exit $?

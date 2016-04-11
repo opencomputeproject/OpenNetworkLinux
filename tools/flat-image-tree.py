@@ -45,7 +45,7 @@ class Image(object):
         self.wl("""    description = "%s";""" % self.description)
         self.wl("""    type = "%s";""" % self.type)
         self.wl("""    data = /incbin/("%s");""" % self.data)
-        self.wl("""    arch = "powerpc";""")
+        self.wl("""    arch = "%s";""" % ("arm" if ops.arch == 'armel' else ops.arch))
         self.wl("""    compression = "%s";""" % self.compression)
         if self.os:
             self.wl("""    os = %s;""" % self.os)
@@ -56,10 +56,7 @@ class Image(object):
 
     def include_hashes(self,f):
         self.wl("""    hash@1 {""")
-        self.wl("""        algo = "md5";""")
-        self.wl("""    };""")
-        self.wl("""    hash@2 {""")
-        self.wl("""        algo = "sha1";""")
+        self.wl("""        algo = "crc32";""")
         self.wl("""    };""")
 
     def end_image(self, f):
@@ -69,11 +66,18 @@ class Image(object):
 class KernelImage(Image):
     """Kernel image entry"""
 
-    def __init__(self, fname):
+    def __init__(self, fname, arch):
         Image.__init__(self, "kernel", fname, compression='gzip')
-        self.load = "<0x0>"
-        self.entry = "<0x0>"
         self.os = '"linux"'
+
+        # Fixme -- thse should be parameterized
+        if arch == 'powerpc':
+            self.load = "<0x0>"
+            self.entry = "<0x0>"
+        elif arch == 'armel':
+            self.load = "<0x61008000>"
+            self.entry = "<0x61008000>"
+
 
     def write(self, f):
         self.start_image(f)
@@ -83,10 +87,17 @@ class KernelImage(Image):
 class InitrdImage(Image):
     """Initrd image entry"""
 
-    def __init__(self, fname):
+    def __init__(self, fname, arch):
         Image.__init__(self, "ramdisk", fname, compression='gzip')
-        self.load = "<0x1000000>"
-        self.entry ="<0x1000000>"
+
+        # Fixme -- thse should be parameterized
+        if arch == 'powerpc':
+            self.load = "<0x1000000>"
+            self.entry ="<0x1000000>"
+        elif arch == 'armel':
+            self.load = "<0x0000000>"
+            self.entry ="<0x0000000>"
+
         self.os = '"linux"'
 
     def write(self, f):
@@ -167,15 +178,15 @@ class FlatImageTree(object):
 
     def add_platform_package(self, package):
         print package
-        platform = package.replace(":powerpc", "").replace("onl-platform-config-", "")
+        platform = package.replace(":%s" % ops.arch, "").replace("onl-platform-config-", "")
         y = subprocess.check_output("onlpm --quiet --find-file %s %s.yml" % (package, platform), shell=True).strip()
         self.add_yaml(platform, y)
 
     def add_platform(self, platform):
-        if ":powerpc" in platform:
+        if (":%s" % ops.arch) in platform:
             self.add_platform_package(platform)
         else:
-            self.add_platform_package("onl-platform-config-%s:powerpc" % platform)
+            self.add_platform_package("onl-platform-config-%s:%s" % (platform, ops.arch))
 
     def write(self, fname):
         with open(fname, "w") as f:
@@ -185,7 +196,7 @@ class FlatImageTree(object):
 
         kdict = {}
         for k in set(self.kernels):
-            kdict[k] = KernelImage(k)
+            kdict[k] = KernelImage(k, ops.arch)
 
         ddict = {}
         for d in set(self.dtbs):
@@ -193,7 +204,7 @@ class FlatImageTree(object):
 
         idict = {}
         for i in set(self.initrds):
-            idict[i] = InitrdImage(i)
+            idict[i] = InitrdImage(i, ops.arch)
 
 
 
@@ -210,7 +221,7 @@ class FlatImageTree(object):
 
         f.write("""        /* Kernel Images */\n""")
         for k in set(self.kernels):
-            KernelImage(k).write(f)
+            KernelImage(k, ops.arch).write(f)
 
         f.write("""\n""")
         f.write("""        /* DTB Images */\n""")
@@ -220,7 +231,7 @@ class FlatImageTree(object):
         f.write("""\n""")
         f.write("""        /* Initrd Images */\n""")
         for i in set(self.initrds):
-            InitrdImage(i).write(f)
+            InitrdImage(i, ops.arch).write(f)
 
         f.write("""    };\n""")
         f.write("""    configurations {\n""")
@@ -251,7 +262,7 @@ if __name__ == '__main__':
     ap.add_argument("--desc", nargs=1, help="Flat Image Tree description", default="ONL Flat Image Tree.")
     ap.add_argument("--itb", metavar='itb-file', help="Compile result to an image tree blob file.")
     ap.add_argument("--its", metavar='its-file', help="Write result to an image tree source file.")
-
+    ap.add_argument("--arch", choices=['powerpc', 'armel'], required=True)
     ops=ap.parse_args()
 
     fit = FlatImageTree(ops.desc)
@@ -280,13 +291,12 @@ if __name__ == '__main__':
                 fit.add_yaml(y)
 
     if ops.add_platform == [['all']]:
-        # Add support for all powerpc platform.
-        ops.add_platform = [ subprocess.check_output("onlpm --list-platforms --arch powerpc", shell=True).split() ]
+        ops.add_platform = [ subprocess.check_output("onlpm --list-platforms --arch %s" % (ops.arch), shell=True).split() ]
 
     if ops.add_platform == [['initrd']]:
         # Add support for the platforms listed in the initrd's platform manifest
         (package,f) = initrd.split(':')
-        mfile = subprocess.check_output("onlpm --find-file %s:powerpc manifest.json" % (package), shell=True).strip()
+        mfile = subprocess.check_output("onlpm --find-file %s:%s manifest.json" % (package, ops.arch), shell=True).strip()
         manifest = json.load(open(mfile))
         ops.add_platform = [[ "%s" % p for p in manifest['platforms'] ]]
 
@@ -316,4 +326,3 @@ if __name__ == '__main__':
 
         if ops.its is None:
             os.unlink(its)
-
