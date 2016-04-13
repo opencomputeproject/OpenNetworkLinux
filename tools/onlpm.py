@@ -201,7 +201,7 @@ class OnlPackage(object):
 
         if type(self.pkg[key]) != type_:
             raise OnlPackageError("key '%s' is the wrong type (%s should be %s)" % (
-                    key, type(pkg[key]), type_))
+                    key, type(self.pkg[key]), type_))
 
         return True
 
@@ -373,6 +373,9 @@ class OnlPackage(object):
                 raise OnlPackageError("Post-install script '%s' does not exist." % self.pkg['post-install'])
             command = command + "--after-install %s" % self.pkg['post-install']
 
+        if logger.level < logging.INFO:
+            command = command + "--verbose "
+
         onlu.execute(command)
 
         # Grab the package from the workdir. There can be only one.
@@ -506,7 +509,8 @@ class OnlPackageGroup(object):
         for bp in buildpaths:
             if os.path.exists(bp):
                 MAKE = os.environ.get('MAKE', "make")
-                cmd = MAKE + ' -C ' + bp + " " + os.environ.get('ONLPM_MAKE_OPTIONS', "") + " " + os.environ.get('ONL_MAKE_PARALLEL', "") + " " + target
+                V = " V=1 " if logger.level < logging.INFO else ""
+                cmd = MAKE + V + ' -C ' + bp + " " + os.environ.get('ONLPM_MAKE_OPTIONS', "") + " " + os.environ.get('ONL_MAKE_PARALLEL', "") + " " + target
                 onlu.execute(cmd,
                              ex=OnlPackageError('%s failed.' % operation))
 
@@ -1051,6 +1055,10 @@ if __name__ == '__main__':
         for j in ops.include_env_json.split(':'):
             data = json.load(open(j))
             for (k, v) in data.iteritems():
+                try:
+                    v = v.encode('ascii')
+                except UnicodeEncodeError:
+                    pass
                 os.environ[k] = v
 
     #

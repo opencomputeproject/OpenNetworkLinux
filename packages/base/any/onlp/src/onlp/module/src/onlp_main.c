@@ -31,7 +31,7 @@
 #include <AIM/aim_log_handler.h>
 #include <syslog.h>
 
-static void platform_manager_daemon__(const char* pidfile);
+static void platform_manager_daemon__(const char* pidfile, char** argv);
 
 /**
  * Human-readable SFP inventory.
@@ -246,7 +246,7 @@ onlpdump_main(int argc, char* argv[])
     onlp_init();
 
     if(M) {
-        platform_manager_daemon__(pidfile);
+        platform_manager_daemon__(pidfile, argv);
         exit(0);
     }
 
@@ -361,14 +361,14 @@ sighandler__(int signal)
 }
 
 static void
-platform_manager_daemon__(const char* pidfile)
+platform_manager_daemon__(const char* pidfile, char** argv)
 {
     aim_pvs_t* aim_pvs_syslog = NULL;
     aim_daemon_restart_config_t rconfig;
     aim_daemon_config_t config;
 
     memset(&config, 0, sizeof(config));
-    aim_daemon_restart_config_init(&rconfig, 1, 1);
+    aim_daemon_restart_config_init(&rconfig, 1, 1, argv);
     AIM_BITMAP_CLR(&rconfig.signal_restarts, SIGTERM);
     AIM_BITMAP_CLR(&rconfig.exit_restarts, 0);
     rconfig.maximum_restarts=50;
@@ -412,9 +412,9 @@ platform_manager_daemon__(const char* pidfile)
 
 #else
 static void
-platform_manager_daemon__(const char* pidfile)
+platform_manager_daemon__(const char* pidfile, char** argv)
 {
-    fprintf(stderr, "Daemon mode not supported in this build.");
+    fprintf(stderr, "Daemon mode not supported in this build.\n");
     exit(1);
 }
 #endif

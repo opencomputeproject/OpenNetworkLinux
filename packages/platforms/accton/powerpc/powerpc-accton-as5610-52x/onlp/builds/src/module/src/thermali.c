@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "platform_lib.h"
+#include <onlplib/file.h>
 
 /* i2c device info */
 #define I2C_PSU_BUS_ID                             0
@@ -222,7 +223,10 @@ static onlp_thermal_info_t tinfo[] = {
 },
 { { ONLP_THERMAL_ID_CREATE(10), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(2)},     0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-}
+},
+{ { ONLP_THERMAL_ID_CREATE(11),  "Switch Thermal Sensor", 0},           0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
 };
 
 /*
@@ -272,6 +276,26 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             }
 
             ret = thermal_sensor_cpr_4011_info_get(info);
+        }
+    }
+
+    if (ONLP_OID_ID_GET(id) == 11) {
+        /* Switch Thermal Sensor */
+        char* fname = "/var/run/broadcom/temp0";
+        int rv = onlp_file_read_int(&info->mcelsius, fname);
+        if(rv >= 0) {
+            /** Present and running */
+            info->status |= 1;
+            ret = 0;
+        }
+        else if(rv == ONLP_STATUS_E_MISSING) {
+            /** No switch management process running. */
+            info->status = 0;
+            ret = 0;
+        }
+        else {
+            /** Other error. */
+            ret = ONLP_STATUS_E_INTERNAL;
         }
     }
 

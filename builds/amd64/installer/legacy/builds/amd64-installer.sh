@@ -357,7 +357,7 @@ do_cleanup()
   cat /var/log/onie.log > /dev/console
   installer_say "Install failed. See log messages above for details"
 
-  grep "$workdir" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -n 1 umount
+  grep "$workdir" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -r -n 1 umount
   cd /tmp
   rm -fr "$workdir"
 

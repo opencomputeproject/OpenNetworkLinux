@@ -74,7 +74,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     /* 1 Fan */
     *e++ = ONLP_FAN_ID_CREATE(1);
 
-    /* 8 Thermal sensors */
+    /* 9 Thermal sensors */
     *e++ = ONLP_THERMAL_ID_CREATE(1);
     *e++ = ONLP_THERMAL_ID_CREATE(2);
     *e++ = ONLP_THERMAL_ID_CREATE(3);
@@ -83,6 +83,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     *e++ = ONLP_THERMAL_ID_CREATE(6);
     *e++ = ONLP_THERMAL_ID_CREATE(7);
     *e++ = ONLP_THERMAL_ID_CREATE(8);
+    *e++ = ONLP_THERMAL_ID_CREATE(11);
 
     /* 5 LEDs */
     *e++ = ONLP_LED_ID_CREATE(1);

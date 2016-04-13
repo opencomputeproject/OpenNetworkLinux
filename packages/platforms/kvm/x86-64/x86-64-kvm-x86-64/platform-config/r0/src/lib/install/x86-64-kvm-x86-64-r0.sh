@@ -11,5 +11,5 @@
 
 platform_installer() {
     # Standard isntallation to an available GPT partition
-    installer_standard_gpt_install /dev/sda
+    installer_standard_gpt_install /dev/vda
 }
