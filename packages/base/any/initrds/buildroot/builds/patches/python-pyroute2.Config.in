@@ -1,0 +1,5 @@
+config BR2_PACKAGE_PYTHON_PYROUTE2
+       bool "python-pyroute2"
+       depends on BR2_PACKAGE_PYTHON
+       help
+         Include the 'pyroute2' Python library

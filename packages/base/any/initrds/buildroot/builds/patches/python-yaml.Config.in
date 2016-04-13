@@ -1,0 +1,5 @@
+config BR2_PACKAGE_PYTHON_YAML
+       bool "python-yaml"
+       depends on BR2_PACKAGE_PYTHON
+       help
+         Include the 'PyYAML' Python library
