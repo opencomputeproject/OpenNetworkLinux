@@ -69,5 +69,5 @@
 - onl-loader-initscripts
 - onlp-snmpd
 - oom-shim
-
-
+- python-parted
+- python-yaml
