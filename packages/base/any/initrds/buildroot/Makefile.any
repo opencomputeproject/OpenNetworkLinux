@@ -39,6 +39,7 @@ buildroot-initrd-$(ARCH).cpio.gz: $(ONL_BUILDROOT)/.setup.done
 	chmod +x makedevs
 
 $(ONL_BUILDROOT)/.setup.done:
+	mkdir -p $(ONL_BUILDROOT)/buildroot-mirror/dl
 	$(MAKE) -C $(ONL_BUILDROOT) setup
 	touch $(ONL_BUILDROOT)/.setup.done
 
