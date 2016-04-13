@@ -28,7 +28,7 @@ clean:
 	rm -rf $(BUILDROOT_ARCHDIRS)
 
 
-setup: setup-pyroute2 setup-dnspython setup-libyaml setup-pyyaml setup-jq setup-pyparted setup-pyblkid
+setup: setup-pyroute2 setup-dnspython setup-libyaml setup-pyyaml setup-jq setup-pyparted
 	cp $(wildcard patches/busybox*.patch) $(BUILDROOT_SOURCE)/package/busybox/
 	cp $(wildcard patches/kexec*.patch) $(BUILDROOT_SOURCE)/package/kexec/
 	sed -i 's%^DOSFSTOOLS_SITE =.*%DOSFSTOOLS_SITE = http://downloads.openwrt.org/sources%' $(BUILDROOT_SOURCE)/package/dosfstools/dosfstools.mk
@@ -75,14 +75,6 @@ setup-pyparted:
 	cp patches/pyparted*.tar.bz2 $(BUILDROOT_SOURCE)/dl/.
 	sed -i '/[/]python-pyparted[/]/d' $(BUILDROOT_SOURCE)/package/Config.in
 	sed -i '/[/]python-setuptools[/]/a\source "package/python-pyparted/Config.in"' $(BUILDROOT_SOURCE)/package/Config.in
-
-setup-pyblkid:
-	mkdir -p $(BUILDROOT_SOURCE)/package/python-pyblkid
-	cp patches/python-pyblkid.mk $(BUILDROOT_SOURCE)/package/python-pyblkid/python-pyblkid.mk
-	cp patches/python-pyblkid.Config.in $(BUILDROOT_SOURCE)/package/python-pyblkid/Config.in
-	cp patches/pyblkid*.tar.bz2 $(BUILDROOT_SOURCE)/dl/.
-	sed -i '/[/]python-pyblkid[/]/d' $(BUILDROOT_SOURCE)/package/Config.in
-	sed -i '/[/]python-setuptools[/]/a\source "package/python-pyblkid/Config.in"' $(BUILDROOT_SOURCE)/package/Config.in
 
 
 define buildroot_arch
