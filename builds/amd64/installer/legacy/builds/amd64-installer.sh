@@ -199,6 +199,25 @@ partition_gpt()
 
   ############################################################
   #
+  # ONL Boot Partition.
+  #
+  ############################################################
+  installer_say "Creating 128MB for ONL Boot partition..."
+  end=$(( $start + 128 ))
+
+  parted -s $DEV unit mb mkpart "ONL-BOOT" ext4 ${start} ${end} || return 1
+  if ! part=$(get_part_number $DEV "ONL-BOOT"); then
+      return 1
+  fi
+
+  parted -s $DEV set $part boot on || return 1
+  mkfs.ext4 -L "ONL-BOOT" ${DEV}${part}
+  start=$(( $end + 1 ))
+
+
+
+  ############################################################
+  #
   # ONL Configuration Partition.
   #
   ############################################################
@@ -216,28 +235,9 @@ partition_gpt()
       rm -rf $ONL_CONFIG_MOUNTPOINT
       mkdir -p $ONL_CONFIG_MOUNTPOINT
       mount $DEV$part $ONL_CONFIG_MOUNTPOINT
-      tar -C $ONL_CONFIG_MOUNTPOINT -xvzf $SL_DATA_TARBALL
+      tar -C $ONL_CONFIG_MOUNTPOINT -xvzf $ONL_CONFIG_TARBALL
       umount $ONL_CONFIG_MOUNTPOINT
   fi
-
-
-  ############################################################
-  #
-  # ONL Boot Partition.
-  #
-  ############################################################
-  installer_say "Creating 128MB for ONL Boot partition..."
-  end=$(( $start + 128 ))
-
-  parted -s $DEV unit mb mkpart "ONL-BOOT" ext4 ${start} ${end} || return 1
-  if ! part=$(get_part_number $DEV "ONL-BOOT"); then
-      return 1
-  fi
-
-  parted -s $DEV set $part boot on || return 1
-  mkfs.ext4 -L "ONL-BOOT" ${DEV}${part}
-  start=$(( $end + 1 ))
-
 
   ############################################################
   #
