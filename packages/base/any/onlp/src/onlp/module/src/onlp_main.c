@@ -31,7 +31,7 @@
 #include <AIM/aim_log_handler.h>
 #include <syslog.h>
 
-static void platform_manager_daemon__(const char* pidfile);
+static void platform_manager_daemon__(const char* pidfile, char** argv);
 
 /**
  * Human-readable SFP inventory.
@@ -174,7 +174,15 @@ onlpdump_main(int argc, char* argv[])
     const char* O = NULL;
     const char* t = NULL;
 
-    while( (c = getopt(argc, argv, "srehdojmM:ipxlSt:O:")) != -1) {
+    /**
+     * debug trap
+     */
+    if(argc > 1 && !strcmp(argv[1], "debug")) {
+        onlp_init();
+        return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+    }
+
+    while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:")) != -1) {
         switch(c)
             {
             case 's': show=1; break;
@@ -193,13 +201,9 @@ onlpdump_main(int argc, char* argv[])
             case 'O': O = optarg; break;
             case 'S': S=1; break;
             case 'l': l=1; break;
+            case 'y': show=1; showflags |= ONLP_OID_SHOW_F_YAML; break;
             default: help=1; rv = 1; break;
             }
-    }
-
-    if(M) {
-        platform_manager_daemon__(pidfile);
-        exit(0);
     }
 
     if(help) {
@@ -208,6 +212,7 @@ onlpdump_main(int argc, char* argv[])
         printf("  -s   Use show() instead of dump().\n");
         printf("  -r   Recursive show(). Implies -s\n");
         printf("  -e   Extended show(). Implies -s\n");
+        printf("  -y   Yaml show(). Implies -s\n");
         printf("  -o   Dump ONIE data only.\n");
         printf("  -x   Dump Platform Info only.\n");
         printf("  -j   Dump ONIE data in JSON format.\n");
@@ -223,7 +228,7 @@ onlpdump_main(int argc, char* argv[])
     }
 
 
-    if(t){
+    if(t) {
         int rv;
         onlp_onie_info_t onie;
         rv = onlp_onie_decode_file(&onie, t);
@@ -239,6 +244,11 @@ onlpdump_main(int argc, char* argv[])
     }
 
     onlp_init();
+
+    if(M) {
+        platform_manager_daemon__(pidfile, argv);
+        exit(0);
+    }
 
     if(l) {
         extern int onlp_api_lock_test(void);
@@ -351,14 +361,14 @@ sighandler__(int signal)
 }
 
 static void
-platform_manager_daemon__(const char* pidfile)
+platform_manager_daemon__(const char* pidfile, char** argv)
 {
     aim_pvs_t* aim_pvs_syslog = NULL;
     aim_daemon_restart_config_t rconfig;
     aim_daemon_config_t config;
 
     memset(&config, 0, sizeof(config));
-    aim_daemon_restart_config_init(&rconfig, 1, 1);
+    aim_daemon_restart_config_init(&rconfig, 1, 1, argv);
     AIM_BITMAP_CLR(&rconfig.signal_restarts, SIGTERM);
     AIM_BITMAP_CLR(&rconfig.exit_restarts, 0);
     rconfig.maximum_restarts=50;
@@ -402,9 +412,9 @@ platform_manager_daemon__(const char* pidfile)
 
 #else
 static void
-platform_manager_daemon__(const char* pidfile)
+platform_manager_daemon__(const char* pidfile, char** argv)
 {
-    fprintf(stderr, "Daemon mode not supported in this build.");
+    fprintf(stderr, "Daemon mode not supported in this build.\n");
     exit(1);
 }
 #endif

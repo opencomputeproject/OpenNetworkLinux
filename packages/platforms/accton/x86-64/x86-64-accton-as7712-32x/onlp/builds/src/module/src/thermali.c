@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <unistd.h>
 #include <onlplib/mmap.h>
+#include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
 #include <fcntl.h>
 #include "platform_lib.h"
@@ -52,6 +53,7 @@
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
+    THERMAL_CPU_CORE,
     THERMAL_1_ON_MAIN_BROAD,
     THERMAL_2_ON_MAIN_BROAD,
     THERMAL_3_ON_MAIN_BROAD,	
@@ -59,28 +61,47 @@ enum onlp_thermal_id
     THERMAL_1_ON_PSU2,
 };
 
-static char last_path[][30] =  /* must map with onlp_thermal_id */
+static char* last_path[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
+    NULL,                  /* CPU_CORE files */
     "3-0048/temp1_input",
     "3-0049/temp1_input",
     "3-004a/temp1_input",
+    "3-004b/temp1_input",
     "11-005b/psu_temp1_input",
     "10-0058/psu_temp1_input",	
 };
 
+static char* cpu_coretemp_files[] =
+    {
+        "/sys/devices/platform/coretemp.0/temp2_input",
+        "/sys/devices/platform/coretemp.0/temp3_input",
+        "/sys/devices/platform/coretemp.0/temp4_input",
+        "/sys/devices/platform/coretemp.0/temp5_input",
+        NULL,
+    };
+
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
 	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "Chassis Thermal Sensor 1", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0}, 
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },	
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "tmp75-MAC_up-1-48", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "Chassis Thermal Sensor 2", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "tmp75-MAC_down-2-49", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "Chassis Thermal Sensor 3", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "tmp75-MAC_left-3-4A", 0}, 
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "tmp75-CPU-4-4B", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
@@ -122,13 +143,17 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     VALIDATE(id);
 	
     local_id = ONLP_OID_ID_GET(id);
-    DEBUG_PRINT("\n[Debug][%s][%d][local_id: %d]", __FUNCTION__, __LINE__, local_id);		
-
-    /* get fullpath */
-    sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);	
 	
     /* Set the onlp_oid_hdr_t and capabilities */		
     *info = linfo[local_id];
+
+    if(local_id == THERMAL_CPU_CORE) {
+        int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
+        return rv;
+    }	
+	
+    /* get fullpath */
+    sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);
 
     OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
     info->mcelsius = atoi(r_data) / temp_base;	

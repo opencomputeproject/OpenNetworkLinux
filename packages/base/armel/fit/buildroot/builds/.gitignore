@@ -1,0 +1,4 @@
+kernel-*
+*.itb
+*.its
+loader-initrd-armel

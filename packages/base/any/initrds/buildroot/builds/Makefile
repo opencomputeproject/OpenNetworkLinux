@@ -16,7 +16,7 @@ include $(ONL)/make/config.mk
 #
 # We build for these architectures
 #
-ARCHS := powerpc x86_64
+ARCHS := powerpc x86_64 arm
 BUILDROOT_ARCHDIRS := $(foreach a,$(ARCHS),buildroot-$(a))
 BUILDROOT_SOURCE := buildroot-mirror
 

@@ -244,14 +244,29 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
     int rv;
     iof_t iof;
     onlp_fan_info_t fi;
+    int yaml;
 
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
 
     rv = onlp_fan_info_get(oid, &fi);
 
-    iof_push(&iof, "Fan %d", ONLP_OID_ID_GET(oid));
+    yaml = flags & ONLP_OID_SHOW_F_YAML;
+
+    if(yaml) {
+        iof_push(&iof, "- ");
+        iof_iprintf(&iof, "Name: Fan %d", ONLP_OID_ID_GET(oid));
+    }
+    else {
+        iof_push(&iof, "Fan %d", ONLP_OID_ID_GET(oid));
+    }
+
     if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+        if(yaml) {
+            iof_iprintf(&iof, "State: Error");
+            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
+        } else {
+            onlp_oid_info_get_error(&iof, rv);
+        }
     }
     else {
         onlp_oid_show_description(&iof, &fi.hdr);
@@ -259,10 +274,10 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
             /* Present */
             iof_iprintf(&iof, "State: Present");
             if(fi.status & ONLP_FAN_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: FAILED");
+                iof_iprintf(&iof, "Status: Failed");
             }
             else {
-                iof_iprintf(&iof, "Status: Running.");
+                iof_iprintf(&iof, "Status: Running");
                 if(fi.model[0]) {
                     iof_iprintf(&iof, "Model: %s", fi.model);
                 }
@@ -270,16 +285,16 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
                     iof_iprintf(&iof, "SN: %s", fi.serial);
                 }
                 if(fi.caps & ONLP_FAN_CAPS_GET_RPM) {
-                    iof_iprintf(&iof, "RPM: %d.", fi.rpm);
+                    iof_iprintf(&iof, "RPM: %d", fi.rpm);
                 }
                 if(fi.caps & ONLP_FAN_CAPS_GET_PERCENTAGE) {
-                    iof_iprintf(&iof, "Speed: %d%%.", fi.percentage);
+                    iof_iprintf(&iof, "Speed: %d%%", fi.percentage);
                 }
                 if(fi.status & ONLP_FAN_STATUS_B2F) {
-                    iof_iprintf(&iof, "Airflow: Back-to-Front.");
+                    iof_iprintf(&iof, "Airflow: Back-to-Front");
                 }
                 if(fi.status & ONLP_FAN_STATUS_F2B) {
-                    iof_iprintf(&iof, "Airflow: Front-to-Back.");
+                    iof_iprintf(&iof, "Airflow: Front-to-Back");
                 }
             }
         }

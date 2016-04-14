@@ -1,4 +1,4 @@
-############################################################
+###########################################################
 #
 # Work in progress.
 #
@@ -12,10 +12,10 @@ endif
 
 include $(ONL)/make/config.mk
 
-all: amd64 ppc
+all: amd64 ppc arm
 	$(MAKE) -C REPO build-clean
 
-onl-amd64 onl-x86 x86 x86_64 amd64:
+onl-amd64 onl-x86 x86 x86_64 amd64: packages_base_all
 	$(MAKE) -C packages/base/amd64/kernels
 	$(MAKE) -C packages/base/amd64/initrds
 	$(MAKE) -C packages/base/amd64/onlp
@@ -25,7 +25,7 @@ onl-amd64 onl-x86 x86 x86_64 amd64:
 	$(MAKE) -C builds/amd64/swi
 	$(MAKE) -C builds/amd64/installer/legacy
 
-onl-ppc ppc:
+onl-ppc ppc: packages_base_all
 	$(MAKE) -C packages/base/powerpc/kernels
 	$(MAKE) -C packages/base/powerpc/initrds
 	$(MAKE) -C packages/base/powerpc/onlp
@@ -35,6 +35,33 @@ onl-ppc ppc:
 	$(MAKE) -C builds/powerpc/rootfs
 	$(MAKE) -C builds/powerpc/swi
 	$(MAKE) -C builds/powerpc/installer/legacy
+
+
+ifdef ONL_DEBIAN_SUITE_jessie
+
+arm_toolchain_check:
+	@which arm-linux-gnueabi-gcc || (/bin/echo -e "*\n* ERROR\n*\n* This container does not support building for the ARM architecture.\n* Please use opennetworklinux/onlbuilder8:1.2 later.\n*" && exit 1)
+
+onl-arm arm: arm_toolchain_check packages_base_all
+	$(MAKE) -C packages/base/armel/kernels
+	$(MAKE) -C packages/base/armel/initrds
+	$(MAKE) -C packages/base/armel/onlp
+	$(MAKE) -C packages/base/armel/onlp-snmpd
+	$(MAKE) -C packages/base/armel/faultd
+	$(MAKE) -C packages/base/armel/fit
+	$(MAKE) -C builds/armel/rootfs
+	$(MAKE) -C builds/armel/swi
+	$(MAKE) -C builds/armel/installer/legacy
+else
+
+onl-arm arm:
+	@/bin/echo -e "*\n* Warning\n*\n* ARM Architecture support is only available in Jessie builds. Please use onbuilder -8.\n*"
+
+endif
+
+
+packages_base_all:
+	$(MAKE) -C packages/base/all
 
 rpc rebuild:
 	$(ONLPM) --rebuild-pkg-cache
@@ -58,3 +85,10 @@ docker: docker_check
 # create an interative docker shell, for debugging builds
 docker-debug: docker_check
 	@docker/tools/onlbuilder -$(VERSION) --isolate --hostname onlbuilder$(VERSION) --pull
+
+
+versions:
+	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
+
+relclean:
+	@find $(ONL)/RELEASE -name "ONL-*" -delete

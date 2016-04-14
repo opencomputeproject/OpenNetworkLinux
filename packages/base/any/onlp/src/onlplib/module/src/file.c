@@ -30,18 +30,80 @@
 #include "onlplib_log.h"
 #include <onlp/onlp.h>
 #include <errno.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/stat.h>
+
+/**
+ * @brief Connects to a unix domain socket.
+ * @param path The socket path.
+ */
+static int
+ds_connect__(const char* path)
+{
+    int fd;
+    struct sockaddr_un addr;
+
+    if( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        AIM_LOG_ERROR("socket: %{errno}", errno);
+        return -1;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, path, sizeof(addr.sun_path)-1);
+
+    if(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+        return fd;
+    }
+    else {
+        return ONLP_STATUS_E_MISSING;
+    }
+}
+
+/**
+ * @brief Open a file or domain socket.
+ * @param dst Receives the full filename (for logging purposes).
+ * @param flags The open flags.
+ * @param fmt Format specifier.
+ * @param vargs Format specifier arguments.
+ */
+static int
+vopen__(char** dst, int flags, const char* fmt, va_list vargs)
+{
+    int fd;
+    struct stat sb;
+    char fname[PATH_MAX];
+
+    ONLPLIB_VSNPRINTF(fname, sizeof(fname)-1, fmt, vargs);
+    if(dst) {
+        *dst = aim_strdup(fname);
+    }
+
+    if(stat(fname, &sb) == -1) {
+        return ONLP_STATUS_E_MISSING;
+    }
+
+    if(S_ISSOCK(sb.st_mode)) {
+        fd = ds_connect__(fname);
+    }
+    else {
+        fd = open(fname, flags);
+    }
+
+    return (fd > 0) ? fd : ONLP_STATUS_E_MISSING;
+}
+
 
 int
 onlp_file_vread(uint8_t* data, int max, int* len, const char* fmt, va_list vargs)
 {
     int fd;
-    char fname[PATH_MAX];
+    char* fname = NULL;
     int rv;
 
-    ONLPLIB_VSNPRINTF(fname, sizeof(fname)-1, fmt, vargs);
-
-    if ((fd = open(fname, O_RDONLY)) == -1) {
-        rv = ONLP_STATUS_E_MISSING;
+    if ((fd = vopen__(&fname, O_RDONLY, fmt, vargs)) < 0) {
+        rv = fd;
     }
     else {
         if ((*len = read(fd, data, max)) <= 0) {
@@ -53,6 +115,7 @@ onlp_file_vread(uint8_t* data, int max, int* len, const char* fmt, va_list vargs
         }
         close(fd);
     }
+    aim_free(fname);
     return rv;
 }
 
@@ -124,14 +187,12 @@ int
 onlp_file_vwrite(uint8_t* data, int len, const char* fmt, va_list vargs)
 {
     int fd;
-    char fname[PATH_MAX];
+    char* fname = NULL;
     int rv;
     int wlen;
 
-    ONLPLIB_VSNPRINTF(fname, sizeof(fname)-1, fmt, vargs);
-
-    if ((fd = open(fname, O_WRONLY)) == -1) {
-        rv = ONLP_STATUS_E_MISSING;
+    if ((fd = vopen__(&fname, O_WRONLY, fmt, vargs)) < 0) {
+        rv = fd;
     }
     else {
         if ((wlen = write(fd, data, len)) != len) {
@@ -143,6 +204,7 @@ onlp_file_vwrite(uint8_t* data, int len, const char* fmt, va_list vargs)
         }
         close(fd);
     }
+    aim_free(fname);
     return rv;
 }
 
@@ -211,11 +273,12 @@ int
 onlp_file_vopen(int flags, int log, const char* fmt, va_list vargs)
 {
     int rv;
-    char fname[PATH_MAX];
-    ONLPLIB_VSNPRINTF(fname, sizeof(fname)-1, fmt, vargs);
-    rv = open(fname, flags);
+    char* fname;
+
+    rv = vopen__(&fname, flags, fmt, vargs);
     if(rv < 0 && log) {
         AIM_LOG_ERROR("failed to open file %s (0x%x): %{errno}", fname, flags, errno);
     }
+    aim_free(fname);
     return rv;
 }
