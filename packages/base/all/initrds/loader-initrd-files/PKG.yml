@@ -26,8 +26,6 @@ packages:
     summary: Open Network Linux System Loader Common Initscripts
 
     files:
-      src/bin/initblockdev : /sbin/
-      src/bin/initmounts : /sbin/
       src/bin/initnetdev : /sbin/
 
     changelog:  Change changes changes.,
