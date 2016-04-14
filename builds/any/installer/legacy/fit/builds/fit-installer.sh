@@ -110,7 +110,7 @@ fw_setenv_f_s "${envf}"
 installer_say "Install finished.  Rebooting to Open Network Linux."
 sleep 3
 reboot
-exit
+exit 0
 
 # Do not add any additional whitespace after this point.
 PAYLOAD_FOLLOWS

@@ -14,11 +14,11 @@ if [ ! "${SWI}" ]; then
    exit 200
 fi
 
-if [ "${SWI}" = "flash2::latest" ]; then
-   # Boot the latest (by mtime) SWI in the flash2 partition.
-   SWI=`ls /mnt/flash2/*.swi -t | head -n1`
+if [ "${SWI}" = "images::latest" ]; then
+   # Boot the latest (by mtime) SWI in the images partition.
+   SWI=`ls /mnt/onl/images/*.swi -t | head -n1`
    if [ -z "${SWI}" ]; then
-      msg_error "No SWI available in /mnt/flash2. SWI booting cannot continue."
+      msg_error "No SWI available in /mnt/onl/images. SWI booting cannot continue."
       exit 200
    fi
 fi

@@ -20,10 +20,9 @@
 ############################################################
 
 # The bootcommand is to read the loader directly from the first partition and execute it.
-platform_bootcmd="mmc part 0; fatload mmc 0:1 0x10000000 $ONL_PLATFORM.itb; setenv bootargs console=\$consoledev,\$baudrate onl_platform=$ONL_PLATFORM; bootm 0x10000000#$ONL_PLATFORM"
+platform_bootcmd="mmc part 0; ext2load mmc 0:1 0x10000000 $ONL_PLATFORM.itb; setenv bootargs console=\$consoledev,\$baudrate onl_platform=$ONL_PLATFORM; bootm 0x10000000#$ONL_PLATFORM"
 
 platform_installer() {
     # Standard installation on the CF card.
-    installer_standard_blockdev_install mmcblk0 128M 128M ""
+    installer_standard_blockdev_install mmcblk0 128M 128M 1024M ""
 }
-

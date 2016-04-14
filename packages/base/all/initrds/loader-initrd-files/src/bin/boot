@@ -49,7 +49,7 @@ Usage: $0 [-h|--help] [-t|--testonly] [--rootfs ROOTFS] --cache LOCATION [SWI]
     format of the SWI argument:
 
     DEV:PATH
-    /mnt/DEV/PATH
+    /mnt/onl/DEV/PATH
         Loads a SWI file from local storage device DEV (e.g. flash).
     http://[USER:PASSWORD@]SERVER[:PORT]/PATH
     ftp://[USER:PASSWORD@]SERVER[:PORT]/PATH
@@ -111,18 +111,18 @@ case "${SWI}" in
         fi
         ;;
     *)
-        # Parse dev:file or dev:/file or /mnt/dev/file
-        parselocal='s#\(\([^:/]*\):/\?\|/mnt/\([^/]*\)/\)\?\(.*\)#dev="\2\3" file="\4"#p'
+        # Parse dev:file or dev:/file or /mnt/onl/dev/file
+        parselocal='s#\(\([^:/]*\):/\?\|/mnt/onl/\([^/]*\)/\)\?\(.*\)#dev="\2\3" file="\4"#p'
         eval $(echo "${SWI}" | sed -n "${parselocal}")
         if [ "${dev}" ] ; then
             # Wait for /mnt/dev to show up
-            waitforblockdev "/mnt/${dev}"
+            :
         else
             # Assume file is relative, parse absolutified file
             eval $(realpath "${file}" | sed -n "${parselocal}")
             SWI="${dev}:${file}"
         fi
-        swipath="/mnt/${dev}/${file}"
+        swipath="/mnt/onl/${dev}/${file}"
         [ -f "${swipath}" ] || { echo "${SWI} not found or not a file"; exit 1; }
         ;;
 esac
