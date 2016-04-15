@@ -1,0 +1,320 @@
+-- ----------------------------------------------------------------------
+-- Open Network Linux Environmental Sensor MIB
+-- ----------------------------------------------------------------------
+
+OCP-ONL-SENSOR-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, enterprises, Gauge32 FROM SNMPv2-SMI
+    DisplayString                                         FROM SNMPv2-TC
+    ocp                                                   FROM OCP-MIB
+    OpenNetworkLinux                                      FROM OCP-ONL-MIB;
+
+onlSensors MODULE-IDENTITY
+     LAST-UPDATED "201605140000Z"
+     ORGANIZATION "Open Compute Project"
+     CONTACT-INFO "http://www.opencompute.org"
+     DESCRIPTION
+        "This MIB describes objects for sensors used in Open Network Linux."
+     REVISION "201605140000Z"
+     DESCRIPTION "Initial revision"
+     ::= { OpenNetworkLinux 2 }
+
+--
+-- TEMPERATURE SENSORS
+--
+onlTempSensorsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ONLTempSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of temperature sensors and their values."
+    ::= { onlSensors 1 }
+
+onlTempSensorsEntry OBJECT-TYPE
+    SYNTAX      ONLTempSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry containing a device and its statistics."
+    INDEX       { onlTempSensorsIndex }
+    ::= { onlTempSensorsTable 1 }
+
+ONLTempSensorsEntry ::= SEQUENCE {
+    onlTempSensorsIndex    Integer32,
+    onlTempSensorsDevice   DisplayString,
+    onlTempSensorsStatus   Integer32,
+    onlTempSensorsValue    Gauge32
+}
+
+onlTempSensorsIndex OBJECT-TYPE
+    SYNTAX      Integer32 (0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Reference index for each observed device."
+    ::= { onlTempSensorsEntry 1 }
+
+onlTempSensorsDevice OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The name of the temperature sensor we are reading."
+    ::= { onlTempSensorsEntry 2 }
+
+onlTempSensorsStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The status of this sensor.
+         0: missing
+         1: good
+         2: failed."
+    ::= { onlTempSensorsEntry 3 }
+
+onlTempSensorsValue OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The temperature of this sensor in mC."
+    ::= { onlTempSensorsEntry 4 }
+
+--
+-- FAN SENSORS
+--
+onlFanSensorsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ONLFanSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of fan sensors and their values."
+    ::= { onlSensors 2 }
+
+onlFanSensorsEntry OBJECT-TYPE
+    SYNTAX      ONLFanSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry containing a device and its statistics."
+    INDEX       { onlFanSensorsIndex }
+    ::= { onlFanSensorsTable 1 }
+
+ONLFanSensorsEntry ::= SEQUENCE {
+    onlFanSensorsIndex    Integer32,
+    onlFanSensorsDevice   DisplayString,
+    onlFanSensorsStatus   Integer32,
+    onlFanSensorsFlowType DisplayString,
+    onlFanSensorsRPM      Gauge32,
+    onlFanSensorsPct      Gauge32,
+    onlFanSensorsModel    DisplayString,
+    onlFanSensorsSerial   DisplayString
+}
+
+onlFanSensorsIndex OBJECT-TYPE
+    SYNTAX      Integer32 (0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Reference index for each observed device."
+    ::= { onlFanSensorsEntry 1 }
+
+onlFanSensorsDevice OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The name of the fan sensor we are reading."
+    ::= { onlFanSensorsEntry 2 }
+
+onlFanSensorsStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Status of the fan.
+         0: missing
+         1: good
+         2: failed."
+    ::= { onlFanSensorsEntry 3 }
+
+onlFanSensorsFlowType OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Flow type of the fan.
+         unknown: unknown type
+         f2b: front to back
+         b2f: back to front."
+    ::= { onlFanSensorsEntry 4 }
+
+onlFanSensorsRPM OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The rotation speed of the fan in RPM."
+    ::= { onlFanSensorsEntry 5 }
+
+onlFanSensorsPct OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The percentage of the fan."
+    ::= { onlFanSensorsEntry 6 }
+
+onlFanSensorsModel OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The model of the fan sensor we are reading."
+    ::= { onlFanSensorsEntry 7 }
+
+onlFanSensorsSerial OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The serial number of the fan sensor we are reading."
+    ::= { onlFanSensorsEntry 8 }
+
+--
+-- PSU SENSORS
+--
+onlPSUSensorsTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF ONLPSUSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "Table of power suply unit sensors and their values."
+    ::= { onlSensors 3 }
+
+onlPSUSensorsEntry OBJECT-TYPE
+    SYNTAX      ONLPSUSensorsEntry
+    MAX-ACCESS  not-accessible
+    STATUS      current
+    DESCRIPTION
+        "An entry containing a device and its statistics."
+    INDEX       { onlPSUSensorsIndex }
+    ::= { onlPSUSensorsTable 1 }
+
+ONLPSUSensorsEntry ::= SEQUENCE {
+    onlPSUSensorsIndex    Integer32,
+    onlPSUSensorsDevice   DisplayString,
+    onlPSUSensorsStatus   Integer32,
+    onlPSUSensorsCurrentType DisplayString,
+    onlPSUSensorsModel	 DisplayString,
+    onlPSUSensorsVin      Gauge32,
+    onlPSUSensorsVout     Gauge32,
+    onlPSUSensorsIin      Gauge32,
+    onlPSUSensorsIout     Gauge32,
+    onlPSUSensorsPin      Gauge32,
+    onlPSUSensorsPout     Gauge32,
+    onlPSUSensorsSerial   DisplayString
+}
+
+onlPSUSensorsIndex OBJECT-TYPE
+    SYNTAX      Integer32 (0..65535)
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Reference index for each observed device."
+    ::= { onlPSUSensorsEntry 1 }
+
+onlPSUSensorsDevice OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The name of the device we are reading."
+    ::= { onlPSUSensorsEntry 2 }
+
+onlPSUSensorsStatus OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The status of the PSU.
+         0: missing
+         1: good
+         2: failed."
+    ::= { onlPSUSensorsEntry 3 }
+
+onlPSUSensorsCurrentType OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The current type of the PSU."
+    ::= { onlPSUSensorsEntry 4 }
+
+onlPSUSensorsModel OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The model of the PSU."
+    ::= { onlPSUSensorsEntry 5 }
+
+onlPSUSensorsVin OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The input voltage in mV."
+    ::= { onlPSUSensorsEntry 6 }
+
+onlPSUSensorsVout OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The output voltage in mV."
+    ::= { onlPSUSensorsEntry 7 }
+
+onlPSUSensorsIin OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The input current in mA."
+    ::= { onlPSUSensorsEntry 8 }
+
+onlPSUSensorsIout OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The output current in mA."
+    ::= { onlPSUSensorsEntry 9 }
+
+onlPSUSensorsPin OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The input power in mW."
+    ::= { onlPSUSensorsEntry 10 }
+
+onlPSUSensorsPout OBJECT-TYPE
+    SYNTAX      Gauge32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The output power in mW."
+    ::= { onlPSUSensorsEntry 11 }
+
+onlPSUSensorsSerial OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The serial number of the PSU."
+    ::= { onlPSUSensorsEntry 12 }
+
+END
