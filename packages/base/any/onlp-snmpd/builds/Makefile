@@ -3,7 +3,7 @@ include $(ONL)/make/any.mk
 MODULE := onlp-snmpd
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := onlp_snmp AIM OS snmp_subagent IOF
+DEPENDMODULES := onlp_snmp AIM OS snmp_subagent IOF onlplib
 DEPENDMODULE_HEADERS := onlp
 
 include $(BUILDER)/dependmodules.mk
