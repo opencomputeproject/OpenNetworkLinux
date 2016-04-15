@@ -20,16 +20,4 @@ packages:
 
     changelog:  Change changes changes.,
 
-  - name: onl-mibs
-    version: 1.0.0
-    summary: ONL MIB Package
-    arch: all
-
-    files:
-      ${ONL}/docs/mibs/ : /usr/share/snmp/mibs
-
-    changelog:  Change changes changes.,
-
-
-
 
