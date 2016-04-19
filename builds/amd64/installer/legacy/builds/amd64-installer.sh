@@ -130,6 +130,9 @@ do_handle_disk()
   return 0
 }
 
+ONL_CONFIG_TARBALL=/tmp/onl_config.tgz
+ONL_CONFIG_MOUNTPOINT=/mnt/onl_config_partition
+
 do_handle_partitions()
 {
   local part start end sz fs label flags
@@ -143,8 +146,16 @@ do_handle_partitions()
 
   installer_say "Examining $DEV part $part"
 
-
   case "$label" in
+      ONL-CONFIG)
+          installer_say "Preserving the contents of the existing ONL-CONFIG partition..."
+          rm -rf $ONL_CONFIG_MOUNTPOINT
+          mkdir -p $ONL_CONFIG_MOUNTPOINT
+          mount $DEV$part $ONL_CONFIG_MOUNTPOINT
+          tar -C $ONL_CONFIG_MOUNTPOINT -cvzf $ONL_CONFIG_TARBALL .
+          umount $ONL_CONFIG_MOUNTPOINT
+          parted $DEV rm $part || return 1
+          ;;
       ONIE-BOOT|GRUB-BOOT|*-DIAG)
           installer_say "Partition $DEV$part: $label: Preserving..."
           ;;
@@ -184,10 +195,15 @@ partition_gpt()
 {
   local start end part
 
-  installer_say "Creating 128MB for Open Network Linux boot"
   start=$1; shift
+
+  ############################################################
+  #
+  # ONL Boot Partition.
+  #
+  ############################################################
+  installer_say "Creating 128MB for ONL Boot partition..."
   end=$(( $start + 128 ))
-  echo "start=$start end=$end"
 
   parted -s $DEV unit mb mkpart "ONL-BOOT" ext4 ${start} ${end} || return 1
   if ! part=$(get_part_number $DEV "ONL-BOOT"); then
@@ -198,23 +214,59 @@ partition_gpt()
   mkfs.ext4 -L "ONL-BOOT" ${DEV}${part}
   start=$(( $end + 1 ))
 
-  installer_say "Creating /mnt/flash"
-  end=$(( $start + 128 ))
 
-  parted -s $DEV unit mb mkpart "FLASH" fat32 ${start} ${end} || return 1
-  if ! part=$(get_part_number $DEV "FLASH"); then
+
+  ############################################################
+  #
+  # ONL Configuration Partition.
+  #
+  ############################################################
+  installer_say "Creating 128MB ONL Configuration partition..."
+  end=$(( $start + 128 ))
+  parted -s $DEV unit mb mkpart "ONL-CONFIG" ext4 ${start} ${end} || return 1
+  if ! part=$(get_part_number $DEV "ONL-CONFIG"); then
       return 1
   fi
-  mkfs.vfat -n "FLASH" ${DEV}${part}
-
+  mkfs.ext4 -L "ONL-CONFIG" ${DEV}${part}
   start=$(( $end + 1 ))
 
-  installer_say "Allocating remainder for /mnt/flash2"
-  parted -s $DEV unit mb mkpart "FLASH2" fat32 ${start} "100%" || return 1
-  if ! part=$(get_part_number $DEV "FLASH2"); then
+  if [ -f $ONL_CONFIG_TARBALL ]; then
+      installer_say "Restoring the contents of the ONL-CONFIG partition..."
+      rm -rf $ONL_CONFIG_MOUNTPOINT
+      mkdir -p $ONL_CONFIG_MOUNTPOINT
+      mount $DEV$part $ONL_CONFIG_MOUNTPOINT
+      tar -C $ONL_CONFIG_MOUNTPOINT -xvzf $ONL_CONFIG_TARBALL
+      umount $ONL_CONFIG_MOUNTPOINT
+  fi
+
+  ############################################################
+  #
+  # ONL Image Partition.
+  #
+  ############################################################
+  installer_say "Creating 1G ONL Image partition..."
+  end=$(( $start + 1024 ))
+
+  parted -s $DEV unit mb mkpart "ONL-IMAGES" ext4 ${start} ${end} || return 1
+  if ! part=$(get_part_number $DEV "ONL-IMAGES"); then
       return 1
   fi
-  mkfs.vfat -n "FLASH2" ${DEV}${part}
+  mkfs.ext4 -L "ONL-IMAGES" ${DEV}${part}
+  start=$(( $end + 1 ))
+
+
+
+  ############################################################
+  #
+  # ONL Root Partition.
+  #
+  ############################################################
+  installer_say "Creating the ONL Data partition..."
+  parted -s $DEV unit mb mkpart "ONL-DATA" ext4 ${start} "100%" || return 1
+  if ! part=$(get_part_number $DEV "ONL-DATA"); then
+      return 1
+  fi
+  mkfs.ext4 -L "ONL-DATA" ${DEV}${part}
 
   return 0
 }
@@ -231,8 +283,8 @@ installer_standard_gpt_install()
   mkdir "$workdir/mnt"
 
   if [ -f "${installer_dir}/boot-config" ]; then
-      installer_say "Installing boot-config"
-      mount LABEL="FLASH" "$workdir/mnt"
+      installer_say "Installing boot-config..."
+      mount LABEL="ONL-BOOT" "$workdir/mnt"
       cp "${installer_dir}/boot-config" "$workdir/mnt/boot-config"
       umount "$workdir/mnt"
   fi
@@ -244,7 +296,7 @@ installer_standard_gpt_install()
       SWIDST="$(basename ${SWISRC})"
     fi
     installer_say "Installing Open Network Linux Software Image (${SWIDST})..."
-    mount LABEL="FLASH2" "$workdir/mnt"
+    mount LABEL="ONL-IMAGES" "$workdir/mnt"
     cp "${SWISRC}" "$workdir/mnt/${SWIDST}"
     umount "$workdir/mnt"
   fi
@@ -305,7 +357,7 @@ do_cleanup()
   cat /var/log/onie.log > /dev/console
   installer_say "Install failed. See log messages above for details"
 
-  grep "$workdir" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -n 1 umount
+  grep "$workdir" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -r -n 1 umount
   cd /tmp
   rm -fr "$workdir"
 

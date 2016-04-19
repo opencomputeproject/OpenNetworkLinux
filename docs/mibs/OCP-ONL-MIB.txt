@@ -1,0 +1,21 @@
+-- ----------------------------------------------------------------------
+-- Open Network Linux MIB
+-- ----------------------------------------------------------------------
+--
+OCP-ONL-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, enterprises  FROM SNMPv2-SMI
+    ocp                                                   FROM OCP-MIB;
+
+OpenNetworkLinux MODULE-IDENTITY
+     LAST-UPDATED "201605140000Z"
+     ORGANIZATION "Open Compute Project"
+     CONTACT-INFO "http://www.opencompute.org"
+     DESCRIPTION
+        "This MIB describes objects used by Open Network Linux."
+     REVISION "201605140000Z"
+     DESCRIPTION "Initial revision"
+     ::= { ocp 1 }
+
+END

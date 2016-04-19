@@ -12,6 +12,8 @@ if [ -d /sys/class/ubi ]; then
 fi
 ( cd /sys/class/net; for d in *; do /sbin/initnetdev $d add; done )
 
-initmounts
+log_action_end_msg 0
 
+log_action_begin_msg "Mounting filesystems"
+initmounts -q
 log_action_end_msg 0

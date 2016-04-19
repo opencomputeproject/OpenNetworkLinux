@@ -13,3 +13,17 @@ packages:
       src/bin : /usr/bin
 
     changelog: Changes
+
+
+  - name: onl-vendor-config-onl-loader
+    version: 1.0.0
+    arch: all
+    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+    maintainer: support@bigswitch.com
+    summary: ONL Base Configuration Package (Loader)
+
+    files:
+      src/python/onl : /usr/lib/python2.7/onl
+      src/bin/initmounts : /bin/initmounts
+
+    changelog: Changes

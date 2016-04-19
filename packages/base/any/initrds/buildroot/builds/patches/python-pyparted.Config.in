@@ -1,0 +1,6 @@
+config BR2_PACKAGE_PYTHON_PYPARTED
+       bool "python-pyparted"
+       depends on BR2_PACKAGE_PYTHON
+       depends on BR2_PACKAGE_PARTED
+       help
+         Include the 'pyparted' Python library

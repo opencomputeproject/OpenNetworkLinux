@@ -1,0 +1,34 @@
+#!/bin/sh
+############################################################
+SERVER=localhost
+ONL_TREE=.1.3.6.1.4.1.42623.1
+MIBS=OCP-ONL-PLATFORM-MIB:OCP-ONL-SENSOR-MIB
+MIB_ARGS="-m $MIBS"
+COMMUNITY=public
+ECHO=
+
+while getopts "s:c:nvpd" opt; do
+    case $opt in
+        s)
+            SERVER=$OPTARG;
+            ;;
+        n)
+            MIB_ARGS=
+            ;;
+        c)
+            COMMUNITY=$OPTARG;
+            ;;
+        p)
+            ONL_TREE="${ONL_TREE}.1"
+            ;;
+        v)
+            set -x
+            ;;
+        d)
+            # Just echo the command
+            ECHO=echo
+            ;;
+    esac
+done
+
+$ECHO snmpwalk $MIB_ARGS -v2c -c $COMMUNITY $SERVER $ONL_TREE

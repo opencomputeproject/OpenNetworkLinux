@@ -14,11 +14,10 @@ packages:
 
     files:
       builds/$BUILD_DIR/${TOOLCHAIN}/bin/onlp-snmpd: /usr/bin/onlp-snmpd
+      ${ONL}/packages/base/any/onlp-snmpd/bin/onl-snmpwalk : /usr/bin/onl-snmpwalk
 
     init: ${ONL}/packages/base/any/onlp-snmpd/onlp-snmpd.init
 
     changelog:  Change changes changes.,
-
-
 
 

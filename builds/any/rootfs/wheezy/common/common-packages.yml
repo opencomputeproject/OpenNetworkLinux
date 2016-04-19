@@ -34,8 +34,7 @@
 - scapy
 - python-pypcap
 - snmpd
-- lm-sensors
-- fancontrol
+- snmp
 - pciutils
 - usbutils
 - mtd-utils
@@ -69,5 +68,5 @@
 - onl-loader-initscripts
 - onlp-snmpd
 - oom-shim
-
+- onl-mibs
 

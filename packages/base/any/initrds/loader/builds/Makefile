@@ -22,6 +22,7 @@ $(TARGET):
 	$(ONLPM) --copy-file onl-buildroot-initrd:$(ARCH) onl-buildroot-initrd-$(ARCH).cpio.gz .
 	sudo rm -rf $(ROOT) && mkdir $(ROOT)
 	$(ONLPM) --sudo --force --extract-dir onl-loader-initrd-files:all $(ROOT)
+	$(ONLPM) --sudo --force --extract-dir onl-vendor-config-onl-loader:all $(ROOT)
 	$(ONLPM) --sudo $(foreach p,$(PLATFORM_PACKAGES),--extract-dir $(p) $(ROOT))
 	$(ONL)/tools/sjson.py --kj version $(ONL)/make/version-onl.json --kl platforms $(PLATFORMS) --kv arch $(ARCH) --out manifest.json
 	sudo mkdir -p $(ROOT)/etc/onl/loader && sudo cp manifest.json $(ROOT)/etc/onl/loader

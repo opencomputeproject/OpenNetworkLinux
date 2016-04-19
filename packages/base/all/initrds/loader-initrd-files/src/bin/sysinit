@@ -53,7 +53,6 @@ while read -r l; do
     esac
 done
 
-
 # Populate platform-specific settings
 . /lib/platform-detect
 
@@ -62,46 +61,23 @@ if [ ! -f /etc/onl/abort ]; then
     # Tell kernel to invoke mdev when devices are added or removed
     echo /sbin/mdev >/proc/sys/kernel/hotplug
 
-
-    # Initialize any block and net devices already present
-    ( cd /sys/class/block; for d in *; do initblockdev $d add; done )
-    if [ -d /sys/class/ubi ]; then
-        ( cd /sys/class/ubi; for d in *; do initblockdev $d add; done )
-    fi
+    # Initialize net devices
     ( cd /sys/class/net; for d in *; do initnetdev $d add; done )
 
     # Initialize platform mounts
-    initmounts
-
-    # Perform recovery if necessary; reboot automatically
-    if /bin/recover; then
-        initmounts
-    else
-        restoreconsole
-        echo "Recovery failed."
-        echo "Press CR now to exit sysinit and access the loader shell."
-        echo "Otherwise, the system will reboot in 3s."
-        if read -t 3 prompt; then
-            trap - EXIT
-            exit
-        fi
-        reboot -f
-    fi
-
+    initmounts -q
 
     if [ -f /etc/issue ]; then
         cat /etc/issue
     fi
 
-    waitforblockdev /mnt/flash
-    sleep 1 # wait for external block devices to be mounted
-    [ ! -f /mnt/flash/boot-config ] || cat /mnt/flash/boot-config >>/etc/onl/boot-config
+    [ ! -f /mnt/onl/boot/boot-config ] || cat /mnt/onl/boot/boot-config >>/etc/onl/boot-config
 
     #
     # Initialize the /mnt/flash/boot area.
     #
-    mkdir -p /mnt/flash/boot
-    rm -rf /mnt/flash/boot/*
+    #mkdir -p /mnt/data/boot
+    #rm -rf /mnt/flash/boot/*
 fi
 
 

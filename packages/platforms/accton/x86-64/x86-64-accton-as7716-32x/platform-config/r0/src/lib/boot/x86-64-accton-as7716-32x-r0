@@ -1,4 +1,5 @@
-echo "pci0000:00/0000:00:14.0 ma1" >/etc/onl/net
+#echo "pci0000:00/0000:00:1c.0/0000:0a:00.0" > /etc/onl/net
+ip link set dev eth0 name ma1
 
 cp /dev/null /etc/onl/mounts
 echo "LABEL=FLASH * flash" >> /etc/onl/mounts

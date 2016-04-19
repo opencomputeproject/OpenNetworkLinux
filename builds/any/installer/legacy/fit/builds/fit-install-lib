@@ -1,3 +1,4 @@
+# -*- sh -*-
 ######################################################################
 #
 # lib.sh
@@ -122,11 +123,12 @@ installer_partition_format() {
     local blockdev=$1
     local partno=$2
     local mkfs=$3
+    local options=$4
     local partition="$1$2"
 
     installer_say "Format ${partition}..."
     installer_create_device_file ${blockdev} ${partno}
-    "${mkfs}" "${installer_df}"
+    "${mkfs}" ${options} "${installer_df}"
     installer_say "Format ${partition} complete."
     rm "${installer_df}"
 }
@@ -158,26 +160,60 @@ installer_umount_blockdev() {
 # installer_blockdev_format <blockdev> <p1size> <p2size> <p3size>
 #
 #    <blockdev> The block device name.
-#    <p1size>   The size of the first partition.
-#    <p2size>   The size of the second partition.
-#    <p3size>   [Optional] The size of the third partition.
-#               If p3size is unset, the remainder of the device will be used
-#               for the third partition.
+#    <p1size>   The size of the boot partition.
+#    <p2size>   The size of the config partition.
+#    <p3size>   The size of the image partition.
+#    <p4size>   [Optional] The size of the data partition.
+#               If p4size is unset, the remainder of the device will be used
+#               for the data partition.
 #
 ############################################################
+ONL_CONFIG_TARBALL=/tmp/onl_config.tgz
+ONL_CONFIG_MOUNTPOINT=/mnt/onl_config_partition
 
 installer_blockdev_format() {
     local blockdev=$1
     local partition1size=$2
     local partition2size=$3
     local partition3size=$4
+    local partition4size=$5
+
+    onl_config_partition=$(blkid | grep ONL-CONFIG | awk '{print $1}' | tr -d ':')
+
+    #
+    # If an ONL-CONFIG partition exists, we need to save and restore its contents.
+    #
+    if [ -n "$onl_config_partition" ]; then
+        installer_say "Preserving the contents of the existing ONL-CONFIG partition..."
+        rm -rf $ONL_CONFIG_MOUNTPOINT
+        mkdir -p $ONL_CONFIG_MOUNTPOINT
+        echo mount "$onl_config_partition" $ONL_CONFIG_MOUNTPOINT
+        mount "$onl_config_partition" $ONL_CONFIG_MOUNTPOINT
+        tar -C $ONL_CONFIG_MOUNTPOINT -cvzf $ONL_CONFIG_TARBALL .
+        umount $ONL_CONFIG_MOUNTPOINT
+    fi
+
+
 
     installer_umount_blockdev ${blockdev}
-    installer_say "Formatting ${blockdev} as ${partition1size}:${partition2size}:${partition3size}."
-    echo -e "o\nn\np\n1\n\n+${partition1size}\nn\np\n2\n\n+${partition2size}\nn\np\n3\n\n${partition3size}\np\nw\n" | fdisk /dev/${blockdev}
-    installer_partition_format ${blockdev} 1 mkdosfs
-    installer_partition_format ${blockdev} 2 mkdosfs
-    installer_partition_format ${blockdev} 3 mkdosfs
+    installer_say "Formatting ${blockdev} as ${partition1size}:${partition2size}:${partition3size}:${partition4size}."
+    echo -e "o\nn\np\n1\n\n+${partition1size}\nn\np\n2\n\n+${partition2size}\nn\np\n3\n\n+${partition3size}\nn\np\n4\n\n${partition4size}\np\nw\n" | fdisk /dev/${blockdev}
+    installer_partition_format ${blockdev} 1 mkfs.ext2 "-L ONL-BOOT"
+    installer_partition_format ${blockdev} 2 mkfs.ext2 "-L ONL-CONFIG"
+    installer_partition_format ${blockdev} 3 mkfs.ext2 "-L ONL-IMAGES"
+    installer_partition_format ${blockdev} 4 mkfs.ext2 "-L ONL-DATA"
+
+    if [ -f $ONL_CONFIG_TARBALL ]; then
+        installer_say "Restoring the contents of the existing ONL-CONFIG partition..."
+        installer_create_device_file ${blockdev} 2
+        mkdir -p "${installer_df}.mount"
+        mount "${installer_df}" "${installer_df}.mount"
+        tar -C "${installer_df}.mount" -xvzf $ONL_CONFIG_TARBALL
+        umount "${installer_df}.mount"
+        rm "${installer_df}"
+        rmdir "${installer_df}.mount"
+        rm $ONL_CONFIG_TARBALL
+    fi
 }
 
 ############################################################
@@ -311,15 +347,16 @@ installer_standard_blockdev_install () {
     local p1size=$2
     local p2size=$3
     local p3size=$4
+    local p4size=$5
 
     # Standard 3-partition format for loader, /mnt/flash, and /mnt/flash2
-    installer_blockdev_format "${blockdev}" "${p1size}" "${p2size}" "${p3size}"
+    installer_blockdev_format "${blockdev}" "${p1size}" "${p2size}" "${p3size}" "${p4size}"
 
     # Copy the platform loader to the first partition.
     installer_platform_loader "${blockdev}" 1
 
     # Set the boot-config file
-    installer_platform_bootconfig "${blockdev}" 2
+    installer_platform_bootconfig "${blockdev}" 1
 
     # Copy the packaged SWI to the third partition.
     installer_platform_swi "${blockdev}" 3

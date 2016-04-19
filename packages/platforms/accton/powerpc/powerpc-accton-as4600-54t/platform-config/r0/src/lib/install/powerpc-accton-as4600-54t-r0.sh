@@ -20,9 +20,9 @@
 ############################################################
 
 # The loader is installed in the fat partition of the first USB storage device
-platform_bootcmd="usb start; fatload usb 0:1 0x10000000 $ONL_PLATFORM.itb; setenv bootargs console=\$consoledev,\$baudrate onl_platform=$ONL_PLATFORM; bootm 0x10000000#$ONL_PLATFORM"
+platform_bootcmd="usb start; ext2load usb 0:1 0x10000000 $ONL_PLATFORM.itb; setenv bootargs console=\$consoledev,\$baudrate onl_platform=$ONL_PLATFORM; bootm 0x10000000#$ONL_PLATFORM"
 
 platform_installer() {
     # Standard installation to usb storage
-    installer_standard_blockdev_install sda 128M 128M ""
+    installer_standard_blockdev_install sda 32M 32M 448M ""
 }
