@@ -43,11 +43,11 @@ Multistrap:
     omitdebsrc: true
 
   Local-All:
-    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/all
+    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/binary-all
     omitdebsrc: true
 
   Local-Arch:
-    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/${ARCH}
+    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
     omitdebsrc: true
 
 Configure:
