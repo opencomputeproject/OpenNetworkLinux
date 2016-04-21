@@ -291,8 +291,8 @@ typedef struct sff_info_s {
     uint8_t cc_base;
     uint8_t cc_ext;
 
-    /** whether this SFP is supported */
-    int supported;
+    /** whether this SFP is supported/identified */
+    int identified;
 
 } sff_info_t;
 

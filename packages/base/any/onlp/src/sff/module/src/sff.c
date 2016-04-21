@@ -348,7 +348,7 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
     if(rv == NULL) {
         return -1;
     }
-    rv->supported = 0;
+    rv->identified = 0;
 
     if(eeprom) {
         SFF_MEMCPY(rv->eeprom, eeprom, 256);
@@ -485,7 +485,7 @@ sff_info_init(sff_info_t* rv, uint8_t* eeprom)
     else {
         SFF_SNPRINTF(rv->length_desc, sizeof(rv->length_desc), "%dm", rv->length);
     }
-    rv->supported = 1;
+    rv->identified = 1;
 
     return 0;
 }
@@ -531,7 +531,7 @@ sff_info_invalidate(sff_info_t *info)
     memset(info->eeprom, 0xFF, 256);
     info->cc_base = 0xFF;
     info->cc_ext = 0xFF;
-    info->supported = 0;
+    info->identified = 0;
 }
 
 int
