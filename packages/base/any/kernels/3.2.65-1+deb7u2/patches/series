@@ -247,3 +247,7 @@ platform-accton-as5812_54t-device-drivers.patch
 driver-mfd-lpc-ich.patch
 driver-watchdog-itco-wd.patch
 platform-accton-as5512_54x-device-drivers.patch
+driver-broadcom-tigon3.patch
+mgmt-port-init-config.patch
+platform-accton-as7716_32x-device-drivers.patch
+remove-vendor-accton-7716.patch
