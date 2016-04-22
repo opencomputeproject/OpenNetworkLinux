@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <onlp/platformi/fani.h>
 #include <onlplib/mmap.h>
+#include <unistd.h>
 //#include "onlpie_int.h"
 #include "platform_lib.h"
 
@@ -64,6 +65,7 @@
 
 #define FAN_DUTY_CYCLE_MAX   0xFF
 #define PSU_FAN_RPM_MAX      15000
+#define FAN_FAILED_RETRY_COUNT 100
 
 typedef struct onlp_fan_cpld
 {
@@ -145,6 +147,71 @@ onlp_fan_info_t finfo[] = {
     },
 };
 
+int _onlp_fani_get_operational_status(int fan_id, onlp_fan_info_t* info)
+{
+    int rc = 0, i;
+    unsigned char tach_low, tach_high, pwm_offset;
+    unsigned char data[2] = {0};
+
+    if (fan_id < 1 || fan_id > 2) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (fan_id == 1) {
+        tach_low  = I2C_FAN_1_STATUS_REG_TACH_1_LOW;
+        tach_high = I2C_FAN_1_STATUS_REG_TACH_1_HIGH;
+    }
+    else {
+        tach_low  = I2C_FAN_2_STATUS_REG_TACH_3_LOW;
+        tach_high = I2C_FAN_2_STATUS_REG_TACH_3_HIGH;
+    }
+
+    for (i = 0; i < FAN_FAILED_RETRY_COUNT; i++) {
+        /* Get the TACH status from ADT7473
+         */
+        rc = I2C_nRead(1, I2C_SLAVE_ADDR_ADT7473, tach_low, 1, &data[0]);
+        if (0 != rc) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        
+        rc = I2C_nRead(1, I2C_SLAVE_ADDR_ADT7473, tach_high, 1, &data[1]);
+        if (0 != rc) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (data[0] == 0xFF && data[1] == 0xFF) {
+            /* Sleep 10 ms then retry if FAN fail
+             */
+            info->status |= ONLP_FAN_STATUS_FAILED;
+            usleep(10000);
+            continue;
+        }
+        else {
+            info->status &= ~ONLP_FAN_STATUS_FAILED;
+            break;
+        }
+    }
+
+    /* Set fan percentage and rpm by current PWM value
+     * Based on the fan module data sheet, the max RPM of fan module is 23540
+     * Since the RPM monitored from ADT7473 is not accurate, the RPM would be
+     * reported in the formula: RPM = (Duty cycle) * 92314 / 1000.
+     * We assume the RPM would be 23540 when duty cycle is 255.
+     * So the multiplier is calculated from 23540/255 = 92.314
+     */
+    pwm_offset = (fan_id == 1) ? I2C_FAN_1_DUTY_CYCLE_REG_PWM_1 :
+                                 I2C_FAN_2_DUTY_CYCLE_REG_PWM_3 ;
+    rc = I2C_nRead(1, I2C_SLAVE_ADDR_ADT7473, pwm_offset, 1, &data[0]);
+    if (0 != rc) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    info->rpm = data[0] * 92314 / 1000;
+    info->percentage = (data[0] * 100) / 255;
+
+    return ONLP_STATUS_OK;
+}
+
 int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
@@ -160,11 +227,16 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     switch (fid)
     {
         case 1:  /* FAN 1 */
+        case 2:  /* FAN 2 */
+        {
+            unsigned char dir_mask = (fid == 1) ? CPLD_FAN_1_DIRECTION_BIT_MASK :
+                                                  CPLD_FAN_2_DIRECTION_BIT_MASK ;
             /* update the present status
              */
             if ((val & fan_data[fid].cpld_mask) == fan_data[fid].cpld_mask)
             {
                 info->status &= ~ONLP_FAN_STATUS_PRESENT;
+                return ONLP_STATUS_OK;
             }
             else
             {
@@ -174,7 +246,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             /* Update the Direction
              * 0: Back to front. 1: Front to back.
              */
-            if((val & CPLD_FAN_1_DIRECTION_BIT_MASK) == CPLD_FAN_1_DIRECTION_BIT_MASK)
+            if((val & dir_mask) == dir_mask)
             {
                 info->status |= ONLP_FAN_STATUS_F2B;
                 info->status &= ~ONLP_FAN_STATUS_B2F;
@@ -185,107 +257,8 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                 info->status &= ~ONLP_FAN_STATUS_F2B;
             }
 
-#if 0  /* Hardware issue, the rpm value is unstable.*/
-            /* Get the information from I2C
-             */
-            i2c_addr = I2C_SLAVE_ADDR_ADT7473;
-
-            /* Get the status
-             */
-            rc = I2C_nRead(bus_id, i2c_addr, I2C_FAN_1_STATUS_REG_TACH_1_LOW, 1, &data[0]);
-            if(0 != rc)
-            {
-                return ONLP_STATUS_E_INTERNAL;
-            }
-            rc = I2C_nRead(bus_id, i2c_addr, I2C_FAN_1_STATUS_REG_TACH_1_HIGH, 1, &data[1]);
-            if(0 != rc)
-            {
-                return ONLP_STATUS_E_INTERNAL;
-            }
-
-            if (data[0] == 0xFF && data[1] == 0xFF)
-            {
-                /* FAN fail
-                 */
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            }
-            else
-            {
-                info->status &= ~ONLP_FAN_STATUS_FAILED;
-            }
-
-            /* Update the rpm, Fan Speed (RPM) = (90,000 * 60)/Fan TACH Reading
-             */
-            fan_tach = data[1];
-            fan_tach = (fan_tach << 8) + data[0];
-
-            if (fan_tach != 0)
-            {
-                info->rpm = (90000 * 60) / fan_tach;
-            }
-#endif
-            break;
-
-        case 2: /* FAN 2 */
-            if ((val & fan_data[fid].cpld_mask) == fan_data[fid].cpld_mask)
-            {
-                info->status &= ~ONLP_FAN_STATUS_PRESENT;
-            }
-            else
-            {
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            }
-
-            if((val & CPLD_FAN_2_DIRECTION_BIT_MASK) == CPLD_FAN_2_DIRECTION_BIT_MASK)
-            {
-                info->status |= ONLP_FAN_STATUS_F2B;
-                info->status &= ~ONLP_FAN_STATUS_B2F;
-            }
-            else
-            {
-                info->status |= ONLP_FAN_STATUS_B2F;
-                info->status &= ~ONLP_FAN_STATUS_F2B;
-            }
-
-#if 0  /* Hardware issue, the rpm value is unstable.*/
-            /* Get information from I2C
-             */
-            i2c_addr = I2C_SLAVE_ADDR_ADT7473;
-
-            /* Get the status
-             */
-            rc = I2C_nRead(bus_id, i2c_addr, I2C_FAN_2_STATUS_REG_TACH_3_LOW, 1, &data[0]);
-            if(0 != rc)
-            {
-                return ONLP_STATUS_E_INTERNAL;
-            }
-            rc = I2C_nRead(bus_id, i2c_addr, I2C_FAN_2_STATUS_REG_TACH_3_HIGH, 1, &data[1]);
-            if(0 != rc)
-            {
-                return ONLP_STATUS_E_INTERNAL;
-            }
-
-            if (data[0] == 0xFF && data[1] == 0xFF)
-            {
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            }
-            else
-            {
-                info->status &= ~ONLP_FAN_STATUS_FAILED;
-            }
-
-            /* Get the rpm, Fan Speed (RPM) = (90,000 * 60)/Fan TACH Reading
-             */
-            fan_tach = data[1];
-            fan_tach = (fan_tach << 8) + data[0];
-
-            if (fan_tach != 0)
-            {
-                info->rpm = (90000 * 60) / fan_tach;
-            }
-#endif
-            break;
-
+            return _onlp_fani_get_operational_status(fid, info);
+        }
         case 3: /* FAN in the PSU 1*/
         case 4: /* FAN in the PSU 2*/
             /* Get the PSU FAN status from CPLD
@@ -524,5 +497,3 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
-
