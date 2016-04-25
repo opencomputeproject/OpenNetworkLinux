@@ -250,4 +250,3 @@ platform-accton-as5512_54x-device-drivers.patch
 driver-broadcom-tigon3.patch
 mgmt-port-init-config.patch
 platform-accton-as7716_32x-device-drivers.patch
-remove-vendor-accton-7716.patch

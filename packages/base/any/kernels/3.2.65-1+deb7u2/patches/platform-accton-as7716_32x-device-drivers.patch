@@ -1,21 +1,21 @@
-From aee70032cafd3c49f691168b3cab730fdeca09e9 Mon Sep 17 00:00:00 2001
+From 1ab28f993d5f92e946f7c6eaf9483aae3b5dcd6f Mon Sep 17 00:00:00 2001
 From: Steven Noble <steven.noble@bigswitch.com>
-Date: Thu, 21 Apr 2016 22:05:04 +0000
-Subject: [PATCH] 7716 changes
+Date: Mon, 25 Apr 2016 01:35:54 +0000
+Subject: [PATCH] AS7716 Patches
 
 ---
  drivers/hwmon/Kconfig                       |   20 +-
  drivers/hwmon/Makefile                      |    2 +
  drivers/hwmon/accton_as7716_32x_fan.c       |  452 +++++++++++++++++++++++++++
  drivers/hwmon/accton_as7716_32x_psu.c       |  293 +++++++++++++++++
- drivers/hwmon/accton_i2c_cpld.c             |   16 +
+ drivers/hwmon/accton_i2c_cpld.c             |   15 +
  drivers/leds/Kconfig                        |    7 +
  drivers/leds/Makefile                       |    2 +-
  drivers/leds/leds-accton_as7716_32x.c       |  443 ++++++++++++++++++++++++++
  drivers/misc/eeprom/Kconfig                 |    9 +
  drivers/misc/eeprom/Makefile                |    1 +
  drivers/misc/eeprom/accton_as7716_32x_sfp.c |  356 +++++++++++++++++++++
- 11 files changed, 1599 insertions(+), 2 deletions(-)
+ 11 files changed, 1598 insertions(+), 2 deletions(-)
  create mode 100644 drivers/hwmon/accton_as7716_32x_fan.c
  create mode 100644 drivers/hwmon/accton_as7716_32x_psu.c
  create mode 100644 drivers/leds/leds-accton_as7716_32x.c
@@ -823,10 +823,10 @@ index 0000000..4fd15ae
 +MODULE_LICENSE("GPL");
 +
 diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
-index e50c599..7a112a9 100644
+index e50c599..a2cb34b 100644
 --- a/drivers/hwmon/accton_i2c_cpld.c
 +++ b/drivers/hwmon/accton_i2c_cpld.c
-@@ -271,6 +271,22 @@ int platform_accton_as5512_54x(void)
+@@ -271,6 +271,21 @@ int platform_accton_as5512_54x(void)
  }
  EXPORT_SYMBOL(platform_accton_as5512_54x);
  
@@ -834,7 +834,6 @@ index e50c599..7a112a9 100644
 +	{
 +		.ident = "Accton AS7716",
 +		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
 +			DMI_MATCH(DMI_PRODUCT_NAME, "AS7716"),
 +		},
 +	}
