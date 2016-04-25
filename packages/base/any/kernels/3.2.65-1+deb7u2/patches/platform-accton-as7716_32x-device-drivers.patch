@@ -1,15 +1,13 @@
 Device driver patches for accton as7716-32x (fan/psu/cpld/led/sfp)
 
 diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index 89c619d..42abae5 100644
+index 968bd5f..bc10314 100644
 --- a/drivers/hwmon/Kconfig
 +++ b/drivers/hwmon/Kconfig
-@@ -1573,7 +1573,25 @@ config SENSORS_ACCTON_AS5812_54t_PSU
- 
+@@ -1592,6 +1592,24 @@ config SENSORS_ACCTON_AS5512_54X_FAN
  	  This driver can also be built as a module. If so, the module will
- 	  be called accton_as5812_54t_psu.
--	  
-+	 
+ 	  be called accton_as5512_54x_fan.
+ 
 +config SENSORS_ACCTON_AS7716_32x_FAN
 +        tristate "Accton as7716 32x fan"
 +        depends on I2C && SENSORS_ACCTON_I2C_CPLD
@@ -20,25 +18,25 @@ index 89c619d..42abae5 100644
 +          be called accton_as7716_32x_fan.
 +
 +config SENSORS_ACCTON_AS7716_32x_PSU
-+	tristate "Accton as7716 32x psu"
-+	depends on I2C && SENSORS_ACCTON_I2C_CPLD
-+	help
-+	  If you say yes here you get support for Accton as7716 32x psu.
++        tristate "Accton as7716 32x psu"
++        depends on I2C && SENSORS_ACCTON_I2C_CPLD
++        help
++          If you say yes here you get support for Accton as7716 32x psu.
 +
-+	  This driver can also be built as a module. If so, the module will
-+	  be called accton_as7716_32x_psu.
-+ 
++          This driver can also be built as a module. If so, the module will
++          be called accton_as7716_32x_psu.
++
  if ACPI
  
  comment "ACPI drivers"
 diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index de922bc..9210ab0 100644
+index b8ee7b0..851d90a 100644
 --- a/drivers/hwmon/Makefile
 +++ b/drivers/hwmon/Makefile
-@@ -36,6 +36,8 @@ obj-$(CONFIG_SENSORS_ACCTON_AS6812_32x_FAN)    += accton_as6812_32x_fan.o
- obj-$(CONFIG_SENSORS_ACCTON_AS6812_32x_PSU)    += accton_as6812_32x_psu.o
- obj-$(CONFIG_SENSORS_ACCTON_AS5812_54t_FAN)    += accton_as5812_54t_fan.o
+@@ -38,6 +38,8 @@ obj-$(CONFIG_SENSORS_ACCTON_AS5812_54t_FAN)    += accton_as5812_54t_fan.o
  obj-$(CONFIG_SENSORS_ACCTON_AS5812_54t_PSU)    += accton_as5812_54t_psu.o
+ obj-$(CONFIG_SENSORS_ACCTON_AS5512_54X_PSU)    += accton_as5512_54x_psu.o
+ obj-$(CONFIG_SENSORS_ACCTON_AS5512_54X_FAN)    += accton_as5512_54x_fan.o
 +obj-$(CONFIG_SENSORS_ACCTON_AS7716_32x_FAN)    += accton_as7716_32x_fan.o
 +obj-$(CONFIG_SENSORS_ACCTON_AS7716_32x_PSU)    += accton_as7716_32x_psu.o
  obj-$(CONFIG_SENSORS_AD7314)	+= ad7314.o
@@ -802,26 +800,26 @@ index 0000000..4fd15ae
 +MODULE_LICENSE("GPL");
 +
 diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
-index acf88c9..95202ec 100644
+index e50c599..89e3a0e 100644
 --- a/drivers/hwmon/accton_i2c_cpld.c
 +++ b/drivers/hwmon/accton_i2c_cpld.c
-@@ -255,6 +255,22 @@ int platform_accton_as5812_54t(void)
+@@ -271,6 +271,22 @@ int platform_accton_as5512_54x(void)
  }
- EXPORT_SYMBOL(platform_accton_as5812_54t);
+ EXPORT_SYMBOL(platform_accton_as5512_54x);
  
 +static struct dmi_system_id as7716_dmi_table[] = {
-+	{
-+		.ident = "Accton AS7716",
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "AS7716"),
-+		},
-+	}
++        {
++                .ident = "Accton AS7716",
++                .matches = {
++                        DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
++                        DMI_MATCH(DMI_PRODUCT_NAME, "AS7716"),
++                },
++        }
 +};
 +
 +int platform_accton_as7716_32x(void)
 +{
-+	return dmi_check_system(as7716_dmi_table);
++        return dmi_check_system(as7716_dmi_table);
 +}
 +EXPORT_SYMBOL(platform_accton_as7716_32x);
 +
@@ -829,38 +827,35 @@ index acf88c9..95202ec 100644
  MODULE_DESCRIPTION("accton_i2c_cpld driver");
  MODULE_LICENSE("GPL");
 diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
-index 599b97b..bdfb18e 100644
+index 9ba4a1b..e29de21 100644
 --- a/drivers/leds/Kconfig
 +++ b/drivers/leds/Kconfig
-@@ -88,7 +88,14 @@ config LEDS_ACCTON_AS5812_54t
- 	help
- 	  This option enables support for the LEDs on the Accton as5812 54t.
- 	  Say Y to enable LEDs on the Accton as5812 54t.
--	  
-+	 
+@@ -96,6 +96,13 @@ config LEDS_ACCTON_AS5512_54X
+ 	  This option enables support for the LEDs on the Accton as5512 54x.
+ 	  Say Y to enable LEDs on the Accton as5512 54x.
+ 
 +config LEDS_ACCTON_AS7716_32x
 +        tristate "LED support for the Accton as7716 32x"
 +        depends on LEDS_CLASS && SENSORS_ACCTON_I2C_CPLD
 +        help
 +          This option enables support for the LEDs on the Accton as7716 32x.
 +          Say Y to enable LEDs on the Accton as7716 32x.
-+ 
++
  config LEDS_LM3530
  	tristate "LCD Backlight driver for LM3530"
  	depends on LEDS_CLASS
 diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
-index bd20baa..58b1a80 100644
+index ff3be6c..42f274a 100644
 --- a/drivers/leds/Makefile
 +++ b/drivers/leds/Makefile
-@@ -50,7 +50,7 @@ obj-$(CONFIG_LEDS_ACCTON_AS7712_32x) += leds-accton_as7712_32x.o
- obj-$(CONFIG_LEDS_ACCTON_AS5812_54x) += leds-accton_as5812_54x.o
+@@ -51,6 +51,7 @@ obj-$(CONFIG_LEDS_ACCTON_AS5812_54x) += leds-accton_as5812_54x.o
  obj-$(CONFIG_LEDS_ACCTON_AS6812_32x) += leds-accton_as6812_32x.o
  obj-$(CONFIG_LEDS_ACCTON_AS5812_54t) += leds-accton_as5812_54t.o
--
+ obj-$(CONFIG_LEDS_ACCTON_AS5512_54X) += leds-accton_as5512_54x.o
 +obj-$(CONFIG_LEDS_ACCTON_AS7716_32x) += leds-accton_as7716_32x.o
+ 
  # LED SPI Drivers
  obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
- 
 diff --git a/drivers/leds/leds-accton_as7716_32x.c b/drivers/leds/leds-accton_as7716_32x.c
 new file mode 100644
 index 0000000..5a84897
@@ -1311,15 +1306,13 @@ index 0000000..5a84897
 +MODULE_DESCRIPTION("accton_as7716_32x_led driver");
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
-index c75227b..3ef5125 100644
+index 70a3f59..97f811f 100644
 --- a/drivers/misc/eeprom/Kconfig
 +++ b/drivers/misc/eeprom/Kconfig
-@@ -135,7 +135,16 @@ config EEPROM_ACCTON_AS5812_54t_SFP
+@@ -145,6 +145,15 @@ config EEPROM_ACCTON_AS5512_54X_SFP
+           This driver can also be built as a module. If so, the module will
+           be called accton_5512_54x_sfp.
  
- 	  This driver can also be built as a module. If so, the module will
- 	  be called accton_as5812_54t_sfp.
--		  
-+	
 +config EEPROM_ACCTON_AS7716_32x_SFP
 +        tristate "Accton as7716 32x sfp"
 +        depends on I2C && SENSORS_ACCTON_I2C_CPLD
@@ -1328,18 +1321,18 @@ index c75227b..3ef5125 100644
 +
 +          This driver can also be built as a module. If so, the module will
 +          be called accton_as7716_32x_sfp.
-+	  
++
  config EEPROM_93CX6
  	tristate "EEPROM 93CX6 support"
  	help
 diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
-index 152a8bc..dd47dd2 100644
+index 907f836..b59d70d 100644
 --- a/drivers/misc/eeprom/Makefile
 +++ b/drivers/misc/eeprom/Makefile
-@@ -13,4 +13,5 @@ obj-$(CONFIG_EEPROM_ACCTON_AS7712_32x_SFP) += accton_as7712_32x_sfp.o
- obj-$(CONFIG_EEPROM_ACCTON_AS5812_54x_SFP) += accton_as5812_54x_sfp.o
+@@ -14,4 +14,5 @@ obj-$(CONFIG_EEPROM_ACCTON_AS5812_54x_SFP) += accton_as5812_54x_sfp.o
  obj-$(CONFIG_EEPROM_ACCTON_AS6812_32x_SFP) += accton_as6812_32x_sfp.o
  obj-$(CONFIG_EEPROM_ACCTON_AS5812_54t_SFP) += accton_as5812_54t_sfp.o
+ obj-$(CONFIG_EEPROM_ACCTON_AS5512_54X_SFP) += accton_as5512_54x_sfp.o
 +obj-$(CONFIG_EEPROM_ACCTON_AS7716_32x_SFP) += accton_as7716_32x_sfp.o
  obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
 diff --git a/drivers/misc/eeprom/accton_as7716_32x_sfp.c b/drivers/misc/eeprom/accton_as7716_32x_sfp.c
