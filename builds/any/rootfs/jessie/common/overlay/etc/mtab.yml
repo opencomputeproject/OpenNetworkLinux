@@ -9,7 +9,7 @@ mounts:
     dir: /mnt/onl/data
 
   ONL-CONFIG:
-    mount: r
+    mount: false
     dir: /mnt/onl/config
     fsck: true
 

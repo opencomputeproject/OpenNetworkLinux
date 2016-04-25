@@ -84,8 +84,8 @@ fi
 #
 # Initialize PKI
 #
-if [ -f /sbin/init-pki ]; then
-    /sbin/init-pki
+if [ -f /sbin/pki ]; then
+    /sbin/pki --init
 fi
 
 
