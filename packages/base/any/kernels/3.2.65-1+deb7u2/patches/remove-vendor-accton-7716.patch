@@ -1,0 +1,24 @@
+From da140100046eb9b64fab8d5979e5d0a41e809e02 Mon Sep 17 00:00:00 2001
+From: Steven Noble <steven.noble@bigswitch.com>
+Date: Thu, 21 Apr 2016 22:14:54 +0000
+Subject: [PATCH 2/2] missed one
+
+---
+ drivers/hwmon/accton_i2c_cpld.c |    1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
+index 7a112a9..26f8655 100644
+--- a/drivers/hwmon/accton_i2c_cpld.c
++++ b/drivers/hwmon/accton_i2c_cpld.c
+@@ -211,7 +211,6 @@ static struct dmi_system_id as7512_dmi_table[] = {
+ 	{
+ 		.ident = "Accton AS7512",
+ 		.matches = {
+-			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "AS7512"),
+ 		},
+ 	}
+-- 
+1.7.10.4
+
