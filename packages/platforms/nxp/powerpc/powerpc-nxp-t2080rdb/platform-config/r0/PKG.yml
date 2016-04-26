@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=powerpc VENDOR=nxp PLATFORM=powerpc-nxp-t2080rdb-r0

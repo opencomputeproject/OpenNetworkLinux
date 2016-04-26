@@ -1,0 +1,49 @@
+###############################################################################
+#
+# powerpc_nxp_t2080rdb Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- powerpc_nxp_T2080RDB_R0_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- powerpc_nxp_T2080RDB_R0_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- powerpc_nxp_T2080RDB_R0_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- powerpc_nxp_T2080RDB_R0_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- powerpc_nxp_T2080RDB_R0_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- powerpc_nxp_T2080RDB_R0_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: powerpc_nxp_T2080RDB_R0_CONFIG_PORTING_STDLIB
+- powerpc_nxp_T2080RDB_R0_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- powerpc_nxp_T2080RDB_R0_CONFIG_INCLUDE_DEBUG:
+    doc: "Include debug tool."
+    default: 0
+
+definitions:
+  cdefs:
+    powerpc_nxp_T2080RDB_R0_CONFIG_HEADER:
+      defs: *cdefs
+      basename: powerpc_nxp_t2080rdb_config
+
+  portingmacro:
+    powerpc_nxp_T2080RDB_R0:
+      macros:
+        - malloc
+        - free
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen

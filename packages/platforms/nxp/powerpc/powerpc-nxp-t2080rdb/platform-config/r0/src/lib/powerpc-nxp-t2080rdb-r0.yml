@@ -1,0 +1,6 @@
+powerpc-nxp-t2080rdb-r0:
+  flat_image_tree:
+    kernel: onl-kernel-3.18.25-powerpc64:powerpc, kernel-3.18.25-powerpc64.bin.gz
+    dtb: onl-kernel-3.18.25-powerpc64:powerpc, powerpc-nxp-t2080rdb-r0.dtb
+
+
