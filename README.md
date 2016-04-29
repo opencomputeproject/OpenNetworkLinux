@@ -20,3 +20,5 @@ Documentation
     Instructions for building ONL from scratch.
 
 Please see the docs directory for additional information. 
+
+![alt text] (https://scan.coverity.com/projects/8655/badge.svg "Coverity Scan Build Status")
