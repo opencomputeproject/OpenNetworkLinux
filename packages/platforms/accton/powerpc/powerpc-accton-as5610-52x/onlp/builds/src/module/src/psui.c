@@ -95,7 +95,7 @@ psu_cpr_4011_info_get(onlp_psu_info_t* info)
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + 1);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + 8);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + NUM_OF_CHASSIS_THERMAL_SENSOR);
 
     /* Open channel for PSU
      */

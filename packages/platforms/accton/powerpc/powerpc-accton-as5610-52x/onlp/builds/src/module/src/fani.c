@@ -46,6 +46,9 @@
 #define CPLD_FAN_FAILURE_MASK        0x08
 #define CPLD_FAN_DIRECTION_MASK      0x10
 #define CPLD_FAN_SPEED_CTL_REG       0x0D
+#define CPLD_FAN_SPEED_VALUE_MAX     0x1F
+#define CPLD_FAN_SPEED_VALUE_MID     0x15
+#define CPLD_FAN_SPEED_VALUE_MIN     0x0C
 
 #define I2C_PSU_BUS_ID                  0
 #define I2C_PSU1_SLAVE_ADDR_CFG      0x3E
@@ -76,8 +79,16 @@ typedef enum onlp_fan_id
 static int
 chassis_fan_cpld_val_to_duty_cycle(unsigned char reg_val)
 {
-    if (reg_val >= 0x1F) {
-        return 100;
+    reg_val &= 0x1F;
+
+    if (reg_val == CPLD_FAN_SPEED_VALUE_MAX) {
+        return FAN_PERCENTAGE_MAX;
+    }
+    else if (reg_val == CPLD_FAN_SPEED_VALUE_MID) {
+        return FAN_PERCENTAGE_MID;
+    }
+    else if (reg_val == CPLD_FAN_SPEED_VALUE_MIN) {
+        return FAN_PERCENTAGE_MIN;
     }
 
     return (reg_val * 3.25);
@@ -86,8 +97,14 @@ chassis_fan_cpld_val_to_duty_cycle(unsigned char reg_val)
 static int
 chassis_fan_duty_cycle_to_cpld_val(int duty_cycle)
 {
-    if (duty_cycle >= 100) {
-        return 0x1F;
+    if (duty_cycle == FAN_PERCENTAGE_MAX) {
+        return CPLD_FAN_SPEED_VALUE_MAX;
+    }
+    else if (duty_cycle == FAN_PERCENTAGE_MID) {
+        return CPLD_FAN_SPEED_VALUE_MID;
+    }
+    else if (duty_cycle == FAN_PERCENTAGE_MIN) {
+        return CPLD_FAN_SPEED_VALUE_MIN;
     }
 
     return (duty_cycle / 3.25);
@@ -109,6 +126,12 @@ onlp_fani_init(void)
     if(cpld_base__ == NULL || cpld_base__ == MAP_FAILED) {
         return ONLP_STATUS_E_INTERNAL;
     }
+
+    /*
+     * Bring both fans to max.
+     * These will be reduced after the first platform management sequence.
+     */
+    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
 
     return ONLP_STATUS_OK;
 }
