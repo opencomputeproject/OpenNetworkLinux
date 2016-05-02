@@ -10,10 +10,12 @@
 ############################################################
 
 import pprint
-import yaml
 import json
 import os
 import re
+
+import yaml
+import onl.YamlUtils
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -99,18 +101,41 @@ class OnlPlatformBase(object):
     CONFIG_DIR='/lib/platform-config'
     CURRENT_DIR=os.path.join(CONFIG_DIR, 'current')
 
+    CONFIG_DEFAULT_GRUB = "/lib/vendor-config/onl/platform-config-defaults-x86-64.yml"
+    CONFIG_DEFAULT_UBOOT = "/lib/vendor-config/onl/platform-config-defaults-uboot.yml"
+
     def __init__(self):
         self.add_info_json("onie_info", "%s/onie-info.json" % self.basedir_onl(), OnieInfo,
                            required=False)
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(),
                            required=False)
 
-        # Load the platform config yaml file
-        y = os.path.join(self.basedir_onl(), "%s.yml" % self.platform())
-        if os.path.exists(y):
-            self.platform_config = yaml.load(open(y))
+        # Find the base platform config
+        if self.platform().startswith('x86-64'):
+            y1 = self.CONFIG_DEFAULT_GRUB
+        elif self.platform().startswith('powerpc'):
+            y1 = self.CONFIG_DEFAULT_UBOOT
+        elif self.platform().startswith('arm'):
+            y1 = self.CONFIG_DEFAULT_UBOOT
+        else:
+            y1 = None
+
+        # Find and load the platform config yaml file
+        y2 = os.path.join(self.basedir_onl(), "%s.yml" % self.platform())
+        if os.path.exists(y1) and os.path.exists(y2):
+            self.platform_config = onl.YamlUtils.merge(y1, y2)
             if self.platform() in self.platform_config:
                 self.platform_config = self.platform_config[self.platform()]
+        elif os.path.exists(y2):
+            with open(y2) as fd:
+                self.platform_config = yaml.load(fd)
+            if self.platform() in self.platform_config:
+                self.platform_config = self.platform_config[self.platform()]
+        elif os.path.exists(y1):
+            with open(y1) as fd:
+                self.platform_config = yaml.load(fd)
+            if 'default' in self.platform_config:
+                self.platform_config = self.platform_config['default']
         else:
             self.platform_config = {}
 
