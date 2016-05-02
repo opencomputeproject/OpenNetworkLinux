@@ -1,0 +1,62 @@
+---
+
+######################################################################
+#
+# platform-config-defaults-uboot.yml
+#
+# Configuration for u-boot systems (powerpc and arm)
+#
+######################################################################
+
+default:
+
+  flat_image_tree:
+
+    ##############################
+    #
+    # Default kernel packages provided by ONL
+    #
+    ##############################
+    
+    e500v-kernel-package: &e500v-kernel-package
+      package: onl-kernel-3.9.6-powerpc-e500v:powerpc
+
+    e500v-kernel: &e500v-kernel
+      =: kernel-3.9.6-powerpc-e500v.bin.gz
+      <<: *e500v-kernel-package
+
+    e500mc-kernel-package: &e500mc-kernel-package
+      package: onl-kernel-3.8.13-powerpc-e500mc:powerpc
+
+    e500mc-kernel:
+      =: kernel-3.8.13-powerpc-e500mc.bin.gz
+      <<: *e500mc-kernel-package
+      
+    arm-iproc-kernel-package: &arm-iproc-kernel-package
+      package: onl-kernel-3.2-deb7-arm-iproc-all:armel
+
+    arm-iproc-kernel:
+      =: kernel-3.2-deb7-arm-iproc-all.bin.gz
+      <<: *arm-iproc-kernel-package
+
+    ##############################
+    #
+    # For your system, pick from the above list
+    # to compose a 'kernel' and 'dtb' key
+    #
+    ##############################
+    
+    ### Example, pick one kernel and one DTB      
+    ##kernel:
+    ##  <<: *e500v-kernel
+    ##dtb:
+    ##  =: powerpc-quanta-lb9-r0.dtb
+    ##  <<: *e500v-kernel-package
+
+  loader:
+
+    partition: /dev/sda1
+    ##partition: /dev/mmcblk0p1
+
+    ### True for raw partitions
+    ##raw: True
