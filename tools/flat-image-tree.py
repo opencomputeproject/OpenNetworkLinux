@@ -20,15 +20,22 @@ class Image(object):
         self.entry = None
         self.os = None
 
-        if ',' in data:
-            # Shorthand for tuple specifier
-            data = tuple([ x.strip() for x in data.split(',') ])
+        if type(data) == str:
+            if ',' in data:
+                pkg, fname = [x.strip() for x in data.split(',')]
+            else:
+                pkg, fname = None, data
+        elif type(data) == list:
+            pkg, fname = data
+        elif type(data) == dict:
+            fname = data['=']
+            pkg = data.get('package', None)
+        else:
+            raise ValueError("invalid image specifier: %s" % repr(data))
 
-        if(isinstance(data, tuple)):
-            #
-            # The data specifies an ONLPM (package,file) pair.
-            #
-            self.data = subprocess.check_output("onlpm --quiet --find-file %s %s" % data, shell=True).strip()
+        if pkg is not None:
+            cmd = ('onlpm', '--quiet', '--find-file', pkg, fname,)
+            self.data = subprocess.check_output(cmd).strip()
         else:
             self.data = data
 
