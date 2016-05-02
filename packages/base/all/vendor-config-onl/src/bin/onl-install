@@ -1,0 +1,11 @@
+#!/usr/bin/python
+
+"""Install switch light
+"""
+
+import sys
+import distutils.sysconfig
+sys.path.append("/usr/lib/python%s/dist-packages"
+                % distutils.sysconfig.get_python_version())
+import onl.install.App
+onl.install.App.main()
