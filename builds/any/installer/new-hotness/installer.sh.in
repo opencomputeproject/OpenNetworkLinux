@@ -1,0 +1,308 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=none>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+#
+#
+# </bsn.cl>
+############################################################
+#
+# SwitchLight Installation Script for PPC.
+#
+# The purpose of this script is to automatically install SwitchLight
+# on the target system.
+#
+# This script is ONIE-compatible.
+#
+# This script is can be run under a manual boot of the SwitchLight
+# Loader as the execution environment for platforms that do not
+# support ONIE.
+#
+############################################################
+
+IARCH="@ARCH@"
+ARCH=`uname -m`
+if test "$ARCH" != "$IARCH"; then
+  echo
+  echo "------------------------------------"
+  echo "Installer Architecture: $IARCH"
+  echo "Target Architecture:    $ARCH"
+  echo
+  echo "This installer cannot be used on this"
+  echo "target."
+  echo
+  echo "------------------------------------"
+  sleep 5
+  exit 1
+fi
+case "$ARCH" in
+  ppc|powerpc)
+    ARCH_PPC=$ARCH
+    ;;
+  x86*|amd*|i?86*)
+    ARCH_X86=$ARCH
+    ;;
+  *)
+    echo "Invalid Architecture: $ARCH"
+    sleep 5
+    exit 1
+    ;;
+esac
+
+############################################################
+#
+# Installation Main
+#
+# Installation is performed as follows:
+#
+# 1. Detect whether we are running under ONIE or SwitchLight
+#    and perform the appropriate setup.
+#
+# 2. Unpack the installer files.
+#
+# 3. Source the installer scriptlet for the current platform.
+# 4. Run the installer function from the platform scriptlet.
+#
+# The platform scriptlet determines the entire installation
+# sequence.
+#
+# Most platforms will just call the installation
+# utilities in this script with the approprate platform settings.
+#
+############################################################
+
+set -e
+cd $(dirname $0)
+
+installer_script=${0##*/}
+installer_zip=$1
+
+BOOTDIR=/mnt/onie-boot
+# initial boot partition (onie)
+
+has_grub_env()
+{
+  local tag
+  tag=$1; shift
+  test -f $BOOTDIR/grub/grubenv || return 1
+  case "`grub-editenv $BOOTDIR/grubenv list` 2>/dev/null" in
+    *${tag}*) return 0 ;;
+  esac
+  return 1
+}
+
+has_uboot_env()
+{
+  local tag
+  tag=$1; shift
+  test -x /usr/sbin/fw_printenv || return 1
+  test -f /etc/fw_env.config || return 1
+  /usr/sbin/fw_printenv $tag 1>/dev/null 2>&1 && return 0
+  return 1
+}
+
+has_boot_env()
+{
+  local tag
+  tag=$1; shift
+  has_grub_env $tag && return 0
+  has_uboot_env $tag && return 0
+  return 1
+}
+
+# Check installer debug option from the boot environment
+if has_boot_env onl_installer_debug; then installer_debug=1; fi
+
+if test "$installer_debug"; then
+  echo "Debug mode"
+  set -x
+fi
+
+# Pickup ONIE defines for this machine.
+if test -r /etc/machine.conf; then
+  . /etc/machine.conf
+fi
+
+#
+# Installation environment setup.
+#
+
+installer_umount() {
+  egrep "/tmp/..*" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -n 1 umount
+}
+
+if test "${onie_platform}"; then
+  # Running under ONIE, most likely in the background in installer mode.
+  # Our messages have to be sent to the console directly, not to stdout.
+  installer_say()
+  {
+    echo "$@" > /dev/console
+  }
+
+  # Installation failure message.
+  installer_cleanup()
+  {
+    installer_say "Install failed."
+    cat /var/log/onie.log > /dev/console
+    installer_say "Install failed. See log messages above for details"
+
+    installer_umount
+
+    if installer_reboot; then
+      :
+    else
+      sync
+      sleep 3
+      reboot
+    fi
+  }
+else
+  if test "$ARCH_X86"; then
+    echo "Missing onie_platform (invalid /etc/machine.conf)" 1>&2
+    exit 1
+  fi
+  #
+  # Assume we are running in an interactive environment
+  #
+  installer_say()
+  {
+    echo
+    echo "* $@"
+    echo
+  }
+
+  installer_cleanup()
+  {
+    installer_say "Install failed."
+    installer_umount
+    exit 1
+  }
+fi
+
+trap "installer_cleanup" 0 1
+
+#
+# Remount tmpfs larger if possible.
+# We will be doing all of our work out of /tmp
+#
+mount -o remount,size=1024M /tmp || true
+
+# Unpack our distribution
+installer_say "Unpacking SwitchLight installer files..."
+installer_dir=`pwd`
+if test "$SFX_PAD"; then
+  # ha ha, busybox cannot exclude multiple files
+  unzip $installer_zip -x $SFX_PAD
+elif test "$SFX_UNZIP"; then
+  unzip $installer_zip -x $installer_script
+else
+  dd if=$installer_zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
+  | unzip - -x $installer_script
+fi
+
+# Developer debugging
+if has_boot_env onl_installer_unpack_only; then installer_unpack_only=1; fi
+if test "${installer_unpack_only}"; then
+  installer_say "Unpack only requested."
+  exit 1
+fi
+
+# Replaced during build packaging with the current version.
+onl_version="@ONLVERSION@"
+initrd_archive="@INITRD_ARCHIVE@"
+initrd_offset="@INITRD_OFFSET@"
+initrd_size="@INITRD_SIZE@"
+
+TMPDIR=${TMPDIR-"${installer_dir}"}
+export TMPDIR
+
+rootdir=$(mktemp -d -t "initrd-XXXXXX")
+installer_say "Extracting initrd to $rootdir"
+if test "$initrd_offset"; then
+  tmprd=$(mktemp -t initrd-XXXXXX)
+  dd if="$initrd_archive" of="$tmprd" bs="$initrd_offset" skip=1
+  dd if=/dev/null of="$tmprd" bs="$initrd_size" seek=1
+  initrd=$tmprd
+else
+  initrd="${installer_dir}/$initrd_archive"
+fi
+gzip -dc "$initrd" | ( cd "$rootdir" && cpio -imd )
+
+# get common installer functions
+. "${rootdir}/lib/vendor-config/onl/install/lib.sh"
+
+installer_mkchroot "${rootdir}"
+
+# make the installer available to the chroot
+mkdir -p "${rootdir}/mnt/installer"
+mount -o ro,bind "${installer_dir}" "${rootdir}/mnt/installer"
+
+# make the onie boot files available to the chroot
+mkdir -p "${rootdir}/mnt/onie-boot"
+if test -d "/mnt/onie-boot"; then
+  mount -o ro,bind "/mnt/onie-boot" "${rootdir}/mnt/onie-boot"
+fi
+
+# generate config for installer environment
+mkdir -p "${rootdir}/etc/onl"
+cp /dev/null "${rootdir}/etc/onl/installer.conf"
+echo "onl_version=\"$onl_version\"" >> "${rootdir}/etc/onl/installer.conf"
+
+# Generate the MD5 signature for ourselves for future reference.
+installer_md5=$(md5sum "$0" | awk '{print $1}')
+echo "installer_md5=\"$installer_md5\"" >> "${rootdir}/etc/onl/installer.conf"
+
+# Cache our install URL if available
+if test -f "$0.url"; then
+  installer_url=$(cat "$0.url")
+  echo "installer_url=\"$installer_url\"" >> "${rootdir}/etc/onl/installer.conf"
+fi
+
+echo "installer_dir=/mnt/installer" >> "${rootdir}/etc/onl/installer.conf"
+
+# include access details for the initrd
+if test "$initrd_offset"; then
+  echo "initrd_archive=\"$initrd_archive\"" >> "${rootdir}/etc/onl/installer.conf"
+  echo "initrd_offset=\"$initrd_offset\"" >> "${rootdir}/etc/onl/installer.conf"
+  echo "initrd_size=\"$initrd_size\"" >> "${rootdir}/etc/onl/installer.conf"
+fi
+
+postinst=$(mktemp -t postinst-XXXXXX)
+b=${postinst##*/}
+echo "installer_chroot=${rootdir}" >> "${rootdir}/etc/onl/installer.conf"
+echo "installer_postinst=/mnt/installer/$b" >> "${rootdir}/etc/onl/installer.conf"
+
+# for now, skip the other dot-files in /etc/onl, we do not need them
+# to enable initial install
+
+# no special handling for /tmp or /run, since this is all in /tmp
+# anyway
+
+installer_say "Launching Switch Light installer"
+installer_shell=${installer_shell-"/usr/bin/onl-install"}
+chroot "${rootdir}" $installer_shell
+: chroot "${rootdir}" /usr/bin/onl-install
+
+if test -f "$postinst"; then
+  installer_say "Invoking post-install actions"
+  set -x
+  . "$postinst"
+  set +x
+fi
+
+trap - 0 1
+installer_umount
+
+if test "${onie_platform}"; then
+  installer_reboot
+fi
+
+exit
+
+# Local variables:
+# mode: sh
+# sh-basic-offset: 2
+# End:
+# Do not add any additional whitespace after this point.
