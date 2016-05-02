@@ -765,8 +765,8 @@ class OnlPackageManager(object):
         self.package_groups = []
         self.opr = None
 
-    def set_repo(self, repodir):
-        self.opr = OnlPackageRepo(repodir, ops.repo_package_dir)
+    def set_repo(self, repodir, packagedir='packages'):
+        self.opr = OnlPackageRepo(repodir, packagedir=packagedir)
 
 
     def filter(self, subdir=None, arches=None, substr=None):
@@ -999,6 +999,32 @@ class OnlPackageManager(object):
     def pkg_info(self):
         return "\n".join([ pg.pkg_info() for pg in self.package_groups if not pg.filtered ])
 
+def defaultPm():
+    repo = os.environ.get('ONLPM_OPTION_REPO', None)
+    envJson = os.environ.get('ONLPM_OPTION_INCLUDE_ENV_JSON', None)
+    packagedirs = os.environ['ONLPM_OPTION_PACKAGEDIRS'].split(':')
+    repoPackageDir = os.environ.get('ONLPM_OPTION_REPO_PACKAGE_DIR', 'packages')
+    subdir = os.getcwd()
+    arches = ['amd64', 'powerpc', 'armel', 'all',]
+
+    if envJson:
+        for j in envJson.split(':'):
+            data = json.load(open(j))
+            for (k, v) in data.iteritems():
+                try:
+                    v = v.encode('ascii')
+                except UnicodeEncodeError:
+                    pass
+                os.environ[k] = v
+
+    pm = OnlPackageManager()
+    pm.set_repo(repo, packagedir=repoPackageDir)
+    for pdir in packagedirs:
+        pm.load(pdir, usecache=True, rebuildcache=False)
+    pm.filter(subdir = subdir, arches=arches)
+
+    return pm
+
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser("onlpm")
@@ -1090,7 +1116,7 @@ if __name__ == '__main__':
         pm = OnlPackageManager()
         if ops.repo:
             logger.debug("Setting repo as '%s'..." % ops.repo)
-            pm.set_repo(ops.repo)
+            pm.set_repo(ops.repo, packagedir=ops.repo_package_dir)
 
         if ops.in_repo:
             for p in ops.in_repo:
