@@ -1,7 +1,7 @@
 include $(ONL)/make/config.amd64.mk
 
 ONLPLATFORM = python $(ONL)/tools/onlplatform.py
-PLATFORMS := $(shell $(ONLPM) --platform-manifest onl-loader-initrd:amd64)
+PLATFORMS := $(shell $(ONLPM) --platform-manifest onl-loader-initrd:$(ARCH))
 
 MKSHAR = $(ONL)/tools/mkshar
 MKSHAR_OPTS = --lazy --unzip-pad --fixup-perms autoperms.sh
@@ -42,7 +42,7 @@ __installer_platform_files:
 	set -e ;\
 	if $(ONL_V_P); then set -x; fi ;\
 	l="$(PLATFORMS)"; for p in $$l; do \
-	  src=$$($(ONLPLATFORM) $$p amd64 kernel 2>/dev/null) || : ;\
+	  src=$$($(ONLPLATFORM) $$p $(ARCH) kernel 2>/dev/null) || : ;\
 	  if test "$$src"; then \
 	    dst=$${src##*/} ;\
 	    if test "$dst" -ot Makefile; then \
@@ -52,7 +52,7 @@ __installer_platform_files:
 	      cp "$$src" "$$dst" ;\
 	    fi ;\
 	  fi ;\
-	  src=$$($(ONLPLATFORM) $$p amd64 initrd 2>/dev/null) || : ;\
+	  src=$$($(ONLPLATFORM) $$p $(ARCH) initrd 2>/dev/null) || : ;\
 	  if test "$$src"; then \
 	    dst=$${src##*/} ;\
 	    if test "$dst" -ot Makefile; then \
@@ -65,15 +65,20 @@ __installer_platform_files:
 	done ;\
 	:
 
+ifndef NO_SWI
 __installer_swi_files:
 	$(ONL_V_GEN): ;\
 	set -e ;\
 	if $(ONL_V_P); then set -x; fi ;\
 	swidir=$$(mktemp -d $(PWD)/swi-d-XXXXXX) ;\
-	$(ONLPM) --extract-dir onl-swi:amd64 $$swidir ;\
-	mv $$swidir/usr/share/onl/packages/amd64/onl-swi/*.swi . ;\
+	$(ONLPM) --extract-dir onl-swi:$(ARCH) $$swidir ;\
+	mv $$swidir/usr/share/onl/packages/$(ARCH)/onl-swi/*.swi . ;\
 	rm -fr $$swidir ;\
 	:
+else
+__installer_swi_files:
+	$(ONL_V_GEN):
+endif
 
 shar installer: installer
 
