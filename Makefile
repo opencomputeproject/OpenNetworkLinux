@@ -26,8 +26,8 @@ onl-amd64 onl-x86 x86 x86_64 amd64: packages_base_all
 	$(MAKE) -C builds/amd64/installer
 
 onl-ppc ppc: packages_base_all
-	$(MAKE) -C packages/base/powerpc/kernels
 	$(MAKE) -C packages/base/powerpc/initrds
+	$(MAKE) -C packages/base/powerpc/kernels
 	$(MAKE) -C packages/base/powerpc/onlp
 	$(MAKE) -C packages/base/powerpc/onlp-snmpd
 	$(MAKE) -C packages/base/powerpc/faultd
