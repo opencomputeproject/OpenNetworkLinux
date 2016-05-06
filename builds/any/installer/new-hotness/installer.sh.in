@@ -44,6 +44,9 @@ case "$ARCH" in
   x86*|amd*|i?86*)
     ARCH_X86=$ARCH
     ;;
+  arm*)
+    ARCH_ARM=$ARCH
+    ;;
   *)
     echo "Invalid Architecture: $ARCH"
     sleep 5
