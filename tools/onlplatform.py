@@ -71,7 +71,7 @@ def extractVendor(platform, arch):
     l = [x for x in l if x.startswith('onl-vendor-config-')]
     return "\n".join(l)
 
-if key in ('kernel', 'initrd',):
+if key in ('kernel', 'initrd', 'dtb', 'itb',):
     print extractKey(platform, arch, key)
     sys.exit(0)
 
