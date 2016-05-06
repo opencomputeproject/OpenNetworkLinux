@@ -7,7 +7,16 @@
 import subprocess
 import yaml
 import tempfile
-import json
+
+import os, sys
+toolsdir = os.path.dirname(os.path.abspath(__file__))
+onldir = os.path.dirname(toolsdir)
+pydir = os.path.join(onldir, "packages/base/all/vendor-config-onl/src/python")
+sys.path.append(pydir)
+import onl.YamlUtils
+
+from onlpm import *
+pm = defaultPm()
 
 class Image(object):
     """Base ITS Image Class"""
@@ -34,12 +43,17 @@ class Image(object):
             raise ValueError("invalid image specifier: %s" % repr(data))
 
         if pkg is not None:
-            cmd = ('onlpm', '--quiet', '--find-file', pkg, fname,)
-            self.data = subprocess.check_output(cmd).strip()
+            pm.require(pkg, force=False, build_missing=False)
+            self.data = pm.opr.get_file(pkg, fname)
         else:
             self.data = data
 
-        self.name = os.path.basename(self.data)
+        try:
+            self.name = os.path.basename(fname)
+        except:
+            import pdb
+            pdb.set_trace()
+            raise
         self.description = self.name
 
 
@@ -73,8 +87,8 @@ class Image(object):
 class KernelImage(Image):
     """Kernel image entry"""
 
-    def __init__(self, fname, arch):
-        Image.__init__(self, "kernel", fname, compression='gzip')
+    def __init__(self, fdata, arch):
+        Image.__init__(self, "kernel", fdata, compression='gzip')
         self.os = '"linux"'
 
         # Fixme -- thse should be parameterized
@@ -94,8 +108,8 @@ class KernelImage(Image):
 class InitrdImage(Image):
     """Initrd image entry"""
 
-    def __init__(self, fname, arch):
-        Image.__init__(self, "ramdisk", fname, compression='gzip')
+    def __init__(self, fdata, arch):
+        Image.__init__(self, "ramdisk", fdata, compression='gzip')
 
         # Fixme -- thse should be parameterized
         if arch == 'powerpc':
@@ -115,8 +129,8 @@ class InitrdImage(Image):
 class DtbImage(Image):
     """DTB Image Entry"""
 
-    def __init__(self, fname):
-        Image.__init__(self, "flat_dt", fname, compression="none")
+    def __init__(self, fdata):
+        Image.__init__(self, "flat_dt", fdata, compression="none")
 
     def write(self, f):
         self.start_image(f)
@@ -176,18 +190,31 @@ class FlatImageTree(object):
 
         initrd = d.get('initrd', None)
 
+        sys.stderr.write("*** platform %s kernel %s\n"
+                         % (name, kernel,))
         self.add_config(name, kernel, dtb, initrd)
 
 
-    def add_yaml(self, name, fname):
-        d = yaml.load(open(fname))
+    def add_yaml(self, name, fname, defaults=None):
+        if defaults is not None:
+            d = onl.YamlUtils.merge(defaults, fname)
+        else:
+            with open(fname) as fd:
+                d = yaml.load(fd)
         self.add_dict(name, d)
 
     def add_platform_package(self, package):
         print package
         platform = package.replace(":%s" % ops.arch, "").replace("onl-platform-config-", "")
-        y = subprocess.check_output("onlpm --quiet --find-file %s %s.yml" % (package, platform), shell=True).strip()
-        self.add_yaml(platform, y)
+
+        vpkg = "onl-vendor-config-onl:all"
+        pm.require(vpkg, force=False, build_missing=False)
+        y1 = pm.opr.get_file(vpkg, "platform-config-defaults-uboot.yml")
+
+        pm.require(package, force=False, build_missing=False)
+        y2 = pm.opr.get_file(package, platform + '.yml')
+
+        self.add_yaml(platform, y2, defaults=y1)
 
     def add_platform(self, platform):
         if (":%s" % ops.arch) in platform:
@@ -202,17 +229,19 @@ class FlatImageTree(object):
     def writef(self, f):
 
         kdict = {}
-        for k in set(self.kernels):
-            kdict[k] = KernelImage(k, ops.arch)
+        for k in self.kernels:
+            ki = KernelImage(k, ops.arch)
+            kdict[ki.name] = ki
 
         ddict = {}
-        for d in set(self.dtbs):
-            ddict[d] = DtbImage(d)
+        for d in self.dtbs:
+            di = DtbImage(d)
+            ddict[di.name] = di
 
         idict = {}
-        for i in set(self.initrds):
-            idict[i] = InitrdImage(i, ops.arch)
-
+        for i in self.initrds:
+            ii = InitrdImage(i, ops.arch)
+            idict[ii.name] = ii
 
 
         f.write("""/* \n""")
@@ -227,27 +256,27 @@ class FlatImageTree(object):
         f.write("""    images {\n\n""")
 
         f.write("""        /* Kernel Images */\n""")
-        for k in set(self.kernels):
-            KernelImage(k, ops.arch).write(f)
+        for k in kdict.values():
+            k.write(f)
 
         f.write("""\n""")
         f.write("""        /* DTB Images */\n""")
-        for d in set(self.dtbs):
-            DtbImage(d).write(f)
+        for d in ddict.values():
+            d.write(f)
 
         f.write("""\n""")
         f.write("""        /* Initrd Images */\n""")
-        for i in set(self.initrds):
-            InitrdImage(i, ops.arch).write(f)
+        for i in idict.values():
+            i.write(f)
 
         f.write("""    };\n""")
         f.write("""    configurations {\n""")
         for (name, (kernel, dtb, initrd)) in self.configurations.iteritems():
             f.write("""        %s {\n""" % name)
             f.write("""            description = "%s";\n""" % name)
-            f.write("""            kernel = "%s";\n""" % (kdict[kernel].name))
-            f.write("""            ramdisk = "%s";\n""" % (idict[initrd].name))
-            f.write("""            fdt = "%s";\n""" % (ddict[dtb].name))
+            f.write("""            kernel = "%s";\n""" % (KernelImage(kernel, ops.arch).name))
+            f.write("""            ramdisk = "%s";\n""" % (InitrdImage(initrd, ops.arch).name))
+            f.write("""            fdt = "%s";\n""" % (DtbImage(dtb).name))
             f.write("""        };\n\n""")
         f.write("""    };\n""")
         f.write("""};\n""")
@@ -298,12 +327,14 @@ if __name__ == '__main__':
                 fit.add_yaml(y)
 
     if ops.add_platform == [['all']]:
-        ops.add_platform = [ subprocess.check_output("onlpm --list-platforms --arch %s" % (ops.arch), shell=True).split() ]
+        ops.add_platform = [ pm.list_platforms(ops.arch) ]
 
     if ops.add_platform == [['initrd']]:
         # Add support for the platforms listed in the initrd's platform manifest
         (package,f) = initrd.split(':')
-        mfile = subprocess.check_output("onlpm --find-file %s:%s manifest.json" % (package, ops.arch), shell=True).strip()
+        pkg = package + ':' + ops.arch
+        pm.require(pkg, force=False, build_missing=False)
+        mfile = pm.opr.get_file(pkg, "manifest.json")
         manifest = json.load(open(mfile))
         ops.add_platform = [[ "%s" % p for p in manifest['platforms'] ]]
 
