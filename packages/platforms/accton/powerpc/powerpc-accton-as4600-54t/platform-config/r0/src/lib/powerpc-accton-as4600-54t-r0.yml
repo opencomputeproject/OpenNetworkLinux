@@ -1,7 +1,34 @@
+---
+
+######################################################################
+#
+# platform-config for AS4600
+#
+######################################################################
+
 powerpc-accton-as4600-54t-r0:
   flat_image_tree:
-    kernel: onl-kernel-3.9.6-powerpc-e500v:powerpc, kernel-3.9.6-powerpc-e500v.bin.gz
-    dtb: onl-kernel-3.9.6-powerpc-e500v:powerpc, powerpc-as4600-54t.dtb
+    kernel:
+      <<: *e500v-kernel
+    dtb:
+      =: powerpc-as4600-54t.dtb
+      <<: *e500v-kernel-package
 
   loader:
-    partition: /dev/sda1
+    device: /dev/sda
+    ##partition: /dev/sda1
+    nos_bootcmds: *usb_bootcmds
+
+  installer:
+  - ONL-BOOT:
+      =: 32MiB
+      format: ext2
+  - ONL-CONFIG:
+      =: 32MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 448MiB
+      format: ext4
+  - ONL-DATA:
+      =: 100%
+      format: ext4

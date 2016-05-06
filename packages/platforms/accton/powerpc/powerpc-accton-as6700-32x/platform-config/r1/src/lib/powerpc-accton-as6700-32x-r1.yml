@@ -1,8 +1,36 @@
+---
+
+######################################################################
+#
+# platform-config for AS6700
+#
+######################################################################
+
 powerpc-accton-as6700-32x-r1:
+
   flat_image_tree:
-    kernel: onl-kernel-3.8.13-powerpc-e500mc:powerpc, kernel-3.8.13-powerpc-e500mc.bin.gz
-    dtb: onl-kernel-3.8.13-powerpc-e500mc:powerpc, powerpc-accton-as6700-32x-r1.dtb
+    kernel:
+      <<: *e500mc-kernel
+    dtb:
+      =: powerpc-accton-as6700-32x-r1.dtb
+      <<: *e500mc-kernel-package
 
   loader:
-    partition: /dev/sda1
+    device: /dev/sda
+    ##partition: /dev/sda1
+    nos_bootcmds: *usb_bootcmds
+
+  installer:
+  - ONL-BOOT:
+      =: 128MiB
+      format: ext2
+  - ONL-CONFIG:
+      =: 128MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 768MiB
+      format: ext4
+  - ONL-DATA:
+      =: 100%
+      format: ext4
 
