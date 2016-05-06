@@ -3,9 +3,5 @@
 """Run native ONIE tools
 """
 
-import sys
-import distutils.sysconfig
-sys.path.append("/usr/lib/python%s/dist-packages"
-                % distutils.sysconfig.get_python_version())
 import onl.install.ShellApp
 onl.install.ShellApp.Loader.main()
