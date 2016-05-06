@@ -143,6 +143,40 @@ class SubprocessMixin:
         self.log.debug("+ /bin/ln -s %s %s", tgt, dst)
         os.symlink(tgt, dst)
 
+    def mkdosfs(self, dev, label=None):
+        if label is not None:
+            cmd = ('mkdosfs', '-n', label, dev,)
+        else:
+            cmd = ('mkdosfs', dev,)
+        self.check_call(cmd, vmode=self.V1)
+
+    def mke2fs(self, dev, label=None):
+        if label is not None:
+            cmd = ('mkfs.ext2', '-L', label, dev,)
+        else:
+            cmd = ('mkfs.ext2', dev,)
+        self.check_call(cmd, vmode=self.V1)
+
+    def mke4fs(self, dev, label=None, huge_file=True):
+        if label is not None:
+            cmd = ['mkfs.ext4', '-L', label, dev,]
+        else:
+            cmd = ['mkfs.ext4', dev,]
+
+        if not huge_file:
+            cmd[1:1] = ['-O', '^huge_file',]
+        # hack needed for some old ONIE kernels
+
+        self.check_call(cmd, vmode=self.V1)
+
+    def mkfs(self, dev, fstype):
+        mkfs = 'mkfs.%s' % fstype
+        cmd = (mkfs, dev,)
+
+        # 'mkfs -h' says to use '-V' for verbose,
+        # don't believe it
+        self.check_call(cmd, vmode=self.V1)
+
 class TempdirContext(SubprocessMixin):
 
     def __init__(self, prefix=None, suffix=None, chroot=None, log=None):
