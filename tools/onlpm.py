@@ -561,7 +561,6 @@ class OnlPackageGroup(object):
         with onlu.Lock(os.path.join(self._pkgs['__directory'], '.lock')):
             self.gmake_locked("clean", 'Clean')
 
-
 class OnlPackageRepo(object):
     """Package Repository and Interchange Class
 
@@ -999,6 +998,17 @@ class OnlPackageManager(object):
     def pkg_info(self):
         return "\n".join([ pg.pkg_info() for pg in self.package_groups if not pg.filtered ])
 
+    def list_platforms(self, arch):
+        platforms = []
+        for pg in self.package_groups:
+            for p in pg.packages:
+                (name, pkgArch) = OnlPackage.idparse(p.id())
+                m = re.match(r'onl-platform-config-(?P<platform>.*)', name)
+                if m:
+                    if arch in [ pkgArch, "all", None ]:
+                        platforms.append(m.groups('platform')[0])
+        return platforms
+
 def defaultPm():
     repo = os.environ.get('ONLPM_OPTION_REPO', None)
     envJson = os.environ.get('ONLPM_OPTION_INCLUDE_ENV_JSON', None)
@@ -1139,15 +1149,10 @@ if __name__ == '__main__':
                             print
 
         if ops.list_platforms:
-            platforms = []
-            for pg in pm.package_groups:
-                for p in pg.packages:
-                    (name, arch) = OnlPackage.idparse(p.id())
-                    m = re.match(r'onl-platform-config-(?P<platform>.*)', name)
-                    if m:
-                        if ops.arch in [ arch, "all", None ]:
-                            platforms.append(m.groups('platform')[0])
-
+            if not ops.arch:
+                logger.error("missing --arch with --list-platforms")
+                sys.exit(1)
+            platforms = pm.list_platforms(ops.arch)
             if ops.csv:
                 print ','.join(platforms)
             else:
