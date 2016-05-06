@@ -12,7 +12,10 @@ import struct
 from InstallUtils import InitrdContext, MountContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser, ProcMtdParser
+from InstallUtils import BlkidParser
 import Fit
+
+import onl.platform.current
 
 class AppBase(SubprocessMixin):
 
@@ -42,7 +45,7 @@ class AppBase(SubprocessMixin):
                 pass
         return 0
 
-    def _runMtdShell(self, device):
+    def _runFitShell(self, device):
         self.log.debug("parsing FIT image in %s", device)
         p = Fit.Parser(path=device, log=self.log)
         node = p.getInitrdNode()
@@ -111,56 +114,66 @@ class Onie(AppBase):
 
     def run(self):
 
+        self.pm = ProcMountsParser()
+        self.blkid = BlkidParser(log=self.log.getChild("blkid"))
+        self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
+
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
             l = glob.glob(pat)
             if l: return l[0]
             return None
 
-        # try to find onie initrd on a mounted fs (GRUB)
-        initrd = _g("/mnt/onie-boot")
-        if initrd is not None:
-            self.log.debug("found ONIE initrd at %s", initrd)
-            return self._runInitrdShell(initrd)
-
-        # try to find the onie boot partition elsewhere
-        pm = ProcMountsParser()
+        # try to find a mounted, labeled partition
         try:
-            dev = self.check_output(('blkid', '-L', 'ONIE-BOOT',)).strip()
-        except subprocess.CalledProcessError, what:
+            dev = self.blkid['ONIE-BOOT'].device
+        except IndexError:
             dev = None
         if dev is not None:
             self.log.debug("found ONIE boot device %s", dev)
-            parts = [p for p in pm.mounts if p.device == dev]
+
+            parts = [p for p in self.pm.mounts if p.device == dev]
             if parts:
                 onieDir = parts[0]
                 self.log.debug("found ONIE boot mounted at %s", onieDir)
                 initrd = _g(onieDir)
-                if initrd is not None:
+                if initrd is None:
+                    self.log.warn("cannot find ONIE initrd on %s", onieDir)
+                else:
                     self.log.debug("found ONIE initrd at %s", initrd)
                     return _runInitrdShell(initrd)
+
+            with MountContext(dev, log=self.log) as ctx:
+                initrd = _g(ctx.dir)
+                if initrd is None:
+                    self.log.warn("cannot find ONIE initrd on %s", dev)
                 else:
-                    self.log.error("cannot find ONIE initrd")
-                    return 1
+                    self.log.debug("found ONIE initrd at %s", initrd)
+                    return self._runInitrdShell(initrd)
+
+            self.log.warn("cannot find an ONIE initrd")
+            return 1
+
+        # try to find onie initrd on a mounted fs (GRUB);
+        # for ONIE images this is usually /mnt/onie-boot
+        for part in self.pm.mounts:
+            if not part.device.startswith('/dev/'): continue
+            initrd = _g(part.dir)
+            if initrd is None:
+                self.log.debug("cannot find ONIE initrd on %s (%s)",
+                               part.device, part.dir)
             else:
-                with MountContext(dev, fsType='ext4', log=self.log) as ctx:
-                    initrd = _g(ctx.dir)
-                    if initrd is not None:
-                        self.log.debug("found ONIE initrd at %s", initrd)
-                        return self._runInitrdShell(initrd)
-                    else:
-                        self.log.error("cannot find ONIE initrd")
-                        return 1
+                self.log.debug("found ONIE initrd at %s", initrd)
+                return self._runInitrdShell(initrd)
 
         # grovel through MTD devices (u-boot)
-        pm = ProcMtdParser(log=self.log)
-        parts = [p for p in pm.parts if p.label == "onie"]
+        parts = [p for p in self.mtd.parts if p.label == "onie"]
         if parts:
             part = parts[0]
             self.log.debug("found ONIE MTD device %s",
                            part.charDevice or part.blockDevice)
-            return self._runMtdShell(part.blockDevice)
-        elif pm.parts:
+            return self._runFitShell(part.blockDevice)
+        elif self.mtd.mounts:
             self.log.error("cannot find ONIE MTD device")
             return 1
 
@@ -171,78 +184,117 @@ class Loader(AppBase):
 
     PROG = "loader-shell"
 
-    def run(self):
+    def runGrub(self):
 
-        def _g(d):
-            pat = os.path.join(d, "initrd-*")
-            l = glob.glob(pat)
-            if l: return l[0]
-            return None
-
-        # try to find the loader boot partition as a formatted block device
-        pm = ProcMountsParser()
         try:
-            dev = self.check_output(('blkid', '-L', 'SL-BOOT',)).strip()
-        except subprocess.CalledProcessError, what:
-            dev = None
-        if dev is not None:
-            self.log.debug("found loader device %s", dev)
-            parts = [p for p in pm.mounts if p.device == dev]
-            if parts:
-                loaderDir = parts[0]
-                self.log.debug("found loader device mounted at %s", loaderDir)
-                initrd = _g(loaderDir)
-                if initrd is not None:
-                    self.log.debug("found loader initrd at %s", initrd)
-                    return _runInitrdShell(initrd)
-                else:
-                    self.log.error("cannot find loader initrd")
-                    return 1
-            else:
-                with MountContext(dev, fsType='ext4', log=self.log) as ctx:
-                    initrd = _g(ctx.dir)
-                    if initrd is not None:
-                        self.log.debug("found loader initrd at %s", initrd)
-                        return self._runInitrdShell(initrd)
-                    else:
-                        self.log.error("cannot find loader initrd")
-                        return 1
-
-        # try to find the loader partition on the same desk as /mnt/flash
-        try:
-            flashDev = self.check_output(('blkid', '-L', 'FLASH',)).strip()
-        except subprocess.CalledProcessError, what:
-            flashDev = None
-        if flashDev is not None:
-            self.log.debug("found flash device hint %s", flashDev)
-            loaderDev = flashDev
-            while loaderDev and loaderDev[-1] in string.digits:
-                loaderDev = loaderDev[:-1]
-            loaderDev = loaderDev + '1'
-            with open(loaderDev) as fd:
-                buf = fd.read(4)
-                magic = struct.unpack(">I", buf)[0]
-            if magic == Fit.Parser.FDT_MAGIC:
-                self.log.debug("found loader device %s", loaderDev)
-                return self._runMtdShell(loaderDev)
-            else:
-                self.log.error("bad FDT signature on %s %x",
-                               loaderDev, magic)
-                return 1
-
-        # grovel through MTD devices (u-boot)
-        pm = ProcMtdParser(log=self.log)
-        parts = [p for p in pm.parts if p.label == "sl-boot"]
-        if parts:
-            part = parts[0]
-            self.log.debug("found loader MTD device %s",
-                           part.charDevice or part.blockDevice)
-            return self._runMtdShell(part.blockDevice)
-        elif pm.parts:
-            self.log.error("cannot find loader MTD device")
+            dev = self.blkid['ONL-BOOT'].device
+        except KeyError:
+            pass
+        if dev is None:
+            self.log.error("cannot find GRUB partition %s", dev)
             return 1
 
-        self.log.error("cannot find loader initrd")
+        initrd = self.pc['grub']['initrd']
+        if type(initrd) == dict: initrd = initrd['=']
+
+        parts = [p for p in self.pm.mounts if p.device == dev]
+        if parts:
+            grubDir = parts[0]
+            self.log.debug("found loader device %s mounted at %s",
+                           dev, grubDir)
+            p = os.path.join(grubDir, initrd)
+            if not os.path.exists(p):
+                self.log.error("cannot find initrd %s", p)
+                return 1
+            self.log.debug("found loader initrd at %s", p)
+            return self._runInitrdShell(p)
+
+        with MountContext(dev, log=self.log) as ctx:
+            p = os.path.join(ctx.dir, initrd)
+            if not os.path.exists(p):
+                self.log.error("cannot find initrd %s:%s", dev, p)
+                return 1
+            self.log.debug("found loader initrd at %s:%s", dev, p)
+            return self._runInitrdShell(p)
+
+    def runUboot(self):
+
+        dev = self.pc['loader']['device']
+        self.log.info("found loader device %s", dev)
+
+        parts = self.pc['installer']
+        bootPart = None
+        bootPartno = None
+        for idx, part in enumerate(self.pc['installer']):
+            label, pdata = list(part.items())[0]
+            if label == 'ONL-BOOT':
+                bootPart = pdata
+                bootPartno = idx + 1
+                break
+        if bootPart is None:
+            self.log.info("cannot find ONL-BOOT declaration")
+            return 1
+
+        fmt = bootPart.get('format', 'ext2')
+        if fmt == 'raw':
+            bootDevice = dev + str(bootPartno)
+        else:
+            bootDevice = self.blkid['ONL-BOOT'].device
+
+        # run from a raw partition
+        if fmt == 'raw':
+            self.log.info("found (raw) boot partition %s", bootDevice)
+            return self._runFitShell(bootDevice)
+
+        l = []
+
+        p = self.pc['flat_image_tree']['itb']
+        if type(p) == dict: p = p['=']
+        if p not in l: l.append(p)
+
+        p = self.platform.platform() + '.itb'
+        if p not in l: l.append(p)
+
+        p = 'onl-loader-fit.itb'
+        if p not in l: l.append(p)
+
+        self.log.info("looking for loader images %s", ", ".join(l))
+
+        # run from a file in a mounted filesystem
+        parts = [p for p in self.pm.mounts if p.device == bootDevice]
+        if parts:
+            loaderDir = parts[0]
+            self.log.debug("found loader device mounted at %s", loaderDir)
+            for e in l:
+                p = os.path.join(loaderDir, e)
+                if os.path.exists(p): return self._runFitShell(p)
+            self.log.error("cannot find an ITB")
+            return 1
+
+        # run from a file in an umounted filesystem
+        with MountContext(bootDevice, log=self.log) as ctx:
+            self.log.info("found (%s) loader device %s", fmt, bootDevice)
+            for e in l:
+                p = os.path.join(ctx.dir, e)
+                if os.path.exists(p): return self._runFitShell(p)
+            self.log.error("cannot find an ITB")
+            return 1
+
+    def run(self):
+
+        self.platform = onl.platform.current.OnlPlatform()
+        self.pc = self.platform.platform_config
+
+        self.pm = ProcMountsParser()
+        self.blkid = BlkidParser(log=self.log.getChild("blkid"))
+
+        if 'grub' in self.pc:
+            return self.runGrub()
+
+        if 'flat_image_tree' in self.pc:
+            return self.runUboot()
+
+        self.log.error("invalid platform-config")
         return 1
 
 main = Onie.main
