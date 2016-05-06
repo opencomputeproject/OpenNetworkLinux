@@ -366,12 +366,12 @@ class OnlPackage(object):
         if 'init' in self.pkg:
             if not os.path.exists(self.pkg['init']):
                 raise OnlPackageError("Init script '%s' does not exist." % self.pkg['init'])
-            command = command + "--deb-init %s" % self.pkg['init']
+            command = command + "--deb-init %s " % self.pkg['init']
 
         if 'post-install' in self.pkg:
             if not os.path.exists(self.pkg['post-install']):
                 raise OnlPackageError("Post-install script '%s' does not exist." % self.pkg['post-install'])
-            command = command + "--after-install %s" % self.pkg['post-install']
+            command = command + "--after-install %s " % self.pkg['post-install']
 
         if logger.level < logging.INFO:
             command = command + "--verbose "
