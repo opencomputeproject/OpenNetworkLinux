@@ -14,11 +14,6 @@ from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
 import ConfUtils, BaseInstall
 
-# locate the platform-config files using SWI path rules
-sys.path.append("/usr/lib/python%s/dist-packages"
-                % (distutils.sysconfig.get_python_version(),))
-
-import onl.platform.base
 import onl.platform.current
 
 class App(SubprocessMixin):
@@ -33,7 +28,7 @@ class App(SubprocessMixin):
         self.installer = None
         self.machineConf = None
         self.installerConf = None
-        self.platform = None
+        self.onlPlatform = None
 
     def run(self):
 

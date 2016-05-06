@@ -18,6 +18,10 @@ import onl.YamlUtils
 class Base:
 
     class installmeta:
+
+        grub = False
+        uboot = False
+
         def __init__(self,
                      installerConf=None,
                      machineConf=None,
@@ -38,16 +42,29 @@ class Base:
                  machineConf=None, installerConf=None, platformConf=None,
                  grubEnv=None, ubootEnv=None,
                  log=None):
-        self.machineConf = machineConf
-        self.installerConf = installerConf
         self.im = self.installmeta(installerConf=installerConf,
                                    machineConf=machineConf,
                                    platformConf=platformConf,
                                    grubEnv=grubEnv,
                                    ubootEnv = ubootEnv)
-        self.grubEnv = grubEnv
-        self.ubootEnv = ubootEnv
         self.log = log or logging.getLogger(self.__class__.__name__)
+
+        self.device = None
+        # target device, initialize this later
+
+        self.minpart = None
+        self.nextBlock = None
+        # keep track of next partition/next block
+
+        self.blkidParts = []
+        # current scan of partitions and labels
+
+        self.partedDevice = None
+        self.partedDisk = None
+        # parted state
+
+        self.configArchive = None
+        # backup of ONL-CONFIG during re-partitioning
 
     def run(self):
         self.log.error("not implemented")
@@ -58,7 +75,7 @@ class Base:
 
     def installSwi(self):
 
-        swis = [x for x in os.listdir(self.installerConf.installer_dir) if x.endswith('.swi')]
+        swis = [x for x in os.listdir(self.im.installerConf.installer_dir) if x.endswith('.swi')]
         if not swis:
             self.log.info("No ONL Software Image available for installation.")
             self.log.info("Post-install ZTN installation will be required.")
@@ -68,7 +85,7 @@ class Base:
             return
 
         base = swis[0]
-        src = os.path.join(self.installerConf.installer_dir, base)
+        src = os.path.join(self.im.installerConf.installer_dir, base)
 
         self.log.info("Installing ONL Software Image (%s)...", base)
         dev = self.blkidParts['ONL-IMAGES']
@@ -110,6 +127,159 @@ class Base:
             raise SystemExit("backup of ONL-CONFIG failed")
         self.unlink(archive)
 
+    def deletePartitions(self):
+
+        nextBlock = -1
+        dirty = False
+        for part in self.partedDisk.partitions:
+            self.log.info("examining %s part %d",
+                          self.partedDisk.device.path, part.number)
+            if part.number < self.minpart:
+                self.log.info("skip this part")
+                nextBlock = max(part.geometry.start+part.geometry.length,
+                                nextBlock)
+            else:
+                self.log.info("deleting this part")
+                self.partedDisk.removePartition(part)
+                dirty = True
+
+        if dirty:
+            self.partedDisk.commit()
+            self.check_call(('partprobe', self.device,))
+
+        if nextBlock > -1:
+            self.nextBlock = nextBlock
+        else:
+            self.log.warn("no partitions, starting at block 1")
+
+        return 0
+
+    def partitionParted(self):
+        """Build partitions according to the partition spec.
+
+        XXX roth -- hopefully the GPT labels specified here
+        work correctly (that is, are ignored) on an msdos label
+        """
+
+        constraint = self.partedDevice.optimalAlignedConstraint
+        # default partition layout constraint
+
+        devices = {}
+
+        def _u2s(sz, u):
+            bsz = sz * u
+            bsz = bsz + self.partedDevice.physicalSectorSize - 1
+            return bsz / self.partedDevice.physicalSectorSize
+
+        UNITS = {
+            'GiB' : 1024 * 1024 * 1024,
+            'G' : 1000 * 1000 * 1000,
+            'MiB' : 1024 * 1024,
+            'M' : 1000 * 1000,
+            'KiB' : 1024,
+            'K' : 1000,
+        }
+
+        for part in self.im.platformConf['installer']:
+
+            label, partData = list(part.items())[0]
+            if type(partData) == dict:
+                sz, fmt = partData['='], partData.get('format', 'ext4')
+            else:
+                sz, fmt = partData, 'ext4'
+
+            cnt = None
+            nextBlock = self.nextBlock or 1
+            minpart = self.minpart or 1
+            for ul, ub in UNITS.items():
+                if sz.endswith(ul):
+                    cnt = _u2s(int(sz[:-len(ul)], 10), ub)
+                    break
+            if sz == '100%':
+                cnt = self.partedDevice.getLength() - nextBlock
+            if cnt is None:
+                self.log.error("invalid size (no units) for %s: %s",
+                               part, sz)
+                return 1
+
+            start = nextBlock
+            end = start + cnt - 1
+            if end <= self.partedDevice.getLength():
+                self.log.info("Allocating %d sectors for %s",
+                              cnt, label)
+            else:
+                self.log.warn("%s: start sector %d, end sector %d, max %d",
+                              label, start, end,
+                              self.partedDevice.getLength())
+                self.log.error("invalid partition %s [%s] (too big)",
+                               label, sz)
+                return 1
+
+            geom = parted.Geometry(device=self.partedDevice,
+                                   start=start, length=end-start+1)
+            fs = parted.FileSystem(type=fmt, geometry=geom)
+            part = parted.Partition(disk=self.partedDisk,
+                                    type=parted.PARTITION_NORMAL,
+                                    fs=fs,
+                                    geometry=geom)
+            if self.partedDisk.type == 'gpt':
+                part.getPedPartition().set_name(label)
+            self.partedDisk.addPartition(part, constraint=constraint)
+            self.partedDisk.commit()
+            self.check_call(('partprobe', self.device,))
+
+            if fmt == 'raw':
+                self.log.info("Leaving %s (%s) unformatted (raw)",
+                              part.path, label)
+            else:
+                self.log.info("Formatting %s (%s) as %s",
+                              part.path, label, fmt)
+                if fmt == 'msdos':
+                    self.mkdosfs(part.path, label=label)
+                elif fmt == 'ext4':
+                    self.mke4fs(part.path, label=label, huge_file=False)
+                elif fmt == 'ext2':
+                    self.mke2fs(part.path, label=label)
+                else:
+                    self.mkfs(part.path, fstype=fmt)
+
+            self.nextBlock, self.minpart = end+1, minpart+1
+
+            devices[label] = part.path
+
+            if label == 'ONL-CONFIG' and self.configArchive is not None:
+                self.restoreConfig(part.path)
+
+        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
+        # re-read the partitions
+
+        return 0
+
+    def installBootConfig(self):
+
+        try:
+            dev = self.blkidParts['ONL-BOOT']
+        except IndexError as ex:
+            self.log.warn("cannot find ONL-BOOT partition (maybe raw?) : %s", str(ex))
+            return 1
+
+        self.log.info("Installing boot-config to %s", dev.device)
+
+        src = os.path.join(self.im.installerConf.installer_dir, 'boot-config')
+        ##src = os.path.join(self.im.installerConf.installer_platform_dir, 'boot-config')
+        with MountContext(dev.device, log=self.log) as ctx:
+            dst = os.path.join(ctx.dir, 'boot-config')
+            self.copy2(src, dst)
+
+        with open(src) as fd:
+            ecf = fd.read().encode('base64', 'strict').strip()
+            if self.im.grub and self.im.grubEnv is not None:
+                setattr(self.im.grubEnv, 'boot_config_default', ecf)
+            if self.im.uboot and self.im.ubootEnv is not None:
+                setattr(self.im.ubootEnv, 'boot-config-default', ecf)
+
+        return 0
+
 GRUB_TPL = """\
 #serial --port=0x3f8 --speed=115200 --word=8 --parity=no --stop=1
 serial %(serial)s
@@ -143,18 +313,6 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def __init__(self, *args, **kwargs):
         Base.__init__(self, *args, **kwargs)
-
-        self.device = None
-        self.minpart = None
-        self.nextBlock = None
-
-        self.blkidParts = []
-
-        self.partedDevice = None
-        self.partedDisk = None
-
-        self.configArchive = None
-        # backup of ONL-CONFIG during re-partitioning
 
     def findGpt(self):
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
@@ -234,127 +392,6 @@ class GrubInstaller(SubprocessMixin, Base):
 
         return 0
 
-    def deletePartitions(self):
-
-        nextBlock = -1
-        for part in self.partedDisk.partitions:
-            self.log.info("examining %s part %d",
-                          self.partedDisk.device.path, part.number)
-            if part.number < self.minpart:
-                self.log.info("skip this part")
-                nextBlock = max(part.geometry.start+part.geometry.length,
-                                nextBlock)
-            else:
-                self.log.info("deleting this part")
-                self.partedDisk.removePartition(part)
-
-        if nextBlock < 0:
-            self.log.error("cannot find a starting block")
-            return 1
-
-        self.nextBlock = nextBlock
-        return 0
-
-    def partitionGpt(self):
-
-        constraint = self.partedDevice.optimalAlignedConstraint
-        # default partition layout constraint
-
-        devices = {}
-
-        def _u2s(sz, u):
-            bsz = sz * u
-            bsz = bsz + self.partedDevice.physicalSectorSize - 1
-            return bsz / self.partedDevice.physicalSectorSize
-
-        UNITS = {
-            'GiB' : 1024 * 1024 * 1024,
-            'G' : 1000 * 1000 * 1000,
-            'MiB' : 1024 * 1024,
-            'M' : 1000 * 1000,
-            'KiB' : 1024,
-            'K' : 1000,
-        }
-
-        for part in self.im.platformConf['installer']:
-
-            label, sz = list(part.items())[0]
-            if type(sz) == dict:
-                sz, fmt = sz['='], sz.get('format', 'ext4')
-            else:
-                fmt = 'ext4'
-
-            cnt = None
-            for ul, ub in UNITS.items():
-                if sz.endswith(ul):
-                    cnt = _u2s(int(sz[:-len(ul)], 10), ub)
-                    break
-            if sz == '100%':
-                cnt = self.partedDevice.getLength() - self.nextBlock
-            if cnt is None:
-                self.log.error("invalid size (no units) for %s: %s",
-                               part, sz)
-                return 1
-
-            start = self.nextBlock
-            end = start + cnt - 1
-            if end <= self.partedDevice.getLength():
-                self.log.info("Allocating %d sectors for %s",
-                              cnt, label)
-            else:
-                self.log.warn("%s: start sector %d, end sector %d, max %d",
-                              label, start, end,
-                              self.partedDevice.getLength())
-                self.log.error("invalid partition %s [%s] (too big)",
-                               label, sz)
-                return 1
-
-            geom = parted.Geometry(device=self.partedDevice,
-                                   start=start, length=end-start+1)
-            fs = parted.FileSystem(type=fmt, geometry=geom)
-            part = parted.Partition(disk=self.partedDisk,
-                                    type=parted.PARTITION_NORMAL,
-                                    fs=fs,
-                                    geometry=geom)
-            part.getPedPartition().set_name(label)
-            self.partedDisk.addPartition(part, constraint=constraint)
-            self.partedDisk.commit()
-
-            self.log.info("Formatting %s (%s) as %s",
-                          part.path, label, fmt)
-            if fmt == 'msdos':
-                cmd = ('mkdosfs', '-n', label, part.path,)
-            else:
-                cmd = ('mkfs.%s' % fmt, '-L', label, part.path,)
-            self.check_call(cmd, vmode=self.V1)
-
-            self.nextBlock, self.minpart = end+1, self.minpart+1
-
-            devices[label] = part.path
-
-            if label == 'ONL-CONFIG' and self.configArchive is not None:
-                self.restoreConfig(part.path)
-
-        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
-        # re-read the partitions
-
-        return 0
-
-    def installBootConfig(self):
-        dev = self.blkidParts['ONL-BOOT']
-        self.log.info("Installing boot-config to %s", dev.device)
-
-        src = os.path.join(self.installerConf.installer_dir, 'boot-config')
-        with MountContext(dev.device, log=self.log) as ctx:
-            dst = os.path.join(ctx.dir, 'boot-config')
-            self.copy2(src, dst)
-
-        with open(src) as fd:
-            ecf = fd.read().encode('base64', 'strict').strip()
-            setattr(self.grubEnv, 'boot_config_default', ecf)
-
-        return 0
-
     def installLoader(self):
 
         ctx = {}
@@ -366,7 +403,7 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['initrd'] = initrd['='] if type(initrd) == dict else initrd
 
         ctx['args'] = self.im.platformConf['grub']['args']
-        ctx['platform'] = self.installerConf.installer_platform
+        ctx['platform'] = self.im.installerConf.installer_platform
         ctx['serial'] = self.im.platformConf['grub']['serial']
 
         cf = GRUB_TPL % ctx
@@ -375,12 +412,12 @@ class GrubInstaller(SubprocessMixin, Base):
         dev = self.blkidParts['ONL-BOOT']
         with MountContext(dev.device, log=self.log) as ctx:
             def _cp(b):
-                src = os.path.join(self.installerConf.installer_dir, b)
+                src = os.path.join(self.im.installerConf.installer_dir, b)
                 if not os.path.isfile(src): return
                 if b.startswith('kernel-') or b.startswith('onl-loader-initrd-'):
                     dst = os.path.join(ctx.dir, b)
                     self.copy2(src, dst)
-            [_cp(e) for e in os.listdir(self.installerConf.installer_dir)]
+            [_cp(e) for e in os.listdir(self.im.installerConf.installer_dir)]
 
             d = os.path.join(ctx.dir, "grub")
             self.makedirs(d)
@@ -392,7 +429,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installGrub(self):
         self.log.info("Installing GRUB to %s", self.partedDevice.path)
-        self.grubEnv.install(self.partedDevice.path)
+        self.im.grubEnv.install(self.partedDevice.path)
         return 0
 
     def installGpt(self):
@@ -423,14 +460,14 @@ class GrubInstaller(SubprocessMixin, Base):
 
         self.log.info("next usable block is %s", self.nextBlock)
 
-        code = self.partitionGpt()
+        code = self.partitionParted()
         if code: return code
 
         # once we assign the ONL-BOOT partition,
         # we can re-target the grub environment
         dev = self.blkidParts['ONL-BOOT']
-        self.grubEnv.__dict__['bootPart'] = dev.device
-        self.grubEnv.__dict__['bootDir'] = None
+        self.im.grubEnv.__dict__['bootPart'] = dev.device
+        self.im.grubEnv.__dict__['bootDir'] = None
 
         code = self.installSwi()
         if code: return code
@@ -466,207 +503,142 @@ class UbootInstaller(SubprocessMixin, Base):
 
     class installmeta(Base.installmeta):
 
-        device = None
         uboot = True
 
-        loaderBlocks = None
-        flashBlocks = None
-        flash2Blocks = None
-        # block count, or -1 for "rest"
-
-        loaderRaw = True
-        # true for raw loader partition (FIT image)
-
-        loaderSrc = None
-        # default loader source file (auto-detect)
-
-        loaderDst = "onl-loader"
-        # destination path on ONL-BOOT for non-raw installs
-
-        bootConf = None
-        # optional pre-formatted boot-config contents
-        # (string or list of strings)
-
-        bootCmd = None
-        # pre-formatted string
-
-        bootCmds = None
-        # ... or a list of strings
+        def getDevice(self):
+            loader = self.platformConf.get('loader', {})
+            dev = loader.get('device', None)
+            return dev
 
         def str_bootcmd(self):
-            if self.bootCmd is not None: return self.bootCmd
-            if self.bootCmds:
-                return "; ".join(self.bootCmds)
-            raise ValueError("missing boot commands")
+            cmds = []
+            cmds.append("setenv onl_loadaddr 0x%x"
+                       % self.platformConf['loader']['loadaddr'])
+            cmds.append("setenv onl_platform %s"
+                       % self.installerConf.installer_platform)
+            itb = self.platformConf['flat_image_tree']['itb']
+            if type(itb) == dict: itb = itb['=']
+            cmds.append("setenv onl_itb %s" % itb)
+            for item in self.platformConf['loader']['setenv']:
+                k, v = list(item.items())[0]
+                cmds.append("setenv %s %s" % (k, v,))
+            cmds.extend(self.platformConf['loader']['nos_bootcmds'])
+            return "; ".join(cmds)
 
     def __init__(self, *args, **kwargs):
-        kwargs = dict(kwargs)
-        installerConf = kwargs.pop('installerConf', None)
-        machineConf = kwargs.pop('machineConf', None)
-        platformConf = kwargs.pop('platformConf', None)
-        ubootEnv = kwargs.pop('ubootEnv', None)
-        self.im = self.installmeta(installerConf=installerConf,
-                                   machineConf=machineConf,
-                                   platformConf=platormConf,
-                                   ubootEnv=ubootEnv)
-        Base.__init__(self, *args,
-                      machineConf=machineConf, installerConf=installerConf, platformConf=platformConf,
-                      ubootEnv=ubootEnv,
-                      **kwargs)
+        Base.__init__(self, *args, **kwargs)
 
-        # XXX roth
-        self.onlBootDev = None
-        self.onlConfigDev = None
-        self.onlDataDev = None
+        self.device = self.im.getDevice()
 
-    def formatBlockdev(self):
+        self.rawLoaderDevice = None
+        # set to a partition device for raw loader install,
+        # default to None for FS-based install
 
-        if self.im.loaderBlocks < 0:
-            self.log.error("no size defined for ONL-BOOT")
-            return 1
-        if self.im.flashBlocks < 0:
-            self.log.error("no size defined for FLASH")
-            return 1
+    def maybeCreateLabel(self):
+        """Set up an msdos label."""
 
-        self.log.info("Formatting %s as %d:%d:%d",
-                      self.im.device,
-                      self.im.loaderBlocks,
-                      self.im.flashBlocks,
-                      self.im.flash2Blocks)
+        self.partedDevice = parted.getDevice(self.device)
+        try:
+            self.partedDisk = parted.newDisk(self.partedDevice)
+            if self.partedDisk.type == 'msdos':
+                self.log.info("disk %s is already msdos", self.device)
+                return 0
+            self.log.warn("disk %s has wrong label %s",
+                          self.device, self.partedDisk.type)
+        except parted._ped.PartedException as ex:
+            self.log.error("cannot get partition table from %s: %s",
+                           self.device, str(ex))
 
-        self.check_call(('parted', '-s', self.im.device,
-                         'mklabel', 'msdos',))
+        self.log.info("creating msdos label on %s")
+        self.partedDisk = parted.freshDisk(self.partedDevice, 'msdos')
 
-        start = 1
-        end = start + self.im.loaderBlocks-1
+        return 0
 
-        self.check_call(('parted', '-s', self.im.device,
-                         'unit', 's',
-                         'mkpart', 'primary', 'fat32', str(start)+'s', str(end)+'s',))
+    def findMsdos(self):
+        """Backup any existing data.
 
-        self.onlBootDev = self.im.device + '1'
-        if not self.im.loaderRaw:
-            cmd = ('mkdosfs', '-n', 'ONL-BOOT', self.onlBootDev,)
-            self.check_call(cmd, vmode=self.V1)
+        The GPT version of this function is more tricky since it needs
+        to save some of the partitions. Here with and msdos label that
+        is on a different block device from u-boot or ONIE, we don't
+        really care.
+        """
 
-        start = end + 1
-        end = start + self.im.flashBlocks-1
+        # optionally back up a config partition
+        # if it's on the boot device
+        for part in self.blkidParts:
+            dev, partno = part.splitDev()
+            if dev == self.device and part.label == 'ONL-CONFIG':
+                self.backupConfig(part.device)
 
-        self.check_call(('parted', '-s', self.im.device,
-                         'unit', 's',
-                         'mkpart', 'primary', 'fat32', str(start)+'s', str(end)+'s',))
-
-        self.onlConfigDev = self.im.device + '2'
-        cmd = ('mkdosfs', '-n', 'FLASH', self.onlConfigDev,)
-        self.check_call(cmd, vmode=self.V1)
-
-        start = end + 1
-        if self.im.flash2Blocks > -1:
-            end = start + self.im.flash2Blocks-1
-            self.check_call(('parted', '-s', self.im.device,
-                             'unit', 's',
-                             'mkpart', 'primary', 'fat32', str(start)+'s', str(end)+'s',))
-        else:
-            self.check_call(('parted', '-s', self.im.device,
-                             'unit', 's',
-                             'mkpart', 'primary', 'fat32', str(start)+'s', '100%',))
-
-        self.onlDataDev = self.im.device + '3'
-        cmd = ('mkdosfs', '-n', 'FLASH2', self.onlDataDev,)
-        self.check_call(cmd, vmode=self.V1)
+        self.minPart = -1
+        # default, delete all partitions
+        # XXX roth -- tweak this if we intent to save e.g.
+        # a diag partition from the vendor
 
         return 0
 
     def installLoader(self):
 
         loaderSrc = None
-        for cand in (("%s/%s.itb"
-                      % (self.installerConf.installer_dir,
-                         self.installerConf.installer_platform,)),
-                     os.path.join(self.installerConf.installer_dir, 'powerpc-fit-all.itb'),
-                     self.im.loaderSrc,
-                     ("%s/onl.%s.loader"
-                      % (self.installerConf.installer_dir,
-                         self.installerConf.installer_platform,))):
-            if os.path.exists(cand):
-                loaderSrc = cand
+        c1 = self.im.platformConf['flat_image_tree'].get('itb', None)
+        if type(c1) == dict: c1 = c1.get('=', None)
+        c2 = ("%s.itb"
+              % (self.im.installerConf.installer_platform,))
+        c3 = "onl-loader-fit.itb"
+
+        loaderSrc = None
+        for c in (c1, c2, c3):
+            if c is None: continue
+            p = os.path.join(self.im.installerConf.installer_dir, c)
+            if os.path.exists(p):
+                loaderSrc = p
                 break
+
         if not loaderSrc:
             self.log.error("The platform loader file is missing.")
-            self.log.error("This is unexpected - %s", loaderSrc)
             return 1
 
-        self.log.info("Installing the ONL loader...")
+        self.log.info("Installing the ONL loader from %s...", loaderSrc)
 
-        if self.im.loaderRaw:
+        if self.rawLoaderDevice is not None:
+            self.log.info("Installing ONL loader %s --> %s...",
+                          loaderSrc, self.rawLoaderDevice)
             cmd = ('dd',
                    'if=' + loaderSrc,
-                   'of=' + self.onlBootDev,)
+                   'of=' + self.rawLoaderDevice,)
             self.check_call(cmd, vmode=self.V2)
         else:
-            with MountContext(self.onlBootDev, log=self.log) as ctx:
-                dst = os.path.join(ctx, self.im.loaderDst)
+            dev = self.blkidParts['ONL-BOOT']
+            basename = os.path.split(loaderSrc)[1]
+            self.log.info("Installing ONL loader %s --> %s:%s...",
+                          loaderSrc, dev.device, basename)
+            with MountContext(dev.device, log=self.log) as ctx:
+                dst = os.path.join(ctx.dir, basename)
                 self.copy2(loaderSrc, dst)
-
-        return 0
-
-    def installBootconfig(self):
-
-        cf = None
-
-        p = os.path.join(self.installerConf.installer_dir, 'boot-config')
-        if cf is None and os.path.exists(p):
-            cf = open(p, "r").read()
-
-        p = os.path.join(self.installerConf.installer_platform_dir, 'boot-config')
-        if cf is None and os.path.exists(p):
-            cf = open(p, "r").read()
-
-        if cf is None and self.im.bootConf:
-            if isinstance(self.im.bootConf, basestring):
-                cf = self.im.bootConf
-            else:
-                cf = "\n".join(cf) + "\n"
-
-        if cf is None:
-            buf = StringIO.StringIO()
-            buf.write("SWI=images:onl-%s.swi\n"
-                      % (self.platformConf.installer_arch,))
-            buf.write("NETDEV=ma1\n")
-            cf = buf.getvalue()
-
-        self.log.info("Writing boot-config.")
-        with MountContext(self.onlConfigDev, log=self.log) as ctx:
-            dst = os.path.join(ctx.dir, "boot-config")
-            with open(dst, "w") as fd:
-                fd.write(cf)
-
-        ecf = cf.encode('base64', 'strict').strip()
-        setattr(self.ubootEnv, 'boot-config-default', ecf)
 
         return 0
 
     def installUbootEnv(self):
 
         # Special access instructions for initrd
-        off = getattr(self.installerConf, 'initrd_offset', None)
+        off = getattr(self.im.installerConf, 'initrd_offset', None)
         if off is not None:
-            if self.im.loaderRaw:
-                a = self.onlBootDev
+            if self.rawLoaderDevice is not None:
+                a = self.rawLoaderDevice
             else:
-                a = self.installerConf.initrd_archive
-            s = int(self.installerConf.initrd_offset)
-            e = s + int(self.installerConf.initrd_size) - 1
-            self.ubootEnv.onl_installer_initrd = ("%s:%x:%x" % (a, s, e,))
+                a = self.im.installerConf.initrd_archive
+            s = int(self.im.installerConf.initrd_offset)
+            e = s + int(self.im.installerConf.initrd_size) - 1
+            self.im.ubootEnv.onl_installer_initrd = ("%s:%x:%x" % (a, s, e,))
         else:
             try:
-                del self.installerConf.onl_installer_initrd
+                del self.im.installerConf.onl_installer_initrd
             except AttributeError:
                 pass
 
         if self.im.isOnie():
             self.log.info("Setting ONIE nos_bootcmd to boot ONL")
-            self.ubootEnv.nos_bootcmd = self.im.str_bootcmd()
+            self.im.ubootEnv.nos_bootcmd = self.im.str_bootcmd()
         else:
             self.log.warn("U-boot boot setting is not changed")
 
@@ -674,23 +646,66 @@ class UbootInstaller(SubprocessMixin, Base):
 
     def installUboot(self):
 
-        st = os.stat(self.im.device)
+        if self.device is None:
+            self.log.error("missing block device YAML config")
+            return 1
+        st = os.stat(self.device)
         if not stat.S_ISBLK(st[stat.ST_MODE]):
-            self.log.error("not a block device: %s",
-                           self.im.device)
+            self.log.error("not a block device: %s", self.device)
             return 1
 
-        code = self.formatBlockdev()
+        code = self.maybeCreateLabel()
+        if code: return code
+
+        self.log.info("Installing to %s", self.device)
+
+        if self.partedDisk.type != 'msdos':
+            self.log.error("not an MSDOS partition table")
+            return 1
+        if self.partedDevice.sectorSize != 512:
+            self.log.error("invalid logical block size")
+            return 1
+        if self.partedDevice.physicalSectorSize != 512:
+            self.log.error("invalid physical block size")
+            return 1
+
+        self.log.info("found a disk with %d blocks",
+                      self.partedDevice.getLength())
+
+        code = self.findMsdos()
+        if code: return code
+
+        code = self.deletePartitions()
+        if code: return code
+
+        self.log.info("next usable block is %s", self.nextBlock)
+
+        code = self.partitionParted()
+        if code: return code
+
+        # compute the path to the raw loader partition,
+        # if indicated by the configuration
+
+        self.rawLoaderDevice = None
+        for item in self.im.platformConf['installer']:
+            partIdx, partData = list(item.items())[0]
+            label, part = list(partData.items())[0]
+            if label == 'ONL-BOOT' and part['format'] == 'raw':
+                self.rawLoaderDevice = self.device + str(partIdx+1)
+                break
+
+        code = self.installSwi()
         if code: return code
 
         code = self.installLoader()
         if code: return code
 
-        code = self.installBootconfig()
-        if code: return code
-
-        code = self.installSwi()
-        if code: return code
+        if self.rawLoaderDevice is None:
+            code = self.installBootConfig()
+            if code: return code
+        else:
+            self.log.info("ONL-BOOT is a raw partition (%s), skipping boot-config",
+                          self.rawLoaderDevice)
 
         self.log.info("syncing block devices")
         self.check_call(('sync',))
@@ -702,6 +717,11 @@ class UbootInstaller(SubprocessMixin, Base):
         return 0
 
     def run(self):
+
+        if 'flat_image_tree' not in self.im.platformConf:
+            self.log.error("platform config is missing a FIT section")
+            return 1
+
         return self.installUboot()
 
     def shutdown(self):
