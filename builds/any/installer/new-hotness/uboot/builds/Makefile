@@ -31,7 +31,7 @@ __installer: installer.sh __installer_fit_files __installer_platform_files __ins
 	$(ONL_V_at)echo "set -x" >> $(MKSHAR_PERMS)
 	$(MKSHAR) $(MKSHAR_OPTS) "$(INSTALLER_NAME)" $(ONL)/tools/scripts/sfx.sh.in installer.sh *.swi *.itb version-onl.sh boot-config
 	$(ONL_V_at)rm -rf installer.sh *.itb *.swi version-onl.sh autoperms.sh
-	md5sum "$(INSTALLER_NAME)" | awk '{ print $$1 }' > "$(INSTALLER_NAME).md5sum"
+	$(ONL_V_at)md5sum "$(INSTALLER_NAME)" | awk '{ print $$1 }' > "$(INSTALLER_NAME).md5sum"
 
 installer.sh: Makefile $(ONL)/builds/any/installer/new-hotness/installer.sh.in
 	$(ONL_V_GEN)cp /dev/null $@
@@ -49,7 +49,7 @@ installer.sh: Makefile $(ONL)/builds/any/installer/new-hotness/installer.sh.in
 	  -e "s^@INITRD_ARCHIVE@^$${a}^g" \
 	  -e "s^@INITRD_OFFSET@^$$start^g" \
 	  -e "s^@INITRD_SIZE@^$$sz^g" \
-	  -e 's^@ARCH@^ppc^g' \
+	  -e 's^@ARCH@^$(ARCH)^g' \
 	  $(ONL)/builds/any/installer/new-hotness/installer.sh.in \
 	>> $@
 	$(ONL_V_at)echo "PAYLOAD_FOLLOWS" >> $@

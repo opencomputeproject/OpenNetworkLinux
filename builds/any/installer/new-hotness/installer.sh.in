@@ -25,17 +25,25 @@
 IARCH="@ARCH@"
 ARCH=`uname -m`
 if test "$ARCH" != "$IARCH"; then
-  echo
-  echo "------------------------------------"
-  echo "Installer Architecture: $IARCH"
-  echo "Target Architecture:    $ARCH"
-  echo
-  echo "This installer cannot be used on this"
-  echo "target."
-  echo
-  echo "------------------------------------"
-  sleep 5
-  exit 1
+  :
+else
+  # identify mappings between kernel arch and debian arch
+  case "$IARCH:$ARCH" in
+    armel:arm7l) ;;
+    *)
+      echo
+      echo "------------------------------------"
+      echo "Installer Architecture: $IARCH"
+      echo "Target Architecture:    $ARCH"
+      echo
+      echo "This installer cannot be used on this"
+      echo "target."
+      echo
+      echo "------------------------------------"
+      sleep 5
+      exit 1
+    ;;
+  esac
 fi
 case "$ARCH" in
   ppc|powerpc)
