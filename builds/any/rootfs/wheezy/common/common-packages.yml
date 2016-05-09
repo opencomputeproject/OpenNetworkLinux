@@ -71,3 +71,5 @@
 - oom-shim
 - python-parted
 - python-yaml
+- bzip2
+- xz-utils
