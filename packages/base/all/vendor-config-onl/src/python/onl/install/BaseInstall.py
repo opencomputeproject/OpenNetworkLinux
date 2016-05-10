@@ -12,7 +12,10 @@ import StringIO
 import parted
 import yaml
 
-from InstallUtils import MountContext, BlkidParser, PartedParser, SubprocessMixin
+from InstallUtils import SubprocessMixin
+from InstallUtils import MountContext, BlkidParser, PartedParser
+from InstallUtils import ProcMountsParser
+
 import onl.YamlUtils
 
 class Base:
@@ -280,6 +283,16 @@ class Base:
 
         return 0
 
+    def assertUnmounted(self):
+        """Make sure the install device does not have any active mounts."""
+        pm = ProcMountsParser()
+        for m in pm.mounts:
+            if m.device.startswith(self.device):
+                self.log.error("mount %s on %s will be erased by install",
+                               m.dir, m.device)
+                return 1
+        return 0
+
 GRUB_TPL = """\
 #serial --port=0x3f8 --speed=115200 --word=8 --parity=no --stop=1
 serial %(serial)s
@@ -350,6 +363,9 @@ class GrubInstaller(SubprocessMixin, Base):
         if self.device is None:
             self.log.error("cannot find an install device")
             return 1
+
+        code = self.assertUnmounted()
+        if code: return code
 
         # optionally back up a config partition
         # if it's on the boot device
@@ -529,6 +545,9 @@ class UbootInstaller(SubprocessMixin, Base):
         Base.__init__(self, *args, **kwargs)
 
         self.device = self.im.getDevice()
+
+        code = self.assertUnmounted()
+        if code: return code
 
         self.rawLoaderDevice = None
         # set to a partition device for raw loader install,
