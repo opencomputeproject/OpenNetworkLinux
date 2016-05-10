@@ -85,13 +85,28 @@ esac
 ############################################################
 
 set -e
-cd $(dirname $0)
 
 installer_script=${0##*/}
+installer_dir=${0%/*}
+installer_dir=$(cd $installer_dir && pwd)
 installer_zip=$1
+
+installer_tmpfs=
+installer_tmpfs_opts=
+# installer_tmpfs=??*, installer_tmpfs_opts= --> temporary mount
+# installer_tmpfs=??*, installer_tmpfs_opts=??* --> temporary remount
+
+installer_tmpfs_kmin=1048576
+# minimum tmpfs/ramfs size to run this installer
+# (conservative, could be based on actual installer size)
 
 BOOTDIR=/mnt/onie-boot
 # initial boot partition (onie)
+
+CR="
+"
+
+cd $installer_dir
 
 has_grub_env()
 {
@@ -136,12 +151,62 @@ if test -r /etc/machine.conf; then
   . /etc/machine.conf
 fi
 
+visit_proc_mounts() {
+  local ifs line dummy fn rest sts
+  fn=$1; shift
+  rest="$@"
+  
+  ifs=$IFS; IFS=$CR
+  for line in $(cat /proc/mounts); do
+    IFS=$ifs
+    if eval $fn $line $rest; then
+      :
+    else
+      sts=$?
+      if test $sts -eq 2; then break; fi
+      return $sts
+    fi
+  done
+  IFS=$ifs
+
+  return 0
+}
+
 #
 # Installation environment setup.
 #
 
 installer_umount() {
-  egrep "/tmp/..*" /proc/mounts | cut -d' ' -f2 | sort -r | xargs -n 1 umount
+  local cwd mpt tdir
+  cwd=$PWD
+  cd /
+
+  tdir=${TMPDIR-"/tmp"}
+  for mpt in $(cat /proc/mounts | cut -d' ' -f2 | sort -r); do
+    case "$mpt" in
+      "$tdir"|"$tdir"/*) umount "$mpt" ;;
+    esac
+  done
+  if test "$installer_tmpfs_opts"; then
+    case ",$installer_tmpfs_opts," in
+      *,size=*,*) ;;
+      *)
+        # default if unspecified is 50% of physical memory
+        installer_tmpfs_opts=${installer_tmpfs_opts},size=50%
+        ;;
+    esac
+    installer_say "Remounting $installer_tmpfs with options $installer_tmpfs_opts"
+    mount -o remount,$installer_tmpfs_opts $installer_tmpfs
+    installer_tmpfs=
+  fi
+  if test "$installer_tmpfs"; then
+    installer_say "Unmounting $installer_tmpfs"
+    umount "$installer_tmpfs"
+  fi
+
+  cd $cwd || :
+
+  return 0
 }
 
 if test "${onie_platform}"; then
@@ -194,23 +259,95 @@ fi
 
 trap "installer_cleanup" 0 1
 
-#
-# Remount tmpfs larger if possible.
-# We will be doing all of our work out of /tmp
-#
-mount -o remount,size=1024M /tmp || true
+# Find a suitable location for TMPDIR
+
+scan_tmpfs() {
+  local dev mpt fstype opts tdir
+  dev=$1; shift
+  mpt=$1; shift
+  fstype=$1; shift
+  opts=$1; shift
+  shift
+  shift
+  tdir="$1"
+
+  case "$fstype" in
+    ramfs|tmpfs) ;;
+    *) return 0 ;;
+  esac
+
+  case "$tdir" in
+    "$mpt"|"$mpt"/*)
+      d1=$(stat -c '%D' "$tdir")
+      d2=$(stat -c '%D' $mpt)
+      if test "$d1" = "$d2"; then
+        installer_say "Found installer $fstype on $installer_dir ($mpt) using opts $opts"
+        installer_tmpfs=$mpt
+        installer_tmpfs_opts=${opts:-"defaults"}
+        return 2
+      fi
+    ;;
+  esac
+
+  return 0
+}
+
+# maybe installer script was unpacked to a tmpfs/ramfs filesystem
+if test -z "$installer_tmpfs" -a "$installer_dir"; then
+  visit_proc_mounts scan_tmpfs "$installer_dir"
+  if test "$installer_tmpfs"; then
+    TMPDIR="$installer_dir"
+    export TMPDIR
+  fi
+fi
+# maybe TMPDIR is on a tmpfs/ramfs filesystem
+if test -z "$installer_tmpfs" -a "$TMPDIR"; then
+  visit_proc_mounts scan_tmpfs "$TMPDIR"
+  if test "$installer_tmpfs"; then
+    :
+  else
+    installer_say "TMPDIR $TMPDIR is not actually tmpfs, ignoring"
+    unset TMPDIR
+  fi
+fi
+# else, hopefully /tmp is a tmpfs/ramfs
+if test -z "$installer_tmpfs"; then
+  visit_proc_mounts scan_tmpfs /tmp
+  if test "$installer_tmpfs"; then
+    TMPDIR=/tmp
+    export TMPDIR
+  fi
+fi
+
+if test "$installer_tmpfs"; then
+  set dummy $(df -k $installer_tmpfs | tail -1)
+  if test $3 -lt $installer_tmpfs_kmin; then
+    installer_say "Resizing tmpfs $installer_tmpfs to ${installer_tmpfs_kmin}k"
+    mount -o remount,size=${installer_tmpfs_kmin}k $installer_tmpfs
+  else
+    # existing installer_tmpfs is fine,
+    # no need to unmount or remount
+    installer_tmpfs=
+    installer_tmpfs_opts=
+  fi
+else
+  installer_say "Creating tmpfs for installer"
+  installer_tmpfs=$(mktemp -d -t installer-tmpfs-XXXXXX)
+  installer_tmpfs_opts=
+  mount -t tmpfs -o size=1024m tmpfs $installer_tmpfs
+  export TMPDIR=$installer_tmpfs
+fi
 
 # Unpack our distribution
-installer_say "Unpacking SwitchLight installer files..."
-installer_dir=`pwd`
+installer_say "Unpacking ONL installer files..."
 if test "$SFX_PAD"; then
   # ha ha, busybox cannot exclude multiple files
-  unzip $installer_zip -x $SFX_PAD
+  unzip -o $installer_zip -x $SFX_PAD
 elif test "$SFX_UNZIP"; then
-  unzip $installer_zip -x $installer_script
+  unzip -o $installer_zip -x $installer_script
 else
   dd if=$installer_zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
-  | unzip - -x $installer_script
+  | unzip -o - -x $installer_script
 fi
 
 # Developer debugging
@@ -225,9 +362,6 @@ onl_version="@ONLVERSION@"
 initrd_archive="@INITRD_ARCHIVE@"
 initrd_offset="@INITRD_OFFSET@"
 initrd_size="@INITRD_SIZE@"
-
-TMPDIR=${TMPDIR-"${installer_dir}"}
-export TMPDIR
 
 rootdir=$(mktemp -d -t "initrd-XXXXXX")
 installer_say "Extracting initrd to $rootdir"
@@ -291,10 +425,9 @@ echo "installer_postinst=/mnt/installer/$b" >> "${rootdir}/etc/onl/installer.con
 # no special handling for /tmp or /run, since this is all in /tmp
 # anyway
 
-installer_say "Launching Switch Light installer"
+installer_say "Launching ONL installer"
 installer_shell=${installer_shell-"/usr/bin/onl-install"}
 chroot "${rootdir}" $installer_shell
-: chroot "${rootdir}" /usr/bin/onl-install
 
 if test -f "$postinst"; then
   installer_say "Invoking post-install actions"
