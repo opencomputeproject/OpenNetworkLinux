@@ -178,6 +178,13 @@ installer_blockdev_format() {
     local partition3size=$4
     local partition4size=$5
 
+    if [ -n "$ONL_BOOT_SIZE" ]; then
+        echo "Using ONL_BOOT_SIZE override ($ONL_BOOT_SIZE)"
+        partition1size=$ONL_BOOT_SIZE
+    fi
+
+
+
     onl_config_partition=$(blkid | grep ONL-CONFIG | awk '{print $1}' | tr -d ':')
 
     #
