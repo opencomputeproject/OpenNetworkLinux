@@ -679,18 +679,26 @@ class InitrdContext(SubprocessMixin):
         c2 = ('cpio', '-imd',)
         self.log.debug("+ %s | %s",
                        " ".join(c1), " ".join(c2))
-        p1 = subprocess.Popen(c1,
-                              stdout=subprocess.PIPE)
-        if self.log.isEnabledFor(logging.DEBUG):
-            p2 = subprocess.Popen(c2,
-                                  cwd=self.dir,
-                                  stdin=p1.stdout)
-        else:
-            p2 = subprocess.Popen(c2,
-                                  cwd=self.dir,
-                                  stdin=p1.stdout,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.STDOUT)
+        try:
+            p1 = subprocess.Popen(c1,
+                                  stdout=subprocess.PIPE)
+        except OSError as ex:
+            self.log.exception("command not found: %s" % c1[0])
+            raise ValueError("cannot start pipe")
+        try:
+            if self.log.isEnabledFor(logging.DEBUG):
+                p2 = subprocess.Popen(c2,
+                                      cwd=self.dir,
+                                      stdin=p1.stdout)
+            else:
+                p2 = subprocess.Popen(c2,
+                                      cwd=self.dir,
+                                      stdin=p1.stdout,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT)
+        except OSError as ex:
+            self.log.exception("cannot start command: %s" % c2[0])
+            raise ValueError("cannot start pipe")
         c1 = p1.wait()
         out, _ = p2.communicate()
         c2 = p2.wait()
