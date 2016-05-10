@@ -14,8 +14,6 @@ from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
 import ConfUtils, BaseInstall
 
-import onl.platform.current
-
 class App(SubprocessMixin):
 
     def __init__(self, log=None):
@@ -33,7 +31,11 @@ class App(SubprocessMixin):
     def run(self):
 
         self.log.info("getting installer configuration")
-        self.machineConf = ConfUtils.MachineConf()
+        if os.path.exists(ConfUtils.MachineConf.PATH):
+            self.machineConf = ConfUtils.MachineConf()
+        else:
+            self.log.warn("missing /etc/machine.conf from ONIE runtime")
+            self.machineConf = ConfUtils.MachineConf(path='/dev/null')
         self.installerConf = ConfUtils.InstallerConf()
 
         ##self.log.info("using native GRUB")
@@ -69,6 +71,15 @@ class App(SubprocessMixin):
         self.log.info("ONL Installer %s", self.installerConf.onl_version)
 
         code = self.findPlatform()
+        if code: return code
+
+        try:
+            import onl.platform.current
+        except:
+            self.log.exception("cannot find platform config")
+            code = 1
+            if self.log.level < logging.INFO:
+                self.post_mortem()
         if code: return code
 
         self.onlPlatform = onl.platform.current.OnlPlatform()
@@ -111,11 +122,23 @@ class App(SubprocessMixin):
 
     def findPlatform(self):
 
-        plat = getattr(self.machineConf, 'onie_platform', None)
-        arch = getattr(self.machineConf, 'onie_arch', None)
+        plat = arch = None
+        if os.path.exists(ConfUtils.MachineConf.PATH):
+            plat = getattr(self.machineConf, 'onie_platform', None)
+            arch = getattr(self.machineConf, 'onie_arch', None)
+            if plat and arch:
+                self.log.info("ONL installer running under ONIE.")
+                plat = plat.replace('_', '-')
+        elif os.path.exists("/etc/onl/platform"):
+            with open("/etc/onl/platform") as fd:
+                plat = fd.read().strip()
+            if plat.startswith('x86-64'):
+                arch = 'x86_64'
+            else:
+                arch = plat.partition('-')[0]
+            self.log.info("ONL installer running under ONL or ONL loader.")
+
         if plat and arch:
-            self.log.info("ONL installer running under ONIE.")
-            plat = plat.replace('_', '-')
             self.installerConf.installer_platform = plat
             self.installerConf.installer_arch = arch
         else:
