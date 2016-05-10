@@ -1,0 +1,3 @@
+#!/bin/sh
+export LD_LIBRARY_PATH=$( cd $( dirname -- "$0" ) > /dev/null ; pwd )
+$LD_LIBRARY_PATH/mke2fs $@
