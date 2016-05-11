@@ -74,6 +74,28 @@ installer_mkchroot() {
   done
   mkdir -p "${rootdir}/dev/pts"
 
+  installer_say "Setting up /run"
+  rm -fr "${rootdir}/run"/*
+  mkdir -p "${rootdir}/run"
+  d1=$(stat -c "%D" /run)
+  for rdir in /run/*; do
+    if test -d "$rdir"; then
+      mkdir "${rootdir}${rdir}"
+      d2=$(stat -c "%D" $rdir)
+      t2=$(stat -f -c "%T" $rdir)
+      case "$t2" in
+        tmpfs|ramfs)
+          # skip tmpfs, we'll just inherit the initrd ramfs
+        ;;
+        *)
+          if test "$d1" != "$d2"; then
+            mount -o bind $rdir "${rootdir}${rdir}"
+          fi
+        ;;
+      esac
+    fi
+  done
+  
   installer_say "Setting up mounts"
   mount -t proc proc "${rootdir}/proc"
   mount -t sysfs sysfs "${rootdir}/sys"
@@ -87,6 +109,12 @@ installer_mkchroot() {
   # export ONIE defines to the installer
   if test -r /etc/machine.conf; then
     cp /etc/machine.conf "${rootdir}/etc/machine.conf"
+  fi
+
+  # export ONL defines to the installer
+  mkdir -p "${rootdir}/etc/onl"
+  if test -d /etc/onl; then
+    cp -a /etc/onl/. "${rootdir}/etc/onl/."
   fi
 
   # export firmware config
