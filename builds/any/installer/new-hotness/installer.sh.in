@@ -190,7 +190,7 @@ installer_umount() {
   tdir=${TMPDIR-"/tmp"}
   for mpt in $(cat /proc/mounts | cut -d' ' -f2 | sort -r); do
     case "$mpt" in
-      "$tdir"|"$tdir"/*)
+      "$tdir"/*)
         installer_say "Unmounting $mpt"
         umount "$mpt"
         ;;
@@ -215,16 +215,18 @@ installer_umount() {
         installer_say "Remounting $installer_tmpfs with options $installer_tmpfs_opts"
         mount -o remount,$installer_tmpfs_opts $installer_tmpfs
 
-      else
+      elif test "$installer_tmpfs" != "/tmp"; then
 
         # else unmount if still mounted
 
         installer_say "Unmounting $installer_tmpfs"
         umount "$installer_tmpfs"
+        rmdir "$installer_tmpfs"
 
       fi
 
     fi
+
   fi
 
   cd $cwd || :
@@ -428,9 +430,9 @@ case "$installer_zip" in
     echo "installer_zip=\"${installer_zip##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
     ;;
   *)
-    zf=$(mktemp "$installer_dir/installer-zip-XXXXXX")
-    installer_say "Exposing installer archive as $zf"
-    mount -o bind "$installer_zip" $zf
+    zf=$(mktemp "$rootdir/mnt/installer/installer-zip-XXXXXX")
+    installer_say "Exposing installer archive $installer_zip as $zf"
+    mount --bind "$installer_zip" $zf
     echo "installer_zip=\"${zf##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
     ;;
 esac
