@@ -8,27 +8,109 @@ import sys, os
 import logging
 import imp
 import glob
-import distutils.sysconfig
+import argparse
+import shutil
+import urllib
+import tempfile
+import time
 
 from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
+from InstallUtils import ProcMountsParser
 import ConfUtils, BaseInstall
 
 class App(SubprocessMixin):
 
-    def __init__(self, log=None):
+    def __init__(self, url=None, force=False, log=None):
 
         if log is not None:
             self.log = log
         else:
             self.log = logging.getLogger(self.__class__.__name__)
 
+        self.url = url
+        self.force = force
+        # remote-install mode
+
         self.installer = None
         self.machineConf = None
         self.installerConf = None
         self.onlPlatform = None
+        # local-install mode
+
+        self.nextUpdate = None
 
     def run(self):
+
+        if self.url is not None:
+            return self.runUrl()
+        else:
+            return self.runLocal()
+
+    def runUrl(self):
+        pm = ProcMountsParser()
+        for m in pm.mounts:
+            if m.dir.startswith('/mnt/onl'):
+                if not self.force:
+                    self.log.error("directory %s is still mounted", m.dir)
+                    return 1
+                self.log.warn("unmounting %s (--force)", m.dir)
+                self.check_call(('umount', m.dir,))
+
+        def reporthook(blocks, bsz, sz):
+            if time.time() < self.nextUpdate: return
+            self.nextUpdate = time.time() + 0.25
+            if sz:
+                pct = blocks * bsz * 100 / sz
+                sys.stderr.write("downloaded %d%% ...\r" % pct)
+            else:
+                icon = "|/-\\"[blocks % 4]
+                sys.stderr.write("downloading ... %s\r" % icon)
+
+        p = tempfile.mktemp(prefix="installer-",
+                            suffix=".bin")
+        try:
+            self.log.info("downloading installer from %s --> %s",
+                          self.url, p)
+            self.nextUpdate = 0
+            if os.isatty(sys.stdout.fileno()):
+                dst, headers = urllib.urlretrieve(self.url, p, reporthook)
+            else:
+                dst, headers = urllib.urlretrieve(self.url, p)
+            sys.stdout.write("\n")
+
+            self.log.debug("+ chmod +x %s", p)
+            os.chmod(p, 0755)
+
+            env = {}
+            env.update(os.environ)
+
+            if os.path.exists("/etc/onl/platform"):
+                self.log.debug("enabling unzip features for ONL")
+                env['SFX_UNZIP'] = '1'
+                self.log.debug("+ export SFX_UNZIP=1")
+                env['SFX_LOOP'] = '1'
+                self.log.debug("+ export SFX_LOOP=1")
+                env['SFX_PIPE'] = '1'
+                self.log.debug("+ export SFX_PIPE=1")
+
+            self.log.debug("enabling in-place fixups")
+            env['SFX_INPLACE'] = '1'
+            self.log.debug("+ export SFX_INPLACE=1")
+
+            self.log.info("invoking installer...")
+            try:
+                self.check_call((p,), env=env)
+            except subprocess.CalledProcessError as ex:
+                self.log.error("installer failed")
+                return ex.returncode
+        finally:
+            os.unlink(p)
+
+        self.log.info("please reboot this system now.")
+        return 0
+
+    def runLocal(self):
 
         self.log.info("getting installer configuration")
         if os.path.exists(ConfUtils.MachineConf.PATH):
@@ -100,6 +182,7 @@ class App(SubprocessMixin):
                                 platformConf=self.onlPlatform.platform_config,
                                 grubEnv=self.grubEnv,
                                 ubootEnv=self.ubootEnv,
+                                force=self.force,
                                 log=self.log)
         try:
             code = self.installer.run()
@@ -230,17 +313,33 @@ class App(SubprocessMixin):
         logger.addHandler(hnd)
         logger.propagate = False
 
-        debug = 'installer_debug' in os.environ
-        if debug:
+        onie_verbose = 'onie_verbose' in os.environ
+        installer_debug = 'installer_debug' in os.environ
+
+        ap = argparse.ArgumentParser()
+        ap.add_argument('-v', '--verbose', action='store_true',
+                        default=onie_verbose,
+                        help="Enable verbose logging")
+        ap.add_argument('-D', '--debug', action='store_true',
+                        default=installer_debug,
+                        help="Enable python debugging")
+        ap.add_argument('-U', '--url', type=str,
+                        help="Install from a remote URL")
+        ap.add_argument('-F', '--force', action='store_true',
+                        help="Unmount filesystems before install")
+        ops = ap.parse_args()
+
+        if ops.verbose:
             logger.setLevel(logging.DEBUG)
 
-        app = cls(log=logger)
+        app = cls(url=ops.url, force=ops.force,
+                  log=logger)
         try:
             code = app.run()
         except:
             logger.exception("runner failed")
             code = 1
-            if debug:
+            if ops.debug:
                 app.post_mortem()
 
         app.shutdown()

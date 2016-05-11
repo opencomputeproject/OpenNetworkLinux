@@ -11,6 +11,8 @@ import logging
 import StringIO
 import parted
 import yaml
+import zipfile
+import shutil
 
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
@@ -44,6 +46,7 @@ class Base:
     def __init__(self,
                  machineConf=None, installerConf=None, platformConf=None,
                  grubEnv=None, ubootEnv=None,
+                 force=False,
                  log=None):
         self.im = self.installmeta(installerConf=installerConf,
                                    machineConf=machineConf,
@@ -51,6 +54,9 @@ class Base:
                                    grubEnv=grubEnv,
                                    ubootEnv = ubootEnv)
         self.log = log or logging.getLogger(self.__class__.__name__)
+
+        self.force = False
+        # unmount filesystems as needed
 
         self.device = None
         # target device, initialize this later
@@ -69,16 +75,65 @@ class Base:
         self.configArchive = None
         # backup of ONL-CONFIG during re-partitioning
 
+        self.zf = None
+        # zipfile handle to installer archive
+
     def run(self):
         self.log.error("not implemented")
         return 1
 
     def shutdown(self):
-        pass
+        zf, self.zf = self.zf, None
+        if zf: zf.close()
+
+    def installerCopy(self, basename, dst, optional=False):
+        """Copy the file as-is, or get it from the installer zip."""
+
+        src = os.path.join(self.im.installerConf.installer_dir, basename)
+        if os.path.exists(src):
+            self.copy2(src, dst)
+            return
+
+        if basename in self.zf.namelist():
+            self.log.debug("+ unzip -p %s %s > %s",
+                           self.im.installerConf.installer_zip, basename, dst)
+            with self.zf.open(basename, "r") as rfd:
+                with open(dst, "wb") as wfd:
+                    shutil.copyfileobj(rfd, wfd)
+            return
+
+        if not optional:
+            raise ValueError("missing installer file %s" % basename)
+
+    def installerDd(self, basename, device):
+
+        p = os.path.join(self.im.installerConf.installer_dir, basename)
+        if os.path.exists(p):
+            cmd = ('dd',
+                   'if=' + basename,
+                   'of=' + device,)
+            self.check_call(cmd, vmode=self.V2)
+            return
+
+        if basename in self.zf.namelist():
+            self.log.debug("+ unzip -p %s %s | dd of=%s",
+                           self.im.installerConf.installer_zip, basename, device)
+            with self.zf.open(basename, "r") as rfd:
+                with open(device, "rb+") as wfd:
+                    shutil.copyfileobj(rfd, wfd)
+            return
+
+        raise ValueError("cannot find file %s" % basename)
+
+    def installerExists(self, basename):
+        if basename in os.listdir(self.im.installerConf.installer_dir): return True
+        if basename in self.zf.namelist(): return True
+        return False
 
     def installSwi(self):
 
-        swis = [x for x in os.listdir(self.im.installerConf.installer_dir) if x.endswith('.swi')]
+        files = os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()
+        swis = [x for x in files if x.endswith('.swi')]
         if not swis:
             self.log.info("No ONL Software Image available for installation.")
             self.log.info("Post-install ZTN installation will be required.")
@@ -88,13 +143,12 @@ class Base:
             return
 
         base = swis[0]
-        src = os.path.join(self.im.installerConf.installer_dir, base)
 
         self.log.info("Installing ONL Software Image (%s)...", base)
         dev = self.blkidParts['ONL-IMAGES']
         with MountContext(dev.device, log=self.log) as ctx:
             dst = os.path.join(ctx.dir, base)
-            self.copy2(src, dst)
+            self.installerCopy(base, dst)
 
         return 0
 
@@ -268,18 +322,18 @@ class Base:
 
         self.log.info("Installing boot-config to %s", dev.device)
 
-        src = os.path.join(self.im.installerConf.installer_dir, 'boot-config')
-        ##src = os.path.join(self.im.installerConf.installer_platform_dir, 'boot-config')
+        basename = 'boot-config'
         with MountContext(dev.device, log=self.log) as ctx:
-            dst = os.path.join(ctx.dir, 'boot-config')
-            self.copy2(src, dst)
+            dst = os.path.join(ctx.dir, basename)
+            self.installerCopy(basename, dst)
+            with open(dst) as fd:
+                buf = fd.read()
 
-        with open(src) as fd:
-            ecf = fd.read().encode('base64', 'strict').strip()
-            if self.im.grub and self.im.grubEnv is not None:
-                setattr(self.im.grubEnv, 'boot_config_default', ecf)
-            if self.im.uboot and self.im.ubootEnv is not None:
-                setattr(self.im.ubootEnv, 'boot-config-default', ecf)
+        ecf = buf.encode('base64', 'strict').strip()
+        if self.im.grub and self.im.grubEnv is not None:
+            setattr(self.im.grubEnv, 'boot_config_default', ecf)
+        if self.im.uboot and self.im.ubootEnv is not None:
+            setattr(self.im.ubootEnv, 'boot-config-default', ecf)
 
         return 0
 
@@ -288,9 +342,19 @@ class Base:
         pm = ProcMountsParser()
         for m in pm.mounts:
             if m.device.startswith(self.device):
-                self.log.error("mount %s on %s will be erased by install",
-                               m.dir, m.device)
-                return 1
+                if not self.force:
+                    self.log.error("mount %s on %s will be erased by install",
+                                   m.dir, m.device)
+                    return 1
+                else:
+                    self.log.warn("unmounting %s from %s (--force)",
+                                  m.dir, m.device)
+                    try:
+                        self.check_call(('umount', m.dir,))
+                    except subprocess.CalledProcessError:
+                        self.log.error("cannot unmount")
+                        return 1
+
         return 0
 
 GRUB_TPL = """\
@@ -426,14 +490,15 @@ class GrubInstaller(SubprocessMixin, Base):
 
         self.log.info("Installing kernel")
         dev = self.blkidParts['ONL-BOOT']
+
+        files = set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist())
+        files = [b for b in files if b.startswith('kernel-') or b.startswith('onl-loader-initrd-')]
+
         with MountContext(dev.device, log=self.log) as ctx:
             def _cp(b):
-                src = os.path.join(self.im.installerConf.installer_dir, b)
-                if not os.path.isfile(src): return
-                if b.startswith('kernel-') or b.startswith('onl-loader-initrd-'):
-                    dst = os.path.join(ctx.dir, b)
-                    self.copy2(src, dst)
-            [_cp(e) for e in os.listdir(self.im.installerConf.installer_dir)]
+                dst = os.path.join(ctx.dir, b)
+                self.installerCopy(b, dst, optional=True)
+            [_cp(e) for e in files]
 
             d = os.path.join(ctx.dir, "grub")
             self.makedirs(d)
@@ -485,6 +550,11 @@ class GrubInstaller(SubprocessMixin, Base):
         self.im.grubEnv.__dict__['bootPart'] = dev.device
         self.im.grubEnv.__dict__['bootDir'] = None
 
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
         code = self.installSwi()
         if code: return code
 
@@ -513,7 +583,7 @@ class GrubInstaller(SubprocessMixin, Base):
         return self.installGpt()
 
     def shutdown(self):
-        pass
+        Base.shutdown(self)
 
 class UbootInstaller(SubprocessMixin, Base):
 
@@ -598,42 +668,37 @@ class UbootInstaller(SubprocessMixin, Base):
 
     def installLoader(self):
 
-        loaderSrc = None
         c1 = self.im.platformConf['flat_image_tree'].get('itb', None)
         if type(c1) == dict: c1 = c1.get('=', None)
         c2 = ("%s.itb"
               % (self.im.installerConf.installer_platform,))
         c3 = "onl-loader-fit.itb"
 
-        loaderSrc = None
+        loaderBasename = None
         for c in (c1, c2, c3):
             if c is None: continue
-            p = os.path.join(self.im.installerConf.installer_dir, c)
-            if os.path.exists(p):
-                loaderSrc = p
+            if self.installerExists(c):
+                loaderBasename = c
                 break
 
-        if not loaderSrc:
+        if not loaderBasename:
             self.log.error("The platform loader file is missing.")
             return 1
 
-        self.log.info("Installing the ONL loader from %s...", loaderSrc)
+        self.log.info("Installing the ONL loader from %s...", loaderBasename)
 
         if self.rawLoaderDevice is not None:
             self.log.info("Installing ONL loader %s --> %s...",
-                          loaderSrc, self.rawLoaderDevice)
-            cmd = ('dd',
-                   'if=' + loaderSrc,
-                   'of=' + self.rawLoaderDevice,)
-            self.check_call(cmd, vmode=self.V2)
-        else:
-            dev = self.blkidParts['ONL-BOOT']
-            basename = os.path.split(loaderSrc)[1]
-            self.log.info("Installing ONL loader %s --> %s:%s...",
-                          loaderSrc, dev.device, basename)
-            with MountContext(dev.device, log=self.log) as ctx:
-                dst = os.path.join(ctx.dir, basename)
-                self.copy2(loaderSrc, dst)
+                          loaderBasename, self.rawLoaderDevice)
+            self.installerDd(loaderBasename, self.rawLoaderDevice)
+            return 0
+
+        dev = self.blkidParts['ONL-BOOT']
+        self.log.info("Installing ONL loader %s --> %s:%s...",
+                      loaderBasename, dev.device, loaderBasename)
+        with MountContext(dev.device, log=self.log) as ctx:
+            dst = os.path.join(ctx.dir, loaderBasename)
+            self.installerCopy(loaderBasename, dst)
 
         return 0
 
@@ -713,6 +778,11 @@ class UbootInstaller(SubprocessMixin, Base):
                 self.rawLoaderDevice = self.device + str(partIdx+1)
                 break
 
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
         code = self.installSwi()
         if code: return code
 
@@ -744,4 +814,4 @@ class UbootInstaller(SubprocessMixin, Base):
         return self.installUboot()
 
     def shutdown(self):
-        pass
+        Base.shutdown(self)
