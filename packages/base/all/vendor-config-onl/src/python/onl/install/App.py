@@ -21,7 +21,9 @@ import ConfUtils, BaseInstall
 
 class App(SubprocessMixin):
 
-    def __init__(self, url=None, force=False, log=None):
+    def __init__(self, url=None,
+                 debug=False, force=False,
+                 log=None):
 
         if log is not None:
             self.log = log
@@ -30,6 +32,7 @@ class App(SubprocessMixin):
 
         self.url = url
         self.force = force
+        self.debug = debug
         # remote-install mode
 
         self.installer = None
@@ -98,6 +101,15 @@ class App(SubprocessMixin):
             env['SFX_INPLACE'] = '1'
             self.log.debug("+ export SFX_INPLACE=1")
 
+            if self.debug:
+                self.log.debug("enabling installer debug")
+                env['installer_debug'] = 'y'
+                self.log.debug("+ export installer_debug=y")
+            if self.log.level < logging.INFO:
+                self.log.debug("enabling installer verbose logging")
+                env['installer_verbose'] = 'y'
+                self.log.debug("+ export installer_verbose=y")
+
             self.log.info("invoking installer...")
             try:
                 self.check_call((p,), env=env)
@@ -105,7 +117,8 @@ class App(SubprocessMixin):
                 self.log.error("installer failed")
                 return ex.returncode
         finally:
-            os.unlink(p)
+            if os.path.exists(p):
+                os.unlink(p)
 
         self.log.info("please reboot this system now.")
         return 0
