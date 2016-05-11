@@ -103,6 +103,12 @@ installer_tmpfs_kmin=1048576
 BOOTDIR=/mnt/onie-boot
 # initial boot partition (onie)
 
+# Replaced during build packaging with the current version.
+onl_version="@ONLVERSION@"
+initrd_archive="@INITRD_ARCHIVE@"
+initrd_offset="@INITRD_OFFSET@"
+initrd_size="@INITRD_SIZE@"
+
 CR="
 "
 
@@ -184,24 +190,41 @@ installer_umount() {
   tdir=${TMPDIR-"/tmp"}
   for mpt in $(cat /proc/mounts | cut -d' ' -f2 | sort -r); do
     case "$mpt" in
-      "$tdir"|"$tdir"/*) umount "$mpt" ;;
-    esac
-  done
-  if test "$installer_tmpfs_opts"; then
-    case ",$installer_tmpfs_opts," in
-      *,size=*,*) ;;
-      *)
-        # default if unspecified is 50% of physical memory
-        installer_tmpfs_opts=${installer_tmpfs_opts},size=50%
+      "$tdir"|"$tdir"/*)
+        installer_say "Unmounting $mpt"
+        umount "$mpt"
         ;;
     esac
-    installer_say "Remounting $installer_tmpfs with options $installer_tmpfs_opts"
-    mount -o remount,$installer_tmpfs_opts $installer_tmpfs
-    installer_tmpfs=
-  fi
+  done
+
+  # handle installer_tmpfs specially
   if test "$installer_tmpfs"; then
-    installer_say "Unmounting $installer_tmpfs"
-    umount "$installer_tmpfs"
+    if grep -q " $installer_tmpfs " /proc/mounts; then
+
+      if test "$installer_tmpfs_opts"; then
+
+        # remount if still mounted
+
+        case ",$installer_tmpfs_opts," in
+          *,size=*,*) ;;
+          *)
+            # default if unspecified is 50% of physical memory
+            installer_tmpfs_opts=${installer_tmpfs_opts},size=50%
+            ;;
+        esac
+        installer_say "Remounting $installer_tmpfs with options $installer_tmpfs_opts"
+        mount -o remount,$installer_tmpfs_opts $installer_tmpfs
+
+      else
+
+        # else unmount if still mounted
+
+        installer_say "Unmounting $installer_tmpfs"
+        umount "$installer_tmpfs"
+
+      fi
+
+    fi
   fi
 
   cd $cwd || :
@@ -339,15 +362,21 @@ else
 fi
 
 # Unpack our distribution
+if test "${installer_unpack_only}"; then
+  installer_list=
+else
+  installer_list=$initrd_archive
+fi
+
 installer_say "Unpacking ONL installer files..."
 if test "$SFX_PAD"; then
   # ha ha, busybox cannot exclude multiple files
-  unzip -o $installer_zip -x $SFX_PAD
+  unzip -o $installer_zip $installer_list -x $SFX_PAD
 elif test "$SFX_UNZIP"; then
-  unzip -o $installer_zip -x $installer_script
+  unzip -o $installer_zip $installer_list -x $installer_script
 else
   dd if=$installer_zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
-  | unzip -o - -x $installer_script
+  | unzip -o - $installer_list -x $installer_script
 fi
 
 # Developer debugging
@@ -356,12 +385,6 @@ if test "${installer_unpack_only}"; then
   installer_say "Unpack only requested."
   exit 1
 fi
-
-# Replaced during build packaging with the current version.
-onl_version="@ONLVERSION@"
-initrd_archive="@INITRD_ARCHIVE@"
-initrd_offset="@INITRD_OFFSET@"
-initrd_size="@INITRD_SIZE@"
 
 rootdir=$(mktemp -d -t "initrd-XXXXXX")
 installer_say "Extracting initrd to $rootdir"
@@ -399,6 +422,19 @@ echo "onl_version=\"$onl_version\"" >> "${rootdir}/etc/onl/installer.conf"
 installer_md5=$(md5sum "$0" | awk '{print $1}')
 echo "installer_md5=\"$installer_md5\"" >> "${rootdir}/etc/onl/installer.conf"
 
+# expose the zip file for later expansion by the initrd
+case "$installer_zip" in
+  "${installer_dir}"/*)
+    echo "installer_zip=\"${installer_zip##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
+    ;;
+  *)
+    zf=$(mktemp "$installer_dir/installer-zip-XXXXXX")
+    installer_say "Exposing installer archive as $zf"
+    mount -o bind "$installer_zip" $zf
+    echo "installer_zip=\"${zf##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
+    ;;
+esac
+
 # Cache our install URL if available
 if test -f "$0.url"; then
   installer_url=$(cat "$0.url")
@@ -416,8 +452,8 @@ fi
 
 postinst=$(mktemp -t postinst-XXXXXX)
 b=${postinst##*/}
-echo "installer_chroot=${rootdir}" >> "${rootdir}/etc/onl/installer.conf"
-echo "installer_postinst=/mnt/installer/$b" >> "${rootdir}/etc/onl/installer.conf"
+echo "installer_chroot=\"${rootdir}\"" >> "${rootdir}/etc/onl/installer.conf"
+echo "installer_postinst=\"/mnt/installer/$b\"" >> "${rootdir}/etc/onl/installer.conf"
 
 # for now, skip the other dot-files in /etc/onl, we do not need them
 # to enable initial install
