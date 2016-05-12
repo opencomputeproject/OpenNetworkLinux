@@ -35,7 +35,7 @@ endif
 	$(ONL_V_at)sed s/@@IARCH@@/$(ARCH)/g $(THISDIR)/fit-installer.sh > fit-installer.sh
 	$(ONL_V_at)sed s/@@IARCH@@/$(ARCH)/g $(THISDIR)/fit-install-lib > fit-install-lib
 	$(ONL_V_at)cp $(THISDIR)/boot-config .
-	$(MKSHAR) $(MKSHAR_OPTS) "$(INSTALLER_NAME)" $(ONL)/tools/scripts/sfx.sh.in fit-installer.sh fit-install-lib *.itb lib *.swi version-onl.sh boot-config
+	$(MKSHAR) $(MKSHAR_OPTS) "$(INSTALLER_NAME)" $(ONL)/tools/scripts/sfx.sh.in fit-installer.sh fit-install-lib *.itb lib *.swi version-onl.sh boot-config $(INSTALLER_EXTRA_FILES)
 	$(ONL_V_at)rm -rf ./lib *.swi version-onl.sh autoperms.sh *.itb
 	md5sum "$(INSTALLER_NAME)" | awk '{ print $$1 }' > "$(INSTALLER_NAME).md5sum"
 
