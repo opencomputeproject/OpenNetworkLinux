@@ -3,12 +3,6 @@
 """
 
 import yaml
-try:
-    import onlyaml
-    def load(stream):
-        return yaml.load(stream, Loader=onlyaml.Loader)
-except ImportError:
-    load = yaml.load
 
 def merge(p1, p2):
     """Merge two YAML files.
@@ -34,7 +28,7 @@ def merge(p1, p2):
         buf2 = fd.read()
 
     # read p1 as-is, make sure it looks like a 'default' YAML
-    c1 = load(buf1)
+    c1 = yaml.load(buf1)
     k1 = list(c1.keys())
     if k1 != ['default']:
         raise ValueError("%s: invalid top-level keys for default mapping: %s"
@@ -44,7 +38,7 @@ def merge(p1, p2):
     lines = buf2.splitlines(False)
     lines = [x for x in lines if x != '---']
     buf3 = buf1 + "\n" + "\n".join(lines)
-    c2 = load(buf3)
+    c2 = yaml.load(buf3)
     c2.pop('default', None)
 
     k2 = list(c2.keys())
