@@ -55,7 +55,7 @@ class Base:
                                    ubootEnv = ubootEnv)
         self.log = log or logging.getLogger(self.__class__.__name__)
 
-        self.force = False
+        self.force = force
         # unmount filesystems as needed
 
         self.device = None
