@@ -28,6 +28,7 @@ if test "$ARCH" != "$IARCH"; then
   # identify mappings between kernel arch and debian arch
   case "$IARCH:$ARCH" in
     armel:arm7l) ;;
+    powerpc:ppc) ;;
     *)
       echo
       echo "------------------------------------"
@@ -462,7 +463,7 @@ echo "installer_postinst=\"/mnt/installer/$b\"" >> "${rootdir}/etc/onl/installer
 # anyway
 
 installer_say "Launching ONL installer"
-installer_shell=${installer_shell-"/usr/bin/onl-install"}
+installer_shell=${installer_shell-"/usr/bin/onl-install --force"}
 chroot "${rootdir}" $installer_shell
 
 if test -f "$postinst"; then
