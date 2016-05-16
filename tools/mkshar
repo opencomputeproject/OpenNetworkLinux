@@ -36,6 +36,9 @@ parser.add_option('--unzip-loop',
 parser.add_option('--unzip-pad',
                   action='store_true',
                   help="Special pad options for deficient unzip")
+parser.add_option('--inplace',
+                  action='store_true',
+                  help="Perform fixups in-place")
 parser.add_option('--fixup-perms',
                   type=str,
                   help="Post-unpack shell script to fix permissions")
@@ -142,6 +145,10 @@ def _splice(tag, val):
     line = line + ('#' * llen)
     buf = buf[:p] + line + buf[q:]
 
+def _spliceMaybe(tag, val):
+    val = "${%s-\"%s\"}" % (tag, val,)
+    _splice(tag, val)
+
 logger.info("prepping SFX")
 
 _splice('SFX_BYTES', len(buf))
@@ -153,23 +160,27 @@ if opts.lazy:
 else:
     _splice('SFX_LAZY', '')
 if opts.unzip_sfx:
-    _splice('SFX_UNZIP', '1')
+    _spliceMaybe('SFX_UNZIP', '1')
 else:
-    _splice('SFX_UNZIP', '')
+    _spliceMaybe('SFX_UNZIP', '')
 if opts.unzip_pipe:
-    _splice('SFX_PIPE', '1')
+    _spliceMaybe('SFX_PIPE', '1')
 else:
-    _splice('SFX_PIPE', '')
+    _spliceMaybe('SFX_PIPE', '')
 if opts.unzip_loop:
-    _splice('SFX_LOOP', '1')
+    _spliceMaybe('SFX_LOOP', '1')
 else:
-    _splice('SFX_LOOP', '')
+    _spliceMaybe('SFX_LOOP', '')
 if opts.unzip_pad:
     _splice('SFX_PAD', 'pad.bin')
 else:
     _splice('SFX_PAD', '')
 if opts.fixup_perms:
     _splice('SFX_PERMS', opts.fixup_perms)
+if opts.inplace:
+    _spliceMaybe('SFX_INPLACE', '1')
+else:
+    _spliceMaybe('SFX_INPLACE', '')
 
 # remember the checksum offset
 ckStart = buf.find("SFX_CHECKSUM=")

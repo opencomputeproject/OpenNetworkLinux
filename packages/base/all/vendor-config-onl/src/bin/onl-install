@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Install switch light
+"""
+
+import onl.install.App
+onl.install.App.main()

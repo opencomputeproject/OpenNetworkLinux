@@ -36,7 +36,12 @@ trap "restoreconsole; reboot -f" EXIT
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -o remount,size=1M /dev
-
+case "$(stat -f -c "%T" /tmp)" in
+  tmpfs|ramfs) ;;
+  *)
+    mount -t tmpfs tmpfs /tmp
+    ;;
+esac
 
 # Grab cmdline settings
 
