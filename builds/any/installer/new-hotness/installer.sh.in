@@ -463,7 +463,31 @@ echo "installer_postinst=\"/mnt/installer/$b\"" >> "${rootdir}/etc/onl/installer
 # anyway
 
 installer_say "Launching ONL installer"
-installer_shell=${installer_shell-"/usr/bin/onl-install --force"}
+
+installer_shell_dfl="/usr/bin/onl-install --force"
+installer_shell=${installer_shell-"$installer_shell_dfl"}
+# default, unmount flash filesystems and run the installer script
+
+# Ugh, unmount /mnt filesystems here,
+# they are not accessible from within the chroot
+installer_force_umount() {
+  local dev mpt
+  dev=$1; shift
+  mpt=$1; shift
+  case "$mpt" in
+    /mnt/*)
+      installer_say "Unmounting $mpt (--force)"
+      umount "$mpt"
+      ;;
+  esac
+}
+if test "$installer_shell" = "$installer_shell_dfl"; then
+  visit_proc_mounts installer_force_umount
+else
+  installer_say "*** using non-default installer command: $installer_shell"
+  installer_say "*** watch out for lingering mount-points"
+fi
+
 chroot "${rootdir}" $installer_shell
 
 if test -f "$postinst"; then
