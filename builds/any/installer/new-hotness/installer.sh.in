@@ -27,7 +27,7 @@ ARCH=`uname -m`
 if test "$ARCH" != "$IARCH"; then
   # identify mappings between kernel arch and debian arch
   case "$IARCH:$ARCH" in
-    armel:arm7l) ;;
+    armel:armv7l) ;;
     powerpc:ppc) ;;
     *)
       echo
