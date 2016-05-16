@@ -32,7 +32,7 @@ __installer: __installer_platform_files __installer_swi_files
 	  -e 's^@INITRD_OFFSET@^^g' \
 	  -e 's^@INITRD_SIZE@^^g' \
 	  -e 's^@ARCH@^$(INSTALLER_ARCH)^g' \
-	  $(ONL)/builds/any/installer/new-hotness/installer.sh.in \
+	  $(ONL)/builds/any/installer/installer.sh.in \
 	>> installer.sh
 	$(ONL_V_at)echo "PAYLOAD_FOLLOWS" >> installer.sh
 	$(ONL_V_at)cp /dev/null $(MKSHAR_PERMS)
@@ -91,4 +91,3 @@ shar installer: installer
 
 clean:
 	rm -f *.swi *.installer $(notdir $(KERNELS)) *initrd*.cpio.gz
-

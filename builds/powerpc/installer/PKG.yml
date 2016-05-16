@@ -1,2 +1,1 @@
-!include $ONL/builds/any/installer/new-hotness/APKG.yml ARCH=powerpc
-
+!include $ONL/builds/any/installer/APKG.yml ARCH=powerpc

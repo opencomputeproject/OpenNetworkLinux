@@ -33,7 +33,7 @@ __installer: installer.sh __installer_fit_files __installer_platform_files __ins
 	$(ONL_V_at)rm -rf installer.sh *.itb *.swi version-onl.sh autoperms.sh
 	$(ONL_V_at)md5sum "$(INSTALLER_NAME)" | awk '{ print $$1 }' > "$(INSTALLER_NAME).md5sum"
 
-installer.sh: Makefile $(ONL)/builds/any/installer/new-hotness/installer.sh.in
+installer.sh: Makefile $(ONL)/builds/any/installer/installer.sh.in
 	$(ONL_V_GEN)cp /dev/null $@
 	$(ONL_V_at): ;\
 	set -e ;\
@@ -50,7 +50,7 @@ installer.sh: Makefile $(ONL)/builds/any/installer/new-hotness/installer.sh.in
 	  -e "s^@INITRD_OFFSET@^$$start^g" \
 	  -e "s^@INITRD_SIZE@^$$sz^g" \
 	  -e 's^@ARCH@^$(ARCH)^g' \
-	  $(ONL)/builds/any/installer/new-hotness/installer.sh.in \
+	  $(ONL)/builds/any/installer/installer.sh.in \
 	>> $@
 	$(ONL_V_at)echo "PAYLOAD_FOLLOWS" >> $@
 
@@ -108,4 +108,3 @@ shar installer: installer
 
 clean:
 	rm -f *.swi *.installer *.cpio.gz
-
