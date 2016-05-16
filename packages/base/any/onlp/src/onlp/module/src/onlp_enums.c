@@ -282,6 +282,7 @@ onlp_fan_status_valid(onlp_fan_status_t e)
 aim_map_si_t onlp_led_caps_map[] =
 {
     { "ON_OFF", ONLP_LED_CAPS_ON_OFF },
+    { "CHAR", ONLP_LED_CAPS_CHAR },
     { "RED", ONLP_LED_CAPS_RED },
     { "RED_BLINKING", ONLP_LED_CAPS_RED_BLINKING },
     { "ORANGE", ONLP_LED_CAPS_ORANGE },
@@ -301,6 +302,7 @@ aim_map_si_t onlp_led_caps_map[] =
 aim_map_si_t onlp_led_caps_desc_map[] =
 {
     { "None", ONLP_LED_CAPS_ON_OFF },
+    { "None", ONLP_LED_CAPS_CHAR },
     { "None", ONLP_LED_CAPS_RED },
     { "None", ONLP_LED_CAPS_RED_BLINKING },
     { "None", ONLP_LED_CAPS_ORANGE },
