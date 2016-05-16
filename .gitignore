@@ -7,6 +7,7 @@ dependmodules.x
 *.cpio.gz
 *.sqsh
 *.pyc
+*.pyo
 
 # Package cache and lock files
 .lock
@@ -18,3 +19,7 @@ RELEASE/
 
 .bash_history
 .buildroot-ccache
+
+# temporary files
+*~
+.#*

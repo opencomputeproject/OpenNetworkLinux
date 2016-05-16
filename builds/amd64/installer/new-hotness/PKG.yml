@@ -1,0 +1,2 @@
+!include $ONL/builds/any/installer/new-hotness/APKG.yml ARCH=amd64
+

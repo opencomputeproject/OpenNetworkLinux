@@ -69,5 +69,10 @@
 - onl-loader-initscripts
 - onlp-snmpd
 - oom-shim
+- python-parted
+- python-yaml
+- bzip2
+- xz-utils
+- unzip
 - onl-mibs
 - openssl

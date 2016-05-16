@@ -1,0 +1,513 @@
+#!/bin/sh
+############################################################
+# <bsn.cl fy=2013 v=none>
+#
+#        Copyright 2013, 2014 BigSwitch Networks, Inc.
+#
+#
+#
+# </bsn.cl>
+############################################################
+#
+# SwitchLight Installation Script for PPC.
+#
+# The purpose of this script is to automatically install SwitchLight
+# on the target system.
+#
+# This script is ONIE-compatible.
+#
+# This script is can be run under a manual boot of the SwitchLight
+# Loader as the execution environment for platforms that do not
+# support ONIE.
+#
+############################################################
+
+IARCH="@ARCH@"
+ARCH=`uname -m`
+if test "$ARCH" != "$IARCH"; then
+  # identify mappings between kernel arch and debian arch
+  case "$IARCH:$ARCH" in
+    armel:armv7l) ;;
+    powerpc:ppc) ;;
+    *)
+      echo
+      echo "------------------------------------"
+      echo "Installer Architecture: $IARCH"
+      echo "Target Architecture:    $ARCH"
+      echo
+      echo "This installer cannot be used on this"
+      echo "target."
+      echo
+      echo "------------------------------------"
+      sleep 5
+      exit 1
+    ;;
+  esac
+fi
+case "$ARCH" in
+  ppc|powerpc)
+    ARCH_PPC=$ARCH
+    ;;
+  x86*|amd*|i?86*)
+    ARCH_X86=$ARCH
+    ;;
+  arm*)
+    ARCH_ARM=$ARCH
+    ;;
+  *)
+    echo "Invalid Architecture: $ARCH"
+    sleep 5
+    exit 1
+    ;;
+esac
+
+############################################################
+#
+# Installation Main
+#
+# Installation is performed as follows:
+#
+# 1. Detect whether we are running under ONIE or SwitchLight
+#    and perform the appropriate setup.
+#
+# 2. Unpack the installer files.
+#
+# 3. Source the installer scriptlet for the current platform.
+# 4. Run the installer function from the platform scriptlet.
+#
+# The platform scriptlet determines the entire installation
+# sequence.
+#
+# Most platforms will just call the installation
+# utilities in this script with the approprate platform settings.
+#
+############################################################
+
+set -e
+
+installer_script=${0##*/}
+installer_dir=${0%/*}
+installer_dir=$(cd $installer_dir && pwd)
+installer_zip=$1
+
+installer_tmpfs=
+installer_tmpfs_opts=
+# installer_tmpfs=??*, installer_tmpfs_opts= --> temporary mount
+# installer_tmpfs=??*, installer_tmpfs_opts=??* --> temporary remount
+
+installer_tmpfs_kmin=1048576
+# minimum tmpfs/ramfs size to run this installer
+# (conservative, could be based on actual installer size)
+
+BOOTDIR=/mnt/onie-boot
+# initial boot partition (onie)
+
+# Replaced during build packaging with the current version.
+onl_version="@ONLVERSION@"
+initrd_archive="@INITRD_ARCHIVE@"
+initrd_offset="@INITRD_OFFSET@"
+initrd_size="@INITRD_SIZE@"
+
+CR="
+"
+
+cd $installer_dir
+
+has_grub_env()
+{
+  local tag
+  tag=$1; shift
+  test -f $BOOTDIR/grub/grubenv || return 1
+  case "`grub-editenv $BOOTDIR/grubenv list` 2>/dev/null" in
+    *${tag}*) return 0 ;;
+  esac
+  return 1
+}
+
+has_uboot_env()
+{
+  local tag
+  tag=$1; shift
+  test -x /usr/sbin/fw_printenv || return 1
+  test -f /etc/fw_env.config || return 1
+  /usr/sbin/fw_printenv $tag 1>/dev/null 2>&1 && return 0
+  return 1
+}
+
+has_boot_env()
+{
+  local tag
+  tag=$1; shift
+  has_grub_env $tag && return 0
+  has_uboot_env $tag && return 0
+  return 1
+}
+
+# Check installer debug option from the boot environment
+if has_boot_env onl_installer_debug; then installer_debug=1; fi
+
+if test "$installer_debug"; then
+  echo "Debug mode"
+  set -x
+fi
+
+# Pickup ONIE defines for this machine.
+if test -r /etc/machine.conf; then
+  . /etc/machine.conf
+fi
+
+visit_proc_mounts() {
+  local ifs line dummy fn rest sts
+  fn=$1; shift
+  rest="$@"
+  
+  ifs=$IFS; IFS=$CR
+  for line in $(cat /proc/mounts); do
+    IFS=$ifs
+    if eval $fn $line $rest; then
+      :
+    else
+      sts=$?
+      if test $sts -eq 2; then break; fi
+      return $sts
+    fi
+  done
+  IFS=$ifs
+
+  return 0
+}
+
+#
+# Installation environment setup.
+#
+
+installer_umount() {
+  local cwd mpt tdir
+  cwd=$PWD
+  cd /
+
+  tdir=${TMPDIR-"/tmp"}
+  for mpt in $(cat /proc/mounts | cut -d' ' -f2 | sort -r); do
+    case "$mpt" in
+      "$tdir"/*)
+        installer_say "Unmounting $mpt"
+        umount "$mpt"
+        ;;
+    esac
+  done
+
+  # handle installer_tmpfs specially
+  if test "$installer_tmpfs"; then
+    if grep -q " $installer_tmpfs " /proc/mounts; then
+
+      if test "$installer_tmpfs_opts"; then
+
+        # remount if still mounted
+
+        case ",$installer_tmpfs_opts," in
+          *,size=*,*) ;;
+          *)
+            # default if unspecified is 50% of physical memory
+            installer_tmpfs_opts=${installer_tmpfs_opts},size=50%
+            ;;
+        esac
+        installer_say "Remounting $installer_tmpfs with options $installer_tmpfs_opts"
+        mount -o remount,$installer_tmpfs_opts $installer_tmpfs
+
+      elif test "$installer_tmpfs" != "/tmp"; then
+
+        # else unmount if still mounted
+
+        installer_say "Unmounting $installer_tmpfs"
+        umount "$installer_tmpfs"
+        rmdir "$installer_tmpfs"
+
+      fi
+
+    fi
+
+  fi
+
+  cd $cwd || :
+
+  return 0
+}
+
+if test "${onie_platform}"; then
+  # Running under ONIE, most likely in the background in installer mode.
+  # Our messages have to be sent to the console directly, not to stdout.
+  installer_say()
+  {
+    echo "$@" > /dev/console
+  }
+
+  # Installation failure message.
+  installer_cleanup()
+  {
+    installer_say "Install failed."
+    cat /var/log/onie.log > /dev/console
+    installer_say "Install failed. See log messages above for details"
+
+    installer_umount
+
+    if installer_reboot; then
+      :
+    else
+      sync
+      sleep 3
+      reboot
+    fi
+  }
+else
+  if test "$ARCH_X86"; then
+    echo "Missing onie_platform (invalid /etc/machine.conf)" 1>&2
+    exit 1
+  fi
+  #
+  # Assume we are running in an interactive environment
+  #
+  installer_say()
+  {
+    echo
+    echo "* $@"
+    echo
+  }
+
+  installer_cleanup()
+  {
+    installer_say "Install failed."
+    installer_umount
+    exit 1
+  }
+fi
+
+trap "installer_cleanup" 0 1
+
+# Find a suitable location for TMPDIR
+
+scan_tmpfs() {
+  local dev mpt fstype opts tdir
+  dev=$1; shift
+  mpt=$1; shift
+  fstype=$1; shift
+  opts=$1; shift
+  shift
+  shift
+  tdir="$1"
+
+  case "$fstype" in
+    ramfs|tmpfs) ;;
+    *) return 0 ;;
+  esac
+
+  case "$tdir" in
+    "$mpt"|"$mpt"/*)
+      d1=$(stat -c '%D' "$tdir")
+      d2=$(stat -c '%D' $mpt)
+      if test "$d1" = "$d2"; then
+        installer_say "Found installer $fstype on $installer_dir ($mpt) using opts $opts"
+        installer_tmpfs=$mpt
+        installer_tmpfs_opts=${opts:-"defaults"}
+        return 2
+      fi
+    ;;
+  esac
+
+  return 0
+}
+
+# maybe installer script was unpacked to a tmpfs/ramfs filesystem
+if test -z "$installer_tmpfs" -a "$installer_dir"; then
+  visit_proc_mounts scan_tmpfs "$installer_dir"
+  if test "$installer_tmpfs"; then
+    TMPDIR="$installer_dir"
+    export TMPDIR
+  fi
+fi
+# maybe TMPDIR is on a tmpfs/ramfs filesystem
+if test -z "$installer_tmpfs" -a "$TMPDIR"; then
+  visit_proc_mounts scan_tmpfs "$TMPDIR"
+  if test "$installer_tmpfs"; then
+    :
+  else
+    installer_say "TMPDIR $TMPDIR is not actually tmpfs, ignoring"
+    unset TMPDIR
+  fi
+fi
+# else, hopefully /tmp is a tmpfs/ramfs
+if test -z "$installer_tmpfs"; then
+  visit_proc_mounts scan_tmpfs /tmp
+  if test "$installer_tmpfs"; then
+    TMPDIR=/tmp
+    export TMPDIR
+  fi
+fi
+
+if test "$installer_tmpfs"; then
+  set dummy $(df -k $installer_tmpfs | tail -1)
+  if test $3 -lt $installer_tmpfs_kmin; then
+    installer_say "Resizing tmpfs $installer_tmpfs to ${installer_tmpfs_kmin}k"
+    mount -o remount,size=${installer_tmpfs_kmin}k $installer_tmpfs
+  else
+    # existing installer_tmpfs is fine,
+    # no need to unmount or remount
+    installer_tmpfs=
+    installer_tmpfs_opts=
+  fi
+else
+  installer_say "Creating tmpfs for installer"
+  installer_tmpfs=$(mktemp -d -t installer-tmpfs-XXXXXX)
+  installer_tmpfs_opts=
+  mount -t tmpfs -o size=1024m tmpfs $installer_tmpfs
+  export TMPDIR=$installer_tmpfs
+fi
+
+# Unpack our distribution
+if test "${installer_unpack_only}"; then
+  installer_list=
+else
+  installer_list=$initrd_archive
+fi
+
+installer_say "Unpacking ONL installer files..."
+if test "$SFX_PAD"; then
+  # ha ha, busybox cannot exclude multiple files
+  unzip -o $installer_zip $installer_list -x $SFX_PAD
+elif test "$SFX_UNZIP"; then
+  unzip -o $installer_zip $installer_list -x $installer_script
+else
+  dd if=$installer_zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
+  | unzip -o - $installer_list -x $installer_script
+fi
+
+# Developer debugging
+if has_boot_env onl_installer_unpack_only; then installer_unpack_only=1; fi
+if test "${installer_unpack_only}"; then
+  installer_say "Unpack only requested."
+  exit 1
+fi
+
+rootdir=$(mktemp -d -t "initrd-XXXXXX")
+installer_say "Extracting initrd to $rootdir"
+if test "$initrd_offset"; then
+  tmprd=$(mktemp -t initrd-XXXXXX)
+  dd if="$initrd_archive" of="$tmprd" bs="$initrd_offset" skip=1
+  dd if=/dev/null of="$tmprd" bs="$initrd_size" seek=1
+  initrd=$tmprd
+else
+  initrd="${installer_dir}/$initrd_archive"
+fi
+gzip -dc "$initrd" | ( cd "$rootdir" && cpio -imd )
+
+# get common installer functions
+. "${rootdir}/lib/vendor-config/onl/install/lib.sh"
+
+installer_mkchroot "${rootdir}"
+
+# make the installer available to the chroot
+mkdir -p "${rootdir}/mnt/installer"
+mount -o ro,bind "${installer_dir}" "${rootdir}/mnt/installer"
+
+# make the onie boot files available to the chroot
+mkdir -p "${rootdir}/mnt/onie-boot"
+if test -d "/mnt/onie-boot"; then
+  mount -o ro,bind "/mnt/onie-boot" "${rootdir}/mnt/onie-boot"
+fi
+
+# generate config for installer environment
+mkdir -p "${rootdir}/etc/onl"
+cp /dev/null "${rootdir}/etc/onl/installer.conf"
+echo "onl_version=\"$onl_version\"" >> "${rootdir}/etc/onl/installer.conf"
+
+# Generate the MD5 signature for ourselves for future reference.
+installer_md5=$(md5sum "$0" | awk '{print $1}')
+echo "installer_md5=\"$installer_md5\"" >> "${rootdir}/etc/onl/installer.conf"
+
+# expose the zip file for later expansion by the initrd
+case "$installer_zip" in
+  "${installer_dir}"/*)
+    echo "installer_zip=\"${installer_zip##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
+    ;;
+  *)
+    zf=$(mktemp "$rootdir/mnt/installer/installer-zip-XXXXXX")
+    installer_say "Exposing installer archive $installer_zip as $zf"
+    mount --bind "$installer_zip" $zf
+    echo "installer_zip=\"${zf##*/}\"" >> "${rootdir}/etc/onl/installer.conf"
+    ;;
+esac
+
+# Cache our install URL if available
+if test -f "$0.url"; then
+  installer_url=$(cat "$0.url")
+  echo "installer_url=\"$installer_url\"" >> "${rootdir}/etc/onl/installer.conf"
+fi
+
+echo "installer_dir=/mnt/installer" >> "${rootdir}/etc/onl/installer.conf"
+
+# include access details for the initrd
+if test "$initrd_offset"; then
+  echo "initrd_archive=\"$initrd_archive\"" >> "${rootdir}/etc/onl/installer.conf"
+  echo "initrd_offset=\"$initrd_offset\"" >> "${rootdir}/etc/onl/installer.conf"
+  echo "initrd_size=\"$initrd_size\"" >> "${rootdir}/etc/onl/installer.conf"
+fi
+
+postinst=$(mktemp -t postinst-XXXXXX)
+b=${postinst##*/}
+echo "installer_chroot=\"${rootdir}\"" >> "${rootdir}/etc/onl/installer.conf"
+echo "installer_postinst=\"/mnt/installer/$b\"" >> "${rootdir}/etc/onl/installer.conf"
+
+# for now, skip the other dot-files in /etc/onl, we do not need them
+# to enable initial install
+
+# no special handling for /tmp or /run, since this is all in /tmp
+# anyway
+
+installer_say "Launching ONL installer"
+
+installer_shell_dfl="/usr/bin/onl-install --force"
+installer_shell=${installer_shell-"$installer_shell_dfl"}
+# default, unmount flash filesystems and run the installer script
+
+# Ugh, unmount /mnt filesystems here,
+# they are not accessible from within the chroot
+installer_force_umount() {
+  local dev mpt
+  dev=$1; shift
+  mpt=$1; shift
+  case "$mpt" in
+    /mnt/*)
+      installer_say "Unmounting $mpt (--force)"
+      umount "$mpt"
+      ;;
+  esac
+}
+if test "$installer_shell" = "$installer_shell_dfl"; then
+  visit_proc_mounts installer_force_umount
+else
+  installer_say "*** using non-default installer command: $installer_shell"
+  installer_say "*** watch out for lingering mount-points"
+fi
+
+chroot "${rootdir}" $installer_shell
+
+if test -f "$postinst"; then
+  installer_say "Invoking post-install actions"
+  set -x
+  . "$postinst"
+  set +x
+fi
+
+trap - 0 1
+installer_umount
+
+if test "${onie_platform}"; then
+  installer_reboot
+fi
+
+exit
+
+# Local variables:
+# mode: sh
+# sh-basic-offset: 2
+# End:
+# Do not add any additional whitespace after this point.

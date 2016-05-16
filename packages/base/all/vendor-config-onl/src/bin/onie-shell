@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Run native ONIE tools
+"""
+
+import onl.install.ShellApp
+onl.install.ShellApp.Onie.main()

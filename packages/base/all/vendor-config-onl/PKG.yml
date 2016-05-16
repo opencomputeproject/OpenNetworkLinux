@@ -11,6 +11,7 @@ packages:
       src/python/onl : $PY_INSTALL/onl
       src/boot.d : /etc/boot.d
       src/bin : /usr/bin
+      src/lib : /lib/vendor-config/onl
 
     changelog: Changes
 
@@ -23,7 +24,7 @@ packages:
     summary: ONL Base Configuration Package (Loader)
 
     files:
-      src/python/onl : /usr/lib/python2.7/onl
+      src/python/onl : /usr/lib/python2.7/dist-packages/onl
       src/bin/initmounts : /bin/initmounts
       src/bin/pki        : /sbin/pki
 
