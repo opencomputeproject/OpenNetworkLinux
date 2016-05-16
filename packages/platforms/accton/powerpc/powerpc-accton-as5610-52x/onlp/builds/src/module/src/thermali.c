@@ -40,15 +40,8 @@
 #define I2C_REG_MAX6581_CONFIG                  0x41
 #define I2C_MAX6581_REG_EXTENDED_RANGE_MASK     0x02
 
-#define I2C_THERMAL_1_REG_ADT7473_LOCAL         0x26
-#define I2C_THERMAL_2_REG_ADT7473_REMOTE_1      0x25
-#define I2C_THERMAL_3_REG_ADT7473_REMOTE_2      0x27
-#define I2C_THERMAL_REG_ADT7473_EXTENDED        0x77
-
 #define I2C_PSU1_SLAVE_ADDR_CFG      0x3E
 #define I2C_PSU2_SLAVE_ADDR_CFG      0x3D
-
-#define TEMPERATURE_MULTIPLIER 1000
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -75,10 +68,10 @@ static int
 thermal_sensor_max6581_info_get(onlp_thermal_info_t* info)
 {
     unsigned char data = 0;
-    unsigned char temp_reg[7]    = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x8};
-    unsigned char temp_reg_dp[7] = {0x9, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58}; /* Register to read decimal place */
+    unsigned char temp_reg[8]    = { 0x7,  0x1,  0x2,  0x3,  0x4,  0x5,  0x6,  0x8};
+    unsigned char temp_reg_dp[8] = {0x57, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x58}; /* Register to read decimal place */
     int base_degree = thermal_sensor_max6581_base_degree();
-    int index       = ONLP_OID_ID_GET(info->hdr.id) - 1;
+    int index       = ONLP_OID_ID_GET(info->hdr.id) - MAX6581_LOCAL_SENSOR;
 
     /* Set the thermal status from diode fault(0x46) register */
     if (i2c_nRead(I2C_THERMAL_SENSOR_BUS_ID, I2C_SLAVE_ADDR_MAX6581, 0x46, sizeof(data), &data) != 0) {
@@ -112,8 +105,10 @@ static int
 thermal_sensor_ne1617a_info_get(onlp_thermal_info_t* info)
 {
     unsigned char data = 0;
+    unsigned char temp_reg[2] = {0x0, 0x1};
+    int index = ONLP_OID_ID_GET(info->hdr.id) - NE1617A_LOCAL_SENSOR;
 
-    if (i2c_nRead(I2C_THERMAL_SENSOR_BUS_ID, I2C_SLAVE_ADDR_NE1617A, 0x1, sizeof(data), &data) != 0) {
+    if (i2c_nRead(I2C_THERMAL_SENSOR_BUS_ID, I2C_SLAVE_ADDR_NE1617A, temp_reg[index], sizeof(data), &data) != 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -130,10 +125,10 @@ thermal_sensor_cpr_4011_info_get(onlp_thermal_info_t* info)
     unsigned char status = 0;
     unsigned char i2c_addr;
 
-    if (ONLP_OID_ID_GET(info->hdr.id) == 9) {
+    if (ONLP_OID_ID_GET(info->hdr.id) == PSU1_THERMAL_SENSOR_1) {
         i2c_addr = I2C_PSU1_SLAVE_ADDR_CFG;
     }
-    else {
+    else { /* PSU2_THERMAL_SENSOR_1 */
         i2c_addr = I2C_PSU2_SLAVE_ADDR_CFG;
     }
 
@@ -194,42 +189,48 @@ onlp_thermali_init(void)
 /* Static values */
 static onlp_thermal_info_t tinfo[] = {
 { }, /* Not used */
-{ { ONLP_THERMAL_ID_CREATE(1),  "Chassis Thermal Sensor 1 (near right-upper side of CPU)", 0},         0x1,
+{ { ONLP_THERMAL_ID_CREATE(NE1617A_LOCAL_SENSOR),  "Chassis Thermal Sensor 1 (NE1617A local sensor)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(2),  "Chassis Thermal Sensor 2 (near right side of MAX6581)", 0},           0x1,
+{ { ONLP_THERMAL_ID_CREATE(NE1617A_REMOTE_SENSOR),  "Chassis Thermal Sensor 2 (the left middle side of the system)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(3),  "Chassis Thermal Sensor 3 (near right side of MAC(Trident+)", 0},      0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_LOCAL_SENSOR),  "Chassis Thermal Sensor 3 (MAX6581 local sensor)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(4),  "Chassis Thermal Sensor 4 (near left down side of Equalizer_U57)", 0}, 0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_1),  "Chassis Thermal Sensor 4 (near right-upper side of CPU)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(5),  "Chassis Thermal Sensor 5 (near right down side of MAC)", 0},          0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_2),  "Chassis Thermal Sensor 5 (near right side of MAX6581)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(6),  "Chassis Thermal Sensor 6 (near upper side of Equalizer_U49)", 0},     0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_3),  "Chassis Thermal Sensor 6 (near right side of MAC(Trident+)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(7),  "Chassis Thermal Sensor 7 (near left down side of PCB)", 0},           0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_4),  "Chassis Thermal Sensor 7 (near left down side of Equalizer_U57)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(8),  "Chassis Thermal Sensor 8 (inside CPU)", 0},                           0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_5),  "Chassis Thermal Sensor 8 (near right down side of MAC)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(9),  "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(1)},     0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_6),  "Chassis Thermal Sensor 9 (near upper side of Equalizer_U49)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(10), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(2)},     0x1,
+{ { ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_7),  "Chassis Thermal Sensor 10 (near left down side of PCB)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
-{ { ONLP_THERMAL_ID_CREATE(11),  "Switch Thermal Sensor", 0},           0x1,
+{ { ONLP_THERMAL_ID_CREATE(BCM56846_LOCAL_SENSOR),  "Chassis Thermal Sensor 11 (BCM56846 local sensor)", 0}, 0x1,
     ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
 },
+{ { ONLP_THERMAL_ID_CREATE(PSU1_THERMAL_SENSOR_1),  "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(1)}, 0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+},
+{ { ONLP_THERMAL_ID_CREATE(PSU2_THERMAL_SENSOR_1), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(2)}, 0x1,
+    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+}
 };
 
-/*
+/*  
  * Retrieve the information structure for the given thermal OID.
  *
  * If the OID is invalid, return ONLP_E_STATUS_INVALID.
@@ -246,8 +247,29 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     VALIDATE(id);
     *info = tinfo[ONLP_OID_ID_GET(id)];  /* Set the ID/Description/Present state */
 
+    if (ONLP_OID_ID_GET(id) == BCM56846_LOCAL_SENSOR) {
+        /* Switch Thermal Sensor */
+        char* fname = "/var/run/broadcom/temp0";
+        int rv = onlp_file_read_int(&info->mcelsius, fname);
+        if(rv >= 0) {
+            /** Present and running */
+            info->status |= 1;
+            ret = ONLP_STATUS_OK;
+        }
+        else if(rv == ONLP_STATUS_E_MISSING) {
+            /** No switch management process running. */
+            info->status = 0;
+            ret = ONLP_STATUS_OK;
+        }
+        else {
+            /** Other error. */
+            ret = ONLP_STATUS_E_INTERNAL;
+        }
+        return ret;
+    }
+
     /* Read the temperature and status */
-    if (ONLP_OID_ID_GET(id) >= 1 && ONLP_OID_ID_GET(id) <= 7) {
+    if (ONLP_OID_ID_GET(id) >= MAX6581_LOCAL_SENSOR && ONLP_OID_ID_GET(id) <= MAX6581_REMOTE_SENSOR_7) {
         /* Set multiplexer to the channel of thermal sensor */
         if (as5610_52x_i2c0_pca9548_channel_set(0x80) != 0) {
             return ONLP_STATUS_E_INTERNAL;
@@ -256,7 +278,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         ret = thermal_sensor_max6581_info_get(info);
     }
 
-    if (ONLP_OID_ID_GET(id) == 8) {
+    if (ONLP_OID_ID_GET(id) == NE1617A_LOCAL_SENSOR || ONLP_OID_ID_GET(id) == NE1617A_REMOTE_SENSOR) {
         /* Set multiplexer to the channel of thermal sensor */
         if (as5610_52x_i2c0_pca9548_channel_set(0x80) != 0) {
             return ONLP_STATUS_E_INTERNAL;
@@ -265,9 +287,10 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         ret = thermal_sensor_ne1617a_info_get(info);
     }
 
-    if (ONLP_OID_ID_GET(id) == 9 || ONLP_OID_ID_GET(id) == 10) {
+    if (ONLP_OID_ID_GET(id) == PSU1_THERMAL_SENSOR_1 || ONLP_OID_ID_GET(id) == PSU2_THERMAL_SENSOR_1) {
         /* Check PSU type */
-        as5610_52x_psu_type_t psu_type = as5610_52x_get_psu_type(ONLP_OID_ID_GET(id)-8, NULL, 0);
+        as5610_52x_psu_type_t psu_type;
+        psu_type = as5610_52x_get_psu_type(ONLP_OID_ID_GET(id)-NUM_OF_CHASSIS_THERMAL_SENSOR, NULL, 0);
 
         if (PSU_TYPE_AC_F2B == psu_type || PSU_TYPE_AC_B2F == psu_type) {
             /* Set multiplexer to the channel of thermal sensor */
@@ -276,26 +299,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             }
 
             ret = thermal_sensor_cpr_4011_info_get(info);
-        }
-    }
-
-    if (ONLP_OID_ID_GET(id) == 11) {
-        /* Switch Thermal Sensor */
-        char* fname = "/var/run/broadcom/temp0";
-        int rv = onlp_file_read_int(&info->mcelsius, fname);
-        if(rv >= 0) {
-            /** Present and running */
-            info->status |= 1;
-            ret = 0;
-        }
-        else if(rv == ONLP_STATUS_E_MISSING) {
-            /** No switch management process running. */
-            info->status = 0;
-            ret = 0;
-        }
-        else {
-            /** Other error. */
-            ret = ONLP_STATUS_E_INTERNAL;
         }
     }
 

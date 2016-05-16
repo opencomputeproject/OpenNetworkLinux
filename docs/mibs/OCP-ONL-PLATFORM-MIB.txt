@@ -1,0 +1,162 @@
+-- ----------------------------------------------------------------------
+-- Open Network Linux Platform MIB
+-- ----------------------------------------------------------------------
+
+OCP-ONL-PLATFORM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, enterprises, Gauge32 FROM SNMPv2-SMI
+    DisplayString                                         FROM SNMPv2-TC
+    ocp                                                   FROM OCP-MIB
+    OpenNetworkLinux                                      FROM OCP-ONL-MIB;
+
+InformationTree MODULE-IDENTITY
+     LAST-UPDATED "201605140000Z"
+     ORGANIZATION "Open Compute Project"
+     CONTACT-INFO "http://www.opencompute.org"
+     DESCRIPTION
+        "This MIB describes Open Network Linux platform objects."
+     REVISION "201605140000Z"
+     DESCRIPTION "Initial revision"
+     ::= { OpenNetworkLinux 1 }
+
+--
+-- Information General
+--
+General OBJECT IDENTIFIER ::= { InformationTree 1 }
+System OBJECT IDENTIFIER ::= { General 1 }
+
+ProductName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The product name."
+    ::= { System 1 }
+
+PartNumber OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The product part number."
+    ::= { System 2 }
+
+SerialNumber OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The product serial number."
+    ::= { System 3 }
+
+MAC OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The MAC base address"
+    ::= { System 4 }
+
+MACRange OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "MAC address range"
+    ::= { System 5 }
+
+Manufacturer OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The manufacturer name"
+    ::= { System 6 }
+
+ManufactureDate OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Manufacture date"
+    ::= { System 7 }
+
+Vendor OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The vendor name"
+    ::= { System 8 }
+
+PlatformName OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The platform name"
+    ::= { System 9 }
+
+DeviceVersion OBJECT-TYPE
+    SYNTAX      Integer32
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The version of the device"
+    ::= { System 10 }
+
+LabelRevision OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The label revision"
+    ::= { System 11 }
+
+CountryCode OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The country code"
+    ::= { System 12 }
+
+DiagVersion OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The diagnostic version"
+    ::= { System 13 }
+
+ServiceTag OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The service tag"
+    ::= { System 14 }
+
+OnieVersion OBJECT-TYPE
+    SYNTAX      DisplayString
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The ONIE version"
+    ::= { System 15 }
+
+
+--
+-- Information Vendor
+--
+Vendor OBJECT IDENTIFIER ::= { InformationTree 2 }
+BSN    OBJECT IDENTIFIER ::= { Vendor 37538 }
+OCP    OBJECT IDENTIFIER ::= { Vendor 42623 }
+ACCTON OBJECT IDENTIFIER ::= { Vendor 259 }
+DELL   OBJECT IDENTIFIER ::= { Vendor 674 }
+QUANTA OBJECT IDENTIFIER ::= { Vendor 7244 }
+DNI    OBJECT IDENTIFIER ::= { Vendor 5324 }
+DEBIAN OBJECT IDENTIFIER ::= { Vendor 9586 }
+
+END

@@ -178,6 +178,13 @@ installer_blockdev_format() {
     local partition3size=$4
     local partition4size=$5
 
+    if [ -n "$ONL_BOOT_SIZE" ]; then
+        echo "Using ONL_BOOT_SIZE override ($ONL_BOOT_SIZE)"
+        partition1size=$ONL_BOOT_SIZE
+    fi
+
+
+
     onl_config_partition=$(blkid | grep ONL-CONFIG | awk '{print $1}' | tr -d ':')
 
     #
@@ -198,10 +205,21 @@ installer_blockdev_format() {
     installer_umount_blockdev ${blockdev}
     installer_say "Formatting ${blockdev} as ${partition1size}:${partition2size}:${partition3size}:${partition4size}."
     echo -e "o\nn\np\n1\n\n+${partition1size}\nn\np\n2\n\n+${partition2size}\nn\np\n3\n\n+${partition3size}\nn\np\n4\n\n${partition4size}\np\nw\n" | fdisk /dev/${blockdev}
-    installer_partition_format ${blockdev} 1 mkfs.ext2 "-L ONL-BOOT"
-    installer_partition_format ${blockdev} 2 mkfs.ext2 "-L ONL-CONFIG"
-    installer_partition_format ${blockdev} 3 mkfs.ext2 "-L ONL-IMAGES"
-    installer_partition_format ${blockdev} 4 mkfs.ext2 "-L ONL-DATA"
+
+
+    _mkfs="mkfs.ext2"
+    _archtools="${installer_dir}/`uname -m`"
+    if [ -f "${_archtools}/mkfs.ext2" ]; then
+        chmod a+x ${_archtools}/*
+        echo "Using installer archtools mkfs.ext2..."
+        _mkfs="${_archtools}/mkfs.ext2"
+        ls -l "${_archtools}"
+    fi
+
+    installer_partition_format ${blockdev} 1 $_mkfs "-L ONL-BOOT"
+    installer_partition_format ${blockdev} 2 $_mkfs "-L ONL-CONFIG"
+    installer_partition_format ${blockdev} 3 $_mkfs "-L ONL-IMAGES"
+    installer_partition_format ${blockdev} 4 $_mkfs "-L ONL-DATA"
 
     if [ -f $ONL_CONFIG_TARBALL ]; then
         installer_say "Restoring the contents of the existing ONL-CONFIG partition..."

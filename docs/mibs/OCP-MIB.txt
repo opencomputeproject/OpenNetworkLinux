@@ -1,0 +1,28 @@
+-- *****************************************************************
+-- OCP-MIB: Root for the Open Compute Project
+--
+--
+-- *****************************************************************
+
+OCP-MIB DEFINITIONS ::= BEGIN
+
+
+IMPORTS
+    MODULE-IDENTITY, enterprises FROM SNMPv2-SMI;
+
+ocp MODULE-IDENTITY
+    LAST-UPDATED "201605140000Z"
+    ORGANIZATION "www.opencompute.com"
+    CONTACT-INFO
+        "postal:    BigSwitch Networks
+                    3965 Freedom Cir #300,
+                    Santa Clara, CA 95054
+                    USA
+         email:    info@bigswitch.com"
+    DESCRIPTION
+        "Open Compute Project Private Enterprise MIB"
+    REVISION     "201605140000Z"
+    DESCRIPTION
+        "Initial revision"
+    ::= { enterprises 42623 }
+END

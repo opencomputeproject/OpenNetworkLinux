@@ -36,8 +36,7 @@
 - scapy
 - python-pypcap
 - snmpd
-- lm-sensors
-- fancontrol
+- snmp
 - pciutils
 - usbutils
 - mtd-utils
@@ -75,3 +74,5 @@
 - bzip2
 - xz-utils
 - unzip
+- onl-mibs
+- openssl

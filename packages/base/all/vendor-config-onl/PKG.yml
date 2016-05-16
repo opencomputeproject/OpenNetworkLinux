@@ -26,5 +26,6 @@ packages:
     files:
       src/python/onl : /usr/lib/python2.7/dist-packages/onl
       src/bin/initmounts : /bin/initmounts
+      src/bin/pki        : /sbin/pki
 
     changelog: Changes

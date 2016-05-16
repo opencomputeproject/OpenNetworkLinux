@@ -604,8 +604,8 @@ class OnlPackageRepo(object):
                 package = os.path.split(underscores[0])[1]
                 # Architecture is the last entry (.deb)
                 arch = underscores[-1].split('.')[0]
-                logger.debug("+ /bin/cp %s %s/%s", p, self.repo, arch)
-                dstdir = os.path.join(self.repo, arch)
+                logger.debug("+ /bin/cp %s %s/%s", p, self.repo, "binary-" + arch)
+                dstdir = os.path.join(self.repo, "binary-" + arch)
                 if not os.path.exists(dstdir):
                     os.makedirs(dstdir)
                 logger.info("dstdir=%s"% dstdir)
@@ -636,7 +636,7 @@ class OnlPackageRepo(object):
         with self.lock:
             rv = []
             (name, arch) = OnlPackage.idparse(pkg)
-            dirname = os.path.join(self.repo, arch)
+            dirname = os.path.join(self.repo, "binary-" + arch)
             if os.path.exists(dirname):
                 manifest = os.listdir(dirname)
                 rv = [ os.path.join(dirname, x) for x in manifest if arch in x and "%s_" % name in x ]

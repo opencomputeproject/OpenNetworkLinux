@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <onlp/platformi/sysi.h>
 #include "powerpc_accton_as5610_52x_log.h"
+#include "platform_lib.h"
 
 const char*
 onlp_sysi_platform_get(void)
@@ -74,16 +75,18 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     /* 1 Fan */
     *e++ = ONLP_FAN_ID_CREATE(1);
 
-    /* 9 Thermal sensors */
-    *e++ = ONLP_THERMAL_ID_CREATE(1);
-    *e++ = ONLP_THERMAL_ID_CREATE(2);
-    *e++ = ONLP_THERMAL_ID_CREATE(3);
-    *e++ = ONLP_THERMAL_ID_CREATE(4);
-    *e++ = ONLP_THERMAL_ID_CREATE(5);
-    *e++ = ONLP_THERMAL_ID_CREATE(6);
-    *e++ = ONLP_THERMAL_ID_CREATE(7);
-    *e++ = ONLP_THERMAL_ID_CREATE(8);
-    *e++ = ONLP_THERMAL_ID_CREATE(11);
+    /* 11 Thermal sensors */
+    *e++ = ONLP_THERMAL_ID_CREATE(NE1617A_LOCAL_SENSOR);
+    *e++ = ONLP_THERMAL_ID_CREATE(NE1617A_REMOTE_SENSOR);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_LOCAL_SENSOR);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_1);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_2);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_3);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_4);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_5);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_6);
+    *e++ = ONLP_THERMAL_ID_CREATE(MAX6581_REMOTE_SENSOR_7);
+    *e++ = ONLP_THERMAL_ID_CREATE(BCM56846_LOCAL_SENSOR);
 
     /* 5 LEDs */
     *e++ = ONLP_LED_ID_CREATE(1);
@@ -95,13 +98,111 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     return 0;
 }
 
+/* The tA/tB/tC/tD/tCritical is defined in the thermal policy spec
+ */
+typedef struct temp_sensor_threshold {
+    int  tA;
+    int  tB;
+    int  tC;
+    int  tD;
+    int  tCitical;
+} temp_sensor_threshold_t;
+
+/* The thermal plan table is for F2B(Front to back) airflow direction
+ */
+static const temp_sensor_threshold_t temp_sensor_threshold_f2b[NUM_OF_CHASSIS_THERMAL_SENSOR] = {
+{53, 46, 62, 67, 75}, {71, 63, 82, 86, 95}, {46, 38, 53, 58, 66}, {49, 42, 57, 62, 69},
+{59, 52, 70, 73, 81}, {57, 50, 65, 70, 77}, {49, 42, 57, 62, 70}, {47, 39, 55, 60, 69},
+{53, 46, 59, 65, 73}, {56, 48, 65, 69, 78}, {75, 71, 89, 94, 111}
+};
+
+/* The thermal plan table is for B2F(Back to front) airflow direction
+ */
+static const temp_sensor_threshold_t temp_sensor_threshold_b2f[NUM_OF_CHASSIS_THERMAL_SENSOR] = {
+{58, 52, 73, 73, 80}, {63, 51, 67, 70, 84}, {43, 33, 47, 51, 63}, {49, 38, 56, 59, 69},
+{53, 47, 65, 68, 75}, {63, 57, 80, 78, 84}, {46, 37, 52, 55, 67}, {44, 34, 48, 52, 65},
+{55, 47, 65, 67, 76}, {47, 38, 53, 56, 68}, {81, 78, 99, 98, 104}
+};
+
+#include <onlp/platformi/fani.h>
+#include <onlp/platformi/thermali.h>
+
 int
 onlp_sysi_platform_manage_fans(void)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int i = 0, rc;
+    onlp_fan_info_t fi;
+    const temp_sensor_threshold_t *pThreshold = NULL;
+    onlp_thermal_info_t ti[NUM_OF_CHASSIS_THERMAL_SENSOR];
+    int aboveTa = 0, aboveTb = 0, aboveTc = 0, aboveTd = 0, newPercentage = 0;
+
+    /* Get current fan status
+     */
+    rc = onlp_fani_info_get(ONLP_FAN_ID_CREATE(1), &fi);
+    if (rc < 0) {
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (fi.status & ONLP_FAN_STATUS_FAILED) {
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
+        return ONLP_STATUS_OK;
+    }
+
+    /* Bring fan speed to max if current speed is not expected
+     */
+    if (fi.percentage != FAN_PERCENTAGE_MIN && 
+        fi.percentage != FAN_PERCENTAGE_MID && 
+        fi.percentage != FAN_PERCENTAGE_MAX  ) {
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
+        return ONLP_STATUS_OK;
+    }    
+
+    /* Apply thermal plan by air flow direction 
+     */
+    pThreshold = (fi.status & ONLP_FAN_STATUS_F2B) ? temp_sensor_threshold_f2b :
+                                                     temp_sensor_threshold_b2f ;
+
+    /* Get temperature from each thermal sensor 
+     */
+    for (i = 0; i < NUM_OF_CHASSIS_THERMAL_SENSOR; i++) {
+        rc = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i+1), &ti[i]);
+        
+        if (rc != ONLP_STATUS_OK) {
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
+            return rc;
+        }
+
+        aboveTa += (ti[i].mcelsius > pThreshold[i].tA* TEMPERATURE_MULTIPLIER) ? 1 : 0;
+        aboveTb += (ti[i].mcelsius > pThreshold[i].tB* TEMPERATURE_MULTIPLIER) ? 1 : 0;
+        aboveTc += (ti[i].mcelsius > pThreshold[i].tC* TEMPERATURE_MULTIPLIER) ? 1 : 0;
+        aboveTd += (ti[i].mcelsius > pThreshold[i].tD* TEMPERATURE_MULTIPLIER) ? 1 : 0;
+    }
+
+    /* Adjust fan speed based on current temperature if fan speed changed
+     */
+    if (fi.percentage == FAN_PERCENTAGE_MIN && aboveTc) {
+        newPercentage = FAN_PERCENTAGE_MID;
+    }
+    else if (fi.percentage == FAN_PERCENTAGE_MID) {
+        if (aboveTd) {
+            newPercentage = FAN_PERCENTAGE_MAX;
+        }          
+        else if (!aboveTb) {
+            newPercentage = FAN_PERCENTAGE_MIN;
+        }
+    }
+    else if (fi.percentage == FAN_PERCENTAGE_MAX && !aboveTa) {
+        newPercentage = FAN_PERCENTAGE_MID;
+    }
+
+    if (newPercentage != 0) {
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), newPercentage);
+    }
+    
+    return 0;
 }
 
-#include <onlp/platformi/fani.h>
 #include <onlp/platformi/psui.h>
 #include <onlp/platformi/ledi.h>
 
@@ -155,7 +256,4 @@ onlp_sysi_platform_manage_leds(void)
 
     return 0;
 }
-
-
-
 

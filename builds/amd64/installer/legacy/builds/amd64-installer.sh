@@ -275,6 +275,15 @@ partition_gpt()
 installer_standard_gpt_install()
 {
   DEV=$1; shift
+  
+  if [ -z $DEV ]; then
+      # Install NOS to the same block device as ONIE image
+      DEV=$(blkid | grep ONIE-BOOT | awk '{print $1}' |  sed -e 's/[1-9][0-9]*:.*$//' | sed -e 's/\([0-9]\)\(p\)/\1/' | head -n 1)
+      [ -b "$DEV" ] || {
+          echo "Error: Unable to determine the block device to install NOS"
+          exit 1
+      }
+  fi
 
   visit_parted $DEV do_handle_disk do_handle_partitions || return 1
   partition_gpt $(get_free_space) || return 1

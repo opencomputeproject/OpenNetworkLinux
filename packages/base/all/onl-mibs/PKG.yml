@@ -1,0 +1,19 @@
+common:
+  arch: all
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-mibs
+    version: 1.0.0
+    summary: ONL MIB Package
+
+    files:
+      ${ONL}/docs/mibs/ : /usr/share/snmp/mibs
+
+    changelog:  Change changes changes.,
+
+
+
+
