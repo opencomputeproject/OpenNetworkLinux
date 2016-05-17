@@ -10,8 +10,8 @@ common:
   maintainer: support@bigswitch.com
 
 packages:
-  - name: onl-installer
-    summary: Open Network Linux $ARCH Installer
+  - name: onl-legacy-installer
+    summary: Open Network Linux $ARCH Legacy Installer
 
     files:
       builds/*INSTALLER        : $$PKG_INSTALL/
@@ -23,13 +23,3 @@ packages:
 release:
   - builds/*INSTALLER : $ARCH/
   - builds/*.md5sum   : $ARCH/
-
-
-
-
-
-
-
-
-
-
