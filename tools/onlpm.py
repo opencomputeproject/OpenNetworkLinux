@@ -24,7 +24,7 @@ import lsb_release
 
 g_dist_codename = lsb_release.get_distro_information().get('CODENAME')
 
-logger = onlu.init_logging('onlpm')
+logger = onlu.init_logging('onlpm', logging.INFO)
 
 class OnlPackageError(Exception):
     """General Package Error Exception
