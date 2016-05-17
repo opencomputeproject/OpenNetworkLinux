@@ -1,0 +1,35 @@
+From 1e9ac3c08f06565894686d5924cb68ec6d4bb677 Mon Sep 17 00:00:00 2001
+From: Emil Medve <Emilian.Medve@Freescale.com>
+Date: Thu, 22 Jan 2015 08:47:20 -0600
+Subject: [PATCH 35/98] iommu/fsl: Fix section mismatch
+
+Section mismatch in reference from the variable fsl_of_pamu_driver to the function .init.text:fsl_pamu_probe()
+The variable fsl_of_pamu_driver references
+the function __init fsl_pamu_probe()
+If the reference is valid then annotate the
+variable with __init* or __refdata (see linux/init.h) or name the variable:
+*_template, *_timer, *_sht, *_ops, *_probe, *_probe_one, *_console
+
+Signed-off-by: Emil Medve <Emilian.Medve@Freescale.com>
+Acked-by: Varun Sethi <Varun.Sethi@freescale.com>
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/iommu/fsl_pamu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iommu/fsl_pamu.c b/drivers/iommu/fsl_pamu.c
+index 80ac68d..d478ad8 100644
+--- a/drivers/iommu/fsl_pamu.c
++++ b/drivers/iommu/fsl_pamu.c
+@@ -1224,7 +1224,7 @@ static const struct of_device_id fsl_of_pamu_ids[] = {
+ 	{},
+ };
+ 
+-static struct platform_driver fsl_of_pamu_driver = {
++static struct platform_driver fsl_of_pamu_driver __initdata = {
+ 	.driver = {
+ 		.name = "fsl-of-pamu",
+ 	},
+-- 
+2.1.0.27.g96db324
+

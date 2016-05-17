@@ -1,0 +1,37 @@
+From e8c0915b61e0ad52049380c3a8a170cf3902aa7b Mon Sep 17 00:00:00 2001
+From: Shaohui Xie <Shaohui.Xie@freescale.com>
+Date: Tue, 30 Dec 2014 16:28:00 +0800
+Subject: [PATCH 43/98] net/fsl: remove irq assignment from xgmac_mdio
+
+Which is wrong and not used, so no extra space needed by
+mdiobus_alloc_size(), use mdiobus_alloc() instead.
+
+Signed-off-by: Shaohui Xie <Shaohui.Xie@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/xgmac_mdio.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/xgmac_mdio.c b/drivers/net/ethernet/freescale/xgmac_mdio.c
+index 90adba1..9de5268 100644
+--- a/drivers/net/ethernet/freescale/xgmac_mdio.c
++++ b/drivers/net/ethernet/freescale/xgmac_mdio.c
+@@ -187,14 +187,13 @@ static int xgmac_mdio_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
+-	bus = mdiobus_alloc_size(PHY_MAX_ADDR * sizeof(int));
++	bus = mdiobus_alloc();
+ 	if (!bus)
+ 		return -ENOMEM;
+ 
+ 	bus->name = "Freescale XGMAC MDIO Bus";
+ 	bus->read = xgmac_mdio_read;
+ 	bus->write = xgmac_mdio_write;
+-	bus->irq = bus->priv;
+ 	bus->parent = &pdev->dev;
+ 	snprintf(bus->id, MII_BUS_ID_SIZE, "%llx", (unsigned long long)res.start);
+ 
+-- 
+2.1.0.27.g96db324
+

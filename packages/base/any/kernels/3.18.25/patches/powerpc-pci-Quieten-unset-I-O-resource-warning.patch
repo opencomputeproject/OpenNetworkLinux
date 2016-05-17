@@ -1,0 +1,35 @@
+From da1932ca4939731bc4ccdfa2ed7353f6b5ae0399 Mon Sep 17 00:00:00 2001
+From: Anton Blanchard <anton@samba.org>
+Date: Tue, 14 Oct 2014 11:40:26 +1100
+Subject: [PATCH 94/98] powerpc/pci: Quieten unset I/O resource warning
+
+upstream adb7cd732292b06ee964d9f6090b17c70bd8bd3d commit
+
+Newer POWER designs do not implement PCI I/O space, so we
+expect to see a number of these.
+
+Reduce the severity of the warning so it doesn't mask other
+real issues.
+
+Signed-off-by: Anton Blanchard <anton@samba.org>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+---
+ arch/powerpc/kernel/pci-common.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/kernel/pci-common.c b/arch/powerpc/kernel/pci-common.c
+index e5dad9a..bc2dab5 100644
+--- a/arch/powerpc/kernel/pci-common.c
++++ b/arch/powerpc/kernel/pci-common.c
+@@ -1464,7 +1464,7 @@ static void pcibios_setup_phb_resources(struct pci_controller *hose,
+ 	res = &hose->io_resource;
+ 
+ 	if (!res->flags) {
+-		printk(KERN_WARNING "PCI: I/O resource not set for host"
++		pr_info("PCI: I/O resource not set for host"
+ 		       " bridge %s (domain %d)\n",
+ 		       hose->dn->full_name, hose->global_number);
+ 	} else {
+-- 
+2.1.0.27.g96db324
+

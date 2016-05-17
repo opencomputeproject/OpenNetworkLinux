@@ -1,0 +1,39 @@
+From 0710e6c6c06248a0491f4e754c64a3361851d39e Mon Sep 17 00:00:00 2001
+From: Nikhil Badola <nikhil.badola@freescale.com>
+Date: Tue, 26 May 2015 17:14:42 +0530
+Subject: [PATCH 61/98] drivers:usb:fsl: Check IP version 2.4 for mph USB
+ controller
+
+Check IP version 2.4 for multi port host USB controller and
+return FSL_USB_VER_2_4 macro
+
+Signed-off-by: Nikhil Badola <nikhil.badola@freescale.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/usb/host/fsl-mph-dr-of.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/usb/host/fsl-mph-dr-of.c b/drivers/usb/host/fsl-mph-dr-of.c
+index 9162d1b..e0315de 100644
+--- a/drivers/usb/host/fsl-mph-dr-of.c
++++ b/drivers/usb/host/fsl-mph-dr-of.c
+@@ -126,6 +126,7 @@ static int usb_get_ver_info(struct device_node *np)
+ 	/*
+ 	 * returns 1 for usb controller version 1.6
+ 	 * returns 2 for usb controller version 2.2
++	 * returns 3 for usb controller version 2.4
+ 	 * returns 0 otherwise
+ 	 */
+ 	if (of_device_is_compatible(np, "fsl-usb2-dr")) {
+@@ -150,6 +151,8 @@ static int usb_get_ver_info(struct device_node *np)
+ 			ver = FSL_USB_VER_1_6;
+ 		else if (of_device_is_compatible(np, "fsl-usb2-mph-v2.2"))
+ 			ver = FSL_USB_VER_2_2;
++		else if (of_device_is_compatible(np, "fsl-usb2-mph-v2.4"))
++			ver = FSL_USB_VER_2_4;
+ 		else /* for previous controller versions */
+ 			ver = FSL_USB_VER_OLD;
+ 	}
+-- 
+2.1.0.27.g96db324
+

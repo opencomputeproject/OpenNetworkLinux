@@ -1,0 +1,33 @@
+From 09fcfb873da09a76814a83ae494c3ce0fdfeb9e8 Mon Sep 17 00:00:00 2001
+From: Scott Wood <scottwood@freescale.com>
+Date: Mon, 24 Aug 2015 11:43:03 -0500
+Subject: [PATCH 92/98] powerpc/fsl_pci: Check for
+ get_user/probe_kernel_address failure
+
+upstream 072daeed5525a0d8ad1e5ddfb38f29cef1ca25f2 commit
+
+Signed-off-by: Scott Wood <scottwood@freescale.com>
+Reported-by: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Cc: Hongtao Jia <hongtao.jia@freescale.com>
+---
+ arch/powerpc/sysdev/fsl_pci.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/sysdev/fsl_pci.c b/arch/powerpc/sysdev/fsl_pci.c
+index e1241d4..1ea726c 100644
+--- a/arch/powerpc/sysdev/fsl_pci.c
++++ b/arch/powerpc/sysdev/fsl_pci.c
+@@ -988,7 +988,7 @@ int fsl_pci_mcheck_exception(struct pt_regs *regs)
+ 			ret = probe_kernel_address(regs->nip, inst);
+ 		}
+ 
+-		if (mcheck_handle_load(regs, inst)) {
++		if (!ret && mcheck_handle_load(regs, inst)) {
+ 			regs->nip += 4;
+ 			return 1;
+ 		}
+-- 
+2.1.0.27.g96db324
+

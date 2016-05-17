@@ -1,0 +1,30 @@
+From 2e2b4e79bb17e8d2be2b62838e858e2d4fd40863 Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 6 Jan 2016 12:59:10 +0300
+Subject: [PATCH 18/98] fsl/fman: double free on probe failure
+
+"priv" is allocated with devm_kzalloc() so freeing it here with kfree()
+will lead to a double free.
+
+Fixes: 3933961682a3 ('fsl/fman: Add FMan MAC driver')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/fman/mac.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/freescale/fman/mac.c b/drivers/net/ethernet/freescale/fman/mac.c
+index 743a393..e33d9d2 100644
+--- a/drivers/net/ethernet/freescale/fman/mac.c
++++ b/drivers/net/ethernet/freescale/fman/mac.c
+@@ -961,7 +961,6 @@ _return_of_node_put:
+ 	of_node_put(dev_node);
+ _return_dev_set_drvdata:
+ 	kfree(priv->fixed_link);
+-	kfree(priv);
+ 	dev_set_drvdata(dev, NULL);
+ _return:
+ 	return err;
+-- 
+2.1.0.27.g96db324
+

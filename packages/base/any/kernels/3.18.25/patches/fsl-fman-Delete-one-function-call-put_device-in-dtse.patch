@@ -1,0 +1,41 @@
+From 598ed14c52d2389b1176fe51e27594b09bb71e11 Mon Sep 17 00:00:00 2001
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Thu, 14 Jan 2016 15:46:28 +0100
+Subject: [PATCH 19/98] fsl/fman: Delete one function call "put_device" in
+ dtsec_config()
+
+commit 5d19c619ab3f0551864684f09c2a2f22ee972bef
+[context adjustment]
+
+The Coccinelle semantic patch script "deref_null.cocci" pointed a problem
+out in the implementation of the function "dtsec_config".
+
+A null pointer was assigned to the data structure member "tbiphy" of the
+variable "dtsec" if a matching device was not found.
+A call of the function "put_device" was unnecessary then because
+a previous call of the function "get_device" was not triggered.
+Thus remove the function call "put_device" after the printing of the
+desired error message.
+
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Integrated-by: Jiang Yutang <yutang.jiang@nxp.com>
+---
+ drivers/net/ethernet/freescale/fman/fman_dtsec.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/freescale/fman/fman_dtsec.c b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+index 587f9b4..b3f523b 100644
+--- a/drivers/net/ethernet/freescale/fman/fman_dtsec.c
++++ b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+@@ -1434,7 +1434,6 @@ struct fman_mac *dtsec_config(struct fman_mac_params *params)
+ 	dtsec->tbiphy = of_phy_find_device(params->internal_phy_node);
+ 	if (!dtsec->tbiphy) {
+ 		pr_err("of_phy_find_device (TBI PHY) failed\n");
+-		put_device(&dtsec->tbiphy->dev);
+ 		goto err_dtsec_drv_param;
+ 	}
+ 
+-- 
+2.1.0.27.g96db324
+

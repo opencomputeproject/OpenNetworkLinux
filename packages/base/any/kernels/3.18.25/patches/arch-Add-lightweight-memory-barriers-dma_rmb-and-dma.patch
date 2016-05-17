@@ -1,0 +1,186 @@
+From 6a73dd0c29bd304316bff57a07545208d313b61d Mon Sep 17 00:00:00 2001
+From: Alexander Duyck <alexander.h.duyck@redhat.com>
+Date: Thu, 11 Dec 2014 15:02:06 -0800
+Subject: [PATCH 60/98] arch: Add lightweight memory barriers dma_rmb() and
+ dma_wmb()
+
+upstream 1077fa36f23e259858caf6f269a47393a5aff523 commit
+[Just apply powerpc/arm64 related changes]
+
+There are a number of situations where the mandatory barriers rmb() and
+wmb() are used to order memory/memory operations in the device drivers
+and those barriers are much heavier than they actually need to be.  For
+example in the case of PowerPC wmb() calls the heavy-weight sync
+instruction when for coherent memory operations all that is really needed
+is an lsync or eieio instruction.
+
+This commit adds a coherent only version of the mandatory memory barriers
+rmb() and wmb().  In most cases this should result in the barrier being the
+same as the SMP barriers for the SMP case, however in some cases we use a
+barrier that is somewhere in between rmb() and smp_rmb().  For example on
+ARM the rmb barriers break down as follows:
+
+  Barrier   Call     Explanation
+  --------- -------- ----------------------------------
+  rmb()     dsb()    Data synchronization barrier - system
+  dma_rmb() dmb(osh) data memory barrier - outer sharable
+  smp_rmb() dmb(ish) data memory barrier - inner sharable
+
+These new barriers are not as safe as the standard rmb() and wmb().
+Specifically they do not guarantee ordering between coherent and incoherent
+memories.  The primary use case for these would be to enforce ordering of
+reads and writes when accessing coherent memory that is shared between the
+CPU and a device.
+
+It may also be noted that there is no dma_mb().  Most architectures don't
+provide a good mechanism for performing a coherent only full barrier without
+resorting to the same mechanism used in mb().  As such there isn't much to
+be gained in trying to define such a function.
+
+Cc: Frederic Weisbecker <fweisbec@gmail.com>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+Cc: Michael Ellerman <michael@ellerman.id.au>
+Cc: Michael Neuling <mikey@neuling.org>
+Cc: Russell King <linux@arm.linux.org.uk>
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Heiko Carstens <heiko.carstens@de.ibm.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Cc: Tony Luck <tony.luck@intel.com>
+Cc: Oleg Nesterov <oleg@redhat.com>
+Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Ingo Molnar <mingo@kernel.org>
+Cc: David Miller <davem@davemloft.net>
+Acked-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Acked-by: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Alexander Duyck <alexander.h.duyck@redhat.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Integrated-by: Jiang Yutang <yutang.jiang@nxp.com>
+---
+ Documentation/memory-barriers.txt  | 42 ++++++++++++++++++++++++++++++++++++++
+ arch/arm64/include/asm/barrier.h   |  3 +++
+ arch/powerpc/include/asm/barrier.h | 13 +++++++-----
+ 3 files changed, 53 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/memory-barriers.txt b/Documentation/memory-barriers.txt
+index 22a969c..e5d5732 100644
+--- a/Documentation/memory-barriers.txt
++++ b/Documentation/memory-barriers.txt
+@@ -1615,6 +1615,48 @@ There are some more advanced barrier functions:
+      operations" subsection for information on where to use these.
+ 
+ 
++ (*) dma_wmb();
++ (*) dma_rmb();
++
++     These are for use with consistent memory to guarantee the ordering
++     of writes or reads of shared memory accessible to both the CPU and a
++     DMA capable device.
++
++     For example, consider a device driver that shares memory with a device
++     and uses a descriptor status value to indicate if the descriptor belongs
++     to the device or the CPU, and a doorbell to notify it when new
++     descriptors are available:
++
++	if (desc->status != DEVICE_OWN) {
++		/* do not read data until we own descriptor */
++		dma_rmb();
++
++		/* read/modify data */
++		read_data = desc->data;
++		desc->data = write_data;
++
++		/* flush modifications before status update */
++		dma_wmb();
++
++		/* assign ownership */
++		desc->status = DEVICE_OWN;
++
++		/* force memory to sync before notifying device via MMIO */
++		wmb();
++
++		/* notify device of new descriptors */
++		writel(DESC_NOTIFY, doorbell);
++	}
++
++     The dma_rmb() allows us guarantee the device has released ownership
++     before we read the data from the descriptor, and he dma_wmb() allows
++     us to guarantee the data is written to the descriptor before the device
++     can see it now has ownership.  The wmb() is needed to guarantee that the
++     cache coherent memory writes have completed before attempting a write to
++     the cache incoherent MMIO region.
++
++     See Documentation/DMA-API.txt for more information on consistent memory.
++
+ MMIO WRITE BARRIER
+ ------------------
+ 
+diff --git a/arch/arm64/include/asm/barrier.h b/arch/arm64/include/asm/barrier.h
+index 6389d60..a5abb00 100644
+--- a/arch/arm64/include/asm/barrier.h
++++ b/arch/arm64/include/asm/barrier.h
+@@ -32,6 +32,9 @@
+ #define rmb()		dsb(ld)
+ #define wmb()		dsb(st)
+ 
++#define dma_rmb()	dmb(oshld)
++#define dma_wmb()	dmb(oshst)
++
+ #ifndef CONFIG_SMP
+ #define smp_mb()	barrier()
+ #define smp_rmb()	barrier()
+diff --git a/arch/powerpc/include/asm/barrier.h b/arch/powerpc/include/asm/barrier.h
+index bab79a1..8973d8d 100644
+--- a/arch/powerpc/include/asm/barrier.h
++++ b/arch/powerpc/include/asm/barrier.h
+@@ -37,8 +37,6 @@
+ 
+ #define set_mb(var, value)	do { var = value; mb(); } while (0)
+ 
+-#ifdef CONFIG_SMP
+-
+ #ifdef __SUBARCH_HAS_LWSYNC
+ #    define SMPWMB      LWSYNC
+ #else
+@@ -46,13 +44,18 @@
+ #endif
+ 
+ #define __lwsync()	__asm__ __volatile__ (stringify_in_c(LWSYNC) : : :"memory")
++#define dma_rmb()	__lwsync()
++#define dma_wmb()	__asm__ __volatile__ (stringify_in_c(SMPWMB) : : :"memory")
++
++#ifdef CONFIG_SMP
++#define smp_lwsync()	__lwsync()
+ 
+ #define smp_mb()	mb()
+ #define smp_rmb()	__lwsync()
+ #define smp_wmb()	__asm__ __volatile__ (stringify_in_c(SMPWMB) : : :"memory")
+ #define smp_read_barrier_depends()	read_barrier_depends()
+ #else
+-#define __lwsync()	barrier()
++#define smp_lwsync()	barrier()
+ 
+ #define smp_mb()	barrier()
+ #define smp_rmb()	barrier()
+@@ -72,7 +75,7 @@
+ #define smp_store_release(p, v)						\
+ do {									\
+ 	compiletime_assert_atomic_type(*p);				\
+-	__lwsync();							\
++	smp_lwsync();							\
+ 	ACCESS_ONCE(*p) = (v);						\
+ } while (0)
+ 
+@@ -80,7 +83,7 @@ do {									\
+ ({									\
+ 	typeof(*p) ___p1 = ACCESS_ONCE(*p);				\
+ 	compiletime_assert_atomic_type(*p);				\
+-	__lwsync();							\
++	smp_lwsync();							\
+ 	___p1;								\
+ })
+ 
+-- 
+2.1.0.27.g96db324
+

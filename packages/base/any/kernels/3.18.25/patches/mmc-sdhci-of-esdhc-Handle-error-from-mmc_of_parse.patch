@@ -1,0 +1,42 @@
+From bbad6c96894c8d82b38f41421e4f11898614fec8 Mon Sep 17 00:00:00 2001
+From: Ulf Hansson <ulf.hansson@linaro.org>
+Date: Thu, 18 Dec 2014 10:41:41 +0100
+Subject: [PATCH 68/98] mmc: sdhci-of-esdhc: Handle error from mmc_of_parse()
+
+Since mmc_of_parse() may fail, let's deal with it and thus do proper
+error handling.
+
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+---
+ drivers/mmc/host/sdhci-of-esdhc.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
+index 4a654d4..17fe02e 100644
+--- a/drivers/mmc/host/sdhci-of-esdhc.c
++++ b/drivers/mmc/host/sdhci-of-esdhc.c
+@@ -370,13 +370,19 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	/* call to generic mmc_of_parse to support additional capabilities */
+-	mmc_of_parse(host->mmc);
++	ret = mmc_of_parse(host->mmc);
++	if (ret)
++		goto err;
++
+ 	mmc_of_parse_voltage(np, &host->ocr_mask);
+ 
+ 	ret = sdhci_add_host(host);
+ 	if (ret)
+-		sdhci_pltfm_free(pdev);
++		goto err;
+ 
++	return 0;
++ err:
++	sdhci_pltfm_free(pdev);
+ 	return ret;
+ }
+ 
+-- 
+2.1.0.27.g96db324
+

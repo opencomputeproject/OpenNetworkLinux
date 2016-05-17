@@ -1,0 +1,139 @@
+From e85cfd466328404549e3665c5b8ed0d83eedf260 Mon Sep 17 00:00:00 2001
+From: Yijing Wang <wangyijing@huawei.com>
+Date: Fri, 17 Jul 2015 17:16:32 +0800
+Subject: [PATCH 88/98] PCI: Hold pci_slot_mutex while searching bus->slots
+ list
+
+upstream 017ffe64e8b8c8db0f50433a71da41c6a4e12710 commit
+
+Previously, pci_setup_device() and similar functions searched the
+pci_bus->slots list without any locking.  It was possible for another
+thread to update the list while we searched it.
+
+Add pci_dev_assign_slot() to search the list while holding pci_slot_mutex.
+
+[bhelgaas: changelog, fold in CONFIG_SYSFS fix]
+Tested-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Yijing Wang <wangyijing@huawei.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+---
+ arch/powerpc/kernel/pci_of_scan.c |  6 +-----
+ arch/sparc/kernel/pci.c           |  6 +-----
+ drivers/pci/probe.c               |  6 +-----
+ drivers/pci/slot.c                | 11 +++++++++++
+ include/linux/pci.h               |  5 +++++
+ 5 files changed, 19 insertions(+), 15 deletions(-)
+
+diff --git a/arch/powerpc/kernel/pci_of_scan.c b/arch/powerpc/kernel/pci_of_scan.c
+index e6245e9..84b1db6 100644
+--- a/arch/powerpc/kernel/pci_of_scan.c
++++ b/arch/powerpc/kernel/pci_of_scan.c
+@@ -126,7 +126,6 @@ struct pci_dev *of_create_pci_dev(struct device_node *node,
+ {
+ 	struct pci_dev *dev;
+ 	const char *type;
+-	struct pci_slot *slot;
+ 
+ 	dev = pci_alloc_dev(bus);
+ 	if (!dev)
+@@ -145,10 +144,7 @@ struct pci_dev *of_create_pci_dev(struct device_node *node,
+ 	dev->needs_freset = 0;		/* pcie fundamental reset required */
+ 	set_pcie_port_type(dev);
+ 
+-	list_for_each_entry(slot, &dev->bus->slots, list)
+-		if (PCI_SLOT(dev->devfn) == slot->number)
+-			dev->slot = slot;
+-
++	pci_dev_assign_slot(dev);
+ 	dev->vendor = get_int_prop(node, "vendor-id", 0xffff);
+ 	dev->device = get_int_prop(node, "device-id", 0xffff);
+ 	dev->subsystem_vendor = get_int_prop(node, "subsystem-vendor-id", 0);
+diff --git a/arch/sparc/kernel/pci.c b/arch/sparc/kernel/pci.c
+index b36365f..bae1656 100644
+--- a/arch/sparc/kernel/pci.c
++++ b/arch/sparc/kernel/pci.c
+@@ -249,7 +249,6 @@ static struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
+ 					 struct pci_bus *bus, int devfn)
+ {
+ 	struct dev_archdata *sd;
+-	struct pci_slot *slot;
+ 	struct platform_device *op;
+ 	struct pci_dev *dev;
+ 	const char *type;
+@@ -290,10 +289,7 @@ static struct pci_dev *of_create_pci_dev(struct pci_pbm_info *pbm,
+ 	dev->multifunction = 0;		/* maybe a lie? */
+ 	set_pcie_port_type(dev);
+ 
+-	list_for_each_entry(slot, &dev->bus->slots, list)
+-		if (PCI_SLOT(dev->devfn) == slot->number)
+-			dev->slot = slot;
+-
++	pci_dev_assign_slot(dev);
+ 	dev->vendor = of_getintprop_default(node, "vendor-id", 0xffff);
+ 	dev->device = of_getintprop_default(node, "device-id", 0xffff);
+ 	dev->subsystem_vendor =
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index 3010ffc90..d400437 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -1111,7 +1111,6 @@ int pci_setup_device(struct pci_dev *dev)
+ {
+ 	u32 class;
+ 	u8 hdr_type;
+-	struct pci_slot *slot;
+ 	int pos = 0;
+ 	struct pci_bus_region region;
+ 	struct resource *res;
+@@ -1127,10 +1126,7 @@ int pci_setup_device(struct pci_dev *dev)
+ 	dev->error_state = pci_channel_io_normal;
+ 	set_pcie_port_type(dev);
+ 
+-	list_for_each_entry(slot, &dev->bus->slots, list)
+-		if (PCI_SLOT(dev->devfn) == slot->number)
+-			dev->slot = slot;
+-
++	pci_dev_assign_slot(dev);
+ 	/* Assume 32-bit PCI; let 64-bit PCI cards (which are far rarer)
+ 	   set this higher, assuming the system even supports it.  */
+ 	dev->dma_mask = 0xffffffff;
+diff --git a/drivers/pci/slot.c b/drivers/pci/slot.c
+index 4bd3fce..429d34c 100644
+--- a/drivers/pci/slot.c
++++ b/drivers/pci/slot.c
+@@ -194,6 +194,17 @@ static int rename_slot(struct pci_slot *slot, const char *name)
+ 	return result;
+ }
+ 
++void pci_dev_assign_slot(struct pci_dev *dev)
++{
++	struct pci_slot *slot;
++
++	mutex_lock(&pci_slot_mutex);
++	list_for_each_entry(slot, &dev->bus->slots, list)
++		if (PCI_SLOT(dev->devfn) == slot->number)
++			dev->slot = slot;
++	mutex_unlock(&pci_slot_mutex);
++}
++
+ static struct pci_slot *get_slot(struct pci_bus *parent, int slot_nr)
+ {
+ 	struct pci_slot *slot;
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 98e8cf6..2caa4ea 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -794,6 +794,11 @@ struct pci_slot *pci_create_slot(struct pci_bus *parent, int slot_nr,
+ 				 const char *name,
+ 				 struct hotplug_slot *hotplug);
+ void pci_destroy_slot(struct pci_slot *slot);
++#ifdef CONFIG_SYSFS
++void pci_dev_assign_slot(struct pci_dev *dev);
++#else
++static inline void pci_dev_assign_slot(struct pci_dev *dev) { }
++#endif
+ int pci_scan_slot(struct pci_bus *bus, int devfn);
+ struct pci_dev *pci_scan_single_device(struct pci_bus *bus, int devfn);
+ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus);
+-- 
+2.1.0.27.g96db324
+

@@ -1,0 +1,73 @@
+From d446daffb601bc3dbf01b42a3d526072536869e1 Mon Sep 17 00:00:00 2001
+From: Yinghai Lu <yinghai@kernel.org>
+Date: Thu, 15 Jan 2015 16:21:51 -0600
+Subject: [PATCH 95/98] powerpc/PCI: Clip bridge windows to fit in upstream
+ windows
+
+upstream 3ebfe46ac72c0bda0fee3d33dd4cfe88f43cefd9 commit
+
+Every PCI-PCI bridge window should fit inside an upstream bridge window
+because orphaned address space is unreachable from the primary side of the
+upstream bridge.  If we inherit invalid bridge windows that overlap an
+upstream window from firmware, clip them to fit and update the bridge
+accordingly.
+
+[bhelgaas: changelog]
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=85491
+Reported-by: Marek Kordik <kordikmarek@gmail.com>
+Fixes: 5b28541552ef ("PCI: Restrict 64-bit prefetchable bridge windows to 64-bit resources")
+Signed-off-by: Yinghai Lu <yinghai@kernel.org>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+CC: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+CC: Paul Mackerras <paulus@samba.org>
+CC: Michael Ellerman <mpe@ellerman.id.au>
+CC: Gavin Shan <gwshan@linux.vnet.ibm.com>
+CC: Anton Blanchard <anton@samba.org>
+CC: Sebastian Ott <sebott@linux.vnet.ibm.com>
+CC: Wei Yang <weiyang@linux.vnet.ibm.com>
+CC: Andrew Murray <amurray@embedded-bits.co.uk>
+CC: linuxppc-dev@lists.ozlabs.org
+---
+ arch/powerpc/kernel/pci-common.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/kernel/pci-common.c b/arch/powerpc/kernel/pci-common.c
+index bc2dab5..833b3b7 100644
+--- a/arch/powerpc/kernel/pci-common.c
++++ b/arch/powerpc/kernel/pci-common.c
+@@ -1185,6 +1185,8 @@ static void pcibios_allocate_bus_resources(struct pci_bus *bus)
+ 			 pr, (pr && pr->name) ? pr->name : "nil");
+ 
+ 		if (pr && !(pr->flags & IORESOURCE_UNSET)) {
++			struct pci_dev *dev = bus->self;
++
+ 			if (request_resource(pr, res) == 0)
+ 				continue;
+ 			/*
+@@ -1194,6 +1196,11 @@ static void pcibios_allocate_bus_resources(struct pci_bus *bus)
+ 			 */
+ 			if (reparent_resources(pr, res) == 0)
+ 				continue;
++
++			if (dev && i < PCI_BRIDGE_RESOURCE_NUM &&
++			    pci_claim_bridge_resource(dev,
++						i + PCI_BRIDGE_RESOURCES) == 0)
++				continue;
+ 		}
+ 		pr_warning("PCI: Cannot allocate resource region "
+ 			   "%d of PCI bridge %d, will remap\n", i, bus->number);
+@@ -1402,7 +1409,10 @@ void pcibios_claim_one_bus(struct pci_bus *bus)
+ 				 (unsigned long long)r->end,
+ 				 (unsigned int)r->flags);
+ 
+-			pci_claim_resource(dev, i);
++			if (pci_claim_resource(dev, i) == 0)
++				continue;
++
++			pci_claim_bridge_resource(dev, i);
+ 		}
+ 	}
+ 
+-- 
+2.1.0.27.g96db324
+

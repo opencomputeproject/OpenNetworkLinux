@@ -1,0 +1,34 @@
+From 972bd3b97f19c59e0de83c2f45385493cca236d6 Mon Sep 17 00:00:00 2001
+From: Igal Liberman <Igal.Liberman@freescale.com>
+Date: Thu, 30 Oct 2014 11:15:47 +0200
+Subject: [PATCH 40/98] powerpc/fsl: Added rcw registers to global utility
+ registers
+
+The RCW registers are required for the future clock binding implementation.
+
+Signed-off-by: Igal Liberman <Igal.Liberman@freescale.com>
+Change-Id: Ic36dd8bc2959aa7f97fb6fd7bbb8420822fef0a9
+Signed-off-by: Scott Wood <scottwood@freescale.com>
+---
+ arch/powerpc/include/asm/fsl_guts.h | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/arch/powerpc/include/asm/fsl_guts.h b/arch/powerpc/include/asm/fsl_guts.h
+index 77ced0b..43b6bb1 100644
+--- a/arch/powerpc/include/asm/fsl_guts.h
++++ b/arch/powerpc/include/asm/fsl_guts.h
+@@ -68,7 +68,10 @@ struct ccsr_guts {
+ 	u8	res0b4[0xc0 - 0xb4];
+ 	__be32  iovselsr;	/* 0x.00c0 - I/O voltage select status register
+ 					     Called 'elbcvselcr' on 86xx SOCs */
+-	u8	res0c4[0x224 - 0xc4];
++	u8	res0c4[0x100 - 0xc4];
++	__be32	rcwsr[16];	/* 0x.0100 - Reset Control Word Status registers
++					     There are 16 registers */
++	u8	res140[0x224 - 0x140];
+ 	__be32  iodelay1;	/* 0x.0224 - IO delay control register 1 */
+ 	__be32  iodelay2;	/* 0x.0228 - IO delay control register 2 */
+ 	u8	res22c[0x604 - 0x22c];
+-- 
+2.1.0.27.g96db324
+

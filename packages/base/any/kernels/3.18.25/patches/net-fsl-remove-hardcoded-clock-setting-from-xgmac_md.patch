@@ -1,0 +1,51 @@
+From ca8f38c94589f61ce056e0b39d922e3c86afbd50 Mon Sep 17 00:00:00 2001
+From: Shaohui Xie <Shaohui.Xie@freescale.com>
+Date: Tue, 30 Dec 2014 16:28:21 +0800
+Subject: [PATCH 44/98] net/fsl: remove hardcoded clock setting from xgmac_mdio
+
+There is no need to set the clock speed in read/write which will be performed
+unnecessarily for each mdio access. Init it during probe is enough.
+
+Also, the hardcoded clock value is not a proper way for all SoCs.
+
+Signed-off-by: Shaohui Xie <Shaohui.Xie@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/xgmac_mdio.c | 14 --------------
+ 1 file changed, 14 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/xgmac_mdio.c b/drivers/net/ethernet/freescale/xgmac_mdio.c
+index 9de5268..a352445 100644
+--- a/drivers/net/ethernet/freescale/xgmac_mdio.c
++++ b/drivers/net/ethernet/freescale/xgmac_mdio.c
+@@ -94,13 +94,6 @@ static int xgmac_mdio_write(struct mii_bus *bus, int phy_id, int regnum, u16 val
+ 	uint16_t dev_addr = regnum >> 16;
+ 	int ret;
+ 
+-	/* Setup the MII Mgmt clock speed */
+-	out_be32(&regs->mdio_stat, MDIO_STAT_CLKDIV(100));
+-
+-	ret = xgmac_wait_until_free(&bus->dev, regs);
+-	if (ret)
+-		return ret;
+-
+ 	/* Set the port and dev addr */
+ 	out_be32(&regs->mdio_ctl,
+ 		 MDIO_CTL_PORT_ADDR(phy_id) | MDIO_CTL_DEV_ADDR(dev_addr));
+@@ -135,13 +128,6 @@ static int xgmac_mdio_read(struct mii_bus *bus, int phy_id, int regnum)
+ 	uint16_t value;
+ 	int ret;
+ 
+-	/* Setup the MII Mgmt clock speed */
+-	out_be32(&regs->mdio_stat, MDIO_STAT_CLKDIV(100));
+-
+-	ret = xgmac_wait_until_free(&bus->dev, regs);
+-	if (ret)
+-		return ret;
+-
+ 	/* Set the Port and Device Addrs */
+ 	mdio_ctl = MDIO_CTL_PORT_ADDR(phy_id) | MDIO_CTL_DEV_ADDR(dev_addr);
+ 	out_be32(&regs->mdio_ctl, mdio_ctl);
+-- 
+2.1.0.27.g96db324
+

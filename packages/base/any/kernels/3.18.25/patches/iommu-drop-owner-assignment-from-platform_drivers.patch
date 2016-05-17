@@ -1,0 +1,106 @@
+From 4c596be48640ae29f7fd2d46bbc6afe56146a41c Mon Sep 17 00:00:00 2001
+From: Wolfram Sang <wsa@the-dreams.de>
+Date: Mon, 20 Oct 2014 16:20:42 +0200
+Subject: [PATCH 34/98] iommu: drop owner assignment from platform_drivers
+
+A platform_driver does not need to set an owner, it will be populated by the
+driver core.
+
+Signed-off-by: Wolfram Sang <wsa@the-dreams.de>
+---
+ drivers/iommu/arm-smmu.c       | 1 -
+ drivers/iommu/exynos-iommu.c   | 1 -
+ drivers/iommu/fsl_pamu.c       | 1 -
+ drivers/iommu/ipmmu-vmsa.c     | 1 -
+ drivers/iommu/shmobile-ipmmu.c | 1 -
+ drivers/iommu/tegra-gart.c     | 1 -
+ drivers/iommu/tegra-smmu.c     | 1 -
+ 7 files changed, 7 deletions(-)
+
+diff --git a/drivers/iommu/arm-smmu.c b/drivers/iommu/arm-smmu.c
+index 60558f7..4809514 100644
+--- a/drivers/iommu/arm-smmu.c
++++ b/drivers/iommu/arm-smmu.c
+@@ -2062,7 +2062,6 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
+ 
+ static struct platform_driver arm_smmu_driver = {
+ 	.driver	= {
+-		.owner		= THIS_MODULE,
+ 		.name		= "arm-smmu",
+ 		.of_match_table	= of_match_ptr(arm_smmu_of_match),
+ 	},
+diff --git a/drivers/iommu/exynos-iommu.c b/drivers/iommu/exynos-iommu.c
+index 7423318..e940f50 100644
+--- a/drivers/iommu/exynos-iommu.c
++++ b/drivers/iommu/exynos-iommu.c
+@@ -684,7 +684,6 @@ static const struct of_device_id sysmmu_of_match[] __initconst = {
+ static struct platform_driver exynos_sysmmu_driver __refdata = {
+ 	.probe	= exynos_sysmmu_probe,
+ 	.driver	= {
+-		.owner		= THIS_MODULE,
+ 		.name		= "exynos-sysmmu",
+ 		.of_match_table	= sysmmu_of_match,
+ 	}
+diff --git a/drivers/iommu/fsl_pamu.c b/drivers/iommu/fsl_pamu.c
+index 2b6ce93..80ac68d 100644
+--- a/drivers/iommu/fsl_pamu.c
++++ b/drivers/iommu/fsl_pamu.c
+@@ -1227,7 +1227,6 @@ static const struct of_device_id fsl_of_pamu_ids[] = {
+ static struct platform_driver fsl_of_pamu_driver = {
+ 	.driver = {
+ 		.name = "fsl-of-pamu",
+-		.owner = THIS_MODULE,
+ 	},
+ 	.probe = fsl_pamu_probe,
+ };
+diff --git a/drivers/iommu/ipmmu-vmsa.c b/drivers/iommu/ipmmu-vmsa.c
+index 7dab5cb..33c9d53 100644
+--- a/drivers/iommu/ipmmu-vmsa.c
++++ b/drivers/iommu/ipmmu-vmsa.c
+@@ -1221,7 +1221,6 @@ static int ipmmu_remove(struct platform_device *pdev)
+ 
+ static struct platform_driver ipmmu_driver = {
+ 	.driver = {
+-		.owner = THIS_MODULE,
+ 		.name = "ipmmu-vmsa",
+ 	},
+ 	.probe = ipmmu_probe,
+diff --git a/drivers/iommu/shmobile-ipmmu.c b/drivers/iommu/shmobile-ipmmu.c
+index bd97ade..951651a 100644
+--- a/drivers/iommu/shmobile-ipmmu.c
++++ b/drivers/iommu/shmobile-ipmmu.c
+@@ -118,7 +118,6 @@ static int ipmmu_probe(struct platform_device *pdev)
+ static struct platform_driver ipmmu_driver = {
+ 	.probe = ipmmu_probe,
+ 	.driver = {
+-		.owner = THIS_MODULE,
+ 		.name = "ipmmu",
+ 	},
+ };
+diff --git a/drivers/iommu/tegra-gart.c b/drivers/iommu/tegra-gart.c
+index a6d76ab..f722a0c 100644
+--- a/drivers/iommu/tegra-gart.c
++++ b/drivers/iommu/tegra-gart.c
+@@ -425,7 +425,6 @@ static struct platform_driver tegra_gart_driver = {
+ 	.probe		= tegra_gart_probe,
+ 	.remove		= tegra_gart_remove,
+ 	.driver = {
+-		.owner	= THIS_MODULE,
+ 		.name	= "tegra-gart",
+ 		.pm	= &tegra_gart_pm_ops,
+ 		.of_match_table = tegra_gart_of_match,
+diff --git a/drivers/iommu/tegra-smmu.c b/drivers/iommu/tegra-smmu.c
+index 3afdf43..6157946 100644
+--- a/drivers/iommu/tegra-smmu.c
++++ b/drivers/iommu/tegra-smmu.c
+@@ -1269,7 +1269,6 @@ static struct platform_driver tegra_smmu_driver = {
+ 	.probe		= tegra_smmu_probe,
+ 	.remove		= tegra_smmu_remove,
+ 	.driver = {
+-		.owner	= THIS_MODULE,
+ 		.name	= "tegra-smmu",
+ 		.pm	= &tegra_smmu_pm_ops,
+ 		.of_match_table = tegra_smmu_of_match,
+-- 
+2.1.0.27.g96db324
+

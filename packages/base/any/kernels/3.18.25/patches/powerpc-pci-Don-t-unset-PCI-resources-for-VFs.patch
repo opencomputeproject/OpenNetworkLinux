@@ -1,0 +1,61 @@
+From 93635454821fe2bb5ab2f1586b34aaf3ca1d6d1f Mon Sep 17 00:00:00 2001
+From: Wei Yang <weiyang@linux.vnet.ibm.com>
+Date: Wed, 25 Mar 2015 16:23:53 +0800
+Subject: [PATCH 96/98] powerpc/pci: Don't unset PCI resources for VFs
+
+upstream c3b80fb0f22f464f35a970d65e76d2fe904d4923 commit
+
+Flag PCI_REASSIGN_ALL_RSRC is used to ignore resources information setup by
+firmware, so that kernel would re-assign all resources of pci devices.
+
+On powerpc arch, this happens in a header fixup function
+pcibios_fixup_resources(), which will clean up the resources if this flag
+is set. This works fine for PFs, since after clean up, kernel will
+re-assign the resources in pcibios_resource_survey().
+
+Below is a simple call flow on how it works:
+
+    pcibios_init
+      pcibios_scan_phb
+        pci_scan_child_bus
+          ...
+            pci_device_add
+              pci_fixup_device(pci_fixup_header)
+                pcibios_fixup_resources                     # header fixup
+                  for (i = 0; i < DEVICE_COUNT_RESOURCE; i++)
+                    dev->resource[i].start = 0
+      pcibios_resource_survey                               # re-assign
+        pcibios_allocate_resources
+
+However, the VF resources won't be re-assigned, since the VF resources are
+completely determined by the PF resources, and the PF resources have
+already been reassigned. This means we need to leave VF's resources
+un-cleared in pcibios_fixup_resources().
+
+In this patch, we skip the resource unset process in
+pcibios_fixup_resources(), if the pci_dev is a VF.
+
+Signed-off-by: Wei Yang <weiyang@linux.vnet.ibm.com>
+Signed-off-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+---
+ arch/powerpc/kernel/pci-common.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/powerpc/kernel/pci-common.c b/arch/powerpc/kernel/pci-common.c
+index 833b3b7..176b341 100644
+--- a/arch/powerpc/kernel/pci-common.c
++++ b/arch/powerpc/kernel/pci-common.c
+@@ -789,6 +789,10 @@ static void pcibios_fixup_resources(struct pci_dev *dev)
+ 		       pci_name(dev));
+ 		return;
+ 	}
++
++	if (dev->is_virtfn)
++		return;
++
+ 	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
+ 		struct resource *res = dev->resource + i;
+ 		struct pci_bus_region reg;
+-- 
+2.1.0.27.g96db324
+

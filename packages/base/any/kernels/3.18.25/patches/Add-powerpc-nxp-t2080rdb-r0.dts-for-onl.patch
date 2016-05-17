@@ -1,0 +1,204 @@
+From 656522849dd7903bd1cc9755f8e5219ae0449e24 Mon Sep 17 00:00:00 2001
+From: Shengzhou Liu <Shengzhou.Liu@nxp.com>
+Date: Mon, 9 May 2016 10:27:55 +0800
+Subject: [PATCH] Add powerpc-nxp-t2080rdb-r0.dts for onl
+
+Signed-off-by: Shengzhou Liu <Shengzhou.Liu@nxp.com>
+---
+ arch/powerpc/boot/dts/powerpc-nxp-t2080rdb-r0.dts | 122 ++++++++++++++++++++++
+ arch/powerpc/boot/dts/t208xrdb.dtsi               |  43 ++++++++
+ 2 files changed, 165 insertions(+)
+ create mode 100644 arch/powerpc/boot/dts/powerpc-nxp-t2080rdb-r0.dts
+
+diff --git a/arch/powerpc/boot/dts/powerpc-nxp-t2080rdb-r0.dts b/arch/powerpc/boot/dts/powerpc-nxp-t2080rdb-r0.dts
+new file mode 100644
+index 0000000..0f6eccd
+--- /dev/null
++++ b/arch/powerpc/boot/dts/powerpc-nxp-t2080rdb-r0.dts
+@@ -0,0 +1,122 @@
++/*
++ * T2080RDB Board Device Tree Source
++ *
++ * Copyright 2014 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor "AS IS" AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++/include/ "fsl/t208xsi-pre.dtsi"
++/include/ "t208xrdb.dtsi"
++
++/ {
++	model = "powerpc-nxp-t2080rdb-r0";
++	compatible = "fsl,T2080RDB";
++	#address-cells = <2>;
++	#size-cells = <2>;
++	interrupt-parent = <&mpic>;
++
++	rio: rapidio@ffe0c0000 {
++		reg = <0xf 0xfe0c0000 0 0x11000>;
++
++		port1 {
++			ranges = <0 0 0xc 0x20000000 0 0x10000000>;
++		};
++		port2 {
++			ranges = <0 0 0xc 0x30000000 0 0x10000000>;
++		};
++	};
++};
++
++&soc {
++	fman@400000 {
++		ethernet@e0000 {
++			phy-handle = <&xg_aq1202_phy3>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@e2000 {
++			phy-handle = <&xg_aq1202_phy4>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@e4000 {
++			phy-handle = <&rgmii_phy1>;
++			phy-connection-type = "rgmii";
++		};
++
++		ethernet@e6000 {
++			phy-handle = <&rgmii_phy2>;
++			phy-connection-type = "rgmii";
++		};
++
++		ethernet@f0000 {
++			phy-handle = <&xg_cs4315_phy1>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@f2000 {
++			phy-handle = <&xg_cs4315_phy2>;
++			phy-connection-type = "xgmii";
++		};
++
++		mdio@fc000 {
++			rgmii_phy1: ethernet-phy@1 {
++				reg = <0x1>;
++			};
++			rgmii_phy2: ethernet-phy@2 {
++				reg = <0x2>;
++			};
++		};
++
++		mdio@fd000 {
++			xg_cs4315_phy1: ethernet-phy@c {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0xc>;
++			};
++
++			xg_cs4315_phy2: ethernet-phy@d {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0xd>;
++			};
++
++			xg_aq1202_phy3: ethernet-phy@0 {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0x0>;
++			};
++
++			xg_aq1202_phy4: ethernet-phy@1 {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0x1>;
++			};
++		};
++	};
++};
++
++/include/ "fsl/t2080si-post.dtsi"
+diff --git a/arch/powerpc/boot/dts/t208xrdb.dtsi b/arch/powerpc/boot/dts/t208xrdb.dtsi
+index 08d94c0..e01bd04 100644
+--- a/arch/powerpc/boot/dts/t208xrdb.dtsi
++++ b/arch/powerpc/boot/dts/t208xrdb.dtsi
+@@ -72,6 +72,44 @@
+ 
+ 			bank-width = <2>;
+ 			device-width = <1>;
++
++			partition@0 {
++				/* SoC RCW, this location must not be altered  */
++				reg = <0x0 0x00020000>;
++				label = "rcw (RO)";
++				read-only;
++			};
++
++			partition@1 {
++				/* maximum 12.87MB ONIE image */
++				reg = <0x00020000 0x00ce0000>;
++				label = "onie";
++			};
++
++			partition@2 {
++				/* Available for apps */
++				reg = <0x00d00000 0x03200000>;
++				label = "open";
++			};
++
++			partition@3 {
++				/* FMan ucode, 128KB, 1 sector */
++				reg = <0x07f00000 0x00020000>;
++				label = "fman-ucode";
++			};
++
++			partition@4 {
++				/* U-Boot environment varialbes, 128KB, 1 sector */
++				reg = <0x07f20000 0x00020000>;
++				label = "uboot-env";
++				env_size = <0x2000>;
++			};
++
++			partition@5 {
++				/* 768KB u-boot */
++				reg = <0x07f40000 0x000c0000>;
++				label = "uboot";
++			};
+ 		};
+ 
+ 		nand@1,0 {
+@@ -79,6 +117,11 @@
+ 			#size-cells = <1>;
+ 			compatible = "fsl,ifc-nand";
+ 			reg = <0x2 0x0 0x10000>;
++
++			partition@0 {
++				reg = <0x0 0x02000000>;
++				label = "open2";
++			};
+ 		};
+ 
+ 		boardctrl: board-control@2,0 {
+-- 
+2.1.0.27.g96db324
+
