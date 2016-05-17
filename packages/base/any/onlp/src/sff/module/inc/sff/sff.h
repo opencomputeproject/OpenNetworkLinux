@@ -1,21 +1,21 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
+ *
  * </bsn.cl>
  ************************************************************
  *
@@ -103,6 +103,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_40G_BASE_CR4,
     SFF_MODULE_TYPE_40G_BASE_SR4,
     SFF_MODULE_TYPE_40G_BASE_LR4,
+    SFF_MODULE_TYPE_40G_BASE_LM4,
     SFF_MODULE_TYPE_40G_BASE_ACTIVE,
     SFF_MODULE_TYPE_40G_BASE_CR,
     SFF_MODULE_TYPE_40G_BASE_SR2,
@@ -137,6 +138,7 @@ typedef enum sff_module_type_e {
     "40G_BASE_CR4", \
     "40G_BASE_SR4", \
     "40G_BASE_LR4", \
+    "40G_BASE_LM4", \
     "40G_BASE_ACTIVE", \
     "40G_BASE_CR", \
     "40G_BASE_SR2", \
@@ -228,7 +230,7 @@ sff_module_type_t sff_module_type_get(const uint8_t* idprom);
  * @brief Determine the SFF Media type (from the idprom data)./
  * @param idprom The SFF idprom.
  */
-sff_media_type_t sff_media_type_get(const uint8_t* idprom);
+sff_media_type_t sff_media_type_get(sff_module_type_t mt);
 
 
 /**
@@ -238,45 +240,35 @@ sff_media_type_t sff_media_type_get(const uint8_t* idprom);
  * @returns 0 on successful parse.
  * @returns < 0 on error.
  */
-int sff_module_caps_get(const uint8_t* idprom, uint32_t* caps);
+int sff_module_caps_get(sff_module_type_t mt, uint32_t* caps);
 
 
-/**
- * Display a summary of the given SFF module.
- * @param idprom The idprom data
- * @param pvs The output pvs.
- */
-
-void sff_module_show(const uint8_t* idprom, aim_pvs_t* pvs);
-
-
-
-/**
- * SFF Module Information Structure
- */
 typedef struct sff_info_s {
-    /** Raw eeprom data */
-    uint8_t eeprom[256];
 
     /** Vendor Name */
     char vendor[17];
+
     /** Model Number */
     char model[17];
+
     /** Serial Number */
     char serial[17];
 
     /** SFP Type */
     sff_sfp_type_t sfp_type;
+
     /** SFP Type Name */
     const char* sfp_type_name;
 
     /** Module Type */
     sff_module_type_t module_type;
+
     /** Module Type Name */
     const char* module_type_name;
 
     /** Media Type */
     sff_media_type_t media_type;
+
     /** Media Type Name */
     const char* media_type_name;
 
@@ -286,15 +278,26 @@ typedef struct sff_info_s {
     /** Cable length, if available */
     int length;
     char length_desc[16];
+} sff_info_t;
 
-    /** computed checksums for idprom contents */
+/**
+ * SFF Module Information Structure
+ */
+typedef struct sff_eeprom_s {
+    /** Raw eeprom data */
+    uint8_t eeprom[256];
+
+    /** computed checksums for eeprom contents */
     uint8_t cc_base;
     uint8_t cc_ext;
 
-    /** whether this SFP is supported */
-    int supported;
+    /** Whether this EEPROM was successfully parsed and identified. */
+    int identified;
 
-} sff_info_t;
+    /** Parsed SFF Information */
+    sff_info_t info;
+
+} sff_eeprom_t;
 
 
 /**
@@ -305,14 +308,28 @@ typedef struct sff_info_s {
  * @note if eeprom is NULL it is assumed the rv->eeprom buffer
  * has already been initialized.
  */
-int sff_info_init(sff_info_t* rv, uint8_t* eeprom);
+int sff_eeprom_parse(sff_eeprom_t* rv, uint8_t* eeprom);
 
 /**
  * @brief Initialize an SFF module information structure from a file.
  * @param rv [out] Receives thh data.
  * @param fname The filename.
  */
-int sff_info_init_file(sff_info_t* rv, const char* fname);
+int sff_eeprom_parse_file(sff_eeprom_t* rv, const char* fname);
+
+/**
+ * @brief Clear an sff_eeprom_t structure.
+ * @param eeprom The eeprom structure.
+ */
+void sff_eeprom_invalidate(sff_eeprom_t *info);
+
+/**
+ * @brief Determine if this is a valid SFP
+ *     (whether or not we can parse it)
+ * @param info The info structure.
+ * @param verbose Whether to report errors on invalid contents.
+ */
+int sff_eeprom_validate(sff_eeprom_t *info, int verbose);
 
 /**
  * @brief Show an sff info structure.
@@ -322,18 +339,12 @@ int sff_info_init_file(sff_info_t* rv, const char* fname);
 void sff_info_show(sff_info_t* info, aim_pvs_t* pvs);
 
 /**
- * @brief Invalidate an idprom data structure,
- *     such that any resulting sff_info_init will fail.
- * @param eeprom  The idprom buffer (256 bytes).
+ * @brief Populate an SFF info structure from a module type.
  */
-void sff_info_invalidate(sff_info_t *info);
+int sff_info_from_module_type(sff_info_t* info,
+                               sff_sfp_type_t st,
+                               sff_module_type_t mt);
 
-/**
- * @brief Determine if this is a valid SFP
- *     (whether or not we can parse it)
- * @param info The info structure.
- * @param verbose Whether to report errors on invalid contents.
- */
-int sff_info_valid(sff_info_t *info, int verbose);
+
 
 #endif /* __SFF_SFF_H__ */

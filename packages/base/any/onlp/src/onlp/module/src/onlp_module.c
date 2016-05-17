@@ -27,12 +27,36 @@
 
 #include "onlp_log.h"
 #include <onlplib/shlocks.h>
+#include <onlp/oids.h>
+
+static int
+onlp_aim_ts__onlp_oid(aim_datatype_context_t* dtc, aim_va_list_t* vargs,
+                      const char** rv)
+{
+    onlp_oid_t oid = va_arg(vargs->val, onlp_oid_t);
+    int id = ONLP_OID_ID_GET(oid);
+
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value) \
+            case ONLP_OID_TYPE_##_name:    \
+                *rv = aim_fstrdup("%s:%d", #_name, id); \
+                break;
+#include <onlp/onlp.x>
+        }
+
+    return AIM_DATATYPE_OK;
+}
 
 static int
 datatypes_init__(void)
 {
 #define ONLP_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
 #include <onlp/onlp.x>
+    aim_datatype_register(0, "onlp_oid",
+                          "ONLP OID",
+                          NULL,
+                          onlp_aim_ts__onlp_oid, NULL);
 
 
     /*

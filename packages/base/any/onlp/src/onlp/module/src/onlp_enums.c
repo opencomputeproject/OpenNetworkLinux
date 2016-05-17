@@ -728,6 +728,7 @@ aim_map_si_t onlp_sfp_control_map[] =
     { "RX_LOS", ONLP_SFP_CONTROL_RX_LOS },
     { "TX_FAULT", ONLP_SFP_CONTROL_TX_FAULT },
     { "TX_DISABLE", ONLP_SFP_CONTROL_TX_DISABLE },
+    { "TX_DISABLE_CHANNEL", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "LP_MODE", ONLP_SFP_CONTROL_LP_MODE },
     { "POWER_OVERRIDE", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }
@@ -740,6 +741,7 @@ aim_map_si_t onlp_sfp_control_desc_map[] =
     { "None", ONLP_SFP_CONTROL_RX_LOS },
     { "None", ONLP_SFP_CONTROL_TX_FAULT },
     { "None", ONLP_SFP_CONTROL_TX_DISABLE },
+    { "None", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "None", ONLP_SFP_CONTROL_LP_MODE },
     { "None", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }
