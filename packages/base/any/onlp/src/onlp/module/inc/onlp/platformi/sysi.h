@@ -131,6 +131,11 @@ int onlp_sysi_ioctl(int code, va_list vargs);
 
 
 /**
+ * @brief Platform management initialization.
+ */
+int onlp_sysi_platform_manage_init(void);
+
+/**
  * @brief Perform necessary platform fan management.
  * @note This function should automatically adjust the FAN speeds
  * according to the platform conditions.

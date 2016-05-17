@@ -111,6 +111,7 @@ sfp_control: &sfp_control
 - RX_LOS
 - TX_FAULT
 - TX_DISABLE
+- TX_DISABLE_CHANNEL
 - LP_MODE
 - POWER_OVERRIDE
 
@@ -253,6 +254,7 @@ definitions:
         - RX_LOS
         - TX_FAULT
         - TX_DISABLE
+        - TX_DISABLE_CHANNEL
         - LP_MODE
         - POWER_OVERRIDE
     onlp_sfp_control_flag:

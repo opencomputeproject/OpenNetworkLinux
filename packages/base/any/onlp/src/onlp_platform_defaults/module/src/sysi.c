@@ -65,6 +65,7 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_oids_get(onlp_oid_t* table, int max));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_platform_info_get(onlp_platform_info_t* pi));
 __ONLP_DEFAULTI_VIMPLEMENTATION(onlp_sysi_platform_info_free(onlp_platform_info_t* pi));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_ioctl(int id, va_list vargs));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_platform_manage_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_platform_manage_fans(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sysi_platform_manage_leds(void));
 

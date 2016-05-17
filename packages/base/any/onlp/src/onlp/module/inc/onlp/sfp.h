@@ -39,6 +39,7 @@ typedef enum onlp_sfp_control_e {
     ONLP_SFP_CONTROL_RX_LOS,
     ONLP_SFP_CONTROL_TX_FAULT,
     ONLP_SFP_CONTROL_TX_DISABLE,
+    ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL,
     ONLP_SFP_CONTROL_LP_MODE,
     ONLP_SFP_CONTROL_POWER_OVERRIDE,
     ONLP_SFP_CONTROL_LAST = ONLP_SFP_CONTROL_POWER_OVERRIDE,
@@ -238,6 +239,7 @@ int onlp_sfp_control_flags_get(int port, uint32_t* flags);
     "RX_LOS", \
     "TX_FAULT", \
     "TX_DISABLE", \
+    "TX_DISABLE_CHANNEL", \
     "LP_MODE", \
     "POWER_OVERRIDE", \
 }
