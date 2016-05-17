@@ -358,7 +358,6 @@ class Base:
         return 0
 
 GRUB_TPL = """\
-#serial --port=0x3f8 --speed=115200 --word=8 --parity=no --stop=1
 serial %(serial)s
 terminal_input serial
 terminal_output serial
@@ -369,7 +368,6 @@ menuentry OpenNetworkLinux {
   echo 'Loading Open Network Linux ...'
   insmod gzio
   insmod part_msdos
-  #linux /kernel-3.9.6-x86-64-all nopat console=ttyS0,115200n8 onl_platform=x86-64-kvm-x86-64-r0
   linux /%(kernel)s %(args)s onl_platform=%(platform)s
   initrd /%(initrd)s
 }
