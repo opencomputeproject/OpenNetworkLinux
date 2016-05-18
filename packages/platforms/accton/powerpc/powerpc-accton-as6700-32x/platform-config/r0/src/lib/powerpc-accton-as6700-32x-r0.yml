@@ -20,6 +20,12 @@ powerpc-accton-as6700-32x-r0:
     ##partition: /dev/sda1
     nos_bootcmds: *usb_bootcmds
 
+    environment:
+    - device: /dev/mtd1
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00010000
+
   installer:
   - ONL-BOOT:
       =: 128MiB
@@ -34,3 +40,8 @@ powerpc-accton-as6700-32x-r0:
       =: 100%
       format: ext4
 
+  network:
+    interfaces:
+      ma1:
+        name: ~
+        syspath: fsl,dpaa.16/ethernet.18

@@ -19,6 +19,12 @@ powerpc-accton-as4600-54t-r0:
     ##partition: /dev/sda1
     nos_bootcmds: *usb_bootcmds
 
+    environment:
+    - device: /dev/mtd2
+      env_offset: 0x00000000
+      env_size: 0x00010000
+      sector_size: 0x00010000
+
   installer:
   - ONL-BOOT:
       =: 32MiB
@@ -32,3 +38,9 @@ powerpc-accton-as4600-54t-r0:
   - ONL-DATA:
       =: 100%
       format: ext4
+
+  network:
+    interfaces:
+      ma1:
+        name: ~
+        syspath: soc.0/ff725000.ethernet

@@ -15,7 +15,18 @@ powerpc-accton-as5710-54x-r0b:
       =: powerpc-accton-as5710-54x-r0b.dtb
       <<: *e500mc-kernel-package
 
+    environment:
+    - device: /dev/mtd6
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00020000
+
   loader:
     device: /dev/sda
     nos_bootcmds: *usb_bootcmds
 
+  network:
+    interfaces:
+      ma1:
+        name: ~
+        syspath: fsl,dpaa.16/ethernet.17
