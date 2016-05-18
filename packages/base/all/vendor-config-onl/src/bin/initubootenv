@@ -1,0 +1,3 @@
+#!/usr/bin/python
+from onl.uboot import InitUbootApp
+InitUbootApp.main()
