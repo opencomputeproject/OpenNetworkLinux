@@ -113,6 +113,15 @@ default:
 
     nos_bootcmds: *ide_bootcmds
 
+    # Configure the fw_env.config file,
+    # based on board settings (no defaults here)
+    # XXX NOTE that you will need to define this for each platform!
+    ##environment:
+    ##- device: /dev/mtd3
+    ##  env_offset: 0x00000000
+    ##  env_size: 0x00002000
+    ##  sector_size: 0x00020000
+      
   # Default partitioning scheme
   # boot, config --> 128MiB (ext2)
   # images --> 1GiB
@@ -134,3 +143,19 @@ default:
   - ONL-DATA:
       =: 100%
       format: ext4
+
+  network:
+
+    # remap interface names on boot (loader only)
+    # make sure you have a valid 'ma1' entry in your platform config...
+
+    interfaces:
+
+      # this should work for most systems
+      ma1:
+        name: eth0
+      
+      # for other wierd corner cases
+      ##ma1:
+      ##  name: ~
+      ##  syspath: SOME-PATH
