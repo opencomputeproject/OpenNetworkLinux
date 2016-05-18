@@ -1,8 +1,5 @@
-ip link set dev eth0 name ma1
-
-cp /dev/null /etc/onl/mounts
-echo "block/mmcblk0 mmcblk0p2 flash" > /etc/onl/mounts
-echo "block/mmcblk0 mmcblk0p3 flash2" >> /etc/onl/mounts
-
-echo "# MTD device name       Device offset   Env. size       Flash sector size" > /etc/fw_env.config
-echo "/dev/mtd1               0x00000000      0x00002000         0x00040000"    >> /etc/fw_env.config
+##############################
+#
+# arm-qemu-armv7a-r0
+#
+##############################

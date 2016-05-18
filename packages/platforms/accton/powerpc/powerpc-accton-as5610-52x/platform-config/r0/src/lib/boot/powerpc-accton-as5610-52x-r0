@@ -1,10 +1,3 @@
 ############################################################
 # powerpc-accton-as5610-52x-r0
 ############################################################
-
-echo "soc.0/ff724000.ethernet ma1" >/etc/onl/net
-echo "block/sda sda2 flash" > /etc/onl/mounts
-echo "block/sda sda3 flash2" >> /etc/onl/mounts
-
-echo "# MTD device name       Device offset   Env. size       Flash sector size" > /etc/fw_env.config
-echo "/dev/mtd1               0x00000000      0x00010000         0x00010000" >> /etc/fw_env.config

@@ -1,3 +1,5 @@
-echo "pci0000:00/0000:00:14.0 ma1" >/etc/onl/net
-echo "LABEL=FLASH * flash" > /etc/onl/mounts
-echo "LABEL=FLASH2 * flash2" >> /etc/onl/mounts
+##############################
+#
+# x86-64-quanta-ly6-rangely-r0
+#
+##############################

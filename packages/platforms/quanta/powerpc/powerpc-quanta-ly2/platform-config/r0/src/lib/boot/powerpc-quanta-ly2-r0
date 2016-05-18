@@ -23,10 +23,3 @@
 # powerpc-quanta-ly2-r0
 #
 ############################################################
-
-echo "soc.0/ffe24000.ethernet ma1" >/etc/onl/net
-echo "block/mmcblk0 mmcblk0p2 flash" > /etc/onl/mounts
-echo "block/mmcblk0 mmcblk0p3 flash2" >> /etc/onl/mounts
-
-echo "# MTD device name       Device offset   Env. size       Flash sector size" > /etc/fw_env.config
-echo "/dev/mtd2               0x00000000      0x00002000         0x00020000" >> /etc/fw_env.config
