@@ -6,6 +6,7 @@ common:
 
 packages:
   - name: onl-loader-initrd-files
+    depends: [ onl-vendor-config-onl ]
     version: 1.0.0
     summary: Open Network Linux System Loader Source Files
 
