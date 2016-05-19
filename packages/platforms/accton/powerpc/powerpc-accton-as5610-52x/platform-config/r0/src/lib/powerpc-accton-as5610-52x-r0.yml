@@ -40,8 +40,8 @@ powerpc-accton-as5610-52x-r0:
       =: 100%
       format: ext4
 
-  network:
-    interfaces:
-      ma1:
-        name: ~
-        syspath: soc.0/ff724000.ethernet
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: soc.0/ff724000.ethernet

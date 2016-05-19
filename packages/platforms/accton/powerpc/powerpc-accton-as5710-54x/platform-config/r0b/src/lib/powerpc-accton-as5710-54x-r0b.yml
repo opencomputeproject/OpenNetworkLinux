@@ -25,8 +25,8 @@ powerpc-accton-as5710-54x-r0b:
     device: /dev/sda
     nos_bootcmds: *usb_bootcmds
 
-  network:
-    interfaces:
-      ma1:
-        name: ~
-        syspath: fsl,dpaa.16/ethernet.17
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: fsl,dpaa.16/ethernet.17
