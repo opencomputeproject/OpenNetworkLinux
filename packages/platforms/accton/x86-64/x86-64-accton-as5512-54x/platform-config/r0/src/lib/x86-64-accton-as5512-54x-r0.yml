@@ -24,8 +24,8 @@ x86-64-accton-as5512-54x-r0:
       nopat
       console=ttyS1,115200n8
 
-  network
-    interfaces:
-      ma1:
-        name: ~
-        syspath: pci0000:00/0000:00:14.0
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

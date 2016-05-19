@@ -40,8 +40,8 @@ powerpc-accton-as6700-32x-r0:
       =: 100%
       format: ext4
 
-  network:
-    interfaces:
-      ma1:
-        name: ~
-        syspath: fsl,dpaa.16/ethernet.18
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: fsl,dpaa.16/ethernet.18

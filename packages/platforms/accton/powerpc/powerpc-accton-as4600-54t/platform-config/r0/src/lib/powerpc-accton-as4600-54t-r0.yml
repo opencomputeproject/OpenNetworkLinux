@@ -39,8 +39,8 @@ powerpc-accton-as4600-54t-r0:
       =: 100%
       format: ext4
 
-  network:
-    interfaces:
-      ma1:
-        name: ~
-        syspath: soc.0/ff725000.ethernet
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: soc.0/ff725000.ethernet

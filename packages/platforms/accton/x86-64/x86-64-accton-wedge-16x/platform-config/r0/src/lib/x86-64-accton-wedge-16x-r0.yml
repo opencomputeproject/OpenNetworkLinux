@@ -27,8 +27,8 @@ x86-64-accton-wedge-16x-r0:
       rd_NO_LUKS
       intel_iommu=off
 
-  network
-    interfaces:
-      ma1:
-        name: ~
-        syspath: pci0000:00/0000:00:14.0
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
