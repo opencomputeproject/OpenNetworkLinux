@@ -66,7 +66,7 @@ ONL Manual Install
 
 4) Wait for the install to finish and the system to reboot
 
-5) One the onl login prompt appears login with the username root and the
+5) Once the onl login prompt appears login with the username root and the
 password "onl"
 
 6) Configure the ma1 interface either via dhcp (dhclient ma1) or manually
