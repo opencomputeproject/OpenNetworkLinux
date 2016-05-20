@@ -27,7 +27,7 @@ $(TARGET):
 	$(ONLPM) --sudo $(foreach p,$(PLATFORM_PACKAGES),--extract-dir $(p) $(ROOT))
 	$(MAKE) __vendor_config_data
 	$(ONLPM) --sudo --force --extract-dir onl-vendor-config-onl:all $(ROOT)
-	$(ONL)/tools/sjson.py --kj version $(ONL)/make/version-onl.json --kl platforms $(PLATFORMS) --kv arch $(ARCH) --out manifest.json
+	$(ONL)/tools/sjson.py --kj version $(ONL)/make/versions/version-onl.json --kl platforms $(PLATFORMS) --kv arch $(ARCH) --out manifest.json
 	sudo mkdir -p $(ROOT)/etc/onl/loader && sudo cp manifest.json $(ROOT)/etc/onl/loader
 	sudo $(ONL)/tools/makedevs -d $(ROOT)/etc/rootperms $(abspath $(ROOT))
 	sudo $(ONL)/tools/cpiomod.py --cpio onl-buildroot-initrd-$(ARCH).cpio.gz --add-directory $(ROOT) --out $@
