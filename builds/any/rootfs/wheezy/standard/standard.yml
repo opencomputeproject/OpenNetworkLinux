@@ -91,5 +91,5 @@ Configure:
       password: onl
 
   manifest:
-    version: $ONL/make/version-onl.json
+    version: $ONL/make/versions/version-onl.json
     platforms: $PLATFORM_LIST
