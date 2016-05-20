@@ -6,6 +6,7 @@ common:
 
 packages:
   - name: onl-loader-initrd-files
+    depends: [ onl-vendor-config-onl ]
     version: 1.0.0
     summary: Open Network Linux System Loader Source Files
 
@@ -20,17 +21,6 @@ packages:
       - $ONL/make/versions/version-onl.mk :   /etc/onl/loader/versions.mk
 
     changelog:  Change changes changes.,
-
-
-  - name: onl-loader-initscripts
-    version: 1.0.0
-    summary: Open Network Linux System Loader Common Initscripts
-
-    files:
-      src/bin/initnetdev : /sbin/
-
-    changelog:  Change changes changes.,
-
 
 
 

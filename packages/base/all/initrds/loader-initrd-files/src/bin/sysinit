@@ -72,6 +72,11 @@ if [ ! -f /etc/onl/abort ]; then
     # Initialize platform mounts
     initmounts -q
 
+    # Initialize U-Boot environment
+    if [ -s /proc/device-tree/model ]; then
+        initubootenv
+    fi
+
     if [ -f /etc/issue ]; then
         cat /etc/issue
     fi

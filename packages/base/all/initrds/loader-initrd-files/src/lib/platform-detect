@@ -69,17 +69,15 @@ if [ ! -f /etc/onl/platform ]; then
     echo "unknown" > /etc/onl/platform
 fi
 
-touch /etc/onl/net /etc/onl/block /etc/onl/mounts
+touch /etc/onl/block
 
 platform="$(cat /etc/onl/platform)"
 
 if [ -d /lib/platform-config/${platform} ]; then
-    # Grab and source the platform boot configuration file
+    # Optionally source a platform boot configuration file
     x=/lib/platform-config/${platform}/onl/boot/${platform}
     if [ -f $x ]; then
         . $x
-    else
-        echo "The platform boot configuration for the current platform is broken, invalid, or missing." > /etc/onl/abort
     fi
 else
     echo "The current platform (${platform}) is not supported in this version." > /etc/onl/abort

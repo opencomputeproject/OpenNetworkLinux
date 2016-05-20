@@ -16,3 +16,11 @@ arm-qemu-armv7a-r0:
       <<: *arm-iproc-kernel-package
     itb:
       <<: *arm-itb
+
+  loader:
+
+    environment:
+    - device: /dev/mtd1
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00040000

@@ -104,3 +104,18 @@ default:
   ##- ONL-IMAGES: 384MiB
   ##- ONL-DATA: 100%
   
+  network:
+
+    # remap interface names on boot (loader only)
+    # make sure you have a valid 'ma1' entry in your platform config...
+
+    interfaces:
+
+      # this should work for most systems
+      ma1:
+        name: eth0
+      
+      # for other wierd corner cases
+      ##ma1:
+      ##  name: ~
+      ##  syspath: SOME-PATH

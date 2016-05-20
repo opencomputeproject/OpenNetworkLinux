@@ -19,3 +19,15 @@ powerpc-quanta-lb9-r0:
   loader:
     device: /dev/sda
     nos_bootcmds: *ide_bootcmds
+
+    environment:
+    - device: /dev/mtd3
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00020000
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: e0000000.soc8541/e0024000.ethernet
