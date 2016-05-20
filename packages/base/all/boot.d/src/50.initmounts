@@ -1,0 +1,6 @@
+#!/bin/sh
+
+. /lib/lsb/init-functions
+log_action_begin_msg "Mounting filesystems..."
+initmounts -q
+log_action_end_msg 0
