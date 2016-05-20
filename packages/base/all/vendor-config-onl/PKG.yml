@@ -24,8 +24,10 @@ packages:
     summary: ONL Base Configuration Package (Loader)
 
     files:
-      src/python/onl : /usr/lib/python2.7/dist-packages/onl
+      src/python/onl : $PY_INSTALL/onl
       src/bin/initmounts : /bin/initmounts
+      src/bin/initubootenv : /bin/initubootenv
+      src/bin/initnetdev : /bin/initnetdev
       src/bin/pki        : /sbin/pki
 
     changelog: Changes

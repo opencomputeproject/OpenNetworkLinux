@@ -1,0 +1,3 @@
+#!/usr/bin/python
+from onl.network import MdevApp
+MdevApp.main()

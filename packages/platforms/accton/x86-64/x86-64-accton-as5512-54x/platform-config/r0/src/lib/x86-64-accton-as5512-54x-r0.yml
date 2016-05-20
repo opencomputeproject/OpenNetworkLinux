@@ -2,11 +2,11 @@
 
 ######################################################################
 #
-# platform-config for LY6
+# platform-config for AS5512
 #
 ######################################################################
 
-x86-64-quanta-ly6-rangeley-r0:
+x86-64-accton-as5512-54x-r0:
 
   grub:
 
@@ -17,13 +17,14 @@ x86-64-quanta-ly6-rangeley-r0:
       --parity=no
       --stop=1
 
-    kernel:
-      <<: *kernel-3-9-6
+    kernel: 
+      <<: *kernel-3-2
 
     args: >-
+      nopat
       console=ttyS1,115200n8
 
-  ##network:
+  ##network
   ##  interfaces:
   ##    ma1:
   ##      name: ~
