@@ -68,7 +68,7 @@ if [ -z "$REMOTE_PASS" ]; then
 fi
 
 
-. $ONL/make/version-onl.sh
+. $ONL/make/versions/version-onl.sh
 REMOTE_DIR="$REMOTE_BASE_DIR/$BUILD_BRANCH/$FNAME_BUILD_ID"
 
 workdir=$(mktemp -d -t update-XXXXXX)
