@@ -1,0 +1,184 @@
+#!/usr/bin/python
+
+"""swimount
+
+Mount a directory specified in $SWI.
+"""
+
+import os, sys
+import shutil
+import logging
+
+import onl.install.InstallUtils
+BlkidParser = onl.install.InstallUtils.BlkidParser
+
+import onl.mounts
+MountContext = onl.install.InstallUtils.MountContext
+OnlMountManager = onl.mounts.OnlMountManager
+ProcMountsParser = onl.install.InstallUtils.ProcMountsParser
+
+import onl.network
+HostInfo = onl.network.HostInfo
+
+class Runner(onl.install.InstallUtils.SubprocessMixin):
+
+    def __init__(self, log):
+        self.log = log
+
+        self.blkid = BlkidParser(log=self.log)
+
+    def mount(self, SWI):
+
+        if SWI.startswith('nfs://'):
+            buf = SWI[6:]
+            buf = buf.rstrip('/')
+            h, sep, r = buf.partition('/')
+            if not sep:
+                self.log.error("invalid SWI %s", SWI)
+                return None
+            hinfo = HostInfo.fromString(h)
+
+            if not r:
+                r = '/'
+            else:
+                r = '/' + r
+            src = "%s:%s" % (hinfo.bhost, r,)
+            mpt = self.mkdtemp(prefix="swimount-nfs-", suffix=".d")
+            cmd = ['mount', '-t', 'nfs', src, mpt,]
+            if hinfo.port is not None:
+                cmd[3:3] = ['-o', "nolock,port=%s" % hinfo.port,]
+            else:
+                cmd[3:3] = ['-o', 'nolock',]
+            self.check_call(cmd)
+
+            return mpt
+
+        # local path specifier
+        if not SWI.startswith('dir:'):
+            self.log.error("invalid SWI %s", SWI)
+            return None
+        SWI = SWI[4:]
+
+        if ':' in SWI:
+            devspec, sep, r = SWI.partition(':')
+            return self.devspecMount(devspec, r)
+
+        if not SWI.startswith('/'):
+            return self.devspecMount(SWI, '/')
+
+        if not os.path.isdir(SWI):
+            self.log.error("invalid SWI %s (not a directory)", SWI)
+            return None
+
+        # local directory, but actually mounted
+        if os.stat('/').st_dev != os.stat(SWI).st_dev:
+            return SWI
+
+        # possibly unmounted dirctory
+        mm = OnlMountManager("/etc/mtab.yml", self.log)
+        label = mpt = path = None
+        for k, v in mm.mdata['mounts'].items():
+            if SWI == v['dir']:
+                label = k
+                mpt = v['dir']
+                path = '/'
+                break
+            if SWI.startswith(v['dir'] + '/'):
+                label = k
+                mpt = v['dir']
+                path = SWI[len(mpt)+1:]
+                break
+        if label is not None:
+            try:
+                part = self.blkid[label]
+            except IndexError:
+                part = None
+            if part is not None:
+                return self.blockdevMount(part.device, path, dir=mpt)
+
+        self.log.error("invalid SWI %s", SWI)
+        return None
+
+    def devspecMount(self, devspec, path):
+        """Find using a device specifier."""
+
+        p = "/dev/%s" % devspec
+        if os.path.exists(p):
+            return self.blockdevMount(p, r)
+
+        try:
+            part = self.blkid[devspec]
+        except IndexError:
+            part = None
+        if part is not None:
+            return self.blockdevMount(part.device, r)
+
+        mm = OnlMountManager("/etc/mtab.yml", self.log)
+        label = mpt = None
+        for k, v in mm.mdata['mounts'].items():
+            if v['dir'].endswith('/' + devspec):
+                label = k
+                mpt = v['dir']
+                break
+        if label is not None:
+            try:
+                part = self.blkid[label]
+            except IndexError:
+                part = None
+            if part is not None:
+                return self.blockdevMount(part.device, path, dir=mpt)
+
+        self.log.error("cannot find device specifier for %s", SWI)
+        return None
+
+    def blockdevMount(self, dev, src, dir=None):
+
+        pm = ProcMountsParser()
+        parts = [x for x in pm.mounts if x.device == dev]
+        if parts:
+            dst = parts[0].dir
+            if src and src != '/': dst = os.path.join(dst, src)
+            if not os.path.exists(dst):
+                self.log.error("missing SWI: %s", dst)
+                return None
+            self.check_call(('mount', '-o', 'rw,remount', dst,))
+            return dst
+
+        with MountContext(device=dev, log=self.log) as ctx:
+            dst = ctx.dir
+            if src and src != '/': dst = os.path.join(dst, src)
+            if not os.path.exists(dst):
+                self.log.error("missing SWI: %s:%s", dev, src)
+                return None
+
+            # move to its proper location as per mtab
+            # XXX perms may not be right here
+            if dir is not None:
+                self.check_call(('mount', '-o', 'rw,remount', ctx.dir,))
+                self.check_call(('mount', '--move', ctx.dir, dir,))
+                ctx.mounted = False
+                dst = dir
+                if src and src != '/': dst = os.path.join(dst, src)
+                return dst
+
+            ctx.mounted = False
+            ctx.hostDir = None
+            return dst
+
+    @classmethod
+    def main(cls):
+        SWI = sys.argv[1]
+        logging.basicConfig()
+        logger = logging.getLogger("swimount")
+        logger.setLevel(logging.DEBUG)
+        r = cls(logger)
+        dst = r.mount(SWI)
+        if dst is None:
+            sys.exit(1)
+        sys.stdout.write(dst + "\n")
+        sys.exit(0)
+
+main = Runner.main
+
+if __name__ == "__main__":
+    main()
