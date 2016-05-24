@@ -1,0 +1,123 @@
+############################################################
+#
+# Bootmode: installed
+#
+# Boot the installed rootfs from the INSTALLED BOOTPARAM value.
+#
+############################################################
+. /lib/msgs
+. /etc/onl/BOOTPARAMS
+
+# make sure /mnt/onl/data exists
+if [ ! -d /mnt/onl/data ]; then
+    msg_error "Missing /mnt/onl/data, disk boot cannot continue"
+    exit 200
+fi
+
+# make sure it's mounted as per mtab.yml
+d1=$(stat -f -c '%d' /mnt/onl)
+d2=$(stat -f -c '%d' /mnt/onl/data)
+if [ "$d1" -eq "$d2" ]; then
+    msg_error "Unmounted /mnt/onl/data, disk boot cannot continue"
+    exit 200
+fi
+
+do_unpack=
+swiget_workdir=
+swi_workdir=
+
+do_cleanup() {
+    cd /
+    rm -fr $swiget_workdir $swi_workdir
+}
+
+trap "do_cleanup" 0 1
+
+case "$SWI" in
+    ""|dir:*|nfs://*/)
+        msg_info "*** missing SWI file, will attempt to boot existing image"
+
+        if [ ! -f /mnt/onl/data/.swi ]; then
+            msg_error "Un-populated /mnt/onl/data, cannot continue"
+            exit 200
+        fi
+
+        ;;
+    *)
+        # resolve this SWI as a file and unpack it
+        swiget_workdir=${TMPDIR-"/tmp"}
+        swiget_workdir=$(mktemp -d $swiget_workdir/bootmodes-XXXXXX)
+        TMPDIR=$swiget_workdir swipath=$(swiget $SWI)
+
+        # do some sort of test to see if it's populated
+        if [ ! -f /mnt/onl/data/.swi ]; then
+            msg_info "Un-populated /mnt/onl/data, will (re-)image"
+            do_unpack=1
+        else
+            msg_info "Found valid (current) image at /mnt/onl/data"
+        fi
+        ;;
+esac
+
+if [ "$do_unpack" ]; then
+
+    rm -fr /mnt/onl/data/* /mnt/onl/data/.??*
+    mkdir /mnt/onl/data/lost+found
+
+    swi_workdir=$(mktemp -d /mnt/onl/data/tmp-XXXXXX)
+
+    msg_info "extracting SWI $swipath --> $swi_workdir"
+    unzip $swipath -d $swi_workdir
+    set dummy $swi_workdir/*.sqsh
+    if [ ! -f "$2" ]; then
+        msg_error "*** missing squashfs file"
+        exit 1
+    fi
+    if [ $# -gt 2 ]; then
+        msg_error "*** too many squashfs files"
+        exit 1
+    fi
+
+    msg_info "extracting rootfs $2 --> /mnt/onl/data"
+    unsquashfs -f -d /mnt/onl/data "$2"
+    echo "unsquashfs status $?"
+
+    if [ ! -f /mnt/onl/data/lib/vendor-config/onl/install/lib.sh ]; then
+        msg_error "*** invalid squashfs contents"
+        exit 1
+    fi
+
+    # Install any SWI data packages.
+    if [ -s $swi_workdir/swi-data.tar.gz ]; then
+        msg_info "installing SWI data into /boot..."
+        tar -C /mnt/onl/data/boot -xzf $swi_workdir/swi-data.tar.gz
+    fi
+
+    # If there is a SWI version file put it in /etc/onl/swi_version
+    if [ -f $swi_workdir/version ]; then
+        cp $swi_workdir/version /mnt/onl/data/etc/onl/swi_version
+    fi
+
+    msg_info "stamping filesystem with SWI"
+    case "$SWI" in
+        *::latest)
+            swistamp=${SWI%:latest}${swipath##*/}
+            ;;
+        *)
+            swistamp=$SWI
+            ;;
+    esac
+    echo "$swistamp" > /mnt/onl/data/.swi
+fi
+
+trap - 0 1
+do_cleanup
+
+sed -i -e '/^SWI=/d' /etc/onl/BOOTPARAMS
+echo "SWI=dir:data:/" >> /etc/onl/BOOTPARAMS
+. /bootmodes/swi
+
+# Local variables:
+# mode: sh
+# sh-basic-offset: 4
+# End:
