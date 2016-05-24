@@ -88,19 +88,22 @@ if [ -f /etc/fw_env.config ]; then
     cat /etc/fw_env.config >/newroot/etc/fw_env.config
 fi
 
-unzip -oq "${swipath}" swi-data.tar.gz -d /tmp
+if [ -f "$swipath" ]; then
 
-# Install any SWI data packages.
-if [ -s /tmp/swi-data.tar.gz ]; then
-    echo "Installing SWI data into /boot..."
-    tar -C /newroot/boot -xzf /tmp/swi-data.tar.gz
-fi
-
-# If there is a SWI version file put it in /etc/onl/swi_version
-unzip -oq "${swipath}" version -d /tmp
-if [ -f /tmp/version ]; then
-    cp /tmp/version /newroot/etc/onl/swi_version
+    # Install any SWI data packages.
+    unzip -oq "${swipath}" swi-data.tar.gz -d /tmp
+    if [ -s /tmp/swi-data.tar.gz ]; then
+        echo "Installing SWI data into /boot..."
+        tar -C /newroot/boot -xzf /tmp/swi-data.tar.gz
     fi
+
+    # If there is a SWI version file put it in /etc/onl/swi_version
+    unzip -oq "${swipath}" version -d /tmp
+    if [ -f /tmp/version ]; then
+        cp /tmp/version /newroot/etc/onl/swi_version
+    fi
+
+fi
 
 #
 # The file /lib/boot-custom can be provided by customized builds to
@@ -115,5 +118,6 @@ kill -QUIT 1 # exec /bin/switchroot as PID 1
 sleep 30
 
 # Local variables:
+# mode: sh
 # sh-basic-offset: 4
 # End:

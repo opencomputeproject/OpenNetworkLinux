@@ -28,11 +28,15 @@
 set -e
 unset testonly help cache
 
+CR="
+"
+
 while [ "$1" ]; do
     case "$1" in
         -h|--help)     help=1 ;;
         -t|--testonly) testonly=1 ;;
         --cache)       shift; cache="$1" ;;
+        --rootfs)      shift; rootfs="$1" ;;
         *)             break ;;
     esac
     shift
@@ -48,19 +52,30 @@ Usage: $0 [-h|--help] [-t|--testonly] [--rootfs ROOTFS] --cache LOCATION [SWI]
     Loads and boots a software image (SWI).  The load method depends on the
     format of the SWI argument:
 
-    DEV:PATH
-    /mnt/onl/DEV/PATH
-        Loads a SWI file from local storage device DEV (e.g. flash).
-    http://[USER:PASSWORD@]SERVER[:PORT]/PATH
-    ftp://[USER:PASSWORD@]SERVER[:PORT]/PATH
-    ssh|scp://USER:PASSWORD[:PORT]@SERVER/PATH
-    tftp://SERVER[:PORT]/PATH
+    DEV:SWI-PATH
+        Mount /dev/DEV to find a SWI
+    LABEL-ISH:SWI-PATH
+        Mount a filesysem labeled LABEL to find a SWI
+    /mnt/DEV/SWI-PATH
+    /mnt/onl/LABEL-ISH/SWI-PATH
+        Loads a SWI file from local storage device (e.g. flash).
+    http://[USER:PASSWORD@]SERVER[:PORT]/SWI-PATH
+    ftp://[USER:PASSWORD@]SERVER[:PORT]/SWI-PATH
+    ssh|scp://USER:PASSWORD[:PORT]@SERVER/SWI-PATH
+    tftp://SERVER[:PORT]/SWI-PATH
         Downloads a SWI file via HTTP, FTP, SSH or TFTP.
-    nfs://SERVER[:PORT]/PATH
-        If PATH is a file, mounts the parent directory via NFS and loads the
-        SWI file.  If PATH is a directory, mounts the directory and loads
-        the SWI without unpacking (PATH must end with / and the directory
-        must contain an unpacked SWI).
+    nfs://SERVER[:PORT]/SWI-PATH
+        Mounts the parent directory via NFS and loads the SWI file.
+    nfs://SERVER[:PORT]/[ROOTFS-PATH/]
+        Mounts the parent directory via NFS and uses ROOTFS-PATH
+        as the unpacked SWI contents (path must end with '/')
+    dir:DEV[:/ROOTFS-PATH]
+        Mounts /dev/DEV to find a root filesystem
+    dir:LABEL-ISH[:/ROOTFS-PATH]
+        Mounts a fileystem labeled LABEL to find a root filesystem
+    dir:/mnt/DEV[/ROOTFS-PATH]
+    dir:/mnt/onl/LABEL-ISH[/ROOTFS-PATH]
+        Mounts a directory on a local storage device to find a root filesystem
 
 EOF
     exit 1
@@ -70,60 +85,20 @@ shift
 
 [ ! "${testonly}" ] || set -x
 
-unset swipath host port dir file dev user password
+unset swipath host bhost port dir file dev user password scope
 case "${SWI}" in
-    http:*|ftp:*)
-        echo "Downloading ${SWI}"
-        wget -O /tmp/swi0 "${SWI}"
-	mv /tmp/swi0 /tmp/swi
-        swipath=/tmp/swi
-        ;;
-    scp:*|ssh:*)
-	echo "Downloading ${SWI}"
-	eval $(echo "${SWI}" | sed -n 's#\(scp\|ssh\)://\([^:]*\):\([^@]*\)@\([^/:]*\)\(:\([0-9]\+\)\)\?/\(.*\)#user="\2" password="\3" host="\4" port="\6" file="\7"#p')
-	[ "${port}" ] || port=22
-	DROPBEAR_PASSWORD="${password}" dbclient -y -p ${port} -l "${user}" "${host}" "cat /${file}" >/tmp/swi0
-	mv /tmp/swi0 /tmp/swi
-	swipath=/tmp/swi
-	;;
-    tftp:*)
-        echo "Downloading ${SWI}"
-        eval $(echo "${SWI}" | sed -n 's#tftp://\([^/:]*\|\[[^]/]*\]\)\(:\([0-9]\+\)\)\?/\(.*\)#host="\1" port="\3" file="\4"#p')
-        tftp -g -r "${file}" -l /tmp/swi0 "${host}" ${port}
-	mv /tmp/swi0 /tmp/swi
-        swipath=/tmp/swi
-        ;;
-    nfs:*)
-        eval $(echo "${SWI}" | sed -n 's#nfs://\([^/:]*\|\[[^]/]*\]\)\(:\([0-9]\+\)\)\?\(.*\)/\(.*\)#host="\1" port="\3" dir="\4" file="\5"#p')
-        [ "${dir}" ] || dir=/
-        [ "${port}" ] || port=0
-        echo "Mounting nfs://${host}:${port}${dir}"
-        umount -l /tmp/nfs 2>/dev/null || :
-        mkdir -p /tmp/nfs
-        mount -t nfs -o "nolock,port=${port}" "${host}:${dir}" /tmp/nfs
-        if [ "${file}" ]; then
-            swipath="/tmp/nfs/${file}"
-            [ ! -d ${swipath} ] || { echo "${SWI} must be a SWI file (use ${SWI}/ for a SWI directory)"; exit 1; }
-        else
-            swipath=/tmp/nfs
+    nfs://*/|dir:*)
+        swipath=$(swimount $SWI)
+        if [ "$rootfs" ]; then
             [ -d "${swipath}/${rootfs}" ] || { echo "${SWI}${rootfs} must be an unpacked rootfs"; exit 1; }
-            mount -t nfs -o "nolock,port=${port}" "${host}:${dir}/${rootfs}" "${swipath}/${rootfs}"
         fi
+        ;;
+    http:*|ftp:*|scp://*|ssh://*|tftp://*|nfs://*)
+        echo "Downloading ${SWI}"
+        swipath=$(swiget $SWI)
         ;;
     *)
-        # Parse dev:file or dev:/file or /mnt/onl/dev/file
-        parselocal='s#\(\([^:/]*\):/\?\|/mnt/onl/\([^/]*\)/\)\?\(.*\)#dev="\2\3" file="\4"#p'
-        eval $(echo "${SWI}" | sed -n "${parselocal}")
-        if [ "${dev}" ] ; then
-            # Wait for /mnt/dev to show up
-            :
-        else
-            # Assume file is relative, parse absolutified file
-            eval $(realpath "${file}" | sed -n "${parselocal}")
-            SWI="${dev}:${file}"
-        fi
-        swipath="/mnt/onl/${dev}/${file}"
-        [ -f "${swipath}" ] || { echo "${SWI} not found or not a file"; exit 1; }
+        swipath=$(swiget $SWI)
         ;;
 esac
 
@@ -143,7 +118,18 @@ if [ -n "$cache" ]; then
     python /bin/swicache.py "${swipath}" "${cache}"
 fi
 
+if [ "$testonly" ]; then
+    echo "swipath=$swipath rootfs=$rootfs"
+    echo "Stop here"
+    exit 0
+fi
+
 . /lib/boot1
 
 echo "Boot failed"
 exit 1
+
+# Local variables:
+# mode: sh
+# sh-basic-offset: 4
+# End:
