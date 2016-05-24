@@ -28,12 +28,17 @@ class OnlMountManager(object):
         with open("/proc/mounts") as f:
             return directory in f.read()
 
+    def checkroot(self, dev):
+        pat = "%s / " % dev
+        with open("/proc/mounts") as f:
+            return pat in f.read()
+
     def mount(self, device, directory, mode='r', timeout=5):
         self.logger.debug("Mounting %s -> %s %s" % (device, directory, mode))
         try:
             subprocess.check_call("mount -%s %s %s" % (mode, device, directory), shell=True)
-        except subrocess.CalledProcessError, e:
-            self.logger("Mount failed: '%s'" % e.output)
+        except subprocess.CalledProcessError, e:
+            self.logger.error("Mount failed: '%s'" % e.output)
             return False
 
         # If requested, wait for the mount to complete.
@@ -81,10 +86,14 @@ class OnlMountManager(object):
 
             self.logger.debug("%s @ %s" % (k, v['device']))
 
+            isRoot = self.checkroot(v['device'])
+            # if this device is current the root device,
+            # ignore any umount/mount/fsck shenanigans
+
             #
             # If its currently mounted we should unmount first.
             #
-            if self.checkmount(v['device']):
+            if not isRoot and self.checkmount(v['device']):
                 self.logger.info("%s is currently mounted." % (k))
                 try:
                     out = subprocess.check_output("umount %s" % v['device'], shell=True)
@@ -100,7 +109,7 @@ class OnlMountManager(object):
                 self.logger.debug("Overriding fsck settings for %s with %s" % (k, fsck))
                 v['fsck'] = fsck
 
-            if v.get('fsck', False):
+            if not isRoot and v.get('fsck', False):
                 try:
                     self.logger.info("Running fsck on %s [ %s ]..." % (k, v['device']))
                     cmd = "fsck.ext4 -p %s" % (v['device'])
@@ -119,7 +128,7 @@ class OnlMountManager(object):
                 v['mount'] = 'w'
 
             mount = v.get('mount', None)
-            if mount:
+            if not isRoot and mount:
                 if mount in ['r', 'w']:
                     self.mount(v['device'], v['dir'], mode=mount, timeout=v.get('timeout', 5))
                 else:
