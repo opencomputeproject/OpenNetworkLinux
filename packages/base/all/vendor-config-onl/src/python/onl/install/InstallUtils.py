@@ -260,7 +260,9 @@ class MountContext(SubprocessMixin):
             cmd = ('umount', self.hostDir,)
             self.check_call(cmd, vmode=self.V1)
 
-        self.rmdir(self.hostDir)
+        if self.hostDir is not None:
+            self.rmdir(self.hostDir)
+
         return False
 
 class BlkidEntry:
