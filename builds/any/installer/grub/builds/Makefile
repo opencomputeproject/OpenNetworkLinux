@@ -2,6 +2,10 @@ ifndef ARCH
 $(error $$ARCH not set)
 endif
 
+ifndef BOOTMODE
+$(error $$BOOTMODE not set)
+endif
+
 ONLPLATFORM = python $(ONL)/tools/onlplatform.py
 PLATFORMS := $(shell $(ONLPM) --platform-manifest onl-loader-initrd:$(ARCH))
 
@@ -11,7 +15,7 @@ MKSHAR_PERMS = autoperms.sh
 
 # Hardcoded to match ONL File naming conventions.
 include $(ONL)/make/version-onl.mk
-INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_INSTALLER
+INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_$(BOOTMODE)_INSTALLER
 
 ifeq ($(ARCH), amd64)
 INSTALLER_ARCH = x86_64

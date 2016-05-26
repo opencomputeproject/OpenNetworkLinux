@@ -1,0 +1,2 @@
+!include $ONL/builds/any/installer/APKG.yml ARCH=amd64 BOOTMODE=INSTALLED
+

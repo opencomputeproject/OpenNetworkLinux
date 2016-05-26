@@ -1,2 +1,3 @@
-include $(ONL)/make/config.armel.mk
+BOOTMODE=SWI
+include $(ONL)/make/config.powerpc.mk
 include $(ONL)/builds/any/installer/uboot/builds/Makefile
