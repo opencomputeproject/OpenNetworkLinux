@@ -88,6 +88,7 @@ shift
 unset swipath host bhost port dir file dev user password scope
 case "${SWI}" in
     nfs://*/|dir:*)
+        echo "Mounting ${SWI}"
         swipath=$(swimount $SWI)
         if [ "$rootfs" ]; then
             [ -d "${swipath}/${rootfs}" ] || { echo "${SWI}${rootfs} must be an unpacked rootfs"; exit 1; }
@@ -98,7 +99,16 @@ case "${SWI}" in
         swipath=$(swiget $SWI)
         ;;
     *)
+        echo "Locating ${SWI}"
         swipath=$(swiget $SWI)
+        ;;
+esac
+case "$SWI" in
+    *::latest)
+        swistamp=${SWI%:latest}${swipath##*/}
+        ;;
+    *)
+        swistamp=$SWI
         ;;
 esac
 
@@ -124,7 +134,27 @@ if [ "$testonly" ]; then
     exit 0
 fi
 
-. /lib/boot1
+if [ -d "${swipath}" ]; then
+    # rootfs is a directory
+    mkdir -p /newroot
+    umount -l /newroot 2>/dev/null || :
+    mount --bind "${swipath}/${rootfs}" /newroot
+else
+    echo "$swistamp" > /etc/onl/SWI
+    swiprep --overlay "${swipath}${rootfs}" --unmount --swiref "$swistamp" /newroot
+fi
+
+#
+# The file /lib/boot-custom can be provided by customized builds to
+# add functionality before the root is switched.
+#
+if [ -f /lib/boot-custom ]; then
+    . /lib/boot-custom
+fi
+
+echo "Switching rootfs" # limit 16 chars since serial buffer is not flushed
+kill -QUIT 1 # exec /bin/switchroot as PID 1
+sleep 30
 
 echo "Boot failed"
 exit 1

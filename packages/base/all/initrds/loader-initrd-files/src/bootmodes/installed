@@ -59,62 +59,26 @@ case "$SWI" in
         ;;
 esac
 
+case "$SWI" in
+    *::latest)
+        swistamp=${SWI%:latest}${swipath##*/}
+        ;;
+    *)
+        swistamp=$SWI
+        ;;
+esac
+
+echo "$swistamp" > /etc/onl/SWI
+sed -i -e '/^SWI=/d' /etc/onl/BOOTPARAMS
+echo "SWI=dir:data:/" >> /etc/onl/BOOTPARAMS
+
 if [ "$do_unpack" ]; then
-
-    rm -fr /mnt/onl/data/* /mnt/onl/data/.??*
-    mkdir /mnt/onl/data/lost+found
-
-    swi_workdir=$(mktemp -d /mnt/onl/data/tmp-XXXXXX)
-
-    msg_info "extracting SWI $swipath --> $swi_workdir"
-    unzip $swipath -d $swi_workdir
-    set dummy $swi_workdir/*.sqsh
-    if [ ! -f "$2" ]; then
-        msg_error "*** missing squashfs file"
-        exit 1
-    fi
-    if [ $# -gt 2 ]; then
-        msg_error "*** too many squashfs files"
-        exit 1
-    fi
-
-    msg_info "extracting rootfs $2 --> /mnt/onl/data"
-    unsquashfs -f -d /mnt/onl/data "$2"
-    echo "unsquashfs status $?"
-
-    if [ ! -f /mnt/onl/data/lib/vendor-config/onl/install/lib.sh ]; then
-        msg_error "*** invalid squashfs contents"
-        exit 1
-    fi
-
-    # Install any SWI data packages.
-    if [ -s $swi_workdir/swi-data.tar.gz ]; then
-        msg_info "installing SWI data into /boot..."
-        tar -C /mnt/onl/data/boot -xzf $swi_workdir/swi-data.tar.gz
-    fi
-
-    # If there is a SWI version file put it in /etc/onl/swi_version
-    if [ -f $swi_workdir/version ]; then
-        cp $swi_workdir/version /mnt/onl/data/etc/onl/swi_version
-    fi
-
-    msg_info "stamping filesystem with SWI"
-    case "$SWI" in
-        *::latest)
-            swistamp=${SWI%:latest}${swipath##*/}
-            ;;
-        *)
-            swistamp=$SWI
-            ;;
-    esac
-    echo "$swistamp" > /mnt/onl/data/.swi
+    swiprep --install "$swipath" --swiref "$swistamp" /mnt/onl/data
 fi
 
 trap - 0 1
 do_cleanup
 
-sed -i -e '/^SWI=/d' /etc/onl/BOOTPARAMS
-echo "SWI=dir:data:/" >> /etc/onl/BOOTPARAMS
 . /bootmodes/swi
 
 # Local variables:

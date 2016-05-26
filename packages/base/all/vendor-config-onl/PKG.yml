@@ -10,7 +10,16 @@ packages:
     files:
       src/python/onl : $PY_INSTALL/onl
       src/boot.d : /etc/boot.d
-      src/bin : /usr/bin
+      src/bin/initubootenv: /sbin/initubootenv
+      src/bin/initmounts: /sbin/initmounts
+      src/bin/initnetdev: /sbin/initnetdev
+      src/bin/pki : /sbin/pki
+      src/bin/loader-shell: /usr/bin/loader-shell
+      src/bin/onie-shell: /usr/bin/onie-shell
+      src/bin/onl-platform-show: /usr/bin/onl-platform-show
+      src/bin/onl-install: /usr/bin/onl-install
+      src/bin/onl-recover: /usr/bin/onl-recover
+      src/bin/pyfit: /usr/bin/pyfit
       src/lib : /lib/vendor-config/onl
 
     changelog: Changes
