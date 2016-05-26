@@ -548,8 +548,9 @@ class OnlPackageGroup(object):
                                                       dict(),
                                                       OnlPackageError)
             for f in release_list:
-                # Todo -- customize
-                dst = os.path.join(os.getenv('ONL'), 'RELEASE', g_dist_codename, f[1])
+                release_dir = os.environ.get('ONLPM_OPTION_RELEASE_DIR',
+                                             os.path.join(os.environ.get('ONL', 'RELEASE')))
+                dst = os.path.join(release_dir, g_dist_codename, f[1])
                 if not os.path.exists(dst):
                     os.makedirs(dst)
                 logger.info("Releasing %s -> %s" % (os.path.basename(f[0]), dst))

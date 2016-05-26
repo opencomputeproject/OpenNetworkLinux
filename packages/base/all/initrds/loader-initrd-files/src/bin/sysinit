@@ -81,7 +81,13 @@ if [ ! -f /etc/onl/abort ]; then
         cat /etc/issue
     fi
 
-    [ ! -f /mnt/onl/boot/boot-config ] || cat /mnt/onl/boot/boot-config >>/etc/onl/boot-config
+    if [ -f /mnt/onl/boot/boot-config ]; then
+        # Use local boot-config.
+        cp /mnt/onl/boot/boot-config /etc/onl/boot-config
+    elif [ -f /etc/onl/boot-config-default ]; then
+        # Use default boot-config.
+        cp /etc/onl/boot-config-default /etc/onl/boot-config
+    fi
 
     #
     # Initialize the /mnt/flash/boot area.

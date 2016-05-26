@@ -5,7 +5,7 @@ endif
 THISDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 # Hardcoded to match ONL File naming conventions.
-include $(ONL)/make/version-onl.mk
+include $(ONL)/make/versions/version-onl.mk
 INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_LEGACY_INSTALLER
 
 FIT_IMAGE_ALL := $(shell $(ONLPM) --find-file onl-loader-fit:$(ARCH) onl-loader-fit.itb)
@@ -28,7 +28,7 @@ ifndef NO_SWI
 endif
 	rm -rf ./usr
 	$(ONL_V_at)cp /dev/null $(MKSHAR_PERMS)
-	$(ONL_V_at) cp $(ONL)/make/version-onl.sh .
+	$(ONL_V_at) cp $(ONL)/make/versions/version-onl.sh .
 	$(ONL_V_at)echo "#!/bin/sh" >> $(MKSHAR_PERMS)
 	$(ONL_V_at)echo "set -e" >> $(MKSHAR_PERMS)
 	$(ONL_V_at)echo "set -x" >> $(MKSHAR_PERMS)

@@ -46,6 +46,7 @@ typedef enum onlp_led_caps_e {
     ONLP_LED_CAPS_PURPLE = (1 << 20),
     ONLP_LED_CAPS_PURPLE_BLINKING = (1 << 21),
     ONLP_LED_CAPS_AUTO = (1 << 22),
+    ONLP_LED_CAPS_AUTO_BLINKING = (1 << 23),
 } onlp_led_caps_t;
 
 /** onlp_led_mode */
@@ -66,6 +67,7 @@ typedef enum onlp_led_mode_e {
     ONLP_LED_MODE_PURPLE = 20,
     ONLP_LED_MODE_PURPLE_BLINKING = 21,
     ONLP_LED_MODE_AUTO = 22,
+    ONLP_LED_MODE_AUTO_BLINKING = 23,
 } onlp_led_mode_t;
 
 /** onlp_led_status */

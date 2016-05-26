@@ -14,7 +14,7 @@ MKSHAR_OPTS = --lazy --unzip-pad --fixup-perms autoperms.sh
 MKSHAR_PERMS = autoperms.sh
 
 # Hardcoded to match ONL File naming conventions.
-include $(ONL)/make/version-onl.mk
+include $(ONL)/make/versions/version-onl.mk
 INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_$(BOOTMODE)_INSTALLER
 
 ifeq ($(ARCH), amd64)
@@ -40,7 +40,7 @@ __installer: __installer_platform_files __installer_swi_files
 	>> installer.sh
 	$(ONL_V_at)echo "PAYLOAD_FOLLOWS" >> installer.sh
 	$(ONL_V_at)cp /dev/null $(MKSHAR_PERMS)
-	$(ONL_V_at)cp $(ONL)/make/version-onl.sh .
+	$(ONL_V_at)cp $(ONL)/make/versions/version-onl.sh .
 	$(ONL_V_at)echo "#!/bin/sh" >> $(MKSHAR_PERMS)
 	$(ONL_V_at)echo "set -e" >> $(MKSHAR_PERMS)
 	$(ONL_V_at)echo "set -x" >> $(MKSHAR_PERMS)

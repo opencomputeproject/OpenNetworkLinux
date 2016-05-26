@@ -16,10 +16,10 @@ packages:
       - src/lib : /lib
       - src/bootmodes : /bootmodes
       - src/python: /usr/lib/python2.7/site-packages
-      - $ONL/make/version-onl.sh :   /etc/onl/loader/versions.sh
-      - $ONL/make/version-onl.json : /etc/onl/loader/versions.json
-      - $ONL/make/version-onl.mk :   /etc/onl/loader/versions.mk
-      
+      - $ONL/make/versions/version-onl.sh :   /etc/onl/loader/versions.sh
+      - $ONL/make/versions/version-onl.json : /etc/onl/loader/versions.json
+      - $ONL/make/versions/version-onl.mk :   /etc/onl/loader/versions.mk
+
     changelog:  Change changes changes.,
 
 
