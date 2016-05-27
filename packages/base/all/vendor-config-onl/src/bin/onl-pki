@@ -1,0 +1,3 @@
+#!/usr/bin/python
+from onl.pki import OnlPki
+OnlPki.main()
