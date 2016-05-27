@@ -90,6 +90,7 @@ Configure:
     root:
       password: onl
 
-  manifest:
-    version: $ONL/make/versions/version-onl.json
-    platforms: $PLATFORM_LIST
+  manifests:
+    '/etc/onl/rootfs/manifest.json' :
+      version : $ONL/make/versions/version-onl.json
+      platforms : $PLATFORM_LIST
