@@ -1,1 +1,1 @@
-!include $ONL/builds/any/installer/APKG.yml ARCH=powerpc BOOTMODE=INSTALLED
+!include $ONL/builds/any/installer/APKG.yml ARCH=powerpc BOOTMODE=installed
