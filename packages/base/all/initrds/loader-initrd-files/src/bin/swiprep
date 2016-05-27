@@ -185,7 +185,7 @@ fi
 
 # If there is a SWI version file put it in /etc/onl/swi_version
 unzip -oq "$swipath" version > "$workdir/version"
-if test -f "$workdir/version"; then
+if test -s "$workdir/version"; then
   cp "$workdir/version" "$destdir/etc/onl/swi_version"
 fi
 
