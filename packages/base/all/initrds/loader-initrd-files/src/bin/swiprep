@@ -170,7 +170,7 @@ fi
 rm -f $workdir/rootfs.sqsh
 
 # Install any SWI data packages.
-unzip -oq "$swipath" swi-data.tar.gz > "$workdir/swi-data.tar.gz"
+unzip -pq "$swipath" swi-data.tar.gz > "$workdir/swi-data.tar.gz"
 if test -s "$workdir/swi-data.tar.gz"; then
   echo "installing SWI data into /boot..."
   tar -C "$destdir/boot" -xzf "$workdir/swi-data.tar.gz"
@@ -183,10 +183,16 @@ if [ -f /etc/fw_env.config ]; then
     cat /etc/fw_env.config > "$destdir/etc/fw_env.config"
 fi
 
-# If there is a SWI version file put it in /etc/onl/swi_version
-unzip -oq "$swipath" version > "$workdir/version"
+# If there are SWI version file(s) put them in /etc/onl
+unzip -pq "$swipath" version > "$workdir/version"
 if test -s "$workdir/version"; then
   cp "$workdir/version" "$destdir/etc/onl/swi_version"
+  cp "$workdir/version" "$destdir/.swi_version"
+fi
+unzip -pq "$swipath" manifest.json > "$workdir/manifest.json"
+if test -s "$workdir/manifest.json"; then
+  cp "$workdir/manifest.json" "$destdir/etc/onl/swi_manifest.json"
+  cp "$workdir/manifest.json" "$destdir/.swi_manifest.json"
 fi
 
 if test "$swiref"; then
