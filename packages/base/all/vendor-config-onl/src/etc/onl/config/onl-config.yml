@@ -1,0 +1,35 @@
+############################################################
+#
+# ONL System Configuration
+#
+############################################################
+
+upgrade:
+  onie:
+    auto-upgrade: advisory
+  loader:
+    auto-upgrade: advisory
+    versions: /etc/onl/loader/versions.json
+    package:
+      dir: /etc/onl/upgrade/$PARCH
+      fit_images:
+        - $PLATFORM.itb
+        - onl-loader-fit.itb
+
+
+pki:
+  key:
+    name: key.pem
+    len:  2048
+  cert:
+    name: certificate
+    csr:
+      fields:
+        C: US
+        ST: CA
+        O: Open Compute Project
+        localityName: Santa Clara
+        commonName: Networking
+        organizationalUnitName: Open Network Linux
+        emailAddress: support@bigswitch.com
+      cdays: 3600
