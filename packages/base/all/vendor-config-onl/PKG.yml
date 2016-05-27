@@ -8,10 +8,13 @@ packages:
     summary: ONL Base Configuration Package
 
     files:
-      src/python/onl : $PY_INSTALL/onl
-      src/boot.d : /etc/boot.d
-      src/bin : /usr/bin
-      src/lib : /lib/vendor-config/onl
+      - src/python/onl : $PY_INSTALL/onl
+      - $ONL/tools/onlyaml.py : $PY_INSTALL/onl/onlyaml/__init__.py
+      - src/etc : /etc
+      - src/boot.d : /etc/boot.d
+      - src/bin : /usr/bin
+      - src/lib : /lib/vendor-config/onl
+
 
     changelog: Changes
 
@@ -24,10 +27,12 @@ packages:
     summary: ONL Base Configuration Package (Loader)
 
     files:
-      src/python/onl : $PY_INSTALL/onl
-      src/bin/initmounts : /bin/initmounts
-      src/bin/initubootenv : /bin/initubootenv
-      src/bin/initnetdev : /bin/initnetdev
-      src/bin/pki        : /sbin/pki
+      - src/python/onl : $PY_INSTALL/onl
+      - $ONL/tools/onlyaml.py : $PY_INSTALL/onl/onlyaml/__init__.py
+      - src/etc            : /etc
+      - src/bin/onl-mounts : /bin/onl-mounts
+      - src/bin/initubootenv : /bin/initubootenv
+      - src/bin/initnetdev : /bin/initnetdev
+      - src/bin/onl-pki        : /sbin/onl-pki
 
     changelog: Changes
