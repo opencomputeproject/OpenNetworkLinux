@@ -1,11 +1,11 @@
 mounts:
   ONL-IMAGES:
-    mount: r
+    mount: ro
     dir: /mnt/onl/images
     fsck: true
 
   ONL-DATA:
-    mount: w
+    mount: rw
     dir: /mnt/onl/data
 
   ONL-CONFIG:
@@ -14,6 +14,6 @@ mounts:
     fsck: true
 
   ONL-BOOT:
-    mount: false
+    mount: ro
     dir: /mnt/onl/boot
     fsck: false
