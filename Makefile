@@ -88,7 +88,7 @@ docker-debug: docker_check
 
 
 versions:
-	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make --force
+	$(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make/versions --force
 
 relclean:
 	@find $(ONL)/RELEASE -name "ONL-*" -delete
