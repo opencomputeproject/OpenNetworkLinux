@@ -79,7 +79,7 @@ setup-pyparted:
 
 define buildroot_arch
 buildroot-$(1):
-	$(MAKE)-C $(BUILDROOT_SOURCE) O=../buildroot-$(1) LD_LIBRARY_PATH=/usr/buildroot/toolchains/$(1)/lib
+	$(MAKE) -C $(BUILDROOT_SOURCE) O=../buildroot-$(1) LD_LIBRARY_PATH=/usr/buildroot/toolchains/$(1)/lib
 
 buildroot-menuconfig-$(1):
 	$(MAKE) -C $(BUILDROOT_SOURCE) menuconfig O=../buildroot-$(1)
