@@ -79,11 +79,11 @@ setup-pyparted:
 
 define buildroot_arch
 buildroot-$(1):
-	make -C $(BUILDROOT_SOURCE) O=../buildroot-$(1)
+	make -C $(BUILDROOT_SOURCE) O=../buildroot-$(1) LD_LIBRARY_PATH=/usr/buildroot/toolchains/$(1)/lib
 
 buildroot-menuconfig-$(1):
 	make -C $(BUILDROOT_SOURCE) menuconfig O=../buildroot-$(1)
-	cp buildroot-powerpc/.config buildroot.config-$(1)
+	cp buildroot-$(1)/.config buildroot.config-$(1)
 endef
 
 $(foreach a,$(ARCHS),$(eval $(call buildroot_arch,$(a))))
