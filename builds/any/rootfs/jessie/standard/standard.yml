@@ -8,8 +8,9 @@
 #
 ############################################################
 Packages: &Packages
-  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/common-packages.yml
-  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/all-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-onl-packages.yml
   - !script  $ONL/tools/onl-platform-pkgs.py ${PLATFORM_LIST}
 
 Multistrap:
