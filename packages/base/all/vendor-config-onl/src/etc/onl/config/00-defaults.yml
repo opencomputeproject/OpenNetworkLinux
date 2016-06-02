@@ -1,9 +1,10 @@
 ############################################################
 #
-# ONL System Configuration
+# ONL Default System Configuration.
+#
+# These provide the base default values for all sysconfig keys.
 #
 ############################################################
-
 upgrade:
   onie:
     auto-upgrade: advisory
@@ -15,7 +16,6 @@ upgrade:
       fit_images:
         - $PLATFORM.itb
         - onl-loader-fit.itb
-
 
 pki:
   key:
@@ -33,3 +33,7 @@ pki:
         organizationalUnitName: Open Network Linux
         emailAddress: support@bigswitch.com
       cdays: 3600
+
+
+
+
