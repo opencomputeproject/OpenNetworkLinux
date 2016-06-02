@@ -8,6 +8,7 @@ import sys
 import yaml
 import types
 import onl.onlyaml
+import onl.util
 import platform as pp
 from onl.platform.current import OnlPlatform
 
@@ -43,12 +44,10 @@ class OnlSystemConfig(object):
                                        armv7l='armel')[pp.machine()]
 
         self.config = {}
-
-        for root, dirs, files in os.walk(self.SYSTEM_CONFIG_DIR):
-            for f in files:
-                if f.endswith('.yml'):
-                    d = onl.onlyaml.loadf(os.path.join(root, f), self.variables)
-                    self.config.update(d)
+        for f in sorted(os.listdir(self.SYSTEM_CONFIG_DIR)):
+            if f.endswith('.yml'):
+                d = onl.onlyaml.loadf(os.path.join(self.SYSTEM_CONFIG_DIR, f), self.variables)
+                self.config = onl.util.dmerge(self.config, d)
 
         self.config['pc'] = platform.platform_config
 
