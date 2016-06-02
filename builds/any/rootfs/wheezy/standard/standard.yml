@@ -7,6 +7,9 @@
 #
 #
 ############################################################
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
 Packages: &Packages
   - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/all-base-packages.yml
   - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-base-packages.yml
@@ -95,3 +98,5 @@ Configure:
     '/etc/onl/rootfs/manifest.json' :
       version : $ONL/make/versions/version-onl.json
       platforms : $PLATFORM_LIST
+
+  issue: $VERSION_STRING
