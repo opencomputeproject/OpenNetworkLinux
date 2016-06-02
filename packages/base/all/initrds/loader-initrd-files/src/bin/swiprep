@@ -13,6 +13,7 @@ destdir=
 swiref=
 mode_install=
 mode_overlay=
+mode_record=
 flag_unmount=
 
 while test $# -gt 0; do
@@ -29,15 +30,20 @@ while test $# -gt 0; do
       shift
       continue
       ;;
-    --swiref)
+    --record)
       shift
-      swiref=$1
-      shift
+      mode_record=1
       continue
       ;;
     --unmount)
       shift
       flag_unmount=1
+      continue
+      ;;
+    --swiref)
+      shift
+      swiref=$1
+      shift
       continue
       ;;
     -*)
@@ -76,9 +82,9 @@ else
   echo "*** missing destdir" 1>&2
   exit 1
 fi
-case "${mode_install}:${mode_overlay}" in
-  :)
-    echo "*** missing --install or --overlay" 1>&2
+case "${mode_install}:${mode_overlay}:${mode_record}" in
+  ::)
+    echo "*** missing --install or --overlay or --record" 1>&2
     exit 1
     ;;
 esac
@@ -87,11 +93,12 @@ if test $# -gt 0; then
   exit 1
 fi
 
-mkdir -p "$destdir"
-
-rm -fr "$destdir"/* "$destdir"/.??*
-if grep -q " $destdir " /proc/mounts; then
-  mkdir "$destdir/lost+found"
+if test "${mode_install}${mode_overlay}"; then
+  mkdir -p "$destdir"
+  rm -fr "$destdir"/* "$destdir"/.??*
+  if grep -q " $destdir " /proc/mounts; then
+    mkdir "$destdir/lost+found"
+  fi
 fi
 
 if test "$flag_unmount"; then
@@ -109,7 +116,11 @@ else
   workdir=$(mktemp -t -d swiprep-XXXXXX)
 fi
 
-echo "extracting SWI $swipath --> $workdir"
+if test "$mode_record"; then
+  echo "recording SWI $swipath --> $workdir"
+else
+  echo "extracting SWI $swipath --> $workdir"
+fi
 
 do_cleanup() {
   cd /
@@ -133,13 +144,15 @@ case $(uname -m) in
     q;;
 esac
 
-for arch in $ARCH_LIST; do
-  unzip -pq "$swipath" "rootfs-${arch}.sqsh" > "$workdir/rootfs.sqsh"
-  if test -s "$workdir/rootfs.sqsh"; then break; fi
-done
-if test ! -s "$workdir/rootfs.sqsh"; then
-  echo "*** cannot find a valid rootfs" 1>&2
-  exit 1
+if test "${mode_install}${mode_overlay}"; then
+  for arch in $ARCH_LIST; do
+    unzip -pq "$swipath" "rootfs-${arch}.sqsh" > "$workdir/rootfs.sqsh"
+    if test -s "$workdir/rootfs.sqsh"; then break; fi
+  done
+  if test ! -s "$workdir/rootfs.sqsh"; then
+    echo "*** cannot find a valid rootfs" 1>&2
+    exit 1
+  fi
 fi
 
 if test "$mode_install"; then
@@ -169,36 +182,55 @@ if test "$mode_overlay"; then
 fi
 rm -f $workdir/rootfs.sqsh
 
-# Install any SWI data packages.
-unzip -pq "$swipath" swi-data.tar.gz > "$workdir/swi-data.tar.gz"
-if test -s "$workdir/swi-data.tar.gz"; then
-  echo "installing SWI data into /boot..."
-  tar -C "$destdir/boot" -xzf "$workdir/swi-data.tar.gz"
+if test "${mode_install}${mode_overlay}"; then
+
+  # Install any SWI data packages.
+  unzip -pq "$swipath" swi-data.tar.gz > "$workdir/swi-data.tar.gz"
+  if test -s "$workdir/swi-data.tar.gz"; then
+    echo "installing SWI data into /boot..."
+    tar -C "$destdir/boot" -xzf "$workdir/swi-data.tar.gz"
+  fi
+
+  mkdir -p "$destdir/etc/onl"
+
+  cp -R /etc/onl/* "$destdir/etc/onl/."
+  if [ -f /etc/fw_env.config ]; then
+      cat /etc/fw_env.config > "$destdir/etc/fw_env.config"
+  fi
+
 fi
 
-mkdir -p "$destdir/etc/onl"
-
-cp -R /etc/onl/* "$destdir/etc/onl/."
-if [ -f /etc/fw_env.config ]; then
-    cat /etc/fw_env.config > "$destdir/etc/fw_env.config"
-fi
+if test "$mode_record"; then
+  vdestdir="$destdir/etc/onl/upgrade/swi"
+else
+  vdestdir="$destdir/etc/onl/rootfs"
+fi  
 
 # If there are SWI version file(s) put them in /etc/onl
-unzip -pq "$swipath" version > "$workdir/version"
-if test -s "$workdir/version"; then
-  cp "$workdir/version" "$destdir/etc/onl/swi_version"
-  cp "$workdir/version" "$destdir/.swi_version"
+if test ! -f "$vdestdir/version"; then
+  unzip -pq "$swipath" version > "$workdir/version"
+  if test -s "$workdir/version"; then
+    mkdir -p "$vdestdir"
+    cp "$workdir/version" "$vdestdir/version"
+  fi
 fi
-unzip -pq "$swipath" manifest.json > "$workdir/manifest.json"
-if test -s "$workdir/manifest.json"; then
-  cp "$workdir/manifest.json" "$destdir/etc/onl/swi_manifest.json"
-  cp "$workdir/manifest.json" "$destdir/.swi_manifest.json"
+if test ! -f "$vdestdir/manifest.json"; then
+  unzip -pq "$swipath" manifest.json > "$workdir/manifest.json"
+  if test -s "$workdir/manifest.json"; then
+    mkdir -p "$vdestdir"
+    cp "$workdir/manifest.json" "$vdestdir/manifest.json"
+  fi
 fi
 
-if test "$swiref"; then
-  echo "$swiref" > "$destdir/.swi"
+if test -z "$swiref"; then
+  swiref=$swipath
+fi
+
+if test "$mode_record"; then
+  mkdir -p "$destdir/etc/onl/upgrade/swi"
+  echo "$swiref" > "$destdir/etc/onl/upgrade/swi/SWI"
 else
-  echo "$swipath" > "$destdir/.swi"
+  echo "$swiref" > "$destdir/etc/onl/SWI"
 fi
 
 exit 0
