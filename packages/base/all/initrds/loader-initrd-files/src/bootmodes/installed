@@ -37,7 +37,7 @@ case "$SWI" in
     ""|dir:*|nfs://*/)
         msg_info "*** missing SWI file, will attempt to boot existing image"
 
-        if [ ! -f /mnt/onl/data/.swi ]; then
+        if [ ! -s /mnt/onl/data/etc/onl/SWI ]; then
             msg_error "Un-populated /mnt/onl/data, cannot continue"
             exit 200
         fi
@@ -50,7 +50,7 @@ case "$SWI" in
         TMPDIR=$swiget_workdir swipath=$(swiget $SWI)
 
         # do some sort of test to see if it's populated
-        if [ ! -f /mnt/onl/data/.swi ]; then
+        if [ ! -s /mnt/onl/data/etc/onl/SWI ]; then
             msg_info "Un-populated /mnt/onl/data, will (re-)image"
             do_unpack=1
         else
@@ -68,13 +68,13 @@ case "$SWI" in
         ;;
 esac
 
-echo "$swistamp" > /etc/onl/SWI
 sed -i -e '/^SWI=/d' /etc/onl/BOOTPARAMS
 echo "SWI=dir:data:/" >> /etc/onl/BOOTPARAMS
 
 if [ "$do_unpack" ]; then
     swiprep --install "$swipath" --swiref "$swistamp" /mnt/onl/data
 fi
+swiprep --record "$swipath" --swiref "$swistamp" /mnt/onl/data
 
 trap - 0 1
 do_cleanup
