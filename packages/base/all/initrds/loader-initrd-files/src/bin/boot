@@ -140,8 +140,8 @@ if [ -d "${swipath}" ]; then
     umount -l /newroot 2>/dev/null || :
     mount --bind "${swipath}/${rootfs}" /newroot
 else
-    echo "$swistamp" > /etc/onl/SWI
     swiprep --overlay "${swipath}${rootfs}" --unmount --swiref "$swistamp" /newroot
+    swiprep --record "${swipath}${rootfs}" --swiref "$swistamp" /newroot
 fi
 
 #
