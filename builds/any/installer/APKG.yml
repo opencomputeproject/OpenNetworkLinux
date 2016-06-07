@@ -1,0 +1,37 @@
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
+prerequisites:
+  broken: true
+  packages: [ "onl-swi:$ARCH" ]
+
+common:
+  arch: $ARCH
+  version: $FNAME_RELEASE_ID
+  copyright: Copyright 2016 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-installer
+    summary: Open Network Linux $ARCH Installer
+
+    files:
+      builds/*INSTALLER        : $$PKG_INSTALL/
+      builds/*.md5sum          : $$PKG_INSTALL/
+
+    changelog:  Change changes changes.,
+
+
+release:
+  - builds/*INSTALLER : $ARCH/
+  - builds/*.md5sum   : $ARCH/
+
+
+
+
+
+
+
+
+
+

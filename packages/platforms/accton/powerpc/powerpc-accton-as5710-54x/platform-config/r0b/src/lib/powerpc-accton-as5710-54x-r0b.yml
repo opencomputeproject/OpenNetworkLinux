@@ -1,9 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for as5710
+#
+######################################################################
+
 powerpc-accton-as5710-54x-r0b:
+
   flat_image_tree:
-    kernel: onl-kernel-3.8.13-powerpc-e500mc:powerpc, kernel-3.8.13-powerpc-e500mc.bin.gz
-    dtb: onl-kernel-3.8.13-powerpc-e500mc:powerpc, powerpc-accton-as5710-54x-r0b.dtb
+    kernel:
+      <<: *e500mc-kernel
+    dtb:
+      =: powerpc-accton-as5710-54x-r0b.dtb
+      <<: *e500mc-kernel-package
+
+    environment:
+    - device: /dev/mtd6
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00020000
 
   loader:
-    partition: /dev/sda1
-    raw: True
+    device: /dev/sda
+    nos_bootcmds: *usb_bootcmds
 
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: fsl,dpaa.16/ethernet.17

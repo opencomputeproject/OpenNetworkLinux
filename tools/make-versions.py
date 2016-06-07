@@ -56,6 +56,12 @@ class OnlVersionsGenerator(object):
             with open(fname, "w") as f:
                 json.dump(data, f, indent=2)
 
+        # YAML
+        fname = os.path.join(self.ops.output_dir, basename + '.yml')
+        if not os.path.exists(fname) or self.ops.force:
+            with open(fname, "w") as f:
+                yaml.dump(data, f, default_flow_style=False)
+
         # mk
         fname = os.path.join(self.ops.output_dir, basename + '.mk')
         if not os.path.exists(fname) or self.ops.force:

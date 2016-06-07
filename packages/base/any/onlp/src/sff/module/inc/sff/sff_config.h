@@ -109,6 +109,16 @@
 #define SFF_CONFIG_INCLUDE_EXT_CC_CHECK 0
 #endif
 
+/**
+ * SFF_CONFIG_INCLUDE_DATABASE
+ *
+ * Include eeprom database. */
+
+
+#ifndef SFF_CONFIG_INCLUDE_DATABASE
+#define SFF_CONFIG_INCLUDE_DATABASE 1
+#endif
+
 
 
 /**

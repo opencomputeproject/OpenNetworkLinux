@@ -1,3 +1,6 @@
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
 prerequisites:
   broken: true
 

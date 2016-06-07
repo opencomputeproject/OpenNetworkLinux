@@ -23,11 +23,10 @@ field "$ONL_PLATFORM"             "      Platform: $ONL_PLATFORM"
 field "MA1_ADDR"                  "           ma1: $MA1_ADDR"
 echo "*"
 echo "************************************************************"
-if [ -f /etc/onl/boot-config ]; then
+if [ -s /etc/onl/boot-config ]; then
     msg_info "boot-config"
     cat /etc/onl/boot-config
 else
-
     if [ -f /bin/boot-config.py ]; then
         if /bin/boot-config.py configure; then
             echo "The system will now reboot to apply your configuration."
@@ -36,7 +35,7 @@ else
 	    echo "The boot-config script failed." >> /etc/onl/abort
 	fi
     else
-        msg_info "No boot-config"
+        echo "No boot-config." >> /etc/onl/abort
     fi
 fi
 

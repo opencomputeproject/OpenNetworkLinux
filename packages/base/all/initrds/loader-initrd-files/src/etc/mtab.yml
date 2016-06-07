@@ -14,6 +14,6 @@ mounts:
     fsck: true
 
   ONL-BOOT:
-    mount: r
+    mount: w
     dir: /mnt/onl/boot
     fsck: false

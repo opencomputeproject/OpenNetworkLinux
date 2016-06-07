@@ -6,6 +6,7 @@ common:
 
 packages:
   - name: onl-loader-initrd-files
+    depends: [ onl-vendor-config-onl ]
     version: 1.0.0
     summary: Open Network Linux System Loader Source Files
 
@@ -14,22 +15,12 @@ packages:
       - src/etc : /etc
       - src/lib : /lib
       - src/bootmodes : /bootmodes
-      - $ONL/make/version-onl.sh :   /etc/onl/loader/versions.sh
-      - $ONL/make/version-onl.json : /etc/onl/loader/versions.json
-      - $ONL/make/version-onl.mk :   /etc/onl/loader/versions.mk
+      - src/python: /usr/lib/python2.7/site-packages
+      - $ONL/make/versions/version-onl.sh :   /etc/onl/loader/versions.sh
+      - $ONL/make/versions/version-onl.json : /etc/onl/loader/versions.json
+      - $ONL/make/versions/version-onl.mk :   /etc/onl/loader/versions.mk
 
     changelog:  Change changes changes.,
-
-
-  - name: onl-loader-initscripts
-    version: 1.0.0
-    summary: Open Network Linux System Loader Common Initscripts
-
-    files:
-      src/bin/initnetdev : /sbin/
-
-    changelog:  Change changes changes.,
-
 
 
 

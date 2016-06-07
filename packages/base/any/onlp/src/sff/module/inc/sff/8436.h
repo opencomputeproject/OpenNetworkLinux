@@ -224,6 +224,8 @@
 #define SFF8436_DOM_GET_RXPWR_TYPE(idprom)               \
         (idprom[220] & SFF8436_RX_PWR_TYPE_MASK)
 
+/* SFF8436 registers */
+#define SFF8436_CONTROL_TX_DISABLE       86
 /* alternate ways to identify pre-standard 40G cables */
 static inline int
 _sff8436_qsfp_40g_pre(const uint8_t* idprom)
@@ -254,6 +256,18 @@ _sff8436_qsfp_40g_pre(const uint8_t* idprom)
         return 1;
 
     return 0;
+}
+static inline int
+_sff8436_qsfp_40g_lm4(const uint8_t* idprom)
+{
+    if(!SFF8436_MODULE_QSFP_PLUS_V2(idprom)) {
+        return 0;
+    }
+    /* Restrict to Finisar FTL4C3QE1C at this point. */
+    if(strncmp("FTL4C3QE1C      ", (char*)idprom+168, 16)) {
+        return 0;
+    }
+    return SFF8436_MEDIA_NONE(idprom);
 }
 
 static inline int

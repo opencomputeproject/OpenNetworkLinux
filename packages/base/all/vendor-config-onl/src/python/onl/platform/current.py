@@ -14,12 +14,23 @@
 # platform-config packages.
 #
 ############################################################
+import os
 import importlib
 
 def import_subsystem_platform_class(subsystem='onl', klass='OnlPlatform'):
     # Determine the current platform name.
-    with open("/etc/onl/platform", 'r') as f:
-        platform=f.read().strip()
+    platform = None
+    if os.path.exists("/etc/onl/platform"):
+        with open("/etc/onl/platform", 'r') as f:
+            platform=f.read().strip()
+    elif os.path.exists("/etc/machine.conf"):
+        with open("/etc/machine.conf", 'r') as f:
+            lines = f.readlines(False)
+            lines = [x for x in lines if x.startswith('onie_platform=')]
+            if lines:
+                platform = lines[0].partition('=')[2].strip()
+    if platform is None:
+        raise RuntimeError("cannot find a platform declaration")
 
     platform_module = platform.replace('-', '_')
 

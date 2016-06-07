@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Recover switch light
+"""
+
+import onl.install.RecoverApp
+onl.install.RecoverApp.main()

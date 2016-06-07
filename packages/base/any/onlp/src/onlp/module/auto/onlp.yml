@@ -111,6 +111,7 @@ sfp_control: &sfp_control
 - RX_LOS
 - TX_FAULT
 - TX_DISABLE
+- TX_DISABLE_CHANNEL
 - LP_MODE
 - POWER_OVERRIDE
 
@@ -163,20 +164,22 @@ thermal_threshold: &thermal_threshold
 
 # LED caps
 led_caps: &led_caps
-- ON_OFF : (1 << 0)
-- RED : (1 << 10)
-- RED_BLINKING : (1 << 11)
-- ORANGE : (1 << 12)
-- ORANGE_BLINKING : (1 << 13)
-- YELLOW : ( 1 << 14)
-- YELLOW_BLINKING : (1 << 15)
-- GREEN : (1 << 16)
-- GREEN_BLINKING : (1 << 17)
-- BLUE : (1 << 18)
-- BLUE_BLINKING : (1 << 19)
-- PURPLE: (1 << 20)
-- PURPLE_BLINKING : (1 << 21)
-- AUTO : (1 << 22)
+- ON_OFF            : (1 << 0)
+- CHAR              : (1 << 1)
+- RED               : (1 << 10)
+- RED_BLINKING      : (1 << 11)
+- ORANGE            : (1 << 12)
+- ORANGE_BLINKING   : (1 << 13)
+- YELLOW            : (1 << 14)
+- YELLOW_BLINKING   : (1 << 15)
+- GREEN             : (1 << 16)
+- GREEN_BLINKING    : (1 << 17)
+- BLUE              : (1 << 18)
+- BLUE_BLINKING     : (1 << 19)
+- PURPLE            : (1 << 20)
+- PURPLE_BLINKING   : (1 << 21)
+- AUTO              : (1 << 22)
+- AUTO_BLINKING     : (1 << 23)
 
 # LED status
 led_status: &led_status
@@ -203,6 +206,7 @@ led_mode: &led_mode
 - 'PURPLE' : 20
 - 'PURPLE_BLINKING' : 21
 - 'AUTO' : 22
+- 'AUTO_BLINKING' : 23
 
 # PSU Status
 psu_status: &psu_status
@@ -252,6 +256,7 @@ definitions:
         - RX_LOS
         - TX_FAULT
         - TX_DISABLE
+        - TX_DISABLE_CHANNEL
         - LP_MODE
         - POWER_OVERRIDE
     onlp_sfp_control_flag:
@@ -307,5 +312,3 @@ definitions:
   xmacro:
     ONLP_OID_TYPE_ENTRY:
       members: *oid_types
-
-

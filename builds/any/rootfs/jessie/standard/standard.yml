@@ -43,11 +43,11 @@ Multistrap:
     omitdebsrc: true
 
   Local-All:
-    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/binary-all
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-all
     omitdebsrc: true
 
   Local-Arch:
-    source: ${ONL}/REPO/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
     omitdebsrc: true
 
 Configure:
@@ -89,5 +89,5 @@ Configure:
       password: onl
 
   manifest:
-    version: $ONL/make/version-onl.json
+    version: $ONL/make/versions/version-onl.json
     platforms: $PLATFORM_LIST
