@@ -58,13 +58,17 @@ class BaseUpgrade(object):
         if os.getenv("DEBUG"):
             self.logger.setLevel(logging.DEBUG)
 
+
+    def auto_upgrade_default(self):
+        return "advisory"
+
     def init_argparser(self):
         self.ap = argparse.ArgumentParser("%s-upgrade" % self.name)
         self.ap.add_argument("--enable", action='store_true', help="Enable updates.")
         self.ap.add_argument("--force", action='store_true', help="Force update.")
         self.ap.add_argument("--no-reboot", action='store_true', help="Don't reboot.")
         self.ap.add_argument("--check", action='store_true', help="Check only.")
-        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default='advisory')
+        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default=self.auto_upgrade_default())
         self.ap.add_argument("--summarize", action='store_true', help="Summarize only, no upgrades.")
 
     def banner(self):

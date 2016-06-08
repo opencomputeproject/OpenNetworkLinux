@@ -20,6 +20,9 @@ class Loader_Upgrade(ubase.BaseUpgrade):
     current_version_key="Current Loader Version"
     next_version_key="Next Loader Version"
 
+    def auto_upgrade_default(self):
+        return sysconfig.upgrade.loader.auto
+
     def init_versions(self):
 
         #
@@ -68,7 +71,7 @@ class Loader_Upgrade_FIT(Loader_Upgrade):
         with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
             self.copyfile(fit_image, os.path.join(d.directory, "%s.itb" % (self.platform.platform())))
 
-        #self.reboot()
+        self.reboot()
 
 
 class Loader_Upgrade_x86_64(Loader_Upgrade):
