@@ -31,7 +31,7 @@ class DotDict(dict):
 
 
 class OnlSystemConfig(object):
-    SYSTEM_CONFIG_DIR = '/etc/onl/config'
+    SYSTEM_CONFIG_DIR = '/etc/onl/sysconfig'
 
     def __init__(self):
 
