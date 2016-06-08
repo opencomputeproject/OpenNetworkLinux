@@ -7,9 +7,9 @@
 ############################################################
 upgrade:
   onie:
-    auto-upgrade: advisory
+    auto: advisory
   loader:
-    auto-upgrade: advisory
+    auto: advisory
     versions: /etc/onl/loader/versions.json
     package:
       dir: /etc/onl/upgrade/$PARCH
