@@ -100,3 +100,8 @@ Configure:
       platforms : $PLATFORM_LIST
 
   issue: $VERSION_STRING
+
+  files:
+    remove:
+      - /etc/motd
+
