@@ -411,7 +411,7 @@ rm -f /usr/sbin/policy-rc.d
                         json.dump(md, f, indent=2)
                     onlu.execute("sudo chmod a-w %s" % mname)
 
-                for (fname, v) in Configure.get('files', {}).iteritems():
+                for (fname, v) in Configure.get('files', {}).get('add', {}).iteritems():
                     if fname.startswith('/'):
                         fname = fname[1:]
                     dst = os.path.join(dir_, fname)
@@ -424,12 +424,19 @@ rm -f /usr/sbin/policy-rc.d
                         with open(dst, "w") as f:
                             f.write("%s\n" % v)
 
+                for fname in Configure.get('files', {}).get('remove', []):
+                    if fname.startswith('/'):
+                        fname = fname[1:]
+                    f = os.path.join(dir_, fname)
+                    if os.path.exists(f):
+                        onlu.execute("sudo rm -rf %s" % f)
+
                 if Configure.get('issue'):
                     issue = Configure.get('issue')
                     fn = os.path.join(dir_, "etc/issue")
                     onlu.execute("sudo chmod a+w %s" % fn)
                     with open(fn, "w") as f:
-                        f.write("%s\n" % issue)
+                        f.write("%s\n\n" % issue)
                     onlu.execute("sudo chmod a-w %s" % fn)
 
                     fn = os.path.join(dir_, "etc/issue.net")
