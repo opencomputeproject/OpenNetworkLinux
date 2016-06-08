@@ -600,8 +600,7 @@ class UbootInstaller(SubprocessMixin, Base):
                        % self.platformConf['loader']['loadaddr'])
             cmds.append("setenv onl_platform %s"
                        % self.installerConf.installer_platform)
-            itb = self.platformConf['flat_image_tree']['itb']
-            if type(itb) == dict: itb = itb['=']
+            itb = "%s.itb" % self.installerConf.installer_platform
             cmds.append("setenv onl_itb %s" % itb)
             for item in self.platformConf['loader']['setenv']:
                 k, v = list(item.items())[0]
@@ -695,7 +694,7 @@ class UbootInstaller(SubprocessMixin, Base):
         self.log.info("Installing ONL loader %s --> %s:%s...",
                       loaderBasename, dev.device, loaderBasename)
         with MountContext(dev.device, log=self.log) as ctx:
-            dst = os.path.join(ctx.dir, loaderBasename)
+            dst = os.path.join(ctx.dir, "%s.itb" % self.im.installerConf.installer_platform)
             self.installerCopy(loaderBasename, dst)
 
         return 0
