@@ -6,7 +6,7 @@
 #
 ######################################################################
 
-x86-64-accton-wedge-16x-r0:
+x86-64-facebook-wedge100-r0:
 
   grub:
 
@@ -22,7 +22,7 @@ x86-64-accton-wedge-16x-r0:
 
     args: >-
       nopat
-      console=ttyS1,57600n8
+      console=ttyS0,57600n8
       rd_NO_MD
       rd_NO_LUKS
       intel_iommu=off
