@@ -1,20 +1,11 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
-class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton):
-
-
-    def model(self):
-        return "AS5812-54T"
-
-    def platform(self):
-        return "x86-64-accton-as5812-54t-r0"
-
-    def sys_init(self):
-        pass
-
-    def sys_oid_platform(self):
-        return ".5812.54.2"
+class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
+                                              OnlPlatformPortConfig_48x10_6x40):
+    PLATFORM='x86-64-accton-as5812-54t-r0'
+    MODEL="AS5812-54T"
+    SYS_OBJECT_ID=".5812.54.2"
 
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
