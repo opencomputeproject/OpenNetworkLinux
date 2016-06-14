@@ -12,7 +12,7 @@ MANIFEST := $(shell $(ONLPM) --find-file onl-loader-initrd:amd64 manifest.json)
 all:
 	mkdir -p files
 	cp $(KERNELS) files
-	cp $(INITRD) files/initrd-amd64
+	cp $(INITRD) files
 	cp $(MANIFEST) files
 
 
