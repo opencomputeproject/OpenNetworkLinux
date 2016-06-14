@@ -79,18 +79,19 @@ class Loader_Upgrade_x86_64(Loader_Upgrade):
     def do_upgrade(self, forced=False):
 
         X86_64_UPGRADE_DIR=sysconfig.upgrade.loader.package.dir
-        X86_64_UPGRADE_PATTERNS = [ "kernel-*", "initrd-*" ]
+        X86_64_UPGRADE_PATTERNS = [ "kernel-*", "*initrd*" ]
 
-        with OnlMountContext("ONL-BOOT", "rw", self.logger) as d:
+        with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
             for f in os.listdir(X86_64_UPGRADE_DIR):
                 for pattern in X86_64_UPGRADE_PATTERNS:
                     if fnmatch.fnmatch(f, pattern):
                         self.copyfile(os.path.join(X86_64_UPGRADE_DIR, f), os.path.join(d.directory, f))
 
-            src = "/lib/platform-config/current/onl/boot/grub.cfg"
-            dst = os.path.join(d.directory, "grub/grub.cfg")
-            if os.path.exists(src):
-                self.copyfile(src, dst)
+            # Disabled until it can be resolved with the new installer.
+            #src = "/lib/platform-config/current/onl/boot/grub.cfg"
+            #dst = os.path.join(d.directory, "grub/grub.cfg")
+            #if os.path.exists(src):
+            #    self.copyfile(src, dst)
 
         self.reboot()
 
