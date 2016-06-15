@@ -3,5 +3,5 @@
 from onl.platform.base import *
 
 class OnlPlatformKVM(OnlPlatformBase):
-    MANUFACTURER=KVM
+    MANUFACTURER='KVM'
     PRIVATE_ENTERPRISE_NUMBER=42623
