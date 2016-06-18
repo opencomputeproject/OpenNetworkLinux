@@ -1,0 +1,9 @@
+directories:
+  - .
+
+manifest: make/module-manifest.mk
+
+
+
+
+
