@@ -1,0 +1,31 @@
+From 0cf96d81c7701053db06e6d8267990e09553eb6e Mon Sep 17 00:00:00 2001
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 6 Jan 2016 12:58:09 +0300
+Subject: [PATCH 17/98] fsl/fman: fix the pause_time test
+
+pause_time is unsigned so it can't be less than zero.  The bug means
+that we allow invalid pause-times.
+
+Fixes: 57ba4c9b56d8 ('fsl/fman: Add FMan MAC support')
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/fman/fman_dtsec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/freescale/fman/fman_dtsec.c b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+index d78e2ba..587f9b4 100644
+--- a/drivers/net/ethernet/freescale/fman/fman_dtsec.c
++++ b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+@@ -934,7 +934,7 @@ int dtsec_set_tx_pause_frames(struct fman_mac *dtsec,
+ 
+ 	/* FM_BAD_TX_TS_IN_B_2_B_ERRATA_DTSEC_A003 Errata workaround */
+ 	if (dtsec->fm_rev_info.major == 2)
+-		if (pause_time < 0 && pause_time <= 320) {
++		if (pause_time <= 320) {
+ 			pr_warn("pause-time: %d illegal.Should be > 320\n",
+ 				pause_time);
+ 			return -EINVAL;
+-- 
+2.1.0.27.g96db324
+

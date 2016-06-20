@@ -1,0 +1,36 @@
+From 5f5dcf54a3c662d32c872b764b8007b67dce6781 Mon Sep 17 00:00:00 2001
+From: Emil Medve <Emilian.Medve@Freescale.com>
+Date: Thu, 22 Jan 2015 08:47:21 -0600
+Subject: [PATCH 36/98] iommu/fsl: Remove unused fsl_of_pamu_ids[]
+
+Signed-off-by: Emil Medve <Emilian.Medve@Freescale.com>
+Acked-by: Varun Sethi <Varun.Sethi@freescale.com>
+Signed-off-by: Joerg Roedel <jroedel@suse.de>
+---
+ drivers/iommu/fsl_pamu.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/drivers/iommu/fsl_pamu.c b/drivers/iommu/fsl_pamu.c
+index d478ad8..113fb7b 100644
+--- a/drivers/iommu/fsl_pamu.c
++++ b/drivers/iommu/fsl_pamu.c
+@@ -1214,16 +1214,6 @@ error:
+ 	return ret;
+ }
+ 
+-static const struct of_device_id fsl_of_pamu_ids[] = {
+-	{
+-		.compatible = "fsl,p4080-pamu",
+-	},
+-	{
+-		.compatible = "fsl,pamu",
+-	},
+-	{},
+-};
+-
+ static struct platform_driver fsl_of_pamu_driver __initdata = {
+ 	.driver = {
+ 		.name = "fsl-of-pamu",
+-- 
+2.1.0.27.g96db324
+

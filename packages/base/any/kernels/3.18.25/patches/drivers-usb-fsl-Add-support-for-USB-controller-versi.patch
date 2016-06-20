@@ -1,0 +1,61 @@
+From b8d898121a5b0f495c12f11670eeaa7d24452946 Mon Sep 17 00:00:00 2001
+From: Nikhil Badola <nikhil.badola@freescale.com>
+Date: Tue, 26 May 2015 17:15:29 +0530
+Subject: [PATCH 62/98] drivers:usb:fsl: Add support for USB controller
+ version-2.5
+
+Add support for USB controller version-2.5 used in
+T4240 rev2.0, T1024, T1040, T2080, LS1021A
+
+Signed-off-by: Nikhil Badola <nikhil.badola@freescale.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/usb/host/fsl-mph-dr-of.c | 5 +++++
+ include/linux/fsl_devices.h      | 1 +
+ 2 files changed, 6 insertions(+)
+
+diff --git a/drivers/usb/host/fsl-mph-dr-of.c b/drivers/usb/host/fsl-mph-dr-of.c
+index e0315de..45b9e36 100644
+--- a/drivers/usb/host/fsl-mph-dr-of.c
++++ b/drivers/usb/host/fsl-mph-dr-of.c
+@@ -127,6 +127,7 @@ static int usb_get_ver_info(struct device_node *np)
+ 	 * returns 1 for usb controller version 1.6
+ 	 * returns 2 for usb controller version 2.2
+ 	 * returns 3 for usb controller version 2.4
++	 * returns 4 for usb controller version 2.5
+ 	 * returns 0 otherwise
+ 	 */
+ 	if (of_device_is_compatible(np, "fsl-usb2-dr")) {
+@@ -136,6 +137,8 @@ static int usb_get_ver_info(struct device_node *np)
+ 			ver = FSL_USB_VER_2_2;
+ 		else if (of_device_is_compatible(np, "fsl-usb2-dr-v2.4"))
+ 			ver = FSL_USB_VER_2_4;
++		else if (of_device_is_compatible(np, "fsl-usb2-dr-v2.5"))
++			ver = FSL_USB_VER_2_5;
+ 		else /* for previous controller versions */
+ 			ver = FSL_USB_VER_OLD;
+ 
+@@ -153,6 +156,8 @@ static int usb_get_ver_info(struct device_node *np)
+ 			ver = FSL_USB_VER_2_2;
+ 		else if (of_device_is_compatible(np, "fsl-usb2-mph-v2.4"))
+ 			ver = FSL_USB_VER_2_4;
++		else if (of_device_is_compatible(np, "fsl-usb2-mph-v2.5"))
++			ver = FSL_USB_VER_2_5;
+ 		else /* for previous controller versions */
+ 			ver = FSL_USB_VER_OLD;
+ 	}
+diff --git a/include/linux/fsl_devices.h b/include/linux/fsl_devices.h
+index a82296a..2a2f56b 100644
+--- a/include/linux/fsl_devices.h
++++ b/include/linux/fsl_devices.h
+@@ -24,6 +24,7 @@
+ #define FSL_USB_VER_1_6		1
+ #define FSL_USB_VER_2_2		2
+ #define FSL_USB_VER_2_4		3
++#define FSL_USB_VER_2_5		4
+ 
+ #include <linux/types.h>
+ 
+-- 
+2.1.0.27.g96db324
+

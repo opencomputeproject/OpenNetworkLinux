@@ -1,0 +1,648 @@
+From c55b93fe527b73bc9c2d0e4800afe98a905db5b1 Mon Sep 17 00:00:00 2001
+From: Roy Pledge <Roy.Pledge@freescale.com>
+Date: Thu, 29 Oct 2015 17:54:01 -0400
+Subject: [PATCH 01/98] soc/fsl: Introduce the Freescale DPAA resource
+ management infrastructure
+
+commit eefd32806455fe4102d89668096873ca98287695
+[context adjustment]
+
+Enable the generic DPAA 1.0 resource management routines used in the
+Freescale Datapath Acceleration Architecture. These functions are used
+by the Queue and Buffer Manager blocks to allocate hardware resources
+maintained in the DPAA.
+
+Signed-off-by: Roy Pledge <Roy.Pledge@freescale.com>
+Signed-off-by: Geoff Thorpe <Geoff.Thorpe@freescale.com>
+Integrated-by: Jiang Yutang <yutang.jiang@nxp.com>
+Conflicts:
+	drivers/soc/fsl/Makefile
+---
+ drivers/soc/Kconfig                   |   1 +
+ drivers/soc/Makefile                  |   1 +
+ drivers/soc/fsl/Kconfig               |   5 +
+ drivers/soc/fsl/Makefile              |   2 +
+ drivers/soc/fsl/qbman/Kconfig         |  18 ++
+ drivers/soc/fsl/qbman/Makefile        |   2 +
+ drivers/soc/fsl/qbman/dpaa_resource.c | 330 ++++++++++++++++++++++++++++++++++
+ drivers/soc/fsl/qbman/dpaa_sys.h      | 196 ++++++++++++++++++++
+ 8 files changed, 555 insertions(+)
+ create mode 100644 drivers/soc/fsl/Kconfig
+ create mode 100644 drivers/soc/fsl/Makefile
+ create mode 100644 drivers/soc/fsl/qbman/Kconfig
+ create mode 100644 drivers/soc/fsl/qbman/Makefile
+ create mode 100644 drivers/soc/fsl/qbman/dpaa_resource.c
+ create mode 100644 drivers/soc/fsl/qbman/dpaa_sys.h
+
+diff --git a/drivers/soc/Kconfig b/drivers/soc/Kconfig
+index 76d6bd4..ac3d6b5 100644
+--- a/drivers/soc/Kconfig
++++ b/drivers/soc/Kconfig
+@@ -3,5 +3,6 @@ menu "SOC (System On Chip) specific Drivers"
+ source "drivers/soc/qcom/Kconfig"
+ source "drivers/soc/ti/Kconfig"
+ source "drivers/soc/versatile/Kconfig"
++source "drivers/soc/fsl/Kconfig"
+ 
+ endmenu
+diff --git a/drivers/soc/Makefile b/drivers/soc/Makefile
+index 063113d..d996cdd 100644
+--- a/drivers/soc/Makefile
++++ b/drivers/soc/Makefile
+@@ -6,3 +6,4 @@ obj-$(CONFIG_ARCH_QCOM)		+= qcom/
+ obj-$(CONFIG_ARCH_TEGRA)	+= tegra/
+ obj-$(CONFIG_SOC_TI)		+= ti/
+ obj-$(CONFIG_PLAT_VERSATILE)	+= versatile/
++obj-$(CONFIG_FSL_SOC)		+= fsl/
+diff --git a/drivers/soc/fsl/Kconfig b/drivers/soc/fsl/Kconfig
+new file mode 100644
+index 0000000..daa9c0d
+--- /dev/null
++++ b/drivers/soc/fsl/Kconfig
+@@ -0,0 +1,5 @@
++menu "Freescale SOC (System On Chip) specific Drivers"
++
++source "drivers/soc/fsl/qbman/Kconfig"
++
++endmenu
+diff --git a/drivers/soc/fsl/Makefile b/drivers/soc/fsl/Makefile
+new file mode 100644
+index 0000000..8f5986b
+--- /dev/null
++++ b/drivers/soc/fsl/Makefile
+@@ -0,0 +1,2 @@
++# Common
++obj-$(CONFIG_FSL_DPA)				+= qbman/
+diff --git a/drivers/soc/fsl/qbman/Kconfig b/drivers/soc/fsl/qbman/Kconfig
+new file mode 100644
+index 0000000..473c99e
+--- /dev/null
++++ b/drivers/soc/fsl/qbman/Kconfig
+@@ -0,0 +1,18 @@
++menuconfig FSL_DPA
++	bool "Freescale DPAA support"
++	depends on FSL_SOC
++	default n
++	help
++		FSL Data-Path Acceleration Architecture drivers
++
++		These are not the actual Ethernet driver(s)
++
++if FSL_DPA
++
++config FSL_DPA_CHECKING
++	bool "additional driver checking"
++	help
++		Compiles in additional checks to sanity-check the drivers and
++		any use of it by other code. Not recommended for performance
++
++endif # FSL_DPA
+diff --git a/drivers/soc/fsl/qbman/Makefile b/drivers/soc/fsl/qbman/Makefile
+new file mode 100644
+index 0000000..3843b9a
+--- /dev/null
++++ b/drivers/soc/fsl/qbman/Makefile
+@@ -0,0 +1,2 @@
++# Common
++obj-$(CONFIG_FSL_DPA)				+= dpaa_resource.o
+diff --git a/drivers/soc/fsl/qbman/dpaa_resource.c b/drivers/soc/fsl/qbman/dpaa_resource.c
+new file mode 100644
+index 0000000..a61feeb
+--- /dev/null
++++ b/drivers/soc/fsl/qbman/dpaa_resource.c
+@@ -0,0 +1,330 @@
++/* Copyright 2009 - 2015 Freescale Semiconductor, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#if defined(CONFIG_FSL_DPA)
++
++#include "dpaa_sys.h"
++
++/* The allocator is a (possibly-empty) list of these */
++struct dpaa_resource_node {
++	struct list_head list;
++	u32 base;
++	u32 num;
++	/*
++	 * refcount and is_alloced are only set
++	 * when the node is in the used list
++	 */
++	unsigned int refcount;
++	int is_alloced;
++};
++
++int dpaa_resource_new(struct dpaa_resource *alloc, u32 *result,
++		      u32 count, u32 align, int partial)
++{
++	struct dpaa_resource_node *i = NULL, *next_best = NULL,
++		*used_node = NULL;
++	int num = 0;
++	u32 base, next_best_base = 0, next_best_num = 0;
++	struct dpaa_resource_node *margin_left, *margin_right;
++
++	*result = (u32)-1;
++	pr_debug("%s: alloc_range(%d,%d,%d)\n",
++		 __func__, count, align, partial);
++	/* If 'align' is 0, it should behave as though it was 1 */
++	if (!align)
++		align = 1;
++	margin_left = kmalloc(sizeof(*margin_left), GFP_KERNEL);
++	if (!margin_left)
++		goto err;
++	margin_right = kmalloc(sizeof(*margin_right), GFP_KERNEL);
++	if (!margin_right) {
++		kfree(margin_left);
++		goto err;
++	}
++	spin_lock(&alloc->lock);
++	list_for_each_entry(i, &alloc->free, list) {
++		base = (i->base + align - 1) / align;
++		base *= align;
++		if ((base - i->base) >= i->num)
++			/* alignment is impossible, regardless of count */
++			continue;
++		num = i->num - (base - i->base);
++		if (num >= count) {
++			/* this one will do nicely */
++			num = count;
++			goto done;
++		}
++		if (num > next_best_num) {
++			next_best = i;
++			next_best_base = base;
++			next_best_num = num;
++		}
++	}
++	if (partial && next_best) {
++		i = next_best;
++		base = next_best_base;
++		num = next_best_num;
++	} else
++		i = NULL;
++done:
++	if (i) {
++		if (base != i->base) {
++			margin_left->base = i->base;
++			margin_left->num = base - i->base;
++			list_add_tail(&margin_left->list, &i->list);
++		} else
++			kfree(margin_left);
++		if ((base + num) < (i->base + i->num)) {
++			margin_right->base = base + num;
++			margin_right->num = (i->base + i->num) -
++						(base + num);
++			list_add(&margin_right->list, &i->list);
++		} else
++			kfree(margin_right);
++		list_del(&i->list);
++		kfree(i);
++		*result = base;
++	}
++	spin_unlock(&alloc->lock);
++err:
++	pr_debug("%s: returning %d\n", __func__, i ? num : -ENOMEM);
++	if (!i)
++		return -ENOMEM;
++
++	/* Add the allocation to the used list with a refcount of 1 */
++	used_node = kmalloc(sizeof(*used_node), GFP_KERNEL);
++	if (!used_node)
++		return -ENOMEM;
++	used_node->base = *result;
++	used_node->num = num;
++	used_node->refcount = 1;
++	used_node->is_alloced = 1;
++	list_add_tail(&used_node->list, &alloc->used);
++	return num;
++}
++EXPORT_SYMBOL(dpaa_resource_new);
++
++static void _dpaa_resource_free(struct dpaa_resource *alloc, u32 base_id,
++				u32 count)
++{
++	struct dpaa_resource_node *i,
++		*node = kmalloc(sizeof(*node), GFP_KERNEL);
++
++	pr_debug("%s: release_range(%d,%d)\n", __func__, base_id, count);
++
++	node->base = base_id;
++	node->num = count;
++	list_for_each_entry(i, &alloc->free, list) {
++		if (i->base >= node->base) {
++			/* WARN_ON(any overlapping) */
++			WARN_ON(i->base < (node->base + node->num));
++			list_add_tail(&node->list, &i->list);
++			goto done;
++		}
++	}
++	list_add_tail(&node->list, &alloc->free);
++done:
++	/* Merge to the left */
++	i = list_entry(node->list.prev, struct dpaa_resource_node, list);
++	if (node->list.prev != &alloc->free) {
++		WARN_ON((i->base + i->num) > node->base);
++		if ((i->base + i->num) == node->base) {
++			node->base = i->base;
++			node->num += i->num;
++			list_del(&i->list);
++			kfree(i);
++		}
++	}
++	/* Merge to the right */
++	i = list_entry(node->list.next, struct dpaa_resource_node, list);
++	if (node->list.next != &alloc->free) {
++		WARN_ON((node->base + node->num) > i->base);
++		if ((node->base + node->num) == i->base) {
++			node->num += i->num;
++			list_del(&i->list);
++			kfree(i);
++		}
++	}
++}
++
++static void dpaa_resource_free(struct dpaa_resource *alloc, u32 base_id,
++			       u32 count)
++{
++	struct dpaa_resource_node *i = NULL;
++
++	spin_lock(&alloc->lock);
++
++	/* First find the node in the used list and decrement its ref count */
++	list_for_each_entry(i, &alloc->used, list) {
++		if (i->base == base_id && i->num == count) {
++			--i->refcount;
++			if (i->refcount == 0) {
++				list_del(&i->list);
++				if (i->is_alloced)
++					_dpaa_resource_free(alloc, base_id,
++							    count);
++				kfree(i);
++			}
++			goto done;
++		}
++	}
++	/* Couldn't find the allocation */
++	pr_err("%s: Attempt to free ID 0x%x COUNT %d that wasn't alloc'd or reserved\n",
++	       __func__, base_id, count);
++done:
++	spin_unlock(&alloc->lock);
++}
++
++/* Same as free but no previous allocation checking is needed */
++void dpaa_resource_seed(struct dpaa_resource *alloc, u32 base_id, u32 count)
++{
++	spin_lock(&alloc->lock);
++	_dpaa_resource_free(alloc, base_id, count);
++	spin_unlock(&alloc->lock);
++}
++EXPORT_SYMBOL(dpaa_resource_seed);
++
++/* Like 'new' but specifies the desired range, returns -ENOMEM if the entire
++ * desired range is not available, or 0 for success
++ */
++int dpaa_resource_reserve(struct dpaa_resource *alloc, u32 base, u32 num)
++{
++	struct dpaa_resource_node *i = NULL, *used_node;
++
++	pr_debug("%s: alloc_reserve(%d,%d)\n", __func__, base, num);
++
++	spin_lock(&alloc->lock);
++
++	/*
++	 * Check for the node in the used list.
++	 * If found, increase it's refcount
++	 */
++	list_for_each_entry(i, &alloc->used, list) {
++		if ((i->base == base) && (i->num == num)) {
++			++i->refcount;
++			spin_unlock(&alloc->lock);
++			return 0;
++		}
++		if ((base >= i->base) && (base < (i->base + i->num))) {
++			/*
++			 * This is an attempt to reserve a region that was
++			 * already reserved or alloced with a different
++			 * base or num
++			 */
++			pr_err("%s: Cannot reserve %d - %d, it overlaps with existing reservation from %d - %d\n",
++			       __func__, base, base + num - 1, i->base,
++			       i->base + i->num - 1);
++			spin_unlock(&alloc->lock);
++			return -1;
++		}
++	}
++	/* Check to make sure this ID isn't in the free list */
++	list_for_each_entry(i, &alloc->free, list) {
++		if ((base >= i->base) && (base < (i->base + i->num))) {
++			/* yep, the reservation is within this node */
++			pr_err("%s: Cannot reserve %d - %d, it overlaps with free range %d - %d and must be alloced\n",
++			       __func__, base, base + num - 1,
++			       i->base, i->base + i->num - 1);
++			spin_unlock(&alloc->lock);
++			return -1;
++		}
++	}
++	/* Add the allocation to the used list with a refcount of 1 */
++	used_node = kmalloc(sizeof(*used_node), GFP_KERNEL);
++	if (!used_node) {
++		spin_unlock(&alloc->lock);
++		return -ENOMEM;
++
++	}
++	used_node->base = base;
++	used_node->num = num;
++	used_node->refcount = 1;
++	used_node->is_alloced = 0;
++	list_add_tail(&used_node->list, &alloc->used);
++	spin_unlock(&alloc->lock);
++	return 0;
++}
++EXPORT_SYMBOL(dpaa_resource_reserve);
++
++/*
++ * This is a sort-of-conditional dpaa_resource_free() routine. Eg. when
++ * releasing FQIDs, it can filter out those that aren't in the Out Of Service
++ * state (better to leak a h/w resource than to crash). This function returns
++ * the number of invalid IDs that were not released.
++*/
++u32 dpaa_resource_release(struct dpaa_resource *alloc,
++			  u32 id, u32 count, int (*valid_check)(u32 id))
++{
++	int valid_mode = 0;
++	u32 loop = id, total_invalid = 0;
++
++	while (loop < (id + count)) {
++		int isvalid = valid_check ? valid_check(loop) : 1;
++
++		if (!valid_mode) {
++			/*
++			 * We're looking for a valid ID to terminate an invalid
++			 * range
++			 */
++			if (isvalid) {
++				/*
++				 * We finished a range of invalid IDs, a valid
++				 * range is now underway
++				 */
++				valid_mode = 1;
++				count -= (loop - id);
++				id = loop;
++			} else
++				total_invalid++;
++		} else {
++			/*
++			 * We're looking for an invalid ID to terminate a
++			 * valid range
++			 */
++			if (!isvalid) {
++				/*
++				 * Release the range of valid IDs, an unvalid
++				 * range is now underway
++				 */
++				if (loop > id)
++					dpaa_resource_free(alloc, id,
++							   loop - id);
++				valid_mode = 0;
++			}
++		}
++		loop++;
++	}
++	/* Release any unterminated range of valid IDs */
++	if (valid_mode && count)
++		dpaa_resource_free(alloc, id, count);
++	return total_invalid;
++}
++EXPORT_SYMBOL(dpaa_resource_release);
++#endif	/* CONFIG_FSL_DPA */
+diff --git a/drivers/soc/fsl/qbman/dpaa_sys.h b/drivers/soc/fsl/qbman/dpaa_sys.h
+new file mode 100644
+index 0000000..895a0f5
+--- /dev/null
++++ b/drivers/soc/fsl/qbman/dpaa_sys.h
+@@ -0,0 +1,196 @@
++/* Copyright 2008 - 2015 Freescale Semiconductor, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#ifndef __DPAA_SYS_H
++#define __DPAA_SYS_H
++
++#include <linux/slab.h>
++#include <linux/module.h>
++#include <linux/interrupt.h>
++#include <linux/of_address.h>
++#include <linux/of_irq.h>
++#include <linux/of_reserved_mem.h>
++#include <linux/kthread.h>
++#include <linux/uaccess.h>
++#include <linux/debugfs.h>
++#include <linux/vmalloc.h>
++#include <linux/platform_device.h>
++#include <linux/ctype.h>
++#include <asm/pgtable.h>
++#ifdef CONFIG_HOTPLUG_CPU
++#include <linux/cpu.h>
++#endif
++
++struct dpaa_resource {
++	struct list_head free;
++	spinlock_t lock;
++	struct list_head used;
++};
++
++#define DECLARE_DPAA_RESOURCE(name)			\
++struct dpaa_resource name = {				\
++	.free = LIST_HEAD_INIT(name.free),		\
++	.lock = __SPIN_LOCK_UNLOCKED(name.lock),	\
++	.used = LIST_HEAD_INIT(name.used)               \
++}
++
++int dpaa_resource_new(struct dpaa_resource *alloc, u32 *result,
++		      u32 count, u32 align, int partial);
++u32 dpaa_resource_release(struct dpaa_resource *alloc,
++			  u32 id, u32 count, int (*is_valid)(u32 id));
++void dpaa_resource_seed(struct dpaa_resource *alloc, u32 base_id, u32 count);
++int dpaa_resource_reserve(struct dpaa_resource *alloc, u32 base, u32 num);
++
++/* For 2-element tables related to cache-inhibited and cache-enabled mappings */
++#define DPA_PORTAL_CE 0
++#define DPA_PORTAL_CI 1
++
++/* Misc inline assists */
++#if (L1_CACHE_BYTES == 32)
++/* Inline cache manipulations for 32 byte cache lines */
++static inline void dpaa_flush(void *p)
++{
++	__asm__ __volatile__ ("dcbf 0,%0" : : "r" (p+32) : "memory");
++	__asm__ __volatile__ ("dcbf 0,%0" : : "r" (p) : "memory");
++}
++static inline void dpaa_zero(void *p)
++{
++	__asm__ __volatile__ ("dcbz 0,%0" : : "r" (p+32));
++	__asm__ __volatile__ ("dcbz 0,%0" : : "r" (p));
++}
++static inline void dpaa_invalidate(const void *p)
++{
++	__asm__ __volatile__ ("dcbi 0,%0" : : "r" (p+32));
++	__asm__ __volatile__ ("dcbi 0,%0" : : "r" (p));
++}
++static inline void dpaa_touch_ro(const void *p)
++{
++	__asm__ __volatile__ ("dcbt 0,%0" : : "r" (p+32));
++	__asm__ __volatile__ ("dcbt 0,%0" : : "r" (p));
++}
++static inline void dpaa_touch_rw(void *p)
++{
++	__asm__ __volatile__ ("dcbtst 0,%0" : : "r" (p+32));
++	__asm__ __volatile__ ("dcbtst 0,%0" : : "r" (p));
++}
++#elif (L1_CACHE_BYTES == 64)
++/* Inline cache manipulations for 64 byte cache lines */
++static inline void dpaa_flush(void *p)
++{
++	__asm__ __volatile__ ("dcbf 0,%0" : : "r" (p) : "memory");
++}
++static inline void dpaa_zero(void *p)
++{
++	__asm__ __volatile__ ("dcbzl 0,%0" : : "r" (p));
++}
++static inline void dpaa_invalidate(const void *p)
++{
++	__asm__ __volatile__ ("dcbi 0,%0" : : "r" (p) : "memory");
++}
++static inline void dpaa_touch_ro(const void *p)
++{
++	__asm__ __volatile__ ("dcbt 0,%0" : : "r" (p));
++}
++static inline void dpaa_touch_rw(void *p)
++{
++	__asm__ __volatile__ ("dcbtst 0,%0" : : "r" (p));
++}
++#else
++#error "Unsupported Cacheline Size"
++#endif
++
++/* Commonly used combo */
++static inline void dpaa_invalidate_touch_ro(const void *p)
++{
++	dpaa_invalidate(p);
++	dpaa_touch_ro(p);
++}
++
++
++#ifdef CONFIG_FSL_DPA_CHECKING
++#define DPA_ASSERT(x) WARN_ON(!(x))
++#else
++#define DPA_ASSERT(x)
++#endif
++
++/* Bootargs */
++
++/*
++ * QMan has "qportals=" and BMan has "bportals=", they use the same syntax
++ * though; a comma-separated list of items, each item being a cpu index and/or a
++ * range of cpu indices, and each item optionally be prefixed by "s" to indicate
++ * that the portal associated with that cpu should be shared. See bman_driver.c
++ * for more specifics.
++ */
++static int __parse_portals_cpu(const char **s, unsigned int *cpu)
++{
++	*cpu = 0;
++	if (!isdigit(**s))
++		return -EINVAL;
++	while (isdigit(**s))
++		*cpu = *cpu * 10 + (*((*s)++) - '0');
++	return 0;
++}
++static inline int parse_portals_bootarg(char *str, struct cpumask *want_shared,
++					struct cpumask *want_unshared,
++					const char *argname)
++{
++	const char *s = str;
++	unsigned int shared, cpu1, cpu2, loop;
++
++keep_going:
++	if (*s == 's') {
++		shared = 1;
++		s++;
++	} else
++		shared = 0;
++	if (__parse_portals_cpu(&s, &cpu1))
++		goto err;
++	if (*s == '-') {
++		s++;
++		if (__parse_portals_cpu(&s, &cpu2))
++			goto err;
++		if (cpu2 < cpu1)
++			goto err;
++	} else
++		cpu2 = cpu1;
++	for (loop = cpu1; loop <= cpu2; loop++)
++		cpumask_set_cpu(loop, shared ? want_shared : want_unshared);
++	if (*s == ',') {
++		s++;
++		goto keep_going;
++	} else if ((*s == '\0') || isspace(*s))
++		return 0;
++err:
++	pr_crit("Malformed %s argument: %s, offset: %lu\n", argname, str,
++		(unsigned long)s - (unsigned long)str);
++	return -EINVAL;
++}
++#endif	/* __DPAA_SYS_H */
+-- 
+2.1.0.27.g96db324
+

@@ -1,0 +1,1543 @@
+From b4f5360317964621c75c0857f88870adb4367f66 Mon Sep 17 00:00:00 2001
+From: Jiang Yutang-B14898 <yutang.jiang@freescale.com>
+Date: Mon, 28 Mar 2016 18:10:13 +0800
+Subject: [PATCH 97/98] DTS: sync dts files to upstream
+
+sync dts files to git://git.freescale.com/ppc/upstream/linux.git
+
+Integrated-by: Jiang Yutang <yutang.jiang@nxp.com>
+---
+ arch/powerpc/boot/dts/fsl/qoriq-bman1.dtsi         |  41 +++
+ arch/powerpc/boot/dts/fsl/qoriq-clockgen2.dtsi     |  68 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-dpaa-res3.dtsi     |  77 +++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-0.dtsi |  63 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-1.dtsi |  63 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-0.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-1.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-2.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-3.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-4.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-5.dtsi  |  62 ++++
+ arch/powerpc/boot/dts/fsl/qoriq-fman3-0.dtsi       | 106 ++++++
+ arch/powerpc/boot/dts/fsl/qoriq-qman3.dtsi         |  41 +++
+ arch/powerpc/boot/dts/fsl/t2081si-post.dtsi        | 361 ++++++++++++++++++---
+ arch/powerpc/boot/dts/fsl/t208xsi-pre.dtsi         |  19 +-
+ arch/powerpc/boot/dts/t2080rdb.dts                 |  67 +++-
+ arch/powerpc/boot/dts/t208xrdb.dtsi                |  29 ++
+ 17 files changed, 1252 insertions(+), 55 deletions(-)
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-bman1.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-clockgen2.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-dpaa-res3.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-0.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-1.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-0.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-1.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-2.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-3.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-4.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-5.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-fman3-0.dtsi
+ create mode 100644 arch/powerpc/boot/dts/fsl/qoriq-qman3.dtsi
+
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-bman1.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-bman1.dtsi
+new file mode 100644
+index 0000000..3b5e350
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-bman1.dtsi
+@@ -0,0 +1,41 @@
++/*
++ * QorIQ BMan device tree stub [ controller @ offset 0x31a000 ]
++ *
++ * Copyright 2011 - 2014 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++bman: bman@31a000 {
++	compatible = "fsl,bman";
++	reg = <0x31a000 0x1000>;
++	interrupts = <16 2 1 2>;
++	fsl,bman-portals = <&bportals>;
++	memory-region = <&bman_fbpr>;
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-clockgen2.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-clockgen2.dtsi
+new file mode 100644
+index 0000000..031ea90
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-clockgen2.dtsi
+@@ -0,0 +1,68 @@
++/*
++ * QorIQ clock control device tree stub [ controller @ offset 0xe1000 ]
++ *
++ * Copyright 2014 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++clockgen: global-utilities@e1000 {
++	compatible = "fsl,qoriq-clockgen-2.0";
++	reg = <0xe1000 0x1000>;
++	#address-cells = <1>;
++	#size-cells = <1>;
++	#clock-cells = <2>;
++
++	sysclk: sysclk {
++		#clock-cells = <0>;
++		compatible = "fsl,qoriq-sysclk-2.0", "fixed-clock";
++		clock-output-names = "sysclk";
++	};
++	pll0: pll0@800 {
++		#clock-cells = <1>;
++		reg = <0x800 0x4>;
++		compatible = "fsl,qoriq-core-pll-2.0";
++		clocks = <&sysclk>;
++		clock-output-names = "pll0", "pll0-div2", "pll0-div4";
++	};
++	pll1: pll1@820 {
++		#clock-cells = <1>;
++		reg = <0x820 0x4>;
++		compatible = "fsl,qoriq-core-pll-2.0";
++		clocks = <&sysclk>;
++		clock-output-names = "pll1", "pll1-div2", "pll1-div4";
++	};
++	platform_pll: platform-pll@c00 {
++		#clock-cells = <1>;
++		reg = <0xc00 0x4>;
++		compatible = "fsl,qoriq-platform-pll-2.0";
++		clocks = <&sysclk>;
++		clock-output-names = "platform-pll", "platform-pll-div2";
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-dpaa-res3.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-dpaa-res3.dtsi
+new file mode 100644
+index 0000000..e3bda8b
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-dpaa-res3.dtsi
+@@ -0,0 +1,77 @@
++/*
++ * QorIQ DPAA resources device tree stub [ FQIDs, BPIDs ]
++ *
++ * Copyright 2011-2012 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++/* These stubs are required to alloc qbman drivers to determine what ranges of
++ * resources are available for dynamic allocation, primarily because there are
++ * some legacy "a priori" assumptions in certain subsystems (eg. networking)
++ * that certain resources are reserved for their use. When those drivers (and in
++ * some cases, their corresponding device-tree nodes) are updated to dynamically
++ * allocate their resources, then *all* resources can be managed by the
++ * allocators and there may be no further need to define these stubs.
++ *
++ * A couple of qualifiers to the above statement though:
++ *
++ * - Some resource ranges are hardware-specific, rather than being defined by
++ *   software memory allocation choices. Eg. the number of available BPIDs is
++ *   baked into silicon and so will probably always need to be expressed in the
++ *   device-tree, though in that case it will express all BPIDs, not just those
++ *   available for dynamic allocation.
++ *
++ * - Even for memory-backed resources that are software determined (FQIDs), this
++ *   information may only be configured and available on the control-plane
++ *   partition that manages the device, so in AMP or hypervised scenarios there
++ *   may still be need to a way to provide allocation ranges. Ie. for O/S
++ *   instances that don't know how many resources are available to hardware, and
++ *   possibly even for O/S instances that do know how many are available but
++ *   that should not "own" all of them.
++ */
++
++&qportals {
++	qman-fqids@0 {
++		compatible = "fsl,fqid-range";
++		fsl,fqid-range = <256 512>;
++	};
++	qman-fqids@1 {
++		compatible = "fsl,fqid-range";
++		fsl,fqid-range = <32768 32768>;
++	};
++	qman-pools@0 {
++		compatible = "fsl,pool-channel-range";
++		fsl,pool-channel-range = <0x401 0xf>;
++	};
++	qman-cgrids@0 {
++		compatible = "fsl,cgrid-range";
++		fsl,cgrid-range = <0 256>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-0.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-0.dtsi
+new file mode 100644
+index 0000000..0b8f87f
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-0.dtsi
+@@ -0,0 +1,63 @@
++/*
++ * QorIQ FMan v3 10g port #0 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x10: port@90000 {
++		cell-index = <0x10>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x90000 0x1000>;
++		fsl,fman-10g-port;
++	};
++
++	fman0_tx_0x30: port@b0000 {
++		cell-index = <0x30>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xb0000 0x1000>;
++		fsl,fman-10g-port;
++	};
++
++	ethernet@f0000 {
++		cell-index = <0x8>;
++		compatible = "fsl,fman-memac";
++		reg = <0xf0000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x10 &fman0_tx_0x30>;
++	};
++
++	mdio@f1000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xf1000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-1.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-1.dtsi
+new file mode 100644
+index 0000000..8860038
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-10g-1.dtsi
+@@ -0,0 +1,63 @@
++/*
++ * QorIQ FMan v3 10g port #1 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x11: port@91000 {
++		cell-index = <0x11>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x91000 0x1000>;
++		fsl,fman-10g-port;
++	};
++
++	fman0_tx_0x31: port@b1000 {
++		cell-index = <0x31>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xb1000 0x1000>;
++		fsl,fman-10g-port;
++	};
++
++	ethernet@f2000 {
++		cell-index = <0x9>;
++		compatible = "fsl,fman-memac";
++		reg = <0xf2000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x11 &fman0_tx_0x31>;
++	};
++
++	mdio@f3000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xf3000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-0.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-0.dtsi
+new file mode 100644
+index 0000000..ace9c13
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-0.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #0 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x08: port@88000 {
++		cell-index = <0x8>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x88000 0x1000>;
++	};
++
++	fman0_tx_0x28: port@a8000 {
++		cell-index = <0x28>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xa8000 0x1000>;
++	};
++
++	ethernet@e0000 {
++		cell-index = <0>;
++		compatible = "fsl,fman-memac";
++		reg = <0xe0000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x08 &fman0_tx_0x28>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@e1000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xe1000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-1.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-1.dtsi
+new file mode 100644
+index 0000000..a4fc286
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-1.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #1 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x09: port@89000 {
++		cell-index = <0x9>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x89000 0x1000>;
++	};
++
++	fman0_tx_0x29: port@a9000 {
++		cell-index = <0x29>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xa9000 0x1000>;
++	};
++
++	ethernet@e2000 {
++		cell-index = <1>;
++		compatible = "fsl,fman-memac";
++		reg = <0xe2000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x09 &fman0_tx_0x29>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@e3000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xe3000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-2.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-2.dtsi
+new file mode 100644
+index 0000000..78596fa
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-2.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #2 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x0a: port@8a000 {
++		cell-index = <0xa>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x8a000 0x1000>;
++	};
++
++	fman0_tx_0x2a: port@aa000 {
++		cell-index = <0x2a>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xaa000 0x1000>;
++	};
++
++	ethernet@e4000 {
++		cell-index = <2>;
++		compatible = "fsl,fman-memac";
++		reg = <0xe4000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x0a &fman0_tx_0x2a>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@e5000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xe5000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-3.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-3.dtsi
+new file mode 100644
+index 0000000..af93abd
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-3.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #3 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x0b: port@8b000 {
++		cell-index = <0xb>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x8b000 0x1000>;
++	};
++
++	fman0_tx_0x2b: port@ab000 {
++		cell-index = <0x2b>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xab000 0x1000>;
++	};
++
++	ethernet@e6000 {
++		cell-index = <3>;
++		compatible = "fsl,fman-memac";
++		reg = <0xe6000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x0b &fman0_tx_0x2b>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@e7000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xe7000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-4.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-4.dtsi
+new file mode 100644
+index 0000000..97cffd7
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-4.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #4 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x0c: port@8c000 {
++		cell-index = <0xc>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x8c000 0x1000>;
++	};
++
++	fman0_tx_0x2c: port@ac000 {
++		cell-index = <0x2c>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xac000 0x1000>;
++	};
++
++	ethernet@e8000 {
++		cell-index = <4>;
++		compatible = "fsl,fman-memac";
++		reg = <0xe8000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x0c &fman0_tx_0x2c>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@e9000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xe9000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-5.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-5.dtsi
+new file mode 100644
+index 0000000..232c5c2
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0-1g-5.dtsi
+@@ -0,0 +1,62 @@
++/*
++ * QorIQ FMan v3 1g port #5 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman@400000 {
++	fman0_rx_0x0d: port@8d000 {
++		cell-index = <0xd>;
++		compatible = "fsl,fman-v3-port-rx";
++		reg = <0x8d000 0x1000>;
++	};
++
++	fman0_tx_0x2d: port@ad000 {
++		cell-index = <0x2d>;
++		compatible = "fsl,fman-v3-port-tx";
++		reg = <0xad000 0x1000>;
++	};
++
++	ethernet@ea000 {
++		cell-index = <5>;
++		compatible = "fsl,fman-memac";
++		reg = <0xea000 0x1000>;
++		fsl,fman-ports = <&fman0_rx_0x0d &fman0_tx_0x2d>;
++		ptp-timer = <&ptp_timer0>;
++	};
++
++	mdio@eb000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xeb000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-fman3-0.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0.dtsi
+new file mode 100644
+index 0000000..3a20e0d
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-fman3-0.dtsi
+@@ -0,0 +1,106 @@
++/*
++ * QorIQ FMan v3 device tree stub [ controller @ offset 0x400000 ]
++ *
++ * Copyright 2012 - 2015 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++fman0: fman@400000 {
++	#address-cells = <1>;
++	#size-cells = <1>;
++	cell-index = <0>;
++	compatible = "fsl,fman";
++	ranges = <0 0x400000 0x100000>;
++	reg = <0x400000 0x100000>;
++	interrupts = <96 2 0 0>, <16 2 1 1>;
++	clocks = <&clockgen 3 0>;
++	clock-names = "fmanclk";
++	fsl,qman-channel-range = <0x800 0x10>;
++
++	muram@0 {
++		compatible = "fsl,fman-muram";
++		reg = <0x0 0x60000>;
++	};
++
++	fman0_oh_0x2: port@82000 {
++		cell-index = <0x2>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x82000 0x1000>;
++	};
++
++	fman0_oh_0x3: port@83000 {
++		cell-index = <0x3>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x83000 0x1000>;
++	};
++
++	fman0_oh_0x4: port@84000 {
++		cell-index = <0x4>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x84000 0x1000>;
++	};
++
++	fman0_oh_0x5: port@85000 {
++		cell-index = <0x5>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x85000 0x1000>;
++	};
++
++	fman0_oh_0x6: port@86000 {
++		cell-index = <0x6>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x86000 0x1000>;
++	};
++
++	fman0_oh_0x7: port@87000 {
++		cell-index = <0x7>;
++		compatible = "fsl,fman-v3-port-oh";
++		reg = <0x87000 0x1000>;
++	};
++
++	mdio0: mdio@fc000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xfc000 0x1000>;
++	};
++
++	xmdio0: mdio@fd000 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "fsl,fman-memac-mdio", "fsl,fman-xmdio";
++		reg = <0xfd000 0x1000>;
++	};
++
++	ptp_timer0: ptp-timer@fe000 {
++		compatible = "fsl,fman-ptp-timer";
++		reg = <0xfe000 0x1000>;
++	};
++};
+diff --git a/arch/powerpc/boot/dts/fsl/qoriq-qman3.dtsi b/arch/powerpc/boot/dts/fsl/qoriq-qman3.dtsi
+new file mode 100644
+index 0000000..b379abd
+--- /dev/null
++++ b/arch/powerpc/boot/dts/fsl/qoriq-qman3.dtsi
+@@ -0,0 +1,41 @@
++/*
++ * QorIQ QMan rev3 device tree stub [ controller @ offset 0x318000 ]
++ *
++ * Copyright 2014 Freescale Semiconductor Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *     * Redistributions of source code must retain the above copyright
++ *	 notice, this list of conditions and the following disclaimer.
++ *     * Redistributions in binary form must reproduce the above copyright
++ *	 notice, this list of conditions and the following disclaimer in the
++ *	 documentation and/or other materials provided with the distribution.
++ *     * Neither the name of Freescale Semiconductor nor the
++ *	 names of its contributors may be used to endorse or promote products
++ *	 derived from this software without specific prior written permission.
++ *
++ *
++ * ALTERNATIVELY, this software may be distributed under the terms of the
++ * GNU General Public License ("GPL") as published by the Free Software
++ * Foundation, either version 2 of that License or (at your option) any
++ * later version.
++ *
++ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
++ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
++ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
++ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
++ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++qman: qman@318000 {
++	compatible = "fsl,qman";
++	reg = <0x318000 0x2000>;
++	interrupts = <16 2 1 3>;
++	fsl,qman-portals = <&qportals>;
++	memory-region = <&qman_fqd &qman_pfdr>;
++};
+diff --git a/arch/powerpc/boot/dts/fsl/t2081si-post.dtsi b/arch/powerpc/boot/dts/fsl/t2081si-post.dtsi
+index aecee96..39a112e 100644
+--- a/arch/powerpc/boot/dts/fsl/t2081si-post.dtsi
++++ b/arch/powerpc/boot/dts/fsl/t2081si-post.dtsi
+@@ -1,7 +1,7 @@
+ /*
+  * T2081 Silicon/SoC Device Tree Source (post include)
+  *
+- * Copyright 2013 Freescale Semiconductor Inc.
++ * Copyright 2013 - 2014 Freescale Semiconductor Inc.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+@@ -32,6 +32,21 @@
+  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++&bman_fbpr {
++	compatible = "fsl,bman-fbpr";
++	alloc-ranges = <0 0 0x10000 0>;
++};
++
++&qman_fqd {
++	compatible = "fsl,qman-fqd";
++	alloc-ranges = <0 0 0x10000 0>;
++};
++
++&qman_pfdr {
++	compatible = "fsl,qman-pfdr";
++	alloc-ranges = <0 0 0x10000 0>;
++};
++
+ &ifc {
+ 	#address-cells = <2>;
+ 	#size-cells = <1>;
+@@ -224,6 +239,254 @@
+ 	};
+ };
+ 
++&bportals {
++	#address-cells = <0x1>;
++	#size-cells = <0x1>;
++	compatible = "simple-bus";
++
++	bman-portal@0 {
++		cell-index = <0x0>;
++		compatible = "fsl,bman-portal";
++		reg = <0x0 0x4000>, <0x1000000 0x1000>;
++		interrupts = <105 2 0 0>;
++	};
++	bman-portal@4000 {
++		cell-index = <0x1>;
++		compatible = "fsl,bman-portal";
++		reg = <0x4000 0x4000>, <0x1001000 0x1000>;
++		interrupts = <107 2 0 0>;
++	};
++	bman-portal@8000 {
++		cell-index = <2>;
++		compatible = "fsl,bman-portal";
++		reg = <0x8000 0x4000>, <0x1002000 0x1000>;
++		interrupts = <109 2 0 0>;
++	};
++	bman-portal@c000 {
++		cell-index = <0x3>;
++		compatible = "fsl,bman-portal";
++		reg = <0xc000 0x4000>, <0x1003000 0x1000>;
++		interrupts = <111 2 0 0>;
++	};
++	bman-portal@10000 {
++		cell-index = <0x4>;
++		compatible = "fsl,bman-portal";
++		reg = <0x10000 0x4000>, <0x1004000 0x1000>;
++		interrupts = <113 2 0 0>;
++	};
++	bman-portal@14000 {
++		cell-index = <0x5>;
++		compatible = "fsl,bman-portal";
++		reg = <0x14000 0x4000>, <0x1005000 0x1000>;
++		interrupts = <115 2 0 0>;
++	};
++	bman-portal@18000 {
++		cell-index = <0x6>;
++		compatible = "fsl,bman-portal";
++		reg = <0x18000 0x4000>, <0x1006000 0x1000>;
++		interrupts = <117 2 0 0>;
++	};
++	bman-portal@1c000 {
++		cell-index = <0x7>;
++		compatible = "fsl,bman-portal";
++		reg = <0x1c000 0x4000>, <0x1007000 0x1000>;
++		interrupts = <119 2 0 0>;
++	};
++	bman-portal@20000 {
++		cell-index = <0x8>;
++		compatible = "fsl,bman-portal";
++		reg = <0x20000 0x4000>, <0x1008000 0x1000>;
++		interrupts = <121 2 0 0>;
++	};
++	bman-portal@24000 {
++		cell-index = <0x9>;
++		compatible = "fsl,bman-portal";
++		reg = <0x24000 0x4000>, <0x1009000 0x1000>;
++		interrupts = <123 2 0 0>;
++	};
++	bman-portal@28000 {
++		cell-index = <0xa>;
++		compatible = "fsl,bman-portal";
++		reg = <0x28000 0x4000>, <0x100a000 0x1000>;
++		interrupts = <125 2 0 0>;
++	};
++	bman-portal@2c000 {
++		cell-index = <0xb>;
++		compatible = "fsl,bman-portal";
++		reg = <0x2c000 0x4000>, <0x100b000 0x1000>;
++		interrupts = <127 2 0 0>;
++	};
++	bman-portal@30000 {
++		cell-index = <0xc>;
++		compatible = "fsl,bman-portal";
++		reg = <0x30000 0x4000>, <0x100c000 0x1000>;
++		interrupts = <129 2 0 0>;
++	};
++	bman-portal@34000 {
++		cell-index = <0xd>;
++		compatible = "fsl,bman-portal";
++		reg = <0x34000 0x4000>, <0x100d000 0x1000>;
++		interrupts = <131 2 0 0>;
++	};
++	bman-portal@38000 {
++		cell-index = <0xe>;
++		compatible = "fsl,bman-portal";
++		reg = <0x38000 0x4000>, <0x100e000 0x1000>;
++		interrupts = <133 2 0 0>;
++	};
++	bman-portal@3c000 {
++		cell-index = <0xf>;
++		compatible = "fsl,bman-portal";
++		reg = <0x3c000 0x4000>, <0x100f000 0x1000>;
++		interrupts = <135 2 0 0>;
++	};
++	bman-portal@40000 {
++		cell-index = <0x10>;
++		compatible = "fsl,bman-portal";
++		reg = <0x40000 0x4000>, <0x1010000 0x1000>;
++		interrupts = <137 2 0 0>;
++	};
++	bman-portal@44000 {
++		cell-index = <0x11>;
++		compatible = "fsl,bman-portal";
++		reg = <0x44000 0x4000>, <0x1011000 0x1000>;
++		interrupts = <139 2 0 0>;
++	};
++};
++
++&qportals {
++	#address-cells = <0x1>;
++	#size-cells = <0x1>;
++	compatible = "simple-bus";
++
++	qportal0: qman-portal@0 {
++		compatible = "fsl,qman-portal";
++		reg = <0x0 0x4000>, <0x1000000 0x1000>;
++		interrupts = <104 0x2 0 0>;
++		cell-index = <0x0>;
++		fsl,qman-channel-id = <0x0>;
++	};
++	qportal1: qman-portal@4000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x4000 0x4000>, <0x1001000 0x1000>;
++		interrupts = <106 0x2 0 0>;
++		cell-index = <0x1>;
++		fsl,qman-channel-id = <0x1>;
++	};
++	qportal2: qman-portal@8000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x8000 0x4000>, <0x1002000 0x1000>;
++		interrupts = <108 0x2 0 0>;
++		cell-index = <0x2>;
++		fsl,qman-channel-id = <0x2>;
++	};
++	qportal3: qman-portal@c000 {
++		compatible = "fsl,qman-portal";
++		reg = <0xc000 0x4000>, <0x1003000 0x1000>;
++		interrupts = <110 0x2 0 0>;
++		cell-index = <0x3>;
++		fsl,qman-channel-id = <0x3>;
++	};
++	qportal4: qman-portal@10000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x10000 0x4000>, <0x1004000 0x1000>;
++		interrupts = <112 0x2 0 0>;
++		cell-index = <0x4>;
++		fsl,qman-channel-id = <0x4>;
++	};
++	qportal5: qman-portal@14000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x14000 0x4000>, <0x1005000 0x1000>;
++		interrupts = <114 0x2 0 0>;
++		cell-index = <0x5>;
++		fsl,qman-channel-id = <0x5>;
++	};
++	qportal6: qman-portal@18000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x18000 0x4000>, <0x1006000 0x1000>;
++		interrupts = <116 0x2 0 0>;
++		cell-index = <0x6>;
++		fsl,qman-channel-id = <0x6>;
++	};
++	qportal7: qman-portal@1c000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x1c000 0x4000>, <0x1007000 0x1000>;
++		interrupts = <118 0x2 0 0>;
++		cell-index = <0x7>;
++		fsl,qman-channel-id = <0x7>;
++	};
++	qportal8: qman-portal@20000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x20000 0x4000>, <0x1008000 0x1000>;
++		interrupts = <120 0x2 0 0>;
++		cell-index = <0x8>;
++		fsl,qman-channel-id = <0x8>;
++	};
++	qportal9: qman-portal@24000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x24000 0x4000>, <0x1009000 0x1000>;
++		interrupts = <122 0x2 0 0>;
++		cell-index = <0x9>;
++		fsl,qman-channel-id = <0x9>;
++	};
++	qportal10: qman-portal@28000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x28000 0x4000>, <0x100a000 0x1000>;
++		interrupts = <124 0x2 0 0>;
++		cell-index = <0xa>;
++		fsl,qman-channel-id = <0xa>;
++	};
++	qportal11: qman-portal@2c000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x2c000 0x4000>, <0x100b000 0x1000>;
++		interrupts = <126 0x2 0 0>;
++		cell-index = <0xb>;
++		fsl,qman-channel-id = <0xb>;
++	};
++	qportal12: qman-portal@30000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x30000 0x4000>, <0x100c000 0x1000>;
++		interrupts = <128 0x2 0 0>;
++		cell-index = <0xc>;
++		fsl,qman-channel-id = <0xc>;
++	};
++	qportal13: qman-portal@34000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x34000 0x4000>, <0x100d000 0x1000>;
++		interrupts = <130 0x2 0 0>;
++		cell-index = <0xd>;
++		fsl,qman-channel-id = <0xd>;
++	};
++	qportal14: qman-portal@38000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x38000 0x4000>, <0x100e000 0x1000>;
++		interrupts = <132 0x2 0 0>;
++		cell-index = <0xe>;
++		fsl,qman-channel-id = <0xe>;
++	};
++	qportal15: qman-portal@3c000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x3c000 0x4000>, <0x100f000 0x1000>;
++		interrupts = <134 0x2 0 0>;
++		cell-index = <0xf>;
++		fsl,qman-channel-id = <0xf>;
++	};
++	qportal16: qman-portal@40000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x40000 0x4000>, <0x1010000 0x1000>;
++		interrupts = <136 0x2 0 0>;
++		cell-index = <0x10>;
++		fsl,qman-channel-id = <0x10>;
++	};
++	qportal17: qman-portal@44000 {
++		compatible = "fsl,qman-portal";
++		reg = <0x44000 0x4000>, <0x1011000 0x1000>;
++		interrupts = <138 0x2 0 0>;
++		cell-index = <0x11>;
++		fsl,qman-channel-id = <0x11>;
++	};
++};
++
+ &soc {
+ 	#address-cells = <1>;
+ 	#size-cells = <1>;
+@@ -305,56 +568,9 @@
+ 		fsl,liodn-bits = <12>;
+ 	};
+ 
+-	clockgen: global-utilities@e1000 {
++/include/ "qoriq-clockgen2.dtsi"
++	global-utilities@e1000 {
+ 		compatible = "fsl,t2080-clockgen", "fsl,qoriq-clockgen-2.0";
+-		ranges = <0x0 0xe1000 0x1000>;
+-		reg = <0xe1000 0x1000>;
+-		#address-cells = <1>;
+-		#size-cells = <1>;
+-
+-		sysclk: sysclk {
+-			#clock-cells = <0>;
+-			compatible = "fsl,qoriq-sysclk-2.0";
+-			clock-output-names = "sysclk", "fixed-clock";
+-		};
+-
+-		pll0: pll0@800 {
+-			#clock-cells = <1>;
+-			reg = <0x800 4>;
+-			compatible = "fsl,qoriq-core-pll-2.0";
+-			clocks = <&sysclk>;
+-			clock-output-names = "pll0", "pll0-div2", "pll0-div4";
+-		};
+-
+-		pll1: pll1@820 {
+-			#clock-cells = <1>;
+-			reg = <0x820 4>;
+-			compatible = "fsl,qoriq-core-pll-2.0";
+-			clocks = <&sysclk>;
+-			clock-output-names = "pll1", "pll1-div2", "pll1-div4";
+-		};
+-
+-		mux0: mux0@0 {
+-			#clock-cells = <0>;
+-			reg = <0x0 4>;
+-			compatible = "fsl,qoriq-core-mux-2.0";
+-			clocks = <&pll0 0>, <&pll0 1>, <&pll0 2>,
+-				 <&pll1 0>, <&pll1 1>, <&pll1 2>;
+-			clock-names = "pll0", "pll0-div2", "pll1-div4",
+-				"pll1", "pll1-div2", "pll1-div4";
+-			clock-output-names = "cmux0";
+-		};
+-
+-		mux1: mux1@20 {
+-			#clock-cells = <0>;
+-			reg = <0x20 4>;
+-			compatible = "fsl,qoriq-core-mux-2.0";
+-			clocks = <&pll0 0>, <&pll0 1>, <&pll0 2>,
+-				 <&pll1 0>, <&pll1 1>, <&pll1 2>;
+-			clock-names = "pll0", "pll0-div2", "pll1-div4",
+-				"pll1", "pll1-div2", "pll1-div4";
+-			clock-output-names = "cmux1";
+-		};
+ 	};
+ 
+ 	rcpm: global-utilities@e2000 {
+@@ -425,6 +641,51 @@
+ 		phy_type = "utmi";
+ 	};
+ /include/ "qoriq-sec5.2-0.dtsi"
++/include/ "qoriq-qman3.dtsi"
++/include/ "qoriq-bman1.dtsi"
++
++/include/ "qoriq-fman3-0.dtsi"
++/include/ "qoriq-fman3-0-1g-0.dtsi"
++/include/ "qoriq-fman3-0-1g-1.dtsi"
++/include/ "qoriq-fman3-0-1g-2.dtsi"
++/include/ "qoriq-fman3-0-1g-3.dtsi"
++/include/ "qoriq-fman3-0-1g-4.dtsi"
++/include/ "qoriq-fman3-0-1g-5.dtsi"
++/include/ "qoriq-fman3-0-10g-0.dtsi"
++/include/ "qoriq-fman3-0-10g-1.dtsi"
++	fman@400000 {
++		enet0: ethernet@e0000 {
++		};
++
++		enet1: ethernet@e2000 {
++		};
++
++		enet2: ethernet@e4000 {
++		};
++
++		enet3: ethernet@e6000 {
++		};
++
++		enet4: ethernet@e8000 {
++		};
++
++		enet5: ethernet@ea000 {
++		};
++
++		enet6: ethernet@f0000 {
++		};
++
++		enet7: ethernet@f2000 {
++		};
++
++		mdio@fc000 {
++			interrupts = <100 1 0 0>;
++		};
++
++		mdio@fd000 {
++			interrupts = <101 1 0 0>;
++		};
++	};
+ 
+ 	L2_1: l2-cache-controller@c20000 {
+ 		/* Cluster 0 L2 cache */
+diff --git a/arch/powerpc/boot/dts/fsl/t208xsi-pre.dtsi b/arch/powerpc/boot/dts/fsl/t208xsi-pre.dtsi
+index e71ceb0..3f745de 100644
+--- a/arch/powerpc/boot/dts/fsl/t208xsi-pre.dtsi
++++ b/arch/powerpc/boot/dts/fsl/t208xsi-pre.dtsi
+@@ -51,6 +51,17 @@
+ 		serial3 = &serial3;
+ 
+ 		crypto = &crypto;
++
++		fman0 = &fman0;
++		ethernet0 = &enet0;
++		ethernet1 = &enet1;
++		ethernet2 = &enet2;
++		ethernet3 = &enet3;
++		ethernet4 = &enet4;
++		ethernet5 = &enet5;
++		ethernet6 = &enet6;
++		ethernet7 = &enet7;
++
+ 		pci0 = &pci0;
+ 		pci1 = &pci1;
+ 		pci2 = &pci2;
+@@ -70,28 +81,28 @@
+ 		cpu0: PowerPC,e6500@0 {
+ 			device_type = "cpu";
+ 			reg = <0 1>;
+-			clocks = <&mux0>;
++			clocks = <&clockgen 1 0>;
+ 			next-level-cache = <&L2_1>;
+ 			fsl,portid-mapping = <0x80000000>;
+ 		};
+ 		cpu1: PowerPC,e6500@2 {
+ 			device_type = "cpu";
+ 			reg = <2 3>;
+-			clocks = <&mux0>;
++			clocks = <&clockgen 1 0>;
+ 			next-level-cache = <&L2_1>;
+ 			fsl,portid-mapping = <0x80000000>;
+ 		};
+ 		cpu2: PowerPC,e6500@4 {
+ 			device_type = "cpu";
+ 			reg = <4 5>;
+-			clocks = <&mux0>;
++			clocks = <&clockgen 1 0>;
+ 			next-level-cache = <&L2_1>;
+ 			fsl,portid-mapping = <0x80000000>;
+ 		};
+ 		cpu3: PowerPC,e6500@6 {
+ 			device_type = "cpu";
+ 			reg = <6 7>;
+-			clocks = <&mux0>;
++			clocks = <&clockgen 1 0>;
+ 			next-level-cache = <&L2_1>;
+ 			fsl,portid-mapping = <0x80000000>;
+ 		};
+diff --git a/arch/powerpc/boot/dts/t2080rdb.dts b/arch/powerpc/boot/dts/t2080rdb.dts
+index e889104..8785ad7 100644
+--- a/arch/powerpc/boot/dts/t2080rdb.dts
++++ b/arch/powerpc/boot/dts/t2080rdb.dts
+@@ -1,7 +1,7 @@
+ /*
+  * T2080PCIe-RDB Board Device Tree Source
+  *
+- * Copyright 2014 Freescale Semiconductor Inc.
++ * Copyright 2014 - 2015 Freescale Semiconductor Inc.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions are met:
+@@ -54,4 +54,69 @@
+ 	};
+ };
+ 
++&soc {
++	fman@400000 {
++		ethernet@e0000 {
++			phy-handle = <&xg_aq1202_phy3>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@e2000 {
++			phy-handle = <&xg_aq1202_phy4>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@e4000 {
++			phy-handle = <&rgmii_phy1>;
++			phy-connection-type = "rgmii";
++		};
++
++		ethernet@e6000 {
++			phy-handle = <&rgmii_phy2>;
++			phy-connection-type = "rgmii";
++		};
++
++		ethernet@f0000 {
++			phy-handle = <&xg_cs4315_phy1>;
++			phy-connection-type = "xgmii";
++		};
++
++		ethernet@f2000 {
++			phy-handle = <&xg_cs4315_phy2>;
++			phy-connection-type = "xgmii";
++		};
++
++		mdio@fc000 {
++			rgmii_phy1: ethernet-phy@1 {
++				reg = <0x1>;
++			};
++			rgmii_phy2: ethernet-phy@2 {
++				reg = <0x2>;
++			};
++		};
++
++		mdio@fd000 {
++			xg_cs4315_phy1: ethernet-phy@c {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0xc>;
++			};
++
++			xg_cs4315_phy2: ethernet-phy@d {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0xd>;
++			};
++
++			xg_aq1202_phy3: ethernet-phy@0 {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0x0>;
++			};
++
++			xg_aq1202_phy4: ethernet-phy@1 {
++				compatible = "ethernet-phy-ieee802.3-c45";
++				reg = <0x1>;
++			};
++		};
++	};
++};
++
+ /include/ "fsl/t2080si-post.dtsi"
+diff --git a/arch/powerpc/boot/dts/t208xrdb.dtsi b/arch/powerpc/boot/dts/t208xrdb.dtsi
+index 1481e19..08d94c0 100644
+--- a/arch/powerpc/boot/dts/t208xrdb.dtsi
++++ b/arch/powerpc/boot/dts/t208xrdb.dtsi
+@@ -39,6 +39,25 @@
+ 	#size-cells = <2>;
+ 	interrupt-parent = <&mpic>;
+ 
++	reserved-memory {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		bman_fbpr: bman-fbpr {
++			size = <0 0x1000000>;
++			alignment = <0 0x1000000>;
++		};
++		qman_fqd: qman-fqd {
++			size = <0 0x400000>;
++			alignment = <0 0x400000>;
++		};
++		qman_pfdr: qman-pfdr {
++			size = <0 0x2000000>;
++			alignment = <0 0x2000000>;
++		};
++	};
++
+ 	ifc: localbus@ffe124000 {
+ 		reg = <0xf 0xfe124000 0 0x2000>;
+ 		ranges = <0 0 0xf 0xe8000000 0x08000000
+@@ -79,6 +98,14 @@
+ 		ranges = <0x00000000 0xf 0x00000000 0x01072000>;
+ 	};
+ 
++	bportals: bman-portals@ff4000000 {
++		ranges = <0x0 0xf 0xf4000000 0x2000000>;
++	};
++
++	qportals: qman-portals@ff6000000 {
++		ranges = <0x0 0xf 0xf6000000 0x2000000>;
++	};
++
+ 	soc: soc@ffe000000 {
+ 		ranges = <0x00000000 0xf 0xfe000000 0x1000000>;
+ 		reg = <0xf 0xfe000000 0 0x00001000>;
+@@ -182,3 +209,5 @@
+ 		};
+ 	};
+ };
++
++/include/ "fsl/qoriq-dpaa-res3.dtsi"
+-- 
+2.1.0.27.g96db324
+

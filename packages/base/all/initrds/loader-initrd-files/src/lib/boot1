@@ -43,8 +43,8 @@ else
 
     ARCH_LIST=
     case $uarch in
-        ppc)
-            ARCH_LIST="ppc powerpc"
+        ppc*)
+            ARCH_LIST="ppc powerpc ppc64"
             ;;
         x86_64)
             ARCH_LIST="x86_64 amd64"

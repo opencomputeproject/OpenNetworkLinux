@@ -1,0 +1,64 @@
+From b7eb6f8a79d44b6954708334a34f92fdcae23a52 Mon Sep 17 00:00:00 2001
+From: Shaohui Xie <Shaohui.Xie@freescale.com>
+Date: Wed, 21 Jan 2015 19:08:32 +0800
+Subject: [PATCH 49/98] net/fsl: Replace spin_event_timeout() with arch
+ independent in xgmac_mdio
+
+spin_event_timeout() is PPC dependent, use an arch independent
+equivalent instead.
+
+Signed-off-by: Shaohui Xie <Shaohui.Xie@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/xgmac_mdio.c | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/xgmac_mdio.c b/drivers/net/ethernet/freescale/xgmac_mdio.c
+index ab9a6bf..3a83bc2 100644
+--- a/drivers/net/ethernet/freescale/xgmac_mdio.c
++++ b/drivers/net/ethernet/freescale/xgmac_mdio.c
+@@ -52,12 +52,16 @@ struct tgec_mdio_controller {
+ static int xgmac_wait_until_free(struct device *dev,
+ 				 struct tgec_mdio_controller __iomem *regs)
+ {
+-	uint32_t status;
++	unsigned int timeout;
+ 
+ 	/* Wait till the bus is free */
+-	status = spin_event_timeout(
+-		!((ioread32be(&regs->mdio_stat)) & MDIO_STAT_BSY), TIMEOUT, 0);
+-	if (!status) {
++	timeout = TIMEOUT;
++	while ((ioread32be(&regs->mdio_stat) & MDIO_STAT_BSY) && timeout) {
++		cpu_relax();
++		timeout--;
++	}
++
++	if (!timeout) {
+ 		dev_err(dev, "timeout waiting for bus to be free\n");
+ 		return -ETIMEDOUT;
+ 	}
+@@ -71,12 +75,16 @@ static int xgmac_wait_until_free(struct device *dev,
+ static int xgmac_wait_until_done(struct device *dev,
+ 				 struct tgec_mdio_controller __iomem *regs)
+ {
+-	uint32_t status;
++	unsigned int timeout;
+ 
+ 	/* Wait till the MDIO write is complete */
+-	status = spin_event_timeout(
+-		!((ioread32be(&regs->mdio_data)) & MDIO_DATA_BSY), TIMEOUT, 0);
+-	if (!status) {
++	timeout = TIMEOUT;
++	while ((ioread32be(&regs->mdio_data) & MDIO_DATA_BSY) && timeout) {
++		cpu_relax();
++		timeout--;
++	}
++
++	if (!timeout) {
+ 		dev_err(dev, "timeout waiting for operation to complete\n");
+ 		return -ETIMEDOUT;
+ 	}
+-- 
+2.1.0.27.g96db324
+

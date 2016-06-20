@@ -1,0 +1,149 @@
+From 1b4b7b7cd93985bb04b5e8e8f22ad8fca11636d6 Mon Sep 17 00:00:00 2001
+From: Yijing Wang <wangyijing@huawei.com>
+Date: Fri, 17 Jul 2015 17:16:31 +0800
+Subject: [PATCH 87/98] PCI: Protect pci_bus->slots with pci_slot_mutex, not
+ pci_bus_sem
+
+upstream 67546762978f523749eac157903e0b01c18e083a commit
+
+Rajat Jain reported a deadlock when PCIe hot-add and AER recovery happen at
+the same time:
+
+thread 1:
+
+  pciehp_enable_slot
+    pciehp_configure_device
+      pci_bus_add_devices
+        pci_bus_add_device
+          device_attach
+            device_lock(dev)                       # acquire device lock
+            ...
+            pciehp_probe
+              init_slot
+                pci_hp_register
+                  pci_create_slot
+                    down_write(pci_bus_sem)        # deadlock here
+
+thread 2:
+
+  aer_isr_one_error
+    aer_process_err_device
+      do_recovery
+        broadcast_error_message(..., report_error_detected)
+          pci_walk_bus(..., cb=report_error_detected, ...)
+            down_read(&pci_bus_sem)                # acquire pci_bus_sem
+            report_error_detected(dev)             # cb()
+              device_lock(dev)                     # deadlock here
+
+Previously, the bus->devices and bus->slots list were protected by
+pci_bus_sem.  In pci_create_slot(), we held it for writing so we could
+add to the bus->slots list.
+
+Add a new local pci_slot_mutex to protect bus->slots.  Hold pci_bus_sem for
+reading while searching the bus->devices list.
+
+[bhelgaas: changelog]
+Link: http://lkml.kernel.org/r/CAA93t1qpPqbih+UB0McA_d_+2rVaNkXsinAUxYzK9+JXSS+L-g@mail.gmail.com
+Reported-by: Rajat Jain <rajatja@google.com>
+Tested-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Yijing Wang <wangyijing@huawei.com>
+Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
+---
+ drivers/pci/slot.c  | 18 +++++++++++-------
+ include/linux/pci.h |  3 ++-
+ 2 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/pci/slot.c b/drivers/pci/slot.c
+index 396c200..4bd3fce 100644
+--- a/drivers/pci/slot.c
++++ b/drivers/pci/slot.c
+@@ -14,6 +14,7 @@
+ 
+ struct kset *pci_slots_kset;
+ EXPORT_SYMBOL_GPL(pci_slots_kset);
++static DEFINE_MUTEX(pci_slot_mutex);
+ 
+ static ssize_t pci_slot_attr_show(struct kobject *kobj,
+ 					struct attribute *attr, char *buf)
+@@ -106,9 +107,11 @@ static void pci_slot_release(struct kobject *kobj)
+ 	dev_dbg(&slot->bus->dev, "dev %02x, released physical slot %s\n",
+ 		slot->number, pci_slot_name(slot));
+ 
++	down_read(&pci_bus_sem);
+ 	list_for_each_entry(dev, &slot->bus->devices, bus_list)
+ 		if (PCI_SLOT(dev->devfn) == slot->number)
+ 			dev->slot = NULL;
++	up_read(&pci_bus_sem);
+ 
+ 	list_del(&slot->list);
+ 
+@@ -194,9 +197,8 @@ static int rename_slot(struct pci_slot *slot, const char *name)
+ static struct pci_slot *get_slot(struct pci_bus *parent, int slot_nr)
+ {
+ 	struct pci_slot *slot;
+-	/*
+-	 * We already hold pci_bus_sem so don't worry
+-	 */
++
++	/* We already hold pci_slot_mutex */
+ 	list_for_each_entry(slot, &parent->slots, list)
+ 		if (slot->number == slot_nr) {
+ 			kobject_get(&slot->kobj);
+@@ -253,7 +255,7 @@ struct pci_slot *pci_create_slot(struct pci_bus *parent, int slot_nr,
+ 	int err = 0;
+ 	char *slot_name = NULL;
+ 
+-	down_write(&pci_bus_sem);
++	mutex_lock(&pci_slot_mutex);
+ 
+ 	if (slot_nr == -1)
+ 		goto placeholder;
+@@ -301,16 +303,18 @@ placeholder:
+ 	INIT_LIST_HEAD(&slot->list);
+ 	list_add(&slot->list, &parent->slots);
+ 
++	down_read(&pci_bus_sem);
+ 	list_for_each_entry(dev, &parent->devices, bus_list)
+ 		if (PCI_SLOT(dev->devfn) == slot_nr)
+ 			dev->slot = slot;
++	up_read(&pci_bus_sem);
+ 
+ 	dev_dbg(&parent->dev, "dev %02x, created physical slot %s\n",
+ 		slot_nr, pci_slot_name(slot));
+ 
+ out:
+ 	kfree(slot_name);
+-	up_write(&pci_bus_sem);
++	mutex_unlock(&pci_slot_mutex);
+ 	return slot;
+ err:
+ 	kfree(slot);
+@@ -332,9 +336,9 @@ void pci_destroy_slot(struct pci_slot *slot)
+ 	dev_dbg(&slot->bus->dev, "dev %02x, dec refcount to %d\n",
+ 		slot->number, atomic_read(&slot->kobj.kref.refcount) - 1);
+ 
+-	down_write(&pci_bus_sem);
++	mutex_lock(&pci_slot_mutex);
+ 	kobject_put(&slot->kobj);
+-	up_write(&pci_bus_sem);
++	mutex_unlock(&pci_slot_mutex);
+ }
+ EXPORT_SYMBOL_GPL(pci_destroy_slot);
+ 
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index 7a34844..98e8cf6 100644
+--- a/include/linux/pci.h
++++ b/include/linux/pci.h
+@@ -450,7 +450,8 @@ struct pci_bus {
+ 	struct list_head children;	/* list of child buses */
+ 	struct list_head devices;	/* list of devices on this bus */
+ 	struct pci_dev	*self;		/* bridge device as seen by parent */
+-	struct list_head slots;		/* list of slots on this bus */
++	struct list_head slots;		/* list of slots on this bus;
++					   protected by pci_slot_mutex */
+ 	struct resource *resource[PCI_BRIDGE_RESOURCE_NUM];
+ 	struct list_head resources;	/* address space routed to this bus */
+ 	struct resource busn_res;	/* bus numbers routed to this bus */
+-- 
+2.1.0.27.g96db324
+

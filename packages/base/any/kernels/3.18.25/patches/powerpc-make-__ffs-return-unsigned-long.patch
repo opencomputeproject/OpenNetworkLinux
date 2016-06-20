@@ -1,0 +1,58 @@
+From 23d4c8d5d95491e6b4a1ba3cf6ce15f704865b4e Mon Sep 17 00:00:00 2001
+From: Anton Blanchard <anton@samba.org>
+Date: Wed, 17 Sep 2014 22:15:37 +1000
+Subject: [PATCH 89/98] powerpc: make __ffs return unsigned long
+
+upstream 6e4c632cdff7bf0238a2543dfe98bd1ad40313c2 commit
+
+I'm seeing a build warning in mm/nobootmem.c after removing
+bootmem:
+
+mm/nobootmem.c: In function '__free_pages_memory':
+include/linux/kernel.h:713:17: warning: comparison of distinct pointer types lacks a cast [enabled by default]
+  (void) (&_min1 == &_min2);  \
+                 ^
+mm/nobootmem.c:90:11: note: in expansion of macro 'min'
+   order = min(MAX_ORDER - 1UL, __ffs(start));
+           ^
+
+The rest of the worlds seems to define __ffs as returning unsigned long,
+so lets do that.
+
+Signed-off-by: Anton Blanchard <anton@samba.org>
+Tested-by: Emil Medve <Emilian.Medve@Freescale.com>
+Signed-off-by: Michael Ellerman <mpe@ellerman.id.au>
+---
+ arch/powerpc/include/asm/bitops.h | 2 +-
+ arch/powerpc/sysdev/fsl_pci.c     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/powerpc/include/asm/bitops.h b/arch/powerpc/include/asm/bitops.h
+index bd3bd57..c633f05 100644
+--- a/arch/powerpc/include/asm/bitops.h
++++ b/arch/powerpc/include/asm/bitops.h
+@@ -213,7 +213,7 @@ static __inline__ unsigned long ffz(unsigned long x)
+ 	return __ilog2(x & -x);
+ }
+ 
+-static __inline__ int __ffs(unsigned long x)
++static __inline__ unsigned long __ffs(unsigned long x)
+ {
+ 	return __ilog2(x & -x);
+ }
+diff --git a/arch/powerpc/sysdev/fsl_pci.c b/arch/powerpc/sysdev/fsl_pci.c
+index 65d2ed4..d8484d7 100644
+--- a/arch/powerpc/sysdev/fsl_pci.c
++++ b/arch/powerpc/sysdev/fsl_pci.c
+@@ -152,7 +152,7 @@ static int setup_one_atmu(struct ccsr_pci __iomem *pci,
+ 		flags |= 0x10000000; /* enable relaxed ordering */
+ 
+ 	for (i = 0; size > 0; i++) {
+-		unsigned int bits = min(ilog2(size),
++		unsigned int bits = min_t(u32, ilog2(size),
+ 					__ffs(pci_addr | phys_addr));
+ 
+ 		if (index + i >= 5)
+-- 
+2.1.0.27.g96db324
+

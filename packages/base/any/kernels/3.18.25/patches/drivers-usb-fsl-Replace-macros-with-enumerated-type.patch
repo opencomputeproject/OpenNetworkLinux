@@ -1,0 +1,93 @@
+From 6ae5f66ba85018c29a19b7e4a4a7372dca67595e Mon Sep 17 00:00:00 2001
+From: Nikhil Badola <nikhil.badola@freescale.com>
+Date: Mon, 15 Jun 2015 15:46:37 +0530
+Subject: [PATCH 63/98] drivers:usb:fsl: Replace macros with enumerated type
+
+Replace macros with enumerated type to represent usb ip
+controller version
+
+Signed-off-by: Nikhil Badola <nikhil.badola@freescale.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/usb/host/fsl-mph-dr-of.c |  8 ++++----
+ include/linux/fsl_devices.h      | 16 ++++++++++------
+ 2 files changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/drivers/usb/host/fsl-mph-dr-of.c b/drivers/usb/host/fsl-mph-dr-of.c
+index 45b9e36..325fcdd 100644
+--- a/drivers/usb/host/fsl-mph-dr-of.c
++++ b/drivers/usb/host/fsl-mph-dr-of.c
+@@ -119,9 +119,9 @@ error:
+ 
+ static const struct of_device_id fsl_usb2_mph_dr_of_match[];
+ 
+-static int usb_get_ver_info(struct device_node *np)
++static enum fsl_usb2_controller_ver usb_get_ver_info(struct device_node *np)
+ {
+-	int ver = -1;
++	enum fsl_usb2_controller_ver ver = FSL_USB_VER_NONE;
+ 
+ 	/*
+ 	 * returns 1 for usb controller version 1.6
+@@ -142,7 +142,7 @@ static int usb_get_ver_info(struct device_node *np)
+ 		else /* for previous controller versions */
+ 			ver = FSL_USB_VER_OLD;
+ 
+-		if (ver > -1)
++		if (ver > FSL_USB_VER_NONE)
+ 			return ver;
+ 	}
+ 
+@@ -215,7 +215,7 @@ static int fsl_usb2_mph_dr_of_probe(struct platform_device *ofdev)
+ 	pdata->controller_ver = usb_get_ver_info(np);
+ 
+ 	if (pdata->have_sysif_regs) {
+-		if (pdata->controller_ver < 0) {
++		if (pdata->controller_ver == FSL_USB_VER_NONE) {
+ 			dev_warn(&ofdev->dev, "Could not get controller version\n");
+ 			return -ENODEV;
+ 		}
+diff --git a/include/linux/fsl_devices.h b/include/linux/fsl_devices.h
+index 2a2f56b..0d4855cd 100644
+--- a/include/linux/fsl_devices.h
++++ b/include/linux/fsl_devices.h
+@@ -20,11 +20,6 @@
+ #define FSL_UTMI_PHY_DLY	10	/*As per P1010RM, delay for UTMI
+ 				PHY CLK to become stable - 10ms*/
+ #define FSL_USB_PHY_CLK_TIMEOUT	10000	/* uSec */
+-#define FSL_USB_VER_OLD		0
+-#define FSL_USB_VER_1_6		1
+-#define FSL_USB_VER_2_2		2
+-#define FSL_USB_VER_2_4		3
+-#define FSL_USB_VER_2_5		4
+ 
+ #include <linux/types.h>
+ 
+@@ -52,6 +47,15 @@
+  *
+  */
+ 
++enum fsl_usb2_controller_ver {
++	FSL_USB_VER_NONE = -1,
++	FSL_USB_VER_OLD = 0,
++	FSL_USB_VER_1_6 = 1,
++	FSL_USB_VER_2_2 = 2,
++	FSL_USB_VER_2_4 = 3,
++	FSL_USB_VER_2_5 = 4,
++};
++
+ enum fsl_usb2_operating_modes {
+ 	FSL_USB2_MPH_HOST,
+ 	FSL_USB2_DR_HOST,
+@@ -72,7 +76,7 @@ struct platform_device;
+ 
+ struct fsl_usb2_platform_data {
+ 	/* board specific information */
+-	int				controller_ver;
++	enum fsl_usb2_controller_ver	controller_ver;
+ 	enum fsl_usb2_operating_modes	operating_mode;
+ 	enum fsl_usb2_phy_modes		phy_mode;
+ 	unsigned int			port_enables;
+-- 
+2.1.0.27.g96db324
+

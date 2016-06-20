@@ -1,0 +1,29 @@
+From a7c658c7e52106094e5dca9c3345b8bb341854b0 Mon Sep 17 00:00:00 2001
+From: Jiang Yutang-B14898 <yutang.jiang@freescale.com>
+Date: Wed, 6 Apr 2016 15:38:40 +0800
+Subject: [PATCH 59/98] remove reduplicate introduce: drivers/soc/Kconfig
+
+commit 41f93af900a20d1a0a358b522b5129c89677e9dc introduce a reduplicate
+Kconfig: drivers/soc/Kconfig in drivers/Kconfig, remove it.
+
+Signed-off-by: Jiang Yutang <yutang.jiang@nxp.com>
+---
+ drivers/Kconfig | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/drivers/Kconfig b/drivers/Kconfig
+index 1a693d3..622fa26 100644
+--- a/drivers/Kconfig
++++ b/drivers/Kconfig
+@@ -148,8 +148,6 @@ source "drivers/remoteproc/Kconfig"
+ 
+ source "drivers/rpmsg/Kconfig"
+ 
+-source "drivers/soc/Kconfig"
+-
+ source "drivers/devfreq/Kconfig"
+ 
+ source "drivers/extcon/Kconfig"
+-- 
+2.1.0.27.g96db324
+

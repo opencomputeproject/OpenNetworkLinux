@@ -1,0 +1,43 @@
+From 6e37bb2e2fc667b41b5dbc1178f26753eae0bb69 Mon Sep 17 00:00:00 2001
+From: Igal Liberman <Igal.Liberman@freescale.com>
+Date: Wed, 18 Feb 2015 16:04:45 +0200
+Subject: [PATCH 53/98] powerpc/mpc85xx: Add FMan platform support
+
+Get the FMan devices/sub-nodes (MAC, MDIO, etc.) auto-probed
+
+Signed-off-by: Igal Liberman <Igal.Liberman@freescale.com>
+Signed-off-by: Scott Wood <scottwood@freescale.com>
+---
+ arch/powerpc/platforms/85xx/common.c          | 1 +
+ arch/powerpc/platforms/85xx/corenet_generic.c | 3 +++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/powerpc/platforms/85xx/common.c b/arch/powerpc/platforms/85xx/common.c
+index 4a9ad87..7bfb9b1 100644
+--- a/arch/powerpc/platforms/85xx/common.c
++++ b/arch/powerpc/platforms/85xx/common.c
+@@ -40,6 +40,7 @@ static const struct of_device_id mpc85xx_common_ids[] __initconst = {
+ 	{ .compatible = "fsl,qoriq-pcie-v2.4", },
+ 	{ .compatible = "fsl,qoriq-pcie-v2.3", },
+ 	{ .compatible = "fsl,qoriq-pcie-v2.2", },
++	{ .compatible = "fsl,fman", },
+ 	{},
+ };
+ 
+diff --git a/arch/powerpc/platforms/85xx/corenet_generic.c b/arch/powerpc/platforms/85xx/corenet_generic.c
+index 4b20b9a..ee34efc 100644
+--- a/arch/powerpc/platforms/85xx/corenet_generic.c
++++ b/arch/powerpc/platforms/85xx/corenet_generic.c
+@@ -108,6 +108,9 @@ static const struct of_device_id of_device_ids[] = {
+ 	{
+ 		.compatible	= "fsl,qe",
+ 	},
++	{
++		.compatible    = "fsl,fman",
++	},
+ 	/* The following two are for the Freescale hypervisor */
+ 	{
+ 		.name		= "hypervisor",
+-- 
+2.1.0.27.g96db324
+

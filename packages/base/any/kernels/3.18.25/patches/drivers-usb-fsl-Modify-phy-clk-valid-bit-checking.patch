@@ -1,0 +1,79 @@
+From 4f5d3607ead4693049b3ae9a9f98cb6ac04fccd5 Mon Sep 17 00:00:00 2001
+From: Nikhil Badola <nikhil.badola@freescale.com>
+Date: Tue, 14 Jul 2015 17:28:10 +0530
+Subject: [PATCH 66/98] drivers: usb: fsl: Modify phy clk valid bit checking
+
+Phy_clk_valid bit is checked only when the boolean
+property phy-clk-valid in present in usb node device tree.
+This property is added to the usb node via device tree fixup.
+
+Signed-off-by: Nikhil Badola <nikhil.badola@freescale.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/usb/host/ehci-fsl.c      | 16 ++++++++--------
+ drivers/usb/host/fsl-mph-dr-of.c |  9 +++++++++
+ include/linux/fsl_devices.h      |  1 +
+ 3 files changed, 18 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/host/ehci-fsl.c b/drivers/usb/host/ehci-fsl.c
+index 3fa9c9c..d574675 100644
+--- a/drivers/usb/host/ehci-fsl.c
++++ b/drivers/usb/host/ehci-fsl.c
+@@ -258,14 +258,14 @@ static int ehci_fsl_setup_phy(struct usb_hcd *hcd,
+ 		break;
+ 	}
+ 
+-	if (pdata->have_sysif_regs &&
+-	    pdata->controller_ver > FSL_USB_VER_1_6 &&
+-	    (phy_mode == FSL_USB2_PHY_ULPI)) {
+-		/* check PHY_CLK_VALID to get phy clk valid */
+-		if (!(spin_event_timeout(in_be32(non_ehci + FSL_SOC_USB_CTRL) &
+-				PHY_CLK_VALID, FSL_USB_PHY_CLK_TIMEOUT, 0) ||
+-				in_be32(non_ehci + FSL_SOC_USB_PRICTRL))) {
+-			dev_warn(hcd->self.controller, "USB PHY clock invalid\n");
++	/*
++	 * check PHY_CLK_VALID to determine phy clock presence before writing
++	 * to portsc
++	 */
++	if (pdata->check_phy_clk_valid) {
++		if (!(in_be32(non_ehci + FSL_SOC_USB_CTRL) & PHY_CLK_VALID)) {
++			dev_warn(hcd->self.controller,
++				 "USB PHY clock invalid\n");
+ 			return -EINVAL;
+ 		}
+ 	}
+diff --git a/drivers/usb/host/fsl-mph-dr-of.c b/drivers/usb/host/fsl-mph-dr-of.c
+index db957e3..07ce80c 100644
+--- a/drivers/usb/host/fsl-mph-dr-of.c
++++ b/drivers/usb/host/fsl-mph-dr-of.c
+@@ -222,6 +222,15 @@ static int fsl_usb2_mph_dr_of_probe(struct platform_device *ofdev)
+ 	else
+ 		pdata->has_fsl_erratum_a007792 = 0;
+ 
++	/*
++	 * Determine whether phy_clk_valid needs to be checked
++	 * by reading property in device tree
++	 */
++	if (of_get_property(np, "phy-clk-valid", NULL))
++		pdata->check_phy_clk_valid = 1;
++	else
++		pdata->check_phy_clk_valid = 0;
++
+ 	if (pdata->have_sysif_regs) {
+ 		if (pdata->controller_ver == FSL_USB_VER_NONE) {
+ 			dev_warn(&ofdev->dev, "Could not get controller version\n");
+diff --git a/include/linux/fsl_devices.h b/include/linux/fsl_devices.h
+index 070d9ae..cebdbbb 100644
+--- a/include/linux/fsl_devices.h
++++ b/include/linux/fsl_devices.h
+@@ -99,6 +99,7 @@ struct fsl_usb2_platform_data {
+ 	unsigned	suspended:1;
+ 	unsigned	already_suspended:1;
+ 	unsigned        has_fsl_erratum_a007792:1;
++	unsigned        check_phy_clk_valid:1;
+ 
+ 	/* register save area for suspend/resume */
+ 	u32		pm_command;
+-- 
+2.1.0.27.g96db324
+

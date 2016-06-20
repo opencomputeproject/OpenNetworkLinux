@@ -1,0 +1,155 @@
+From 8c7edb96425ecda336a34874e5c823617a2e7036 Mon Sep 17 00:00:00 2001
+From: Andy Fleming <afleming@gmail.com>
+Date: Sun, 4 Jan 2015 17:36:02 +0800
+Subject: [PATCH 45/98] net/fsl: Add mEMAC MDIO support to XGMAC MDIO
+
+The Freescale mEMAC supports operating at 10/100/1000/10G, and
+its associated MDIO controller is likewise capable of operating
+both Clause 22 and Clause 45 MDIO buses. It is nearly identical
+to the MDIO controller on the XGMAC, so we just modify that
+driver.
+
+Portions of this driver developed by:
+
+Sandeep Singh <sandeep@freescale.com>
+Roy Zang <tie-fei.zang@freescale.com>
+
+Signed-off-by: Andy Fleming <afleming@gmail.com>
+Signed-off-by: Shaohui Xie <Shaohui.Xie@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/Kconfig      |  3 +-
+ drivers/net/ethernet/freescale/xgmac_mdio.c | 64 ++++++++++++++++++++++++-----
+ 2 files changed, 55 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/Kconfig b/drivers/net/ethernet/freescale/Kconfig
+index 10de932..81b29ab 100644
+--- a/drivers/net/ethernet/freescale/Kconfig
++++ b/drivers/net/ethernet/freescale/Kconfig
+@@ -70,7 +70,8 @@ config FSL_XGMAC_MDIO
+ 	select PHYLIB
+ 	select OF_MDIO
+ 	---help---
+-	  This driver supports the MDIO bus on the Fman 10G Ethernet MACs.
++	  This driver supports the MDIO bus on the Fman 10G Ethernet MACs, and
++	  on the FMan mEMAC (which supports both Clauses 22 and 45)
+ 
+ config UCC_GETH
+ 	tristate "Freescale QE Gigabit Ethernet"
+diff --git a/drivers/net/ethernet/freescale/xgmac_mdio.c b/drivers/net/ethernet/freescale/xgmac_mdio.c
+index a352445..e0fc3d1 100644
+--- a/drivers/net/ethernet/freescale/xgmac_mdio.c
++++ b/drivers/net/ethernet/freescale/xgmac_mdio.c
+@@ -32,6 +32,7 @@ struct tgec_mdio_controller {
+ 	__be32	mdio_addr;	/* MDIO address */
+ } __packed;
+ 
++#define MDIO_STAT_ENC		BIT(6)
+ #define MDIO_STAT_CLKDIV(x)	(((x>>1) & 0xff) << 8)
+ #define MDIO_STAT_BSY		(1 << 0)
+ #define MDIO_STAT_RD_ER		(1 << 1)
+@@ -91,20 +92,40 @@ static int xgmac_wait_until_done(struct device *dev,
+ static int xgmac_mdio_write(struct mii_bus *bus, int phy_id, int regnum, u16 value)
+ {
+ 	struct tgec_mdio_controller __iomem *regs = bus->priv;
+-	uint16_t dev_addr = regnum >> 16;
++	uint16_t dev_addr;
++	u32 mdio_ctl, mdio_stat;
+ 	int ret;
+ 
+-	/* Set the port and dev addr */
+-	out_be32(&regs->mdio_ctl,
+-		 MDIO_CTL_PORT_ADDR(phy_id) | MDIO_CTL_DEV_ADDR(dev_addr));
++	mdio_stat = in_be32(&regs->mdio_stat);
++	if (regnum & MII_ADDR_C45) {
++		/* Clause 45 (ie 10G) */
++		dev_addr = (regnum >> 16) & 0x1f;
++		mdio_stat |= MDIO_STAT_ENC;
++	} else {
++		/* Clause 22 (ie 1G) */
++		dev_addr = regnum & 0x1f;
++		mdio_stat &= ~MDIO_STAT_ENC;
++	}
+ 
+-	/* Set the register address */
+-	out_be32(&regs->mdio_addr, regnum & 0xffff);
++	out_be32(&regs->mdio_stat, mdio_stat);
+ 
+ 	ret = xgmac_wait_until_free(&bus->dev, regs);
+ 	if (ret)
+ 		return ret;
+ 
++	/* Set the port and dev addr */
++	mdio_ctl = MDIO_CTL_PORT_ADDR(phy_id) | MDIO_CTL_DEV_ADDR(dev_addr);
++	out_be32(&regs->mdio_ctl, mdio_ctl);
++
++	/* Set the register address */
++	if (regnum & MII_ADDR_C45) {
++		out_be32(&regs->mdio_addr, regnum & 0xffff);
++
++		ret = xgmac_wait_until_free(&bus->dev, regs);
++		if (ret)
++			return ret;
++	}
++
+ 	/* Write the value to the register */
+ 	out_be32(&regs->mdio_data, MDIO_DATA(value));
+ 
+@@ -123,21 +144,39 @@ static int xgmac_mdio_write(struct mii_bus *bus, int phy_id, int regnum, u16 val
+ static int xgmac_mdio_read(struct mii_bus *bus, int phy_id, int regnum)
+ {
+ 	struct tgec_mdio_controller __iomem *regs = bus->priv;
+-	uint16_t dev_addr = regnum >> 16;
++	uint16_t dev_addr;
++	uint32_t mdio_stat;
+ 	uint32_t mdio_ctl;
+ 	uint16_t value;
+ 	int ret;
+ 
++	mdio_stat = in_be32(&regs->mdio_stat);
++	if (regnum & MII_ADDR_C45) {
++		dev_addr = (regnum >> 16) & 0x1f;
++		mdio_stat |= MDIO_STAT_ENC;
++	} else {
++		dev_addr = regnum & 0x1f;
++		mdio_stat = ~MDIO_STAT_ENC;
++	}
++
++	out_be32(&regs->mdio_stat, mdio_stat);
++
++	ret = xgmac_wait_until_free(&bus->dev, regs);
++	if (ret)
++		return ret;
++
+ 	/* Set the Port and Device Addrs */
+ 	mdio_ctl = MDIO_CTL_PORT_ADDR(phy_id) | MDIO_CTL_DEV_ADDR(dev_addr);
+ 	out_be32(&regs->mdio_ctl, mdio_ctl);
+ 
+ 	/* Set the register address */
+-	out_be32(&regs->mdio_addr, regnum & 0xffff);
++	if (regnum & MII_ADDR_C45) {
++		out_be32(&regs->mdio_addr, regnum & 0xffff);
+ 
+-	ret = xgmac_wait_until_free(&bus->dev, regs);
+-	if (ret)
+-		return ret;
++		ret = xgmac_wait_until_free(&bus->dev, regs);
++		if (ret)
++			return ret;
++	}
+ 
+ 	/* Initiate the read */
+ 	out_be32(&regs->mdio_ctl, mdio_ctl | MDIO_CTL_READ);
+@@ -224,6 +263,9 @@ static struct of_device_id xgmac_mdio_match[] = {
+ 	{
+ 		.compatible = "fsl,fman-xmdio",
+ 	},
++	{
++		.compatible = "fsl,fman-memac-mdio",
++	},
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, xgmac_mdio_match);
+-- 
+2.1.0.27.g96db324
+

@@ -208,7 +208,11 @@ installer_blockdev_format() {
 
 
     _mkfs="mkfs.ext2"
-    _archtools="${installer_dir}/`uname -m`"
+    ARCH=`uname -m`
+    if [ "$ARCH" = "ppc64" ]; then
+       ARCH=ppc
+    fi
+    _archtools="${installer_dir}/$ARCH"
     if [ -f "${_archtools}/mkfs.ext2" ]; then
         chmod a+x ${_archtools}/*
         echo "Using installer archtools mkfs.ext2..."

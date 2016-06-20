@@ -1,0 +1,30 @@
+From 8b3c42f94b573f9fa9d0b9a3b82a8c71db150b11 Mon Sep 17 00:00:00 2001
+From: Shaohui Xie <Shaohui.Xie@freescale.com>
+Date: Tue, 13 Jan 2015 10:30:31 +0800
+Subject: [PATCH 46/98] net/fsl: fix a bug in xgmac_mdio
+
+There is a bug in xgmac_mdio_read when clear the bit MDIO_STAT_ENC,
+which '&' is missed in 'mdio_stat &= ~MDIO_STAT_ENC'.
+
+Signed-off-by: Shaohui Xie <Shaohui.Xie@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/xgmac_mdio.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/ethernet/freescale/xgmac_mdio.c b/drivers/net/ethernet/freescale/xgmac_mdio.c
+index e0fc3d1..a492e50 100644
+--- a/drivers/net/ethernet/freescale/xgmac_mdio.c
++++ b/drivers/net/ethernet/freescale/xgmac_mdio.c
+@@ -156,7 +156,7 @@ static int xgmac_mdio_read(struct mii_bus *bus, int phy_id, int regnum)
+ 		mdio_stat |= MDIO_STAT_ENC;
+ 	} else {
+ 		dev_addr = regnum & 0x1f;
+-		mdio_stat = ~MDIO_STAT_ENC;
++		mdio_stat &= ~MDIO_STAT_ENC;
+ 	}
+ 
+ 	out_be32(&regs->mdio_stat, mdio_stat);
+-- 
+2.1.0.27.g96db324
+

@@ -1,0 +1,53 @@
+From 0095de507cbcb6161b9b2b60039acd17603d7dc3 Mon Sep 17 00:00:00 2001
+From: Ulf Hansson <ulf.hansson@linaro.org>
+Date: Fri, 5 Jun 2015 11:40:08 +0200
+Subject: [PATCH 72/98] mmc: sdhci: Restore behavior while creating OCR mask
+
+Commit 3a48edc4bd68 ("mmc: sdhci: Use mmc core regulator infrastucture")
+changed the behavior for how to assign the ocr_avail mask for the mmc
+host. More precisely it started to mask the bits instead of assigning
+them.
+
+Restore the behavior, but also make it clear that an OCR mask created
+from an external regulator overrides the other ones. The OCR mask is
+determined by one of the following with this priority:
+
+1. Supported ranges of external regulator if one supplies VDD
+2. Host OCR mask if set by the driver (based on DT properties)
+3. The capabilities reported by the controller itself
+
+Fixes: 3a48edc4bd68 ("mmc: sdhci: Use mmc core regulator infrastucture")
+Cc: Tim Kryger <tim.kryger@gmail.com>
+Reported-by: Yangbo Lu <yangbo.lu@freescale.com>
+Signed-off-by: Ulf Hansson <ulf.hansson@linaro.org>
+Reviewed-by: Tim Kryger <tim.kryger@gmail.com>
+---
+ drivers/mmc/host/sdhci.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
+index 023c201..8893e55 100644
+--- a/drivers/mmc/host/sdhci.c
++++ b/drivers/mmc/host/sdhci.c
+@@ -3152,13 +3152,14 @@ int sdhci_add_host(struct sdhci_host *host)
+ 				   SDHCI_MAX_CURRENT_MULTIPLIER;
+ 	}
+ 
+-	/* If OCR set by external regulators, use it instead */
++	/* If OCR set by host, use it instead. */
++	if (host->ocr_mask)
++		ocr_avail = host->ocr_mask;
++
++	/* If OCR set by external regulators, give it highest prio. */
+ 	if (mmc->ocr_avail)
+ 		ocr_avail = mmc->ocr_avail;
+ 
+-	if (host->ocr_mask)
+-		ocr_avail &= host->ocr_mask;
+-
+ 	mmc->ocr_avail = ocr_avail;
+ 	mmc->ocr_avail_sdio = ocr_avail;
+ 	if (host->ocr_avail_sdio)
+-- 
+2.1.0.27.g96db324
+

@@ -1,0 +1,17 @@
+common:
+  arch: powerpc
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+
+packages:
+  - name: onl-kernel-3.18.25-powerpc64
+    version: 1.0.0
+    summary: Open Network Linux Kernel 3.18.25 for ppc64 platforms.
+
+    files:
+      builds/kernel-3.18.25-powerpc64.bin.gz : $$PKG_INSTALL/
+      builds/linux-3.18.25-dtbs : $$PKG_INSTALL/dtbs
+      builds/linux-3.18.25-mbuild : $$PKG_INSTALL/mbuilds
+
+    changelog:  Change changes changes.,

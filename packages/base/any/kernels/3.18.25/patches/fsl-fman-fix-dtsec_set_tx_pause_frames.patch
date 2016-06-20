@@ -1,0 +1,41 @@
+From 624c26652585cb310460a26bcb929231167c2e37 Mon Sep 17 00:00:00 2001
+From: Igal Liberman <igal.liberman@freescale.com>
+Date: Sun, 13 Mar 2016 21:14:43 +0200
+Subject: [PATCH 21/98] fsl/fman: fix dtsec_set_tx_pause_frames
+
+Fix a bug introduced in e06a03b (fsl/fman: fix the pause_time test)
+When pause_time is set to '0' - pause frames are disabled and
+there's no need to apply dTSEC-A003 Errata workaround.
+
+Signed-off-by: Igal Liberman <igal.liberman@freescale.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ drivers/net/ethernet/freescale/fman/fman_dtsec.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/fman/fman_dtsec.c b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+index b3f523b..128a004 100644
+--- a/drivers/net/ethernet/freescale/fman/fman_dtsec.c
++++ b/drivers/net/ethernet/freescale/fman/fman_dtsec.c
+@@ -932,15 +932,14 @@ int dtsec_set_tx_pause_frames(struct fman_mac *dtsec,
+ 	if (!is_init_done(dtsec->dtsec_drv_param))
+ 		return -EINVAL;
+ 
+-	/* FM_BAD_TX_TS_IN_B_2_B_ERRATA_DTSEC_A003 Errata workaround */
+-	if (dtsec->fm_rev_info.major == 2)
+-		if (pause_time <= 320) {
++	if (pause_time) {
++		/* FM_BAD_TX_TS_IN_B_2_B_ERRATA_DTSEC_A003 Errata workaround */
++		if (dtsec->fm_rev_info.major == 2 && pause_time <= 320) {
+ 			pr_warn("pause-time: %d illegal.Should be > 320\n",
+ 				pause_time);
+ 			return -EINVAL;
+ 		}
+ 
+-	if (pause_time) {
+ 		ptv = ioread32be(&regs->ptv);
+ 		ptv &= PTV_PTE_MASK;
+ 		ptv |= pause_time & PTV_PT_MASK;
+-- 
+2.1.0.27.g96db324
+

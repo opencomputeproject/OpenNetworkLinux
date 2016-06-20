@@ -1,0 +1,41 @@
+From 824503480eedb7c0f53d6c61c75bb379b79ceaa0 Mon Sep 17 00:00:00 2001
+From: Yangbo Lu <yangbo.lu@freescale.com>
+Date: Wed, 6 May 2015 14:29:08 +0800
+Subject: [PATCH 73/98] powerpc/corenet: enable eSDHC
+
+Signed-off-by: Yangbo Lu <yangbo.lu@freescale.com>
+Signed-off-by: Scott Wood <scottwood@freescale.com>
+---
+ arch/powerpc/configs/corenet32_smp_defconfig | 2 ++
+ arch/powerpc/configs/corenet64_smp_defconfig | 2 ++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/arch/powerpc/configs/corenet32_smp_defconfig b/arch/powerpc/configs/corenet32_smp_defconfig
+index 11e6e64..90ce37d 100644
+--- a/arch/powerpc/configs/corenet32_smp_defconfig
++++ b/arch/powerpc/configs/corenet32_smp_defconfig
+@@ -135,6 +135,8 @@ CONFIG_USB_OHCI_HCD_PPC_OF_LE=y
+ CONFIG_USB_STORAGE=y
+ CONFIG_MMC=y
+ CONFIG_MMC_SDHCI=y
++CONFIG_MMC_SDHCI_PLTFM=y
++CONFIG_MMC_SDHCI_OF_ESDHC=y
+ CONFIG_EDAC=y
+ CONFIG_EDAC_MM_EDAC=y
+ CONFIG_EDAC_MPC85XX=y
+diff --git a/arch/powerpc/configs/corenet64_smp_defconfig b/arch/powerpc/configs/corenet64_smp_defconfig
+index 1af4c75..b2a2cf9 100644
+--- a/arch/powerpc/configs/corenet64_smp_defconfig
++++ b/arch/powerpc/configs/corenet64_smp_defconfig
+@@ -107,6 +107,8 @@ CONFIG_USB_EHCI_FSL=y
+ CONFIG_USB_STORAGE=y
+ CONFIG_MMC=y
+ CONFIG_MMC_SDHCI=y
++CONFIG_MMC_SDHCI_PLTFM=y
++CONFIG_MMC_SDHCI_OF_ESDHC=y
+ CONFIG_EDAC=y
+ CONFIG_EDAC_MM_EDAC=y
+ CONFIG_RTC_CLASS=y
+-- 
+2.1.0.27.g96db324
+

@@ -6,6 +6,7 @@ IARCH=@@IARCH@@
 case $IARCH in
     powerpc)
         IARCH=ppc
+        IARCH_EXT=ppc64
         ;;
     armel)
         IARCH=armv7l
@@ -15,7 +16,7 @@ case $IARCH in
 esac
 
 ARCH=`uname -m`
-if [ "$ARCH" != "$IARCH" ]; then
+if [ "$ARCH" != "$IARCH" ] && [ "$ARCH" != "$IARCH_EXT" ]; then
     echo
     echo "------------------------------------"
     echo "Installer Architecture: $IARCH"

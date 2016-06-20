@@ -1,0 +1,81 @@
+From cb0c5a57e0fe18798192e784a2b88809eb26135b Mon Sep 17 00:00:00 2001
+From: Madalin Bucur <madalin.bucur@freescale.com>
+Date: Tue, 22 Mar 2016 10:27:16 +0200
+Subject: [PATCH 24/98] fsl/fman: address sparse warnings
+
+Make module params static, proper NULL checks, remove __iomem label
+when misused.
+
+Signed-off-by: Madalin Bucur <madalin.bucur@freescale.com>
+---
+ drivers/net/ethernet/freescale/fman/fman.c      | 6 +++---
+ drivers/net/ethernet/freescale/fman/fman_port.c | 8 +++++---
+ 2 files changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/fman/fman.c b/drivers/net/ethernet/freescale/fman/fman.c
+index a86a5cf..d8db9da 100644
+--- a/drivers/net/ethernet/freescale/fman/fman.c
++++ b/drivers/net/ethernet/freescale/fman/fman.c
+@@ -2462,7 +2462,7 @@ EXPORT_SYMBOL(fman_get_mem_region);
+  * particular forwarding scenarios that add extra headers to the
+  * forwarded frame.
+  */
+-int fsl_fm_rx_extra_headroom = FSL_FM_RX_EXTRA_HEADROOM;
++static int fsl_fm_rx_extra_headroom = FSL_FM_RX_EXTRA_HEADROOM;
+ module_param(fsl_fm_rx_extra_headroom, int, 0);
+ MODULE_PARM_DESC(fsl_fm_rx_extra_headroom, "Extra headroom for Rx buffers");
+ 
+@@ -2475,7 +2475,7 @@ MODULE_PARM_DESC(fsl_fm_rx_extra_headroom, "Extra headroom for Rx buffers");
+  * Could be overridden once, at boot-time, via the
+  * fm_set_max_frm() callback.
+  */
+-int fsl_fm_max_frm = FSL_FM_MAX_FRAME_SIZE;
++static int fsl_fm_max_frm = FSL_FM_MAX_FRAME_SIZE;
+ module_param(fsl_fm_max_frm, int, 0);
+ MODULE_PARM_DESC(fsl_fm_max_frm, "Maximum frame size, across all interfaces");
+ 
+@@ -2868,7 +2868,7 @@ static struct fman *read_dts_node(struct platform_device *of_dev)
+ 
+ 	fman->dts_params.base_addr =
+ 		devm_ioremap(&of_dev->dev, phys_base_addr, mem_size);
+-	if (fman->dts_params.base_addr == 0) {
++	if (!fman->dts_params.base_addr) {
+ 		dev_err(&of_dev->dev, "%s: devm_ioremap() failed\n", __func__);
+ 		goto fman_free;
+ 	}
+diff --git a/drivers/net/ethernet/freescale/fman/fman_port.c b/drivers/net/ethernet/freescale/fman/fman_port.c
+index a14433a..d229d7f1 100644
+--- a/drivers/net/ethernet/freescale/fman/fman_port.c
++++ b/drivers/net/ethernet/freescale/fman/fman_port.c
+@@ -1477,7 +1477,8 @@ EXPORT_SYMBOL(fman_port_cfg_buf_prefix_content);
+  */
+ int fman_port_disable(struct fman_port *port)
+ {
+-	u32 __iomem *bmi_cfg_reg, *bmi_status_reg, tmp;
++	u32 __iomem *bmi_cfg_reg, *bmi_status_reg;
++	u32 tmp;
+ 	bool rx_port, failure = false;
+ 	int count;
+ 
+@@ -1553,7 +1554,8 @@ EXPORT_SYMBOL(fman_port_disable);
+  */
+ int fman_port_enable(struct fman_port *port)
+ {
+-	u32 __iomem *bmi_cfg_reg, tmp;
++	u32 __iomem *bmi_cfg_reg;
++	u32 tmp;
+ 	bool rx_port;
+ 
+ 	if (!is_init_done(port->cfg))
+@@ -1743,7 +1745,7 @@ static int fman_port_probe(struct platform_device *of_dev)
+ 
+ 	port->dts_params.base_addr = devm_ioremap(port->dev, res.start,
+ 						  resource_size(&res));
+-	if (port->dts_params.base_addr == 0)
++	if (!port->dts_params.base_addr)
+ 		dev_err(port->dev, "%s: devm_ioremap() failed\n", __func__);
+ 
+ 	dev_set_drvdata(&of_dev->dev, port);
+-- 
+2.1.0.27.g96db324
+
