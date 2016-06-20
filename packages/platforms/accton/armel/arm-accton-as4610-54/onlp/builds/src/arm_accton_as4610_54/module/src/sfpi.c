@@ -1,7 +1,7 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  *
- *           Copyright 2014 Big Switch Networks, Inc.
+ *           Copyright 2014, 2015 Big Switch Networks, Inc.
  *           Copyright 2016 Accton Technology Corporation.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
