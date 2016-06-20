@@ -31,7 +31,7 @@
 
 #include <onlplib/mmap.h>
 #include "platform_lib.h"
-#include "arm_accton_as4610_54_int.h"
+#include "arm_accton_as4610_30_int.h"
 
 #define VALIDATE(_id)                           \
     do {                                        \

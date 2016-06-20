@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "platform_lib.h"
-#include "arm_accton_as4610_54_int.h"
+#include "arm_accton_as4610_30_int.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD   "/sys/devices/platform/as4610_fan/"
 #define PREFIX_PATH_ON_PSU          "/sys/bus/i2c/devices/"

@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "platform_lib.h"
-#include "arm_accton_as4610_54_int.h"
+#include "arm_accton_as4610_30_int.h"
 
 #define PSU_STATUS_PRESENT    1
 #define PSU_STATUS_POWER_GOOD 1

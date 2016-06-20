@@ -26,12 +26,12 @@
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
 
-#include <arm_accton_as4610_54/arm_accton_as4610_54_config.h>
-#include "arm_accton_as4610_54_log.h"
+#include <arm_accton_as4610_30/arm_accton_as4610_30_config.h>
+#include "arm_accton_as4610_30_log.h"
 
 #define MAX_SFP_PATH 64
 static char sfp_node_path[MAX_SFP_PATH] = {0};
-#define FRONT_PORT_MUX_INDEX(port) (port-46)
+#define FRONT_PORT_MUX_INDEX(port) (port-22)
 
 static int 
 sfp_node_read_int(char *node_path, int *value, int data_len)
@@ -79,13 +79,13 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {48, 54}
+     * Ports {24, 30}
      */
     int p;
-    AIM_BITMAP_INIT(bmap, 64);
+    AIM_BITMAP_INIT(bmap, 32);
     AIM_BITMAP_CLR_ALL(bmap);
     
-    for(p = 48; p < 54; p++) {
+    for(p = 24; p < 30; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -120,7 +120,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     AIM_BITMAP_CLR_ALL(dst);
 
-    path = sfp_get_port_path(48, "sfp_is_present_all");
+    path = sfp_get_port_path(24, "sfp_is_present_all");
     fp = fopen(path, "r");
     
     if(fp == NULL) {
@@ -137,8 +137,8 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     /* Convert to 64 bit integer in port order */
     int i = 0;
-    uint64_t presence_all = byte;
-    presence_all <<= 48;
+    uint32_t presence_all = byte;
+    presence_all <<= 24;
 
     /* Populate bitmap */
     for(i = 0; presence_all; i++) {
@@ -156,7 +156,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     char* path;
     FILE* fp;
 
-    path = sfp_get_port_path(48, "sfp_rx_los_all");
+    path = sfp_get_port_path(24, "sfp_rx_los_all");
     fp = fopen(path, "r");
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open the sfp_rx_los_all device file.");
@@ -172,7 +172,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     /* Convert to 64 bit integer in port order */
     int i = 0;
     uint64_t rx_los_all = byte;
-    rx_los_all <<= 48;
+    rx_los_all <<= 24;
 
     /* Populate bitmap */
     for(i = 0; rx_los_all; i++) {

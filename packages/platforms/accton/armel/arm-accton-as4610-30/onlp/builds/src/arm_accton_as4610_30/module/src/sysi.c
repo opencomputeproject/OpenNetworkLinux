@@ -33,8 +33,8 @@
 #include <onlp/platformi/fani.h>
 #include <onlp/platformi/psui.h>
 
-#include "arm_accton_as4610_54_int.h"
-#include "arm_accton_as4610_54_log.h"
+#include "arm_accton_as4610_30_int.h"
+#include "arm_accton_as4610_30_log.h"
 
 #include "platform_lib.h"
 
@@ -52,7 +52,7 @@
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "arm-accton-as4610-54-r0";
+    return "arm-accton-as4610-30-r0";
 }
 
 int

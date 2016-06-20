@@ -29,7 +29,7 @@
 #include <onlp/platformi/thermali.h>
 #include <fcntl.h>
 #include "platform_lib.h"
-#include "arm_accton_as4610_54_log.h"
+#include "arm_accton_as4610_30_log.h"
 
 #define prefix_path "/sys/bus/i2c/devices/"
 #define LOCAL_DEBUG 0
