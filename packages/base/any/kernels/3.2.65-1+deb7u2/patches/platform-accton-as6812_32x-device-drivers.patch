@@ -871,7 +871,7 @@ index 0000000..d668ca4
 +	{
 +		.ident = "Accton AS6812",
 +		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++			DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +			DMI_MATCH(DMI_PRODUCT_NAME, "AS6812"),
 +		},
 +	}

@@ -27,7 +27,11 @@ export ONL_DEBIAN_SUITE_$(ONL_DEBIAN_SUITE)=1
 export BUILD_DIR_BASE=BUILD/$(ONL_DEBIAN_SUITE)
 
 # Generate manifest if necessary
-export MODULEMANIFEST := $(shell $(BUILDER)/tools/mmg.py --dirs $(ONL) $(ONLPM_OPTION_PACKAGEDIRS) --out $(ONL)/make/module-manifest.mk --only-if-missing make)
+export MODULEMANIFEST := $(shell $(BUILDER)/tools/mmg.py $(ONL)/make/mmg.yml $(ONL) --only-if-missing)
+
+# Generate versions if necessary.
+$(shell $(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make/versions)
+
 
 #
 # Default make options.

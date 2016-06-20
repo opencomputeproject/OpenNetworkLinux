@@ -1,6 +1,6 @@
 #!/bin/sh
-if [ -f /usr/bin/pki ]; then
-	/usr/bin/pki --init
+if [ -f /usr/bin/onl-pki ]; then
+	/usr/bin/onl-pki --init
 fi
 
 

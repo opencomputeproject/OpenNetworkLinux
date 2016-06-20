@@ -1,0 +1,161 @@
+---
+
+######################################################################
+#
+# platform-config-defaults-uboot.yml
+#
+# Configuration for u-boot systems (powerpc and arm)
+#
+######################################################################
+
+default:
+
+  flat_image_tree:
+
+    ##############################
+    #
+    # Default kernel packages provided by ONL
+    #
+    ##############################
+    
+    e500v-kernel-package: &e500v-kernel-package
+      package: onl-kernel-3.9.6-powerpc-e500v:powerpc
+
+    e500v-kernel: &e500v-kernel
+      =: kernel-3.9.6-powerpc-e500v.bin.gz
+      <<: *e500v-kernel-package
+
+    e500mc-kernel-package: &e500mc-kernel-package
+      package: onl-kernel-3.8.13-powerpc-e500mc:powerpc
+
+    e500mc-kernel: &e500mc-kernel
+      =: kernel-3.8.13-powerpc-e500mc.bin.gz
+      <<: *e500mc-kernel-package
+      
+    arm-iproc-kernel-package: &arm-iproc-kernel-package
+      package: onl-kernel-3.2-deb7-arm-iproc-all:armel
+
+    arm-iproc-kernel: &arm-iproc-kernel
+      =: kernel-3.2-deb7-arm-iproc-all.bin.gz
+      <<: *arm-iproc-kernel-package
+
+    ##############################
+    #
+    # For your system, pick from the above list
+    # to compose a 'kernel' and 'dtb' key
+    #
+    ##############################
+    
+    ### Example, pick one kernel and one DTB      
+    ##kernel:
+    ##  <<: *e500v-kernel
+    ##dtb:
+    ##  =: powerpc-quanta-lb9-r0.dtb
+    ##  <<: *e500v-kernel-package
+
+    ##############################
+    # 
+    # pick an actual loader file,
+    # usually the 'all' image
+    #
+    ##############################
+
+    powerpc-itb: &powerpc-itb
+      =: onl-loader-fit.itb
+      package: onl-loader-fit:powerpc
+
+    arm-itb: &arm-itb
+      =: onl-loader-fit.itb
+      package: onl-loader-fit:armel
+
+    itb: *powerpc-itb
+
+  loader:
+
+    device: /dev/sda
+    ##device: /dev/mmcblk0
+
+    loadaddr: 0x10000000
+    ##loadaddr: 70000000
+
+    # Add your own 'setenv' clauses,
+    # otherwise lean back and coast with these implicit ones
+    setenv:
+    ##- onl_loadaddr: @loadaddr@
+    ### added automatically
+    ##- onl_platform: @platform@
+    ### added automatically
+    ##- onl_itb: @itb@
+    - bootargs: >-
+        console=$consoledev,$baudrate
+        onl_platform=$onl_platform
+
+    ide_bootcmds: &ide_bootcmds
+    - ext2load ide 0:1 $onl_loadaddr $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
+    usb_bootcmds: &usb_bootcmds
+    - usb start
+    - ext2load usb 0:1 $onl_loadaddr $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
+    # XXX roth arm example includes the 'usbiddev' magic
+    usb2_bootcmds: &usb2_bootcmds
+    - usb start
+    - usbiddev
+    - ext2load usb 0:1 $onl_loadaddr $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
+    mmc_bootcmds: &mmc_bootcmds
+    - mmc part 0
+    - ext2load mmc 0:1 $onl_loadaddr $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
+    nos_bootcmds: *ide_bootcmds
+
+    # Configure the fw_env.config file,
+    # based on board settings (no defaults here)
+    # XXX NOTE that you will need to define this for each platform!
+    ##environment:
+    ##- device: /dev/mtd3
+    ##  env_offset: 0x00000000
+    ##  env_size: 0x00002000
+    ##  sector_size: 0x00020000
+      
+  # Default partitioning scheme
+  # boot, config --> 128MiB (ext2)
+  # images --> 1GiB
+  # data --> rest of disk
+  # default format (as shown) is ext4
+  installer:
+  - ONL-BOOT:
+      =: 128MiB
+      # NOTE that u-boot wants the boot partition ext2, not ext4
+      format: ext2
+      ##format: raw
+
+  - ONL-CONFIG:
+      =: 128MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 1GiB
+      format: ext4
+  - ONL-DATA:
+      =: 100%
+      format: ext4
+
+  network:
+
+    # remap interface names on boot (loader only)
+    # make sure you have a valid 'ma1' entry in your platform config...
+
+    interfaces:
+
+      # this should work for most systems
+      ma1:
+        name: eth0
+      
+      # for other wierd corner cases
+      ##ma1:
+      ##  name: ~
+      ##  syspath: SOME-PATH

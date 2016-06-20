@@ -1,17 +1,11 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
-class OnlPlatform_x86_64_accton_as6712_32x_r0(OnlPlatformAccton):
-
-    def model(self):
-        return "AS6712-32X"
-
-    def platform(self):
-        return "x86-64-accton-as6712-32x-r0"
-
-    def sys_oid_platform(self):
-        return ".6712.32"
-
+class OnlPlatform_x86_64_accton_as6712_32x_r0(OnlPlatformAccton,
+                                              OnlPlatformPortConfig_32x40):
+    PLATFORM='x86-64-accton-as6712-32x-r0'
+    MODEL="AS6712-32X"
+    SYS_OBJECT_ID=".6712.32"
 
     def baseconfig(self):
 

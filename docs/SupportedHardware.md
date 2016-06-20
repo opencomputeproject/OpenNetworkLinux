@@ -13,8 +13,8 @@ Quanta
 </thead>
 <tr> <td> QuantaMesh T1048-LB9    <td> 48x1G  + 4x10G   <td> FreeScale P2020       <td> Broadcom BCM56534 (Firebolt3)    	<td> Yes  <td> Yes <td> Yes <td> No <td> No <td> No </tr>
 <tr> <td> QuantaMesh T3048-LY2    <td> 48x10G + 4x40G   <td> FreeScale P2020       <td> Broadcom BCM56846 (Trident+)     	<td> Yes   <td> Yes <td> Yes <td> Yes <td> No <td> No </tr> 
-<tr> <td> QuantaMesh T3048-LY8    <td> 48x10G + 6x40G   <td> Intel Rangely C2758 x86 <td> Broadcom BCM56854 (Trident2)            <td> Yes*  <td> No <td> No <td> No <td> No <td> No </tr> 
-<tr> <td> QuantaMesh T5032-LY6    <td> 32x40G  <td> Intel Rangely C2758 x86 <td> Broadcom BCM56850 (Trident2)            <td> Yes* <td> No <td> No <td> No <td> No <td> No </tr>
+<tr> <td> QuantaMesh T3048-LY8    <td> 48x10G + 6x40G   <td> Intel Rangeley C2758 x86 <td> Broadcom BCM56854 (Trident2)            <td> Yes*  <td> No <td> No <td> No <td> No <td> No </tr> 
+<tr> <td> QuantaMesh T5032-LY6    <td> 32x40G  <td> Intel Rangeley C2758 x86 <td> Broadcom BCM56850 (Trident2)            <td> Yes* <td> No <td> No <td> No <td> No <td> No </tr>
 </table>
 
 
@@ -26,17 +26,20 @@ Accton/Edge-Core
      <th> Device                  <th> Ports            <th> CPU                 <th> Forwarding             		<th> ONL Certified        <th> In Lab <th> ORC <th> OF-DPA <th> OpenNSL <th> SAI </tr> 
 </thead>
 <tr> <td> Accton AS4600-54T       <td> 48x1G  + 4x10G   <td> FreeScale P2020       <td> Broadcom BCM56540 (Apollo2)       <td> Yes  <td> Yes <td> Yes <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Accton AS4610-54P       <td> 48x1G + 4x10G + 2x20G <td>  Dual-core ARM Cortex A9 1GHz <td> Broadcom BCM56340 (Helix4) <td> Yes <td> Yes <td> No <td> No <td> No <td> No </tr>
 <tr> <td> Accton AS5600-52X       <td> 48x10G  + 4x40G   <td> FreeScale P2020       <td> Broadcom BCM56846 (Trident+)      <td> Yes <td> Yes <td> Yes <td> No <td> No <td> No </tr>
 <tr> <td> Accton AS5610-52X       <td> 48x10G  + 4x40G   <td> FreeScale P2020       <td> Broadcom BCM56846 (Trident+)      <td> Yes <td> Yes <td> Yes <td> No <td> No <td> No </tr>
 <tr> <td> Accton AS5710-54X       <td> 48x10G + 6x40G   <td> FreeScale P2041       <td> Broadcom BCM56854 (Trident2)      <td> Yes  <td> Yes <td> Yes <td> Yes*** <td> Yes*** <td> No </tr>
 <tr> <td> Accton AS6700-32X       <td> 32x40G           <td> FreeScale P2041       <td> Broadcom BCM56850 (Trident2)      <td> Yes <td> Yes <td> Yes <td> No <td> No <td> No </tr>
-<tr> <td> Accton AS5712-54X       <td> 48x10G + 6x40G   <td> Intel Rangely C2538 x86 <td> Broadcom BCM56854 (Trident2)      <td> Yes <td> Yes <td> Yes <td> Yes*** <td> Yes*** <td> No </tr>
-<tr> <td> Accton AS6712-32X       <td> 32x40G           <td> Intel Rangely C2538 x86 <td> Broadcom BCM56850 (Trident2)      <td> Yes <td> Yes <td> Yes <td> Yes*** <td>  Yes*** <td> No </tr>
-<tr> <td> Accton AS5812-54T       <td> 48x10G + 6x40G   <td> Intel Rangely C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> No <td> No <td> No </tr>
-<tr> <td> Accton AS5812-54X       <td> 48x10G + 6x40G   <td> Intel Rangely C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> No <td> No <td> No </tr>
-<tr> <td> Accton AS6812-32X       <td> 32x40G           <td> Intel Rangely C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> No  <td> No <td> No </tr>
-<tr> <td> Accton AS7712-32X       <td> 32x100G          <td> Intel Rangely C2538 x86 <td> Broadcom BCM56960 (Tomahawk)       <td> Yes <td> Yes <td> Yes <td> Yes***  <td>  Yes*** <td> No </tr>
-<tr> <td> Accton Wedge-16X        <td> 16x40G           <td> Intel Rangely C2550 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Work In Progress** <td> Yes <td> No <td> No <td> Yes <td> No </tr>
+<tr> <td> Accton AS5512-54X       <td> 48x10G + 6x40G   <td> Intel Rangeley C2538 x86 <td> MediaTek/Nephos MT3258      <td> No <td> No <td> No <td> No <td> No <td> No </tr>
+<tr> <td> Accton AS5712-54X       <td> 48x10G + 6x40G   <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56854 (Trident2)      <td> Yes <td> Yes <td> Yes <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Accton AS6712-32X       <td> 32x40G           <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56850 (Trident2)      <td> Yes <td> Yes <td> Yes <td> Yes*** <td>  Yes*** <td> No </tr>
+<tr> <td> Accton AS5812-54T       <td> 48x10G + 6x40G   <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> No <td> No <td> No </tr>
+<tr> <td> Accton AS5812-54X       <td> 48x10G + 6x40G   <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> Yes*** <td> Yes*** <td> No </tr>
+<tr> <td> Accton AS6812-32X       <td> 32x40G           <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Yes <td> Yes <td> No <td> Yes***  <td> Yes*** <td> No </tr>
+<tr> <td> Accton AS7712-32X       <td> 32x100G          <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56960 (Tomahawk)       <td> Yes <td> Yes <td> Yes <td> Yes***  <td>  Yes*** <td> No </tr>
+<tr> <td> Accton AS7716-32X       <td> 32x100G          <td> Intel Xeon D-1518 x86 <td> Broadcom BCM56960 (Tomahawk)       <td> Yes <td> Yes <td> No <td> Yes*** <td>  Yes*** <td> No </tr>
+<tr> <td> Accton Wedge-16X        <td> 16x40G           <td> Intel Rangeley C2550 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Work In Progress** <td> Yes <td> No <td> No <td> Yes <td> No </tr>
 </table>
 
 DNI/Agema

@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Swiss-army-knife FIT decoder
+"""
+
+import onl.install.Fit
+onl.install.Fit.App.main()

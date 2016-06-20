@@ -13,6 +13,7 @@ import shutil
 import json
 import string
 import argparse
+import yaml
 from time import sleep
 from onl.platform.current import OnlPlatform
 
@@ -36,32 +37,11 @@ class BaseUpgrade(object):
         self.arch = pp.machine()
         self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel')[self.arch]
         self.platform = OnlPlatform()
+        self.init()
 
-    #
-    # TODO.
-    #
-    # DEFAULT_CONFIG = {
-    #     "auto-upgrade" : "advisory",
-    #     }
-    #
-    # CONFIG_FILES = [
-    #     "/etc/boot.d/upgrade/.upgrade-config.json",
-    #     "/mnt/flash/override-upgrade-config.json"
-    #     ]
-    #
-    # def load_config(self):
-    #     self.config = self.DEFAULT_CONFIG
-    #     for f in self.CONFIG_FILES:
-    #         if os.path.exists(f):
-    #             self.config.update(json.load(file(f)))
-    #
-    #     self.logger.debug("Loaded Configuration:\n%s\n" % (json.dumps(self.config, indent=2)))
-    #
-    #     if self.name in self.config:
-    #         self.config = self.config['name']
-    #
-    #     self.logger.debug("Final Configuration:\n%s\n" % (json.dumps(self.config, indent=2)))
-    #
+    def init(self):
+        pass
+
     def load_config(self):
         pass
 
@@ -78,13 +58,17 @@ class BaseUpgrade(object):
         if os.getenv("DEBUG"):
             self.logger.setLevel(logging.DEBUG)
 
+
+    def auto_upgrade_default(self):
+        return "advisory"
+
     def init_argparser(self):
         self.ap = argparse.ArgumentParser("%s-upgrade" % self.name)
         self.ap.add_argument("--enable", action='store_true', help="Enable updates.")
         self.ap.add_argument("--force", action='store_true', help="Force update.")
         self.ap.add_argument("--no-reboot", action='store_true', help="Don't reboot.")
         self.ap.add_argument("--check", action='store_true', help="Check only.")
-        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default='advisory')
+        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default=self.auto_upgrade_default())
         self.ap.add_argument("--summarize", action='store_true', help="Summarize only, no upgrades.")
 
     def banner(self):

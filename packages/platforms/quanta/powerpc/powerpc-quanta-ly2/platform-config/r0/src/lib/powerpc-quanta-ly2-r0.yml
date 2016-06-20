@@ -1,7 +1,33 @@
+---
+
+######################################################################
+#
+# platform-config for LY2
+#
+######################################################################
+
 powerpc-quanta-ly2-r0:
+
   flat_image_tree:
-    kernel: onl-kernel-3.9.6-powerpc-e500v:powerpc, kernel-3.9.6-powerpc-e500v.bin.gz
-    dtb: onl-kernel-3.9.6-powerpc-e500v:powerpc, powerpc-quanta-ly2-r0.dtb
+    kernel:
+      <<: *e500v-kernel
+    dtb:
+      =: powerpc-quanta-ly2-r0.dtb
+      <<: *e500v-kernel-package
 
   loader:
-    partition: /dev/mmcblk0p1
+    device: /dev/mmcblk0
+    ##partition: /dev/mmcblk0p1
+    nos_bootcmds: *mmc_bootcmds
+
+    environment:
+    - device: /dev/mtd2
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00020000
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: soc.0/ffe24000.ethernet

@@ -4,7 +4,7 @@ set -e
 
 CMD=${0##*/}
 
-UNZIP=/usr/bin/unzip
+UNZIP=${UNZIP-"/usr/bin/unzip"}
 
 UNZIPOPTS=
 UNZIPARGS=
@@ -29,9 +29,10 @@ SFX_INSTALL=install ## internal script in the payload to run #################
 SFX_PERMS= ## internal script to correct file permissions ####################
 SFX_PAD= ## pad file (this payload) to skip during unpack ####################
 SFX_LAZY=  ## set to '1' to defer extraction to SFX_INSTALL ##################
-SFX_UNZIP=1  ## set to '' if this unzip cannot parse SFX headers #############
-SFX_LOOP=1   ## set to '' if this unzip cannot read from a loopback/block ####
-SFX_PIPE=1   ## set to '' if this unzip cannot read from a pipe ##############
+SFX_UNZIP=1 ## set to '' if this unzip cannot parse SFX headers ##############
+SFX_LOOP=1 ## set to '' if this unzip cannot read from a loopback/block ######
+SFX_PIPE=1 ## set to '' if this unzip cannot read from a pipe ################
+SFX_INPLACE= ## set to '1' if this zip file can be modified in place##########
 
 if test "$SFX_PAD"; then
   UNZIPARGS=$UNZIPARGS${UNZIPARGS:+" "}"-x $SFX_PAD"
@@ -100,6 +101,23 @@ do_cleanup()
 }
 trap "do_cleanup" 0 1
 
+echo "$CMD: computing checksum of original archive"
+{
+  dd if="$SHARABS" bs=$SFX_BLOCKSIZE count=$SFX_BLOCKS 2>/dev/null | sed -e "/^SFX_CHECKSUM=/d";
+  dd if="$SHARABS" bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS 2>/dev/null
+} | md5sum > "$workdir/ck"
+
+set dummy `cat "$workdir/ck"`
+newck=$2
+rm -f "$workdir/ck"
+
+if test "$SFX_CHECKSUM" = "$newck"; then
+  echo "$CMD: checksum is OK"
+else
+  echo "$CMD: *** checksum mismatch" 1>&2
+  exit 1
+fi
+
 _t()
 {
   local c z
@@ -144,11 +162,19 @@ case "$SFX_PAD:$SFX_UNZIP:$SFX_LOOP:$SFX_PIPE" in
 esac
 
 if test "$SFX_PAD"; then
-  echo "$CMD: copying file and resetting pad"
-  cp "$SHARABS" $workdir/onie-installer.zip
-  dd if="$SHARABS" of=$workdir/onie-installer.zip bs=512 skip=$(($SFX_BLOCKS-1)) count=1 conv=notrunc
-  _CAT=":"
-  _ZIP="$workdir/onie-installer.zip"
+  echo "$CMD: extracting pad"
+  dd if="$SHARABS" of=$workdir/zip.bin bs=512 skip=$(($SFX_BLOCKS-1)) count=1
+  if test "$SFX_INPLACE"; then
+    _CAT=":"
+    _ZIP="$SHARABS"
+  else
+    echo "$CMD: copying file before resetting pad"
+    cp "$SHARABS" $workdir/onie-installer.zip
+    _CAT=":"
+    _ZIP="$workdir/onie-installer.zip"
+  fi
+  echo "$CMD: resetting pad"
+  dd if="$workdir/zip.bin" of="$_ZIP" bs=512 count=1 conv=notrunc
 elif test "$SFX_UNZIP"; then
   echo "$CMD: processing SFX with unzip"
   _CAT=":"
@@ -208,24 +234,6 @@ case "$banner" in
     test $sts -eq 0 || exit $sts
   ;;
 esac
-
-echo "$CMD: computing checksum"
-{
-  dd if="$SHARABS" bs=$SFX_BLOCKSIZE count=$SFX_BLOCKS 2>/dev/null | sed -e "/^SFX_CHECKSUM=/d";
-  dd if="$SHARABS" bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS 2>/dev/null
-} | md5sum > "$UNZIPDIR/ck"
-
-set dummy `cat "$UNZIPDIR/ck"`
-newck=$2
-
-rm -f "$UNZIPDIR/ck"
-
-if test "$SFX_CHECKSUM" = "$newck"; then
-  echo "$CMD: checksum is OK"
-else
-  echo "$CMD: *** checksum mismatch" 1>&2
-  exit 1
-fi
 
 shardir=`dirname $0`
 shardir=`cd $shardir && pwd`

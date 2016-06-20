@@ -36,7 +36,12 @@ trap "restoreconsole; reboot -f" EXIT
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -o remount,size=1M /dev
-
+case "$(stat -f -c "%T" /tmp)" in
+  tmpfs|ramfs) ;;
+  *)
+    mount -t tmpfs tmpfs /tmp
+    ;;
+esac
 
 # Grab cmdline settings
 
@@ -64,14 +69,28 @@ if [ ! -f /etc/onl/abort ]; then
     # Initialize net devices
     ( cd /sys/class/net; for d in *; do initnetdev $d add; done )
 
-    # Initialize platform mounts
-    initmounts -q
+    # FS Checks
+    onl-mounts fsck all
+
+    # Mounts
+    onl-mounts -q mount all
+
+    # Initialize U-Boot environment
+    if [ -s /proc/device-tree/model ]; then
+        initubootenv
+    fi
 
     if [ -f /etc/issue ]; then
         cat /etc/issue
     fi
 
-    [ ! -f /mnt/onl/boot/boot-config ] || cat /mnt/onl/boot/boot-config >>/etc/onl/boot-config
+    if [ -f /mnt/onl/boot/boot-config ]; then
+        # Use local boot-config.
+        cp /mnt/onl/boot/boot-config /etc/onl/boot-config
+    elif [ -f /etc/onl/boot-config-default ]; then
+        # Use default boot-config.
+        cp /etc/onl/boot-config-default /etc/onl/boot-config
+    fi
 
     #
     # Initialize the /mnt/flash/boot area.
@@ -84,8 +103,8 @@ fi
 #
 # Initialize PKI
 #
-if [ -f /sbin/pki ]; then
-    /sbin/pki --init
+if [ -f /sbin/onl-pki ]; then
+    /sbin/onl-pki --init
 fi
 
 

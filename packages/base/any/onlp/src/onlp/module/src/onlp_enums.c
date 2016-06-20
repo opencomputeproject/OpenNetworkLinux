@@ -282,6 +282,7 @@ onlp_fan_status_valid(onlp_fan_status_t e)
 aim_map_si_t onlp_led_caps_map[] =
 {
     { "ON_OFF", ONLP_LED_CAPS_ON_OFF },
+    { "CHAR", ONLP_LED_CAPS_CHAR },
     { "RED", ONLP_LED_CAPS_RED },
     { "RED_BLINKING", ONLP_LED_CAPS_RED_BLINKING },
     { "ORANGE", ONLP_LED_CAPS_ORANGE },
@@ -295,12 +296,14 @@ aim_map_si_t onlp_led_caps_map[] =
     { "PURPLE", ONLP_LED_CAPS_PURPLE },
     { "PURPLE_BLINKING", ONLP_LED_CAPS_PURPLE_BLINKING },
     { "AUTO", ONLP_LED_CAPS_AUTO },
+    { "AUTO_BLINKING", ONLP_LED_CAPS_AUTO_BLINKING },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_led_caps_desc_map[] =
 {
     { "None", ONLP_LED_CAPS_ON_OFF },
+    { "None", ONLP_LED_CAPS_CHAR },
     { "None", ONLP_LED_CAPS_RED },
     { "None", ONLP_LED_CAPS_RED_BLINKING },
     { "None", ONLP_LED_CAPS_ORANGE },
@@ -314,6 +317,7 @@ aim_map_si_t onlp_led_caps_desc_map[] =
     { "None", ONLP_LED_CAPS_PURPLE },
     { "None", ONLP_LED_CAPS_PURPLE_BLINKING },
     { "None", ONLP_LED_CAPS_AUTO },
+    { "None", ONLP_LED_CAPS_AUTO_BLINKING },
     { NULL, 0 }
 };
 
@@ -381,6 +385,7 @@ aim_map_si_t onlp_led_mode_map[] =
     { "PURPLE", ONLP_LED_MODE_PURPLE },
     { "PURPLE_BLINKING", ONLP_LED_MODE_PURPLE_BLINKING },
     { "AUTO", ONLP_LED_MODE_AUTO },
+    { "AUTO_BLINKING", ONLP_LED_MODE_AUTO_BLINKING },
     { NULL, 0 }
 };
 
@@ -402,6 +407,7 @@ aim_map_si_t onlp_led_mode_desc_map[] =
     { "None", ONLP_LED_MODE_PURPLE },
     { "None", ONLP_LED_MODE_PURPLE_BLINKING },
     { "None", ONLP_LED_MODE_AUTO },
+    { "None", ONLP_LED_MODE_AUTO_BLINKING },
     { NULL, 0 }
 };
 
@@ -726,6 +732,7 @@ aim_map_si_t onlp_sfp_control_map[] =
     { "RX_LOS", ONLP_SFP_CONTROL_RX_LOS },
     { "TX_FAULT", ONLP_SFP_CONTROL_TX_FAULT },
     { "TX_DISABLE", ONLP_SFP_CONTROL_TX_DISABLE },
+    { "TX_DISABLE_CHANNEL", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "LP_MODE", ONLP_SFP_CONTROL_LP_MODE },
     { "POWER_OVERRIDE", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }
@@ -738,6 +745,7 @@ aim_map_si_t onlp_sfp_control_desc_map[] =
     { "None", ONLP_SFP_CONTROL_RX_LOS },
     { "None", ONLP_SFP_CONTROL_TX_FAULT },
     { "None", ONLP_SFP_CONTROL_TX_DISABLE },
+    { "None", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "None", ONLP_SFP_CONTROL_LP_MODE },
     { "None", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }

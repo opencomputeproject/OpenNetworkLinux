@@ -354,6 +354,11 @@ rm -f /usr/sbin/policy-rc.d
                 options = Configure.get('options', {})
                 if options.get('clean', False):
                     logger.info("Cleaning Filesystem...")
+                    onlu.execute('sudo chroot %s /usr/bin/apt-get clean' % dir_)
+                    onlu.execute('sudo chroot %s /usr/sbin/localepurge' % dir_ )
+                    onlu.execute('sudo chroot %s find /usr/share/doc -type f | xargs rm -rf' % dir_)
+                    onlu.execute('sudo chroot %s find /usr/share/man -type f | xargs rm -rf' % dir_)
+
 
                 if not options.get('securetty', True):
                     f = os.path.join(dir_, 'etc/securetty')
@@ -387,22 +392,58 @@ rm -f /usr/sbin/policy-rc.d
                     ua.chmod('go-w', os.path.dirname(f))
 
 
-                manifest = Configure.get('manifest', {})
-                if manifest:
-                    mname = "%s/etc/onl/rootfs/manifest.json" % dir_
+                for (mf, fields) in Configure.get('manifests', {}).iteritems():
+                    logger.info("Configuring manifest %s..." % mf)
+                    if mf.startswith('/'):
+                        mf = mf[1:]
+                    mname = os.path.join(dir_, mf)
                     onlu.execute("sudo mkdir -p %s" % os.path.dirname(mname))
                     onlu.execute("sudo touch %s" % mname)
                     onlu.execute("sudo chmod a+w %s" % mname)
                     md = {}
-                    md['version'] = json.load(open(manifest['version']))
+                    md['version'] = json.load(open(fields['version']))
                     md['arch'] = self.arch
-                    if os.path.exists(manifest['platforms']):
-                        md['platforms'] = yaml.load(open(manifest['platforms']))
+                    if os.path.exists(fields['platforms']):
+                        md['platforms'] = yaml.load(open(fields['platforms']))
                     else:
-                        md['platforms'] = manifest['platforms'].split(',')
+                        md['platforms'] = fields['platforms'].split(',')
                     with open(mname, "w") as f:
                         json.dump(md, f, indent=2)
                     onlu.execute("sudo chmod a-w %s" % mname)
+
+                for (fname, v) in Configure.get('files', {}).get('add', {}).iteritems():
+                    if fname.startswith('/'):
+                        fname = fname[1:]
+                    dst = os.path.join(dir_, fname)
+                    onlu.execute("sudo mkdir -p %s" % os.path.dirname(dst))
+                    onlu.execute("sudo touch %s" % dst)
+                    onlu.execute("sudo chmod a+w %s" % dst)
+                    if os.path.exists(v):
+                        shutil.copy(v, dst)
+                    else:
+                        with open(dst, "w") as f:
+                            f.write("%s\n" % v)
+
+                for fname in Configure.get('files', {}).get('remove', []):
+                    if fname.startswith('/'):
+                        fname = fname[1:]
+                    f = os.path.join(dir_, fname)
+                    if os.path.exists(f):
+                        onlu.execute("sudo rm -rf %s" % f)
+
+                if Configure.get('issue'):
+                    issue = Configure.get('issue')
+                    fn = os.path.join(dir_, "etc/issue")
+                    onlu.execute("sudo chmod a+w %s" % fn)
+                    with open(fn, "w") as f:
+                        f.write("%s\n\n" % issue)
+                    onlu.execute("sudo chmod a-w %s" % fn)
+
+                    fn = os.path.join(dir_, "etc/issue.net")
+                    onlu.execute("sudo chmod a+w %s" % fn)
+                    with open(fn, "w") as f:
+                        f.write("%s" % issue)
+                    onlu.execute("sudo chmod a-w %s" % fn)
 
         finally:
             onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))

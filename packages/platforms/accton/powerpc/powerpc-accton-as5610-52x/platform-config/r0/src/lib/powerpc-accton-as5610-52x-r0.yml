@@ -1,7 +1,47 @@
+---
+
+######################################################################
+#
+# platform-config for AS5610
+#
+######################################################################
+
 powerpc-accton-as5610-52x-r0:
+
   flat_image_tree:
-    kernel: onl-kernel-3.9.6-powerpc-e500v:powerpc, kernel-3.9.6-powerpc-e500v.bin.gz
-    dtb: onl-kernel-3.9.6-powerpc-e500v:powerpc, powerpc-as5610-52x.dtb
+    kernel:
+      <<: *e500v-kernel
+    dtb:
+      =: powerpc-as5610-52x.dtb
+      <<: *e500v-kernel-package
 
   loader:
-    partition: /dev/sda1
+    device: /dev/sda
+    ##partition: /dev/sda1
+    nos_bootcmds: *usb_bootcmds
+
+    environment:
+    - device: /dev/mtd1
+      env_offset: 0x00000000
+      env_size: 0x00010000
+      sector_size: 0x00010000
+
+  installer:
+  - ONL-BOOT:
+      =: 128MiB
+      format: ext2
+  - ONL-CONFIG:
+      =: 128MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 768MiB
+      format: ext4
+  - ONL-DATA:
+      =: 100%
+      format: ext4
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: soc.0/ff724000.ethernet

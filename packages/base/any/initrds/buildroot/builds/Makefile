@@ -31,6 +31,8 @@ clean:
 setup: setup-pyroute2 setup-dnspython setup-libyaml setup-pyyaml setup-jq setup-pyparted
 	cp $(wildcard patches/busybox*.patch) $(BUILDROOT_SOURCE)/package/busybox/
 	cp $(wildcard patches/kexec*.patch) $(BUILDROOT_SOURCE)/package/kexec/
+	cp $(wildcard patches/openssl*.patch) $(BUILDROOT_SOURCE)/package/openssl/
+	rm $(BUILDROOT_SOURCE)/package/openssl/openssl-do-not-build-docs.patch
 	sed -i 's%^DOSFSTOOLS_SITE =.*%DOSFSTOOLS_SITE = http://downloads.openwrt.org/sources%' $(BUILDROOT_SOURCE)/package/dosfstools/dosfstools.mk
 	sed -i 's%^UEMACS_SITE =.*%UEMACS_SITE = http://www.kernel.org/pub/linux/kernel/uemacs%;s%^UEMACS_SOURCE =.*%UEMACS_SOURCE = em-$$(UEMACS_VERSION).tar.gz%' $(BUILDROOT_SOURCE)/package/uemacs/uemacs.mk
 	mkdir -p $(BUILDROOT_ARCHDIRS)
@@ -79,15 +81,15 @@ setup-pyparted:
 
 define buildroot_arch
 buildroot-$(1):
-	make -C $(BUILDROOT_SOURCE) O=../buildroot-$(1)
+	$(MAKE) -C $(BUILDROOT_SOURCE) O=../buildroot-$(1) LD_LIBRARY_PATH=/usr/buildroot/toolchains/$(1)/lib
 
 buildroot-menuconfig-$(1):
-	make -C $(BUILDROOT_SOURCE) menuconfig O=../buildroot-$(1)
-	cp buildroot-powerpc/.config buildroot.config-$(1)
+	$(MAKE) -C $(BUILDROOT_SOURCE) menuconfig O=../buildroot-$(1)
+	cp buildroot-$(1)/.config buildroot.config-$(1)
 endef
 
 $(foreach a,$(ARCHS),$(eval $(call buildroot_arch,$(a))))
 
 busybox-menuconfig:
-	make -C $(BUILDROOT_SOURCE) busybox-menuconfig O=../buildroot-powerpc
+	$(MAKE) -C $(BUILDROOT_SOURCE) busybox-menuconfig O=../buildroot-powerpc
 	cp buildroot-powerpc/build/busybox-*/.config busybox.config
