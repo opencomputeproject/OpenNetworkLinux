@@ -61,12 +61,13 @@ class OnlRfsSystemAdmin(object):
         onlu.execute("sudo chmod %s %s" % (mode, file_),
                      ex=OnlRfsError("Could not change permissions (%s) on file %s" % (mode, file_)))
 
-    def userdel(self):
-        pf = os.path.join(self.chroot, 'etc/password')
+    def userdel(self, username):
+        pf = os.path.join(self.chroot, 'etc/passwd')
         sf = os.path.join(self.chroot, 'etc/shadow')
 
-        self.chmod("a+w", pf);
-        self.chmod("a+w", sf);
+        self.chmod("a+rwx", os.path.dirname(pf))
+        self.chmod("a+rw", pf);
+        self.chmod("a+rw", sf);
 
         # Can't use the userdel command because of potential uid 0 in-user problems while running ourselves
         for line in fileinput.input(pf, inplace=True):
@@ -76,23 +77,38 @@ class OnlRfsSystemAdmin(object):
             if not line.startswith('%s:' % username):
                 print line,
 
-        self.chmod("go-w", pf);
-        self.chmod("go-w", sf);
+        self.chmod("go-wx", pf);
+        self.chmod("go-wx", sf);
 
-    def useradd(self, username, uid, password, shell, deleteFirst=True):
-        args = [ 'useradd', '--non-unique', '--shell', shell, '--home-dir', '/root',
-                 '--uid', '0', '--gid', '0', '--group', 'root' ]
+    def useradd(self, username, uid=None, gid=None, password=None, shell=None, home=None, groups=None, deleteFirst=True):
+        args = [ 'useradd', '--create-home' ]
 
-        if deleteFirst:
-            self.userdel(username)
+        if uid:
+            args = args + [ '--non-unique', '--uid', str(uid) ]
 
         if password:
             epassword=crypt.crypt(password, '$1$%s$' % self.gen_salt());
             args = args + ['-p', epassword ]
 
+        if shell:
+            args = args + [ '--shell', shell ]
+
+        if gid:
+            args = args + [ '--gid', gid ]
+
+        if home:
+            args = args + [ '--home', home ]
+
+        if groups:
+            args = args + [ '--group', groups ]
+
+        if deleteFirst:
+            self.userdel(username)
+
         args.append(username)
 
         onlu.execute(args,
+                     chroot=self.chroot,
                      ex=OnlRfsError("Adding user '%s' failed." % username))
 
         if password is None:
@@ -347,8 +363,11 @@ rm -f /usr/sbin/policy-rc.d
                 for (user, values) in Configure.get('users', {}).iteritems():
                     ua = OnlRfsSystemAdmin(dir_)
 
-                    if 'password' in values:
-                        ua.user_password_set(user, values['password'])
+                    if user == 'root':
+                        if 'password' in values:
+                            ua.user_password_set(user, values['password'])
+                    else:
+                        ua.useradd(username=user, **values)
 
 
                 options = Configure.get('options', {})
