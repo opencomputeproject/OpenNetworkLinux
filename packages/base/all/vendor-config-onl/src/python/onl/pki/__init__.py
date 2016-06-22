@@ -58,7 +58,7 @@ class OnlPki(OnlServiceMixin):
                         os.makedirs(self.CONFIG_PKI_DIR)
                     self._execute("""openssl req -new -batch -subj "%s" -key %s -out %s""" % (
                             subject, self.kpath, csr.name))
-                    self._execute("""openssl x509 -req -days %s -in %s -signkey %s -out %s""" % (
+                    self._execute("""openssl x509 -req -days %s -sha256 -in %s -signkey %s -out %s""" % (
                             sysconfig.pki.cert.csr.cdays,
                             csr.name, self.kpath, self.cpath))
                 os.unlink(csr.name)
