@@ -61,6 +61,11 @@ class OnlRfsSystemAdmin(object):
         onlu.execute("sudo chmod %s %s" % (mode, file_),
                      ex=OnlRfsError("Could not change permissions (%s) on file %s" % (mode, file_)))
 
+    @staticmethod
+    def chown(file_, ownspec):
+        onlu.execute("sudo chown %s %s" % (ownspec, file_),
+                     ex=OnlRfsError("Could not change ownership (%s) on file %s" % (ownspec, file_)))
+
     def userdel(self, username):
         pf = os.path.join(self.chroot, 'etc/passwd')
         sf = os.path.join(self.chroot, 'etc/shadow')
@@ -80,7 +85,7 @@ class OnlRfsSystemAdmin(object):
         self.chmod("go-wx", pf);
         self.chmod("go-wx", sf);
 
-    def useradd(self, username, uid=None, gid=None, password=None, shell=None, home=None, groups=None, deleteFirst=True):
+    def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
         args = [ 'useradd', '--create-home' ]
 
         if uid:
@@ -118,6 +123,14 @@ class OnlRfsSystemAdmin(object):
 
         logger.info("user %s password %s", username, password)
 
+        if sudo:
+            sudoer = os.path.join(self.chroot, 'etc/sudoers.d', username)
+            self.chmod("777", os.path.dirname(sudoer))
+            with open(sudoer, "w") as f:
+                f.write("%s ALL=(ALL:ALL) NOPASSWD:ALL\n" % username);
+            self.chmod("0440", sudoer)
+            self.chown(sudoer, "root:root")
+            self.chmod("755", os.path.dirname(sudoer))
 
     def user_password_set(self, username, password):
         logger.info("user %s password now %s", username, password)
