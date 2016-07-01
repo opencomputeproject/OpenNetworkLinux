@@ -40,6 +40,7 @@ Accton/Edge-Core
 <tr> <td> Accton AS7712-32X       <td> 32x100G          <td> Intel Rangeley C2538 x86 <td> Broadcom BCM56960 (Tomahawk)       <td> Yes <td> Yes <td> Yes <td> Yes***  <td>  Yes*** <td> No </tr>
 <tr> <td> Accton AS7716-32X       <td> 32x100G          <td> Intel Xeon D-1518 x86 <td> Broadcom BCM56960 (Tomahawk)       <td> Yes <td> Yes <td> No <td> Yes*** <td>  Yes*** <td> No </tr>
 <tr> <td> Accton Wedge-16X        <td> 16x40G           <td> Intel Rangeley C2550 x86 <td> Broadcom BCM56864 (Trident2+)      <td> Work In Progress** <td> Yes <td> No <td> No <td> Yes <td> No </tr>
+<tr> <td> Accton (FB) Wedge 100   <td> 32x100G          <td> Intel Bay Trail E3845 x86 <td> Broadcom BCM56960 (Tomahawk)      <td> Work In Progress** <td> Yes <td> No <td> No <td> Yes <td> No </tr>
 </table>
 
 DNI/Agema
