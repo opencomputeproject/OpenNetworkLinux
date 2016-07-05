@@ -235,6 +235,7 @@ class OnlRfsBuilder(object):
     MULTISTRAP='/usr/sbin/multistrap'
     QEMU_PPC='/usr/bin/qemu-ppc-static'
     QEMU_ARM='/usr/bin/qemu-arm-static'
+    QEMU_ARM64='/usr/bin/qemu-aarch64-static'
     BINFMT_PPC='/proc/sys/fs/binfmt_misc/qemu-ppc'
 
     def __init__(self, config, arch, **kwargs):
@@ -262,6 +263,10 @@ class OnlRfsBuilder(object):
         if self.arch == 'armel':
             if not os.path.exists(self.QEMU_ARM):
                 raise OnlRfsError("%s is missing." % self.QEMU_ARM)
+
+        if self.arch == 'arm64':
+            if not os.path.exists(self.QEMU_ARM64):
+                raise OnlRfsError("%s is missing." % self.QEMU_ARM64)
 
         if not 'Multistrap' in self.config:
             raise OnlRfsError("The Multistrap configuration section is missing.")
@@ -300,6 +305,8 @@ class OnlRfsBuilder(object):
             onlu.execute('sudo cp %s %s' % (self.QEMU_PPC, os.path.join(dir_, 'usr/bin')))
         if self.arch == 'armel':
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM, os.path.join(dir_, 'usr/bin')))
+        if self.arch == 'arm64':
+            onlu.execute('sudo cp %s %s' % (self.QEMU_ARM64, os.path.join(dir_, 'usr/bin')))
 
         script = os.path.join(dir_, "tmp/configure.sh")
         with open(script, "w") as f:

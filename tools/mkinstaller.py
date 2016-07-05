@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
     ap = argparse.ArgumentParser(NAME)
     ap.add_argument("--arch", help="Installer Architecture.", required=True,
-                    choices = ['amd64', 'powerpc', 'armel' ])
+                    choices = ['amd64', 'powerpc', 'armel', 'arm64'])
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
     ap.add_argument("--fit", nargs=2, help="The system FIT image.")
     ap.add_argument("--boot-config", help="The boot-config source.", required=True)
