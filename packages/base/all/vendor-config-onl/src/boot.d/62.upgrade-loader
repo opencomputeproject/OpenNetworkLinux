@@ -117,7 +117,7 @@ if __name__ == '__main__':
     arch = platform.machine()
     klass = None
 
-    if arch in [ 'ppc', 'armv7l' ]:
+    if arch in [ 'ppc', 'armv7l', 'aarch64', 'arm64' ]:
         klass = Loader_Upgrade_FIT
     elif arch == 'x86_64':
         klass = Loader_Upgrade_x86_64
