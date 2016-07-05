@@ -1,0 +1,23 @@
+From 0cbe6513c200e006061d1573228b970c42d0f414 Mon Sep 17 00:00:00 2001
+From: Shengzhou Liu <Shengzhou.Liu@nxp.com>
+Date: Tue, 26 Jul 2016 00:07:01 +0800
+Subject: [PATCH] fix error unknown type name u8 for arm64 arch
+
+---
+ include/aes.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff -Nura u-boot-2013.01.orig/include/aes.h u-boot-2013.01/include/aes.h
+--- u-boot-2013.01.orig/include/aes.h
++++ u-boot-2013.01/include/aes.h
+@@ -24,6 +24,7 @@
+ #ifndef _AES_REF_H_
+ #define _AES_REF_H_
+ 
++typedef unsigned char u8;
+ /*
+  * AES encryption library, with small code size, supporting only 128-bit AES
+  *
+-- 
+1.9.1
+
