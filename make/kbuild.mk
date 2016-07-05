@@ -157,7 +157,7 @@ endif
 endif
 
 
-MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib
+MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib arch/arm64/include arch/arm64/Makefile arch/arm64/lib
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
 mbuild: build
@@ -169,7 +169,11 @@ dtbs: mbuild
 ifdef DTS_LIST
 	rm -rf $(K_DTBS_DIR)
 	mkdir -p $(K_DTBS_DIR)
+ifeq ($(ARCH),arm64)
+	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/*.dtb $(K_DTBS_DIR)
+else
 	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
+endif
 endif
 
 #

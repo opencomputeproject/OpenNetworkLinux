@@ -41,7 +41,8 @@ class OnlSystemConfig(object):
         self.variables['ARCH'] = pp.machine()
         self.variables['PARCH'] = dict(ppc='powerpc',
                                        x86_64='amd64',
-                                       armv7l='armel')[pp.machine()]
+                                       armv7l='armel',
+                                       aarch64='arm64')[pp.machine()]
 
         self.config = {}
         for f in sorted(os.listdir(self.SYSTEM_CONFIG_DIR)):

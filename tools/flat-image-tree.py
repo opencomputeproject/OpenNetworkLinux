@@ -98,7 +98,9 @@ class KernelImage(Image):
         elif arch == 'armel':
             self.load = "<0x61008000>"
             self.entry = "<0x61008000>"
-
+        elif arch == 'arm64':
+            self.load = "<0x80080000>"
+            self.entry = "<0x80080000>"
 
     def write(self, f):
         self.start_image(f)
@@ -116,6 +118,9 @@ class InitrdImage(Image):
             self.load = "<0x1000000>"
             self.entry ="<0x1000000>"
         elif arch == 'armel':
+            self.load = "<0x0000000>"
+            self.entry ="<0x0000000>"
+        elif arch == 'arm64':
             self.load = "<0x0000000>"
             self.entry ="<0x0000000>"
 
@@ -298,7 +303,7 @@ if __name__ == '__main__':
     ap.add_argument("--desc", nargs=1, help="Flat Image Tree description", default="ONL Flat Image Tree.")
     ap.add_argument("--itb", metavar='itb-file', help="Compile result to an image tree blob file.")
     ap.add_argument("--its", metavar='its-file', help="Write result to an image tree source file.")
-    ap.add_argument("--arch", choices=['powerpc', 'armel'], required=True)
+    ap.add_argument("--arch", choices=['powerpc', 'armel', 'arm64'], required=True)
     ops=ap.parse_args()
 
     fit = FlatImageTree(ops.desc)

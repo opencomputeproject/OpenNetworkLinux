@@ -39,6 +39,13 @@ default:
       =: kernel-3.2-deb7-arm-iproc-all.bin.gz
       <<: *arm-iproc-kernel-package
 
+    arm64-kernel-package: &arm64-kernel-package
+      package: onl-kernel-3.18.25-arm64-all:arm64
+
+    arm64-kernel: &arm64-kernel
+      =: kernel-3.18.25-arm64-all.bin.gz
+      <<: *arm64-kernel-package
+
     ##############################
     #
     # For your system, pick from the above list
@@ -67,6 +74,10 @@ default:
     arm-itb: &arm-itb
       =: onl-loader-fit.itb
       package: onl-loader-fit:armel
+
+    arm64-itb: &arm64-itb
+      =: onl-loader-fit.itb
+      package: onl-loader-fit:arm64
 
     itb: *powerpc-itb
 
