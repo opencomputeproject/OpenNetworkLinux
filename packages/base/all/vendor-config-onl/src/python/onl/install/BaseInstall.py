@@ -19,6 +19,7 @@ from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
 
 import onl.YamlUtils
+from onl.sysconfig import sysconfig
 
 class Base:
 
@@ -363,9 +364,9 @@ terminal_input serial
 terminal_output serial
 set timeout=5
 
-menuentry OpenNetworkLinux {
+menuentry %(boot_menu_entry)s {
   search --no-floppy --label --set=root ONL-BOOT
-  echo 'Loading Open Network Linux ...'
+  echo 'Loading %(boot_loading_name)s ...'
   insmod gzio
   insmod part_msdos
   linux /%(kernel)s %(args)s onl_platform=%(platform)s
@@ -476,21 +477,25 @@ class GrubInstaller(SubprocessMixin, Base):
 
         kernel = self.im.platformConf['grub']['kernel']
         ctx['kernel'] = kernel['='] if type(kernel) == dict else kernel
-
-        initrd = self.im.platformConf['grub']['initrd']
-        ctx['initrd'] = initrd['='] if type(initrd) == dict else initrd
-
         ctx['args'] = self.im.platformConf['grub']['args']
         ctx['platform'] = self.im.installerConf.installer_platform
         ctx['serial'] = self.im.platformConf['grub']['serial']
+
+        ctx['boot_menu_entry'] = sysconfig.installer.menu_name
+        ctx['boot_loading_name'] = sysconfig.installer.os_name
+
+        files = []
+        for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
+            if 'initrd' in f and 'cpio' in f:
+                ctx['initrd'] = f
+                files.append(f)
+            if 'kernel' in f:
+                files.append(f)
 
         cf = GRUB_TPL % ctx
 
         self.log.info("Installing kernel")
         dev = self.blkidParts['ONL-BOOT']
-
-        files = set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist())
-        files = [b for b in files if b.startswith('kernel-') or b.startswith('onl-loader-initrd-')]
 
         with MountContext(dev.device, log=self.log) as ctx:
             def _cp(b):
