@@ -5,6 +5,10 @@
 # These provide the base default values for all sysconfig keys.
 #
 ############################################################
+installer:
+  menu_name: "\"Open Network Linux\""
+  os_name: Open Network Linux
+
 upgrade:
   onie:
     auto: advisory
@@ -33,7 +37,3 @@ pki:
         organizationalUnitName: Open Network Linux
         emailAddress: support@bigswitch.com
       cdays: 3600
-
-
-
-
