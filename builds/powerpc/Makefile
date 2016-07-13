@@ -1,1 +1,2 @@
-include $(ONL)/make/pkg.mk
+DIRECTORIES := rootfs swi installer
+include $(ONL)/make/subdirs.mk
