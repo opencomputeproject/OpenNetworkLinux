@@ -157,7 +157,7 @@ class BaseUpgrade(object):
             return default
 
 
-    UPGRADE_STATUS_JSON = "/lib/platform-config/current/upgrade.json"
+    UPGRADE_STATUS_JSON = "/lib/platform-config/current/onl/upgrade.json"
 
     def update_upgrade_status(self, key, value):
         data = {}
@@ -167,7 +167,6 @@ class BaseUpgrade(object):
         data[key] = value
         with open(self.UPGRADE_STATUS_JSON, "w") as f:
             json.dump(data, f)
-
 
     #
     # Initialize self.current_version, self.next_Version
@@ -409,3 +408,13 @@ class BaseOnieUpgrade(BaseUpgrade):
         if os.path.exists(self.ONIE_UPDATER_PATH):
             self.logger.info("Removing previous onie-updater.")
             os.remove(self.ONIE_UPDATER_PATH)
+
+
+
+def upgrade_status():
+    data = {}
+    if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
+            with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
+                data = json.load(f)
+    return data
+
