@@ -192,26 +192,26 @@ class OnlPlatformBase(object):
 
 
     # ONL Platform Information Tree
-    def platform_information_tree(self):
+    def platform_info_oid(self):
         return "1.3.6.1.4.1.42623.1.1"
 
     # ONL Platform Information General Tree
-    def opitg_oid(self):
-        return self.opit_oid() + ".1"
+    def platform_info_general_oid(self):
+        return self.platform_info_oid() + ".1"
 
     # ONL Platform Information General Sys Tree
-    def opitg_sys_oid(self):
-        return self.opitg_oid() + ".1"
+    def platform_info_general_sys_oid(self):
+        return self.platform_info_general_oid() + ".1"
 
     # ONL Platform Information Vendor Tree
-    def opitv_oid(self):
-        return self.opit_oid() + ".2"
+    def platform_info_vendor_oid(self):
+        return self.platform_info_oid() + ".2"
 
     def sys_oid_platform(self):
         raise Exception("sys_oid_platform() is not set.")
 
     def sys_object_id(self):
-        return "%s.%s%s" % (self.opitv_oid(), self.PRIVATE_ENTERPRISE_NUMBER, self.SYS_OBJECT_ID)
+        return "%s.%s%s" % (self.platform_info_vendor_oid(), self.PRIVATE_ENTERPRISE_NUMBER, self.SYS_OBJECT_ID)
 
     def onie_version(self):
         return self.onie_info.ONIE_VERSION
