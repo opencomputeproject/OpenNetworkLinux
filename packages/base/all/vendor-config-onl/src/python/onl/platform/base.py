@@ -15,6 +15,7 @@ import os
 import re
 import yaml
 import onl.YamlUtils
+import subprocess
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -255,6 +256,11 @@ class OnlPlatformBase(object):
         # The default assumption for any platform
         # is ma1 and lo
         return 2
+
+    def environment(self):
+        yamlstr = subprocess.check_output(['/bin/onlpd', '-r', '-y'])
+        data = yaml.load(yamlstr);
+        return json.dumps(data, indent=4)
 
     def __str__(self):
         s = """Model: %s
