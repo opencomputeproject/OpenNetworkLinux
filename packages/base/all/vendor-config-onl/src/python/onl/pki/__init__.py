@@ -17,25 +17,44 @@ from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContext
 from onl.sysconfig import sysconfig
 from onl.util import *
 
+
+
+class OnlPkiContextReadWrite(OnlMountContextReadWrite):
+    def __init__(self, logger):
+        OnlMountContextReadWrite.__init__(self, "ONL-CONFIG", logger)
+
+class OnlPkiContextReadOnly(OnlMountContextReadOnly):
+    def __init__(self, logger):
+        OnlMountContextReadOnly.__init__(self, "ONL-CONFIG", logger)
+
+
 class OnlPki(OnlServiceMixin):
     """Initialize the ONL-CONFIG::PKI credentials."""
 
     CONFIG_PKI_DIR="/mnt/onl/config/pki"
 
-    def __init__(self, logger):
+    def __init__(self, logger=None):
         self.logger = logger
+
+        if self.logger is None:
+            self.logger = logging.getLogger("ONL:PKI")
+
         self.kpath = os.path.join(self.CONFIG_PKI_DIR,
                                   sysconfig.pki.key.name)
 
         self.cpath = os.path.join(self.CONFIG_PKI_DIR,
                              sysconfig.pki.cert.name)
 
+    def init(self, force=False):
+        self.init_key(force=force)
+        self.init_cert(force=force)
+
     def init_key(self, force=False):
-        with OnlMountContextReadOnly("ONL-CONFIG", self.logger):
+        with OnlPkiContextReadOnly(self.logger):
             if not os.path.exists(self.kpath) or force:
                 self.logger.info("Generating private key...")
                 cmd = "openssl genrsa -out %s %s" % (self.kpath, sysconfig.pki.key.len)
-                with OnlMountContextReadWrite("ONL-CONFIG", self.logger):
+                with OnlPkiContextReadWrite(self.logger):
                     if not os.path.isdir(self.CONFIG_PKI_DIR):
                         os.makedirs(self.CONFIG_PKI_DIR)
                     self._execute(cmd)
@@ -44,7 +63,7 @@ class OnlPki(OnlServiceMixin):
                 self.logger.info("Using existing private key.")
 
     def init_cert(self, force=False):
-        with OnlMountContextReadOnly("ONL-CONFIG", self.logger):
+        with OnlPkiContextReadOnly(self.logger):
             if not os.path.exists(self.cpath) or force:
                 self.logger.info("Generating self-signed certificate...")
                 csr = tempfile.NamedTemporaryFile(prefix="pki-", suffix=".csr", delete=False)
@@ -53,7 +72,7 @@ class OnlPki(OnlServiceMixin):
                 subject = "/" + "/".join(fields)
                 self.logger.debug("Subject: '%s'", subject)
                 self.logger.debug("CSR: %s", csr.name)
-                with OnlMountContextReadWrite("ONL-CONFIG", self.logger):
+                with OnlPkiContextReadWrite(self.logger):
                     if not os.path.isdir(self.CONFIG_PKI_DIR):
                         os.makedirs(self.CONFIG_PKI_DIR)
                     self._execute("""openssl req -new -batch -subj "%s" -key %s -out %s""" % (
@@ -64,9 +83,6 @@ class OnlPki(OnlServiceMixin):
                 os.unlink(csr.name)
             else:
                 self.logger.info("Using existing certificate.")
-
-
-
 
     @staticmethod
     def main():
