@@ -388,8 +388,8 @@ rm -f /usr/sbin/policy-rc.d
                     logger.info("Cleaning Filesystem...")
                     onlu.execute('sudo chroot %s /usr/bin/apt-get clean' % dir_)
                     onlu.execute('sudo chroot %s /usr/sbin/localepurge' % dir_ )
-                    onlu.execute('sudo chroot %s find /usr/share/doc -type f | xargs rm -rf' % dir_)
-                    onlu.execute('sudo chroot %s find /usr/share/man -type f | xargs rm -rf' % dir_)
+                    onlu.execute('sudo chroot %s find /usr/share/doc -type f -delete' % dir_)
+                    onlu.execute('sudo chroot %s find /usr/share/man -type f -delete' % dir_)
 
 
                 if not options.get('securetty', True):
