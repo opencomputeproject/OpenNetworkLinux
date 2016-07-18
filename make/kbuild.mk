@@ -85,11 +85,15 @@ endif
 ONL_KERNELS := $(ONL)/packages/base/any/kernels
 
 K_VERSION := $(K_MAJOR_VERSION).$(K_PATCH_LEVEL).$(K_SUB_LEVEL)$(K_SUFFIX)
+ifndef K_NAME
 K_NAME := linux-$(K_VERSION)
+endif
 ifndef K_ARCHIVE_EXT
 K_ARCHIVE_EXT := tar.xz
 endif
+ifndef K_ARCHIVE_NAME
 K_ARCHIVE_NAME := $(K_NAME).$(K_ARCHIVE_EXT)
+endif
 K_ARCHIVE_PATH := $(ONL_KERNELS)/archives/$(K_ARCHIVE_NAME)
 ifndef K_ARCHIVE_URL
 K_ARCHIVE_URL := https://www.kernel.org/pub/linux/kernel/v3.x/$(K_ARCHIVE_NAME)

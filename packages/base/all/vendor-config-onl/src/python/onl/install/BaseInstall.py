@@ -225,9 +225,28 @@ class Base:
         devices = {}
 
         def _u2s(sz, u):
+            """Convert to units of logical sectors."""
             bsz = sz * u
-            bsz = bsz + self.partedDevice.physicalSectorSize - 1
-            return bsz / self.partedDevice.physicalSectorSize
+            bsz = bsz + self.partedDevice.sectorSize - 1
+            return bsz / self.partedDevice.sectorSize
+
+        def _align(spos):
+            """Align this sector number."""
+            sz = self.partedDevice.sectorSize
+            psz = self.partedDevice.physicalSectorSize
+
+            if type(psz) != int: return spos
+            if psz <= sz: return spos
+            if (psz % sz) != 0: return spos
+            if psz > 1048576: return spos
+
+            stride = psz / sz
+            off = spos % stride
+            off = stride - off
+            off = off % stride
+
+            spos += off
+            return spos
 
         UNITS = {
             'GiB' : 1024 * 1024 * 1024,
@@ -260,7 +279,7 @@ class Base:
                                part, sz)
                 return 1
 
-            start = nextBlock
+            start = _align(nextBlock)
             end = start + cnt - 1
             if end <= self.partedDevice.getLength():
                 self.log.info("Allocating %d sectors for %s",
@@ -526,15 +545,17 @@ class GrubInstaller(SubprocessMixin, Base):
 
         self.log.info("disk is %s", self.partedDevice.path)
 
+        self.log.info("found %s partitions (bsz %s, lbsz %s)",
+                      self.partedDisk.type,
+                      self.partedDevice.sectorSize,
+                      self.partedDevice.physicalSectorSize)
         if self.partedDisk.type != 'gpt':
             self.log.error("not a GPT partition table")
             return 1
         if self.partedDevice.sectorSize != 512:
-            self.log.error("invalid logical block size")
-            return 1
+            self.log.warn("invalid logical block size, expected 512")
         if self.partedDevice.physicalSectorSize != 512:
-            self.log.error("invalid physical block size")
-            return 1
+            self.log.warn("invalid physical block size, expected 512")
 
         self.log.info("found a disk with %d blocks",
                       self.partedDevice.getLength())
@@ -745,15 +766,17 @@ class UbootInstaller(SubprocessMixin, Base):
 
         self.log.info("Installing to %s", self.device)
 
+        self.log.info("found %s partitions (bsz %s, lbsz %s)",
+                      self.partedDisk.type,
+                      self.partedDevice.sectorSize,
+                      self.partedDevice.physicalSectorSize)
         if self.partedDisk.type != 'msdos':
             self.log.error("not an MSDOS partition table")
             return 1
         if self.partedDevice.sectorSize != 512:
-            self.log.error("invalid logical block size")
-            return 1
+            self.log.warn("invalid logical block size, expected 512")
         if self.partedDevice.physicalSectorSize != 512:
-            self.log.error("invalid physical block size")
-            return 1
+            self.log.warn("invalid physical block size, expected 512")
 
         self.log.info("found a disk with %d blocks",
                       self.partedDevice.getLength())
