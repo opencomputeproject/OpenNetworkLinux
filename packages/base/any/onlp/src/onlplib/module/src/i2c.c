@@ -142,7 +142,7 @@ onlp_i2c_read(int bus, uint8_t addr, uint8_t offset, int size,
     }
 
     for(i = 0; i < size; i++) {
-        uint32_t rv = i2c_smbus_read_byte_data(fd, offset+i);
+        int rv = i2c_smbus_read_byte_data(fd, offset+i);
         if(rv < 0) {
             AIM_LOG_ERROR("i2c-%d: reading address 0x%x, offset %d failed: %{errno}",
                           bus, addr, offset+i, errno);
@@ -175,7 +175,7 @@ onlp_i2c_write(int bus, uint8_t addr, uint8_t offset, int size,
     }
 
     for(i = 0; i < size; i++) {
-        uint32_t rv = i2c_smbus_write_byte_data(fd, offset+i, data[i]);
+        int rv = i2c_smbus_write_byte_data(fd, offset+i, data[i]);
         if(rv < 0) {
             AIM_LOG_ERROR("i2c-%d: writing address 0x%x, offset %d failed: %{errno}",
                           bus, addr, offset+i, errno);
