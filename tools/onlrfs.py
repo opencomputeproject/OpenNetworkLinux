@@ -88,8 +88,10 @@ class OnlRfsSystemAdmin(object):
     def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
         args = [ 'useradd', '--create-home' ]
 
-        if uid:
+        if uid is not None:
             args = args + [ '--non-unique', '--uid', str(uid) ]
+        if gid is not None:
+            args = args + [ '--gid', str(gid) ]
 
         if password:
             epassword=crypt.crypt(password, '$1$%s$' % self.gen_salt());
