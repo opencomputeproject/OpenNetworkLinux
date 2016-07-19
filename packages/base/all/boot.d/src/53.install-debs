@@ -1,0 +1,16 @@
+#!/bin/sh
+############################################################
+PACKAGE_DIR=/mnt/onl/data/install-debs
+PACKAGE_LIST="$PACKAGE_DIR/list"
+
+if [ -e "$PACKAGE_LIST" ]; then
+    for package in $(cat $PACKAGE_LIST); do
+        echo "Installing packages $package..."
+        if ! dpkg -i "$PACKAGE_DIR/$package"; then
+            echo "Failed."
+            exit 1
+        fi
+    done
+fi
+
+
