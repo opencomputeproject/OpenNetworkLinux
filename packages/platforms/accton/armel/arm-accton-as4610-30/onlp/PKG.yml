@@ -1,1 +1,0 @@
-!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=arm-accton-as4610-30 ARCH=armel TOOLCHAIN=arm-linux-gnueabi
