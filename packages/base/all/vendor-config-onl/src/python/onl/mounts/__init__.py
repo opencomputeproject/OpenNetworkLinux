@@ -15,6 +15,8 @@ class MountManager(object):
     def __init__(self, logger):
         self.read_proc_mounts()
         self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger('onl:mounts')
 
     def read_proc_mounts(self):
         self.mounts = {}
