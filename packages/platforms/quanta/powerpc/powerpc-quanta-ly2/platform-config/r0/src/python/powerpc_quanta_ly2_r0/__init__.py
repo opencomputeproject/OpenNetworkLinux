@@ -1,18 +1,14 @@
 #!/usr/bin/python
-############################################################
-#
-############################################################
+
 import subprocess
 from onl.platform.base import *
 from onl.platform.quanta import *
 
-class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta):
-
-    def model(self):
-        return "LY2"
-
-    def platform(self):
-        return "powerpc-quanta-ly2-r0"
+class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta,
+                                        OnlPlatformPortConfig_48x10_4x40):
+    PLATFORM='powerpc-quanta-ly2-r0'
+    MODEL="LY2"
+    SYS_OBJECT_ID=".3048.1"
 
     def baseconfig(self):
         subprocess.check_call("%s/sbin/gpio_init" % self.basedir_onl())
@@ -39,8 +35,7 @@ class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta):
 
         return True
 
-    def sys_oid_platform(self):
-        return ".3048.1"
+
 
 
 

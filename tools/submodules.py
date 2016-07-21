@@ -101,14 +101,13 @@ class OnlSubmoduleManager(object):
         #
         # Run any repository-specific post-submodule-init scripts.
         #
-        script = os.path.join(self.root, 'tools', 'scripts', 'submodule-updated.sh')
-        if os.path.exists(script):
-            try:
-                check_call([script, path], cwd=self.root)
-            except subprocess.CalledProcessError:
-                # Target doesn't exists
-                raise OnlSubmoduleError("The repository post-init script %s failed." % script)
-
+        for script in os.getenv("ONL_SUBMODULE_UPDATED_SCRIPTS", "").split(':'):
+            if os.path.exists(script):
+                try:
+                    print "Calling %s..." % script
+                    check_call([script, path], cwd=self.root)
+                except subprocess.CalledProcessError:
+                    raise OnlSubmoduleError("The repository post-init script %s failed." % script)
 
     def require(self, path, depth=None, recursive=False):
         self.get_status()

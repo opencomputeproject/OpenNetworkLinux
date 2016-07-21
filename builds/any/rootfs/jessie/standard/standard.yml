@@ -7,9 +7,13 @@
 #
 #
 ############################################################
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
 Packages: &Packages
-  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/common-packages.yml
-  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/all-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-onl-packages.yml
   - !script  $ONL/tools/onl-platform-pkgs.py ${PLATFORM_LIST}
 
 Multistrap:
@@ -88,6 +92,13 @@ Configure:
     root:
       password: onl
 
-  manifest:
-    version: $ONL/make/versions/version-onl.json
-    platforms: $PLATFORM_LIST
+  manifests:
+    '/etc/onl/rootfs/manifest.json' :
+      version : $ONL/make/versions/version-onl.json
+      platforms : $PLATFORM_LIST
+
+  issue: $VERSION_STRING
+
+  files:
+    remove:
+      - /etc/motd

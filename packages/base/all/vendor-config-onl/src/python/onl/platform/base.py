@@ -13,9 +13,9 @@ import pprint
 import json
 import os
 import re
-
 import yaml
 import onl.YamlUtils
+import subprocess
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -173,14 +173,8 @@ class OnlPlatformBase(object):
     def baseconfig(self):
         return True
 
-    def manufacturer(self):
-        raise Exception("Manufacturer is not set.")
-
-    def model(self):
-        raise Exception("Model is not set.")
-
     def platform(self):
-        raise Exception("Platform is not set.")
+        return self.PLATFORM
 
     def baseplatform(self):
         p = self.platform()
@@ -188,8 +182,7 @@ class OnlPlatformBase(object):
         return p
 
     def description(self):
-        return "%s %s (%s)" % (self.manufacturer(), self.model(),
-                               self.platform())
+        return "%s %s" % (self.MANUFACTURER, self.MODEL)
 
     def serialnumber(self):
         return self.onie_info.SERIAL_NUMBER
@@ -200,31 +193,26 @@ class OnlPlatformBase(object):
 
 
     # ONL Platform Information Tree
-    def opit_oid(self):
-        return "1.3.6.1.4.1.37538.2.1000"
+    def platform_info_oid(self):
+        return "1.3.6.1.4.1.42623.1.1"
 
     # ONL Platform Information General Tree
-    def opitg_oid(self):
-        return self.opit_oid() + ".1"
+    def platform_info_general_oid(self):
+        return self.platform_info_oid() + ".1"
 
     # ONL Platform Information General Sys Tree
-    def opitg_sys_oid(self):
-        return self.opitg_oid() + ".1"
+    def platform_info_general_sys_oid(self):
+        return self.platform_info_general_oid() + ".1"
 
     # ONL Platform Information Vendor Tree
-    def opitv_oid(self):
-        return self.opit_oid() + ".2"
-
-    def sys_oid_vendor(self):
-        return ".37538"
+    def platform_info_vendor_oid(self):
+        return self.platform_info_oid() + ".2"
 
     def sys_oid_platform(self):
         raise Exception("sys_oid_platform() is not set.")
 
     def sys_object_id(self):
-        return ( self.opitv_oid() +
-                 self.sys_oid_vendor() +
-                 self.sys_oid_platform());
+        return "%s.%s%s" % (self.platform_info_vendor_oid(), self.PRIVATE_ENTERPRISE_NUMBER, self.SYS_OBJECT_ID)
 
     def onie_version(self):
         return self.onie_info.ONIE_VERSION
@@ -269,20 +257,24 @@ class OnlPlatformBase(object):
         # is ma1 and lo
         return 2
 
+    def environment(self):
+        yamlstr = subprocess.check_output(['/bin/onlpd', '-r', '-y'])
+        data = yaml.load(yamlstr);
+        return data
+
     def __str__(self):
-        s = """Manufacturer: %s
-Model: %s
-Platform: %s
-Description: %s
+        s = """Model: %s
+Manufacturer: %s
+Ports: %s (%s)
 System Object Id: %s
 System Information:
 %s
 %s
 """ % (
-            self.manufacturer(),
-            self.model(),
-            self.platform(),
-            self.description(),
+            self.MODEL,
+            self.MANUFACTURER,
+            self.PORT_COUNT,
+            self.PORT_CONFIG,
             self.sys_object_id(),
             str(self.onie_info),
             str(self.platform_info),
@@ -298,7 +290,22 @@ Warning: %s
         return s
 
 
+class OnlPlatformPortConfig_48x1_4x10(object):
+    PORT_COUNT=52
+    PORT_CONFIG="48x1 + 4x10"
 
+class OnlPlatformPortConfig_48x10_4x40(object):
+    PORT_COUNT=52
+    PORT_CONFIG="48x10 + 4x40"
 
+class OnlPlatformPortConfig_48x10_6x40(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x10 + 6x40"
 
+class OnlPlatformPortConfig_32x40(object):
+    PORT_COUNT=32
+    PORT_CONFIG="32x40"
 
+class OnlPlatformPortConfig_32x100(object):
+    PORT_COUNT=32
+    PORT_CONFIG="32x100"

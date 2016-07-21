@@ -13,7 +13,7 @@
 ############################################################
 
 # Removing the manifest causes it to be regenerated.
-rm -rf $ONL/.manifest.mk
+rm -rf $ONL/make/module-manifest.mk
 
 # Rebuild pkg cache
 onlpm.py --rebuild-pkg-cache

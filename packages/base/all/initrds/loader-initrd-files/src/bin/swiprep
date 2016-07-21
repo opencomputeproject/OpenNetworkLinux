@@ -193,7 +193,12 @@ if test "${mode_install}${mode_overlay}"; then
 
   mkdir -p "$destdir/etc/onl"
 
-  cp -R /etc/onl/* "$destdir/etc/onl/."
+  for thing in /etc/onl/*; do
+    if test $thing != "sysconfig"; then
+      cp -R $thing "$destdir/etc/onl/."
+    fi
+  done
+
   if [ -f /etc/fw_env.config ]; then
       cat /etc/fw_env.config > "$destdir/etc/fw_env.config"
   fi

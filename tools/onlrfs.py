@@ -61,12 +61,18 @@ class OnlRfsSystemAdmin(object):
         onlu.execute("sudo chmod %s %s" % (mode, file_),
                      ex=OnlRfsError("Could not change permissions (%s) on file %s" % (mode, file_)))
 
-    def userdel(self):
-        pf = os.path.join(self.chroot, 'etc/password')
+    @staticmethod
+    def chown(file_, ownspec):
+        onlu.execute("sudo chown %s %s" % (ownspec, file_),
+                     ex=OnlRfsError("Could not change ownership (%s) on file %s" % (ownspec, file_)))
+
+    def userdel(self, username):
+        pf = os.path.join(self.chroot, 'etc/passwd')
         sf = os.path.join(self.chroot, 'etc/shadow')
 
-        self.chmod("a+w", pf);
-        self.chmod("a+w", sf);
+        self.chmod("a+rwx", os.path.dirname(pf))
+        self.chmod("a+rw", pf);
+        self.chmod("a+rw", sf);
 
         # Can't use the userdel command because of potential uid 0 in-user problems while running ourselves
         for line in fileinput.input(pf, inplace=True):
@@ -76,23 +82,40 @@ class OnlRfsSystemAdmin(object):
             if not line.startswith('%s:' % username):
                 print line,
 
-        self.chmod("go-w", pf);
-        self.chmod("go-w", sf);
+        self.chmod("go-wx", pf);
+        self.chmod("go-wx", sf);
 
-    def useradd(self, username, uid, password, shell, deleteFirst=True):
-        args = [ 'useradd', '--non-unique', '--shell', shell, '--home-dir', '/root',
-                 '--uid', '0', '--gid', '0', '--group', 'root' ]
+    def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
+        args = [ 'useradd', '--create-home' ]
 
-        if deleteFirst:
-            self.userdel(username)
+        if uid is not None:
+            args = args + [ '--non-unique', '--uid', str(uid) ]
+        if gid is not None:
+            args = args + [ '--gid', str(gid) ]
 
         if password:
             epassword=crypt.crypt(password, '$1$%s$' % self.gen_salt());
             args = args + ['-p', epassword ]
 
+        if shell:
+            args = args + [ '--shell', shell ]
+
+        if gid:
+            args = args + [ '--gid', gid ]
+
+        if home:
+            args = args + [ '--home', home ]
+
+        if groups:
+            args = args + [ '--group', groups ]
+
+        if deleteFirst:
+            self.userdel(username)
+
         args.append(username)
 
         onlu.execute(args,
+                     chroot=self.chroot,
                      ex=OnlRfsError("Adding user '%s' failed." % username))
 
         if password is None:
@@ -102,6 +125,14 @@ class OnlRfsSystemAdmin(object):
 
         logger.info("user %s password %s", username, password)
 
+        if sudo:
+            sudoer = os.path.join(self.chroot, 'etc/sudoers.d', username)
+            self.chmod("777", os.path.dirname(sudoer))
+            with open(sudoer, "w") as f:
+                f.write("%s ALL=(ALL:ALL) NOPASSWD:ALL\n" % username);
+            self.chmod("0440", sudoer)
+            self.chown(sudoer, "root:root")
+            self.chmod("755", os.path.dirname(sudoer))
 
     def user_password_set(self, username, password):
         logger.info("user %s password now %s", username, password)
@@ -347,13 +378,21 @@ rm -f /usr/sbin/policy-rc.d
                 for (user, values) in Configure.get('users', {}).iteritems():
                     ua = OnlRfsSystemAdmin(dir_)
 
-                    if 'password' in values:
-                        ua.user_password_set(user, values['password'])
+                    if user == 'root':
+                        if 'password' in values:
+                            ua.user_password_set(user, values['password'])
+                    else:
+                        ua.useradd(username=user, **values)
 
 
                 options = Configure.get('options', {})
                 if options.get('clean', False):
                     logger.info("Cleaning Filesystem...")
+                    onlu.execute('sudo chroot %s /usr/bin/apt-get clean' % dir_)
+                    onlu.execute('sudo chroot %s /usr/sbin/localepurge' % dir_ )
+                    onlu.execute('sudo chroot %s find /usr/share/doc -type f -delete' % dir_)
+                    onlu.execute('sudo chroot %s find /usr/share/man -type f -delete' % dir_)
+
 
                 if not options.get('securetty', True):
                     f = os.path.join(dir_, 'etc/securetty')
@@ -387,22 +426,58 @@ rm -f /usr/sbin/policy-rc.d
                     ua.chmod('go-w', os.path.dirname(f))
 
 
-                manifest = Configure.get('manifest', {})
-                if manifest:
-                    mname = "%s/etc/onl/rootfs/manifest.json" % dir_
+                for (mf, fields) in Configure.get('manifests', {}).iteritems():
+                    logger.info("Configuring manifest %s..." % mf)
+                    if mf.startswith('/'):
+                        mf = mf[1:]
+                    mname = os.path.join(dir_, mf)
                     onlu.execute("sudo mkdir -p %s" % os.path.dirname(mname))
                     onlu.execute("sudo touch %s" % mname)
                     onlu.execute("sudo chmod a+w %s" % mname)
                     md = {}
-                    md['version'] = json.load(open(manifest['version']))
+                    md['version'] = json.load(open(fields['version']))
                     md['arch'] = self.arch
-                    if os.path.exists(manifest['platforms']):
-                        md['platforms'] = yaml.load(open(manifest['platforms']))
+                    if os.path.exists(fields['platforms']):
+                        md['platforms'] = yaml.load(open(fields['platforms']))
                     else:
-                        md['platforms'] = manifest['platforms'].split(',')
+                        md['platforms'] = fields['platforms'].split(',')
                     with open(mname, "w") as f:
                         json.dump(md, f, indent=2)
                     onlu.execute("sudo chmod a-w %s" % mname)
+
+                for (fname, v) in Configure.get('files', {}).get('add', {}).iteritems():
+                    if fname.startswith('/'):
+                        fname = fname[1:]
+                    dst = os.path.join(dir_, fname)
+                    onlu.execute("sudo mkdir -p %s" % os.path.dirname(dst))
+                    onlu.execute("sudo touch %s" % dst)
+                    onlu.execute("sudo chmod a+w %s" % dst)
+                    if os.path.exists(v):
+                        shutil.copy(v, dst)
+                    else:
+                        with open(dst, "w") as f:
+                            f.write("%s\n" % v)
+
+                for fname in Configure.get('files', {}).get('remove', []):
+                    if fname.startswith('/'):
+                        fname = fname[1:]
+                    f = os.path.join(dir_, fname)
+                    if os.path.exists(f):
+                        onlu.execute("sudo rm -rf %s" % f)
+
+                if Configure.get('issue'):
+                    issue = Configure.get('issue')
+                    fn = os.path.join(dir_, "etc/issue")
+                    onlu.execute("sudo chmod a+w %s" % fn)
+                    with open(fn, "w") as f:
+                        f.write("%s\n\n" % issue)
+                    onlu.execute("sudo chmod a-w %s" % fn)
+
+                    fn = os.path.join(dir_, "etc/issue.net")
+                    onlu.execute("sudo chmod a+w %s" % fn)
+                    with open(fn, "w") as f:
+                        f.write("%s" % issue)
+                    onlu.execute("sudo chmod a-w %s" % fn)
 
         finally:
             onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))

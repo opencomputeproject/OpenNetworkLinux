@@ -9,16 +9,7 @@
 # </bsn.cl>
 ############################################################
 #
-# SwitchLight Installation Script for PPC.
-#
-# The purpose of this script is to automatically install SwitchLight
-# on the target system.
-#
-# This script is ONIE-compatible.
-#
-# This script is can be run under a manual boot of the SwitchLight
-# Loader as the execution environment for platforms that do not
-# support ONIE.
+# Open Network Linux Installation Script
 #
 ############################################################
 
@@ -160,7 +151,7 @@ visit_proc_mounts() {
   local ifs line dummy fn rest sts
   fn=$1; shift
   rest="$@"
-  
+
   ifs=$IFS; IFS=$CR
   for line in $(cat /proc/mounts); do
     IFS=$ifs

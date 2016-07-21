@@ -8,6 +8,8 @@ import os
 import sys
 import fnmatch
 from onl.upgrade import ubase
+from onl.sysconfig import sysconfig
+from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 
 class Loader_Upgrade(ubase.BaseUpgrade):
     name="loader"
@@ -18,15 +20,20 @@ class Loader_Upgrade(ubase.BaseUpgrade):
     current_version_key="Current Loader Version"
     next_version_key="Next Loader Version"
 
+    def auto_upgrade_default(self):
+        return sysconfig.upgrade.loader.auto
+
     def init_versions(self):
+
         #
         # Current Loader version file.
         # If this file doesn't exist then in-place upgrade is not supported.
         #
-        ETC_LOADER_VERSIONS_JSON = "/etc/onl/loader/versions.json"
+        ETC_LOADER_VERSIONS_JSON = sysconfig.upgrade.loader.versions
 
         # Upgrade Loader Version file.
-        NEXT_LOADER_VERSIONS_JSON = "/etc/onl/upgrade/%s/manifest.json" % self.parch
+        NEXT_LOADER_VERSIONS_JSON = os.path.join(sysconfig.upgrade.loader.package.dir, "manifest.json")
+
 
         self.current_version = self.load_json(ETC_LOADER_VERSIONS_JSON,
                                               "RELEASE_ID",
@@ -51,55 +58,18 @@ class Loader_Upgrade_FIT(Loader_Upgrade):
 
     def do_upgrade(self, forced=False):
 
-        FIT_UPGRADE_IMAGE_PLATFORM="/etc/onl/upgrade/%s/%s.itb" % (self.parch, self.platform.platform())
-        FIT_UPGRADE_IMAGE_ALL="/etc/onl/upgrade/%s/onl-loader-fit.itb" % (self.parch)
-        FIT_LOADER_IMAGE_NAME="%s.itb" % self.platform.platform()
-
         fit_image = None
+        for f in sysconfig.upgrade.loader.package.fit_images:
+            fp = os.path.join(sysconfig.upgrade.loader.package.dir, f)
+            if os.path.exists(fp):
+                fit_image = fp;
+                break
 
-        if os.path.exists(FIT_UPGRADE_IMAGE_PLATFORM):
-            fit_image = FIT_UPGRADE_IMAGE_PLATFORM
-        elif os.path.exists(FIT_UPGRADE_IMAGE_ALL):
-            fit_image = FIT_UPGRADE_IMAGE_ALL
-        else:
+        if fit_image is None:
             self.abort("The FIT upgrade image is missing. Upgrade cannot continue.")
 
-        #
-        # The platform configuration file will describe which partition
-        # and which format should be used to store the FIT image.
-        #
-        partition = None
-        raw = False
-        pc = self.platform.platform_config
-
-        if pc:
-            if 'loader' in pc and pc['loader']:
-                if 'partition' in pc['loader']:
-                    partition = pc['loader']['partition']
-                else:
-                    self.abort("No partition listed in the loader section of the platform configuration.")
-                raw = pc['loader'].get('raw', False)
-            else:
-                self.abort("No loader section listed in the platform configuration.")
-        else:
-            self.abort("No platform configuration.")
-
-        if raw:
-            #
-            # The loader file is written raw to the given partition.
-            #
-            print "Writing %s to %s..." % (fit_image, partition)
-            if os.system("dd of=%s if=%s" % (partition, fit_image)) != 0:
-                self.abort("Failure writing loader data to partition %s." % (partition))
-
-        else:
-            #
-            # Mount the loader partition and rewrite the loader image.
-            #
-            mdir="/mnt/upgrade/loader"
-            self.mount(mdir, partition=partition)
-            self.copyfile(fit_image, os.path.join(mdir, FIT_LOADER_IMAGE_NAME))
-            self.umount(mdir)
+        with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
+            self.copyfile(fit_image, os.path.join(d.directory, "%s.itb" % (self.platform.platform())))
 
         self.reboot()
 
@@ -108,28 +78,22 @@ class Loader_Upgrade_x86_64(Loader_Upgrade):
 
     def do_upgrade(self, forced=False):
 
-        X86_64_UPGRADE_DIR="/etc/onl/upgrade/%s/" % (self.parch)
-        X86_64_UPGRADE_PATTERNS = [ "kernel-*", "initrd-*" ]
+        X86_64_UPGRADE_DIR=sysconfig.upgrade.loader.package.dir
+        X86_64_UPGRADE_PATTERNS = [ "kernel-*", "*initrd*" ]
 
-        #
-        # Mount the ONL-BOOT partition
-        #
-        mdir="/mnt/onl-boot"
-        self.mount(mdir, label="ONL-BOOT")
+        with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
+            for f in os.listdir(X86_64_UPGRADE_DIR):
+                for pattern in X86_64_UPGRADE_PATTERNS:
+                    if fnmatch.fnmatch(f, pattern):
+                        self.copyfile(os.path.join(X86_64_UPGRADE_DIR, f), os.path.join(d.directory, f))
 
-        for f in os.listdir(X86_64_UPGRADE_DIR):
-            for pattern in X86_64_UPGRADE_PATTERNS:
-                if fnmatch.fnmatch(f, pattern):
-                    self.copyfile(os.path.join(X86_64_UPGRADE_DIR, f), os.path.join(mdir, f))
+            # Disabled until it can be resolved with the new installer.
+            #src = "/lib/platform-config/current/onl/boot/grub.cfg"
+            #dst = os.path.join(d.directory, "grub/grub.cfg")
+            #if os.path.exists(src):
+            #    self.copyfile(src, dst)
 
-        src = "/lib/platform-config/current/onl/boot/grub.cfg"
-        dst = os.path.join(mdir, "grub/grub.cfg")
-        if os.path.exists(src):
-            self.copyfile(src, dst)
-
-        self.umount(mdir)
         self.reboot()
-
 
 
 

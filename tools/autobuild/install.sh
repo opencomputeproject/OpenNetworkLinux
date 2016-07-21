@@ -48,7 +48,7 @@ done
 
 
 if [ -z "$REMOTE_SERVER" ]; then
-    echo "Remote instlallation requires a server (-s)"
+    echo "Remote installation requires a server (-s)"
     exit 1
 fi
 

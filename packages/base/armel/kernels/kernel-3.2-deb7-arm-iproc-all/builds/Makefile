@@ -12,6 +12,8 @@ THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 include $(ONL)/make/config.mk
 
+export MODSYNCLIST_EXTRA := arch/arm/plat-iproc/include
+
 kernel:
 	$(MAKE) -C $(ONL)/packages/base/any/kernels/3.2.71-1+deb7/configs/arm-iproc-all K_TARGET_DIR=$(THIS_DIR) $(ONL_MAKE_PARALLEL)
 

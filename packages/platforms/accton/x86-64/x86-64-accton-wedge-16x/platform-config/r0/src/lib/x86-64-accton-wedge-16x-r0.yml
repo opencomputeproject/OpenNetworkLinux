@@ -18,7 +18,7 @@ x86-64-accton-wedge-16x-r0:
       --stop=1
 
     kernel: 
-      <<: *kernel-3-2
+      <<: *kernel-3-18
 
     args: >-
       nopat

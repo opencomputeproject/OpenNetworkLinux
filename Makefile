@@ -21,9 +21,7 @@ onl-amd64 onl-x86 x86 x86_64 amd64: packages_base_all
 	$(MAKE) -C packages/base/amd64/onlp
 	$(MAKE) -C packages/base/amd64/onlp-snmpd
 	$(MAKE) -C packages/base/amd64/faultd
-	$(MAKE) -C builds/amd64/rootfs
-	$(MAKE) -C builds/amd64/swi
-	$(MAKE) -C builds/amd64/installer
+	$(MAKE) -C builds/amd64
 
 onl-ppc ppc: packages_base_all
 	$(MAKE) -C packages/base/powerpc/kernels
@@ -32,10 +30,7 @@ onl-ppc ppc: packages_base_all
 	$(MAKE) -C packages/base/powerpc/onlp-snmpd
 	$(MAKE) -C packages/base/powerpc/faultd
 	$(MAKE) -C packages/base/powerpc/fit
-	$(MAKE) -C builds/powerpc/rootfs
-	$(MAKE) -C builds/powerpc/swi
-	$(MAKE) -C builds/powerpc/installer
-
+	$(MAKE) -C builds/powerpc
 
 ifdef ONL_DEBIAN_SUITE_jessie
 
@@ -49,9 +44,7 @@ onl-arm arm: arm_toolchain_check packages_base_all
 	$(MAKE) -C packages/base/armel/onlp-snmpd
 	$(MAKE) -C packages/base/armel/faultd
 	$(MAKE) -C packages/base/armel/fit
-	$(MAKE) -C builds/armel/rootfs
-	$(MAKE) -C builds/armel/swi
-	$(MAKE) -C builds/armel/installer
+	$(MAKE) -C builds/armel
 else
 
 onl-arm arm:

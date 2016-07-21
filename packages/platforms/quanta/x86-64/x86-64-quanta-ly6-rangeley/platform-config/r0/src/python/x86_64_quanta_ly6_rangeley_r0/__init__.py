@@ -1,16 +1,11 @@
 from onl.platform.base import *
 from onl.platform.quanta import *
 
-class OnlPlatform_x86_64_quanta_ly6_rangeley_r0(OnlPlatformQuanta):
-
-    def model(self):
-        return "LY6"
-
-    def platform(self):
-        return "x86-64-quanta-ly6-rangeley-r0"
-
-    def sys_oid_platform(self):
-        return ".6.1"
+class OnlPlatform_x86_64_quanta_ly6_rangeley_r0(OnlPlatformQuanta,
+                                                OnlPlatformPortConfig_32x40):
+    PLATFORM='x86-64-quanta-ly6-rangeley-r0'
+    MODEL='LY6'
+    SYS_OBJECT_ID='.6.1'
 
     def baseconfig(self):
         # fixme

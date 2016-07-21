@@ -10,54 +10,151 @@ import yaml
 import tempfile
 import shutil
 
-class OnlMountManager(object):
-    def __init__(self, mdata, logger):
+class MountManager(object):
 
-        if os.path.exists(mdata):
-            mdata = yaml.load(open(mdata, "r"));
-
-        self.mdata = mdata
+    def __init__(self, logger):
+        self.read_proc_mounts()
         self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger('onl:mounts')
 
-        # Needed to avoid ugly warnings from fsck
-        if not os.path.exists('/etc/mtab'):
-            open("/etc/mtab", 'w').close();
+    def read_proc_mounts(self):
+        self.mounts = {}
+        with open('/proc/mounts') as mounts:
+            for line in mounts.readlines():
+                (dev, dir_, type_, options, a, b) = line.split()
+                self.mounts[dir_] = dict(dev=dev, mode=options.split(',')[0])
 
+    def is_mounted(self, device, directory):
+        self.read_proc_mounts()
+        if directory in self.mounts and self.mounts[directory]['dev'] == device:
+            return self.mounts[directory]
+        return None
 
-    def checkmount(self, directory):
-        with open("/proc/mounts") as f:
-            return directory in f.read()
-
-    def checkroot(self, dev):
-        pat = "%s / " % dev
-        with open("/proc/mounts") as f:
-            return pat in f.read()
+    def is_dev_mounted(self, device):
+        self.read_proc_mounts()
+        for (k, v) in self.mounts.iteritems():
+            if v['dev'] == device:
+                return True
+        return False
 
     def mount(self, device, directory, mode='r', timeout=5):
-        self.logger.debug("Mounting %s -> %s %s" % (device, directory, mode))
+
+        mountargs = [ str(mode) ]
+        current = self.is_mounted(device, directory)
+        if current:
+            if current['mode'] == mode:
+                # Already mounted as requested.
+                self.logger.debug("%s already mounted @ %s with mode %s. Doing nothing." % (device, directory, mode))
+                return True
+            elif device == current['dir']:
+                # Already mounted, at a different location (e.g. '/'), but not in the requested mode.
+                self.logger.debug("%s mounted @ %s (%s) with mode %s. It will be remounted %s.",
+                                  device, directory, current['dir'], current['mode'], mode)
+                mountargs.append('remount')
+                directory = current['dir']
+            else:
+                # Already mounted, but not in the requested mode.
+                self.logger.debug("%s mounted @ %s with mode %s. It will be remounted %s." % (device, directory, current['mode'], mode))
+                mountargs.append('remount')
+        else:
+            # Not mounted at all.
+            self.logger.debug("%s not mounted @ %s. It will be mounted %s" % (device, directory, mode))
+
         try:
-            subprocess.check_call("mount -%s %s %s" % (mode, device, directory), shell=True)
+            cmd = "mount -o %s %s %s" % (','.join(mountargs), device, directory)
+            self.logger.debug("+ %s" % cmd)
+            subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError, e:
             self.logger.error("Mount failed: '%s'" % e.output)
             return False
 
         # If requested, wait for the mount to complete.
         while(timeout > 0):
-            if self.checkmount(directory):
+            if self.is_mounted(device, directory):
                 break
             time.sleep(1)
             timeout-=1
 
-        if self.checkmount(directory):
-            self.logger.info("%s is now mounted @ %s" % (device, directory))
+        current = self.is_mounted(device, directory)
+        if current:
+            self.logger.debug("%s is now mounted @ %s %s" % (device, directory, current['mode']))
             return True
         else:
-            self.logger.info("%s failed to report in /proc/mounts." % (directory))
+            self.logger.error("%s failed to report in /proc/mounts." % (directory))
+
+    def umount(self, device, directory):
+        current = self.is_mounted(device, directory)
+        if not current:
+            self.logger.error("umount: %s is not mounted @ %s" % (device, directory))
+            return False
+
+        try:
+            out = subprocess.check_output("umount %s" % directory, shell=True)
+            self.logger.debug("%s @ %s has been unmounted." % (device, directory))
+            self.read_proc_mounts()
+            return True
+
+        except subprocess.CalledProcessError,e:
+            self.logger.error("Could not unmount %s @ %s: %s" % (device, directory, e.output))
 
 
 
-    def mountall(self, all_=False, fsck=None, timeout=5):
-        for (k, v) in self.mdata['mounts'].iteritems():
+class MountContext(object):
+    def __init__(self, device, directory, mode, logger):
+        self.mm = MountManager(logger)
+        self.device = device
+        self.directory = directory
+        self.mode = mode
+
+    def __enter__(self):
+        self.status = self.mm.is_mounted(self.device, self.directory)
+        self.mm.mount(self.device, self.directory, self.mode)
+        return self
+
+    def __exit__(self, eType, eValue, eTrace):
+        if self.status:
+            self.mm.mount(self.device, self.directory, self.status['mode'])
+        else:
+            self.mm.umount(self.device, self.directory)
+
+
+class OnlMountManager(object):
+    def __init__(self, mdata="/etc/mtab.yml", logger=None):
+        self.mm = MountManager(logger)
+
+        if os.path.exists(mdata):
+            mdata = yaml.load(open(mdata, "r"));
+
+        self.mdata = mdata
+        self.logger = logger if logger else logging.getLogger(self.__class__.__name__)
+
+        # Needed to avoid ugly warnings from fsck
+        if not os.path.exists('/etc/mtab'):
+            os.system("ln -s /proc/mounts /etc/mtab")
+
+        self.missing = None
+
+    def init(self, timeout=5):
+        for(k, v) in self.mdata['mounts'].iteritems():
+            #
+            # Get the partition device for the given label.
+            # The timeout logic is here to handle waiting for the
+            # block devices to arrive at boot.
+            #
+            while timeout >= 0:
+                try:
+                    v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
+                    break
+                except subprocess.CalledProcessError:
+                        self.logger.debug("Block label %s does not yet exist..." % k)
+                        time.sleep(1)
+                        timeout -= 1
+
+                if 'device' not in v:
+                    self.logger.error("Timeout waiting for block label %s after %d seconds." % (k, timeout))
+                    self.missing = k
+                    return False
 
             #
             # Make the mount point for future use.
@@ -66,90 +163,164 @@ class OnlMountManager(object):
                 self.logger.debug("Make directory '%s'..." % v['dir'])
                 os.makedirs(v['dir'])
 
-            #
-            # Get the partition device.
-            # The timeout logic is here to handle waiting for the
-            # block devices to arrive at boot.
-            #
-            while timeout > 0:
-                try:
-                    v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
-                    break
-                except subprocess.CalledProcessError:
-                    self.logger.debug("Block label %s does not yet exist..." % k)
-                    time.sleep(1)
-                    timeout -= 1
-
-            if 'device' not in v:
-                self.logger.error("Timeout waiting for block label %s after %d seconds." % (k, timeout))
-                continue;
-
             self.logger.debug("%s @ %s" % (k, v['device']))
 
-            isRoot = self.checkroot(v['device'])
-            # if this device is current the root device,
-            # ignore any umount/mount/fsck shenanigans
+    def __fsck(self, label, device):
+        self.logger.info("Running fsck on %s [ %s ]..." % (label, device))
+        cmd = "fsck.ext4 -p %s" % (device)
+        self.logger.debug(cmd)
+        try:
+            out = subprocess.check_output(cmd, shell=True)
+            self.logger.info("%s [ %s ] is clean." % (device, label))
+            return True
+        except subprocess.CalledProcessError, e:
+            self.logger.error("fsck failed: %s" % e.output)
+            return False
 
-            #
-            # If its currently mounted we should unmount first.
-            #
-            if not isRoot and self.checkmount(v['device']):
-                self.logger.info("%s is currently mounted." % (k))
-                try:
-                    out = subprocess.check_output("umount %s" % v['device'], shell=True)
-                    self.logger.info("%s now unmounted." % (k))
-                except subprocess.CalledProcessError,e:
-                    self.logger.error("Could not unmount %s @ %s: %s" % (k, v['device'], e.output))
-                    continue
-            #
-            # FS Checks
-            #
-            if fsck is not None:
-                # Override fsck setting with given value
-                self.logger.debug("Overriding fsck settings for %s with %s" % (k, fsck))
-                v['fsck'] = fsck
+    def __label_entry(self, label, emsg=True):
 
-            if not isRoot and v.get('fsck', False):
-                try:
-                    self.logger.info("Running fsck on %s [ %s ]..." % (k, v['device']))
-                    cmd = "fsck.ext4 -p %s" % (v['device'])
-                    self.logger.debug(cmd)
-                    try:
-                        out = subprocess.check_output(cmd, shell=True)
-                        self.logger.info("%s [ %s ] is clean." % (v['device'], k))
-                    except subprocess.CalledProcessError, e:
-                        self.logger.error("fsck failed: %s" % e.output)
-                except subprocess.CalledProcessError, e:
-                    # Todo - recovery options
-                    raise
+        if label in self.mdata['mounts']:
+            return self.mdata['mounts'][label]
 
+        if emsg:
+            self.logger.error("Label %s does not exist." % label)
 
-            if all_:
-                v['mount'] = 'w'
+        return None
 
-            mount = v.get('mount', None)
-            if not isRoot and mount:
-                if mount in ['r', 'w']:
-                    self.mount(v['device'], v['dir'], mode=mount, timeout=v.get('timeout', 5))
+    def validate_labels(self, labels):
+
+        if type(labels) is str:
+            labels = labels.split(',')
+        elif type(labels) is dict:
+            labels = [ labels.keys() ]
+        elif type(labels) is list:
+            pass
+        else:
+            raise ValueError("invalid labels argument.")
+
+        if 'all' in labels:
+            labels = filter(lambda l: l != 'all', labels) + self.mdata['mounts'].keys()
+
+        rv = []
+        for l in list(set(labels)):
+            if self.__label_entry("ONL-%s" % l.upper(), False):
+                rv.append("ONL-%s" % l.upper())
+            elif self.__label_entry(l.upper(), False):
+                rv.append(l.upper())
+            elif self.__label_entry(l):
+                rv.append(l)
+            else:
+                pass
+
+        return rv;
+
+    def fsck(self, labels, force=False):
+        labels = self.validate_labels(labels)
+        for label in labels:
+            m = self.__label_entry(label)
+            if force or m.get('fsck', False):
+                if not self.mm.is_dev_mounted(m['device']):
+                    self.__fsck(label, m['device'])
                 else:
-                    self.logger("Mount %s has an invalid mount mode (%s)" % (k, mount))
+                    self.logger.error("%s (%s) is mounted." % (label, m['device']))
+
+
+    def mount(self, labels, mode=None):
+        labels = self.validate_labels(labels)
+        for label in labels:
+            m = self.__label_entry(label)
+            mmode = mode
+            if mmode is None:
+                mmode = m.get('mount', False)
+            if mmode:
+                self.mm.mount(m['device'], m['dir'], mmode)
+
+
+
+    def umount(self, labels, all_=False):
+        labels = self.validate_labels(labels)
+        for label in labels:
+            m = self.__label_entry(label)
+            if self.mm.is_mounted(m['device'], m['dir']):
+                if all_ or m.get('mount', False) is False:
+                    self.mm.umount(m['device'], m['dir'])
+
+
+
+    ############################################################
+    #
+    # CLI Support
+    #
+    ############################################################
+    @staticmethod
+    def cmdMount(args, register=False):
+        if register:
+            p = args.add_parser('mount')
+            p.add_argument("labels", nargs='+', metavar='LABEL')
+            p.add_argument("--rw", help='Ignore the mtab setting and mount all labels read/write.', action='store_true')
+            p.add_argument("--ro", help='Ignore the mtab setting and mount all labels read-only.', action='store_true')
+            p.set_defaults(func=OnlMountManager.cmdMount)
+        else:
+            if args.rw:
+                mode = 'rw'
+            elif args.ro:
+                mode = 'ro'
+            else:
+                mode = None
+
+            o = OnlMountManager(args.mtab, args.logger)
+            o.init()
+            o.mount(args.labels, mode=mode)
 
 
     @staticmethod
-    def main():
+    def cmdFsck(args, register=False):
+        if register:
+            p = args.add_parser('fsck')
+            p.add_argument("labels", nargs='+', metavar='LABEL')
+            p.add_argument("--force", help='Ignore the mtab setting and run fsck on given labels.', action='store_true')
+            p.set_defaults(func=OnlMountManager.cmdFsck)
+        else:
+            o = OnlMountManager(args.mtab, args.logger)
+            o.init()
+            o.fsck(args.labels, args.force)
+
+    @staticmethod
+    def cmdUnmount(args, register=False):
+        if register:
+            p = args.add_parser('unmount')
+            p.add_argument("labels", nargs='+', metavar='LABEL')
+            p.add_argument("--all", help="Ignore the mtab setting and unmount all labels.", action='store_true')
+            p.set_defaults(func=OnlMountManager.cmdUnmount)
+        else:
+            o = OnlMountManager(args.mtab, args.logger)
+            o.init()
+            o.umount(args.labels, args.all)
+
+    @staticmethod
+    def initCommands(parser):
+        sp = parser.add_subparsers()
+        for attr in dir(OnlMountManager):
+            if attr.startswith('cmd'):
+                getattr(OnlMountManager, attr)(sp, register=True)
+
+    @staticmethod
+    def main(name):
         import argparse
 
         logging.basicConfig()
+        logger = logging.getLogger(name)
 
-        ap = argparse.ArgumentParser(description="ONL Mount Manager.");
+        ap = argparse.ArgumentParser(description="ONL Mount Manager.")
         ap.add_argument("--mtab", default="/etc/mtab.yml")
-        ap.add_argument("--rw", action='store_true')
-        ap.add_argument("--verbose", "-v", action='store_true')
+        ap.add_argument("--verbose", "-m", action='store_true')
         ap.add_argument("--quiet", "-q", action='store_true')
+
+        OnlMountManager.initCommands(ap)
+        ap.set_defaults(logger=logger)
 
         ops = ap.parse_args();
 
-        logger = logging.getLogger("initmounts")
         if ops.verbose:
             logger.setLevel(logging.DEBUG)
         elif ops.quiet:
@@ -157,160 +328,29 @@ class OnlMountManager(object):
         else:
             logger.setLevel(logging.INFO)
 
-        mm = OnlMountManager(ops.mtab, logger)
-        if ops.rw:
-            mm.mountall(all_=True, fsck=False)
-        else:
-            mm.mountall()
+        ops.func(ops)
 
 
 
-############################################################
-#
-# Fix this stuff
-#
-############################################################
-class ServiceMixin(object):
+class OnlMountContext(MountContext):
+    def __init__(self, label, mode, logger):
+        mm = OnlMountManager()
+        mm.init()
+        labels = mm.validate_labels(label)
+        if not labels:
+            raise ValueError("Label '%s' doesn't exist." % label)
+        MountContext.__init__(self,
+                              mm.mdata['mounts'][labels[0]]['device'],
+                              mm.mdata['mounts'][labels[0]]['dir'],
+                              mode,
+                              logger)
 
-    def _execute(self, cmd, root=False, ex=True):
-        self.logger.debug("Executing: %s" % cmd)
-        if root is True and os.getuid() != 0:
-            cmd = "sudo " + cmd
-        try:
-            subprocess.check_call(cmd, shell=True)
-        except Exception, e:
-            if ex:
-                self.logger.error("Command failed: %s" % e)
-                raise
-            else:
-                return e.returncode
-
-    def _raise(self, msg, klass):
-        self.logger.critical(msg)
-        raise klass(msg)
-
-class DataMount(ServiceMixin):
-
-    def __init__(self, partition, logger=None):
-        self.partition = partition
-        self.logger = logger
-
-        self.mountpoint = None
-        self.mounted = False
-
-        if os.path.isabs(partition) and not os.path.exists(partition):
-            # Implicitly a bind mount. It may not exist yet, so create it
-            os.makedirs(partition)
-
-        if os.path.exists(partition):
-            # Bind mount
-            self.device = None
-        else:
-            self.device = subprocess.check_output("blkid | grep %s | awk '{print $1}' | tr -d ':'" % self.partition, shell=True).strip()
-            if self.device is None or len(self.device) is 0:
-                self._raise("Data partition %s does not exist." % self.partition,
-                            RuntimeError)
-        self.logger.debug("device is %s" % self.device)
-
-    def _mount(self):
-        if self.device:
-            self._execute("mount %s %s" % (self.device, self.mountdir()), root=True)
-        else:
-            self._execute("mount --bind %s %s" % (self.partition,
-                                                  self.mountdir()), root=True)
-        self.mounted = True
-
-    def _umount(self):
-        mounted, self.mounted = self.mounted, False
-        if mounted:
-            self._execute("umount %s" % self.mountpoint, root=True)
-        mountpoint, self.mountpoint = self.mountpoint, None
-        if mountpoint and os.path.exists(mountpoint):
-            self.logger.debug("+ /bin/rmdir %s", mountpoint)
-            os.rmdir(mountpoint)
-
-    def __enter__(self):
-        self._mount()
-        return self
-
-    def __exit__(self, type_, value, traceback):
-        self._umount()
-
-    def mountdir(self):
-        if self.mountpoint is None:
-            self.mountpoint = tempfile.mkdtemp(prefix="pki-", suffix=".d")
-            self.logger.debug("mountpoint is %s" % self.mountpoint)
-        return self.mountpoint
+class OnlMountContextReadOnly(OnlMountContext):
+    def __init__(self, label, logger):
+        OnlMountContext.__init__(self, label, "ro", logger)
 
 
-class OnlDataStore(ServiceMixin):
-
-    # Data partition containing the persistant store
-    DATA_PARTITION='ONL-CONFIG'
-
-    # Persistant directory on DATA_PARTITION
-    P_DIR=None
-
-    # Runtime directory in the root filesystem
-    R_DIR=None
-
-    def __init__(self, logger=None):
-
-        if logger is None:
-            logging.basicConfig()
-            logger = logging.getLogger(str(self.__class__))
-            logger.setLevel(logging.WARN)
-
-        self.logger = logger
-
-        self.mount = DataMount(self.DATA_PARTITION, logger=self.logger)
-
-        if self.P_DIR is None:
-            raise AttributeError("P_DIR must be set in the derived class.")
-
-        if self.R_DIR is None:
-            raise ValueError("R_DIR must be set in the derived class.")
-
-        # The R_DIR is accessed here
-        self.r_dir = self.R_DIR
-
-        self.logger.debug("persistant dir: %s" % self.p_dir)
-        self.logger.debug("   runtime dir: %s" % self.r_dir)
-
-    @property
-    def p_dir(self):
-        return os.path.join(self.mount.mountdir(), self.P_DIR)
-
-    def _sync_dir(self, src, dst):
-        self.logger.debug("Syncing store from %s -> %s" % (src, dst))
-        if os.path.exists(dst):
-            shutil.rmtree(dst)
-
-        if not os.path.exists(src):
-            os.makedirs(src)
-
-        shutil.copytree(src, dst)
-
-    def init_runtime(self):
-        with self.mount:
-            self._sync_dir(self.p_dir, self.r_dir)
-
-    def commit_runtime(self):
-        with self.mount:
-            self._sync_dir(self.r_dir, self.p_dir)
-
-    def diff(self):
-        with self.mount:
-            rv = self._execute("diff -rNq %s %s" % (self.p_dir, self.r_dir), ex=False)
-        return rv == 0
-
-    def ls(self):
-        with self.mount:
-            self._execute("cd %s && find ." % (self.p_dir))
-
-    def rm(self, filename):
-        with self.mount:
-            os.unlink(os.path.join(self.p_dir, filename))
-        os.unlink(os.path.join(r_dir, filename))
-
+class OnlMountContextReadWrite(OnlMountContext):
+    def __init__(self, label, logger):
+        OnlMountContext.__init__(self, label, "rw", logger)
 
