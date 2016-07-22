@@ -399,10 +399,26 @@ installer_mkchroot "${rootdir}"
 mkdir -p "${rootdir}/mnt/installer"
 mount -o ro,bind "${installer_dir}" "${rootdir}/mnt/installer"
 
-# make the onie boot files available to the chroot
-mkdir -p "${rootdir}/mnt/onie-boot"
-if test -d "/mnt/onie-boot"; then
-  mount -o ro,bind "/mnt/onie-boot" "${rootdir}/mnt/onie-boot"
+# make sure onie-boot is mounted
+if test -d /mnt/onie-boot; then
+  if grep -q " /mnt/onie-boot " /proc/mounts; then
+    :
+  else
+    ONIE_BOOT_DEVICE=
+    visit_blkid blkid_find_onie
+    if test -b "$ONIE_BOOT_DEVICE"; then
+      installer_say "Mounting ONIE-BOOT ($ONIE_BOOT_DEVICE) as /mnt/onie-boot"
+      mount -o defaults,rw $ONIE_BOOT_DEVICE /mnt/onie-boot
+    else
+      installer_say "*** missing ONIE-BOOT device"
+    fi
+  fi
+
+  if grep -q " /mnt/onie-boot " /proc/mounts; then
+    # make the onie boot files available to the chroot
+    mkdir -p "${rootdir}/mnt/onie-boot"
+    mount -o ro,bind "/mnt/onie-boot" "${rootdir}/mnt/onie-boot"
+  fi
 fi
 
 # generate config for installer environment
