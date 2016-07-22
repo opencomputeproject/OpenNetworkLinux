@@ -165,7 +165,12 @@ class OnlPlatformBase(object):
                             self.configs[subsys][config] = json.load(f)
 
     def basedir(self, *args):
-        return os.path.join(self.CONFIG_DIR, self.platform(), *args)
+        platformBase = self.platform()
+        if "arm-accton-as4610" in platformBase:
+            platformBase = platformBase.replace('-30-r0', '-r0')
+            platformBase = platformBase.replace('-54-r0', '-r0')
+
+        return os.path.join(self.CONFIG_DIR, platformBase, *args)
 
     def basedir_onl(self, *args):
         return self.basedir('onl', *args)
@@ -178,6 +183,10 @@ class OnlPlatformBase(object):
 
     def baseplatform(self):
         p = self.platform()
+        if "arm-accton-as4610" in p:
+            p = p.replace('-30-r0', '-r0')
+            p = p.replace('-54-r0', '-r0')
+
         p = re.sub(r'-r\d$', '', p)
         return p
 
