@@ -1,0 +1,18 @@
+--- debian/changelog	2015-08-04 00:50:04.000000000 +0000
++++ changelog	2015-12-20 04:20:25.032779900 +0000
+@@ -1,3 +1,15 @@
++linux (3.16.7-ckt11-2+acs8u2) acs; urgency=high
++
++  * add driver patches for MLNX SN2700
++
++ -- Guohan Lu <gulv@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
++
++linux (3.16.7-ckt11-2+acs8u1) acs; urgency=high
++
++  * add support for S6000
++
++ -- Shuotian Cheng <shuche@microsoft.com>  Sun, 19 Dec 2015 01:50:04 +0100
++
+ linux (3.16.7-ckt11-1+deb8u3) jessie-security; urgency=high
+ 
+   * path_openat(): fix double fput() (CVE-2015-5706)
