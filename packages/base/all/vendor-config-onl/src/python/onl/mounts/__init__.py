@@ -41,12 +41,19 @@ class MountManager(object):
     def mount(self, device, directory, mode='r', timeout=5):
 
         mountargs = [ str(mode) ]
-        current = self.is_mounted(device, directory)
-        if current:
+        currentItems = [x for x in self.mounts.iteritems() if x[1]['dev'] == device]
+        if currentItems:
+            currentDirectory, current = currentItems[0]
             if current['mode'] == mode:
                 # Already mounted as requested.
                 self.logger.debug("%s already mounted @ %s with mode %s. Doing nothing." % (device, directory, mode))
                 return True
+            elif directory != currentDirectory:
+                # Already mounted, at a different location (e.g. '/'), but not in the requested mode.
+                self.logger.debug("%s mounted @ %s (%s) with mode %s. It will be remounted %s.",
+                                  device, directory, currentDirectory, current['mode'], mode)
+                mountargs.append('remount')
+                directory = currentDirectory
             else:
                 # Already mounted, but not in the requested mode.
                 self.logger.debug("%s mounted @ %s with mode %s. It will be remounted %s." % (device, directory, current['mode'], mode))

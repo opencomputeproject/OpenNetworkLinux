@@ -12,7 +12,7 @@ common:
   maintainer: support@bigswitch.com
 
 packages:
-  - name: onl-installer
+  - name: onl-installer-$BOOTMODE
     summary: Open Network Linux $ARCH Installer
 
     files:

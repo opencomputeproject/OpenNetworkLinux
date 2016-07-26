@@ -1,0 +1,339 @@
+#!/usr/bin/python
+
+"""swiget
+
+Retrieve/resolve a SWI file to the local filesystem path.
+"""
+
+import sys, os
+import time
+import urllib
+import subprocess
+import shutil
+import logging
+import tempfile
+import re
+import json
+import zipfile
+
+import onl.install.InstallUtils
+MountContext = onl.install.InstallUtils.MountContext
+BlkidParser = onl.install.InstallUtils.BlkidParser
+ProcMountsParser = onl.install.InstallUtils.ProcMountsParser
+
+import onl.mounts
+OnlMountManager = onl.mounts.OnlMountManager
+
+import onl.network
+HostInfo = onl.network.HostInfo
+
+SWI_TIMESTAMP_FMT = "%Y-%m-%d.%H:%M"
+
+SWI_TIMESTAMP_RE = re.compile(r"""
+  [0-9][0-9][0-9][0-9] [-] [0-9][0-9] [-] [0-9][0-9]
+  [.]
+  [0-9][0-9] [:] [0-9][0-9]
+""", re.VERBOSE)
+
+SWI_FNAME_TIMESTAMP_FMT = "%Y-%m-%d.%H%M"
+
+SWI_FNAME_TIMESTAMP_RE = re.compile(r"""
+  [0-9][0-9][0-9][0-9] [-] [0-9][0-9] [-] [0-9][0-9]
+  [.]
+  [0-9][0-9] [0-9][0-9]
+""", re.VERBOSE)
+
+def versionSortKey(vstr):
+
+    m = SWI_TIMESTAMP_RE.search(vstr)
+    if m is not None:
+        try:
+            return time.mktime(time.strptime(m.group(0), SWI_TIMESTAMP_FMT))
+        except ValueError:
+            pass
+
+    m = SWI_FNAME_TIMESTAMP_RE.search(vstr)
+    if m is not None:
+        try:
+            return time.mktime(time.strptime(m.group(0), SWI_FNAME_TIMESTAMP_FMT))
+        except ValueError:
+            pass
+
+    return None
+
+def manifestSortKey(mdata):
+
+    mdata = mdata.get('version', {})
+
+    vstr = mdata.get('BUILD_TIMESTAMP', None)
+    if vstr is not None:
+        try:
+            return time.mktime(time.strptime(vstr, SWI_TIMESTAMP_FMT))
+        except ValueError:
+            pass
+
+    vstr = mdata.get('FNAME_BUILD_TIMESTAMP', None)
+    if vstr is not None:
+        try:
+            return time.mktime(time.strptime(vstr, SWI_FNAME_TIMESTAMP_FMT))
+        except ValueError:
+            pass
+
+    return None
+
+def swiSortKey(swiPath):
+
+    try:
+        zf = zipfile.ZipFile(swiPath, "r")
+    except zipfile.BadZipFile:
+        return os.path.getmtime(swiPath)
+
+    try:
+        fd = zf.open("manifest.json", "r")
+    except KeyError:
+        fd = None
+    if fd is not None:
+        data = json.load(fd)
+        fd.close()
+    else:
+        data = {}
+    ts = manifestSortKey(data)
+    if ts is not None: return ts
+
+    try:
+        fd = zf.open("version", "r")
+    except KeyError:
+        fd = None
+    if fd is not None:
+        vstr = fd.read()
+        fd.close()
+    else:
+        vstr = ""
+    ts = versionSortKey(vstr)
+    if ts is not None: return ts
+
+    ts = versionSortKey(swiPath)
+    if ts is not None: return ts
+    # maybe the timestamp is embedded into the filename
+
+    # else, use the filesytem mtime, which is less reliable
+    return os.path.getmtime(swiPath)
+
+class Runner(onl.install.InstallUtils.SubprocessMixin):
+
+    def __init__(self, log):
+        self.log = log
+
+        self.nextUpdate = None
+
+    def reporthook(self, blocks, bsz, sz):
+        if time.time() < self.nextUpdate: return
+        self.nextUpdate = time.time() + 0.25
+        if sz:
+            pct = blocks * bsz * 100 / sz
+            sys.stderr.write("downloaded %d%% ...\r" % pct)
+        else:
+            icon = "|/-\\"[blocks % 4]
+            sys.stderr.write("downloading ... %s\r" % icon)
+
+    def get(self, SWI):
+
+        # XXX lots of fixups required here for proper IPv6 support
+        if SWI.startswith('http://') or SWI.startswith('ftp://'):
+            self.log.info("retrieving %s via HTTP/FTP", SWI)
+            dst = tempfile.mktemp(prefix="swiget-", suffix=".swi")
+            if os.isatty(sys.stdout.fileno()):
+                dst, headers = urllib.urlretrieve(SWI, dst, self.reporthook)
+            else:
+                dst, headers = urllib.urlretrieve(SWI, dst)
+            sys.stderr.write("\n")
+            return dst
+
+        if SWI.startswith('scp://') or SWI.startswith('ssh://'):
+            buf = SWI[6:]
+            h, sep, r = buf.partition('/')
+            if not sep:
+                self.log.error("invalid SWI %s", SWI)
+                return None
+            hinfo = HostInfo.fromString(h)
+            rcmd = "cat /%s" % r
+            cmd = ['dbclient', '-y', hinfo.host, rcmd,]
+            if hinfo.port is not None:
+                cmd[2:2] = ['-p', str(hinfo.port),]
+            if hinfo.user is not None:
+                cmd[2:2] = ['-l', hinfo.user,]
+            env = {}
+            env.update(os.environ)
+            if hinfo.password is not None:
+                env['DROPBEAR_PASSWORD'] = hinfo.password
+            dst = tempfile.mktemp(prefix="swiget-", suffix=".swi")
+            with open(dst, "w") as fd:
+                self.check_call(cmd, stdout=fd, env=env)
+            return dst
+
+        if SWI.startswith('tftp://'):
+            buf = SWI[7:]
+            h, sep, r = buf.partition('/')
+            if not sep:
+                self.log.error("invalid SWI %s", SWI)
+                return None
+            hinfo = HostInfo.fromString(h)
+            port = hinfo.port or 69
+            dst = tempfile.mktemp(prefix="swiget-", suffix=".swi")
+            cmd = ('tftp', '-g', '-r', r, '-l', dst, hinfo.host, str(hinfo.port),)
+            self.check_call(cmd)
+            return dst
+
+        if SWI.startswith('nfs://'):
+            buf = SWI[6:]
+            h, sep, r = buf.partition('/')
+            if not sep:
+                self.log.error("invalid SWI %s", SWI)
+                return None
+            hinfo = HostInfo.fromString(h)
+
+            if '/' in r:
+                root, base = os.path.split(r)
+            else:
+                root, base = '/', r
+            src = "%s:/%s" % (hinfo.bhost, root,)
+            mpt = self.mkdtemp(prefix="swiget-nfs-", suffix=".d")
+            cmd = ['mount', '-t', 'nfs', src, mpt,]
+            if hinfo.port is not None:
+                cmd[3:3] = ['-o', "ro,nolock,port=%s" % hinfo.port,]
+            else:
+                cmd[3:3] = ['-o', 'ro,nolock',]
+            self.check_call(cmd)
+
+            dst = tempfile.mktemp(prefix="swiget-", suffix=".swi")
+            try:
+                src = "%s/%s" % (mpt, base,)
+                self.copy2(src, dst)
+            except:
+                if os.path.exists(dst):
+                    self.unlink(dst)
+                raise
+            finally:
+                self.check_call(('umount', mpt,))
+                self.rmdir(mpt)
+
+            return dst
+
+        blkid = BlkidParser(log=self.log)
+
+        if ':' in SWI:
+            devspec, sep, r = SWI.partition(':')
+
+            p = "/dev/%s" % devspec
+            if os.path.exists(p):
+                return self.blockdevCopy(p, r)
+
+            try:
+                part = blkid[devspec]
+            except IndexError:
+                part = None
+            if part is not None:
+                return self.blockdevCopy(part.device, r)
+
+            mm = OnlMountManager("/etc/mtab.yml", self.log)
+            label = mpt = None
+            for k, v in mm.mdata['mounts'].items():
+                if v['dir'].endswith('/' + devspec):
+                    label = k
+                    mpt = v['dir']
+                    break
+            if label is not None:
+                try:
+                    part = blkid[label]
+                except IndexError:
+                    part = None
+                if part is not None:
+                    return self.blockdevCopy(part.device, r, dir=mpt)
+
+            self.log.error("cannot find device specifier for %s", SWI)
+            return None
+
+        # local file
+        if SWI.startswith('/') and os.path.exists(SWI):
+            return SWI
+
+        # possibly unmounted dirctory
+        if SWI.startswith('/') and not os.path.exists(SWI):
+            mm = OnlMountManager("/etc/mtab.yml", self.log)
+            label = mpt = path = None
+            for k, v in mm.mdata['mounts'].items():
+                if SWI.startswith(v['dir'] + '/'):
+                    label = k
+                    mpt = v['dir']
+                    path = SWI[len(mpt)+1:]
+                    break
+            if label is not None:
+                try:
+                    part = blkid[label]
+                except IndexError:
+                    part = None
+                if part is not None:
+                    return self.blockdevCopy(part.device, path, dir=mpt)
+
+        self.log.error("invalid SWI %s", SWI)
+        return None
+
+    def blockdevCopy(self, dev, src, dir=None):
+
+        def latest(d):
+            l = [x for x in os.listdir(d) if x.endswith('.swi')]
+            l = [os.path.join(d, x) for x in l]
+            l.sort(key=swiSortKey)
+            return l[-1]
+
+        pm = ProcMountsParser()
+        parts = [x for x in pm.mounts if x.device == dev]
+        if parts:
+            if src == ':latest':
+                dst = latest(parts[0].dir)
+                self.log.info("found 'latest' swi %s", dst)
+            else:
+                dst = os.path.join(parts[0].dir, src)
+            if not os.path.exists(dst):
+                self.log.error("missing SWI: %s", dst)
+                return None
+            return dst
+
+        with MountContext(device=dev, log=self.log) as ctx:
+            if src == ':latest':
+                dst = latest(ctx.dir)
+                self.log.info("found 'latest' swi %s", dst)
+            else:
+                dst = os.path.join(ctx.dir, src)
+            if not os.path.exists(dst):
+                self.log.error("missing SWI: %s:%s", dev, src)
+                return None
+
+            # move to its proper location as per mtab
+            # XXX perms may not be right here
+            if dir is not None:
+                self.check_call(('mount', '--move', ctx.dir, dir,))
+                ctx.mounted = False
+                return os.path.join(dir, src)
+
+            ctx.mounted = False
+            ctx.hostDir = None
+            return dst
+
+    @classmethod
+    def main(cls):
+        SWI = sys.argv[1]
+        logging.basicConfig()
+        logger = logging.getLogger("swiget")
+        logger.setLevel(logging.DEBUG)
+        r = cls(logger)
+        dst = r.get(SWI)
+        if dst is None:
+            sys.exit(1)
+        sys.stdout.write(dst + "\n")
+        sys.exit(0)
+
+main = Runner.main
+
+if __name__ == "__main__":
+    main()
