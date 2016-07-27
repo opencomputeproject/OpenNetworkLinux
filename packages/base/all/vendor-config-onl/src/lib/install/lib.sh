@@ -5,7 +5,7 @@
 # helper functions for install
 #
 ######################################################################
-  
+
 installer_reboot() {
   local dummy sts timeout trapsts
   if test $# -gt 0; then
@@ -130,7 +130,7 @@ visit_blkid()
   rest="$@"
 
   local ifs
-  ifs=IFS; IFS=$CR
+  ifs=$IFS; IFS=$CR
   for line in $(blkid); do
     IFS=$ifs
 
@@ -159,8 +159,11 @@ visit_blkid()
     done
 
     local sts
-    eval $fn \"$dev\" \"$LABEL\" \"$UUID\" \"$PARTLABEL\" \"$PARTUUID\" $rest
-    sts=$?
+    if eval $fn \"$dev\" \"$LABEL\" \"$UUID\" \"$PARTLABEL\" \"$PARTUUID\" $rest; then
+      sts=0
+    else
+      sts=$?
+    fi
     if test $sts -eq 2; then break; fi
     if test $sts -ne 0; then return $sts; fi
 
