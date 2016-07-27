@@ -399,6 +399,23 @@ installer_mkchroot "${rootdir}"
 mkdir -p "${rootdir}/mnt/installer"
 mount -o ro,bind "${installer_dir}" "${rootdir}/mnt/installer"
 
+blkid_find_onie() {
+  local dev label
+  dev=$1; shift
+  label=$1; shift
+  rest="$@"
+
+  installer_say "Examining $dev --> $label"
+  if test "$label" = "ONIE-BOOT"; then
+    installer_say "Found ONIE-BOOT at $dev"
+    ONIE_BOOT_DEVICE="$dev"
+    return 2
+  fi
+
+  # not found, skip
+  return 0
+}
+
 # make sure onie-boot is mounted
 if test -d /mnt/onie-boot; then
   if grep -q " /mnt/onie-boot " /proc/mounts; then
