@@ -82,7 +82,6 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
      * Ports {0, 32}
      */
     int p;
-    AIM_BITMAP_INIT(bmap, 64);
     AIM_BITMAP_CLR_ALL(bmap);
     
     for(p = 0; p < 32; p++) {
