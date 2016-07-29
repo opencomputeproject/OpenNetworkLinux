@@ -389,7 +389,7 @@ menuentry %(boot_menu_entry)s {
   insmod gzio
   insmod part_msdos
   linux /%(kernel)s %(args)s onl_platform=%(platform)s
-  initrd /%(initrd)s
+  initrd /%(platform)s.cpio.gz
 }
 
 # Menu entry to chainload ONIE
@@ -503,13 +503,18 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_menu_entry'] = sysconfig.installer.menu_name
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
-        files = []
+        kernels = []
+
         for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
-            if 'initrd' in f and 'cpio' in f:
-                ctx['initrd'] = f
-                files.append(f)
             if 'kernel' in f:
-                files.append(f)
+                kernels.append(f)
+
+        initrd = None
+        for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
+            for i in sysconfig.installer.grub:
+                if f == i:
+                    initrd = i
+                    break
 
         cf = GRUB_TPL % ctx
 
@@ -517,11 +522,13 @@ class GrubInstaller(SubprocessMixin, Base):
         dev = self.blkidParts['ONL-BOOT']
 
         with MountContext(dev.device, log=self.log) as ctx:
-            def _cp(b):
-                dst = os.path.join(ctx.dir, b)
+            def _cp(b, dstname=None):
+                if dstname is None:
+                    dstname = b
+                dst = os.path.join(ctx.dir, dstname)
                 self.installerCopy(b, dst, optional=True)
-            [_cp(e) for e in files]
-
+            [_cp(e) for e in kernels]
+            _cp(initrd, "%s.cpio.gz" % self.im.installerConf.installer_platform)
             d = os.path.join(ctx.dir, "grub")
             self.makedirs(d)
             dst = os.path.join(ctx.dir, 'grub/grub.cfg')
@@ -691,15 +698,8 @@ class UbootInstaller(SubprocessMixin, Base):
 
     def installLoader(self):
 
-        c1 = self.im.platformConf['flat_image_tree'].get('itb', None)
-        if type(c1) == dict: c1 = c1.get('=', None)
-        c2 = ("%s.itb"
-              % (self.im.installerConf.installer_platform,))
-        c3 = "onl-loader-fit.itb"
-
         loaderBasename = None
-        for c in (c1, c2, c3):
-            if c is None: continue
+        for c in sysconfig.installer.fit:
             if self.installerExists(c):
                 loaderBasename = c
                 break
