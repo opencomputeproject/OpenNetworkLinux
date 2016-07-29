@@ -23,7 +23,6 @@ $(TARGET):
 	$(ONLPM) --copy-file onl-buildroot-initrd:$(ARCH) onl-buildroot-initrd-$(ARCH).cpio.gz .
 	sudo rm -rf $(ROOT) && mkdir $(ROOT)
 	$(ONLPM) --sudo --force --extract-dir onl-loader-initrd-files:all $(ROOT)
-	$(ONLPM) --sudo --force --extract-dir onl-vendor-config-onl-loader:all $(ROOT)
 	$(ONLPM) --sudo $(foreach p,$(PLATFORM_PACKAGES),--extract-dir $(p) $(ROOT))
 	$(MAKE) __vendor_config_data
 	$(ONLPM) --sudo --force --extract-dir onl-vendor-config-onl:all $(ROOT)
