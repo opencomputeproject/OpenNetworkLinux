@@ -194,7 +194,7 @@ if test "${mode_install}${mode_overlay}"; then
   mkdir -p "$destdir/etc/onl"
 
   for thing in /etc/onl/*; do
-    if test $thing != "sysconfig"; then
+    if test $thing != "/etc/onl/sysconfig"; then
       cp -R $thing "$destdir/etc/onl/."
     fi
   done
@@ -209,7 +209,7 @@ if test "$mode_record"; then
   vdestdir="$destdir/etc/onl/upgrade/swi"
 else
   vdestdir="$destdir/etc/onl/rootfs"
-fi  
+fi
 
 # If there are SWI version file(s) put them in /etc/onl
 if test ! -f "$vdestdir/version"; then
