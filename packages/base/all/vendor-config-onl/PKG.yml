@@ -1,3 +1,6 @@
+prerequisites:
+  packages: [ 'onl-bootd:all' ]
+
 packages:
   - name: onl-vendor-config-onl
     depends: [ python-yaml, onl-bootd ]
