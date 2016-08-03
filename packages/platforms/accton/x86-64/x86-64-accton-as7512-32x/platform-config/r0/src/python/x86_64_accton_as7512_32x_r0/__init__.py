@@ -35,7 +35,7 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 # initiate system eeprom
-                ('24c02', 057, 1),
+                ('24c02', 0x57, 1),
 
                 # initiate multiplexer (PCA9548)
                 ('pca9548', 0x71, 1),
