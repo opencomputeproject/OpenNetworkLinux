@@ -14,16 +14,6 @@ if [ ! "${SWI}" ]; then
    exit 200
 fi
 
-if [ "${SWI}" = "images::latest" ]; then
-   # Boot the latest (by mtime) SWI in the images partition.
-   SWI=`ls /mnt/onl/images/*.swi -t | head -n1`
-   if [ -z "${SWI}" ]; then
-      msg_error "No SWI available in /mnt/onl/images. SWI booting cannot continue."
-      exit 200
-   fi
-fi
-
-
 #
 # The SWI setting can be a list of URLs
 #

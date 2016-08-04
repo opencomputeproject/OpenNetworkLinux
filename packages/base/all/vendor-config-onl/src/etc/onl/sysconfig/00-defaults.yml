@@ -8,6 +8,13 @@
 installer:
   menu_name: "\"Open Network Linux\""
   os_name: Open Network Linux
+  grub:
+    - $PLATFORM.cpio.gz
+    - onl-loader-initrd-$PARCH.cpio.gz
+
+  fit:
+    - $PLATFORM.itb
+    - onl-loader-fit.itb
 
 upgrade:
   onie:
@@ -17,7 +24,10 @@ upgrade:
     versions: /etc/onl/loader/versions.json
     package:
       dir: /etc/onl/upgrade/$PARCH
-      fit_images:
+      grub:
+        - $PLATFORM.cpio.gz
+        - onl-loader-initrd-$PARCH.cpio.gz
+      fit:
         - $PLATFORM.itb
         - onl-loader-fit.itb
 

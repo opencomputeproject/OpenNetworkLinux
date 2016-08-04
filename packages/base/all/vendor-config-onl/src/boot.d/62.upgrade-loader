@@ -59,7 +59,7 @@ class Loader_Upgrade_FIT(Loader_Upgrade):
     def do_upgrade(self, forced=False):
 
         fit_image = None
-        for f in sysconfig.upgrade.loader.package.fit_images:
+        for f in sysconfig.upgrade.loader.package.fit:
             fp = os.path.join(sysconfig.upgrade.loader.package.dir, f)
             if os.path.exists(fp):
                 fit_image = fp;
@@ -79,13 +79,26 @@ class Loader_Upgrade_x86_64(Loader_Upgrade):
     def do_upgrade(self, forced=False):
 
         X86_64_UPGRADE_DIR=sysconfig.upgrade.loader.package.dir
-        X86_64_UPGRADE_PATTERNS = [ "kernel-*", "*initrd*" ]
+        X86_64_UPGRADE_KERNEL_PATTERNS = [ "kernel-*" ]
 
         with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
             for f in os.listdir(X86_64_UPGRADE_DIR):
-                for pattern in X86_64_UPGRADE_PATTERNS:
+                for pattern in X86_64_UPGRADE_KERNEL_PATTERNS:
                     if fnmatch.fnmatch(f, pattern):
                         self.copyfile(os.path.join(X86_64_UPGRADE_DIR, f), os.path.join(d.directory, f))
+
+            initrd = None
+            for c in sysconfig.upgrade.loader.package.grub:
+                initrd = os.path.join(X86_64_UPGRADE_DIR, c)
+                if os.path.exists(initrd):
+                    break
+                else:
+                    initrd = None
+
+            if initrd:
+                self.copyfile(initrd, os.path.join(d.directory, "%s.cpio.gz" % self.platform.platform()))
+            else:
+                self.abort("Initrd is missing. Upgrade cannot continue.")
 
             # Disabled until it can be resolved with the new installer.
             #src = "/lib/platform-config/current/onl/boot/grub.cfg"

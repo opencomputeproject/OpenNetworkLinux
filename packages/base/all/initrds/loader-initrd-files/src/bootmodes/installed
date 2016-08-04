@@ -1,0 +1,87 @@
+############################################################
+#
+# Bootmode: installed
+#
+# Boot the installed rootfs from the INSTALLED BOOTPARAM value.
+#
+############################################################
+. /lib/msgs
+. /etc/onl/BOOTPARAMS
+
+# make sure /mnt/onl/data exists
+if [ ! -d /mnt/onl/data ]; then
+    msg_error "Missing /mnt/onl/data, disk boot cannot continue"
+    exit 200
+fi
+
+# make sure it's mounted as per mtab.yml
+d1=$(stat -f -c '%d' /mnt/onl)
+d2=$(stat -f -c '%d' /mnt/onl/data)
+if [ "$d1" -eq "$d2" ]; then
+    msg_error "Unmounted /mnt/onl/data, disk boot cannot continue"
+    exit 200
+fi
+
+do_unpack=
+swiget_workdir=
+swi_workdir=
+
+do_cleanup() {
+    cd /
+    rm -fr $swiget_workdir $swi_workdir
+}
+
+trap "do_cleanup" 0 1
+
+case "$SWI" in
+    ""|dir:*|nfs://*/)
+        msg_info "*** missing SWI file, will attempt to boot existing image"
+
+        if [ ! -s /mnt/onl/data/etc/onl/SWI ]; then
+            msg_error "Un-populated /mnt/onl/data, cannot continue"
+            exit 200
+        fi
+
+        ;;
+    *)
+        # resolve this SWI as a file and unpack it
+        swiget_workdir=${TMPDIR-"/tmp"}
+        swiget_workdir=$(mktemp -d $swiget_workdir/bootmodes-XXXXXX)
+        TMPDIR=$swiget_workdir swipath=$(swiget $SWI)
+
+        # do some sort of test to see if it's populated
+        if [ ! -s /mnt/onl/data/etc/onl/SWI ]; then
+            msg_info "Un-populated /mnt/onl/data, will (re-)image"
+            do_unpack=1
+        else
+            msg_info "Found valid (current) image at /mnt/onl/data"
+        fi
+        ;;
+esac
+
+case "$SWI" in
+    *::latest)
+        swistamp=${SWI%:latest}${swipath##*/}
+        ;;
+    *)
+        swistamp=$SWI
+        ;;
+esac
+
+sed -i -e '/^SWI=/d' /etc/onl/BOOTPARAMS
+echo "SWI=dir:data:/" >> /etc/onl/BOOTPARAMS
+
+if [ "$do_unpack" ]; then
+    swiprep --install "$swipath" --swiref "$swistamp" /mnt/onl/data
+fi
+swiprep --record "$swipath" --swiref "$swistamp" /mnt/onl/data
+
+trap - 0 1
+do_cleanup
+
+. /bootmodes/swi
+
+# Local variables:
+# mode: sh
+# sh-basic-offset: 4
+# End:

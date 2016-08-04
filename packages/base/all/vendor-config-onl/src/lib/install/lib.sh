@@ -5,7 +5,7 @@
 # helper functions for install
 #
 ######################################################################
-  
+
 installer_reboot() {
   local dummy sts timeout trapsts
   if test $# -gt 0; then
@@ -121,6 +121,56 @@ installer_mkchroot() {
   if test -r /etc/fw_env.config; then
     cp /etc/fw_env.config "${rootdir}/etc/fw_env.config"
   fi
+}
+
+visit_blkid()
+{
+  local fn rest
+  fn=$1; shift
+  rest="$@"
+
+  local ifs
+  ifs=$IFS; IFS=$CR
+  for line in $(blkid); do
+    IFS=$ifs
+
+    local dev
+    dev=${line%%:*}
+    line=${line#*:}
+
+    local TYPE LABEL PARTLABEL UUID PARTUUID
+    while test "$line"; do
+      local key
+      key=${line%%=*}
+      line=${line#*=}
+      case "$line" in
+        '"'*)
+          line=${line#\"}
+          val=${line%%\"*}
+          line=${line#*\"}
+          line=${line## }
+        ;;
+        *)
+          val=${line%% *}
+          line=${line#* }
+        ;;
+      esac
+      eval "$key=\"$val\""
+    done
+
+    local sts
+    if eval $fn \"$dev\" \"$LABEL\" \"$UUID\" \"$PARTLABEL\" \"$PARTUUID\" $rest; then
+      sts=0
+    else
+      sts=$?
+    fi
+    if test $sts -eq 2; then break; fi
+    if test $sts -ne 0; then return $sts; fi
+
+  done
+  IFS=$ifs
+
+  return 0
 }
 
 # Local variables

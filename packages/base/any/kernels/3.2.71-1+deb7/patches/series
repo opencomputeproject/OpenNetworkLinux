@@ -1,2 +1,3 @@
 prepare.sh
 kernel-3.2.71.patch
+platform-accton-as4610-device-drivers.patch

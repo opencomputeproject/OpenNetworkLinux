@@ -1,0 +1,146 @@
+From f75a16bc0dfc83cf3df1db7ede4d7357e7be5952 Mon Sep 17 00:00:00 2001
+From: Chulei Wu <chulwu@microsoft.com>
+Date: Wed, 2 Mar 2016 04:09:53 +0000
+Subject: [PATCH] arista piix4 mux patch
+
+---
+ drivers/i2c/busses/i2c-piix4.c | 63 +++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 56 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-piix4.c b/drivers/i2c/busses/i2c-piix4.c
+index a6f54ba..eafc035 100644
+--- a/drivers/i2c/busses/i2c-piix4.c
++++ b/drivers/i2c/busses/i2c-piix4.c
+@@ -128,6 +128,7 @@ static const struct dmi_system_id piix4_dmi_ibm[] = {
+ 
+ struct i2c_piix4_adapdata {
+ 	unsigned short smba;
++	int mux;
+ };
+ 
+ static int piix4_setup(struct pci_dev *PIIX4_dev,
+@@ -528,6 +529,43 @@ static s32 piix4_access(struct i2c_adapter * adap, u16 addr,
+ 	return 0;
+ }
+ 
++static s32 piix4_access_mux(struct i2c_adapter * adap, u16 addr,
++		 unsigned short flags, char read_write,
++		 u8 command, int size, union i2c_smbus_data * data)
++{
++	static DEFINE_MUTEX(mux_mutex);
++	struct i2c_piix4_adapdata *adapdata = i2c_get_adapdata(adap);
++	int piix4_mux = adapdata->mux;
++	static int last_mux = -1;
++	s32 ret;
++	unsigned short smba_idx = 0xcd6;
++	u8 smb_en = 0x2c;
++	u8 val;
++
++        if ( piix4_mux == -1 ) {
++	   return piix4_access(adap, addr, flags, read_write, command, size, data);
++        }
++
++	mutex_lock(&mux_mutex);
++
++	if ( last_mux != piix4_mux ) {
++		/* Select the correct bus mux*/
++		outb_p(smb_en, smba_idx);
++		val = inb_p(smba_idx + 1);
++		val = (val & 0xf9) | (piix4_mux << 1);
++		outb_p(val, smba_idx + 1);
++
++		last_mux = piix4_mux;
++		dev_dbg(&adap->dev, "set mux to 0x%02x\n", piix4_mux);
++	}
++
++	ret = piix4_access(adap, addr, flags, read_write, command, size, data);
++
++	mutex_unlock(&mux_mutex);
++
++	return ret;
++}
++
+ static u32 piix4_func(struct i2c_adapter *adapter)
+ {
+ 	return I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE |
+@@ -536,7 +574,7 @@ static u32 piix4_func(struct i2c_adapter *adapter)
+ }
+ 
+ static const struct i2c_algorithm smbus_algorithm = {
+-	.smbus_xfer	= piix4_access,
++	.smbus_xfer	= piix4_access_mux,
+ 	.functionality	= piix4_func,
+ };
+ 
+@@ -569,7 +607,7 @@ static struct i2c_adapter *piix4_main_adapter;
+ static struct i2c_adapter *piix4_aux_adapter;
+ 
+ static int piix4_add_adapter(struct pci_dev *dev, unsigned short smba,
+-			     struct i2c_adapter **padap)
++			     struct i2c_adapter **padap, int mux)
+ {
+ 	struct i2c_adapter *adap;
+ 	struct i2c_piix4_adapdata *adapdata;
+@@ -593,6 +631,7 @@ static int piix4_add_adapter(struct pci_dev *dev, unsigned short smba,
+ 	}
+ 
+ 	adapdata->smba = smba;
++	adapdata->mux = mux;
+ 
+ 	/* set up the sysfs linkage to our parent device */
+ 	adap->dev.parent = &dev->dev;
+@@ -618,6 +657,8 @@ static int piix4_add_adapter(struct pci_dev *dev, unsigned short smba,
+ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ {
+ 	int retval;
++	int mux = -1;
++	int aux_smba;
+ 
+ 	if ((dev->vendor == PCI_VENDOR_ID_ATI &&
+ 	     dev->device == PCI_DEVICE_ID_ATI_SBX00_SMBUS &&
+@@ -633,7 +674,14 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 		return retval;
+ 
+ 	/* Try to register main SMBus adapter, give up if we can't */
+-	retval = piix4_add_adapter(dev, retval, &piix4_main_adapter);
++        aux_smba = retval;
++	if (dev->vendor == PCI_VENDOR_ID_AMD &&
++	    dev->device == PCI_DEVICE_ID_AMD_HUDSON2_SMBUS) {
++		mux = -1;
++	} else {
++		mux = 0;
++	}
++	retval = piix4_add_adapter(dev, retval, &piix4_main_adapter, mux);
+ 	if (retval < 0)
+ 		return retval;
+ 
+@@ -644,21 +692,22 @@ static int piix4_probe(struct pci_dev *dev, const struct pci_device_id *id)
+ 	    dev->device == PCI_DEVICE_ID_ATI_SBX00_SMBUS) {
+ 		if (dev->revision < 0x40) {
+ 			retval = piix4_setup_aux(dev, id, 0x58);
++			mux = -1;
+ 		} else {
+-			/* SB800 added aux bus too */
+-			retval = piix4_setup_sb800(dev, id, 1);
++			retval = aux_smba;
++			mux = 1;
+ 		}
+ 	}
+ 
+ 	if (dev->vendor == PCI_VENDOR_ID_AMD &&
+ 	    dev->device == PCI_DEVICE_ID_AMD_HUDSON2_SMBUS) {
+ 		retval = piix4_setup_sb800(dev, id, 1);
++		mux = -1;
+ 	}
+-
+ 	if (retval > 0) {
+ 		/* Try to add the aux adapter if it exists,
+ 		 * piix4_add_adapter will clean up if this fails */
+-		piix4_add_adapter(dev, retval, &piix4_aux_adapter);
++		piix4_add_adapter(dev, retval, &piix4_aux_adapter, mux);
+ 	}
+ 
+ 	return 0;
+-- 
+2.1.4
+
