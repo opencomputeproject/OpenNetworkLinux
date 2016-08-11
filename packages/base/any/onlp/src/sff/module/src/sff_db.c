@@ -1432,7 +1432,7 @@ sff_db_get_type(sff_eeprom_t* se, sff_module_type_t type)
     sff_db_entry_t* entry;
     for(i = 0; i < AIM_ARRAYSIZE(sff_database__); i++) {
         entry = sff_database__ + i;
-        if(se->info.module_type == type) {
+        if(entry->se.info.module_type == type) {
             memcpy(se, &entry->se, sizeof(*se));
             return 1;
         }
