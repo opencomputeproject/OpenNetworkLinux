@@ -49,6 +49,7 @@ class InstallerShar(object):
             os.makedirs(self.work_dir)
 
         self.files = []
+        self.dirs = []
         self.platforms = []
         self.arch = arch
 
@@ -105,6 +106,13 @@ class InstallerShar(object):
         self.files.append(filename)
         self.files = list(set(self.files))
 
+    def add_dir(self, dir_):
+        if not os.path.isdir(dir_):
+            self.abort("Directory %s does not exist." % dir_)
+        logger.info("Adding dir %s..." % dir_)
+        self.dirs.append(dir_)
+        self.dirs = list(set(self.dirs))
+
     def add_swi(self, package):
         edir = os.path.join(self.work_dir, "swidir")
         subprocess.check_output('onlpm --extract-dir %s %s' % (package, edir), shell=True)
@@ -118,6 +126,10 @@ class InstallerShar(object):
 
         for f in self.files:
             shutil.copy(f, self.work_dir)
+
+        for d in self.dirs:
+            print "Copying %s -> %s..." % (d, self.work_dir)
+            shutil.copytree(d, os.path.join(self.work_dir, d))
 
         with open(os.path.join(self.work_dir, 'installer.sh'), "w") as f:
             f.write(self.template)
@@ -139,7 +151,7 @@ class InstallerShar(object):
                    name,
                    os.path.join(self.ONL, 'tools', 'scripts', 'sfx.sh.in'),
                    'installer.sh',
-                   ] + [ os.path.basename(f) for f in self.files ]
+                   ] + [ os.path.basename(f) for f in self.files ] + self.dirs
 
         subprocess.check_call(mkshar)
         os.chdir(cwd)
@@ -155,6 +167,7 @@ if __name__ == '__main__':
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
     ap.add_argument("--fit", nargs=2, help="The system FIT image.")
     ap.add_argument("--boot-config", help="The boot-config source.", required=True)
+    ap.add_argument("--add-dir", help="Optional directory to include in the installer.", nargs='+', default=[])
     ap.add_argument("--swi", help="Include the given SWI in the installer.")
     ap.add_argument("--work-dir", help="Set work directory and keep intermediates for debugging.")
     ap.add_argument("--verbose", '-v', help="Verbose output.", action='store_true')
@@ -184,6 +197,9 @@ if __name__ == '__main__':
         installer.add_fit(*ops.fit)
 
     installer.add_file(ops.boot_config)
+
+    for d in ops.add_dir:
+        installer.add_dir(d)
 
     if ops.swi:
         installer.add_swi(ops.swi)
