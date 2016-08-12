@@ -129,7 +129,7 @@ class InstallerShar(object):
 
         for d in self.dirs:
             print "Copying %s -> %s..." % (d, self.work_dir)
-            shutil.copytree(d, os.path.join(self.work_dir, d))
+            subprocess.check_call(["cp", "-R", d, self.work_dir])
 
         with open(os.path.join(self.work_dir, 'installer.sh'), "w") as f:
             f.write(self.template)
@@ -151,7 +151,7 @@ class InstallerShar(object):
                    name,
                    os.path.join(self.ONL, 'tools', 'scripts', 'sfx.sh.in'),
                    'installer.sh',
-                   ] + [ os.path.basename(f) for f in self.files ] + self.dirs
+                   ] + [ os.path.basename(f) for f in self.files ] + [ os.path.basename(d) for d in self.dirs ]
 
         subprocess.check_call(mkshar)
         os.chdir(cwd)
