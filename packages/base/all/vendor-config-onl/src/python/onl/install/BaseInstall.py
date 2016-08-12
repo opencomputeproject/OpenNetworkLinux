@@ -357,6 +357,24 @@ class Base:
 
         return 0
 
+    def installOnlConfig(self):
+
+        try:
+            dev = self.blkidParts['ONL-CONFIG']
+        except IndexError as ex:
+            self.log.warn("cannot find ONL-CONFIG partition : %s", str(ex))
+            return 1
+
+        with MountContext(dev.device, log=self.log) as ctx:
+            for f in self.zf.namelist():
+                d = 'config/'
+                if f.startswith(d) and f != d:
+                    dst = os.path.join(ctx.dir, os.path.basename(f))
+                    if not os.path.exists(dst):
+                        self.installerCopy(f, dst)
+
+        return 0
+
     def assertUnmounted(self):
         """Make sure the install device does not have any active mounts."""
         pm = ProcMountsParser()
@@ -593,6 +611,9 @@ class GrubInstaller(SubprocessMixin, Base):
         if code: return code
 
         code = self.installBootConfig()
+        if code: return code
+
+        code = self.installOnlConfig()
         if code: return code
 
         code = self.installGrub()
