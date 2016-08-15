@@ -393,6 +393,19 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute('sudo chroot %s find /usr/share/doc -type f -delete' % dir_)
                     onlu.execute('sudo chroot %s find /usr/share/man -type f -delete' % dir_)
 
+                if 'PermitRootLogin' in options:
+                    config = os.path.join(dir_, 'etc/ssh/sshd_config')
+                    ua.chmod('a+rw', config)
+                    lines = open(config).readlines()
+                    with open(config, "w") as f:
+                        for line in lines:
+                            if line.startswith('PermitRootLogin'):
+                                v = options['PermitRootLogin']
+                                logger.info("Setting PermitRootLogin to %s" % v)
+                                f.write('PermitRootLogin %s\n' % v)
+                            else:
+                                f.write(line)
+                    ua.chmod('644', config)
 
                 if not options.get('securetty', True):
                     f = os.path.join(dir_, 'etc/securetty')
