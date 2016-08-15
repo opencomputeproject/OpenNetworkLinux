@@ -44,6 +44,7 @@ class Base:
             plat = getattr(self.machineConf, 'onie_platform', None)
             return plat is not None
 
+
     def __init__(self,
                  machineConf=None, installerConf=None, platformConf=None,
                  grubEnv=None, ubootEnv=None,
@@ -841,6 +842,10 @@ class UbootInstaller(SubprocessMixin, Base):
         else:
             self.log.info("ONL-BOOT is a raw partition (%s), skipping boot-config",
                           self.rawLoaderDevice)
+
+
+        code = self.installOnlConfig()
+        if code: return code
 
         self.log.info("syncing block devices")
         self.check_call(('sync',))
