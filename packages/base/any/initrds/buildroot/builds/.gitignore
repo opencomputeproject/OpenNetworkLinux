@@ -2,3 +2,4 @@
 buildroot-powerpc
 buildroot-x86_64
 buildroot-arm
+buildroot-arm64

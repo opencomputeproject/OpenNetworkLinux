@@ -19,6 +19,7 @@ if test "$ARCH" != "$IARCH"; then
   # identify mappings between kernel arch and debian arch
   case "$IARCH:$ARCH" in
     armel:armv7l) ;;
+    arm64:aarch64) ;;
     powerpc:ppc) ;;
     *)
       echo
@@ -42,7 +43,7 @@ case "$ARCH" in
   x86*|amd*|i?86*)
     ARCH_X86=$ARCH
     ;;
-  arm*)
+  arm*|aarch64)
     ARCH_ARM=$ARCH
     ;;
   *)

@@ -140,6 +140,9 @@ case $(uname -m) in
   armv7l)
     ARCH_LIST="armel"
     ;;
+  aarch64)
+   ARCH_LIST="arm64"
+   ;;
   *)
     q;;
 esac

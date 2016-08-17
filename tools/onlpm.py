@@ -1016,7 +1016,7 @@ def defaultPm():
     packagedirs = os.environ['ONLPM_OPTION_PACKAGEDIRS'].split(':')
     repoPackageDir = os.environ.get('ONLPM_OPTION_REPO_PACKAGE_DIR', 'packages')
     subdir = os.getcwd()
-    arches = ['amd64', 'powerpc', 'armel', 'all',]
+    arches = ['amd64', 'powerpc', 'armel', 'arm64', 'all',]
 
     if envJson:
         for j in envJson.split(':'):
@@ -1053,7 +1053,7 @@ if __name__ == '__main__':
     ap.add_argument("--csv", action='store_true')
     ap.add_argument("--show-group", action='store_true')
     ap.add_argument("--arch")
-    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'armel', 'all']),
+    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'armel', 'arm64', 'all']),
     ap.add_argument("--pmake", action='store_true')
     ap.add_argument("--prereq-packages", action='store_true')
     ap.add_argument("--lookup", metavar='PACKAGE')

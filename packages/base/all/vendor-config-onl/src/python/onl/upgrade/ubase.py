@@ -35,7 +35,7 @@ class BaseUpgrade(object):
         self.init_argparser()
         self.load_config()
         self.arch = pp.machine()
-        self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel')[self.arch]
+        self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel', aarch64='arm64')[self.arch]
         self.platform = OnlPlatform()
         self.init()
 
