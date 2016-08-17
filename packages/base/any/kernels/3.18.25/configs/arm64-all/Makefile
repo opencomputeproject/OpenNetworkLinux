@@ -10,6 +10,8 @@ ifndef K_TARGET_DIR
 K_TARGET_DIR := $(THIS_DIR)
 endif
 
+MODSYNCLIST_EXTRA = arch/arm64/include arch/arm64/Makefile arch/arm64/lib
+
 include ../../kconfig.mk
 K_CONFIG := arm64-all.config
 K_BUILD_TARGET := Image Image.gz arm64-nxp-ls2080ardb-r0.dtb

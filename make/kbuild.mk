@@ -157,7 +157,8 @@ endif
 endif
 
 
-MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib arch/arm64/include arch/arm64/Makefile arch/arm64/lib
+MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib
+
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
 mbuild: build
