@@ -56,6 +56,13 @@ ifndef K_PATCH_DIR
 $(error $$K_PATCH_DIR must be set)
 endif
 
+ifndef K_PATCH_SERIES_FILE
+    ifndef K_PATCH_SERIES
+        K_PATCH_SERIES = series
+    endif
+    K_PATCH_SERIES_FILE = $(K_PATCH_DIR)/$(K_PATCH_SERIES)
+endif
+
 #
 # This is the directory that will receive the build targets.
 # The kernel build tree is placed in this directory,
@@ -125,7 +132,7 @@ ksource: $(K_SOURCE_DIR)/Makefile
 # The patched kernel sources
 #
 $(K_SOURCE_DIR)/.PATCHED: $(K_SOURCE_DIR)/Makefile
-	$(ONL)/tools/scripts/apply-patches.sh $(K_SOURCE_DIR) $(K_PATCH_DIR)
+	$(ONL)/tools/scripts/apply-patches.sh $(K_SOURCE_DIR) $(K_PATCH_DIR) $(K_PATCH_SERIES_FILE)
 	touch $(K_SOURCE_DIR)/.PATCHED
 
 kpatched: $(K_SOURCE_DIR)/.PATCHED
