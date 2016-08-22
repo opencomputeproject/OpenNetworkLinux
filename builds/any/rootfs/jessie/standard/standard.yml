@@ -87,6 +87,7 @@ Configure:
     securetty: False
     ttys: False
     console: True
+    PermitRootLogin: 'yes'
 
   users:
     root:

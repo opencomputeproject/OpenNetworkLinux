@@ -40,7 +40,6 @@
 - pciutils
 - usbutils
 - mtd-utils
-- kexec-tools
 - i2c-tools
 - module-init-tools
 - isc-dhcp-client

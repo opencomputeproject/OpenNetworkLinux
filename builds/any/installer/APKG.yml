@@ -7,7 +7,7 @@ prerequisites:
 
 common:
   arch: $ARCH
-  version: $FNAME_RELEASE_ID
+  version: 0.$FNAME_RELEASE_ID
   copyright: Copyright 2016 Big Switch Networks
   maintainer: support@bigswitch.com
 

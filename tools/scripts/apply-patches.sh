@@ -27,12 +27,13 @@ set -e
 
 KERNDIR=$1
 PATCHDIR=$2
+PATCH_SERIES=$3
 
-if [ -f "${PATCHDIR}/series" ]; then
+if [ -f "${PATCH_SERIES}" ]; then
     #
     # The series file contains the patch order.
     #
-    for p in `cat ${PATCHDIR}/series`; do
+    for p in `cat ${PATCH_SERIES}`; do
         echo "Appying ${p}..."
         if [ -x "${PATCHDIR}/${p}" ]; then
             "${PATCHDIR}/${p}" "${KERNDIR}"

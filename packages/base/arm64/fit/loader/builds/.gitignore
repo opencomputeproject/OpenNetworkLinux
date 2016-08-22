@@ -1,0 +1,5 @@
+kernel-*
+*.itb
+*.its
+loader-initrd-arm64
+manifest.json

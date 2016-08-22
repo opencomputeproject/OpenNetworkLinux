@@ -56,6 +56,13 @@ ifndef K_PATCH_DIR
 $(error $$K_PATCH_DIR must be set)
 endif
 
+ifndef K_PATCH_SERIES_FILE
+    ifndef K_PATCH_SERIES
+        K_PATCH_SERIES = series
+    endif
+    K_PATCH_SERIES_FILE = $(K_PATCH_DIR)/$(K_PATCH_SERIES)
+endif
+
 #
 # This is the directory that will receive the build targets.
 # The kernel build tree is placed in this directory,
@@ -125,7 +132,7 @@ ksource: $(K_SOURCE_DIR)/Makefile
 # The patched kernel sources
 #
 $(K_SOURCE_DIR)/.PATCHED: $(K_SOURCE_DIR)/Makefile
-	$(ONL)/tools/scripts/apply-patches.sh $(K_SOURCE_DIR) $(K_PATCH_DIR)
+	$(ONL)/tools/scripts/apply-patches.sh $(K_SOURCE_DIR) $(K_PATCH_DIR) $(K_PATCH_SERIES_FILE)
 	touch $(K_SOURCE_DIR)/.PATCHED
 
 kpatched: $(K_SOURCE_DIR)/.PATCHED
@@ -158,6 +165,7 @@ endif
 
 
 MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib
+
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
 mbuild: build
@@ -169,7 +177,11 @@ dtbs: mbuild
 ifdef DTS_LIST
 	rm -rf $(K_DTBS_DIR)
 	mkdir -p $(K_DTBS_DIR)
+ifeq ($(ARCH),arm64)
+	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/*.dtb $(K_DTBS_DIR)
+else
 	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
+endif
 endif
 
 #

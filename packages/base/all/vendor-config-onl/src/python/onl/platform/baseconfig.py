@@ -33,6 +33,7 @@ def baseconfig():
                    'i386-linux-gnu',
                    'x86_64-linux-gnu',
                    'arm-linux-gnueabi',
+                   'aarch64-linux-gnu',
                    ]
 
     for ht in HOST_TYPES:

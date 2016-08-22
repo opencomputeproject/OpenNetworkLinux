@@ -44,6 +44,7 @@ class Base:
             plat = getattr(self.machineConf, 'onie_platform', None)
             return plat is not None
 
+
     def __init__(self,
                  machineConf=None, installerConf=None, platformConf=None,
                  grubEnv=None, ubootEnv=None,
@@ -357,6 +358,24 @@ class Base:
 
         return 0
 
+    def installOnlConfig(self):
+
+        try:
+            dev = self.blkidParts['ONL-CONFIG']
+        except IndexError as ex:
+            self.log.warn("cannot find ONL-CONFIG partition : %s", str(ex))
+            return 1
+
+        with MountContext(dev.device, log=self.log) as ctx:
+            for f in self.zf.namelist():
+                d = 'config/'
+                if f.startswith(d) and f != d:
+                    dst = os.path.join(ctx.dir, os.path.basename(f))
+                    if not os.path.exists(dst):
+                        self.installerCopy(f, dst)
+
+        return 0
+
     def assertUnmounted(self):
         """Make sure the install device does not have any active mounts."""
         pm = ProcMountsParser()
@@ -595,6 +614,9 @@ class GrubInstaller(SubprocessMixin, Base):
         code = self.installBootConfig()
         if code: return code
 
+        code = self.installOnlConfig()
+        if code: return code
+
         code = self.installGrub()
         if code: return code
 
@@ -820,6 +842,10 @@ class UbootInstaller(SubprocessMixin, Base):
         else:
             self.log.info("ONL-BOOT is a raw partition (%s), skipping boot-config",
                           self.rawLoaderDevice)
+
+
+        code = self.installOnlConfig()
+        if code: return code
 
         self.log.info("syncing block devices")
         self.check_call(('sync',))
