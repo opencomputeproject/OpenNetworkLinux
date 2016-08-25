@@ -64,6 +64,8 @@ Configure:
     - 'snmpd defaults'
     - 'onlp-snmpd defaults'
     - 'ssh defaults'
+    - 'frontled defaults'
+    - 'fanled defaults'
     - 'openbsd-inetd remove'
     - 'ntp remove'
     - 'nfs-common remove'

@@ -25,8 +25,9 @@ class OnlPlatform_x86_64_quanta_ly6_rangeley_r0(OnlPlatformQuanta,
 
         # fixme
         # set system led to green
-        sled = self.basedir_onl('sbin', 'systemled')
-        if os.path.exists(sled):
+        sled_check = self.basedir_onl('sbin', 'systemled')
+        sled = self.basedir_onl('sbin', 'systemled green')
+        if os.path.exists(sled_check):
             os.system(sled)
 
         return True

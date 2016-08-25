@@ -1,0 +1,8 @@
+#!/usr/bin/python
+
+from onl.platform.current import *
+
+#platform = OnlPlatformBase()
+#platform = OnlPlatform()
+platform = OpenNetworkPlatform()#default by ONL1.0.0
+print platform

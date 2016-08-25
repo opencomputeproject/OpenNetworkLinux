@@ -1,0 +1,147 @@
+#!/bin/bash
+
+############################################################
+# <bsn.cl fy=2013 v=onl>
+# 
+#        Copyright 2013, 2014 Big Switch Networks, Inc.       
+# 
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+# 
+#        http://www.eclipse.org/legal/epl-v10.html
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+# 
+# </bsn.cl>
+############################################################
+#
+# Platform: Quanta LY8
+#
+# Linux assigns I2C bus numbers as it enumerates the I2C master/mux
+# devices in the device tree breadth-first.  The bus numbers below may
+# change if the device tree changes.
+#
+# XXX roth -- does not reflect the device ordering the DTS file!
+#
+############################################################
+
+cur_dir=$(dirname $0)
+if [ -x $cur_dir/functions ]; then
+	. $cur_dir/functions
+else
+	echo "$cur_dir/functions not found"
+	exit 1
+fi
+
+base=/sys/devices/pci0000:00/0000:00:1f.3/i2c-0
+
+for port in $(seq 1 1 48); do
+  if [ $port -lt 9 ]; then
+      pca9698_base=$(gpio_find_2 19 23)
+	  port_check=$port
+  elif [ $port -lt 17 ]; then
+      pca9698_base=$(gpio_find_2 19 21)
+	  port_check=$(($port - 8))
+  elif [ $port -lt 25 ]; then
+      pca9698_base=$(gpio_find_2 19 22)	  
+	  port_check=$(($port - 16))
+  elif [ $port -lt 33 ]; then
+      pca9698_base=$(gpio_find_2 20 23)	  	  
+	  port_check=$(($port - 24))
+  elif [ $port -lt 41 ]; then
+      pca9698_base=$(gpio_find_2 20 24)	  	  	  
+	  port_check=$(($port - 32))
+  else
+      pca9698_base=$(gpio_find_2 20 25)
+	  port_check=$(($port - 40))
+  fi
+	  
+  if [ $port_check -eq 1 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p00))
+  elif [ $port_check -eq 2 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p04))
+  elif [ $port_check -eq 3 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p10))
+  elif [ $port_check -eq 4 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p14))
+  elif [ $port_check -eq 5 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p20))	  
+  elif [ $port_check -eq 6 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p24))	  
+  elif [ $port_check -eq 7 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p30))	  
+  elif [ $port_check -eq 8 ]; then
+      pca9698_gpio=$(($pca9698_base + $pca953x_p34))
+  fi
+
+  gpio_get $pca9698_gpio
+  
+  if [ $value -eq 1 ]; then
+	  echo "SFP port $port: Missing"
+  else	  
+	  if [ $port -lt 25 ]; then
+		  mux=17
+	  else
+		  mux=18
+	  fi  
+	  gdev=$[ $port + 31 ]  
+	  eep=$(printf "%s/i2c-%d/i2c-%d/%d-0050/eeprom" $base $mux $gdev $gdev)  
+	  echo "SFP port $port: present"
+	  echo "eeprom"
+	  hexdump -vC $eep 2>/dev/null
+   fi
+done
+
+for port in $(seq 49 1 52); do	
+  pca9555_base=$(gpio_find_2 22 23)
+  
+  if [ $port -eq 49 ]; then
+      pca9555_gpio=$(($pca9555_base + $pca953x_p02))
+  elif [ $port -eq 50 ]; then
+      pca9555_gpio=$(($pca9555_base + $pca953x_p06))
+  elif [ $port -eq 51 ]; then
+      pca9555_gpio=$(($pca9555_base + $pca953x_p12))
+  else
+      pca9555_gpio=$(($pca9555_base + $pca953x_p16))
+  fi
+  
+  gpio_get $pca9555_gpio
+  
+  if [ $value -eq 1 ]; then
+	  echo "QSFP port $port: Missing"
+  else	  
+	  mux=21
+	  gdev=$[ $port + 31 ]    
+	  eep=$(printf "%s/i2c-%d/i2c-%d/%d-0050/eeprom" $base $mux $gdev $gdev)  
+	  echo "QSFP port $port: present"
+	  hexdump -vC $eep 2>/dev/null
+  fi
+done
+
+for port in $(seq 53 1 54); do	
+  pca9555_base=$(gpio_find_2 23 23)
+  
+  if [ $port -eq 53 ]; then
+      pca9555_gpio=$(($pca9555_base + $pca953x_p02))
+  else
+      pca9555_gpio=$(($pca9555_base + $pca953x_p06))
+  fi
+	  
+  gpio_get $pca9555_gpio
+  
+  if [ $value -eq 1 ]; then
+	  echo "QSFP port $port: Missing"
+  else	  
+	  mux=23
+	  gdev=$[ $port + 31 + 4 ]    
+	  eep=$(printf "%s/i2c-%d/i2c-%d/%d-0050/eeprom" $base $mux $gdev $gdev)  
+	  echo "QSFP port $port:"
+	  hexdump -vC $eep 2>/dev/null
+  fi
+done
