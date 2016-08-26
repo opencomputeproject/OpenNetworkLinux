@@ -257,10 +257,22 @@ class OnlPlatformBase(object):
         # is ma1 and lo
         return 2
 
-    def environment(self):
-        yamlstr = subprocess.check_output(['/bin/onlpd', '-r', '-y'])
-        data = yaml.load(yamlstr);
-        return data
+    def environment(self, fmt='user'):
+        if fmt not in [ 'user', 'yaml', 'dict', 'json' ]:
+            raise ValueError("Unsupported format '%s'" % fmt)
+
+        if fmt == 'user':
+            return subprocess.check_output(['/bin/onlpd', '-r'])
+        else:
+            yamlstr = subprocess.check_output(['/bin/onlpd', '-r', '-y'])
+            if fmt == 'yaml':
+                return yamlstr
+            else:
+                data = yaml.load(yamlstr)
+                if data == 'json':
+                    return json.dumps(data, indent=2)
+                else:
+                    return data
 
     def __str__(self):
         s = """Model: %s
