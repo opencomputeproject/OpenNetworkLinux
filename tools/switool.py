@@ -53,6 +53,7 @@ ap.add_argument('--create', action='store_true', help='Create new SWI.')
 ap.add_argument('--overwrite', action='store_true', help='Overwrite existing file.')
 ap.add_argument('--rootfs', help='Root SquashFS File')
 ap.add_argument('--manifest', help='SWI Manifest file.')
+ap.add_argument('--add-files', help='Add additional files.', default=[], nargs='+')
 ap.add_argument("--contents", help='Show SWI contents.', action='store_true')
 ap.add_argument("--platforms", help='Show SWI contents.', action='store_true')
 ap.add_argument('swi', help='SWI image name.')
@@ -78,7 +79,8 @@ if ops.create or ops.overwrite:
     swi = OnlSwitchImage(ops.swi, 'w')
     swi.add_rootfs(ops.rootfs)
     swi.add_manifest(ops.manifest)
-
+    for f in ops.add_files:
+        swi.add(f, arcname=f)
 
 if swi is None:
 
@@ -93,9 +95,3 @@ if ops.contents:
 
 if ops.platforms:
     print " ".join(swi.get_platforms())
-
-
-
-
-
-
