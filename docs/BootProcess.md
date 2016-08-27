@@ -24,7 +24,7 @@ Detailed Boot Process
 8. The ONL loader runs `/bin/boot $URL`
 9. The ONL loader retrieves the SWI file
     a) if the URL is remote (e.g., http://, ftp://, etc.), verify that there is a locally cached copy
-        of the SWI in /mnt/flash2 or if not, download it
+        of the SWI in /mnt/onl/images or if not, download it
     b) if the URL is local, verify that the device is accessible
     c) if the URL is a Zero Touch Networking (ZTN) URL, the execute the ZTN protocol to get the SWI (see below)
 10. The ONL loader reads the 'rootfs' file out of the SWI and mounts it using overlayfs[1] (SWI contents described below)
@@ -51,23 +51,24 @@ Partition 4+: Free space (unused)
 Mass Storage Device:
 
 Partition 1: ONL loader kernel  -- the format of this partition varies depending on what formats uBoot supports on the specific platform
-Partition 2: ONL Loader configuration files (mounts as "/mnt/flash" both during the loader and the main ONL phases)
-Partition 3: ONL SWitch Images (SWIs) partition (mounts as "/mnt/flash2" both during the loader and the main ONL phases)
+Partition 2: ONL Loader configuration files (mounts as "/mnt/onl/boot" both during the loader and the main ONL phases)
+Partition 3: ONL SWitch Images (SWIs) partition (mounts as "/mnt/onl/images" both during the loader and the main ONL phases)
 
 ONL file system layout
 -----------------------
 
-    root@onl-powerpc:/bin# df
-    Filesystem     1K-blocks  Used Available Use% Mounted on
-    rootfs             72040   176     71864   1% /
-    devtmpfs            1024     0      1024   0% /dev
-    none               72040   176     71864   1% /
-    tmpfs              48028   148     47880   1% /run
-    tmpfs               5120     0      5120   0% /run/lock
-    /dev/sda2          71177     7     71170   1% /mnt/flash
-    /dev/sda3        3791960 98172   3693788   3% /mnt/flash2
-    tmpfs              96040     0     96040   0% /run/shm
-
+    root@as5712-2:/mnt/onl/images# df
+    Filesystem     1K-blocks   Used Available Use% Mounted on
+    rootfs           1215292 145904   1069388  13% /
+    devtmpfs            1024      0      1024   0% /dev
+    none             1215292 145904   1069388  13% /
+    /dev/sdb5        1032088 276700    702960  29% /mnt/onl/images
+    /dev/sdb6        6313528 143612   5849200   3% /mnt/onl/data
+    /dev/sdb3         126931  37007     83371  31% /mnt/onl/boot
+    /dev/sdb4         126931   5651    114727   5% /mnt/onl/config
+    tmpfs             810196    208    809988   1% /run
+    tmpfs               5120      0      5120   0% /run/lock
+    tmpfs            1620380      0   1620380   0% /run/shm
 
 SWI
 --------

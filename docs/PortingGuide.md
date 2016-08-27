@@ -84,7 +84,7 @@ specific hardware (an ethernet driver) to a device-agnostic form
 
 The following files need to be populated by the $platform boot script:
 * /etc/onl/net : The PCI device name and interface name of the management ethernet
-* /etc/onl/mounts : The devices that correspond to /mnt/flash and /mnt/flash2 at boot
+* /etc/onl/rootfs and /etc/onl/loader : The devices that correspond to /mnt/onl/data and /mnt/onl/boot at boot
 * /etc/fw_env.config : The device and configuration of the firmware device, for fw_printenv, fw_setenv
 
 
