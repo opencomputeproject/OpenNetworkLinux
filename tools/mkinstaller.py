@@ -167,6 +167,7 @@ if __name__ == '__main__':
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
     ap.add_argument("--fit", nargs=2, help="The system FIT image.")
     ap.add_argument("--boot-config", help="The boot-config source.", required=True)
+    ap.add_argument("--add-file", help="Add the given file  to the installer package.", nargs='+', default=[])
     ap.add_argument("--add-dir", help="Optional directory to include in the installer.", nargs='+', default=[])
     ap.add_argument("--swi", help="Include the given SWI in the installer.")
     ap.add_argument("--work-dir", help="Set work directory and keep intermediates for debugging.")
@@ -197,6 +198,9 @@ if __name__ == '__main__':
         installer.add_fit(*ops.fit)
 
     installer.add_file(ops.boot_config)
+
+    for f in ops.add_file:
+        installer.add_file(f)
 
     for d in ops.add_dir:
         installer.add_dir(d)
