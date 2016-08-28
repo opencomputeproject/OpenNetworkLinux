@@ -224,7 +224,7 @@ class App(SubprocessMixin):
             arch = getattr(self.machineConf, 'onie_arch', None)
             if plat and arch:
                 self.log.info("ONL installer running under ONIE.")
-                plat = plat.replace('_', '-')
+                plat = plat.replace('_', '-').replace('.', '-')
         elif os.path.exists("/etc/onl/platform"):
             with open("/etc/onl/platform") as fd:
                 plat = fd.read().strip()
