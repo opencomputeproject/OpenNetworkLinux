@@ -10,7 +10,7 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
         # initialize multiplexer (PCA9548)
-        self.new_i2c_device('pca9458', 0x76, 0)
+        self.new_i2c_device('pca9548', 0x76, 0)
 
         # initiate chassis fan
         self.new_i2c_device('as7512_32x_fan', 0x66, 2)
@@ -26,9 +26,9 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
         # initialize CPLD
         self.new_i2c_devices(
             [
-                ('accton_i2c_cpld', 0x60, 4),
-                ('accton_i2c_cpld', 0x62, 5),
-                ('accton_i2c_cpld', 0x64, 6),
+                ('accton_i2c_cpld', 0x60, 0),
+                ('accton_i2c_cpld', 0x62, 0),
+                ('accton_i2c_cpld', 0x64, 0),
                 ]
             )
         ########### initialize I2C bus 1 ###########
@@ -42,11 +42,11 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
 
                 # initiate PSU-1
                 ('as7512_32x_psu1', 0x50, 10),
-                ('ym2651', 0x58, 11),
+                ('ym2651', 0x58, 10),
 
                 # initiate PSU-2
                 ('as7512_32x_psu2', 0x53, 11),
-                ('ym2651', 0x5b, 10),
+                ('ym2651', 0x5b, 11),
 
                 #initiate max6657 thermal sensor
                 ('max6657', 0x4c, 15),
@@ -60,39 +60,7 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
             )
 
         # initialize QSFP port 1~32
-
-        self.new_i2c_device('as7512_32x_sfp1', 0x50, 18)
-        self.new_i2c_device('as7512_32x_sfp2', 0x50, 19)
-        self.new_i2c_device('as7512_32x_sfp3', 0x50, 20)
-        self.new_i2c_device('as7512_32x_sfp4', 0x50, 21)
-
-        self.new_i2c_device('as7512_32x_sfp5', 0x50, 22)
-        self.new_i2c_device('as7512_32x_sfp6', 0x50, 23)
-        self.new_i2c_device('as7512_32x_sfp7', 0x50, 24)
-        self.new_i2c_device('as7512_32x_sfp8', 0x50, 25)
-        self.new_i2c_device('as7512_32x_sfp9', 0x50, 26)
-        self.new_i2c_device('as7512_32x_sfp10', 0x50, 27)
-        self.new_i2c_device('as7512_32x_sfp11', 0x50, 28)
-        self.new_i2c_device('as7512_32x_sfp12', 0x50, 29)
-        self.new_i2c_device('as7512_32x_sfp13', 0x50, 30)
-        self.new_i2c_device('as7512_32x_sfp14', 0x50, 31)
-        self.new_i2c_device('as7512_32x_sfp15', 0x50, 32)
-        self.new_i2c_device('as7512_32x_sfp16', 0x50, 33)
-        self.new_i2c_device('as7512_32x_sfp17', 0x50, 34)
-        self.new_i2c_device('as7512_32x_sfp18', 0x50, 35)
-        self.new_i2c_device('as7512_32x_sfp19', 0x50, 36)
-        self.new_i2c_device('as7512_32x_sfp20', 0x50, 37)
-        self.new_i2c_device('as7512_32x_sfp21', 0x50, 38)
-        self.new_i2c_device('as7512_32x_sfp22', 0x50, 39)
-        self.new_i2c_device('as7512_32x_sfp23', 0x50, 40)
-        self.new_i2c_device('as7512_32x_sfp24', 0x50, 41)
-        self.new_i2c_device('as7512_32x_sfp25', 0x50, 42)
-        self.new_i2c_device('as7512_32x_sfp26', 0x50, 43)
-        self.new_i2c_device('as7512_32x_sfp27', 0x50, 44)
-        self.new_i2c_device('as7512_32x_sfp28', 0x50, 45)
-        self.new_i2c_device('as7512_32x_sfp29', 0x50, 46)
-        self.new_i2c_device('as7512_32x_sfp30', 0x50, 47)
-        self.new_i2c_device('as7512_32x_sfp31', 0x50, 48)
-        self.new_i2c_device('as7512_32x_sfp32', 0x50, 49)
+        for p in range(1,33):
+            self.new_i2c_device('as7512_32x_sfp%d' % p, 0x50, 17+p)
 
         return True
