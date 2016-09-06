@@ -269,7 +269,7 @@ class OnlPlatformBase(object):
                 return yamlstr
             else:
                 data = yaml.load(yamlstr)
-                if data == 'json':
+                if fmt == 'json':
                     return json.dumps(data, indent=2)
                 else:
                     return data
