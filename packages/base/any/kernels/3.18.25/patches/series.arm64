@@ -1,4 +1,4 @@
 aufs.patch
 driver-support-intel-igb-bcm54616-phy.patch
 add-kernel-patches-for-nxp-arm64-ls2080ardb-based-on.patch
-
+add-nxp-arm64-ls2088ardb-device-tree.patch
