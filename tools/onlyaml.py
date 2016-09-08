@@ -21,6 +21,18 @@ class OnlYamlError(Exception):
         return self.value
 
 
+def dflatten(rv, in_):
+    if type(in_) is dict:
+        rv.update(in_)
+        return rv
+    elif type(in_) is list:
+        for e in in_:
+            dflatten(rv, e)
+        return rv
+    else:
+        raise OnlYamlError("Element type '%s' cannot be added to the given dictionary." % (type(in_)))
+
+
 def loadf(fname, vard={}):
 
     # Apply variable interpolation:
@@ -95,9 +107,10 @@ def loadf(fname, vard={}):
         raise OnlYamlError("%s\n(filename: %s)" % (e, fname))
 
     if type(data) is dict:
-        variables.update(data.get('variables', {}))
+        _v = dflatten({}, data.get('variables', {}))
+        variables.update(_v)
 
-        for (k,v) in data.get('variables', {}).iteritems():
+        for (k,v) in _v.iteritems():
             k = interpolate(k, variables)
             v = interpolate(v, variables)
             variables[k] = v
