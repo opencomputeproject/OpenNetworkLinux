@@ -109,7 +109,7 @@ onlp_sfpi_port_map(int port, int* rport)
      * SFP port numbers here are 0-based.
      */
 
-    if(platform_id == PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0) {
+    if(platform_id == PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0B) {
         switch(port)
             {
             case 48:
@@ -146,7 +146,7 @@ onlp_sfpi_port_map(int port, int* rport)
 static void
 port_qsfp_cpld_map__(int port, int* rport)
 {
-    if(platform_id == PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_RX) {
+    if(platform_id == PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0) {
         switch(port)
             {
             case 53:

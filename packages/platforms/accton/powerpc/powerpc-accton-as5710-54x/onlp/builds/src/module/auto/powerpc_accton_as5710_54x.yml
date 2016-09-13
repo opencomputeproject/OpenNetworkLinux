@@ -36,6 +36,14 @@ definitions:
       defs: *cdefs
       basename: powerpc_accton_as5710_54x_config
 
+  enum:
+    platform_id:
+      members:
+        - POWERPC_ACCTON_AS5710_54X_R0B:
+            strname : "powerpc-accton-as5710-54x-r0b"
+        - POWERPC_ACCTON_AS5710_54X_R0:
+            strname : "powerpc-accton-as5710-54x-r0"
+
   portingmacro:
     POWERPC_ACCTON_AS5710_54X:
       macros:
