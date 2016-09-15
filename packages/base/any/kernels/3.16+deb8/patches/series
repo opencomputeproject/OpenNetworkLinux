@@ -11,3 +11,6 @@ driver-hwmon-pmbus-add-dps460-support.patch
 driver-hwmon-pmbus-ucd9200-mlnx.patch
 driver-arista-piix4-mux-patch.patch
 3.16-fs-overlayfs.patch
+driver-support-intel-igb-bcm5461X-phy.patch
+
+
