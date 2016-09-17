@@ -129,37 +129,6 @@ onlp_fan_info_t linfo[] = {
     if (close(fd) == -1)                        \
         return ONLP_STATUS_E_INTERNAL
 
-/* There is no CPLD register for reading fan direction on this platform,
- * to read fan direction, we need to read from PSU-fan,
- * the direction of PSU-fan and chassis-fan are the same.
- */
-static uint32_t
-_onlp_fani_info_get_fan_direction(void)
-{
-    /* Try to read direction from PSU1.
-     * If PSU1 is not valid, read from PSU2
-     */
-    int i = 0;
-
-    for (i = PSU1_ID; i <= PSU2_ID; i++) {
-        psu_type_t psu_type;
-        psu_type = get_psu_type(i, NULL, 0);
-
-        if (psu_type == PSU_TYPE_UNKNOWN) {
-            continue;
-        }
-
-        if (PSU_TYPE_AC_F2B == psu_type) {
-            return ONLP_FAN_STATUS_F2B;
-        }
-        else {
-            return ONLP_FAN_STATUS_B2F;
-        }
-    }
-
-    return 0;
-}
-
 static int
 _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
@@ -174,10 +143,6 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     if (atoi(r_data) > 0) {
         info->status |= ONLP_FAN_STATUS_FAILED;
     }
-
-    /* get fan direction (both : the same)
-     */
-    info->status |= _onlp_fani_info_get_fan_direction();
 
     /* get fan speed (take the min from two speeds)
      */
@@ -203,7 +168,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 }
 
 static int
-_onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
+_onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
 {
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
@@ -211,7 +176,17 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
     /* get fan direction
      */
-    info->status |= _onlp_fani_info_get_fan_direction();
+    switch(get_psu_type(psu_id, NULL, 0))
+        {
+        case PSU_TYPE_AC_F2B:
+            info->status |= ONLP_FAN_STATUS_F2B;
+            break;
+        case PSU_TYPE_AC_B2F:
+            info->status |= ONLP_FAN_STATUS_B2F;
+            break;
+        default:
+            break;
+        }
 
     /* get fan fault status
      */
@@ -252,10 +227,12 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     *info = linfo[local_id];
 
     switch (local_id)
-    {
-	    case FAN_1_ON_PSU1:
+        {
+        case FAN_1_ON_PSU1:
+            rc = _onlp_fani_info_get_fan_on_psu(local_id, PSU1_ID, info);
+            break;
         case FAN_1_ON_PSU2:
-            rc = _onlp_fani_info_get_fan_on_psu(local_id, info);
+            rc = _onlp_fani_info_get_fan_on_psu(local_id, PSU2_ID, info);
             break;
         case FAN_1_ON_MAIN_BOARD:
         case FAN_2_ON_MAIN_BOARD:
@@ -268,7 +245,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
         default:
             rc = ONLP_STATUS_E_INVALID;
             break;
-    }
+        }
 
     return rc;
 }

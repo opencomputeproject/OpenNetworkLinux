@@ -31,7 +31,7 @@
 #define PREFIX_PATH_ON_MAIN_BOARD   "/sys/devices/platform/as6712_32x_fan/"
 #define PREFIX_PATH_ON_PSU          "/sys/bus/i2c/devices/"
 
-#define MAX_FAN_SPEED     25500
+#define MAX_FAN_SPEED     18000  /* use the smaller max_speed of the 2 fans in a fantray */
 #define MAX_PSU_FAN_SPEED 19328
 
 #define PROJECT_NAME
@@ -92,7 +92,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        0, \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -181,7 +181,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 static int
 _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
-    int   psu_id;
+    int   psu_id, is_ac = 0;
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
     char  fullpath[80] = {0};
@@ -198,31 +198,45 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
+            is_ac = 1;
             info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B);
+            info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE;
             break;
         case PSU_TYPE_AC_B2F:
+            is_ac = 1;
             info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F);
+            info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE;
             break;
+        case PSU_TYPE_DC_48V_F2B:
+            info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B);
+            break;
+        case PSU_TYPE_DC_48V_B2F:
+            info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F);
+            break;			
         default:
             DEBUG_PRINT("[Debug][%s][%d][psu_type=%d]\n", __FUNCTION__, __LINE__, psu_type);
             break;
     }
-    /* get fan fault status
-     */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
-    if (atoi(r_data) > 0)
-        info->status |= ONLP_FAN_STATUS_FAILED;
+	
+    if (is_ac)
+    {
+        /* get fan fault status
+         */
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);
+        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+        if (atoi(r_data) > 0)
+            info->status |= ONLP_FAN_STATUS_FAILED;
 
-    /* get fan speed
-     */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
-    info->rpm = atoi(r_data);
+        /* get fan speed
+         */
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);
+        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+        info->rpm = atoi(r_data);
 
-    /* get speed percentage from rpm */
-    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
-    info->status |= ONLP_FAN_STATUS_PRESENT;
+        /* get speed percentage from rpm */
+        info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
+        info->status |= ONLP_FAN_STATUS_PRESENT;	
+    }
 
     return ONLP_STATUS_OK;
 }

@@ -143,6 +143,18 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 			}
             return PSU_TYPE_AC_B2F;
         }
+        else if (strncmp(model_name, "CPR-6011-2M11", strlen("CPR-6011-2M11")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, modelname_len-1);
+            }
+            return PSU_TYPE_AC_F2B;
+        }
+        else if (strncmp(model_name, "CPR-6011-2M21", strlen("CPR-6011-2M21")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, modelname_len-1);
+            }
+            return PSU_TYPE_AC_B2F;
+        }
     }
 
     /* Check DC model name */

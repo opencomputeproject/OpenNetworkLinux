@@ -117,13 +117,13 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 
 #define I2C_PSU_MODEL_NAME_LEN 9
 #define I2C_PSU_FAN_DIR_LEN    3
-
+#include <ctype.h>
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
     char *node = NULL;
     char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
     char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
-    
+
 
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_model_name) : PSU2_AC_HWMON_NODE(psu_model_name);
@@ -131,9 +131,14 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
-	
+
+
     if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) != 0) {
         return PSU_TYPE_UNKNOWN;
+    }
+
+    if(isspace(model_name[strlen(model_name)-1])) {
+        model_name[strlen(model_name)-1] = 0;
     }
 
     if (modelname) {
