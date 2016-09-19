@@ -84,6 +84,9 @@ cdefs: &cdefs
 - ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS:
     doc: "Include thermal threshold reporting."
     default: 0
+- ONLP_CONFIG_INCLUDE_API_PROFILING:
+    doc: "Include API timing profiles."
+    default: 0
 
 # Error codes
 onlp_status: &onlp_status
