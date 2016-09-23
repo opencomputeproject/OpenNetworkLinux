@@ -75,3 +75,5 @@
 - onl-mibs
 - openssl
 - gdb
+- tcpdump
+- strace
