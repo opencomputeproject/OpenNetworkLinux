@@ -30,6 +30,8 @@ upgrade:
       fit:
         - $PLATFORM.itb
         - onl-loader-fit.itb
+  swi:
+    auto: disabled
 
 pki:
   key:

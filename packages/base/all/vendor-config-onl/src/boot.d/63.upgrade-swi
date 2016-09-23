@@ -12,6 +12,7 @@ to upgrade the SWI, only a means to detect if a SWI upgrade is indicated.
 import os
 import re
 from onl.upgrade import ubase
+from onl.sysconfig import sysconfig
 
 class Swi_Upgrade(ubase.BaseUpgrade):
     name="swi"
@@ -68,4 +69,5 @@ class Swi_Upgrade(ubase.BaseUpgrade):
         self.logger.info("THIS STEP INTENTIONALLY LEFT BLANK")
 
 if __name__ == '__main__':
-    Swi_Upgrade().main()
+    if sysconfig.upgrade.swi.auto != 'disabled':
+        Swi_Upgrade().main()
