@@ -1,5 +1,6 @@
 from onl.platform.base import *
 from onl.platform.accton import *
+import subprocess
 
 class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
                                               OnlPlatformPortConfig_48x10_6x40):
@@ -47,4 +48,10 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
                 ('24c02', 0x57, 1),
                 ]
             )
+
+
+        # Fixme - bring 10G phys out of reset.
+        subprocess.check_call("i2cset -y -f 0 0x60 0x05 0x0f b", shell=True)
+        subprocess.check_call("i2cset -y -f 0 0x60 0x6  0xff b", shell=True)
+
         return True

@@ -32,7 +32,8 @@
 #define PSU2_ID 2
 
 #define CHASSIS_FAN_COUNT     5
-#define CHASSIS_THERMAL_COUNT 3
+#define CHASSIS_THERMAL_COUNT 4 
+#define CHASSIS_LED_COUNT     10 
 
 #define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/57-003c/"
 #define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/58-003f/"

@@ -244,6 +244,16 @@
 #define ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS 0
 #endif
 
+/**
+ * ONLP_CONFIG_INCLUDE_API_PROFILING
+ *
+ * Include API timing profiles. */
+
+
+#ifndef ONLP_CONFIG_INCLUDE_API_PROFILING
+#define ONLP_CONFIG_INCLUDE_API_PROFILING 0
+#endif
+
 
 
 /**

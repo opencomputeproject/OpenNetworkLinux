@@ -61,6 +61,10 @@
  */
 #define ONLP_I2C_F_NO_MUX_SELECT 0x10
 
+/**
+ * Use block reads if possible.
+ */
+#define ONLP_I2C_F_USE_BLOCK_READ 0x20
 
 /**
  * @brief Open and prepare for reading or writing.

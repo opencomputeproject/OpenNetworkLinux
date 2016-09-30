@@ -76,8 +76,6 @@ static char* last_path[] =  /* must map with onlp_thermal_id */
     "36-003f/psu_temp1_input",
 };
 
-#if 0 /* Temprarily comment below function to avoid compiler error
-		 "implicit declaration of function 'onlp_file_read_int_max'" */
 static char* cpu_coretemp_files[] =
     {
         "/sys/devices/platform/coretemp.0/temp2_input",
@@ -86,8 +84,7 @@ static char* cpu_coretemp_files[] =
         "/sys/devices/platform/coretemp.0/temp5_input",
         NULL,
     };
-#endif
-	
+
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
 	{ }, /* Not used */
@@ -155,13 +152,8 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     *info = linfo[local_id];
 
     if(local_id == THERMAL_CPU_CORE) {
-	#if 0 /* Temprarily comment below function to avoid compiler error
-	         "implicit declaration of function 'onlp_file_read_int_max'" */
         int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
         return rv;
-	#else
-		return ONLP_STATUS_OK;
-	#endif
     }
 
     /* get fullpath */
@@ -173,4 +165,3 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 
     return ONLP_STATUS_OK;
 }
-

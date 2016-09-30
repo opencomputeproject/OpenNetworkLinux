@@ -144,6 +144,7 @@ onlp_i2c_read(int bus, uint8_t addr, uint8_t offset, int size,
 
     for(i = 0; i < size; i++) {
         int rv = i2c_smbus_read_byte_data(fd, offset+i);
+
         if(rv < 0) {
             AIM_LOG_ERROR("i2c-%d: reading address 0x%x, offset %d failed: %{errno}",
                           bus, addr, offset+i, errno);
@@ -392,7 +393,14 @@ onlp_i2c_dev_read(onlp_i2c_dev_t* dev, uint8_t offset, int size,
         return error;
     }
 
-    if( (rv = onlp_i2c_read(dev->bus, dev->addr, offset, size, rdata, flags)) < 0) {
+    if(flags & ONLP_I2C_F_USE_BLOCK_READ) {
+        rv = onlp_i2c_block_read(dev->bus, dev->addr, offset, size, rdata, flags);
+    }
+    else {
+        rv = onlp_i2c_read(dev->bus, dev->addr, offset, size, rdata, flags);
+    }
+
+    if( rv < 0 ) {
         AIM_LOG_ERROR("Device %s: read() failed: %d",
                       dev->name, rv);
         return rv;

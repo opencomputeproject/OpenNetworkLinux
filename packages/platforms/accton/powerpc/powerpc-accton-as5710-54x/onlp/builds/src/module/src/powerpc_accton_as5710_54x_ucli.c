@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <powerpc_accton_as5710_54x/powerpc_accton_as5710_54x_config.h>
 
-#if POWERPC_ACCTON_AS5710_54X_R0_CONFIG_INCLUDE_UCLI == 1
+#if POWERPC_ACCTON_AS5710_54X_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

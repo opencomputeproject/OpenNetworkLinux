@@ -31,6 +31,7 @@
 #include <sff/sff_db.h>
 #include <AIM/aim_log_handler.h>
 #include <syslog.h>
+#include <onlp/platformi/sysi.h>
 
 static void platform_manager_daemon__(const char* pidfile, char** argv);
 
@@ -52,8 +53,8 @@ show_inventory__(aim_pvs_t* pvs, int database)
     }
     else {
         if(!database) {
-        aim_printf(pvs, "Port  Type            Media   Status  Len    Vendor            Model             S/N             \n");
-        aim_printf(pvs, "----  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
+            aim_printf(pvs, "Port  Type            Media   Status  Len    Vendor            Model             S/N             \n");
+            aim_printf(pvs, "----  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
         }
 
         AIM_BITMAP_ITER(&bitmap, port) {
@@ -64,7 +65,7 @@ show_inventory__(aim_pvs_t* pvs, int database)
 
             if(rv == 0) {
                 if(!database) {
-                aim_printf(pvs, "%4d  NONE\n", port);
+                    aim_printf(pvs, "%4d  NONE\n", port);
                 }
                 continue;
             }
@@ -187,9 +188,14 @@ onlpdump_main(int argc, char* argv[])
     /**
      * debug trap
      */
-    if(argc > 1 && !strcmp(argv[1], "debug")) {
-        onlp_init();
-        return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+    if(argc > 1 && (!strcmp(argv[1], "debug") || !strcmp(argv[1], "debugi"))) {
+        if(!strcmp(argv[1], "debug")) {
+            onlp_init();
+            return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+        }
+        else {
+            return onlp_sysi_debug(&aim_pvs_stdout, argc-2, argv+2);
+        }
     }
 
     while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:b")) != -1) {

@@ -34,12 +34,13 @@
 #include <fcntl.h>
 #include <onlplib/mmap.h>
 #include "platform_lib.h"
+#include "powerpc_accton_as5710_54x_int.h"
 
 #define HW_INFO_PATH "/dev/mtd1"
 #define HW_INFO_LENGTH 2*65536
 uint8_t hw_info[HW_INFO_LENGTH]={0};
 
-platform_id_t platform_id = PLATFORM_ID_UNKNOWN;
+platform_id_t platform_id = PLATFORM_ID_INVALID;
 
 const char*
 onlp_sysi_platform_get(void)
@@ -50,12 +51,8 @@ onlp_sysi_platform_get(void)
 int
 onlp_sysi_platform_set(const char* platform)
 {
-    if(strstr(platform, "powerpc-accton-as5710-54x-r")) {
-        platform_id = PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_RX;
-        return ONLP_STATUS_OK;
-    }
-    if(strstr(platform, "powerpc-as5710-54x-r0b")) {
-        platform_id = PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0;
+    if(platform_id_value(platform, &platform_id, 0) == 0) {
+        /* Platform supported */
         return ONLP_STATUS_OK;
     }
     AIM_LOG_ERROR("No support for platform '%s'", platform);

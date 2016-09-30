@@ -120,28 +120,25 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
     int i;
-    int n_led=10, n_thermal=4, n_fan=5;
-
-    //assert(max > (n_led+n_thermal+n_fan));
-
+    
     /* 2 PSUs */
     *e++ = ONLP_PSU_ID_CREATE(1);
     *e++ = ONLP_PSU_ID_CREATE(2);
 
     /* LEDs Item */
-    for (i=1; i<=n_led; i++)
+    for (i=1; i<=CHASSIS_LED_COUNT; i++)
     {
         *e++ = ONLP_LED_ID_CREATE(i);
     }
 
     /* THERMALs Item */
-    for (i=1; i<=n_thermal; i++)
+    for (i=1; i<=CHASSIS_THERMAL_COUNT; i++)
     {
         *e++ = ONLP_THERMAL_ID_CREATE(i);
     }
 
     /* Fans Item */
-    for (i=1; i<=n_fan; i++)
+    for (i=1; i<=CHASSIS_FAN_COUNT; i++)
     {
         *e++ = ONLP_FAN_ID_CREATE(i);
     }

@@ -27,6 +27,7 @@
 #define __PLATFORM_LIB_H__
 
 #include "powerpc_accton_as5710_54x_log.h"
+#include "powerpc_accton_as5710_54x_int.h"
 
 #define PSU1_ID 1
 #define PSU2_ID 2
@@ -65,12 +66,6 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-
-typedef enum platform_id_e {
-    PLATFORM_ID_UNKNOWN,
-    PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0,
-    PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_RX,
-} platform_id_t;
 
 extern platform_id_t platform_id;
 

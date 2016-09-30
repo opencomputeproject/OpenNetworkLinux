@@ -130,6 +130,11 @@ onlp_config_settings_t onlp_config_settings[] =
 #else
 { ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS(__onlp_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef ONLP_CONFIG_INCLUDE_API_PROFILING
+    { __onlp_config_STRINGIFY_NAME(ONLP_CONFIG_INCLUDE_API_PROFILING), __onlp_config_STRINGIFY_VALUE(ONLP_CONFIG_INCLUDE_API_PROFILING) },
+#else
+{ ONLP_CONFIG_INCLUDE_API_PROFILING(__onlp_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __onlp_config_STRINGIFY_VALUE
