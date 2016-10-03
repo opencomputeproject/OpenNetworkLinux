@@ -457,10 +457,18 @@ rm -f /usr/sbin/policy-rc.d
                     md = {}
                     md['version'] = json.load(open(fields['version']))
                     md['arch'] = self.arch
+
                     if os.path.exists(fields['platforms']):
                         md['platforms'] = yaml.load(open(fields['platforms']))
                     else:
                         md['platforms'] = fields['platforms'].split(',')
+
+                    for (k, v) in fields.get('keys', {}).iteritems():
+                        if k in md:
+                            md[k].update(v)
+                        else:
+                            md[k] = v
+
                     with open(mname, "w") as f:
                         json.dump(md, f, indent=2)
                     onlu.execute("sudo chmod a-w %s" % mname)
