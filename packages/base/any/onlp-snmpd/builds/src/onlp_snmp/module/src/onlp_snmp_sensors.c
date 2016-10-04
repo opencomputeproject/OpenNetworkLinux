@@ -1355,7 +1355,7 @@ onlp_snmp_platform_init(void)
         REGISTER_STR(2, part_number);
         REGISTER_STR(3, serial_number);
         char* mstring = aim_fstrdup("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-                                    si.onie_info.mac[0], si.onie_info.mac[2], si.onie_info.mac[3],
+                                    si.onie_info.mac[0], si.onie_info.mac[1], si.onie_info.mac[2],
                                     si.onie_info.mac[3], si.onie_info.mac[4], si.onie_info.mac[5]);
         platform_string_register(4, "mac", mstring);
         aim_free(mstring);
