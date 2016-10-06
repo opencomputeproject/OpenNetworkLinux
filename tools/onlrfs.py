@@ -358,6 +358,19 @@ rm -f /usr/sbin/policy-rc.d
             if not os.getenv('NO_DPKG_CONFIGURE'):
                 self.dpkg_configure(dir_)
 
+
+            os_release = os.path.join(dir_, 'etc', 'os-release')
+            if os.path.exists(os_release):
+                # Convert /etc/os-release to /etc/os-release.json
+                import shlex
+                contents = open(os_release).read()
+                d = dict(token.split('=') for token in shlex.split(contents))
+                ua = OnlRfsSystemAdmin(dir_)
+                ua.chmod('a+rwx', os.path.dirname(os_release))
+                with open(os.path.join(os.path.dirname(os_release), 'os-release.json'), "w") as f:
+                    f.write(json.dumps(d))
+                ua.chmod('0755', os.path.dirname(os_release))
+
             Configure = self.config.get('Configure', None)
             if Configure:
                 for overlay in Configure.get('overlays', []):
