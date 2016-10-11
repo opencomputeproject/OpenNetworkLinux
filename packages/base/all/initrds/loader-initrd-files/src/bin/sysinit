@@ -91,20 +91,15 @@ if [ ! -f /etc/onl/abort ]; then
         # Use default boot-config.
         cp /etc/onl/boot-config-default /etc/onl/boot-config
     fi
-
-    #
-    # Initialize the /mnt/flash/boot area.
-    #
-    #mkdir -p /mnt/data/boot
-    #rm -rf /mnt/flash/boot/*
 fi
 
 
 #
 # Initialize PKI
 #
-if [ -f /sbin/onl-pki ]; then
-    /sbin/onl-pki --init
+ONL_PKI=/usr/bin/onl-pki
+if [ -f "$ONL_PKI" ]; then
+    "$ONL_PKI" --init
 fi
 
 
