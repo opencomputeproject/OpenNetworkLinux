@@ -251,3 +251,4 @@ platform-accton-as7716_32x-device-drivers.patch
 driver-broadcom-tigon3.patch
 mgmt-port-init-config.patch
 arch-intel-reboot-cf9-cold.patch
+platform-accton-as5912_54x-device-drivers.patch
