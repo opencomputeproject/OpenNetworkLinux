@@ -251,3 +251,5 @@ platform-accton-as7716_32x-device-drivers.patch
 driver-broadcom-tigon3.patch
 mgmt-port-init-config.patch
 arch-intel-reboot-cf9-cold.patch
+drivers-hwmon-adm1021-detect.patch
+drivers-i2c-busses-i2c-isch-timeout.patch
