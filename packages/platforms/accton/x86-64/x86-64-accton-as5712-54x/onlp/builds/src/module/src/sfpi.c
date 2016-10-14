@@ -41,25 +41,13 @@ static int front_port_to_cpld_mux_index(int port)
 {
     int rport = 0;
 
-    switch (port)
-    {
-        case 49:
-            rport = 50;
-            break;
-        case 50:
-            rport = 52;
-            break;
-        case 51:
-            rport = 49;
-            break;
-        case 52:
-            rport = 51;
-            break;
-        default:
-            rport = port;
-            break;
+    switch (port) {
+        case 49: rport = 50; break;
+        case 50: rport = 52; break;
+        case 51: rport = 49; break;
+        case 52: rport = 51; break;
+        default: rport = port; break;
     }
-
     return (rport + CPLD_MUX_BUS_START_INDEX);
 }
 
@@ -103,7 +91,15 @@ as5712_54x_sfp_get_port_path(int port, char *node_name)
 int
 onlp_sfpi_init(void)
 {
-    /* Called at initialization time */
+    int port;
+    char* path;
+
+    for (port = 0; port < 48 ; port++) {
+        path = as5712_54x_sfp_get_port_path(port, "sfp_tx_disable");
+        if (deviceNodeWriteInt(path, 0, 0) != 0) {
+            AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+        }
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -111,11 +107,11 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {0, 54}
+     * Ports {1, 54}
      */
     int p;
 
-    for(p = 0; p < 54; p++) {
+    for(p = 1; p <= 54; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -151,23 +147,18 @@ onlp_sfpi_port_map(int port, int* rport)
      */
     switch(port)
         {
-        case 48:
-        case 53:
-            /* These QSFP ports are numbered the same on both platforms */
-            *rport = port; break;
-        case 50:
-            *rport = 49; break;
-        case 52:
-            *rport = 50; break;
-        case 49:
-            *rport = 51; break;
         case 51:
+            *rport = 49; break;
+        case 53:
+            *rport = 50; break;
+        case 50:
+            *rport = 51; break;
+        case 52:
             *rport = 52; break;
         default:
             /* All others are identical */
-            *rport = port; break;
+            *rport = port - 1; break;
         }
-
     return ONLP_STATUS_OK;
 }
 
@@ -184,18 +175,16 @@ port_qsfp_cpld_map__(int port, int* rport)
 {
     switch(port)
     {
-        case 53:
-        case 48: /* The same */ *rport = port; break;
-        case 50: *rport = 49; break;
-        case 52: *rport = 50; break;
-        case 49: *rport = 51; break;
-        case 51: *rport = 52; break;
+        case 51: *rport = 50; break;
+        case 53: *rport = 51; break;
+        case 50: *rport = 52; break;
+        case 52: *rport = 53; break;
         default: *rport = port; break;
     }
 }
 
 int
-onlp_sfpi_is_present(int port)
+onlp_sfpi_is_present(int rport)
 {
     /*
      * Return 1 if present.
@@ -203,7 +192,11 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-    char* path = as5712_54x_sfp_get_port_path(port, "sfp_is_present");
+    char* path;
+    int port;
+
+    port_qsfp_cpld_map__(rport, &port);
+    path = as5712_54x_sfp_get_port_path(port, "sfp_is_present");
 
     if (as5712_54x_sfp_node_read_int(path, &present, 1) != 0) {
         AIM_LOG_INFO("Unable to read present status from port(%d)\r\n", port);
@@ -255,7 +248,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     }
 
     /* Populate bitmap */
-    for(i = 0; presence_all; i++) {
+    for(i = 1; presence_all; i++) {
         int p;
         port_qsfp_cpld_map__(i, &p);
         AIM_BITMAP_MOD(dst, p, (presence_all & 1));
@@ -302,7 +295,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     }
 
     /* Populate bitmap */
-    for(i = 0; rx_los_all; i++) {
+    for(i = 1; rx_los_all; i++) {
         int p;
         port_qsfp_cpld_map__(i, &p);
         AIM_BITMAP_MOD(dst, p, (rx_los_all & 1));
@@ -313,9 +306,13 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int rport, uint8_t data[256])
 {
-    char* path = as5712_54x_sfp_get_port_path(port, "sfp_eeprom");
+    char* path;
+    int port;
+
+    port_qsfp_cpld_map__(rport, &port);
+    path = as5712_54x_sfp_get_port_path(port, "sfp_eeprom");
 
     /*
      * Read the SFP eeprom into data[]
@@ -371,7 +368,19 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 break;
             }
+        case ONLP_SFP_CONTROL_RESET:
+            {
+                char* path = as5712_54x_sfp_get_port_path(port, "sfp_tx_disable");
 
+                if (deviceNodeWriteInt(path, 0, 0) != 0) {
+                    AIM_LOG_ERROR("Unable to reset port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else {
+                    rv = ONLP_STATUS_OK;
+                }
+                break;
+            }
         default:
             rv = ONLP_STATUS_E_UNSUPPORTED;
             break;
