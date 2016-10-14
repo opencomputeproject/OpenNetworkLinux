@@ -45,7 +45,7 @@ class OnlInfoObject(object):
 
     @staticmethod
     def string(d, indent=DEFAULT_INDENT):
-        return "\n".join( sorted("%s%s: %s" % (indent,k,v) for k,v in d.iteritems() if not k.startswith('_') and d[k] is not None) )
+        return "\n".join( sorted("%s%s: %s" % (indent,k,v) for k,v in d.iteritems() if not k.startswith('_') and d[k] is not None and k != 'CRC'))
 
 
 ############################################################
