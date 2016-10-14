@@ -1,29 +1,18 @@
-driver at24 fix odd length two byte access
-
-From: Cumulus Networks <support@cumulusnetworks.com>
-
-For I2C_SMBUS_WORD_DATA read accesses check if the access length is
-one or two bytes.  For transactions that have an odd length eventualy
-we read 1 byte at the end to complete the request.
-
-The previous code always used a count of 2, which works fine if the
-requested total length is even.  If the requested length was odd,
-however, the code would cause a kernel OOPS.
-
-The while (count) loop would go forever as count went from 1 to -1,
-never becoming zero.  Also the return buffer would overrun.
-
-This patch allows for reading an odd number of bytes in
-I2C_SMBUS_WORD_DATA mode.
----
- drivers/misc/eeprom/at24.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/misc/eeprom/at24.c b/drivers/misc/eeprom/at24.c
-index d87f77f..9e9256a 100644
---- a/drivers/misc/eeprom/at24.c
-+++ b/drivers/misc/eeprom/at24.c
-@@ -192,7 +192,8 @@ static ssize_t at24_eeprom_read(struct at24_data *at24, char *buf,
+--- a/drivers/misc/eeprom/at24.c	2016-10-06 12:45:49.290365545 +0000
++++ b/drivers/misc/eeprom/at24.c	2016-10-06 12:47:08.630368526 +0000
+@@ -84,9 +84,9 @@
+  *
+  * This value is forced to be a power of two so that writes align on pages.
+  */
+-static unsigned io_limit = 128;
++static unsigned io_limit = 32;
+ module_param(io_limit, uint, 0);
+-MODULE_PARM_DESC(io_limit, "Maximum bytes per I/O (default 128)");
++MODULE_PARM_DESC(io_limit, "Maximum bytes per I/O (default 32)");
+ 
+ /*
+  * Specs often allow 5 msec for a page write, sometimes 20 msec;
+@@ -192,7 +192,8 @@
  			count = I2C_SMBUS_BLOCK_MAX;
  		break;
  	case I2C_SMBUS_WORD_DATA:
@@ -33,7 +22,7 @@ index d87f77f..9e9256a 100644
  		break;
  	case I2C_SMBUS_BYTE_DATA:
  		count = 1;
-@@ -237,7 +238,8 @@ static ssize_t at24_eeprom_read(struct at24_data *at24, char *buf,
+@@ -237,7 +238,8 @@
  			status = i2c_smbus_read_word_data(client, offset);
  			if (status >= 0) {
  				buf[0] = status & 0xff;
