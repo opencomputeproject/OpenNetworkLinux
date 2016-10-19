@@ -686,7 +686,7 @@ class UbootInstaller(SubprocessMixin, Base):
                 return 0
             self.log.warn("disk %s has wrong label %s",
                           self.device, self.partedDisk.type)
-        except parted._ped.PartedException as ex:
+        except Exception as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
 
