@@ -692,9 +692,9 @@ class UbootInstaller(SubprocessMixin, Base):
         except PartedException as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
-        except AttributeError as ex:
-            self.log.error("XXX cannot get partition table from %s: %s",
-                           self.device, str(ex))
+        except Error as ex:
+            self.log.exception("cannot get partition table from %s"
+                               self.device)
 
         self.log.info("creating msdos label on %s")
         self.partedDisk = parted.freshDisk(self.partedDevice, 'msdos')
