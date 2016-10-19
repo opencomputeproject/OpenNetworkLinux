@@ -105,8 +105,8 @@ Adding/Removing packages from a SWI:
 
 The list of packages for a given SWI are in
 
-    $ONL/packages/base/any/rootfs/common/$ARCH-packages.yml # for $ARCH specific packages
-    $ONL/packages/base/any/rootfs/common/common-packages.yml	# for $ARCH-independent packages
+    $ONL/packages/base/any/rootfs/$suite/common/$ARCH-packages.yml # for $ARCH specific packages
+    $ONL/packages/base/any/rootfs/$suite/common/common-packages.yml	# for $ARCH-independent packages
 
 Build a software image (SWI) for all powerpc platforms:
 ------------------------------------------------------------
@@ -190,9 +190,9 @@ This message shows that your installation appears to be working correctly.
 
 Add yourself to the docker group:
 ```
-sudo gpasswd -a snoble docker
+sudo gpasswd -a user1 docker
 
-Adding user snoble to group docker
+Adding user user1 to group docker
 ```
 
 logout and log back in for the group to take effect:
