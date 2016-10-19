@@ -15,7 +15,9 @@ import string
 import argparse
 import yaml
 from time import sleep
+
 from onl.platform.current import OnlPlatform
+from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 
 class BaseUpgrade(object):
 
@@ -365,19 +367,19 @@ If you choose not to perform this upgrade booting cannot continue.""" % self.aty
 
 class BaseOnieUpgrade(BaseUpgrade):
 
-    ONIE_UPDATER_PATH = "/mnt/flash2/onie-updater"
+    ONIE_UPDATER_CONTEXT = "ONL-IMAGES"
+    ONIE_UPDATER_PATH    = "/mnt/onl/images"
 
     def install_onie_updater(self, src_dir, updater):
-        if type(updater) is list:
-            # Copy all files in the list to /mnt/flash2
+        with OnlMountContextReadWrite(self.ONIE_UPDATER_CONTEXT, logger=None):
+            if type(updater) is not list:
+                updater = [ updater ]
+
+            # Copy all files in the list to ONIE_UPDATER_PATH
             for f in updater:
                 src = os.path.join(src_dir, f)
-                dst = os.path.join("/mnt/flash2", f)
+                dst = os.path.join(self.ONIE_UPDATER_PATH, f)
                 self.copyfile(src, dst)
-        else:
-            # Copy single updater to /mnt/flash2/onie-updater
-            src = os.path.join(src_dir, updater)
-            self.copyfile(src, self.ONIE_UPDATER_PATH)
 
 
     def initiate_onie_update(self):
@@ -394,27 +396,26 @@ class BaseOnieUpgrade(BaseUpgrade):
                 self.abort("Could not set ONIE Boot Mode to Update. Upgrade cannot continue.")
             self.umount(OB)
 
-            SL = "/mnt/sl-boot"
-            self.mount(SL, label="SL-BOOT")
-            with open("/mnt/sl-boot/grub/grub.cfg", "a") as f:
-                f.write("set default=ONIE\n")
-            self.umount(SL)
+            with OnlMountContextReadWrite("ONL-BOOT", logger=None):
+                with open("/mnt/onl/boot/grub/grub.cfg", "a") as f:
+                    f.write("set default=ONIE\n")
             self.reboot()
 
         else:
             self.abort("Architecture %s unhandled." % self.arch)
 
     def clean_onie_updater(self):
-        if os.path.exists(self.ONIE_UPDATER_PATH):
-            self.logger.info("Removing previous onie-updater.")
-            os.remove(self.ONIE_UPDATER_PATH)
+        with OnlMountContextReadWrite(self.ONIE_UPDATER_CONTEXT, logger=None):
+            updater = os.path.join(self.ONIE_UPDATER_PATH, "onie-updater")
+            if os.path.exists(updater):
+                self.logger.info("Removing previous onie-updater.")
+                os.remove(updater)
 
 
-
-def upgrade_status():
-    data = {}
-    if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
-            with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
-                data = json.load(f)
-    return data
+# def upgrade_status():
+#     data = {}
+#     if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
+#             with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
+#                 data = json.load(f)
+#     return data
 
