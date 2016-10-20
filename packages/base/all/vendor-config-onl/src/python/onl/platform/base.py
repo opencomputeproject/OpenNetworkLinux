@@ -90,6 +90,10 @@ class OnieInfo(object):
         }
 
 
+class PlatformInfo(object):
+    CPLD_VERSIONS='CPLD Versions'
+
+
 ############################################################
 #
 # ONL Platform Base
@@ -107,7 +111,7 @@ class OnlPlatformBase(object):
     def __init__(self):
         self.add_info_json("onie_info", "%s/onie-info.json" % self.basedir_onl(), OnieInfo,
                            required=False)
-        self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(),
+        self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
                            required=False)
 
         # Find the base platform config
@@ -216,6 +220,9 @@ class OnlPlatformBase(object):
 
     def onie_version(self):
         return self.onie_info.ONIE_VERSION
+
+    def firmware_version(self):
+        return self.platform_info.CPLD_VERSIONS
 
     def upgrade_manifest(self, type_, override_dir=None):
         if override_dir:
