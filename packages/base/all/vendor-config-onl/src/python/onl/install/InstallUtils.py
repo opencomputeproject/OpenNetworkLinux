@@ -219,6 +219,9 @@ class MountContext(SubprocessMixin):
         if not self.device and not self.label:
             raise ValueError("no device or label specified")
 
+        self._detachMounted = False
+        self._detachHostDir = None
+
     def __enter__(self):
         dev = self.device
         if dev is None:
@@ -245,7 +248,7 @@ class MountContext(SubprocessMixin):
         self.mounted = True
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         mounted = False
         if self.mounted:
@@ -263,7 +266,17 @@ class MountContext(SubprocessMixin):
         if self.hostDir is not None:
             self.rmdir(self.hostDir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
+
+    def detach(self):
+        self.mounted, self._detachMounted = False, self.mounted
+        self.hostDir, self._detachHostdir = None, self.hostDir
+
+    def attach(self):
+        self.mounted = self._detachMounted
+        self.hostDir = self._detachHostdir
 
 class BlkidEntry:
 
@@ -665,6 +678,8 @@ class InitrdContext(SubprocessMixin):
         self.ilog.setLevel(logging.INFO)
         self.log = self.hlog
 
+        self._detachInitrd = None
+
     def _unpack(self):
         self.dir = self.mkdtemp(prefix="chroot-",
                                 suffix=".d")
@@ -783,7 +798,7 @@ class InitrdContext(SubprocessMixin):
 
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         p = ProcMountsParser()
         dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
@@ -803,13 +818,21 @@ class InitrdContext(SubprocessMixin):
         else:
             self.log.debug("saving chroot in %s", self.dir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
 
+    def detach(self):
+        self.initrd, self._detachInitrd = None, self.initrd
+
+    def attach(self):
+        self.initrd = self._detachInitrd
+
     @classmethod
-    def mkChroot(self, initrd, log=None):
-        with InitrdContext(initrd=initrd, log=log) as ctx:
+    def mkChroot(cls, initrd, log=None):
+        with cls(initrd=initrd, log=log) as ctx:
             initrdDir = ctx.dir
-            ctx.initrd = None
+            ctx.detach()
             # save the unpacked directory, do not clean it up
             # (it's inside this chroot anyway)
         return initrdDir
