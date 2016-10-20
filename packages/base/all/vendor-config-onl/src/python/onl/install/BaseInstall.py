@@ -21,6 +21,12 @@ from InstallUtils import ProcMountsParser
 import onl.YamlUtils
 from onl.sysconfig import sysconfig
 
+try:
+    PartedException = parted._ped.PartedException
+except AttributeError:
+    import _ped
+    PartedException = _ped.PartedException
+
 class Base:
 
     class installmeta:
@@ -382,7 +388,7 @@ class Base:
         for m in pm.mounts:
             if m.device.startswith(self.device):
                 if not self.force:
-                    self.log.error("mount %s on %s will be erased by install",
+                    self.log.error("mount %s on %s will be erased by install (try --force)",
                                    m.dir, m.device)
                     return 1
                 else:
@@ -668,9 +674,6 @@ class UbootInstaller(SubprocessMixin, Base):
 
         self.device = self.im.getDevice()
 
-        code = self.assertUnmounted()
-        if code: return code
-
         self.rawLoaderDevice = None
         # set to a partition device for raw loader install,
         # default to None for FS-based install
@@ -686,8 +689,11 @@ class UbootInstaller(SubprocessMixin, Base):
                 return 0
             self.log.warn("disk %s has wrong label %s",
                           self.device, self.partedDisk.type)
-        except parted._ped.PartedException as ex:
+        except PartedException as ex:
             self.log.error("cannot get partition table from %s: %s",
+                           self.device, str(ex))
+        except AttributeError as ex:
+            self.log.error("XXX cannot get partition table from %s: %s",
                            self.device, str(ex))
 
         self.log.info("creating msdos label on %s")
@@ -727,6 +733,7 @@ class UbootInstaller(SubprocessMixin, Base):
                 break
 
         if not loaderBasename:
+            raise ValueError("platform loader file missing!")
             self.log.error("The platform loader file is missing.")
             return 1
 
@@ -782,6 +789,9 @@ class UbootInstaller(SubprocessMixin, Base):
         if not stat.S_ISBLK(st[stat.ST_MODE]):
             self.log.error("not a block device: %s", self.device)
             return 1
+
+        code = self.assertUnmounted()
+        if code: return code
 
         code = self.maybeCreateLabel()
         if code: return code
