@@ -112,11 +112,16 @@ class Onie(AppBase):
 
     PROG = "onie-shell"
 
+    UNMOUNT = True
+    # default, unmount directories once the initrd is extracted
+
     def run(self):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
         self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
+        self.dctx = None
+        self.onieDir = None
 
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
@@ -134,22 +139,28 @@ class Onie(AppBase):
 
             parts = [p for p in self.pm.mounts if p.device == dev]
             if parts:
-                onieDir = parts[0]
-                self.log.debug("found ONIE boot mounted at %s", onieDir)
-                initrd = _g(onieDir)
+                self.log.debug("found ONIE boot mounted at %s", parts[0].dir)
+                initrd = _g(parts[0].dir)
                 if initrd is None:
-                    self.log.warn("cannot find ONIE initrd on %s", onieDir)
+                    self.log.warn("cannot find ONIE initrd on %s", parts[0].dir)
                 else:
+                    self.onieDir = parts[0].dir
                     self.log.debug("found ONIE initrd at %s", initrd)
-                    return _runInitrdShell(initrd)
+                    return self._runInitrdShell(initrd)
 
-            with MountContext(dev, log=self.log) as ctx:
-                initrd = _g(ctx.dir)
+            # else, try to mount the directory containing the initrd
+            with MountContext(dev, log=self.log) as self.dctx:
+                initrd = _g(self.dctx.dir)
                 if initrd is None:
                     self.log.warn("cannot find ONIE initrd on %s", dev)
                 else:
                     self.log.debug("found ONIE initrd at %s", initrd)
-                    return self._runInitrdShell(initrd)
+                    try:
+                        return self._runInitrdShell(initrd)
+                    finally:
+                        if not self.UMOUNT:
+                            self.onieDir = self.dctx.hostDir
+                            self.dctx.detach()
 
             self.log.warn("cannot find an ONIE initrd")
             return 1
@@ -163,6 +174,7 @@ class Onie(AppBase):
                 self.log.debug("cannot find ONIE initrd on %s (%s)",
                                part.device, part.dir)
             else:
+                self.onieDir = part.dir
                 self.log.debug("found ONIE initrd at %s", initrd)
                 return self._runInitrdShell(initrd)
 
