@@ -411,11 +411,21 @@ class BaseOnieUpgrade(BaseUpgrade):
                 self.logger.info("Removing previous onie-updater.")
                 os.remove(updater)
 
+    def load_manifest(self, path):
+        self.manifest = self.load_json(path)
 
-# def upgrade_status():
-#     data = {}
-#     if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
-#             with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
-#                 data = json.load(f)
-#     return data
+        if self.manifest is None:
+            self.finish("No %s updater available for the current platform." % self.Name)
 
+        if 'version' not in self.manifest:
+            self.finish("No %s version in the upgrade manifest." % self.Name)
+        else:
+            self.next_version = self.manifest['version']
+
+        if 'updater' not in self.manifest:
+            self.finish("No %s updater in the upgrade manifest." % self.Name)
+
+    def summarize(self):
+        self.logger.info("Current %s Version: %s" % (self.Name, self.current_version))
+        self.logger.info("   Next %s Version: %s" % (self.Name, self.manifest.get('version')))
+        self.logger.info("")
