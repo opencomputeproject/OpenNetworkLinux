@@ -1,3 +1,2 @@
-#!/usr/bin/python
-from onl.upgrade.firmware import FirmwareUpgrade
-FirmwareUpgrade().main()
+/sbin/onl-upgrade-firmware
+

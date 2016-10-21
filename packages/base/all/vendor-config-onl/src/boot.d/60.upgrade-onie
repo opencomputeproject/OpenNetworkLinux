@@ -1,3 +1,1 @@
-#!/usr/bin/python
-from onl.upgrade.onie import OnieUpgrade
-OnieUpgrade().main()
+/sbin/onl-upgrade-onie
