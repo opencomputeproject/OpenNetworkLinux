@@ -43,6 +43,9 @@ class LoaderUpgradeBase(ubase.BaseUpgrade):
         self.next_version = self.load_json(NEXT_LOADER_VERSIONS_JSON,
                                            "version", {}).get('RELEASE_ID', None)
 
+    def prepare_upgrade(self):
+        pass
+
     def summarize(self):
         self.logger.info("Current Loader Version: %s" % self.current_version)
         self.logger.info("   Next Loader Version: %s" % self.next_version)

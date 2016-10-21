@@ -17,7 +17,6 @@ class OnieUpgrade(ubase.BaseOnieUpgrade):
     next_version_key="Next ONIE Version"
 
     def init_versions(self):
-
         # Get the current platform ONIE version
         self.current_version = self.platform.onie_version()
         self.next_version = None

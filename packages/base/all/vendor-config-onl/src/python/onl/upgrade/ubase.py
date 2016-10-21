@@ -41,6 +41,10 @@ class BaseUpgrade(object):
         self.platform = OnlPlatform()
         self.init()
 
+        self.current_version = None
+        self.next_version = None
+        self.init_versions()
+
     def init(self):
         pass
 
@@ -161,11 +165,16 @@ class BaseUpgrade(object):
 
     UPGRADE_STATUS_JSON = "/lib/platform-config/current/onl/upgrade.json"
 
-    def update_upgrade_status(self, key, value):
+    @staticmethod
+    def upgrade_status_get():
         data = {}
-        if os.path.exists(self.UPGRADE_STATUS_JSON):
-            with open(self.UPGRADE_STATUS_JSON) as f:
+        if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
+            with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
                 data = json.load(f)
+        return data
+
+    def update_upgrade_status(self, key, value):
+        data = self.upgrade_status_get()
         data[key] = value
         with open(self.UPGRADE_STATUS_JSON, "w") as f:
             json.dump(data, f)
@@ -177,6 +186,8 @@ class BaseUpgrade(object):
     def init_versions(self):
         raise Exception("init_versions() must be provided by the deriving class.")
 
+    def prepare_upgrade(self):
+        raise Exception("prepare_versions() must be provided by the deriving class.")
 
     #
     # Perform actual upgrade. Provided by derived class.
@@ -192,9 +203,7 @@ class BaseUpgrade(object):
 
 
     def init_upgrade(self):
-        self.current_version = None
-        self.next_version = None
-        self.init_versions()
+        self.prepare_upgrade()
         self.update_upgrade_status(self.current_version_key, self.current_version)
         self.update_upgrade_status(self.next_version_key, self.next_version)
 
@@ -411,19 +420,21 @@ class BaseOnieUpgrade(BaseUpgrade):
                 self.logger.info("Removing previous onie-updater.")
                 os.remove(updater)
 
-    def load_manifest(self, path):
-        self.manifest = self.load_json(path)
-
+    def prepare_upgrade(self):
         if self.manifest is None:
             self.finish("No %s updater available for the current platform." % self.Name)
 
-        if 'version' not in self.manifest:
+        if self.next_version is None:
             self.finish("No %s version in the upgrade manifest." % self.Name)
-        else:
-            self.next_version = self.manifest['version']
 
         if 'updater' not in self.manifest:
             self.finish("No %s updater in the upgrade manifest." % self.Name)
+
+    def load_manifest(self, path, required=True):
+        self.manifest = self.load_json(path)
+        self.next_version = None
+        if self.manifest:
+            self.next_version = self.manifest.get('version', None)
 
     def summarize(self):
         self.logger.info("Current %s Version: %s" % (self.Name, self.current_version))
