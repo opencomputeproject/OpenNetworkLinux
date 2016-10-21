@@ -1,0 +1,59 @@
+#!/bin/sh
+set -e
+
+uninstall_x86_64()
+{
+    #
+    # Set ONIE boot selection to uninstall
+    #
+    mkdir -p /mnt/onie-boot
+    mount -L ONIE-BOOT /mnt/onie-boot > /dev/null 2>&1
+
+    if [ "$1" = "factory" ]; then
+    /mnt/onie-boot/onie/tools/bin/onie-boot-mode -o uninstall
+    else
+    /mnt/onie-boot/onie/tools/bin/onie-boot-mode -o install
+    fi
+
+    umount /mnt/onie-boot
+
+    #
+    # Select ONIE as the boot default
+    #
+    onl-mounts mount boot --rw
+    echo "set default=ONIE" >> /mnt/onl/boot/grub/grub.cfg
+    onl-mounts mount boot
+}
+
+uninstall_uboot()
+{
+    if [ "$1" = "factory" ]; then
+        fw_setenv onie_boot_reason uninstall
+    else
+        fw_setenv nos_bootcmd echo
+    fi
+}
+
+uninstall()
+{
+    case `uname -m` in
+        x86_64)
+            uninstall_x86_64 $1
+            ;;
+        ppc|armv7l)
+            uninstall_uboot $1
+            ;;
+        *)
+            echo "Uninstall for the current architecture is not implemented. This is a bug."
+            exit 1
+            ;;
+    esac
+}
+
+############################################################
+
+uninstall $1
+echo "The NOS will be removed at the next reboot."
+exit 0
+
+

@@ -17,6 +17,6 @@ packages:
       - src/boot.d : /etc/boot.d
       - src/bin : /usr/bin
       - src/lib : /lib/vendor-config/onl
-
+      - src/sbin : /sbin
 
     changelog: Changes
