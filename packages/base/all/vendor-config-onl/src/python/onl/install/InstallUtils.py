@@ -188,15 +188,13 @@ class SubprocessMixin:
                 subdir = src[len(srcRoot)+1:]
                 dst = os.path.join(dstRoot, subdir)
                 if not os.path.exists(dst):
-                    self.log.debug("+ /bin/mkdir -p %s", dst)
-                    os.mkdirs(dst)
+                    self.makedirs(dst)
 
             for fe in fl:
-                src = os.path.join(r, de)
+                src = os.path.join(r, fe)
                 subdir = src[len(srcRoot)+1:]
                 dst = os.path.join(dstRoot, subdir)
-                self.log.debug("+ /bin/cp -a %s %s", src, dst)
-                shutil.copy2(src, dst)
+                self.copy2(src, dst)
 
 class TempdirContext(SubprocessMixin):
 
