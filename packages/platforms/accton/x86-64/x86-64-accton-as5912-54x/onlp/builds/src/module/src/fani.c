@@ -306,9 +306,9 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     switch (fid)
 	{
         case FAN_1_ON_PSU_1:
-			return psu_ym2651y_pmbus_info_set(PSU1_ID, "psu_fan_duty_cycle_percentage", p);
+			return psu_ym2651y_pmbus_info_set(PSU1_ID, "psu_fan1_duty_cycle_percentage", p);
         case FAN_1_ON_PSU_2:
-			return psu_ym2651y_pmbus_info_set(PSU2_ID, "psu_fan_duty_cycle_percentage", p);
+			return psu_ym2651y_pmbus_info_set(PSU2_ID, "psu_fan1_duty_cycle_percentage", p);
         case FAN_1_ON_FAN_BOARD:
         case FAN_2_ON_FAN_BOARD:
         case FAN_3_ON_FAN_BOARD:
