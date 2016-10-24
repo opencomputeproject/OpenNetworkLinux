@@ -16,8 +16,9 @@ from InstallUtils import BlkidParser
 import Fit
 
 import onl.platform.current
+from onl.sysconfig import sysconfig
 
-class AppBase(SubprocessMixin):
+class AppBase(SubprocessMixin, object):
 
     @property
     def PROG(self):
@@ -109,6 +110,7 @@ class AppBase(SubprocessMixin):
         sys.exit(code)
 
 class Onie(AppBase):
+    """Application shell that uses the ONIE runtime."""
 
     PROG = "onie-shell"
 
@@ -193,6 +195,7 @@ class Onie(AppBase):
         return 1
 
 class Loader(AppBase):
+    """Application shell that uses the (installed) loader runtime."""
 
     PROG = "loader-shell"
 
@@ -299,6 +302,49 @@ class Loader(AppBase):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
+
+        if 'grub' in self.pc:
+            return self.runGrub()
+
+        if 'flat_image_tree' in self.pc:
+            return self.runUboot()
+
+        self.log.error("invalid platform-config")
+        return 1
+
+class Upgrader(AppBase):
+    """Application shell that uses on-disk upgrade loader runtime."""
+
+    PROG = "upgrade-shell"
+
+    def runGrub(self):
+
+        d = sysconfig.upgrade.loader.package.dir
+        for b in sysconfig.upgrade.loader.package.grub:
+            p = os.path.join(d, b)
+            if os.path.exists(p):
+                self.log.debug("found upgrade initrd at %s", p)
+                return self._runInitrdShell(p)
+
+        self.log.error("cannot find upgrade initrd")
+        return 1
+
+    def runUboot(self):
+
+        d = sysconfig.upgrade.loader.package.dir
+        for b in sysconfig.upgrade.loader.package.fit:
+            p = os.path.join(d, b)
+            if os.path.exists(p):
+                self.log.debug("found upgrade FIT image %s", p)
+                return self._runFitShell(p)
+
+        self.log.error("cannot find FIT image")
+        return 1
+
+    def run(self):
+
+        self.platform = onl.platform.current.OnlPlatform()
+        self.pc = self.platform.platform_config
 
         if 'grub' in self.pc:
             return self.runGrub()
