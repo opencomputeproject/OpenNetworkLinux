@@ -25,6 +25,7 @@
 # Configure a network interface from settings in /etc/onl/NET
 # NETDEV: device name
 # NETAUTO: autoconfiguration method ("dhcp" or empty)
+# NETRETRIES: autoconfiguration timeout
 # NETIP: IP address (/prefix optional for v4)
 # NETMASK: netmask (if NETIP has no prefix)
 # NETGW: default gateway IP address (optional)
@@ -43,10 +44,39 @@ if [ "${NETHW}" ]; then
     ip link set dev ${NETDEV} addr ${NETHW}
 fi
 
+# Default DHCP timeout is 10 requests in 10 seconds.
+NETRETRIES_DEFAULT=10
+NETRETRIES=${NETRETRIES:-$NETRETRIES_DEFAULT}
+if [ "$NETRETRIES" = "infinite" ]; then
+    NETRETRIES=
+elif [ $(echo "$NETRETRIES" | tr -d '[:digit:]') ] || [ "$NETRETRIES" -lt 0 ]; then
+    echo "Warning: the NETRETRIES setting is currently '$NETRETRIES'. This is invalid and the default value of $NETRETRIES_DEFAULT will be used instead."
+    NETRETRIES=$NETRETRIES_DEFAULT
+fi
 case "${NETAUTO}" in
     dhcp|auto)
         echo 1 >/proc/sys/net/ipv6/conf/${NETDEV}/autoconf
-        udhcpc -i ${NETDEV}
+        if [ -n "${NETRETRIES}" ]; then
+            if ! udhcpc --retries $NETRETRIES --now -i ${NETDEV}; then
+                echo "**********************************************************************"
+                echo "DHCP failed after $NETRETRIES attempts."
+                echo "**********************************************************************"
+            fi
+        else
+            while true; do
+                if udhcpc --retries $NETRETRIES_DEFAULT --now -i ${NETDEV}; then
+                    break
+                fi
+                echo
+                echo "**********************************************************************"
+                echo "DHCP failed after $NETRETRIES_DEFAULT attempts."
+                echo ""
+                echo "No timeout is configured so DHCP requests will continue until successful."
+                echo "    Press Ctrl-C to terminate and configure manually."
+                echo ""
+                echo "**********************************************************************"
+            done
+        fi
         ;;
     up)
         ifconfig "${NETDEV}" up
@@ -87,3 +117,27 @@ for i in $(seq 30); do
     fi
     sleep 1
 done
+wait_link_up()
+{
+    local intf=$1
+    local count=$2
+
+    local operstate="/sys/class/net/${intf}/operstate"
+
+    echo "Waiting for link on ${intf}..."
+    local i=0
+    [ -r $operstate ] && while [ $i -lt $count ] ; do
+        intf_operstate="$(cat $operstate)"
+        if [ "$intf_operstate" = "up" -o "$intf_operstate" = "unknown" ] ; then
+            echo "${intf}: up"
+            return 0
+        fi
+        usleep 100000
+        i=$(( $i + 1 ))
+    done
+
+    echo "${intf}: down."
+    return 1
+}
+
+wait_link_up $NETDEV 100
