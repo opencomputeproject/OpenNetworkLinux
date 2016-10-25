@@ -19,6 +19,8 @@ installer:
 upgrade:
   onie:
     auto: advisory
+  system:
+    auto: advisory
   loader:
     auto: advisory
     versions: /etc/onl/loader/versions.json
