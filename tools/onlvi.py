@@ -52,3 +52,6 @@ class OnlVersionImplementation(object):
 
     def V_FNAME_RELEASE_ID(self, data):
         return "%s-%s" % (self.V_VERSION_ID(data), self.V_FNAME_BUILD_ID(data))
+
+    def V_SYSTEM_COMPATIBILITY_VERSION(self, data):
+        return "2"
