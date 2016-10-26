@@ -1,4 +1,3 @@
 NETDEV=ma1
-NETAUTO=dhcp
 BOOTMODE=INSTALLED
 SWI=images::latest

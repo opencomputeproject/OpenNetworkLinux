@@ -692,7 +692,7 @@ class UbootInstaller(SubprocessMixin, Base):
         except PartedException as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
-        except Error as ex:
+        except Exception:
             self.log.exception("cannot get partition table from %s"
                                self.device)
 
@@ -733,7 +733,6 @@ class UbootInstaller(SubprocessMixin, Base):
                 break
 
         if not loaderBasename:
-            raise ValueError("platform loader file missing!")
             self.log.error("The platform loader file is missing.")
             return 1
 
