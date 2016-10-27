@@ -693,7 +693,7 @@ class UbootInstaller(SubprocessMixin, Base):
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
         except Exception:
-            self.log.exception("cannot get partition table from %s"
+            self.log.exception("cannot get partition table from %s",
                                self.device)
 
         self.log.info("creating msdos label on %s")
