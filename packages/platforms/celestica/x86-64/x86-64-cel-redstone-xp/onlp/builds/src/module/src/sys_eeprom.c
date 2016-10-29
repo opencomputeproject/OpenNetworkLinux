@@ -6,9 +6,9 @@
 #include <fcntl.h>
 
 #include "sys_eeprom.h"
-#include "cpld.h"
 #include "i2c_chips.h"
 #include "i2c_dev.h"
+#include "redstone_cpld.h"
 
 static inline u_int8_t is_valid_tlvinfo_header(tlvinfo_header_t *hdr)
 {

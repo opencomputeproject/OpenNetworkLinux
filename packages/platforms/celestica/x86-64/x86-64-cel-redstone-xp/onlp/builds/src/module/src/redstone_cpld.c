@@ -5,7 +5,7 @@
 #include <x86_64_cel_redstone_xp/x86_64_cel_redstone_xp_config.h>
 #include "x86_64_cel_redstone_xp_log.h"
 #include "x86_64_cel_redstone_xp_int.h"
-#include "cplds.h"
+#include "redstone_cpld.h"
 
 int
 cpld_io_init(void)
@@ -78,7 +78,6 @@ cpld_dump(aim_pvs_t* pvs, int cpldid)
 }
 
 
-// EXPERIMENT
 #define PORT_BANK1_START 1
 #define PORT_BANK1_END 18
 #define PORT_BANK2_START 19
@@ -209,9 +208,7 @@ read_sfp(int portID, char devAddr, char reg, char *data, int len)
             outb(reg, ioBase + cmdbyte0);
         }
     }
-// FIXME
     return writedata * 0;
-//    return 0;
 }
 
 int
@@ -320,8 +317,6 @@ write_sfp(int portID, char devAddr, char reg, char *data, int len)
 			outb(ioBase + cmdbyte0, reg);
 		}
 	}
-// FIXME
     return writedata * readdata * 0;
-//    return 0;
 }
 

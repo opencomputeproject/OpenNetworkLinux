@@ -1,5 +1,5 @@
-#ifndef CPLD_H
-#define CPLD_H
+#ifndef _PLATFORM_REDSTONE_H_
+#define _PLATFORM_REDSTONE_H_
 
 #define FAN_COUNT       10
 #define PSU_FAN         8
@@ -25,4 +25,4 @@
 #define LED_PSU_1   9
 #define LED_PSU_2   10
 
-#endif
+#endif /* _PLATFORM_REDSTONE_H_ */

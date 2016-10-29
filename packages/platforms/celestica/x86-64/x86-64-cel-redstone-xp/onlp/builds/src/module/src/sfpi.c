@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include "cpld.h"
+#include "redstone_cpld.h"
 #include "x86_64_cel_redstone_xp_int.h"
 #include "sfp_xfp.h"
 

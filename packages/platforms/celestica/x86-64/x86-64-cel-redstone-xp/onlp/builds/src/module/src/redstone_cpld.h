@@ -1,6 +1,8 @@
-#ifndef CPLD_H
-#define CPLD_H
+#ifndef _REDSTONE_CPLD_H_
+#define _REDSTONE_CPLD_H_
 
+#include <stdint.h>
+#include <AIM/aim_log.h>
 #include <asm/ioctl.h>
 
 #define BIT0	0x1
@@ -58,4 +60,10 @@ int write_cpld(int reg, unsigned char value);
 int read_sfp(int portID, char devAddr, char reg, char *data, int len);
 int write_sfp(int portID, char devAddr, char reg, char *data, int len);
 
-#endif
+int cpld_io_init(void);
+int cpld_read(int addr);
+void cpld_write(int addr, uint8_t value);
+void cpld_modify(int addr, uint8_t andmask, uint8_t ormask);
+int cpld_dump(aim_pvs_t* pvs, int cpldid);
+
+#endif /* _REDSTONE_CPLD_H_ */

@@ -10,11 +10,10 @@
 #include <sys/time.h>
 
 
-#include "cpld.h"
 #include "i2c_dev.h"
 #include "i2c_chips.h"
+#include "redstone_cpld.h"
 
-//#define PSOC_TAKE_I2C
 #define PSOC_CTRL_SMBUS 0x01
 
 static struct ts_info ts[] = {
@@ -36,36 +35,33 @@ static const struct dev_info i2c_dev[NUM_CHIPS] = {
 
 #define FANGROUP_NUM	4
 static const struct fan_config fan[FAN_NUM] = {
-	{0x4D, 0x4E, 0x40},//Fan 1  Front
-	{0x2E, 0x4E, 0x40},//Fan 1  Rear
-	{0x4D, 0x6E, 0x60},//Fan 2 F
-	{0x2e, 0x3E, 0x30},//Fan 2 R
-	{0x4D, 0x5E, 0x50},//Fan 3 F
-	{0x2E, 0x7E, 0x70},//Fan 3 R
-	{0x4D, 0x3E, 0x30},//Fan 4 F
-	{0x2E, 0x5E, 0x50},//Fan 4 R
+	{0x4D, 0x4E, 0x40}, //Fan 1  Front
+	{0x2E, 0x4E, 0x40}, //Fan 1  Rear
+	{0x4D, 0x6E, 0x60}, //Fan 2 F
+	{0x2e, 0x3E, 0x30}, //Fan 2 R
+	{0x4D, 0x5E, 0x50}, //Fan 3 F
+	{0x2E, 0x7E, 0x70}, //Fan 3 R
+	{0x4D, 0x3E, 0x30}, //Fan 4 F
+	{0x2E, 0x5E, 0x50}, //Fan 4 R
 };
 
 static struct led_gpio ledGpio[] = {
-	{32, 31},//4_0,3_7, gpio(x_y) = x*8+y
-	{30, 29},//3_6,3_5
-	/*{36, 35},//4_4,4_3 For smallstone*/
-	{38, 37},//4_6,4_5
-	{34, 33},//4_2,4_1
+	{32, 31},   //4_0,3_7, gpio(x_y) = x*8+y
+	{30, 29},   //3_6,3_5
+	{38, 37},   //4_6,4_5
+	{34, 33},   //4_2,4_1
 };
 static unsigned char airFlowGpio[] = {
-	16,//IO2_0  gpio = 2*8+0, gpio(x_y) = x*8+y
-	15,//IO1_7
-	/*18,//IO2_2 //For smallstone */
-	19,//IO2_3
-	17,//IO2_1
+	16, //IO2_0  gpio = 2*8+0, gpio(x_y) = x*8+y
+	15, //IO1_7
+	19, //IO2_3
+	17, //IO2_1
 };
 static unsigned char presentGpio[] = {
-	11,//IO1_3  gpio = 2*8+0, gpio(x_y) = x*8+y
-	10,//IO1_2
-	/* 13,//IO1_5 //For smallstone */
-	14,//IO1_6
-	12,//IO1_4
+	11, //IO1_3  gpio = 2*8+0, gpio(x_y) = x*8+y
+	10, //IO1_2
+	14, //IO1_6
+	12, //IO1_4
 };
 
 static int has_been_read = 0;

@@ -8,8 +8,8 @@
 
 #include "x86_64_cel_redstone_xp_log.h"
 #include "platform.h"
-#include "cplds.h"
 #include "sys_eeprom.h"
+#include "redstone_cpld.h"
 
 const char*
 onlp_sysi_platform_get(void)
