@@ -1,5 +1,5 @@
 variables:
-  platform: x86-64-cel_seastone-r0
+    platform: x86-64-cel-seastone-r0
   install: /lib/platform-config/${platform}/onl
 
 common:
@@ -7,7 +7,7 @@ common:
   arch: amd64
   copyright: Copyright 2013, 2014, 2015 Big Switch Networks
   maintainer: support@bigswitch.com
-  comment: dummy package for ONLP on Wedge
+  comment: dummy package for ONLP on Celestica Seastone
 packages:
   - name: onlp-${platform}
     summary: ONLP Package for the ${platform} platform.
