@@ -56,6 +56,42 @@ class OnlPackageMissingDirError(OnlPackageError):
     def __init__(self, p, d):
         self.value = "Package %s does not contain the directory %s." % (p, d)
 
+class OnlPackageServiceScript(object):
+    SCRIPT=None
+    def __init__(self, service, dir=None):
+        if self.SCRIPT is None:
+            raise AttributeError("The SCRIPT attribute must be provided by the deriving class.")
+
+        with tempfile.NamedTemporaryFile(dir=dir, delete=False) as f:
+            f.write(self.SCRIPT % dict(service=os.path.basename(service.replace(".init", ""))))
+            self.name = f.name
+
+
+class OnlPackageAfterInstallScript(OnlPackageServiceScript):
+    SCRIPT = """#!/bin/sh
+set -e
+if [ -x "/etc/init.d/%(service)s" ]; then
+	update-rc.d %(service)s defaults >/dev/null
+	invoke-rc.d %(service)s start || exit $?
+fi
+"""
+
+class OnlPackageBeforeRemoveScript(OnlPackageServiceScript):
+    SCRIPT = """#!/bin/sh
+set -e
+if [ -x "/etc/init.d/%(service)s" ]; then
+	invoke-rc.d %(service)s stop || exit $?
+fi
+"""
+
+class OnlPackageAfterRemoveScript(OnlPackageServiceScript):
+    SCRIPT = """#!/bin/sh
+set -e
+if [ "$1" = "purge" ] ; then
+	update-rc.d %(service)s remove >/dev/null
+fi
+"""
+
 
 class OnlPackage(object):
     """Individual Debian Package Builder Class
@@ -367,11 +403,12 @@ class OnlPackage(object):
             if not os.path.exists(self.pkg['init']):
                 raise OnlPackageError("Init script '%s' does not exist." % self.pkg['init'])
             command = command + "--deb-init %s " % self.pkg['init']
-
-        if 'post-install' in self.pkg:
-            if not os.path.exists(self.pkg['post-install']):
-                raise OnlPackageError("Post-install script '%s' does not exist." % self.pkg['post-install'])
-            command = command + "--after-install %s " % self.pkg['post-install']
+            if self.pkg.get('init-after-install', True):
+                command = command + "--after-install %s " % OnlPackageAfterInstallScript(self.pkg['init'], dir=workdir).name
+            if self.pkg.get('init-before-remove', True):
+                command = command + "--before-remove %s " % OnlPackageBeforeRemoveScript(self.pkg['init'], dir=workdir).name
+            if self.pkg.get('init-after-remove', True):
+                command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
 
         if logger.level < logging.INFO:
             command = command + "--verbose "
