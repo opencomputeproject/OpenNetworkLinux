@@ -399,6 +399,18 @@ class OnlPackage(object):
         for provides in onlu.sflatten(self.pkg.get('provides', [])):
             command = command + "--provides %s " % provides
 
+        for conflicts in onlu.sflatten(self.pkg.get('conflicts', [])):
+            command = command + "--conflicts %s " % conflicts
+
+        for replaces in onlu.sflatten(self.pkg.get('replaces', [])):
+            command = command + "--replaces %s " % replaces
+
+        if 'virtual' in self.pkg:
+            command = command + "--provides %(v)s --conflicts %(v)s --replaces %(v)s " % dict(v=self.pkg['virtual'])
+
+        if 'priority' in self.pkg:
+            command = command + "--deb-priority %s " % self.pkg['priority']
+
         if 'init' in self.pkg:
             if not os.path.exists(self.pkg['init']):
                 raise OnlPackageError("Init script '%s' does not exist." % self.pkg['init'])
