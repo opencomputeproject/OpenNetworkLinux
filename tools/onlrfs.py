@@ -410,7 +410,7 @@ rm -f /usr/sbin/policy-rc.d
                     logger.info("Cleaning Filesystem...")
                     onlu.execute('sudo chroot %s /usr/bin/apt-get clean' % dir_)
                     onlu.execute('sudo chroot %s /usr/sbin/localepurge' % dir_ )
-                    onlu.execute('sudo chroot %s find /usr/share/doc -type f -delete' % dir_)
+                    onlu.execute('sudo chroot %s find /usr/share/doc -type f -not -name asre.json -delete' % dir_)
                     onlu.execute('sudo chroot %s find /usr/share/man -type f -delete' % dir_)
 
                 if 'PermitRootLogin' in options:
@@ -458,6 +458,11 @@ rm -f /usr/sbin/policy-rc.d
                     ua.chmod('go-w', f)
                     ua.chmod('go-w', os.path.dirname(f))
 
+                if options.get('asre', False):
+                    logger.info("Generating ASRE documentation...")
+                    onlu.execute("sudo %s/sm/infra/tools/asre-merge.py %s %s" %  (os.getenv('ONL'),
+                                                                                  dir_,
+                                                                                  os.path.join(dir_, options.get('asre'))))
 
                 for (mf, fields) in Configure.get('manifests', {}).iteritems():
                     logger.info("Configuring manifest %s..." % mf)
@@ -519,6 +524,8 @@ rm -f /usr/sbin/policy-rc.d
                     with open(fn, "w") as f:
                         f.write("%s" % issue)
                     onlu.execute("sudo chmod a-w %s" % fn)
+
+
 
         finally:
             onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
