@@ -352,14 +352,14 @@ class OnlPackage(object):
         # FPM doesn't seem to have a doc option so we copy documentation
         # files directly into place.
         #
+        docpath = os.path.join(root, "usr/share/doc/%(name)s" % self.pkg)
+        if not os.path.exists(docpath):
+            os.makedirs(docpath)
+
         for src in self.pkg.get('docs', []):
             if not os.path.exists(src):
                 raise OnlPackageError("Documentation source file '%s' does not exist." % src)
-
-            dstpath = os.path.join(root, "usr/share/doc/%(name)s" % self.pkg)
-            if not os.path.exists(dstpath):
-                os.makedirs(dstpath)
-                shutil.copy(src, dstpath)
+                shutil.copy(src, docpath)
 
         changelog = os.path.join(workdir, 'changelog')
         copyright_ = os.path.join(workdir, 'copyright')
@@ -424,6 +424,15 @@ class OnlPackage(object):
 
         if logger.level < logging.INFO:
             command = command + "--verbose "
+
+
+        # Generate the ASRE documentation for this package.
+        subprocess.check_call(['%s/sm/infra/tools/asre.py' % os.getenv('ONL'),
+                               workdir,
+                               '--overwrite',
+                               '--out',
+                               os.path.join(docpath, 'asre.json')
+                               ])
 
         onlu.execute(command)
 
