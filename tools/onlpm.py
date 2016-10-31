@@ -427,12 +427,13 @@ class OnlPackage(object):
 
 
         # Generate the ASRE documentation for this package.
-        subprocess.check_call(['%s/sm/infra/tools/asre.py' % os.getenv('ONL'),
-                               workdir,
-                               '--overwrite',
-                               '--out',
-                               os.path.join(docpath, 'asre.json')
-                               ])
+        if self.pkg.get('asre', True):
+            subprocess.check_call(['%s/sm/infra/tools/asre.py' % os.getenv('ONL'),
+                                   workdir,
+                                   '--overwrite',
+                                   '--out',
+                                   os.path.join(docpath, 'asre.json')
+                                   ])
 
         onlu.execute(command)
 
