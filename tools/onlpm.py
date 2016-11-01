@@ -422,18 +422,18 @@ class OnlPackage(object):
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
 
+        if self.pkg.get('asr', True):
+            # Generate the ASR documentation for this package.
+            sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
+            import asr
+            asro = asr.AimSyslogReference()
+            asro.extract(workdir)
+            asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
+
+        ############################################################
+
         if logger.level < logging.INFO:
             command = command + "--verbose "
-
-
-        # Generate the ASRE documentation for this package.
-        if self.pkg.get('asre', True):
-            subprocess.check_call(['%s/sm/infra/tools/asre.py' % os.getenv('ONL'),
-                                   workdir,
-                                   '--overwrite',
-                                   '--out',
-                                   os.path.join(docpath, 'asre.json')
-                                   ])
 
         onlu.execute(command)
 
