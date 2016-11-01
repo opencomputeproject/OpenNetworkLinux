@@ -67,6 +67,11 @@
 #define ONLP_I2C_F_USE_BLOCK_READ 0x20
 
 /**
+ * Use SMBUS block reads if possible.
+ */
+#define ONLP_I2C_F_USE_SMBUS_BLOCK_READ 0x40
+
+/**
  * @brief Open and prepare for reading or writing.
  * @param bus The i2c bus number.
  * @param addr The slave address.
