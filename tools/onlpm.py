@@ -352,14 +352,14 @@ class OnlPackage(object):
         # FPM doesn't seem to have a doc option so we copy documentation
         # files directly into place.
         #
+        docpath = os.path.join(root, "usr/share/doc/%(name)s" % self.pkg)
+        if not os.path.exists(docpath):
+            os.makedirs(docpath)
+
         for src in self.pkg.get('docs', []):
             if not os.path.exists(src):
                 raise OnlPackageError("Documentation source file '%s' does not exist." % src)
-
-            dstpath = os.path.join(root, "usr/share/doc/%(name)s" % self.pkg)
-            if not os.path.exists(dstpath):
-                os.makedirs(dstpath)
-                shutil.copy(src, dstpath)
+                shutil.copy(src, docpath)
 
         changelog = os.path.join(workdir, 'changelog')
         copyright_ = os.path.join(workdir, 'copyright')
@@ -399,6 +399,18 @@ class OnlPackage(object):
         for provides in onlu.sflatten(self.pkg.get('provides', [])):
             command = command + "--provides %s " % provides
 
+        for conflicts in onlu.sflatten(self.pkg.get('conflicts', [])):
+            command = command + "--conflicts %s " % conflicts
+
+        for replaces in onlu.sflatten(self.pkg.get('replaces', [])):
+            command = command + "--replaces %s " % replaces
+
+        if 'virtual' in self.pkg:
+            command = command + "--provides %(v)s --conflicts %(v)s --replaces %(v)s " % dict(v=self.pkg['virtual'])
+
+        if 'priority' in self.pkg:
+            command = command + "--deb-priority %s " % self.pkg['priority']
+
         if 'init' in self.pkg:
             if not os.path.exists(self.pkg['init']):
                 raise OnlPackageError("Init script '%s' does not exist." % self.pkg['init'])
@@ -409,6 +421,16 @@ class OnlPackage(object):
                 command = command + "--before-remove %s " % OnlPackageBeforeRemoveScript(self.pkg['init'], dir=workdir).name
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
+
+        if self.pkg.get('asr', True):
+            # Generate the ASR documentation for this package.
+            sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
+            import asr
+            asro = asr.AimSyslogReference()
+            asro.extract(workdir)
+            asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
+
+        ############################################################
 
         if logger.level < logging.INFO:
             command = command + "--verbose "
