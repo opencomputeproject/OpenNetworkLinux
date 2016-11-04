@@ -75,6 +75,8 @@ class LoaderUpgrade_Fit(LoaderUpgradeBase):
         with OnlMountContextReadWrite("ONL-BOOT", self.logger) as d:
             self.copyfile(fit_image, os.path.join(d.directory, "%s.itb" % (self.platform.platform())))
 
+        # XXX re-install the firmware environment
+
         self.reboot()
 
 
@@ -109,6 +111,8 @@ class LoaderUpgrade_x86_64(LoaderUpgradeBase):
             #dst = os.path.join(d.directory, "grub/grub.cfg")
             #if os.path.exists(src):
             #    self.copyfile(src, dst)
+
+        # XXX re-install the grub config
 
         self.reboot()
 
