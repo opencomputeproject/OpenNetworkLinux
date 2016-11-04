@@ -439,7 +439,6 @@ class OnlPackage(object):
         onlu.execute(command)
 
         # Grab the package from the workdir. There can be only one.
-        sys.stdout.write(workdir)
         files = glob.glob(os.path.join(workdir, '*.deb'))
         if len(files) == 0:
             raise OnlPackageError("No debian package.")
