@@ -23,9 +23,11 @@ from onl.sysconfig import sysconfig
 
 try:
     PartedException = parted._ped.PartedException
+    DiskException = parted._ped.DiskException
 except AttributeError:
     import _ped
     PartedException = _ped.PartedException
+    DiskException = _ped.DiskException
 
 class Base:
 
@@ -689,14 +691,17 @@ class UbootInstaller(SubprocessMixin, Base):
                 return 0
             self.log.warn("disk %s has wrong label %s",
                           self.device, self.partedDisk.type)
-        except PartedException as ex:
+        except (DiskException, PartedException) as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
         except Exception:
             self.log.exception("cannot get partition table from %s",
                                self.device)
 
-        self.log.info("creating msdos label on %s")
+        self.log.info("clobbering disk label on %s", self.device)
+        self.partedDevice.clobber()
+
+        self.log.info("creating msdos label on %s", self.device)
         self.partedDisk = parted.freshDisk(self.partedDevice, 'msdos')
 
         return 0
