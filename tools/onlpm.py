@@ -272,6 +272,36 @@ class OnlPackage(object):
 
         return True
 
+    @staticmethod
+    def copyf(src, dst, root):
+        if dst.startswith('/'):
+            dst = dst[1:]
+
+        if os.path.isdir(src):
+            #
+            # Copy entire src directory to target directory
+            #
+            dstpath = os.path.join(root, dst)
+            logger.debug("Copytree %s -> %s" % (src, dstpath))
+            shutil.copytree(src, dstpath)
+        else:
+            #
+            # If the destination ends in a '/' it means copy the filename
+            # as-is to that directory.
+            #
+            # If not, its a full rename to the destination.
+            #
+            if dst.endswith('/'):
+                dstpath = os.path.join(root, dst)
+                if not os.path.exists(dstpath):
+                    os.makedirs(dstpath)
+                shutil.copy(src, dstpath)
+            else:
+                dstpath = os.path.join(root, os.path.dirname(dst))
+                if not os.path.exists(dstpath):
+                    os.makedirs(dstpath)
+                shutil.copyfile(src, os.path.join(root, dst))
+                shutil.copymode(src, os.path.join(root, dst))
 
 
     def build(self, dir_=None):
@@ -312,36 +342,7 @@ class OnlPackage(object):
         self.pkg['__workdir'] = workdir
 
         for (src,dst) in self.pkg.get('files', {}):
-
-            if dst.startswith('/'):
-                dst = dst[1:]
-
-            if os.path.isdir(src):
-                #
-                # Copy entire src directory to target directory
-                #
-                dstpath = os.path.join(root, dst)
-                logger.debug("Copytree %s -> %s" % (src, dstpath))
-                shutil.copytree(src, dstpath)
-            else:
-                #
-                # If the destination ends in a '/' it means copy the filename
-                # as-is to that directory.
-                #
-                # If not, its a full rename to the destination.
-                #
-                if dst.endswith('/'):
-                    dstpath = os.path.join(root, dst)
-                    if not os.path.exists(dstpath):
-                        os.makedirs(dstpath)
-                    shutil.copy(src, dstpath)
-                else:
-                    dstpath = os.path.join(root, os.path.dirname(dst))
-                    if not os.path.exists(dstpath):
-                        os.makedirs(dstpath)
-                    shutil.copyfile(src, os.path.join(root, dst))
-                    shutil.copymode(src, os.path.join(root, dst))
-
+            OnlPackage.copyf(src, dst, root)
 
         for (link,src) in self.pkg.get('links', {}).iteritems():
             logger.info("Linking %s -> %s..." % (link, src))
@@ -602,18 +603,14 @@ class OnlPackageGroup(object):
 
 
         if 'release' in self._pkgs:
-            release_list = onlu.validate_src_dst_file_tuples(self._pkgs['__directory'],
-                                                      self._pkgs['release'],
-                                                      dict(),
-                                                      OnlPackageError)
-            for f in release_list:
-                release_dir = os.environ.get('ONLPM_OPTION_RELEASE_DIR',
-                                             os.path.join(os.environ.get('ONL', 'RELEASE')))
-                dst = os.path.join(release_dir, g_dist_codename, f[1])
-                if not os.path.exists(dst):
-                    os.makedirs(dst)
-                logger.info("Releasing %s -> %s" % (os.path.basename(f[0]), dst))
-                shutil.copy(f[0], dst)
+            for (src, dst) in onlu.validate_src_dst_file_tuples(self._pkgs['__directory'],
+                                                                self._pkgs['release'],
+                                                                dict(),
+                                                                OnlPackageError):
+                root = os.path.join(os.environ.get('ONLPM_OPTION_RELEASE_DIR',
+                                                   os.path.join(os.environ.get('ONL', 'RELEASE'))),
+                                    g_dist_codename)
+                OnlPackage.copyf(src, dst, root)
 
         return products
 
