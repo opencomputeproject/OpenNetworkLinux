@@ -84,6 +84,10 @@ class Base:
         self.log.error("not implemented")
         return 1
 
+    def upgradeBootLoader(self):
+        self.log.error("not implemented")
+        return 1
+
     def shutdown(self):
         zf, self.zf = self.zf, None
         if zf: zf.close()
@@ -511,19 +515,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installLoader(self):
 
-        ctx = {}
-
-        kernel = self.im.platformConf['grub']['kernel']
-        ctx['kernel'] = kernel['='] if type(kernel) == dict else kernel
-        ctx['args'] = self.im.platformConf['grub']['args']
-        ctx['platform'] = self.im.installerConf.installer_platform
-        ctx['serial'] = self.im.platformConf['grub']['serial']
-
-        ctx['boot_menu_entry'] = sysconfig.installer.menu_name
-        ctx['boot_loading_name'] = sysconfig.installer.os_name
-
         kernels = []
-
         for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
             if 'kernel' in f:
                 kernels.append(f)
@@ -535,10 +527,9 @@ class GrubInstaller(SubprocessMixin, Base):
                     initrd = i
                     break
 
-        cf = GRUB_TPL % ctx
-
-        self.log.info("Installing kernel")
         dev = self.blkidParts['ONL-BOOT']
+
+        self.log.info("Installing kernel to %s", dev.device)
 
         with MountContext(dev.device, log=self.log) as ctx:
             def _cp(b, dstname=None):
@@ -548,6 +539,29 @@ class GrubInstaller(SubprocessMixin, Base):
                 self.installerCopy(b, dst, optional=True)
             [_cp(e) for e in kernels]
             _cp(initrd, "%s.cpio.gz" % self.im.installerConf.installer_platform)
+
+        return 0
+
+    def installGrubCfg(self):
+
+        dev = self.blkidParts['ONL-BOOT']
+
+        self.log.info("Installing grub.cfg to %s", dev.device)
+
+        ctx = {}
+
+        kernel = self.im.platformConf['grub']['kernel']
+        ctx['kernel'] = kernel['='] if type(kernel) == dict else kernel
+        ctx['args'] = self.im.platformConf['grub']['args']
+        ctx['platform'] = self.im.installerConf.installer_platform
+        ctx['serial'] = self.im.platformConf['grub']['serial']
+
+        ctx['boot_menu_entry'] = sysconfig.installer.menu_name
+        ctx['boot_loading_name'] = sysconfig.installer.os_name
+
+        cf = GRUB_TPL % ctx
+
+        with MountContext(dev.device, log=self.log) as ctx:
             d = os.path.join(ctx.dir, "grub")
             self.makedirs(d)
             dst = os.path.join(ctx.dir, 'grub/grub.cfg')
@@ -611,6 +625,9 @@ class GrubInstaller(SubprocessMixin, Base):
         code = self.installLoader()
         if code: return code
 
+        code = self.installGrubCfg()
+        if code: return code
+
         code = self.installBootConfig()
         if code: return code
 
@@ -634,6 +651,17 @@ class GrubInstaller(SubprocessMixin, Base):
             self.log.error("invalid GRUB label in platform config: %s", label)
             return 1
         return self.installGpt()
+
+    def upgradeBootLoader(self):
+        """Upgrade the boot loader settings."""
+
+        code = self.findGpt()
+        if code: return code
+
+        code = self.installGrubCfg()
+        if code: return code
+
+        return 0
 
     def shutdown(self):
         Base.shutdown(self)
@@ -863,6 +891,25 @@ class UbootInstaller(SubprocessMixin, Base):
             return 1
 
         return self.installUboot()
+
+    def upgradeBootLoader(self):
+        """Upgrade the boot loader settings as part of a loader upgrade."""
+
+        self.partedDevice = parted.getDevice(self.device)
+        self.partedDisk = parted.newDisk(self.partedDevice)
+        if self.partedDisk.type != 'msdos':
+            self.log.error("disk %s has wrong label %s",
+                           self.device, self.partedDisk.type)
+            return 1
+
+        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
+
+        # XXX boot-config (and saved boot-config) should be unchanged during loader upgrade
+
+        code = self.installUbootEnv()
+        if code: return code
+
+        return 0
 
     def shutdown(self):
         Base.shutdown(self)
