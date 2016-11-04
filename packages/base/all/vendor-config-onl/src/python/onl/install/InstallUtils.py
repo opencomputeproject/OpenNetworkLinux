@@ -10,6 +10,8 @@ import tempfile
 import string
 import shutil
 
+import Fit
+
 class SubprocessMixin:
 
     V1 = "V1"
@@ -210,8 +212,8 @@ class MountContext(SubprocessMixin):
         self.label = label
         self.fsType = fsType
         self.dir = None
-        self.hostDir = None
-        self.mounted = False
+        self.hostDir = self.__hostDir = None
+        self.mounted = self.__mounted = False
         self.log = log or logging.getLogger("mount")
 
         if self.device and self.label:
@@ -245,7 +247,7 @@ class MountContext(SubprocessMixin):
         self.mounted = True
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         mounted = False
         if self.mounted:
@@ -263,7 +265,17 @@ class MountContext(SubprocessMixin):
         if self.hostDir is not None:
             self.rmdir(self.hostDir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
+
+    def detach(self):
+        self.__mounted, self.mounted = self.mounted, False
+        self.__hostDir, self.hostDir = self.hostDir, None
+
+    def attach(self):
+        self.mounted = self.__mounted
+        self.hostDir = self.__hostDir
 
 class BlkidEntry:
 
@@ -665,6 +677,9 @@ class InitrdContext(SubprocessMixin):
         self.ilog.setLevel(logging.INFO)
         self.log = self.hlog
 
+        self.__initrd = None
+        self.__dir = None
+
     def _unpack(self):
         self.dir = self.mkdtemp(prefix="chroot-",
                                 suffix=".d")
@@ -783,7 +798,7 @@ class InitrdContext(SubprocessMixin):
 
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         p = ProcMountsParser()
         dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
@@ -797,22 +812,73 @@ class InitrdContext(SubprocessMixin):
             cmd = ('umount', p,)
             self.check_call(cmd, vmode=self.V1)
 
-        if self.initrd is not None:
+        if self.initrd and self.dir:
             self.log.debug("cleaning up chroot in %s", self.dir)
             self.rmtree(self.dir)
-        else:
+        elif self.dir:
             self.log.debug("saving chroot in %s", self.dir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
 
+    def detach(self):
+        self.__initrd, self.initrd = self.initrd, None
+        self.__dir, self.dir = self.dir, None
+
     @classmethod
-    def mkChroot(self, initrd, log=None):
-        with InitrdContext(initrd=initrd, log=log) as ctx:
+    def mkChroot(cls, initrd, log=None):
+        with cls(initrd=initrd, log=log) as ctx:
             initrdDir = ctx.dir
-            ctx.initrd = None
+            ctx.detach()
             # save the unpacked directory, do not clean it up
             # (it's inside this chroot anyway)
         return initrdDir
+
+class FitInitrdContext(SubprocessMixin):
+
+    def __init__(self, path, log=None):
+        self.fitPath = path
+        self.log = log or logging.getLogger(self.__class__.__name__)
+        self.initrd = self.__initrd = None
+
+    def __enter__(self):
+        self.log.debug("parsing FIT image in %s", self.fitPath)
+        p = Fit.Parser(path=self.fitPath, log=self.log)
+        node = p.getInitrdNode()
+        if node is None:
+            raise ValueError("cannot find initrd node in FDT")
+        prop = node.properties.get('data', None)
+        if prop is None:
+            raise ValueError("cannot find initrd data property in FDT")
+
+        with open(device) as fd:
+            self.log.debug("reading initrd at [%x:%x]",
+                           prop.offset, prop.offset+prop.sz)
+            fd.seek(prop.offset, 0)
+            buf = fd.read(prop.sz)
+
+        fno, self.initrd = tempfile.mkstemp(prefix="initrd-",
+                                            suffix=".img")
+        self.log.debug("+ cat > %s", self.initrd)
+        with os.fdopen(fno, "w") as fd:
+            fd.write(buf)
+        return self
+
+    def shutdown(self):
+        initrd, self.initrd = self.initrd, None
+        if initrd and os.path.exists(initrd):
+            self.unlink(initrd)
+
+    def __exit__(self, eType, eValue, eTrace):
+        self.shutdown()
+        return False
+
+    def detach(self):
+        self.__initrd, self.initrd = self.initrd, None
+
+    def attach(self):
+        self.initrd = self.__initrd
 
 class ChrootSubprocessMixin:
 
