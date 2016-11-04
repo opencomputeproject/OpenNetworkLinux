@@ -697,8 +697,8 @@ class UbootInstaller(SubprocessMixin, Base):
         except (DiskException, PartedException) as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
-        except Exception as ex:
-            self.log.exception("cannot get partition table from %s: %s",
+        except Exception:
+            self.log.exception("cannot get partition table from %s",
                                self.device)
 
         self.log.info("clobbering disk label on %s", self.device)
