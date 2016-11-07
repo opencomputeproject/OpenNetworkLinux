@@ -801,16 +801,20 @@ class InitrdContext(SubprocessMixin):
     def shutdown(self):
 
         p = ProcMountsParser()
-        dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
+        if self.dir is not None:
+            dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
+        else:
+            dirs = []
 
         # XXX probabaly also kill files here
 
         # umount any nested mounts
-        self.log.debug("un-mounting mounts points in chroot %s", self.dir)
-        dirs.sort(reverse=True)
-        for p in dirs:
-            cmd = ('umount', p,)
-            self.check_call(cmd, vmode=self.V1)
+        if dirs:
+            self.log.debug("un-mounting mounts points in chroot %s", self.dir)
+            dirs.sort(reverse=True)
+            for p in dirs:
+                cmd = ('umount', p,)
+                self.check_call(cmd, vmode=self.V1)
 
         if self.initrd and self.dir:
             self.log.debug("cleaning up chroot in %s", self.dir)
