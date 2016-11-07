@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Run the upgrade image
+"""
+
+import onl.install.ShellApp
+onl.install.ShellApp.Upgrader.main()
