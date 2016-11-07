@@ -1,6 +1,6 @@
 """App.py
 
-Application code for swl-install.
+Application code for onl-install.
 """
 
 import logging
@@ -13,15 +13,16 @@ import argparse
 import fnmatch
 import subprocess
 
-from onl.install.InstallUtils import InitrdContext, MountContext
-from onl.install.InstallUtils import BlkidParser, ProcMountsParser
+from onl.install.InstallUtils import InitrdContext
+from onl.install.InstallUtils import ProcMountsParser
 from onl.install.ConfUtils import MachineConf, InstallerConf
 from onl.install.ShellApp import Onie, Upgrader
-import onl.install.App
-from onl.sysconfig import sysconfig
-from onl.platform.current import OnlPlatform
-
 from onl.install.InstallUtils import SubprocessMixin
+import onl.install.App
+
+from onl.sysconfig import sysconfig
+
+from onl.mounts import OnlMountContextReadWrite
 
 class UpgradeHelper(Upgrader):
 
@@ -32,47 +33,6 @@ class UpgradeHelper(Upgrader):
     def _runInitrdShell(self, p):
         if self.callback is not None:
             self.callback(self, p)
-
-class OnlBootContext(object):
-
-    def __init__(self, log=None):
-        self.log = log or logging.getLogger(self.__class__.__name__)
-        self.dctx = None
-        self.dir = None
-
-    def __enter__(self):
-        pm = ProcMountsParser()
-        logger = self.log.getChild("blkid")
-        blkid = BlkidParser(log=logger)
-
-        try:
-            dev = blkid['ONL-BOOT'].device
-        except IndexError:
-            dev = None
-        if dev is None:
-            raise ValueError("cannot find ONL-BOOT")
-
-        parts = [p for p in pm.mounts if p.device == dev]
-        if parts:
-            self.log.debug("found ONL-BOOT at %s", parts[0].dir)
-            self.dir = parts[0].dir
-            return self
-
-        # else, mount this:
-        with MountContext(dev, log=self.log) as self.dctx:
-            self.log.debug("mounted ONL-BOOT %s --> %s",
-                           dev, self.dctx.dir)
-            self.dir = self.dctx.dir
-            self.dctx.detach()
-
-        return self
-
-    def __exit__(self, type, value, tb):
-        dctx, self.dctx = self.dctx, None
-        if dctx is not None:
-            dctx.attach()
-            dctx.shutdown()
-        return False
 
 class App(SubprocessMixin):
 
@@ -186,8 +146,8 @@ class App(SubprocessMixin):
                     self.log.debug("+ /bin/cp %s %s", src, dst)
                     shutil.copy2(src, dst)
 
-            with OnlBootContext(log=self.log) as octx:
-                src = os.path.join(octx.dir, "boot-config")
+            with OnlMountContextReadWrite('ONL-BOOT', logger=self.log) as octx:
+                src = os.path.join(octx.directory, "boot-config")
                 dst = os.path.join(abs_idir, "boot-config")
                 self.log.debug("+ /bin/cp %s %s", src, dst)
                 shutil.copy2(src, dst)
@@ -263,7 +223,7 @@ class App(SubprocessMixin):
     def main(cls):
 
         logging.basicConfig()
-        logger = logging.getLogger("swl-install")
+        logger = logging.getLogger("onl-install")
         logger.setLevel(logging.DEBUG)
 
         # send to ONIE log
