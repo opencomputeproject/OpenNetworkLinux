@@ -698,6 +698,7 @@ class InitrdContext(SubprocessMixin):
 
         self.__initrd = None
         self.__dir = None
+        self._hasDevTmpfs = False
 
     def _unpack(self):
         self.dir = self.mkdtemp(prefix="chroot-",
@@ -895,7 +896,7 @@ class FitInitrdContext(SubprocessMixin):
         if prop is None:
             raise ValueError("cannot find initrd data property in FDT")
 
-        with open(device) as fd:
+        with open(self.fitPath) as fd:
             self.log.debug("reading initrd at [%x:%x]",
                            prop.offset, prop.offset+prop.sz)
             fd.seek(prop.offset, 0)
