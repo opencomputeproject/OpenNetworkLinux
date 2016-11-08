@@ -88,11 +88,7 @@ class AppBase(SubprocessMixin, object):
         sys.exit(code)
 
 class OnieBootContext:
-    """XXX  roth -- overlap with onl.install.ShellApp.Onie,
-    also with onl.install.App.OnieHelper from system-upgrade branch...
-
-    XXX roth -- refactor all three bits of code here
-    """
+    """Find the ONIE initrd and umpack/mount it."""
 
     def __init__(self, log=None):
         self.log = log or logging.getLogger(self.__class__.__name__)
@@ -100,15 +96,17 @@ class OnieBootContext:
         self.initrd = None
 
         self.pm = self.blkid = self.mtd = None
-        self.ictx = self.mctx = self.fctx = None
+        self.ictx = self.dctx = self.fctx = None
+        self.onieDir = None
+        self.initrdDir = None
+
+        self.__ictx = self.__dctx = self.__fctx = None
 
     def __enter__(self):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
         self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
-        self.dctx = None
-        self.onieDir = None
 
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
@@ -133,18 +131,21 @@ class OnieBootContext:
                 self.log.debug("found ONIE initrd at %s", initrd)
                 with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
                     self.initrd = initrd
+                    self.initrdDir = self.ictx.dir
                     self.ictx.detach()
                     return self
 
             # else, try to mount the directory containing the initrd
-            with MountContext(dev, log=self.log) as self.mctx:
+            with MountContext(dev, log=self.log) as self.dctx:
                 initrd = _g(self.dctx.dir)
                 if initrd is None:
                     raise ValueError("cannot find ONIE initrd on %s" % dev)
+                self.onieDir = self.dctx.dir
+                self.dctx.detach()
                 self.log.debug("found ONIE initrd at %s", initrd)
                 with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
                     self.initrd = initrd
-                    self.mctx.detach()
+                    self.initrdDir = self.ictx.dir
                     self.ictx.detach()
                     return self
 
@@ -163,6 +164,7 @@ class OnieBootContext:
                 self.log.debug("found ONIE initrd at %s", initrd)
                 with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
                     self.initrd = initrd
+                    self.initrdDir = self.ictx.dir
                     self.ictx.detach()
                     return self
 
@@ -176,6 +178,7 @@ class OnieBootContext:
                 with InitrdContext(initrd=self.fctx.initrd, log=self.log) as self.ictx:
                     self.initrd = self.fctx.initrd
                     self.fctx.detach()
+                    self.initrdDir = self.ictx.dir
                     self.ictx.detach()
                     return self
 
@@ -185,16 +188,26 @@ class OnieBootContext:
         raise ValueError("cannot find ONIE initrd")
 
     def shutdown(self):
-        ctx, self.fctx = self.fctx, None:
+        ctx, self.fctx = self.fctx, None
         if ctx is not None: ctx.shutdown()
-        ctx, self.ictx = self.ictx, None:
+        ctx, self.ictx = self.ictx, None
         if ctx is not None: ctx.shutdown()
-        ctx, self.mctx = self.mctx, None:
+        ctx, self.dctx = self.dctx, None
         if ctx is not None: ctx.shutdown()
 
     def __exit__(self, eType, eValue, eTrace):
         self.shutdown()
         return False
+
+    def detach(self):
+        self.__fctx, self.fctx = self.fctx, None
+        self.__ictx, self.ictx = self.ictx, None
+        self.__dctx, self.dctx = self.dctx, None
+
+    def attach(self):
+        self.fctx = self.__fctx
+        self.ictx = self.__ictx
+        self.dctx = self.__dctx
 
 class Onie(AppBase):
     """XXX roth -- refactor in from loader.py code."""
