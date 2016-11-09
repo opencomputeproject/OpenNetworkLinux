@@ -166,7 +166,7 @@ if __name__ == '__main__':
                     choices = ['amd64', 'powerpc', 'armel', 'arm64'])
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
     ap.add_argument("--fit", nargs=2, help="The system FIT image.")
-    ap.add_argument("--boot-config", help="The boot-config source.", required=True)
+    ap.add_argument("--boot-config", help="The boot-config source.")
     ap.add_argument("--add-file", help="Add the given file  to the installer package.", nargs='+', default=[])
     ap.add_argument("--add-dir", help="Optional directory to include in the installer.", nargs='+', default=[])
     ap.add_argument("--swi", help="Include the given SWI in the installer.")
@@ -197,7 +197,8 @@ if __name__ == '__main__':
     if ops.fit:
         installer.add_fit(*ops.fit)
 
-    installer.add_file(ops.boot_config)
+    if ops.boot_config:
+        installer.add_file(ops.boot_config)
 
     for f in ops.add_file:
         installer.add_file(f)
