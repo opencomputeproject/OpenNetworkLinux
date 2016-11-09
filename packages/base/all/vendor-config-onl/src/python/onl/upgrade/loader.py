@@ -11,7 +11,7 @@ import fnmatch
 from onl.upgrade import ubase
 from onl.sysconfig import sysconfig
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
-from onl.install import BaseInstall, ConfUtils
+from onl.install import BaseInstall, ConfUtils, InstallUtils
 from onl.install.ShellApp import OnieBootContext
 import onl.platform.current
 import onl.versions
@@ -120,7 +120,7 @@ class LoaderUpgrade_Fit(LoaderUpgradeBase):
         self.reboot()
 
 
-class LoaderUpgrade_x86_64(LoaderUpgradeBase):
+class LoaderUpgrade_x86_64(LoaderUpgradeBase, InstallUtils.SubprocessMixin):
 
     installer_klass = BaseInstall.GrubInstaller
 
@@ -154,9 +154,16 @@ class LoaderUpgrade_x86_64(LoaderUpgradeBase):
             #if os.path.exists(src):
             #    self.copyfile(src, dst)
 
-        # XXX re-install the firmware environment
-        import pdb
-        pdb.set_trace()
+        # installer assumes that partitions are unmounted
+
+        self.log = self.logger
+        # ha ha, SubprocessMixin api is different
+
+        pm = InstallUtils.ProcMountsParser()
+        for m in pm.mounts:
+            if m.dir.startswith('/mnt/onl'):
+                self.logger.warn("unmounting %s (--force)", m.dir)
+                self.check_call(('umount', m.dir,))
 
         onlPlatform = onl.platform.current.OnlPlatform()
 
