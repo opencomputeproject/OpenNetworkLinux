@@ -571,7 +571,8 @@ class GrubInstaller(SubprocessMixin, Base):
 
         with MountContext(dev.device, log=self.log) as ctx:
             d = os.path.join(ctx.dir, "grub")
-            self.makedirs(d)
+            if not os.path.exists(d):
+                self.makedirs(d)
             dst = os.path.join(ctx.dir, 'grub/grub.cfg')
             with open(dst, "w") as fd:
                 fd.write(cf)
@@ -663,8 +664,7 @@ class GrubInstaller(SubprocessMixin, Base):
     def upgradeBootLoader(self):
         """Upgrade the boot loader settings."""
 
-        code = self.findGpt()
-        if code: return code
+        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
 
         code = self.installGrubCfg()
         if code: return code
@@ -908,13 +908,6 @@ class UbootInstaller(SubprocessMixin, Base):
 
     def upgradeBootLoader(self):
         """Upgrade the boot loader settings as part of a loader upgrade."""
-
-        self.partedDevice = parted.getDevice(self.device)
-        self.partedDisk = parted.newDisk(self.partedDevice)
-        if self.partedDisk.type != 'msdos':
-            self.log.error("disk %s has wrong label %s",
-                           self.device, self.partedDisk.type)
-            return 1
 
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
 
