@@ -90,6 +90,7 @@ if [ ! -f /etc/onl/abort ]; then
     elif [ -f /etc/onl/boot-config-default ]; then
         # Use default boot-config.
         cp /etc/onl/boot-config-default /etc/onl/boot-config
+        cp /etc/onl/boot-config-default /mnt/onl/boot/boot-config
     fi
 fi
 
