@@ -85,9 +85,13 @@ class App(SubprocessMixin):
             # constitute an /etc/onl/installer.conf in place
             installerConf = InstallerConf(path="/dev/null")
 
-            with open("/etc/onl/loader/versions.json") as fd:
-                data = json.load(fd)
-                installerConf.onl_version = data['VERSION_ID']
+            vj = "/etc/onl/loader/versions.json"
+            if os.path.exists(vj):
+                with open(vj) as fd:
+                    data = json.load(fd)
+                    installerConf.onl_version = data['VERSION_ID']
+            else:
+                installerConf.onl_version = "unknown"
 
             installerConf.installer_dir = chroot_idir
 
@@ -146,11 +150,14 @@ class App(SubprocessMixin):
                     self.log.debug("+ /bin/cp %s %s", src, dst)
                     shutil.copy2(src, dst)
 
-            with OnlMountContextReadWrite('ONL-BOOT', logger=self.log) as octx:
-                src = os.path.join(octx.directory, "boot-config")
-                dst = os.path.join(abs_idir, "boot-config")
-                self.log.debug("+ /bin/cp %s %s", src, dst)
-                shutil.copy2(src, dst)
+            #
+            # Disable until a system for boot-config upgrade is implemented.
+            # with OnlMountContextReadWrite('ONL-BOOT', logger=self.log) as octx:
+            #     src = os.path.join(octx.directory, "boot-config")
+            #     dst = os.path.join(abs_idir, "boot-config")
+            #     self.log.debug("+ /bin/cp %s %s", src, dst)
+            #     shutil.copy2(src, dst)
+            #
 
             # chroot to the onl-install script
             ##cmd = ('chroot', ctx.dir,

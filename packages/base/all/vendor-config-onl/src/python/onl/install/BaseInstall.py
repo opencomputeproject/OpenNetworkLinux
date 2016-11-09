@@ -102,7 +102,7 @@ class Base:
         src = os.path.join(self.im.installerConf.installer_dir, basename)
         if os.path.exists(src):
             self.copy2(src, dst)
-            return
+            return True
 
         if basename in self.zf.namelist():
             self.log.debug("+ unzip -p %s %s > %s",
@@ -110,10 +110,12 @@ class Base:
             with self.zf.open(basename, "r") as rfd:
                 with open(dst, "wb") as wfd:
                     shutil.copyfileobj(rfd, wfd)
-            return
+            return True
 
         if not optional:
             raise ValueError("missing installer file %s" % basename)
+
+        return False
 
     def installerDd(self, basename, device):
 
@@ -354,7 +356,10 @@ class Base:
         basename = 'boot-config'
         with MountContext(dev.device, log=self.log) as ctx:
             dst = os.path.join(ctx.dir, basename)
-            self.installerCopy(basename, dst)
+
+            if not self.installerCopy(basename, dst, True):
+                return
+
             with open(dst) as fd:
                 buf = fd.read()
 
