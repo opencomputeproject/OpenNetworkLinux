@@ -176,8 +176,9 @@ class BaseUpgrade(object):
     def update_upgrade_status(self, key, value):
         data = self.upgrade_status_get()
         data[key] = value
-        with open(self.UPGRADE_STATUS_JSON, "w") as f:
-            json.dump(data, f)
+        if os.path.exists(os.path.dirname(BaseUpgrade.UPGRADE_STATUS_JSON)):
+            with open(self.UPGRADE_STATUS_JSON, "w") as f:
+                json.dump(data, f)
 
     #
     # Initialize self.current_version, self.next_Version
