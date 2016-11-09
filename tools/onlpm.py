@@ -1098,7 +1098,6 @@ if __name__ == '__main__':
     ap.add_argument("--repo-package-dir", default=os.environ.get('ONLPM_OPTION_REPO_PACKAGE_DIR', 'packages'))
     ap.add_argument("--packagedirs", nargs='+', metavar='PACKAGEDIR')
     ap.add_argument("--subdir", default=os.getcwd())
-    ap.add_argument("--extract", metavar='PACKAGE')
     ap.add_argument("--extract-dir", nargs=2, metavar=('PACKAGE', 'DIR'), action='append')
     ap.add_argument("--force", action='store_true')
     ap.add_argument("--list", action='store_true');

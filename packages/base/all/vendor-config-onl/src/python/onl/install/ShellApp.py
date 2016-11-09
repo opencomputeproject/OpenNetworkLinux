@@ -16,8 +16,9 @@ from InstallUtils import BlkidParser
 import Fit
 
 import onl.platform.current
+from onl.sysconfig import sysconfig
 
-class AppBase(SubprocessMixin):
+class AppBase(SubprocessMixin, object):
 
     @property
     def PROG(self):
@@ -109,14 +110,20 @@ class AppBase(SubprocessMixin):
         sys.exit(code)
 
 class Onie(AppBase):
+    """Application shell that uses the ONIE runtime."""
 
     PROG = "onie-shell"
+
+    UNMOUNT = True
+    # default, unmount directories once the initrd is extracted
 
     def run(self):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
         self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
+        self.dctx = None
+        self.onieDir = None
 
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
@@ -134,22 +141,28 @@ class Onie(AppBase):
 
             parts = [p for p in self.pm.mounts if p.device == dev]
             if parts:
-                onieDir = parts[0]
-                self.log.debug("found ONIE boot mounted at %s", onieDir)
-                initrd = _g(onieDir)
+                self.log.debug("found ONIE boot mounted at %s", parts[0].dir)
+                initrd = _g(parts[0].dir)
                 if initrd is None:
-                    self.log.warn("cannot find ONIE initrd on %s", onieDir)
+                    self.log.warn("cannot find ONIE initrd on %s", parts[0].dir)
                 else:
+                    self.onieDir = parts[0].dir
                     self.log.debug("found ONIE initrd at %s", initrd)
-                    return _runInitrdShell(initrd)
+                    return self._runInitrdShell(initrd)
 
-            with MountContext(dev, log=self.log) as ctx:
-                initrd = _g(ctx.dir)
+            # else, try to mount the directory containing the initrd
+            with MountContext(dev, log=self.log) as self.dctx:
+                initrd = _g(self.dctx.dir)
                 if initrd is None:
                     self.log.warn("cannot find ONIE initrd on %s", dev)
                 else:
                     self.log.debug("found ONIE initrd at %s", initrd)
-                    return self._runInitrdShell(initrd)
+                    try:
+                        return self._runInitrdShell(initrd)
+                    finally:
+                        if not self.UMOUNT:
+                            self.onieDir = self.dctx.hostDir
+                            self.dctx.detach()
 
             self.log.warn("cannot find an ONIE initrd")
             return 1
@@ -163,6 +176,7 @@ class Onie(AppBase):
                 self.log.debug("cannot find ONIE initrd on %s (%s)",
                                part.device, part.dir)
             else:
+                self.onieDir = part.dir
                 self.log.debug("found ONIE initrd at %s", initrd)
                 return self._runInitrdShell(initrd)
 
@@ -181,6 +195,7 @@ class Onie(AppBase):
         return 1
 
 class Loader(AppBase):
+    """Application shell that uses the (installed) loader runtime."""
 
     PROG = "loader-shell"
 
@@ -287,6 +302,49 @@ class Loader(AppBase):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
+
+        if 'grub' in self.pc:
+            return self.runGrub()
+
+        if 'flat_image_tree' in self.pc:
+            return self.runUboot()
+
+        self.log.error("invalid platform-config")
+        return 1
+
+class Upgrader(AppBase):
+    """Application shell that uses on-disk upgrade loader runtime."""
+
+    PROG = "upgrade-shell"
+
+    def runGrub(self):
+
+        d = sysconfig.upgrade.loader.package.dir
+        for b in sysconfig.upgrade.loader.package.grub:
+            p = os.path.join(d, b)
+            if os.path.exists(p):
+                self.log.debug("found upgrade initrd at %s", p)
+                return self._runInitrdShell(p)
+
+        self.log.error("cannot find upgrade initrd")
+        return 1
+
+    def runUboot(self):
+
+        d = sysconfig.upgrade.loader.package.dir
+        for b in sysconfig.upgrade.loader.package.fit:
+            p = os.path.join(d, b)
+            if os.path.exists(p):
+                self.log.debug("found upgrade FIT image %s", p)
+                return self._runFitShell(p)
+
+        self.log.error("cannot find FIT image")
+        return 1
+
+    def run(self):
+
+        self.platform = onl.platform.current.OnlPlatform()
+        self.pc = self.platform.platform_config
 
         if 'grub' in self.pc:
             return self.runGrub()

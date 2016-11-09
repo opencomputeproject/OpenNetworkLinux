@@ -177,6 +177,25 @@ class SubprocessMixin:
         # don't believe it
         self.check_call(cmd, vmode=self.V1)
 
+    def cpR(self, srcRoot, dstRoot):
+        srcRoot = os.path.abspath(srcRoot)
+        dstRoot = os.path.abspath(dstRoot)
+        dstRoot = os.path.join(dstRoot, os.path.split(srcRoot)[1])
+        for r, dl, fl in os.walk(srcRoot):
+
+            for de in dl:
+                src = os.path.join(r, de)
+                subdir = src[len(srcRoot)+1:]
+                dst = os.path.join(dstRoot, subdir)
+                if not os.path.exists(dst):
+                    self.makedirs(dst)
+
+            for fe in fl:
+                src = os.path.join(r, fe)
+                subdir = src[len(srcRoot)+1:]
+                dst = os.path.join(dstRoot, subdir)
+                self.copy2(src, dst)
+
 class TempdirContext(SubprocessMixin):
 
     def __init__(self, prefix=None, suffix=None, chroot=None, log=None):
@@ -219,6 +238,9 @@ class MountContext(SubprocessMixin):
         if not self.device and not self.label:
             raise ValueError("no device or label specified")
 
+        self._detachMounted = False
+        self._detachHostDir = None
+
     def __enter__(self):
         dev = self.device
         if dev is None:
@@ -245,7 +267,7 @@ class MountContext(SubprocessMixin):
         self.mounted = True
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         mounted = False
         if self.mounted:
@@ -263,7 +285,17 @@ class MountContext(SubprocessMixin):
         if self.hostDir is not None:
             self.rmdir(self.hostDir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
+
+    def detach(self):
+        self.mounted, self._detachMounted = False, self.mounted
+        self.hostDir, self._detachHostdir = None, self.hostDir
+
+    def attach(self):
+        self.mounted = self._detachMounted
+        self.hostDir = self._detachHostdir
 
 class BlkidEntry:
 
@@ -665,6 +697,9 @@ class InitrdContext(SubprocessMixin):
         self.ilog.setLevel(logging.INFO)
         self.log = self.hlog
 
+        self._hasDevTmpfs = False
+        self._detachInitrd = None
+
     def _unpack(self):
         self.dir = self.mkdtemp(prefix="chroot-",
                                 suffix=".d")
@@ -724,27 +759,28 @@ class InitrdContext(SubprocessMixin):
             else:
                 self.unlink(dst)
 
-        for e in os.listdir("/dev"):
-            src = os.path.join("/dev", e)
-            dst = os.path.join(dev2, e)
-            if os.path.islink(src):
-                self.symlink(os.readlink(src), dst)
-            elif os.path.isdir(src):
-                self.mkdir(dst)
-            elif os.path.isfile(src):
-                self.copy2(src, dst)
-            else:
-                st = os.stat(src)
-                if stat.S_ISBLK(st.st_mode):
-                    maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
-                    self.log.debug("+ mknod %s b %d %d", dst, maj, min)
-                    os.mknod(dst, st.st_mode, st.st_rdev)
-                elif stat.S_ISCHR(st.st_mode):
-                    maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
-                    self.log.debug("+ mknod %s c %d %d", dst, maj, min)
-                    os.mknod(dst, st.st_mode, st.st_rdev)
+        if not self._hasDevTmpfs:
+            for e in os.listdir("/dev"):
+                src = os.path.join("/dev", e)
+                dst = os.path.join(dev2, e)
+                if os.path.islink(src):
+                    self.symlink(os.readlink(src), dst)
+                elif os.path.isdir(src):
+                    self.mkdir(dst)
+                elif os.path.isfile(src):
+                    self.copy2(src, dst)
                 else:
-                    self.log.debug("skipping device %s", src)
+                    st = os.stat(src)
+                    if stat.S_ISBLK(st.st_mode):
+                        maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
+                        self.log.debug("+ mknod %s b %d %d", dst, maj, min)
+                        os.mknod(dst, st.st_mode, st.st_rdev)
+                    elif stat.S_ISCHR(st.st_mode):
+                        maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
+                        self.log.debug("+ mknod %s c %d %d", dst, maj, min)
+                        os.mknod(dst, st.st_mode, st.st_rdev)
+                    else:
+                        self.log.debug("skipping device %s", src)
 
         dst = os.path.join(self.dir, "dev/pts")
         if not os.path.exists(dst):
@@ -756,6 +792,11 @@ class InitrdContext(SubprocessMixin):
                 self.makedirs(dst)
 
     def __enter__(self):
+
+        with open("/proc/filesystems") as fd:
+            buf = fd.read()
+        if "devtmpfs" in buf:
+            self._hasDevTmpfs = True
 
         if self.initrd is not None:
 
@@ -777,13 +818,23 @@ class InitrdContext(SubprocessMixin):
         cmd = ('mount', '-t', 'sysfs', 'sysfs', dst,)
         self.check_call(cmd, vmode=self.V1)
 
+        # maybe mount devtmpfs
+        if self._hasDevTmpfs:
+            dst = os.path.join(self.dir, "dev")
+            cmd = ('mount', '-t', 'devtmpfs', 'devtmpfs', dst,)
+            self.check_call(cmd, vmode=self.V1)
+
+            dst = os.path.join(self.dir, "dev/pts")
+            if not os.path.exists(dst):
+                self.mkdir(dst)
+
         dst = os.path.join(self.dir, "dev/pts")
         cmd = ('mount', '-t', 'devpts', 'devpts', dst,)
         self.check_call(cmd, vmode=self.V1)
 
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         p = ProcMountsParser()
         dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
@@ -803,13 +854,21 @@ class InitrdContext(SubprocessMixin):
         else:
             self.log.debug("saving chroot in %s", self.dir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
 
+    def detach(self):
+        self.initrd, self._detachInitrd = None, self.initrd
+
+    def attach(self):
+        self.initrd = self._detachInitrd
+
     @classmethod
-    def mkChroot(self, initrd, log=None):
-        with InitrdContext(initrd=initrd, log=log) as ctx:
+    def mkChroot(cls, initrd, log=None):
+        with cls(initrd=initrd, log=log) as ctx:
             initrdDir = ctx.dir
-            ctx.initrd = None
+            ctx.detach()
             # save the unpacked directory, do not clean it up
             # (it's inside this chroot anyway)
         return initrdDir

@@ -390,7 +390,7 @@ class Base:
         for m in pm.mounts:
             if m.device.startswith(self.device):
                 if not self.force:
-                    self.log.error("mount %s on %s will be erased by install",
+                    self.log.error("mount %s on %s will be erased by install (try --force)",
                                    m.dir, m.device)
                     return 1
                 else:
@@ -676,9 +676,6 @@ class UbootInstaller(SubprocessMixin, Base):
 
         self.device = self.im.getDevice()
 
-        code = self.assertUnmounted()
-        if code: return code
-
         self.rawLoaderDevice = None
         # set to a partition device for raw loader install,
         # default to None for FS-based install
@@ -796,6 +793,9 @@ class UbootInstaller(SubprocessMixin, Base):
         if not stat.S_ISBLK(st[stat.ST_MODE]):
             self.log.error("not a block device: %s", self.device)
             return 1
+
+        code = self.assertUnmounted()
+        if code: return code
 
         code = self.maybeCreateLabel()
         if code: return code

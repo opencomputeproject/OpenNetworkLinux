@@ -284,7 +284,7 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
             l = [x for x in os.listdir(d) if x.endswith('.swi')]
             l = [os.path.join(d, x) for x in l]
             l.sort(key=swiSortKey)
-            return l[-1]
+            return l[-1] if l else None
 
         pm = ProcMountsParser()
         parts = [x for x in pm.mounts if x.device == dev]
@@ -294,6 +294,9 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
                 self.log.info("found 'latest' swi %s", dst)
             else:
                 dst = os.path.join(parts[0].dir, src)
+            if dst is None:
+                self.log.error("missing SWI")
+                return None
             if not os.path.exists(dst):
                 self.log.error("missing SWI: %s", dst)
                 return None

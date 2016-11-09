@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Re-install ONL using the ONL installer infrastructure.
+"""
+
+import onl.install.SystemInstall
+onl.install.SystemInstall.main()

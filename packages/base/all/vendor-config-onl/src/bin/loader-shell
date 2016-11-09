@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-"""Run native ONIE tools
+"""Run native (on-disk) loader tools
 """
 
 import onl.install.ShellApp

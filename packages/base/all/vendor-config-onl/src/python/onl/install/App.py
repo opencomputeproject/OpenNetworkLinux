@@ -17,9 +17,32 @@ import time
 from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser
+from ShellApp import Onie
 import ConfUtils, BaseInstall
 
-class App(SubprocessMixin):
+class OnieHelper(Onie):
+    """Unpack the initrd, but keep it around."""
+
+    UMOUNT = False
+    # leave self.onieDir mounted
+
+    ictx = None
+
+    def _runInitrdShell(self, initrd):
+        with InitrdContext(initrd, log=self.log) as self.ictx:
+            self.initrdDir = self.ictx.dir
+            self.ictx.detach()
+
+    def shutdown(self):
+
+        self.ictx.attach()
+        self.ictx.shutdown()
+
+        if self.dctx is not None:
+            self.dctx.attach()
+            self.dctx.shutdown()
+
+class App(SubprocessMixin, object):
 
     def __init__(self, url=None,
                  debug=False, force=False,
@@ -42,6 +65,8 @@ class App(SubprocessMixin):
         # local-install mode
 
         self.nextUpdate = None
+
+        self.onieHelper = None
 
     def run(self):
 
@@ -123,27 +148,27 @@ class App(SubprocessMixin):
         self.log.info("please reboot this system now.")
         return 0
 
-    def runLocal(self):
+    def runLocalOrChroot(self):
 
-        self.log.info("getting installer configuration")
-        if os.path.exists(ConfUtils.MachineConf.PATH):
-            self.machineConf = ConfUtils.MachineConf()
-        else:
-            self.log.warn("missing /etc/machine.conf from ONIE runtime")
-            self.machineConf = ConfUtils.MachineConf(path='/dev/null')
-        self.installerConf = ConfUtils.InstallerConf()
+        if self.machineConf is None:
+            self.log.error("missing machine.conf")
+            return 1
+        if self.installerConf is None:
+            self.log.error("missing installer.conf")
+            return 1
 
         ##self.log.info("using native GRUB")
         ##self.grubEnv = ConfUtils.GrubEnv(log=self.log.getChild("grub"))
 
-        pat = "/mnt/onie-boot/onie/initrd.img*"
-        l = glob.glob(pat)
-        if l:
-            initrd = l[0]
-            self.log.info("using native ONIE initrd+chroot GRUB (%s)", initrd)
-            initrdDir = InitrdContext.mkChroot(initrd, log=self.log)
-            self.grubEnv = ConfUtils.ChrootGrubEnv(initrdDir,
-                                                   bootDir="/mnt/onie-boot",
+        self.onieHelper = OnieHelper(log=self.log)
+        code = self.onieHelper.run()
+        if code:
+            self.log.warn("cannot find ONIE initrd")
+
+        if self.onieHelper.onieDir is not None:
+            self.log.info("using native ONIE initrd+chroot GRUB (%s)", self.onieHelper.onieDir)
+            self.grubEnv = ConfUtils.ChrootGrubEnv(self.onieHelper.initrdDir,
+                                                   bootDir=self.onieHelper.onieDir,
                                                    path="/grub/grubenv",
                                                    log=self.log.getChild("grub"))
             # direct access using ONIE initrd as a chroot
@@ -215,6 +240,19 @@ class App(SubprocessMixin):
 
         self.log.info("Install finished.")
         return 0
+
+    def runLocal(self):
+
+        self.log.info("getting installer configuration")
+        if os.path.exists(ConfUtils.MachineConf.PATH):
+            self.machineConf = ConfUtils.MachineConf()
+        else:
+            self.log.warn("missing /etc/machine.conf from ONIE runtime")
+            self.machineConf = ConfUtils.MachineConf(path='/dev/null')
+
+        self.installerConf = ConfUtils.InstallerConf()
+
+        return self.runLocalOrChroot()
 
     def findPlatform(self):
 
@@ -301,6 +339,10 @@ class App(SubprocessMixin):
         installer, self.installer = self.installer, None
         if installer is not None:
             installer.shutdown()
+
+        h, self.onieHelper = self.onieHelper, None
+        if h is not None:
+            h.shutdown()
 
     def post_mortem(self):
         self.log.info("re-attaching to tty")
