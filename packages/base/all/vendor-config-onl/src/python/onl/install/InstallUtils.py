@@ -935,9 +935,9 @@ class UbootInitrdContext(SubprocessMixin):
 
     def __enter__(self):
 
-        with open(path=self.path) as fd:
-            isFit = Fit.Parser.isFit(fd)
-            isLegacy = Legacy.Parser.isLegacy(fd)
+        with open(self.path) as fd:
+            isFit = Fit.Parser.isFit(stream=fd)
+            isLegacy = Legacy.Parser.isLegacy(stream=fd)
 
         if isFit:
             self._extractFit()
