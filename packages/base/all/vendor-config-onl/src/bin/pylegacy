@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Swiss-army-knife legacy U-Boot image decoder
+"""
+
+import onl.install.Legacy
+onl.install.Legacy.App.main()
