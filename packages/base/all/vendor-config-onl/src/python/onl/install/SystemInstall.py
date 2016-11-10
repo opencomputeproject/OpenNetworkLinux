@@ -16,7 +16,7 @@ import subprocess
 from onl.install.InstallUtils import InitrdContext
 from onl.install.InstallUtils import ProcMountsParser
 from onl.install.ConfUtils import MachineConf, InstallerConf
-from onl.install.ShellApp import Onie, Upgrader
+from onl.install.ShellApp import OnieBootContext, Upgrader
 from onl.install.InstallUtils import SubprocessMixin
 import onl.install.App
 
@@ -45,8 +45,6 @@ class App(SubprocessMixin):
 
         self.force = force
 
-        self.onieHelper = None
-
     def _runInitrd(self, helper, path):
         with InitrdContext(initrd=path, log=self.log) as ctx:
 
@@ -55,22 +53,14 @@ class App(SubprocessMixin):
                                         prefix="installer-", suffix=".d")
             chroot_idir = abs_idir[len(ctx.dir):]
 
-            self.onieHelper = onl.install.App.OnieHelper(log=self.log)
-            code = self.onieHelper.run()
-            if code:
-                self.log.error("cannot find/unpack ONIE initrd")
-                return code
-            self.log.info("onie directory is %s", self.onieHelper.onieDir)
-            self.log.info("initrd directory is %s", self.onieHelper.initrdDir)
+            with OnieBootContext(log=self.log) as octx:
+                self.log.info("onie directory is %s", octx.onieDir)
+                self.log.info("initrd directory is %s", octx.initrdDir)
 
-            src = os.path.join(self.onieHelper.initrdDir, "etc/machine.conf")
-            dst = os.path.join(ctx.dir, "etc/machine.conf")
-            self.log.debug("+ /bin/cp %s %s", src, dst)
-            shutil.copy2(src, dst)
-
-            h, self.onieHelper = self.onieHelper, None
-            if h is not None:
-                h.shutdown()
+                src = os.path.join(octx.initrdDir, "etc/machine.conf")
+                dst = os.path.join(ctx.dir, "etc/machine.conf")
+                self.log.debug("+ /bin/cp %s %s", src, dst)
+                shutil.copy2(src, dst)
 
             src = "/etc/fw_env.config"
             if os.path.exists(src):
@@ -221,10 +211,7 @@ class App(SubprocessMixin):
         return code
 
     def shutdown(self):
-
-        h, self.onieHelper = self.onieHelper, None
-        if h is not None:
-            h.shutdown()
+        pass
 
     @classmethod
     def main(cls):

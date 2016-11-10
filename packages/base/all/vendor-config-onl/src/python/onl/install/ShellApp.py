@@ -13,7 +13,7 @@ from InstallUtils import InitrdContext, MountContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser, ProcMtdParser
 from InstallUtils import BlkidParser
-import Fit
+from InstallUtils import FitInitrdContext
 
 import onl.platform.current
 from onl.sysconfig import sysconfig
@@ -47,30 +47,8 @@ class AppBase(SubprocessMixin, object):
         return 0
 
     def _runFitShell(self, device):
-        self.log.debug("parsing FIT image in %s", device)
-        p = Fit.Parser(path=device, log=self.log)
-        node = p.getInitrdNode()
-        if node is None:
-            self.log.error("cannot find initrd node in FDT")
-            return 1
-        prop = node.properties.get('data', None)
-        if prop is None:
-            self.log.error("cannot find initrd data property in FDT")
-            return 1
-        with open(device) as fd:
-            self.log.debug("reading initrd at [%x:%x]",
-                           prop.offset, prop.offset+prop.sz)
-            fd.seek(prop.offset, 0)
-            buf = fd.read(prop.sz)
-        try:
-            fno, initrd = tempfile.mkstemp(prefix="initrd-",
-                                           suffix=".img")
-            self.log.debug("+ cat > %s", initrd)
-            with os.fdopen(fno, "w") as fd:
-                fd.write(buf)
-            return self._runInitrdShell(initrd)
-        finally:
-            self.unlink(initrd)
+        with FitInitrdContext(path=device, log=self.log) as ctx:
+            return self._runInitrdShell(ctx.initrd)
 
     def shutdown(self):
         pass
@@ -109,21 +87,26 @@ class AppBase(SubprocessMixin, object):
         app.shutdown()
         sys.exit(code)
 
-class Onie(AppBase):
-    """Application shell that uses the ONIE runtime."""
+class OnieBootContext:
+    """Find the ONIE initrd and umpack/mount it."""
 
-    PROG = "onie-shell"
+    def __init__(self, log=None):
+        self.log = log or logging.getLogger(self.__class__.__name__)
 
-    UNMOUNT = True
-    # default, unmount directories once the initrd is extracted
+        self.initrd = None
 
-    def run(self):
+        self.pm = self.blkid = self.mtd = None
+        self.ictx = self.dctx = self.fctx = None
+        self.onieDir = None
+        self.initrdDir = None
+
+        self.__ictx = self.__dctx = self.__fctx = None
+
+    def __enter__(self):
 
         self.pm = ProcMountsParser()
         self.blkid = BlkidParser(log=self.log.getChild("blkid"))
         self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
-        self.dctx = None
-        self.onieDir = None
 
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
@@ -144,28 +127,29 @@ class Onie(AppBase):
                 self.log.debug("found ONIE boot mounted at %s", parts[0].dir)
                 initrd = _g(parts[0].dir)
                 if initrd is None:
-                    self.log.warn("cannot find ONIE initrd on %s", parts[0].dir)
-                else:
-                    self.onieDir = parts[0].dir
-                    self.log.debug("found ONIE initrd at %s", initrd)
-                    return self._runInitrdShell(initrd)
+                    raise ValueError("cannot find ONIE initrd on %s" % parts[0].dir)
+                self.log.debug("found ONIE initrd at %s", initrd)
+                with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
+                    self.initrd = initrd
+                    self.initrdDir = self.ictx.dir
+                    self.ictx.detach()
+                    return self
 
             # else, try to mount the directory containing the initrd
             with MountContext(dev, log=self.log) as self.dctx:
                 initrd = _g(self.dctx.dir)
                 if initrd is None:
-                    self.log.warn("cannot find ONIE initrd on %s", dev)
-                else:
-                    self.log.debug("found ONIE initrd at %s", initrd)
-                    try:
-                        return self._runInitrdShell(initrd)
-                    finally:
-                        if not self.UMOUNT:
-                            self.onieDir = self.dctx.hostDir
-                            self.dctx.detach()
+                    raise ValueError("cannot find ONIE initrd on %s" % dev)
+                self.onieDir = self.dctx.dir
+                self.dctx.detach()
+                self.log.debug("found ONIE initrd at %s", initrd)
+                with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
+                    self.initrd = initrd
+                    self.initrdDir = self.ictx.dir
+                    self.ictx.detach()
+                    return self
 
-            self.log.warn("cannot find an ONIE initrd")
-            return 1
+            raise ValueError("cannot find an ONIE initrd")
 
         # try to find onie initrd on a mounted fs (GRUB);
         # for ONIE images this is usually /mnt/onie-boot
@@ -178,7 +162,11 @@ class Onie(AppBase):
             else:
                 self.onieDir = part.dir
                 self.log.debug("found ONIE initrd at %s", initrd)
-                return self._runInitrdShell(initrd)
+                with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
+                    self.initrd = initrd
+                    self.initrdDir = self.ictx.dir
+                    self.ictx.detach()
+                    return self
 
         # grovel through MTD devices (u-boot)
         parts = [p for p in self.mtd.parts if p.label == "onie"]
@@ -186,13 +174,49 @@ class Onie(AppBase):
             part = parts[0]
             self.log.debug("found ONIE MTD device %s",
                            part.charDevice or part.blockDevice)
-            return self._runFitShell(part.blockDevice)
-        elif self.mtd.mounts:
-            self.log.error("cannot find ONIE MTD device")
-            return 1
+            with FitInitrdContext(part.blockDevice, log=self.log) as self.fctx:
+                with InitrdContext(initrd=self.fctx.initrd, log=self.log) as self.ictx:
+                    self.initrd = self.fctx.initrd
+                    self.fctx.detach()
+                    self.initrdDir = self.ictx.dir
+                    self.ictx.detach()
+                    return self
 
-        self.log.error("cannot find ONIE initrd")
-        return 1
+        if self.mtd.mounts:
+            raise ValueError("cannot find ONIE MTD device")
+
+        raise ValueError("cannot find ONIE initrd")
+
+    def shutdown(self):
+        ctx, self.fctx = self.fctx, None
+        if ctx is not None: ctx.shutdown()
+        ctx, self.ictx = self.ictx, None
+        if ctx is not None: ctx.shutdown()
+        ctx, self.dctx = self.dctx, None
+        if ctx is not None: ctx.shutdown()
+
+    def __exit__(self, eType, eValue, eTrace):
+        self.shutdown()
+        return False
+
+    def detach(self):
+        self.__fctx, self.fctx = self.fctx, None
+        self.__ictx, self.ictx = self.ictx, None
+        self.__dctx, self.dctx = self.dctx, None
+
+    def attach(self):
+        self.fctx = self.__fctx
+        self.ictx = self.__ictx
+        self.dctx = self.__dctx
+
+class Onie(AppBase):
+    """XXX roth -- refactor in from loader.py code."""
+
+    PROG = "onie-shell"
+
+    def run(self):
+        with OnieBootContext(log=self.log) as ctx:
+            return self._runInitrdShell(ctx.initrd)
 
 class Loader(AppBase):
     """Application shell that uses the (installed) loader runtime."""

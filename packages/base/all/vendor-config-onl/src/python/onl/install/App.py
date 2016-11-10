@@ -17,30 +17,8 @@ import time
 from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser
-from ShellApp import Onie
+from ShellApp import OnieBootContext
 import ConfUtils, BaseInstall
-
-class OnieHelper(Onie):
-    """Unpack the initrd, but keep it around."""
-
-    UMOUNT = False
-    # leave self.onieDir mounted
-
-    ictx = None
-
-    def _runInitrdShell(self, initrd):
-        with InitrdContext(initrd, log=self.log) as self.ictx:
-            self.initrdDir = self.ictx.dir
-            self.ictx.detach()
-
-    def shutdown(self):
-
-        self.ictx.attach()
-        self.ictx.shutdown()
-
-        if self.dctx is not None:
-            self.dctx.attach()
-            self.dctx.shutdown()
 
 class App(SubprocessMixin, object):
 
@@ -66,7 +44,7 @@ class App(SubprocessMixin, object):
 
         self.nextUpdate = None
 
-        self.onieHelper = None
+        self.octx = None
 
     def run(self):
 
@@ -160,15 +138,13 @@ class App(SubprocessMixin, object):
         ##self.log.info("using native GRUB")
         ##self.grubEnv = ConfUtils.GrubEnv(log=self.log.getChild("grub"))
 
-        self.onieHelper = OnieHelper(log=self.log)
-        code = self.onieHelper.run()
-        if code:
-            self.log.warn("cannot find ONIE initrd")
+        with OnieBootContext(log=self.log) as self.octx:
+            self.octx.detach()
 
-        if self.onieHelper.onieDir is not None:
-            self.log.info("using native ONIE initrd+chroot GRUB (%s)", self.onieHelper.onieDir)
-            self.grubEnv = ConfUtils.ChrootGrubEnv(self.onieHelper.initrdDir,
-                                                   bootDir=self.onieHelper.onieDir,
+        if self.octx.onieDir is not None:
+            self.log.info("using native ONIE initrd+chroot GRUB (%s)", self.octx.onieDir)
+            self.grubEnv = ConfUtils.ChrootGrubEnv(self.octx.initrdDir,
+                                                   bootDir=self.octx.onieDir,
                                                    path="/grub/grubenv",
                                                    log=self.log.getChild("grub"))
             # direct access using ONIE initrd as a chroot
@@ -340,9 +316,10 @@ class App(SubprocessMixin, object):
         if installer is not None:
             installer.shutdown()
 
-        h, self.onieHelper = self.onieHelper, None
-        if h is not None:
-            h.shutdown()
+        ctx, self.octx = self.octx, None
+        if ctx:
+            ctx.attach()
+            ctx.shutdown()
 
     def post_mortem(self):
         self.log.info("re-attaching to tty")
