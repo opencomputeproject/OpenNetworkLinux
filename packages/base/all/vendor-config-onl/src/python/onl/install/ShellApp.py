@@ -13,7 +13,7 @@ from InstallUtils import InitrdContext, MountContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser, ProcMtdParser
 from InstallUtils import BlkidParser
-from InstallUtils import FitInitrdContext
+from InstallUtils import UbootInitrdContext
 
 import onl.platform.current
 from onl.sysconfig import sysconfig
@@ -47,7 +47,7 @@ class AppBase(SubprocessMixin, object):
         return 0
 
     def _runFitShell(self, device):
-        with FitInitrdContext(path=device, log=self.log) as ctx:
+        with UbootInitrdContext(path=device, log=self.log) as ctx:
             return self._runInitrdShell(ctx.initrd)
 
     def shutdown(self):
@@ -174,7 +174,7 @@ class OnieBootContext:
             part = parts[0]
             self.log.debug("found ONIE MTD device %s",
                            part.charDevice or part.blockDevice)
-            with FitInitrdContext(part.blockDevice, log=self.log) as self.fctx:
+            with UbootInitrdContext(part.blockDevice, log=self.log) as self.fctx:
                 with InitrdContext(initrd=self.fctx.initrd, log=self.log) as self.ictx:
                     self.initrd = self.fctx.initrd
                     self.fctx.detach()
