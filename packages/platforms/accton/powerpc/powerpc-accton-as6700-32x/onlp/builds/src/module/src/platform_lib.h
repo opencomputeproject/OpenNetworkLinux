@@ -35,13 +35,13 @@
 #define CHASSIS_THERMAL_COUNT 8
 #define CHASSIS_SFP_COUNT 32
 
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/6-003e/"
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/6-003d/"
+#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/6-003e/"
+#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/6-003d/"
 
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/6-003a/"
-#define PSU1_DC_HWMON_PREFIX "/sys/bus/i2c/devices/6-0052/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/6-0039/"
+#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/6-0039/"
 #define PSU2_DC_HWMON_PREFIX "/sys/bus/i2c/devices/6-0051/"
+#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/6-003a/"
+#define PSU1_DC_HWMON_PREFIX "/sys/bus/i2c/devices/6-0052/"
 
 #define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
 #define PSU1_DC_HWMON_NODE(node) PSU1_DC_HWMON_PREFIX#node
