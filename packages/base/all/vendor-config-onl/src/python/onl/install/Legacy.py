@@ -176,14 +176,9 @@ class Parser:
         self.ih_dcrc = hdr.pop(0)
 
         self.ih_os = hdr.pop(0)
-        if self.ih_os != self.IH_OS_LINUX:
-            raise ValueError("invalid OS code")
-
         self.ih_arch = hdr.pop(0)
 
         self.ih_type = hdr.pop(0)
-        if self.ih_type != self.IH_TYPE_MULTI:
-            raise ValueError("invalid image type")
 
         self.ih_comp = hdr.pop(0)
         # compression is ignored here, since it applies to the first
