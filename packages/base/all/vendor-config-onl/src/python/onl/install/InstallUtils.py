@@ -10,7 +10,7 @@ import tempfile
 import string
 import shutil
 
-import Fit
+import Fit, Legacy
 
 class SubprocessMixin:
 
@@ -879,16 +879,16 @@ class InitrdContext(SubprocessMixin):
             # (it's inside this chroot anyway)
         return initrdDir
 
-class FitInitrdContext(SubprocessMixin):
+class UbootInitrdContext(SubprocessMixin):
 
     def __init__(self, path, log=None):
-        self.fitPath = path
+        self.path = path
         self.log = log or logging.getLogger(self.__class__.__name__)
         self.initrd = self.__initrd = None
 
-    def __enter__(self):
-        self.log.debug("parsing FIT image in %s", self.fitPath)
-        p = Fit.Parser(path=self.fitPath, log=self.log)
+    def _extractFit(self):
+        self.log.debug("parsing FIT image in %s", self.path)
+        p = Fit.Parser(path=self.path, log=self.log)
         node = p.getInitrdNode()
         if node is None:
             raise ValueError("cannot find initrd node in FDT")
@@ -896,7 +896,7 @@ class FitInitrdContext(SubprocessMixin):
         if prop is None:
             raise ValueError("cannot find initrd data property in FDT")
 
-        with open(self.fitPath) as fd:
+        with open(self.path) as fd:
             self.log.debug("reading initrd at [%x:%x]",
                            prop.offset, prop.offset+prop.sz)
             fd.seek(prop.offset, 0)
@@ -907,7 +907,47 @@ class FitInitrdContext(SubprocessMixin):
         self.log.debug("+ cat > %s", self.initrd)
         with os.fdopen(fno, "w") as fd:
             fd.write(buf)
-        return self
+
+    def _extractLegacy(self):
+        self.log.debug("parsing legacy U-Boot image in %s", self.path)
+        p = Legacy.Parser(path=self.path, log=self.log)
+
+        if p.ih_type != Legacy.Parser.IH_TYPE_MULTI:
+            raise ValueError("not a multi-file image")
+
+        if p.ih_os != Legacy.Parser.IH_OS_LINUX:
+            raise ValueError("invalid OS code")
+
+        sz, off = p.images[1]
+        # assume the initrd is the second of three images
+
+        with open(self.path) as fd:
+            self.log.debug("reading initrd at [%x:%x]",
+                           off, off+sz)
+            fd.seek(off, 0)
+            buf = fd.read(sz)
+
+        fno, self.initrd = tempfile.mkstemp(prefix="initrd-",
+                                            suffix=".img")
+        self.log.debug("+ cat > %s", self.initrd)
+        with os.fdopen(fno, "w") as fd:
+            fd.write(buf)
+
+    def __enter__(self):
+
+        with open(self.path) as fd:
+            isFit = Fit.Parser.isFit(stream=fd)
+            isLegacy = Legacy.Parser.isLegacy(stream=fd)
+
+        if isFit:
+            self._extractFit()
+            return self
+
+        if isLegacy:
+            self._extractLegacy()
+            return self
+
+        raise ValueError("invalid U-Boot image %s" % self.path)
 
     def shutdown(self):
         initrd, self.initrd = self.initrd, None

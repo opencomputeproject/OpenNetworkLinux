@@ -38,6 +38,21 @@ class Parser:
         self.rootNodes = {}
         self._parse()
 
+    @classmethod
+    def isFit(cls, path=None, stream=None):
+        if stream is not None:
+            try:
+                pos = stream.tell()
+                buf = stream.read(4)
+            finally:
+                stream.seek(pos, 0)
+        else:
+            with open(path) as fd:
+                buf = fd.read(4)
+        if len(buf) != 4: return False
+        magic = struct.unpack(">I", buf)[0]
+        return magic == cls.FDT_MAGIC
+
     def _parse(self):
         if self.stream is not None:
             try:
@@ -58,7 +73,7 @@ class Parser:
         hdr = list(struct.unpack(">10I", buf))
         magic = hdr.pop(0)
         if magic != self.FDT_MAGIC:
-            raise ValueError("missing magic")
+            raise ValueError("missing or invalid magic")
         self.fdtSize = hdr.pop(0)
         self.structPos = hdr.pop(0)
         self.stringPos = hdr.pop(0)

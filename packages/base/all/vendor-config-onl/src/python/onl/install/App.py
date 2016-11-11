@@ -135,35 +135,6 @@ class App(SubprocessMixin, object):
             self.log.error("missing installer.conf")
             return 1
 
-        ##self.log.info("using native GRUB")
-        ##self.grubEnv = ConfUtils.GrubEnv(log=self.log.getChild("grub"))
-
-        with OnieBootContext(log=self.log) as self.octx:
-            self.octx.detach()
-
-        if self.octx.onieDir is not None:
-            self.log.info("using native ONIE initrd+chroot GRUB (%s)", self.octx.onieDir)
-            self.grubEnv = ConfUtils.ChrootGrubEnv(self.octx.initrdDir,
-                                                   bootDir=self.octx.onieDir,
-                                                   path="/grub/grubenv",
-                                                   log=self.log.getChild("grub"))
-            # direct access using ONIE initrd as a chroot
-            # (will need to fix up bootDir and bootPart later)
-        else:
-            self.log.info("using proxy GRUB")
-            self.grubEnv = ConfUtils.ProxyGrubEnv(self.installerConf,
-                                                  bootDir="/mnt/onie-boot",
-                                                  path="/grub/grubenv",
-                                                  chroot=False,
-                                                  log=self.log.getChild("grub"))
-            # indirect access through chroot host
-            # (will need to fix up bootDir and bootPart later)
-
-        if os.path.exists(ConfUtils.UbootEnv.SETENV):
-            self.ubootEnv = ConfUtils.UbootEnv(log=self.log.getChild("u-boot"))
-        else:
-            self.ubootEnv = None
-
         self.log.info("ONL Installer %s", self.installerConf.onl_version)
 
         code = self.findPlatform()
@@ -189,6 +160,39 @@ class App(SubprocessMixin, object):
         else:
             self.log.error("cannot detect installer type")
             return 1
+
+        self.grubEnv = None
+
+        if 'grub' in self.onlPlatform.platform_config:
+            ##self.log.info("using native GRUB")
+            ##self.grubEnv = ConfUtils.GrubEnv(log=self.log.getChild("grub"))
+
+            with OnieBootContext(log=self.log) as self.octx:
+                self.octx.detach()
+
+            if self.octx.onieDir is not None:
+                self.log.info("using native ONIE initrd+chroot GRUB (%s)", self.octx.onieDir)
+                self.grubEnv = ConfUtils.ChrootGrubEnv(self.octx.initrdDir,
+                                                       bootDir=self.octx.onieDir,
+                                                       path="/grub/grubenv",
+                                                       log=self.log.getChild("grub"))
+                # direct access using ONIE initrd as a chroot
+                # (will need to fix up bootDir and bootPart later)
+
+        if self.grubEnv is None:
+            self.log.info("using proxy GRUB")
+            self.grubEnv = ConfUtils.ProxyGrubEnv(self.installerConf,
+                                                  bootDir="/mnt/onie-boot",
+                                                  path="/grub/grubenv",
+                                                  chroot=False,
+                                                  log=self.log.getChild("grub"))
+            # indirect access through chroot host
+            # (will need to fix up bootDir and bootPart later)
+
+        if os.path.exists(ConfUtils.UbootEnv.SETENV):
+            self.ubootEnv = ConfUtils.UbootEnv(log=self.log.getChild("u-boot"))
+        else:
+            self.ubootEnv = None
 
         # run the platform-specific installer
         self.installer = iklass(machineConf=self.machineConf,
