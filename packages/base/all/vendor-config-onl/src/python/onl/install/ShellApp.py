@@ -302,7 +302,7 @@ class Loader(AppBase):
         # run from a file in a mounted filesystem
         parts = [p for p in self.pm.mounts if p.device == bootDevice]
         if parts:
-            loaderDir = parts[0]
+            loaderDir = parts[0].dir
             self.log.debug("found loader device mounted at %s", loaderDir)
             for e in l:
                 p = os.path.join(loaderDir, e)
