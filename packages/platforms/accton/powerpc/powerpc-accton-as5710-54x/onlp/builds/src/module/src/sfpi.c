@@ -339,7 +339,7 @@ onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
     int rc;
 
     if (set_active_port(port+1) != 0) {
-        AIM_LOG_INFO("Unable to set active port(%d)\r\n", port);
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -356,7 +356,7 @@ onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
     int rc;
 
     if (set_active_port(port+1) != 0) {
-        AIM_LOG_INFO("Unable to set active port(%d)\r\n", port);
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -373,7 +373,7 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
     int rc;
 
     if (set_active_port(port+1) != 0) {
-        AIM_LOG_INFO("Unable to set active port(%d)\r\n", port);
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -390,7 +390,7 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
     int rc;
 
     if (set_active_port(port+1) != 0) {
-        AIM_LOG_INFO("Unable to set active port(%d)\r\n", port);
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
