@@ -58,7 +58,7 @@ if __name__ == "__main__":
     ModuleGenerator.main(globals().copy())
 
     # Make sure the manifest gets regenerated.
-    os.system("rm -rf %s/make/module-manifest.mk" % ROOT)
+    os.system("rm -rf %s/make/modules/modules*" % ROOT)
 
 
 
