@@ -361,16 +361,44 @@ else
   installer_list=$initrd_archive
 fi
 
+installer_unzip() {
+  local zip tmp dummy
+  zip=$1; shift
+
+  installer_say "Extracting from $zip: $@ ..."
+
+  tmp=$(mktemp -d -t "unzip-XXXXXX")
+  if test "$SFX_PAD"; then
+    # ha ha, busybox cannot exclude multiple files
+    unzip -o $zip "$@" -x $SFX_PAD -d $tmp
+  elif test "$SFX_UNZIP"; then
+    unzip -o $zip "$@" -x $installer_script -d $tmp
+  else
+    dd if=$zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
+    | unzip -o - "$@" -x $installer_script -d $tmp
+  fi
+
+  rm -f $tmp/$installer_script
+  if test "$SFX_PAD"; then
+    rm -f $tmp/$SFX_PAD
+  fi
+
+  set dummy $tmp/*
+  if test -e "$2"; then
+    shift
+    while test $# -gt 0; do
+      mv "$1" .
+      shift
+    done
+  else
+    installer_say "Extracting from $zip: no files extracted"
+  fi
+
+  return 0
+}
+
 installer_say "Unpacking ONL installer files..."
-if test "$SFX_PAD"; then
-  # ha ha, busybox cannot exclude multiple files
-  unzip -o $installer_zip $installer_list -x $SFX_PAD
-elif test "$SFX_UNZIP"; then
-  unzip -o $installer_zip $installer_list -x $installer_script
-else
-  dd if=$installer_zip bs=$SFX_BLOCKSIZE skip=$SFX_BLOCKS \
-  | unzip -o - $installer_list -x $installer_script
-fi
+installer_unzip $installer_zip $installer_list
 
 # Developer debugging
 if has_boot_env onl_installer_unpack_only; then installer_unpack_only=1; fi
@@ -513,6 +541,13 @@ else
   installer_say "*** watch out for lingering mount-points"
 fi
 
+installer_unzip $installer_zip preinstall.sh || :
+if test -f preinstall.sh; then
+  installer_say "Invoking pre-install actions"
+  chmod +x preinstall.sh
+  ./preinstall.sh $rootdir
+fi
+
 chroot "${rootdir}" $installer_shell
 
 if test -f "$postinst"; then
@@ -520,6 +555,12 @@ if test -f "$postinst"; then
   set -x
   . "$postinst"
   set +x
+fi
+
+installer_unzip $installer_zip postinstall.sh || :
+if test -f preinstall.sh; then
+  chmod +x postinstall.sh
+  ./postinstall.sh $rootdir
 fi
 
 trap - 0 1
