@@ -355,3 +355,15 @@ class OnlMountContextReadWrite(OnlMountContext):
     def __init__(self, label, logger):
         OnlMountContext.__init__(self, label, "rw", logger)
 
+
+class OnlOnieBootContext(MountContext):
+    def __init__(self, mdir="/mnt/onie-boot", mode="rw", label="ONIE-BOOT", logger=None):
+        try:
+            device = subprocess.check_output("blkid -L %s" % label, shell=True).strip()
+        except subprocess.CalledProcessError:
+            self.logger.debug("Block label %s does not yet exist..." % label)
+            raise
+        if not os.path.exists(mdir):
+            os.makedirs(mdir)
+        MountContext.__init__(self, device, mdir, mode, logger)
+
