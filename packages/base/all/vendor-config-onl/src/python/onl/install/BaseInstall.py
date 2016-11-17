@@ -419,8 +419,17 @@ terminal_input serial
 terminal_output serial
 set timeout=5
 
+# Always boot the saved_entry value
+load_env
+if [ "${saved_entry}" ] ; then
+   set default="${saved_entry}"
+fi
+
 menuentry %(boot_menu_entry)s {
   search --no-floppy --label --set=root ONL-BOOT
+  # Always return to this entry by default.
+  set saved_entry="0"
+  save_env saved_entry
   echo 'Loading %(boot_loading_name)s ...'
   insmod gzio
   insmod part_msdos
@@ -431,6 +440,9 @@ menuentry %(boot_menu_entry)s {
 # Menu entry to chainload ONIE
 menuentry ONIE {
   search --no-floppy --label --set=root ONIE-BOOT
+  # Always return to entry 0 by default.
+  set saved_entry="0"
+  save_env saved_entry
   echo 'Loading ONIE ...'
   chainloader +1
 }
