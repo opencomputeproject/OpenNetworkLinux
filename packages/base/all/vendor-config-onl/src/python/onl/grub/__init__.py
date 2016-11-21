@@ -1,5 +1,6 @@
 from onl.mounts import OnlOnieBootContext, OnlMountContextReadWrite
 import subprocess
+import os
 
 ONIE_BOOT_MODES = [ 'install',
                     'rescue',
@@ -17,8 +18,15 @@ def onie_boot_mode_set(mode):
     with OnlOnieBootContext() as ob:
         subprocess.check_call("%s/onie/tools/bin/onie-boot-mode -o %s" % (ob.directory, mode), shell=True)
 
+def _makedirs(d):
+    if not os.path.exists(d):
+        os.makedirs(d)
+
 def onie_fwpkg(arguments):
     with OnlOnieBootContext() as ob:
+        # This is necessary if we've upgraded ONIE but haven't booted into it yet...
+        _makedirs("%s/onie/update/pending" % ob.directory)
+        _makedirs("%s/onie/update/attempts" % ob.directory)
         subprocess.check_call("%s/onie/tools/bin/onie-fwpkg %s" % (ob.directory, arguments), shell=True)
 
 def boot_entry_set(index):
