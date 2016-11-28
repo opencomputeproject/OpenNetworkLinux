@@ -25,8 +25,12 @@ class FirmwareUpgrade(ubase.BaseOnieUpgrade):
         self.load_manifest(os.path.join(sysconfig.upgrade.firmware.package.dir, "manifest.json"))
 
     def do_upgrade(self, forced=False):
-        self.install_onie_updater(sysconfig.upgrade.firmware.package.dir,
-                                  self.manifest['updater'])
+        if self.manifest.get('fwpkg', False):
+            self.onie_fwpkg_add(os.path.join(sysconfig.upgrade.firmware.package.dir,
+                                             self.manifest['updater']))
+        else:
+            self.install_onie_updater(sysconfig.upgrade.firmware.package.dir,
+                                      self.manifest['updater'])
         self.initiate_onie_update()
 
 

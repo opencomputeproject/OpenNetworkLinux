@@ -1,2 +1,1 @@
-DIRECTORIES := rootfs swi installer
-include $(ONL)/make/subdirs.mk
+include $(ONL)/make/arch-build.mk

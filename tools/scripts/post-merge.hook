@@ -2,14 +2,11 @@
 ############################################################
 #
 # Every time a merge is performed we should invalidate
-# the module manifest.
+# the module data.
 #
 ############################################################
-mm="$GIT_DIR/../make/module-manifest.mk"
+echo "Removing module data after merge..."
+rm -rf "$GIT_DIR/../make/modules/modules*"
 
-if [ -f "$mm" ]; then
-    echo "Removing module manifest after merge..."
-    rm "$mm"
-fi
 
 

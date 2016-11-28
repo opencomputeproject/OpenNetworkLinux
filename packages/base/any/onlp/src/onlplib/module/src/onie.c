@@ -395,38 +395,53 @@ onlp_onie_show(onlp_onie_info_t* info, aim_pvs_t* pvs)
     }
 }
 
+#include <cjson/cJSON.h>
+
 void
 onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
 {
-    aim_printf(pvs, "{\n");
+    cJSON* cj = cJSON_CreateObject();
 
-#define STROUT(_name, _member)                                   \
-    do {                                                         \
-        aim_printf(pvs, "    \"%s\" : ", #_name);                 \
-        if(info-> _member) {                                     \
-            aim_printf(pvs, "\"%s\",\n", info->_member);         \
-        }                                                        \
-        else {                                                   \
-            aim_printf(pvs, "null,\n");                          \
-        }                                                        \
+#define _S(_name, _member)                                              \
+    do {                                                                \
+        if(info-> _member) {                                            \
+            cJSON_AddStringToObject(cj, #_name, info-> _member);        \
+        } else {                                                        \
+            cJSON_AddNullToObject(cj, #_name);                          \
+        }                                                               \
     } while(0)
 
-    STROUT(Product Name, product_name);
-    STROUT(Part Number, part_number);
-    STROUT(Serial Number, serial_number);
-    aim_printf(pvs, "    \"MAC\": \"%{mac}\", ", info->mac);
-    aim_printf(pvs, "    \"MAC Range\": %d,\n", info->mac_range);
-    STROUT(Manufacture Date,manufacture_date);
-    STROUT(Vendor,vendor);
-    STROUT(Platform Name,platform_name);
-    aim_printf(pvs, "    \"Device Version\": %u,\n", info->device_version);
-    STROUT(Label Revision,label_revision);
-    STROUT(Country Code,country_code);
-    STROUT(Diag Version,diag_version);
-    STROUT(Service Tag,service_tag);
-    STROUT(ONIE Version,onie_version);
-    aim_printf(pvs, "    \"CRC\": \"0x%x\"\n", info->crc);
-    aim_printf(pvs, "}\n");
+#define _N(_name, _member)                                      \
+    do {                                                        \
+        cJSON_AddNumberToObject(cj, #_name, info-> _member);    \
+    } while(0)
+
+    _S(Product Name, product_name);
+    _S(Part Number, part_number);
+    _S(Serial Number, serial_number);
+    {
+        char* mac = aim_dfstrdup("%{mac}", info->mac);
+        cJSON_AddStringToObject(cj, "MAC", mac);
+        aim_free(mac);
+    }
+    _S(Manufacture Date,manufacture_date);
+    _S(Vendor,vendor);
+    _S(Platform Name,platform_name);
+    _S(Label Revision,label_revision);
+    _S(Country Code,country_code);
+    _S(Diag Version,diag_version);
+    _S(Service Tag,service_tag);
+    _S(ONIE Version,onie_version);
+    _N(Device Version, device_version);
+    {
+        char* crc = aim_fstrdup("0x%x", info->crc);
+        cJSON_AddStringToObject(cj, "CRC", crc);
+        aim_free(crc);
+    }
+    char* out = cJSON_Print(cj);
+    aim_printf(pvs, "%s\n", out);
+    free(out);
+    cJSON_Delete(cj);
 }
 
 
