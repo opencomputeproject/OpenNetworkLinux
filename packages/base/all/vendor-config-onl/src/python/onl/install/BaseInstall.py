@@ -3,7 +3,7 @@
 Base classes for installers.
 """
 
-import os, stat
+import os, sys, stat
 import subprocess
 import re
 import tempfile
@@ -13,10 +13,12 @@ import parted
 import yaml
 import zipfile
 import shutil
+import imp
 
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
+from Plugin import Plugin
 
 import onl.YamlUtils
 from onl.sysconfig import sysconfig
@@ -413,6 +415,50 @@ class Base:
 
         return 0
 
+    def preinstall(self):
+        return self.runPlugin("preinstall.py")
+
+    def postinstall(self):
+        return self.runPlugin("postinstall.py")
+
+    def runPluginFile(self, pyPath):
+        with open(pyPath) as fd:
+            sfx = ('.py', 'U', imp.PY_SOURCE,)
+            mod = imp.load_module("plugin", fd, pyPath, sfx)
+            for attr in dir(mod):
+                klass = getattr(mod, attr)
+                if isinstance(klass, type) and issubclass(klass, Plugin):
+                    self.log.info("%s: running plugin %s", pyPath, attr)
+                    plugin = klass(self)
+                    try:
+                        code = plugin.run()
+                    except:
+                        self.log.exception("plugin failed")
+                        code = 1
+                    plugin.shutdown()
+                    if code: return code
+
+        return 0
+
+    def runPlugin(self, basename):
+
+        src = os.path.join(self.im.installerConf.installer_dir, basename)
+        if os.path.exists(src):
+            return self.runPluginFile(src)
+
+        if basename in self.zf.namelist():
+            try:
+                src = None
+                with self.zf.open(basename, "r") as rfd:
+                    wfno, src = tempfile.mkstemp(prefix="plugin-",
+                                                 suffix=".py")
+                    with os.fdopen(wfno, "w") as wfd:
+                        shutil.copyfileobj(rfd, wfd)
+                    return self.runPluginFile(src)
+            finally:
+                if src and os.path.exists(src):
+                    os.unlink(src)
+
 GRUB_TPL = """\
 serial %(serial)s
 terminal_input serial
@@ -603,6 +649,14 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installGpt(self):
 
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
+        code = self.preinstall()
+        if code: return code
+
         code = self.findGpt()
         if code: return code
 
@@ -640,11 +694,6 @@ class GrubInstaller(SubprocessMixin, Base):
         self.im.grubEnv.__dict__['bootPart'] = dev.device
         self.im.grubEnv.__dict__['bootDir'] = None
 
-        # get a handle to the installer zip
-        p = os.path.join(self.im.installerConf.installer_dir,
-                         self.im.installerConf.installer_zip)
-        self.zf = zipfile.ZipFile(p)
-
         code = self.installSwi()
         if code: return code
 
@@ -661,6 +710,9 @@ class GrubInstaller(SubprocessMixin, Base):
         if code: return code
 
         code = self.installGrub()
+        if code: return code
+
+        code = self.postinstall()
         if code: return code
 
         self.log.info("ONL loader install successful.")
@@ -839,6 +891,14 @@ class UbootInstaller(SubprocessMixin, Base):
             self.log.error("not a block device: %s", self.device)
             return 1
 
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
+        code = self.preinstall()
+        if code: return code
+
         code = self.assertUnmounted()
         if code: return code
 
@@ -884,11 +944,6 @@ class UbootInstaller(SubprocessMixin, Base):
                 self.rawLoaderDevice = self.device + str(partIdx+1)
                 break
 
-        # get a handle to the installer zip
-        p = os.path.join(self.im.installerConf.installer_dir,
-                         self.im.installerConf.installer_zip)
-        self.zf = zipfile.ZipFile(p)
-
         code = self.installSwi()
         if code: return code
 
@@ -911,6 +966,9 @@ class UbootInstaller(SubprocessMixin, Base):
         # XXX roth probably not needed
 
         code = self.installUbootEnv()
+        if code: return code
+
+        code = self.postinstall()
         if code: return code
 
         return 0

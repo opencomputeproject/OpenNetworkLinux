@@ -106,6 +106,18 @@ class InstallerShar(object):
         self.files.append(filename)
         self.files = list(set(self.files))
 
+    def add_file_as(self, source, basename):
+        if not os.path.exists(source):
+            self.abort("File %s does not exist." % source)
+
+        tmpdir = os.path.join(self.work_dir, "tmp")
+        if not os.path.exists(tmpdir):
+            os.mkdir(tmpdir)
+
+        dst = os.path.join(tmpdir, basename)
+        shutil.copy(source, dst)
+        self.add_file(dst)
+
     def add_dir(self, dir_):
         if not os.path.isdir(dir_):
             self.abort("Directory %s does not exist." % dir_)
@@ -174,6 +186,16 @@ if __name__ == '__main__':
     ap.add_argument("--verbose", '-v', help="Verbose output.", action='store_true')
     ap.add_argument("--out", help="Destination Filename")
 
+    ap.add_argument("--preinstall-script",
+                    help="Specify a preinstall script (runs before installer)")
+    ap.add_argument("--postinstall-script",
+                    help="Specify a preinstall script (runs after installer)")
+
+    ap.add_argument("--preinstall-plugin",
+                    help="Specify a preinstall plugin (runs from within the installer chroot)")
+    ap.add_argument("--postinstall-plugin",
+                    help="Specify a postinstall plugin (runs from within the installer chroot)")
+
     ops = ap.parse_args()
     installer = InstallerShar(ops.arch, ops.work_dir)
 
@@ -208,6 +230,20 @@ if __name__ == '__main__':
 
     if ops.swi:
         installer.add_swi(ops.swi)
+
+    hookdir = os.path.join(installer.work_dir, "tmp")
+    if not os.path.exists(hookdir):
+        os.makedirs(hookdir)
+
+    if ops.preinstall_script:
+        installer.add_file_as(ops.preinstall_script, "preinstall.sh")
+    if ops.postinstall_script:
+        installer.add_file_as(ops.postinstall_script, "postinstall.sh")
+
+    if ops.preinstall_plugin:
+        installer.add_file_as(ops.preinstall_plugin, "preinstall.py")
+    if ops.postinstall_plugin:
+        installer.add_file_as(ops.postinstall_plugin, "postinstall.py")
 
     iname = os.path.abspath(ops.out)
     installer.build(iname)
