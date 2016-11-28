@@ -97,8 +97,8 @@ class OnlBootConfig(object):
 
 
 class OnlBootConfigNet(OnlBootConfig):
-    def __init(self):
-        self.netrequired = False
+
+    NET_REQUIRED = False
 
     def netauto_set(self):
         self.delete('NETIP')
@@ -125,21 +125,21 @@ class OnlBootConfigNet(OnlBootConfig):
             if netip:
                 if not self.is_ip_address(netip):
                     raise ValueError("NETIP=%s is not a valid ip-address" % (netup))
-            elif self.netrequired:
+            elif self.NET_REQUIRED:
                 raise ValueError("No IP configuration set for the management interface.")
 
             netmask = self.keys.get('NETMASK', None)
             if netmask:
                 if not self.is_netmask(netmask):
                     raise ValueError("NETMASK=%s is not a valid netmask." % (netmask))
-            elif self.netrequired:
+            elif self.NET_REQUIRED:
                 raise ValueError("No Netmask configured for the management interface.")
 
             netgw = self.keys.get('NETGW', None)
             if netgw:
                 if not self.is_ip_address(netgw):
                     raise ValueError("NETGW=%s is not a valid ip-address." % (netgw))
-            elif self.netrequired:
+            elif self.NET_REQUIRED:
                 raise ValueError("No gateway configured for the management interface.")
 
             if netip and netmask and netgw:
@@ -149,8 +149,10 @@ class OnlBootConfigNet(OnlBootConfig):
             elif netip or netmask or netgw:
                 raise ValueError("Incomplete static network configuration. NETIP, NETMASK, and NETGW must all be set.")
 
-        elif self.keys['NETAUTO'] != 'dhcp':
+        elif self.keys['NETAUTO'] not in ['dhcp', 'up']:
             raise ValueError("The NETAUTO value '%s' is invalid." % self.keys['NETAUTO'])
+        elif self.keys['NETAUTO'] == 'up' && self.NET_REQUIRED:
+            raise ValueError("NETAUTO is 'up' but non-local networking is required.")
 
         if 'NETDEV' not in self.keys:
             self.keys['NETDEV'] = 'ma1'
