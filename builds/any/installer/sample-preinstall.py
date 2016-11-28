@@ -5,7 +5,7 @@ Example Python script for pre-install hooks.
 Add this as a preinstall hook to your installer via
 the 'mkinstaller.py' command line:
 
-$ mkinstaller.py ... --preinstall-plugin sample-preinstall.py ...
+$ mkinstaller.py ... --plugin sample-preinstall.py ...
 
 At install time, this script will
 

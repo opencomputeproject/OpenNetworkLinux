@@ -5,7 +5,7 @@ Example Python script for post-install hooks.
 Add this as a postinstall hook to your installer via
 the 'mkinstaller.py' command line:
 
-$ mkinstaller.py ... --postinstall-plugin sample-postinstall.py ...
+$ mkinstaller.py ... --plugin sample-postinstall.py ...
 
 At install time, this script will
 
