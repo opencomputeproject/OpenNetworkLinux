@@ -26,6 +26,8 @@ of the installer Python script) will
 2. instantiate an instance of each class, with the installer
    object initialized as the 'installer' attribute
 3. invoke the 'run' method (which must be overridden by implementors)
+   For a post-install plugin, the 'mode' argument is set to
+   PLUGIN_POSTINSTALL.
 4. invoke the 'shutdown' method (by default, a no-op)
 
 The 'run' method should return zero on success. In any other case, the
@@ -44,6 +46,12 @@ disk, the filesystems should be re-mounted temporarily with
 e.g. MountContext. The OnlMountContextReadWrite object and their
 siblings won't work here because the mtab.yml file is not populated
 within the loader environment.
+
+A post-install plugin should execute any post-install actions when
+'mode' is set to PLUGIN_POSTINSTALL. If 'mode' is set to any other
+value, the plugin should ignore it and return zero. The plugin run()
+method is invoked multiple times during the installer with different
+values of 'mode'. The 'shutdown()' method is called only once.
 
 When using MountContxt, the system state in the installer object can help
 (self.installer.blkidParts in particular).
