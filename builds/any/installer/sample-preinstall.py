@@ -44,6 +44,10 @@ import onl.install.Plugin
 
 class Plugin(onl.install.Plugin.Plugin):
 
-    def run(self):
-        self.log.info("hello from preinstall plugin")
+    def run(self, mode):
+
+        if mode == self.PLUGIN_PREINSTALL:
+            self.log.info("hello from preinstall plugin")
+            return 0
+
         return 0

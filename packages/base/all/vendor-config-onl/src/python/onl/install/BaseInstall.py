@@ -14,6 +14,7 @@ import yaml
 import zipfile
 import shutil
 import imp
+import fnmatch, glob
 
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
@@ -90,6 +91,9 @@ class Base:
         self.zf = None
         # zipfile handle to installer archive
 
+        self.plugins = []
+        # dynamically-detected plugins
+
     def run(self):
         self.log.error("not implemented")
         return 1
@@ -99,6 +103,11 @@ class Base:
         return 1
 
     def shutdown(self):
+
+        plugins, self.plugins = self.plugins, []
+        for plugin in plugins:
+            plugin.shutdown()
+
         zf, self.zf = self.zf, None
         if zf: zf.close()
 
@@ -415,38 +424,27 @@ class Base:
 
         return 0
 
-    def preinstall(self):
-        return self.runPlugin("preinstall.py")
-
-    def postinstall(self):
-        return self.runPlugin("postinstall.py")
-
-    def runPluginFile(self, pyPath):
+    def loadPluginsFromFile(self, pyPath):
+        self.log.info("loading plugins from %s", pyPath)
         with open(pyPath) as fd:
             sfx = ('.py', 'U', imp.PY_SOURCE,)
             mod = imp.load_module("plugin", fd, pyPath, sfx)
             for attr in dir(mod):
                 klass = getattr(mod, attr)
                 if isinstance(klass, type) and issubclass(klass, Plugin):
-                    self.log.info("%s: running plugin %s", pyPath, attr)
+                    self.log.info("%s: found plugin %s", pyPath, attr)
                     plugin = klass(self)
-                    try:
-                        code = plugin.run()
-                    except:
-                        self.log.exception("plugin failed")
-                        code = 1
-                    plugin.shutdown()
-                    if code: return code
+                    self.plugins.append(plugin)
 
-        return 0
+    def loadPlugins(self):
 
-    def runPlugin(self, basename):
+        pat = os.path.join(self.im.installerConf.installer_dir, "plugins", "*.py")
+        for src in glob.glob(pat):
+            self.loadPluginsFromFile(src)
 
-        src = os.path.join(self.im.installerConf.installer_dir, basename)
-        if os.path.exists(src):
-            return self.runPluginFile(src)
-
-        if basename in self.zf.namelist():
+        pat = "plugins/*.py"
+        for basename in self.zf.namelist():
+            if not fnmatch.fnmatch(basename, pat): continue
             try:
                 src = None
                 with self.zf.open(basename, "r") as rfd:
@@ -454,10 +452,23 @@ class Base:
                                                  suffix=".py")
                     with os.fdopen(wfno, "w") as wfd:
                         shutil.copyfileobj(rfd, wfd)
-                    return self.runPluginFile(src)
+                    self.loadPluginsFromFile(src)
             finally:
                 if src and os.path.exists(src):
                     os.unlink(src)
+
+        return 0
+
+    def runPlugins(self, mode):
+        self.log.info("running plugins: %s", mode)
+        for plugin in self.plugins:
+            try:
+                code = plugin.run(mode)
+            except:
+                self.log.exception("plugin failed")
+                code = 1
+            if code: return code
+        return 0
 
 GRUB_TPL = """\
 serial %(serial)s
@@ -654,7 +665,10 @@ class GrubInstaller(SubprocessMixin, Base):
                          self.im.installerConf.installer_zip)
         self.zf = zipfile.ZipFile(p)
 
-        code = self.preinstall()
+        code = self.loadPlugins()
+        if code: return code
+
+        code = self.runPlugins(Plugin.PLUGIN_PREINSTALL)
         if code: return code
 
         code = self.findGpt()
@@ -712,7 +726,7 @@ class GrubInstaller(SubprocessMixin, Base):
         code = self.installGrub()
         if code: return code
 
-        code = self.postinstall()
+        code = self.runPlugins(Plugin.PLUGIN_POSTINSTALL)
         if code: return code
 
         self.log.info("ONL loader install successful.")
@@ -896,7 +910,10 @@ class UbootInstaller(SubprocessMixin, Base):
                          self.im.installerConf.installer_zip)
         self.zf = zipfile.ZipFile(p)
 
-        code = self.preinstall()
+        code = self.loadPlugins()
+        if code: return code
+
+        code = self.runPlugins(Plugin.PLUGIN_PREINSTALL)
         if code: return code
 
         code = self.assertUnmounted()
@@ -968,7 +985,7 @@ class UbootInstaller(SubprocessMixin, Base):
         code = self.installUbootEnv()
         if code: return code
 
-        code = self.postinstall()
+        code = self.runPlugins(Plugin.PLUGIN_POSTINSTALL)
         if code: return code
 
         return 0

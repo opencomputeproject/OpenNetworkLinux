@@ -18,8 +18,8 @@ MKINSTALLER_OPTS	= \
   --swi onl-swi:$(ARCH) \
   --preinstall-script $(ONL)/builds/any/installer/sample-preinstall.sh \
   --postinstall-script $(ONL)/builds/any/installer/sample-postinstall.sh \
-  --preinstall-plugin $(ONL)/builds/any/installer/sample-preinstall.py \
-  --postinstall-plugin $(ONL)/builds/any/installer/sample-postinstall.py \
+  --plugin $(ONL)/builds/any/installer/sample-preinstall.py \
+  --plugin $(ONL)/builds/any/installer/sample-postinstall.py \
   # THIS LINE INTENTIONALLY LEFT BLANK
 
 __installer:
