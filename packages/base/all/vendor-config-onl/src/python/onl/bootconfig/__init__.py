@@ -20,9 +20,12 @@ class OnlBootConfig(object):
         self._original = self.keys.copy()
 
     def read(self, bc=None):
-        if bc is None:
-            bc = self.BOOT_CONFIG_DEFAULT
-        self._readf(bc)
+        if bc:
+            self._readf(bc)
+        else:
+            from onl.mounts import OnlMountContextReadOnly
+            with OnlMountContextReadOnly("ONL-BOOT", logger=None):
+                self._readf(self.BOOT_CONFIG_DEFAULT)
 
     def set(self, k, v):
         self.keys[k] = v
@@ -151,7 +154,7 @@ class OnlBootConfigNet(OnlBootConfig):
 
         elif self.keys['NETAUTO'] not in ['dhcp', 'up']:
             raise ValueError("The NETAUTO value '%s' is invalid." % self.keys['NETAUTO'])
-        elif self.keys['NETAUTO'] == 'up' && self.NET_REQUIRED:
+        elif self.keys['NETAUTO'] == 'up' and self.NET_REQUIRED:
             raise ValueError("NETAUTO is 'up' but non-local networking is required.")
 
         if 'NETDEV' not in self.keys:
