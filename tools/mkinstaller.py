@@ -242,13 +242,14 @@ if __name__ == '__main__':
     if ops.postinstall_script:
         installer.add_file_as(ops.postinstall_script, "postinstall.sh")
 
-    for plugin in ops.plugin:
-        basename = os.path.split(plugin)[1]
-        basename = os.path.splitext(basename)[0]
-        dst = tempfile.mktemp(dir=plugindir,
-                              prefix=basename+'-',
-                              suffix='.py')
-        shutil.copy(plugin, dst)
+    if ops.plugin:
+        for plugin in ops.plugin:
+            basename = os.path.split(plugin)[1]
+            basename = os.path.splitext(basename)[0]
+            dst = tempfile.mktemp(dir=plugindir,
+                                  prefix=basename+'-',
+                                  suffix='.py')
+            shutil.copy(plugin, dst)
 
     l = os.listdir(plugindir)
     if l:
