@@ -14,6 +14,9 @@ class Plugin(object):
 
     def run(self, mode):
 
+        if hasattr(self, mode):
+            return getattr(self, mode)()
+
         if mode == self.PLUGIN_PREINSTALL:
             self.log.warn("pre-install plugin not implemented")
             return 0
@@ -27,3 +30,4 @@ class Plugin(object):
 
     def shutdown(self):
         pass
+
