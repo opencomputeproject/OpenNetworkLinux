@@ -428,7 +428,8 @@ class Base:
         self.log.info("loading plugins from %s", pyPath)
         with open(pyPath) as fd:
             sfx = ('.py', 'U', imp.PY_SOURCE,)
-            mod = imp.load_module("plugin", fd, pyPath, sfx)
+            moduleName = os.path.splitext(os.path.basename(pyPath))[0]
+            mod = imp.load_module("onl_install_plugin_%s" % moduleName, fd, pyPath, sfx)
             for attr in dir(mod):
                 klass = getattr(mod, attr)
                 if isinstance(klass, type) and issubclass(klass, Plugin):
