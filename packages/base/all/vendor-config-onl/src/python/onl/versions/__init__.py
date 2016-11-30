@@ -1,3 +1,4 @@
+import os
 import json
 
 class OnlVersionManifest(object):
@@ -30,8 +31,8 @@ class OnlLoaderVersion(OnlVersionBase):
 #
 # print onl.versions.rootfs.BUILD_TIMESTAMP
 #
+rootfs = OnlRootfsVersion() if os.path.exists(OnlRootfsVersion.MANIFEST) else None
+loader = OnlLoaderVersion() if os.path.exists(OnlLoaderVersion.MANIFEST) else None
 
-rootfs = OnlRootfsVersion()
-loader = OnlLoaderVersion()
 
 
