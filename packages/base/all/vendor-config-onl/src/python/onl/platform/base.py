@@ -16,6 +16,7 @@ import re
 import yaml
 import onl.YamlUtils
 import subprocess
+import platform
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -42,6 +43,9 @@ class OnlInfoObject(object):
     def __str__(self, indent=DEFAULT_INDENT):
         """String representation of the information container."""
         return OnlInfoObject.string(self._data, indent)
+
+    def update(self, d):
+        self._data.update(d)
 
     @staticmethod
     def string(d, indent=DEFAULT_INDENT):
@@ -113,6 +117,8 @@ class OnlPlatformBase(object):
                            required=False)
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
                            required=False)
+
+        self.platform_info.update(self.dmi_versions())
 
         # Find the base platform config
         if self.platform().startswith('x86-64'):
@@ -223,6 +229,35 @@ class OnlPlatformBase(object):
 
     def firmware_version(self):
         return self.platform_info.CPLD_VERSIONS
+
+    def dmi_versions(self):
+        # Note - the dmidecode module returns empty lists for powerpc systems.
+        if platform.machine() != "x86_64":
+            return {}
+
+        import dmidecode
+        fields = [
+            {
+                'name': 'DMI BIOS Version',
+                'subsystem': dmidecode.bios,
+                'dmi_type' : 0,
+                'key' : 'Version',
+                },
+
+            {
+                'name': 'DMI System Version',
+                'subsystem': dmidecode.system,
+                'dmi_type' : 1,
+                'key' : 'Version',
+                },
+            ]
+        rv = {}
+        for field in fields:
+                for v in field['subsystem']().values():
+                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
+                                rv[field['name']] = v['data'][field['key']]
+
+        return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
         if override_dir:
