@@ -438,10 +438,12 @@ class Base:
 
     def loadPlugins(self):
 
+        # scrape any plugins from the installer working directory
         pat = os.path.join(self.im.installerConf.installer_dir, "plugins", "*.py")
         for src in glob.glob(pat):
             self.loadPluginsFromFile(src)
 
+        # scrape any plugins from the installer archive
         pat = "plugins/*.py"
         for basename in self.zf.namelist():
             if not fnmatch.fnmatch(basename, pat): continue
@@ -456,6 +458,18 @@ class Base:
             finally:
                 if src and os.path.exists(src):
                     os.unlink(src)
+
+        # scrape plugins from the loader runtime
+        # (any plugins dropped into $pydir/onl/install/plugins/*.py)
+        try:
+            import onl.install.plugins
+            plugindir = os.path.dirname(onl.install.plugins.__file__)
+        except ImportError:
+            plugindir = None
+        if plugindir:
+            pat = os.path.join(plugindir, "*.py")
+            for src in glob.glob(pat):
+                self.loadPluginsFromFile(src)
 
         return 0
 
