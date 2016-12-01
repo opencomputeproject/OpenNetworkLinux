@@ -32,7 +32,8 @@ class UpgradeHelper(Upgrader):
 
     def _runInitrdShell(self, p):
         if self.callback is not None:
-            self.callback(self, p)
+            return self.callback(self, p)
+        return 0
 
 class App(SubprocessMixin):
 
