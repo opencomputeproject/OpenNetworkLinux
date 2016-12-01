@@ -168,6 +168,12 @@ class App(SubprocessMixin, object):
             ##self.grubEnv = ConfUtils.GrubEnv(log=self.log.getChild("grub"))
 
             with OnieBootContext(log=self.log) as self.octx:
+
+                self.octx.ictx.attach()
+                self.octx.ictx.unmount()
+                self.octx.ictx.detach()
+                # XXX roth -- here, detach the initrd mounts
+
                 self.octx.detach()
 
             if self.octx.onieDir is not None:
