@@ -189,11 +189,20 @@ class OnieBootContext:
 
     def shutdown(self):
         ctx, self.fctx = self.fctx, None
-        if ctx is not None: ctx.shutdown()
+        if ctx is not None:
+            ctx.shutdown()
+            ctx.attach()
+            ctx.shutdown()
         ctx, self.ictx = self.ictx, None
-        if ctx is not None: ctx.shutdown()
+        if ctx is not None:
+            ctx.shutdown()
+            ctx.attach()
+            ctx.shutdown()
         ctx, self.dctx = self.dctx, None
-        if ctx is not None: ctx.shutdown()
+        if ctx is not None:
+            ctx.shutdown()
+            ctx.attach()
+            ctx.shutdown()
 
     def __exit__(self, eType, eValue, eTrace):
         self.shutdown()
