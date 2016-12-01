@@ -44,14 +44,18 @@ class OnlBootConfig(object):
         with open(f, "w") as f:
             self._writeh(f)
 
-    def write(self, dst=None):
+    def write(self, dst=None, force_overwrite=True):
         self.validate()
         if dst:
             self._writef(dst)
+            return True
         else:
             from onl.mounts import OnlMountContextReadWrite
             with OnlMountContextReadWrite("ONL-BOOT", logger=None):
-                self._writef(self.BOOT_CONFIG_DEFAULT)
+                if not os.path.exists(self.BOOT_CONFIG_DEFAULT) or force_overwrite:
+                    self._writef(self.BOOT_CONFIG_DEFAULT)
+                    return True
+            return False
 
 
     def __classmethod(self, name, *args):
