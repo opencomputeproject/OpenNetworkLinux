@@ -118,7 +118,10 @@ class OnlPlatformBase(object):
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
                            required=False)
 
-        self.platform_info.update(self.dmi_versions())
+        if hasattr(self, "platform_info"):
+            self.platform_info.update(self.dmi_versions())
+        else:
+            self.add_info_dict("platform_info", self.dmi_versions())
 
         # Find the base platform config
         if self.platform().startswith('x86-64'):
@@ -235,7 +238,11 @@ class OnlPlatformBase(object):
         if platform.machine() != "x86_64":
             return {}
 
-        import dmidecode
+        try:
+            import dmidecode
+        except ImportError:
+            return {}
+
         fields = [
             {
                 'name': 'DMI BIOS Version',
