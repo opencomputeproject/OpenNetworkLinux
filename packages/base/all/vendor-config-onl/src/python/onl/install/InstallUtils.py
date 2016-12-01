@@ -834,7 +834,7 @@ class InitrdContext(SubprocessMixin):
 
         return self
 
-    def shutdown(self):
+    def unmount(self):
 
         p = ProcMountsParser()
         if self.dir is not None:
@@ -851,6 +851,10 @@ class InitrdContext(SubprocessMixin):
             for p in dirs:
                 cmd = ('umount', p,)
                 self.check_call(cmd, vmode=self.V1)
+
+    def shutdown(self):
+
+        self.unmount()
 
         if self.initrd and self.dir:
             self.log.debug("cleaning up chroot in %s", self.dir)
