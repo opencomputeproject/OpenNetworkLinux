@@ -525,7 +525,7 @@ rm -f /usr/sbin/policy-rc.d
                     fn = os.path.join(dir_, "etc/issue.net")
                     onlu.execute("sudo chmod a+w %s" % fn)
                     with open(fn, "w") as f:
-                        f.write("%s" % issue)
+                        f.write("%s\n" % issue)
                     onlu.execute("sudo chmod a-w %s" % fn)
 
 
