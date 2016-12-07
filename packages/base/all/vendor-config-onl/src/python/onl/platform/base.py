@@ -186,6 +186,54 @@ class OnlPlatformBase(object):
     def baseconfig(self):
         return True
 
+    def onie_machine_get(self):
+        mc = self.basedir_onl("etc/onie/machine.json")
+        if not os.path.exists(mc):
+            data = {}
+            mcconf = subprocess.check_output("""onie-shell -c "cat /etc/machine.conf" """, shell=True)
+            for entry in mcconf.split():
+                (k,e,v) = entry.partition('=')
+                if e:
+                    data[k] = v
+
+            if not os.path.exists(os.path.dirname(mc)):
+                os.makedirs(os.path.dirname(mc))
+
+            with open(mc, "w") as f:
+                f.write(json.dumps(data, indent=2))
+        else:
+            data = json.load(open(mc))
+
+        return data
+
+    def onie_syseeprom_get(self):
+        se = self.basedir_onl("etc/onie/eeprom.json")
+        if not os.path.exists(se):
+            data = {}
+            extensions = []
+            syseeprom = subprocess.check_output("""onie-shell -c onie-syseeprom""", shell=True)
+            e = re.compile(r'(.*?) (0x[0-9a-fA-F][0-9a-fA-F])[ ]+(\d+) (.*)')
+            for line in syseeprom.split('\n'):
+                m = e.match(line)
+                if m:
+                    value = m.groups(0)[3]
+                    code = m.groups(0)[1].lower()
+                    if code == '0xfd':
+                        extensions.append(value)
+                    else:
+                        data[code] = value
+            if len(extensions):
+                data['0xfd'] = extensions
+
+            if not os.path.exists(os.path.dirname(se)):
+                os.makedirs(os.path.dirname(se))
+
+            with open(se, "w") as f:
+                f.write(json.dumps(data, indent=2))
+        else:
+            data = json.load(open(se))
+        return data
+
     def platform(self):
         return self.PLATFORM
 
