@@ -22,13 +22,13 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/ledi.h>
-#include <sys/mman.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
+#include <sys/mman.h>
 #include <onlplib/mmap.h>
-
+#include <onlplib/file.h>
+#include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
 #define prefix_path "/bsp/led/led_"
@@ -215,8 +215,8 @@ onlp_ledi_init(void)
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
-    int  local_id = 0;
-    char data[driver_value_len] = {0};
+    int  len, local_id = 0;
+    uint8_t data[driver_value_len] = {0};
     char fullpath[50] = {0};
 
     VALIDATE(id);
@@ -230,12 +230,11 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Get LED mode */
-    if (deviceNodeReadString(fullpath, data, sizeof(data), 0) != 0) {
-        DEBUG_PRINT("%s(%d)\r\n", __FUNCTION__, __LINE__);
+    if (onlp_file_read(data, sizeof(data), &len, fullpath) != 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    info->mode = driver_to_onlp_led_mode(local_id, data);
+    info->mode = driver_to_onlp_led_mode(local_id, (char*)data);
 
     /* Set the on/off status */
     if (info->mode != ONLP_LED_MODE_OFF) {
@@ -283,7 +282,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     local_id = ONLP_OID_ID_GET(id);
     snprintf(fullpath, sizeof(fullpath), "%s%s", prefix_path, file_names[local_id]);
 
-    if (deviceNodeWrite(fullpath, onlp_to_driver_led_mode(local_id, mode), driver_value_len, 0) != 0)
+    if (onlp_file_write((uint8_t*)onlp_to_driver_led_mode(local_id, mode), driver_value_len, fullpath) != 0)
     {
         return ONLP_STATUS_E_INTERNAL;
     }

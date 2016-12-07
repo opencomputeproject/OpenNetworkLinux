@@ -25,9 +25,11 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
-#include "x86_64_mlnx_msn2700_log.h"
 #include <onlp/fan.h>
 #include <onlp/psu.h>
+#include "x86_64_mlnx_msn2700_log.h"
+
+// ./sm/infra/modules/AIM/module/inc/AIM/aim_log.h
 
 #define CHASSIS_PSU_COUNT           2
 #define CHASSIS_TOTAL_FAN_COUNT     10
@@ -42,11 +44,6 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
-int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len);
-int deviceNodeWriteInt(char *filename, int value, int data_len);
-int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
-int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
-
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
@@ -54,14 +51,6 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-
-#define DEBUG_MODE 0
-
-#if (DEBUG_MODE == 1)
-    #define DEBUG_PRINT(format, ...)   printf(format, __VA_ARGS__)
-#else
-    #define DEBUG_PRINT(format, ...)
-#endif
 
 int psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info,
                      onlp_fan_info_t* fan_info);

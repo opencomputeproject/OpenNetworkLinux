@@ -22,10 +22,10 @@
  * Fan Platform Implementation Defaults.
  *
  ***********************************************************/
-#include <onlp/platformi/fani.h>
-#include <onlplib/mmap.h>
-#include <onlplib/file.h>
 #include <fcntl.h>
+#include <onlplib/file.h>
+#include <onlplib/mmap.h>
+#include <onlp/platformi/fani.h>
 #include "platform_lib.h"
 
 #define PREFIX_PATH        "/bsp/fan/"
@@ -139,27 +139,12 @@ onlp_fan_info_t linfo[] = {
         }                                       \
     } while(0)
 
-#define OPEN_READ_FILE(fd, fullpath, data, nbytes, len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, data, nbytes)) <= 0) {  \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
+#define OPEN_READ_FILE(fullpath, data, nbytes, len)			\
+	if (onlp_file_read((uint8_t*)data, nbytes, &len, fullpath) < 0)	\
+        return ONLP_STATUS_E_INTERNAL;					 	\
+	else													\
+		AIM_LOG_VERBOSE("read data: %s\n", r_data);			\
 
-#define OPEN_WRITE_FILE(fd, fullpath, data, nbytes, len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_WRONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = write(fd, data, nbytes)) <= 0) { \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][write data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
 
 static int
 _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
@@ -240,7 +225,7 @@ _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
 static int
 _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
-    int   fd = 0, len = 0, nbytes = 10;
+    int   len = 0, nbytes = 10;
     float range = 0;
     float temp  = 0;
     float fru_index = 0;
@@ -259,7 +244,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     /* get fan status
     */
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[(int)fru_index].status);
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
         return ONLP_STATUS_OK;
     }
@@ -268,7 +253,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
      /* get fan speed
      */
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].r_speed_get);
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     info->rpm = atoi(r_data);
 
     /* check failure */
@@ -281,13 +266,13 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
         /* get fan min speed
          */
         snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].min);
-        OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+        OPEN_READ_FILE(fullpath, r_data, nbytes, len);
         min_fan_speed[local_id] = atoi(r_data);
 
         /* get fan max speed
          */
         snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].max);
-        OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+        OPEN_READ_FILE(fullpath, r_data, nbytes, len);
         max_fan_speed[local_id] = atoi(r_data);
 
         /* get speed percentage from rpm */
@@ -309,7 +294,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 static int
 _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
 {
-    int   fd = 0, len = 0, nbytes = 10;
+    int   len = 0, nbytes = 10;
     char  r_data[10]   = {0};
     char  fullpath[80] = {0};
     float rpms_per_perc = 0.0;
@@ -318,7 +303,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
     /* get fan status
     */
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[local_id].status);
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
         return ONLP_STATUS_OK;
     }
@@ -327,7 +312,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
     /* get fan speed
     */
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].r_speed_get);
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     info->rpm = atoi(r_data);
 
     /* check failure */
@@ -414,7 +399,7 @@ int
 onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 {
     float temp = 0.0;
-    int   fd = 0, len = 0, local_id = 0, nbytes = 10;
+    int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
     char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
@@ -457,7 +442,10 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    OPEN_WRITE_FILE(fd, fullpath, r_data, nbytes, len);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+	if (rv < 0) {
+		return ONLP_STATUS_E_INTERNAL;
+	}
 
     return ONLP_STATUS_OK;
 }
@@ -474,7 +462,7 @@ int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
     float temp = 0.0;
-    int   fd = 0, len = 0, local_id = 0, nbytes = 10;
+    int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
     char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
@@ -510,7 +498,10 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    OPEN_WRITE_FILE(fd, fullpath, r_data, nbytes, len);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+	if (rv < 0) {
+		return ONLP_STATUS_E_INTERNAL;
+	}
 
     return ONLP_STATUS_OK;
 }

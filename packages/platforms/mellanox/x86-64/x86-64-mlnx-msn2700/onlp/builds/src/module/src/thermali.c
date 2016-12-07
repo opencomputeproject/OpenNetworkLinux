@@ -1,5 +1,6 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
+
  *
  *           Copyright 2014 Big Switch Networks, Inc.
  *
@@ -22,11 +23,12 @@
  * Thermal Sensor Platform Implementation.
  *
  ***********************************************************/
-#include <unistd.h>
-#include <onlplib/mmap.h>
-#include <onlplib/file.h>
-#include <onlp/platformi/thermali.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <AIM/aim_log.h>
+#include <onlplib/file.h>
+#include <onlplib/mmap.h>
+#include <onlp/platformi/thermali.h>
 #include "platform_lib.h"
 
 #define prefix_path "/bsp/thermal"
@@ -67,17 +69,6 @@ typedef enum asic_thermal_threshold_e {
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
-
-#define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, r_data, nbytes)) <= 0){ \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
 
 enum onlp_thermal_id
 {
@@ -164,7 +155,7 @@ onlp_thermali_init(void)
 int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
-    int   fd = 0, len = 0, nbytes = 10, temp_base=1, local_id = 0;
+    int   rv, len = 10, temp_base=1, local_id = 0;
     char  r_data[10]   = {0};
     char  fullpath[50] = {0};
     VALIDATE(id);
@@ -177,9 +168,12 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     /* get fullpath */
     snprintf(fullpath, sizeof(fullpath), "%s/%s", prefix_path, last_path[local_id]);
 
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    rv = onlp_file_read((uint8_t*)r_data, sizeof(r_data), &len, fullpath);
+	if (rv < 0) {
+		return ONLP_STATUS_E_INTERNAL;
+	}
+
     info->mcelsius = atoi(r_data) / temp_base;
-    DEBUG_PRINT("\n[Debug][%s][%d][save data: %d]\n", __FUNCTION__, __LINE__, info->mcelsius);
 
     return ONLP_STATUS_OK;
 }

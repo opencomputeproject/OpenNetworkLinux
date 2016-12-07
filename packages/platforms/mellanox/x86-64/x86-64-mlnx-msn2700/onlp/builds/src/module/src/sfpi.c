@@ -28,8 +28,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ioctl.h>
+#include <onlplib/file.h>
 #include <onlplib/i2c.h>
+#include <onlplib/sfp.h>
+#include <sys/ioctl.h>
 #include "platform_lib.h"
 
 #define MAX_SFP_PATH           64
@@ -40,18 +42,18 @@ static char sfp_node_path[MAX_SFP_PATH] = {0};
 #define SFP_NOT_PRESENT_STATUS "not_connected"
 
 static int
-sn2700_sfp_node_read_int(char *node_path, int *value, int data_len)
+sn2700_sfp_node_read_int(char *node_path, int *value)
 {
-    int ret = 0;
+    int data_len = 0, ret = 0;
     char buf[SFP_SYSFS_VALUE_LEN] = {0};
     *value = -1;
 
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), data_len);
+    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &data_len, node_path);
 
     if (ret == 0) {
-        if (!strncmp(buf, SFP_PRESENT_STATUS, sizeof(buf))) {
+        if (!strncmp(buf, SFP_PRESENT_STATUS, strlen(SFP_PRESENT_STATUS))) {
             *value = 1;
-        } else if (!strncmp(buf, SFP_NOT_PRESENT_STATUS, sizeof(buf))) {
+        } else if (!strncmp(buf, SFP_NOT_PRESENT_STATUS, strlen(SFP_NOT_PRESENT_STATUS))) {
             *value = 0;
         }
     }
@@ -105,7 +107,7 @@ onlp_sfpi_is_present(int port)
     int present = -1;
     char* path = sn2700_sfp_get_port_path(port, "_status");
 
-    if (sn2700_sfp_node_read_int(path, &present, 0) != 0) {
+    if (sn2700_sfp_node_read_int(path, &present) != 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -140,18 +142,12 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      */
     memset(data, 0, 256);
 
-    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
+    if (onlplib_sfp_eeprom_read_file(path, data) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
     return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
-{
-    return onlp_sfpi_eeprom_read(port, data);
 }
 
 int
@@ -182,6 +178,12 @@ int
 onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
+}
+
+int
+onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
+{
+	return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int

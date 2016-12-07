@@ -22,10 +22,11 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/psui.h>
-#include <onlplib/mmap.h>
 #include <stdio.h>
 #include <string.h>
+#include <onlplib/file.h>
+#include <onlplib/mmap.h>
+#include <onlp/platformi/psui.h>
 #include "platform_lib.h"
 
 #define PSU_STATUS_PRESENT   1
@@ -44,14 +45,14 @@
 static int
 psu_module_info_get(int id, char *node, int *value)
 {
-    int ret = 0;
+    int len, ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
 
     *value = 0;
 
     sprintf(node_path, PSU_MODULE_PREFIX, id, node);
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len, node_path);
     if (ret == 0) {
         *value = atoi(buf);
     }
@@ -62,14 +63,14 @@ psu_module_info_get(int id, char *node, int *value)
 static int
 psu_power_info_get(int id, char *node, int *value)
 {
-    int ret = 0;
+    int len, ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
 
     *value = 0;
 
     sprintf(node_path, PSU_POWER_PREFIX, id, node);
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len, node_path);
     if (ret == 0) {
         *value = atoi(buf);
     }
@@ -167,7 +168,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Get the present state */
     if (psu_module_info_get(index, "status", &val) != 0) {
-        printf("Unable to read PSU(%d) node(psu_present)\r\n", index);
+    	AIM_LOG_ERROR("Unable to read PSU(%d) node(psu_present)\r\n", index);
     }
 
     if (val != PSU_STATUS_PRESENT) {
@@ -178,7 +179,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Get the cable preset state */
     if (psu_module_info_get(index, "pwr_status", &val) != 0) {
-        printf("Unable to read PSU(%d) node(cable_present)\r\n", index);
+    	AIM_LOG_ERROR("Unable to read PSU(%d) node(cable_present)\r\n", index);
     }
 
     if (val != PSU_CABLE_PRESENT) {

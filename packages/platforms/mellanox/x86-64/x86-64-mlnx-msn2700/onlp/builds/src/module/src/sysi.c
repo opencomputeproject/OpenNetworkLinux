@@ -22,22 +22,19 @@
  *
  *
  ***********************************************************/
-#include <unistd.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <stdio.h>
-
+#include <unistd.h>
+#include <sys/stat.h>
 #include <onlplib/file.h>
-#include <onlp/platformi/sysi.h>
-#include <onlp/platformi/ledi.h>
-#include <onlp/platformi/thermali.h>
 #include <onlp/platformi/fani.h>
+#include <onlp/platformi/ledi.h>
 #include <onlp/platformi/psui.h>
-
+#include <onlp/platformi/sysi.h>
+#include <onlp/platformi/thermali.h>
+#include "platform_lib.h"
 #include "x86_64_mlnx_msn2700_int.h"
 #include "x86_64_mlnx_msn2700_log.h"
-
-#include "platform_lib.h"
 
 #define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
 #define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
@@ -63,14 +60,12 @@ _onlp_sysi_execute_command(char *command, char buffer[COMMAND_OUTPUT_BUFFER])
     /* Open the command for reading. */
     fp = popen(command, "r");
     if (NULL == fp) {
-        DEBUG_PRINT("[Debug][%s][%d]Failed to run command '%s'\n",
-                    __FUNCTION__, __LINE__, command);
+        AIM_LOG_WARN("Failed to run command '%s'\n", command);
     }
 
     /* Read the output */
     if (fgets(buffer, COMMAND_OUTPUT_BUFFER-1, fp) == NULL) {
-        DEBUG_PRINT("[Debug][%s][%d]Failed to read output of command '%s'\n",
-                    __FUNCTION__, __LINE__, command);
+        AIM_LOG_WARN("Failed to read output of command '%s'\n", command);
         pclose(fp);
     }
 
@@ -85,22 +80,6 @@ const char*
 onlp_sysi_platform_get(void)
 {
     return "x86-64-mlnx-msn2700-r0";
-}
-
-int
-onlp_sysi_onie_data_get(uint8_t** data, int* size)
-{
-    uint8_t* rdata = aim_zmalloc(256);
-    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 256) {
-            *data = rdata;
-            return ONLP_STATUS_OK;
-        }
-    }
-
-    aim_free(rdata);
-    *size = 0;
-    return ONLP_STATUS_E_INTERNAL;
 }
 
 int
@@ -181,8 +160,7 @@ _onlp_sysi_grep_output(char value[256], const char *attr, const char *tmp_file)
     }
     value[v] = '\0';
 
-    DEBUG_PRINT("[Debug][%s][%d]Value for sytem attribute '%s' is '%s' \n",
-                __FUNCTION__, __LINE__, attr, value);
+    AIM_LOG_VERBOSE("Value for sytem attribute '%s' is '%s' \n", attr, value);
 
     return ONLP_STATUS_OK;
 }
