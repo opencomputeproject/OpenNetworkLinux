@@ -16,6 +16,9 @@ class FirmwareUpgrade(ubase.BaseOnieUpgrade):
     current_version_key="Current Firmware Version"
     next_version_key="Next Firmware Version"
 
+    def auto_upgrade_default(self):
+        return sysconfig.upgrade.firmware.auto
+
     def init_versions(self):
 
         # Get the current platform firmware version

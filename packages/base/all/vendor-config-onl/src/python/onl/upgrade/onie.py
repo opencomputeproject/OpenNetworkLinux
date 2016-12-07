@@ -16,6 +16,9 @@ class OnieUpgrade(ubase.BaseOnieUpgrade):
     current_version_key="Current ONIE Version"
     next_version_key="Next ONIE Version"
 
+    def auto_upgrade_default(self):
+        return sysconfig.upgrade.onie.auto
+
     def init_versions(self):
         # Get the current platform ONIE version
         self.current_version = self.platform.onie_version()
