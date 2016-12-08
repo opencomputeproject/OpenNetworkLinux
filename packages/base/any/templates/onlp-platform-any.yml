@@ -15,6 +15,7 @@ common:
   arch: $ARCH
   copyright: Copyright 2013, 2014, 2015 Big Switch Networks
   maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
 
 packages:
   - name: onlp-${PLATFORM}-r0
