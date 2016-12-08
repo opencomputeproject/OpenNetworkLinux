@@ -10,6 +10,7 @@ common:
   version: 0.$FNAME_RELEASE_ID
   copyright: Copyright 2016 Big Switch Networks
   maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
 
 packages:
   - name: onl-installer-$BOOTMODE
