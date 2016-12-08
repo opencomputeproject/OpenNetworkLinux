@@ -3,13 +3,25 @@ set -e
 
 uninstall_x86_64()
 {
+    if [ "$1" = "manual" ]; then
+        # Clear any ONIE boot selection settings and default to Install
+        mkdir -p /mnt/onie-boot
+        mount `blkid -L ONIE-BOOT` /mnt/onie-boot
+        rm -rf /mnt/onie-boot/grubenv
+        umount /mnt/onie-boot
 
-    if [ "$1" = "factory" ]; then
-        mode=uninstall
+        # Force ONIE boot selection
+        onlfs mount boot --rw
+        echo "default=1" >> /mnt/onl/boot/grub/grub.cfg
+
     else
-        mode=install
+        if [ "$1" = "factory" ]; then
+            mode=uninstall
+        else
+            mode=install
+        fi
+        onl-onie-boot-mode $mode
     fi
-    onl-onie-boot-mode $mode
 }
 
 uninstall_uboot()
