@@ -838,7 +838,7 @@ index 3aeb08d..acf88c9 100644
  	accton_i2c_cpld_remove_client(client);
  	
  	return 0;
-@@ -217,6 +239,22 @@ int platform_accton_as7712_32x(void)
+@@ -217,6 +239,29 @@ int platform_accton_as7712_32x(void)
  }
  EXPORT_SYMBOL(platform_accton_as7712_32x);
  
@@ -849,7 +849,14 @@ index 3aeb08d..acf88c9 100644
 +			DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +			DMI_MATCH(DMI_PRODUCT_NAME, "AS5812-54T"),
 +		},
-+	}
++	},
++	{
++		.ident = "Accton AS5812 54t",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "AS5812-54T"),
++		},
++	},
 +};
 +
 +int platform_accton_as5812_54t(void)

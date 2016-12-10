@@ -829,7 +829,7 @@ new file mode 100644
 index 0000000..d668ca4
 --- /dev/null
 +++ b/drivers/i2c/muxes/i2c-mux-accton_as6812_32x_cpld.c
-@@ -0,0 +1,382 @@
+@@ -0,0 +1,389 @@
 +/*
 + * I2C multiplexer for accton as6812 CPLD
 + *
@@ -874,7 +874,14 @@ index 0000000..d668ca4
 +			DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +			DMI_MATCH(DMI_PRODUCT_NAME, "AS6812"),
 +		},
-+	}
++	},
++	{
++		.ident = "Accton AS6812",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "AS6812"),
++		},
++	},
 +};
 +
 +int platform_accton_as6812_32x(void)

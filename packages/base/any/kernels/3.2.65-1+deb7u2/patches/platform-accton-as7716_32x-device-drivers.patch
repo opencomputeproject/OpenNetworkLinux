@@ -803,7 +803,7 @@ diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
 index e50c599..89e3a0e 100644
 --- a/drivers/hwmon/accton_i2c_cpld.c
 +++ b/drivers/hwmon/accton_i2c_cpld.c
-@@ -271,6 +271,22 @@ int platform_accton_as5512_54x(void)
+@@ -271,6 +271,29 @@ int platform_accton_as5512_54x(void)
  }
  EXPORT_SYMBOL(platform_accton_as5512_54x);
  
@@ -814,7 +814,14 @@ index e50c599..89e3a0e 100644
 +                        DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +                        DMI_MATCH(DMI_PRODUCT_NAME, "AS7716"),
 +                },
-+        }
++        },
++        {
++                .ident = "Accton AS7716",
++                .matches = {
++                        DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++                        DMI_MATCH(DMI_PRODUCT_NAME, "AS7716"),
++                },
++        },
 +};
 +
 +int platform_accton_as7716_32x(void)

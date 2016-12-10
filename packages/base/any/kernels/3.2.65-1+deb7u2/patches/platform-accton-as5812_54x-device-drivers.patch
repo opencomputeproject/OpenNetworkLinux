@@ -826,7 +826,7 @@ new file mode 100644
 index 0000000..e01e557
 --- /dev/null
 +++ b/drivers/i2c/muxes/i2c-mux-accton_as5812_54x_cpld.c
-@@ -0,0 +1,387 @@
+@@ -0,0 +1,394 @@
 +/*
 + * An I2C multiplexer dirver for accton as5812 CPLD
 + *
@@ -871,7 +871,14 @@ index 0000000..e01e557
 +            DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +            DMI_MATCH(DMI_PRODUCT_NAME, "AS5812-54X"),
 +        },
-+    }
++    },
++    {
++        .ident = "Accton AS5812-54X",
++        .matches = {
++            DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++            DMI_MATCH(DMI_PRODUCT_NAME, "AS5812-54X"),
++        },
++    },
 +};
 +
 +int platform_accton_as5812_54x(void)

@@ -888,7 +888,7 @@ new file mode 100644
 index 0000000..96e3490
 --- /dev/null
 +++ b/drivers/hwmon/accton_i2c_cpld.c
-@@ -0,0 +1,209 @@
+@@ -0,0 +1,216 @@
 +/*
 + * A hwmon driver for the accton_i2c_cpld
 + *
@@ -1083,7 +1083,14 @@ index 0000000..96e3490
 +			DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
 +			DMI_MATCH(DMI_PRODUCT_NAME, "AS7512"),
 +		},
-+	}
++	},
++	{
++		.ident = "Accton AS7512",
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "AS7512"),
++		},
++	},
 +};
 +
 +int platform_accton_as7512_32x(void)
