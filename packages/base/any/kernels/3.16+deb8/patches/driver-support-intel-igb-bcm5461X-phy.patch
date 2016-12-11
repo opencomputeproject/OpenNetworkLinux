@@ -1,175 +1,145 @@
-+	0x75diff -urpN a/drivers/net/ethernet/intel/igb/e1000_82575.c b/drivers/net/ethernet/intel/igb/e1000_82575.c
---- a/drivers/net/ethernet/intel/igb/e1000_82575.c	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/e1000_82575.c	2016-09-15 19:55:02.680725611 +0000
-@@ -179,8 +179,11 @@ static s32 igb_init_phy_params_82575(str
- 	ctrl_ext = rd32(E1000_CTRL_EXT);
-
- 	if (igb_sgmii_active_82575(hw)) {
--		phy->ops.reset = igb_phy_hw_reset_sgmii_82575;
--		ctrl_ext |= E1000_CTRL_I2C_ENA;
-+            if(phy->type == e1000_phy_bcm5461s)
-+                phy->ops.reset = igb_phy_hw_reset;
-+            else
-+                phy->ops.reset = igb_phy_hw_reset_sgmii_82575;
-+            ctrl_ext |= E1000_CTRL_I2C_ENA;
- 	} else {
- 		phy->ops.reset = igb_phy_hw_reset;
- 		ctrl_ext &= ~E1000_CTRL_I2C_ENA;
-@@ -286,6 +289,19 @@ static s32 igb_init_phy_params_82575(str
- 		phy->ops.set_d3_lplu_state = igb_set_d3_lplu_state_82580;
- 		phy->ops.force_speed_duplex = igb_phy_force_speed_duplex_m88;
+diff -Nu a/drivers/net/ethernet/intel/igb/e1000_82575.c b/drivers/net/ethernet/intel/igb/e1000_82575.c
+--- a/drivers/net/ethernet/intel/igb/e1000_82575.c	2016-11-14 15:48:41.379628151 +0000
++++ b/drivers/net/ethernet/intel/igb/e1000_82575.c	2016-11-15 09:36:04.608478513 +0000
+@@ -302,6 +302,16 @@
+ 		phy->ops.set_d3_lplu_state = e1000_set_d3_lplu_state_82580;
+ 		phy->ops.force_speed_duplex = e1000_phy_force_speed_duplex_m88;
  		break;
-+
-+        case BCM5461S_PHY_ID:
-+                phy->type                   = e1000_phy_bcm5461s;
-+                phy->ops.check_polarity     = NULL;
-+                phy->ops.get_phy_info       = igb_get_phy_info_5461s;
-+                phy->ops.get_cable_length   = NULL;
-+                phy->ops.force_speed_duplex = igb_phy_force_speed_duplex_82580;
-+                break;
-+
++	case BCM5461S_PHY_ID:
++		phy->type                   = e1000_phy_bcm5461s;
++		phy->ops.check_polarity     = NULL;
++		phy->ops.get_info       	= igb_get_phy_info_5461s;
++		phy->ops.get_cable_length   = NULL;
++		phy->ops.force_speed_duplex = igb_e1000_phy_force_speed_duplex_82577;
++		break;
 +	case BCM54616_E_PHY_ID:
-+                phy->type = e1000_phy_bcm54616;
-+                break;
-+
++		phy->type = e1000_phy_bcm54616;
++		break;
  	default:
  		ret_val = -E1000_ERR_PHY;
  		goto out;
-@@ -827,9 +843,9 @@ static s32 igb_get_phy_id_82575(struct e
- 			break;
- 		case e1000_82580:
- 		case e1000_i350:
--		case e1000_i354:
- 		case e1000_i210:
- 		case e1000_i211:
-+		case e1000_i354:
- 			mdic = rd32(E1000_MDICNFG);
- 			mdic &= E1000_MDICNFG_PHY_MASK;
- 			phy->addr = mdic >> E1000_MDICNFG_PHY_SHIFT;
-@@ -840,6 +856,17 @@ static s32 igb_get_phy_id_82575(struct e
+@@ -701,6 +711,17 @@
  			break;
  		}
- 		ret_val = igb_get_phy_id(hw);
+ 		ret_val = e1000_get_phy_id(hw);
 +
 +		if (ret_val && hw->mac.type == e1000_i354) {
-+                    /* we do a special check for bcm5461s phy by setting
-+                     * the phy->addr to 5 and doing the phy check again. This
-+                     * call will succeed and retrieve a valid phy id if we have
-+                     * the bcm5461s phy
-+                     */
-+                    phy->addr = 5;
-+                    phy->type = e1000_phy_bcm5461s;
-+                    ret_val = igb_get_phy_id(hw);
++			/* we do a special check for bcm5461s phy by setting
++			 * the phy->addr to 5 and doing the phy check again. This
++			 * call will succeed and retrieve a valid phy id if we have
++			 * the bcm5461s phy
++			 */
++			phy->addr = 5;
++			phy->type = e1000_phy_bcm5461s;
++			ret_val = e1000_get_phy_id(hw);
 +		}
  		goto out;
  	}
-
-@@ -1220,6 +1247,9 @@ static s32 igb_get_cfg_done_82575(struct
+ 
+@@ -1148,6 +1169,9 @@
  	    (hw->phy.type == e1000_phy_igp_3))
- 		igb_phy_init_script_igp3(hw);
-
+ 		e1000_phy_init_script_igp3(hw);
+ 
 +	if (hw->phy.type == e1000_phy_bcm5461s)
-+            igb_phy_init_script_5461s(hw);
++		igb_phy_init_script_5461s(hw);
 +
- 	return 0;
+ 	return E1000_SUCCESS;
  }
-
-@@ -1552,6 +1582,7 @@ static s32 igb_setup_copper_link_82575(s
+ 
+@@ -1557,6 +1581,7 @@
  	case e1000_i350:
  	case e1000_i210:
  	case e1000_i211:
 +	case e1000_i354:
- 		phpm_reg = rd32(E1000_82580_PHY_POWER_MGMT);
+ 		phpm_reg = E1000_READ_REG(hw, E1000_82580_PHY_POWER_MGMT);
  		phpm_reg &= ~E1000_82580_PM_GO_LINKD;
- 		wr32(E1000_82580_PHY_POWER_MGMT, phpm_reg);
-@@ -1595,6 +1626,10 @@ static s32 igb_setup_copper_link_82575(s
+ 		E1000_WRITE_REG(hw, E1000_82580_PHY_POWER_MGMT, phpm_reg);
+@@ -1602,6 +1627,10 @@
  	case e1000_phy_82580:
- 		ret_val = igb_copper_link_setup_82580(hw);
+ 		ret_val = igb_e1000_copper_link_setup_82577(hw);
  		break;
 +	case e1000_phy_bcm54616:
 +		break;
 +	case e1000_phy_bcm5461s:
-+                break;
++		break;
  	default:
  		ret_val = -E1000_ERR_PHY;
  		break;
-diff -urpN a/drivers/net/ethernet/intel/igb/e1000_defines.h b/drivers/net/ethernet/intel/igb/e1000_defines.h
---- a/drivers/net/ethernet/intel/igb/e1000_defines.h	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/e1000_defines.h	2016-09-15 19:55:27.068726140 +0000
-@@ -860,6 +860,8 @@
- #define M88_VENDOR           0x0141
- #define I210_I_PHY_ID        0x01410C00
- #define M88E1543_E_PHY_ID    0x01410EA0
-+#define BCM54616_E_PHY_ID    0x3625D10
-+#define BCM5461S_PHY_ID      0x002060C0
-
+diff -Nu a/drivers/net/ethernet/intel/igb/e1000_defines.h b/drivers/net/ethernet/intel/igb/e1000_defines.h
+--- a/drivers/net/ethernet/intel/igb/e1000_defines.h	2016-11-14 15:48:41.383628151 +0000
++++ b/drivers/net/ethernet/intel/igb/e1000_defines.h	2016-11-14 17:13:16.567695539 +0000
+@@ -1184,6 +1184,8 @@
+ #define I350_I_PHY_ID		0x015403B0
+ #define I210_I_PHY_ID		0x01410C00
+ #define IGP04E1000_E_PHY_ID	0x02A80391
++#define BCM54616_E_PHY_ID   0x3625D10
++#define BCM5461S_PHY_ID     0x002060C0
+ #define M88_VENDOR		0x0141
+ 
  /* M88E1000 Specific Registers */
- #define M88E1000_PHY_SPEC_CTRL     0x10  /* PHY Specific Control Register */
-diff -urpN a/drivers/net/ethernet/intel/igb/e1000_hw.h b/drivers/net/ethernet/intel/igb/e1000_hw.h
---- a/drivers/net/ethernet/intel/igb/e1000_hw.h	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/e1000_hw.h	2016-09-15 19:55:44.584726520 +0000
-@@ -128,6 +128,8 @@ enum e1000_phy_type {
- 	e1000_phy_ife,
+diff -Nu a/drivers/net/ethernet/intel/igb/e1000_hw.h b/drivers/net/ethernet/intel/igb/e1000_hw.h
+--- a/drivers/net/ethernet/intel/igb/e1000_hw.h	2016-11-14 15:48:41.387628151 +0000
++++ b/drivers/net/ethernet/intel/igb/e1000_hw.h	2016-11-14 17:11:55.735694465 +0000
+@@ -133,6 +133,8 @@
  	e1000_phy_82580,
+ 	e1000_phy_vf,
  	e1000_phy_i210,
 +	e1000_phy_bcm54616,
 +	e1000_phy_bcm5461s,
  };
-
+ 
  enum e1000_bus_type {
-diff -urpN a/drivers/net/ethernet/intel/igb/e1000_phy.c b/drivers/net/ethernet/intel/igb/e1000_phy.c
---- a/drivers/net/ethernet/intel/igb/e1000_phy.c	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/e1000_phy.c	2016-09-15 20:07:34.964741935 +0000
-@@ -148,6 +148,14 @@ s32 igb_read_phy_reg_mdic(struct e1000_h
+diff -Nu a/drivers/net/ethernet/intel/igb/e1000_phy.c b/drivers/net/ethernet/intel/igb/e1000_phy.c
+--- a/drivers/net/ethernet/intel/igb/e1000_phy.c	2016-11-14 15:48:41.403628151 +0000
++++ b/drivers/net/ethernet/intel/igb/e1000_phy.c	2016-11-15 09:48:09.668488140 +0000
+@@ -272,6 +272,13 @@
  	 * Control register.  The MAC will take care of interfacing with the
  	 * PHY to retrieve the desired data.
  	 */
-+
 +	if (phy->type == e1000_phy_bcm5461s) {
-+            mdic = rd32(E1000_MDICNFG);
-+            mdic &= ~E1000_MDICNFG_PHY_MASK;
-+            mdic |= (phy->addr << E1000_MDICNFG_PHY_SHIFT);
-+            wr32(E1000_MDICNFG, mdic);
++		mdic = E1000_READ_REG(hw, E1000_MDICNFG);
++		mdic &= ~E1000_MDICNFG_PHY_MASK;
++		mdic |= (phy->addr << E1000_MDICNFG_PHY_SHIFT);
++		E1000_WRITE_REG(hw, E1000_MDICNFG, mdic);
 +	}
 +
  	mdic = ((offset << E1000_MDIC_REG_SHIFT) |
  		(phy->addr << E1000_MDIC_PHY_SHIFT) |
  		(E1000_MDIC_OP_READ));
-@@ -204,6 +212,14 @@ s32 igb_write_phy_reg_mdic(struct e1000_
+@@ -331,6 +338,13 @@
  	 * Control register.  The MAC will take care of interfacing with the
  	 * PHY to retrieve the desired data.
  	 */
-+
 +	if (phy->type == e1000_phy_bcm5461s) {
-+            mdic = rd32(E1000_MDICNFG);
-+            mdic &= ~E1000_MDICNFG_PHY_MASK;
-+            mdic |= (phy->addr << E1000_MDICNFG_PHY_SHIFT);
-+            wr32(E1000_MDICNFG, mdic);
++		mdic = E1000_READ_REG(hw, E1000_MDICNFG);
++		mdic &= ~E1000_MDICNFG_PHY_MASK;
++		mdic |= (phy->addr << E1000_MDICNFG_PHY_SHIFT);
++		E1000_WRITE_REG(hw, E1000_MDICNFG, mdic);
 +	}
 +
  	mdic = (((u32)data) |
  		(offset << E1000_MDIC_REG_SHIFT) |
  		(phy->addr << E1000_MDIC_PHY_SHIFT) |
-@@ -1115,11 +1131,13 @@ s32 igb_setup_copper_link(struct e1000_h
+@@ -1614,10 +1628,12 @@
  		 * depending on user settings.
  		 */
- 		hw_dbg("Forcing Speed and Duplex\n");
+ 		DEBUGOUT("Forcing Speed and Duplex\n");
 -		ret_val = hw->phy.ops.force_speed_duplex(hw);
 -		if (ret_val) {
-+                if(hw->phy.ops.force_speed_duplex) {
-+                    ret_val = hw->phy.ops.force_speed_duplex(hw);
-+                    if (ret_val) {
- 			hw_dbg("Error Forcing Speed and Duplex\n");
- 			goto out;
--		}
-+                    }
-+                }
+-			DEBUGOUT("Error Forcing Speed and Duplex\n");
+-			return ret_val;
++		if (hw->phy.ops.force_speed_duplex) {
++			ret_val = hw->phy.ops.force_speed_duplex(hw);
++			if (ret_val) {
++				DEBUGOUT("Error Forcing Speed and Duplex\n");
++				return ret_val;
++			}
+ 		}
  	}
-
- 	/* Check link status. Wait up to 100 microseconds for link to become
-@@ -2509,3 +2527,67 @@ static s32 igb_set_master_slave_mode(str
-
- 	return hw->phy.ops.write_reg(hw, PHY_1000T_CTRL, phy_data);
+ 
+@@ -3407,3 +3423,67 @@
+ 
+ 	return ready;
  }
 +
 +/**
@@ -216,7 +186,7 @@ diff -urpN a/drivers/net/ethernet/intel/igb/e1000_phy.c b/drivers/net/ethernet/i
 +	s32 ret_val;
 +	bool link;
 +
-+	ret_val = igb_phy_has_link(hw, 1, 0, &link);
++	ret_val = e1000_phy_has_link_generic(hw, 1, 0, &link);
 +	if (ret_val)
 +		goto out;
 +
@@ -235,46 +205,38 @@ diff -urpN a/drivers/net/ethernet/intel/igb/e1000_phy.c b/drivers/net/ethernet/i
 +out:
 +	return ret_val;
 +}
-diff -urpN a/drivers/net/ethernet/intel/igb/e1000_phy.h b/drivers/net/ethernet/intel/igb/e1000_phy.h
---- a/drivers/net/ethernet/intel/igb/e1000_phy.h	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/e1000_phy.h	2016-09-15 19:41:43.584708271 +0000
-@@ -61,6 +61,8 @@ s32  igb_phy_has_link(struct e1000_hw *h
- void igb_power_up_phy_copper(struct e1000_hw *hw);
- void igb_power_down_phy_copper(struct e1000_hw *hw);
- s32  igb_phy_init_script_igp3(struct e1000_hw *hw);
+diff -Nu a/drivers/net/ethernet/intel/igb/e1000_phy.h b/drivers/net/ethernet/intel/igb/e1000_phy.h
+--- a/drivers/net/ethernet/intel/igb/e1000_phy.h	2016-11-14 15:48:41.403628151 +0000
++++ b/drivers/net/ethernet/intel/igb/e1000_phy.h	2016-11-14 17:21:08.243701801 +0000
+@@ -74,6 +74,8 @@
+ s32  e1000_phy_has_link_generic(struct e1000_hw *hw, u32 iterations,
+ 				u32 usec_interval, bool *success);
+ s32  e1000_phy_init_script_igp3(struct e1000_hw *hw);
 +s32  igb_phy_init_script_5461s(struct e1000_hw *hw);
 +s32  igb_get_phy_info_5461s(struct e1000_hw *hw);
- s32  igb_read_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 *data);
- s32  igb_write_phy_reg_mdic(struct e1000_hw *hw, u32 offset, u16 data);
- s32  igb_read_phy_reg_i2c(struct e1000_hw *hw, u32 offset, u16 *data);
-diff -urpN a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
---- a/drivers/net/ethernet/intel/igb/igb_main.c	2016-03-02 10:31:21.000000000 +0000
-+++ b/drivers/net/ethernet/intel/igb/igb_main.c	2016-09-15 19:56:53.276728011 +0000
-@@ -108,6 +108,7 @@ static const struct pci_device_id igb_pc
- 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_82575EB_COPPER), board_82575 },
- 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_82575EB_FIBER_SERDES), board_82575 },
- 	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_82575GB_QUAD_COPPER), board_82575 },
-+	{ PCI_VDEVICE(INTEL, E1000_DEV_ID_I354_SGMII), board_82575 },
- 	/* required last entry */
- 	{0, }
- };
-@@ -7198,11 +7199,19 @@ static int igb_mii_ioctl(struct net_devi
- 		data->phy_id = adapter->hw.phy.addr;
- 		break;
+ enum e1000_phy_type e1000_get_phy_type_from_id(u32 phy_id);
+ s32  e1000_determine_phy_address(struct e1000_hw *hw);
+ s32  e1000_enable_phy_wakeup_reg_access_bm(struct e1000_hw *hw, u16 *phy_reg);
+diff -Nu a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
+--- a/drivers/net/ethernet/intel/igb/igb_main.c	2016-11-14 15:48:41.411628151 +0000
++++ b/drivers/net/ethernet/intel/igb/igb_main.c	2016-11-14 19:07:51.867786828 +0000
+@@ -8607,11 +8607,19 @@
  	case SIOCGMIIREG:
-+                adapter->hw.phy.addr = data->phy_id;
- 		if (igb_read_phy_reg(&adapter->hw, data->reg_num & 0x1F,
- 				     &data->val_out))
+ 		if (!capable(CAP_NET_ADMIN))
+ 			return -EPERM;
++		adapter->hw.phy.addr = data->phy_id;
+ 		if (igb_e1000_read_phy_reg(&adapter->hw, data->reg_num & 0x1F,
+ 				   &data->val_out))
  			return -EIO;
  		break;
  	case SIOCSMIIREG:
-+            if (!capable(CAP_NET_ADMIN))
-+                return -EPERM;
-+            adapter->hw.phy.addr = data->phy_id;
-+            if (igb_write_phy_reg(&adapter->hw, data->reg_num & 0x1F,
-+                                  data->val_in))
-+                return -EIO;
-+            break;
++		if (!capable(CAP_NET_ADMIN))
++			return -EPERM;
++		adapter->hw.phy.addr = data->phy_id;
++		if (igb_e1000_write_phy_reg(&adapter->hw, data->reg_num & 0x1F,
++							  data->val_in))
++			return -EIO;
++		break;
  	default:
  		return -EOPNOTSUPP;
  	}
