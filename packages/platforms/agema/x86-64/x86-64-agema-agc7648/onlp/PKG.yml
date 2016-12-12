@@ -7,6 +7,7 @@ common:
   arch: amd64
   copyright: Copyright 2013, 2014, 2015 Big Switch Networks
   maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
   comment: dummy package for ONLP on Wedge
 packages:
   - name: onlp-${platform}
