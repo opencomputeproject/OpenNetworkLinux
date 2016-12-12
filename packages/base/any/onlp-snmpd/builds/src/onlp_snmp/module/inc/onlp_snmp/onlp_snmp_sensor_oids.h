@@ -79,14 +79,6 @@ typedef enum onlp_snmp_fan_flow_type_e {
     ONLP_SNMP_FAN_FLOW_TYPE_F2B = 2,
 } onlp_snmp_fan_flow_type_t;
 
-/** onlp_snmp_sensor_status */
-typedef enum onlp_snmp_sensor_status_e {
-    ONLP_SNMP_SENSOR_STATUS_MISSING = 0,
-    ONLP_SNMP_SENSOR_STATUS_GOOD = 1,
-    ONLP_SNMP_SENSOR_STATUS_FAILED = 2,
-    ONLP_SNMP_SENSOR_STATUS_UNPLUGGED = 3,
-} onlp_snmp_sensor_status_t;
-
 /** onlp_snmp_psu_type */
 typedef enum onlp_snmp_psu_type_e {
     ONLP_SNMP_PSU_TYPE_UNKNOWN = 0,
@@ -94,6 +86,14 @@ typedef enum onlp_snmp_psu_type_e {
     ONLP_SNMP_PSU_TYPE_DC12 = 2,
     ONLP_SNMP_PSU_TYPE_DC48 = 3,
 } onlp_snmp_psu_type_t;
+
+/** onlp_snmp_sensor_status */
+typedef enum onlp_snmp_sensor_status_e {
+    ONLP_SNMP_SENSOR_STATUS_MISSING = 0,
+    ONLP_SNMP_SENSOR_STATUS_GOOD = 1,
+    ONLP_SNMP_SENSOR_STATUS_FAILED = 2,
+    ONLP_SNMP_SENSOR_STATUS_UNPLUGGED = 3,
+} onlp_snmp_sensor_status_t;
 
 /** onlp_snmp_sensor_type */
 typedef enum onlp_snmp_sensor_type_e {
@@ -137,27 +137,6 @@ extern aim_map_si_t onlp_snmp_fan_flow_type_map[];
 extern aim_map_si_t onlp_snmp_fan_flow_type_desc_map[];
 
 /** Enum names. */
-const char* onlp_snmp_sensor_status_name(onlp_snmp_sensor_status_t e);
-
-/** Enum values. */
-int onlp_snmp_sensor_status_value(const char* str, onlp_snmp_sensor_status_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_snmp_sensor_status_desc(onlp_snmp_sensor_status_t e);
-
-/** Enum validator. */
-int onlp_snmp_sensor_status_valid(onlp_snmp_sensor_status_t e);
-
-/** validator */
-#define ONLP_SNMP_SENSOR_STATUS_VALID(_e) \
-    (onlp_snmp_sensor_status_valid((_e)))
-
-/** onlp_snmp_sensor_status_map table. */
-extern aim_map_si_t onlp_snmp_sensor_status_map[];
-/** onlp_snmp_sensor_status_desc_map table. */
-extern aim_map_si_t onlp_snmp_sensor_status_desc_map[];
-
-/** Enum names. */
 const char* onlp_snmp_psu_type_name(onlp_snmp_psu_type_t e);
 
 /** Enum values. */
@@ -177,6 +156,27 @@ int onlp_snmp_psu_type_valid(onlp_snmp_psu_type_t e);
 extern aim_map_si_t onlp_snmp_psu_type_map[];
 /** onlp_snmp_psu_type_desc_map table. */
 extern aim_map_si_t onlp_snmp_psu_type_desc_map[];
+
+/** Enum names. */
+const char* onlp_snmp_sensor_status_name(onlp_snmp_sensor_status_t e);
+
+/** Enum values. */
+int onlp_snmp_sensor_status_value(const char* str, onlp_snmp_sensor_status_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_snmp_sensor_status_desc(onlp_snmp_sensor_status_t e);
+
+/** Enum validator. */
+int onlp_snmp_sensor_status_valid(onlp_snmp_sensor_status_t e);
+
+/** validator */
+#define ONLP_SNMP_SENSOR_STATUS_VALID(_e) \
+    (onlp_snmp_sensor_status_valid((_e)))
+
+/** onlp_snmp_sensor_status_map table. */
+extern aim_map_si_t onlp_snmp_sensor_status_map[];
+/** onlp_snmp_sensor_status_desc_map table. */
+extern aim_map_si_t onlp_snmp_sensor_status_desc_map[];
 
 /** Enum names. */
 const char* onlp_snmp_sensor_type_name(onlp_snmp_sensor_type_t e);

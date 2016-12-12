@@ -132,16 +132,6 @@
 #endif
 
 /**
- * ONLP_SNMP_CONFIG_DEV_MAX_INDEX
- *
- * Maximum index. */
-
-
-#ifndef ONLP_SNMP_CONFIG_DEV_MAX_INDEX
-#define ONLP_SNMP_CONFIG_DEV_MAX_INDEX 100
-#endif
-
-/**
  * ONLP_SNMP_CONFIG_INCLUDE_THERMALS
  *
  * Include Thermals. */

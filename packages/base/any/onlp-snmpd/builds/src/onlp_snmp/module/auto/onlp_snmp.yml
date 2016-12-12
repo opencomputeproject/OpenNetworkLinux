@@ -38,9 +38,6 @@ cdefs: &cdefs
 - ONLP_SNMP_CONFIG_DEV_BASE_INDEX:
     doc: "Base index."
     default: 1
-- ONLP_SNMP_CONFIG_DEV_MAX_INDEX:
-    doc: "Maximum index."
-    default: 100
 - ONLP_SNMP_CONFIG_INCLUDE_THERMALS:
     doc: "Include Thermals."
     default: 1
