@@ -7,7 +7,7 @@
 #
 ######################################################################
 
-x86-64-agc7648-r0:
+x86-64-agc7648a-r0:
 
   grub:
 
@@ -18,15 +18,12 @@ x86-64-agc7648-r0:
       --parity=0
       --stop=1
 
-    kernel: 
+    kernel:
       <<: *kernel-3-18
 
     args: >-
       nopat
-      console=ttyS0,57600n8
-      rd_NO_MD
-      rd_NO_LUKS
-      intel_iommu=off
+      console=ttyS0,115200n8
 
   ##network
   ##  interfaces:
