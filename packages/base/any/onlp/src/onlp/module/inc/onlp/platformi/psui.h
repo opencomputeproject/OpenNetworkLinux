@@ -40,6 +40,20 @@ int onlp_psui_init(void);
 int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
 
 /**
+ * @brief Get the PSU's operational status.
+ * @param id The PSU OID.
+ * @param rv [out] Receives the operational status.
+ */
+int onlp_psui_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Get the PSU's oid header.
+ * @param id The PSU OID.
+ * @param rv [out] Receives the header.
+ */
+int onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+
+/**
  * @brief Generic PSU ioctl
  * @param id The PSU OID
  * @param vargs The variable argument list for the ioctl call.

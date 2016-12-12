@@ -96,6 +96,37 @@ onlp_thermal_info_get_locked__(onlp_oid_t oid, onlp_thermal_info_t* info)
 }
 ONLP_LOCKED_API2(onlp_thermal_info_get, onlp_oid_t, oid, onlp_thermal_info_t*, info);
 
+static int
+onlp_thermal_status_get_locked__(onlp_oid_t id, uint32_t* status)
+{
+    int rv = onlp_thermali_status_get(id, status);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_thermal_info_t ti;
+        rv = onlp_thermali_info_get(id, &ti);
+        *status = ti.status;
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_thermal_status_get, onlp_oid_t, id, uint32_t*, status);
+
+static int
+onlp_thermal_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    int rv = onlp_thermali_hdr_get(id, hdr);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_thermal_info_t ti;
+        rv = onlp_thermali_info_get(id, &ti);
+        memcpy(hdr, &ti.hdr, sizeof(ti.hdr));
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_thermal_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
 int
 onlp_thermal_ioctl(int code, ...)
 {

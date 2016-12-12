@@ -85,6 +85,38 @@ onlp_led_info_get_locked__(onlp_oid_t id, onlp_led_info_t* info)
 ONLP_LOCKED_API2(onlp_led_info_get, onlp_oid_t, id, onlp_led_info_t*, info);
 
 static int
+onlp_led_status_get_locked__(onlp_oid_t id, uint32_t* status)
+{
+    int rv = onlp_ledi_status_get(id, status);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_led_info_t li;
+        rv = onlp_ledi_info_get(id, &li);
+        *status = li.status;
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_led_status_get, onlp_oid_t, id, uint32_t*, status);
+
+static int
+onlp_led_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    int rv = onlp_ledi_hdr_get(id, hdr);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_led_info_t li;
+        rv = onlp_ledi_info_get(id, &li);
+        memcpy(hdr, &li.hdr, sizeof(li.hdr));
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_led_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
+
+static int
 onlp_led_set_locked__(onlp_oid_t id, int on_or_off)
 {
     onlp_led_info_t info;

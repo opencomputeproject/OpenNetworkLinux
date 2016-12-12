@@ -90,41 +90,25 @@ oid_type_SYS_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 static int
 oid_type_THERMAL_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv;
-    onlp_thermal_info_t ti;
-    rv = onlp_thermal_info_get(oid, &ti);
-    memcpy(hdr, &ti.hdr, sizeof(ti.hdr));
-    return rv;
+    return onlp_thermal_hdr_get(oid, hdr);
 }
 
 static int
 oid_type_FAN_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv;
-    onlp_fan_info_t fi;
-    rv = onlp_fan_info_get(oid, &fi);
-    memcpy(hdr, &fi.hdr, sizeof(fi.hdr));
-    return rv;
+    return onlp_fan_hdr_get(oid, hdr);
 }
 
 static int
 oid_type_LED_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv;
-    onlp_led_info_t li;
-    rv = onlp_led_info_get(oid, &li);
-    memcpy(hdr, &li.hdr, sizeof(li.hdr));
-    return rv;
+    return onlp_led_hdr_get(oid, hdr);
 }
 
 static int
 oid_type_PSU_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv;
-    onlp_psu_info_t pi;
-    rv = onlp_psu_info_get(oid, &pi);
-    memcpy(hdr, &pi.hdr, sizeof(pi.hdr));
-    return rv;
+    return onlp_psu_hdr_get(oid, hdr);
 }
 
 static int
