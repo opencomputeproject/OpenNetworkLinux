@@ -1136,7 +1136,7 @@ setup_alarm__(void)
 
 
 int
-onlp_snmp_sensors_client(int enable, void* cookie)
+onlp_snmp_sensors_init(void)
 {
     init_all_tables__();
     setup_alarm__();
