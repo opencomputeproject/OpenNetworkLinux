@@ -158,8 +158,12 @@ class OnlPlatformBase(object):
 
     def add_info_json(self, name, f, klass=None, required=True):
         if os.path.exists(f):
-            d = json.load(file(f))
-            self.add_info_dict(name, d, klass)
+            try:
+                d = json.load(file(f))
+                self.add_info_dict(name, d, klass)
+            except ValueError, e:
+                if required:
+                    raise e
         elif required:
             raise RuntimeError("A required system file (%s) is missing." % f)
 
