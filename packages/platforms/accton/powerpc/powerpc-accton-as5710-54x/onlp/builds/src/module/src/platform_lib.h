@@ -52,6 +52,7 @@
 #define SFP_HWMON_NODE(node)     SFP_HWMON_PREFIX#node
 #define SFP_HWMON_DOM_PREFIX "/sys/bus/i2c/devices/3-0051/"
 #define SFP_HWMON_DOM_NODE(node)     SFP_HWMON_DOM_PREFIX#node
+#define SFP_BUS           3
 
 int deviceNodeWriteInt(char *filename, int value, int data_len);
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
