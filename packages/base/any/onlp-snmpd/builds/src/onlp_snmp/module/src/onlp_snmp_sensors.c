@@ -307,11 +307,7 @@ temp_value_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(ti->status & ONLP_THERMAL_STATUS_PRESENT)) {
-        return;
-    }
-
-    value = ti->mcelsius;
+    value = (ti->status & ONLP_THERMAL_STATUS_PRESENT)? ti->mcelsius: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -443,12 +439,7 @@ fan_rpm_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(fi->status & ONLP_FAN_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    value = fi->rpm;
+    value = (fi->status & ONLP_FAN_STATUS_PRESENT)? fi->rpm: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -468,11 +459,7 @@ fan_pct_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(fi->status & ONLP_FAN_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-    value = fi->percentage;
+    value = (fi->status & ONLP_FAN_STATUS_PRESENT)? fi->percentage: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -491,15 +478,7 @@ fan_model_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(fi->status & ONLP_FAN_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    int len = strlen(fi->model);
-    if (len == 0) {
-        return;
-    }
+    int len = (fi->status & ONLP_FAN_STATUS_PRESENT)? strlen(fi->model): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -518,15 +497,7 @@ fan_serial_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(fi->status & ONLP_FAN_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    int len = strlen(fi->serial);
-    if (len == 0) {
-        return;
-    }
+    int len = (fi->status & ONLP_FAN_STATUS_PRESENT)? strlen(fi->serial): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -639,11 +610,6 @@ psu_current_type_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
     name_index = ONLP_SNMP_PSU_TYPE_UNKNOWN;
     /* These values are mutual exclusive */
     if (pi->caps & ONLP_PSU_CAPS_AC) {
@@ -674,15 +640,7 @@ psu_model_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    int len = strlen(pi->model);
-    if (len == 0) {
-        return;
-    }
+    int len = (pi->status & ONLP_PSU_STATUS_PRESENT)? strlen(pi->model): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -702,15 +660,7 @@ psu_serial_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    int len = strlen(pi->serial);
-    if (len == 0) {
-        return;
-    }
+    int len = (pi->status & ONLP_PSU_STATUS_PRESENT)? strlen(pi->serial): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -730,12 +680,7 @@ psu_vin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-
-    value = pi->mvin;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mvin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -755,11 +700,7 @@ psu_vout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present */
-        return;
-    }
-    value = pi->mvout;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mvout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -779,11 +720,7 @@ psu_iin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-    value = pi->miin;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->miin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -803,11 +740,7 @@ psu_iout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-    value = pi->miout;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->miout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -827,11 +760,7 @@ psu_pin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-    value = pi->mpin;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mpin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -851,11 +780,7 @@ psu_pout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    if (!(pi->status & ONLP_PSU_STATUS_PRESENT)) {
-        /* Simply return if failed to get or not present*/
-        return;
-    }
-    value = pi->mpout;
+    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mpout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
