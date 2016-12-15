@@ -156,7 +156,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int   rv, len = 10, temp_base=1, local_id = 0;
     char  r_data[10]   = {0};
-    char  fullpath[50] = {0};
     VALIDATE(id);
 
     local_id = ONLP_OID_ID_GET(id);
@@ -164,10 +163,8 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[local_id];
 
-    /* get fullpath */
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", prefix_path, last_path[local_id]);
-
-    rv = onlp_file_read((uint8_t*)r_data, sizeof(r_data), &len, fullpath);
+    rv = onlp_file_read((uint8_t*)r_data, sizeof(r_data), &len, "%s/%s",
+    		prefix_path, last_path[local_id]);
 	if (rv < 0) {
 		return ONLP_STATUS_E_INTERNAL;
 	}

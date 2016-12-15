@@ -166,7 +166,6 @@ _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
     uint8_t temp   = 0;
     int rv  = 0;
     int len = 0;
-    char path[LEN_FILE_NAME] = {0};
 
     /* We have 4 FRU with 2 fans(total 8 fans).
        Eeprom is per FRU but not per fan.
@@ -177,9 +176,7 @@ _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
         local_id /= 2;
     }
 
-    /* Reading FRU eeprom. */
-    snprintf(path, sizeof(path), IDPROM_PATH, "fan", local_id);
-    rv = onlp_file_read(data, sizeof(data), &len, path);
+    rv = onlp_file_read(data, sizeof(data), &len, IDPROM_PATH, "fan", local_id);
     if (rv < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -401,7 +398,6 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     float temp = 0.0;
     int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
 
     VALIDATE(id);
@@ -417,9 +413,6 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     if (0 == rpm) {
         return ONLP_STATUS_E_INVALID;
     }
-
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH,
-             fan_path[local_id].r_speed_set);
 
     /* Set fan speed
        Converting percent to driver value.
@@ -442,7 +435,8 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, "%s%s", PREFIX_PATH,
+            fan_path[local_id].r_speed_set);
 	if (rv < 0) {
 		return ONLP_STATUS_E_INTERNAL;
 	}
@@ -464,7 +458,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     float temp = 0.0;
     int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
 
     VALIDATE(id);
@@ -484,9 +477,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         return ONLP_STATUS_E_PARAM;
     }
 
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH,
-             fan_path[local_id].r_speed_set);
-
     /* Set fan speed
        Converting percent to driver value.
        Driver accept value in range between 153 and 255.
@@ -498,7 +488,8 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, "%s%s", PREFIX_PATH,
+            fan_path[local_id].r_speed_set);
 	if (rv < 0) {
 		return ONLP_STATUS_E_INTERNAL;
 	}

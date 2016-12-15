@@ -273,6 +273,17 @@ class OnlMountManager(object):
             o.init()
             o.mount(args.labels, mode=mode)
 
+    @staticmethod
+    def cmdRw(args, register=False):
+        if register:
+            p = args.add_parser('rw')
+            p.add_argument("label")
+            p.add_argument("cmd", nargs='+')
+            p.set_defaults(func=OnlMountManager.cmdRw)
+        else:
+            with OnlMountContextReadWrite(args.label, logger=None):
+                rc = subprocess.call(" ".join(args.cmd), shell=True)
+            sys.exit(rc)
 
     @staticmethod
     def cmdFsck(args, register=False):
@@ -366,4 +377,3 @@ class OnlOnieBootContext(MountContext):
         if not os.path.exists(mdir):
             os.makedirs(mdir)
         MountContext.__init__(self, device, mdir, mode, logger)
-
