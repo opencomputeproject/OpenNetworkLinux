@@ -396,6 +396,7 @@ onlp_onie_show(onlp_onie_info_t* info, aim_pvs_t* pvs)
 }
 
 #include <cjson/cJSON.h>
+#include <cjson_util/cjson_util.h>
 
 void
 onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
@@ -443,5 +444,86 @@ onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
     free(out);
     cJSON_Delete(cj);
 }
+
+static char*
+lookup_entry__(cJSON* cj, const char* name, int code)
+{
+    char* str = NULL;
+    int rv = cjson_util_lookup_string(cj, &str, "0x%x", code);
+    if(rv < 0) {
+        rv = cjson_util_lookup_string(cj, &str, name);
+    }
+    if(rv < 0) {
+        return NULL;
+    }
+    else {
+        return aim_strdup(str);
+    }
+}
+
+int
+onlp_onie_read_json(onlp_onie_info_t* info, const char* fname)
+{
+    cJSON* cj;
+
+    memset(info, 0, sizeof(*info));
+
+    list_init(&info->vx_list);
+
+    int rv = cjson_util_parse_file(fname, &cj);
+    if(rv < 0) {
+        AIM_LOG_ERROR("Could not parse ONIE JSON file '%s' rv=%{aim_error}",
+                      fname, rv);
+        return rv;
+    }
+
+#define ONIE_TLV_ENTRY_str(_member, _name, _code)                   \
+    do {                                                            \
+        info->_member = lookup_entry__(cj, #_name, _code);          \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_mac(_member, _name, _code)             \
+    do {                                                      \
+        char* str = lookup_entry__(cj, #_name, _code);        \
+        int mac[6] = {0};                                     \
+        if(str) {                                             \
+            int i;                                            \
+            sscanf(str, "%x:%x:%x:%x:%x:%x",                  \
+                   mac+0, mac+1, mac+2, mac+3, mac+4, mac+5); \
+            for(i = 0; i < 6; i++) info->mac[i] = mac[i];     \
+            aim_free(str);                                    \
+        }                                                     \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_byte(_member, _name, _code)      \
+    do {                                                \
+        char* v = lookup_entry__(cj, #_name, _code);    \
+        if(v) {                                         \
+            info->_member = atoi(v);                    \
+            aim_free(v);                                \
+        }                                               \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_int16(_member, _name, _code)     \
+    do {                                                \
+        char* v = lookup_entry__(cj, #_name, _code);    \
+        if(v) {                                         \
+            info->_member = atoi(v);                    \
+            aim_free(v);                                \
+        }                                               \
+    } while(0)
+
+#define ONIE_TLV_ENTRY(_member, _name, _code, _type)    \
+    ONIE_TLV_ENTRY_##_type(_member, _name, _code);
+
+    #include <onlplib/onlplib.x>
+
+
+    cJSON_Delete(cj);
+    return 0;
+}
+
+
+
 
 
