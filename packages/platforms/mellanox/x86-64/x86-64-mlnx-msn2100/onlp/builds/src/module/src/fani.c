@@ -213,7 +213,6 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     float temp = 0.0;
     int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
 
     VALIDATE(id);
@@ -229,9 +228,6 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     if (0 == rpm) {
         return ONLP_STATUS_E_INVALID;
     }
-
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH,
-             fan_path[local_id].r_speed_set);
 
     /* Set fan speed
        Converting percent to driver value.
@@ -254,7 +250,8 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, "%s%s", PREFIX_PATH,
+            fan_path[local_id].r_speed_set);
 	if (rv < 0) {
 		return ONLP_STATUS_E_INTERNAL;
 	}
@@ -276,7 +273,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     float temp = 0.0;
     int   rv = 0, local_id = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[LEN_FILE_NAME] = {0};
     onlp_fan_info_t* info = NULL;
 
     VALIDATE(id);
@@ -296,9 +292,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         return ONLP_STATUS_E_PARAM;
     }
 
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH,
-             fan_path[local_id].r_speed_set);
-
     /* Set fan speed
        Converting percent to driver value.
        Driver accept value in range between 153 and 255.
@@ -310,7 +303,8 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
     snprintf(r_data, sizeof(r_data), "%d", (int)temp);
     nbytes = strnlen(r_data, sizeof(r_data));
-    rv = onlp_file_write((uint8_t*)r_data, nbytes, fullpath);
+    rv = onlp_file_write((uint8_t*)r_data, nbytes, "%s%s",
+    		PREFIX_PATH, fan_path[local_id].r_speed_set);
 	if (rv < 0) {
 		return ONLP_STATUS_E_INTERNAL;
 	}

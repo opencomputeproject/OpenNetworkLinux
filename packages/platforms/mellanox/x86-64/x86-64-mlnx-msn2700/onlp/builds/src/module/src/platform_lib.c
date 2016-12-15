@@ -35,15 +35,14 @@
 int
 psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_info)
 {
-    char path[64] = {0};
     const char sanity_check[]   = "MLNX";
     const uint8_t serial_len    = 24;
     char data[256] = {0};
     bool sanity_found = false;
     int index = 0, rv = 0, len = 0;
 
-    snprintf(path, sizeof(path), IDPROM_PATH, "psu", psu_index);
-    rv = onlp_file_read((uint8_t* )data, sizeof(data)-1, &len, path);
+    rv = onlp_file_read((uint8_t* )data, sizeof(data)-1, &len,
+    		IDPROM_PATH, "psu", psu_index);
     if (rv < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }

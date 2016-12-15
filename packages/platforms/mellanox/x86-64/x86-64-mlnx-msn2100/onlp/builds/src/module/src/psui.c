@@ -49,12 +49,11 @@ psu_module_info_get(int id, char *node, int *value)
 {
     int len, ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
 
     *value = 0;
 
-    sprintf(node_path, PSU_MODULE_PREFIX, id, node);
-    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len, node_path);
+    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len,
+    		PSU_MODULE_PREFIX, id, node);
     if (ret == 0) {
         *value = atoi(buf);
     }
@@ -67,12 +66,11 @@ psu_power_info_get(int id, char *node, int *value)
 {
     int len, ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
 
     *value = 0;
 
-    sprintf(node_path, PSU_POWER_PREFIX, id, node);
-    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len, node_path);
+    ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &len,
+    		PSU_POWER_PREFIX, id, node);
     if (ret == 0) {
         *value = atoi(buf);
     }
