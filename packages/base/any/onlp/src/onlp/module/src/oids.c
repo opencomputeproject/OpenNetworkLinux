@@ -1,21 +1,21 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
+ *
  * </bsn.cl>
  ************************************************************
  *
@@ -80,11 +80,7 @@ oid_type_unknown_dump__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
 static int
 oid_type_SYS_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv;
-    onlp_sys_info_t si;
-    rv = onlp_sys_info_get(&si);
-    memcpy(hdr, &si.hdr, sizeof(si.hdr));
-    return rv;
+    return onlp_sys_hdr_get(hdr);
 }
 
 static int
