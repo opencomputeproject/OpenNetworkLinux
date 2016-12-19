@@ -36,6 +36,9 @@
 #include "x86_64_mlnx_msn2410_int.h"
 #include "x86_64_mlnx_msn2410_log.h"
 
+#define ONL_PLATFORM_NAME  "x86-64-mlnx-msn2410-r0"
+#define ONIE_PLATFORM_NAME "x86-64-mlnx_msn2410-r0"
+
 #define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
 #define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
 #define NUM_OF_PSU_ON_MAIN_BROAD      2
@@ -55,7 +58,7 @@ static char arr_cplddev_name[NUM_OF_CPLD][30] =
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "x86-64-mlnx-msn2410-r0";
+    return ONL_PLATFORM_NAME;
 }
 
 int
@@ -118,6 +121,14 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
 int
 onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
 {
-    return onlp_onie_read_json(onie,
-                               "/lib/platform-config/current/onl/etc/onie/eeprom.json");
+    int rv = onlp_onie_read_json(onie,
+                                 "/lib/platform-config/current/onl/etc/onie/eeprom.json");
+    if(rv >= 0) {
+        if(onie->platform_name) {
+            aim_free(onie->platform_name);
+        }
+        onie->platform_name = aim_strdup(ONIE_PLATFORM_NAME);
+    }
+
+    return rv;
 }

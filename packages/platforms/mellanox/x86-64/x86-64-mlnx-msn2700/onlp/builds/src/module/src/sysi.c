@@ -36,15 +36,19 @@
 #include "x86_64_mlnx_msn2700_int.h"
 #include "x86_64_mlnx_msn2700_log.h"
 
+#define ONL_PLATFORM_NAME             "x86-64-mlnx-msn2700-r0"
+#define ONIE_PLATFORM_NAME            "x86_64-mlnx_msn2700-r0"
+
 #define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
 #define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
 #define NUM_OF_PSU_ON_MAIN_BROAD      2
 #define NUM_OF_LED_ON_MAIN_BROAD      6
 
-#define COMMAND_OUTPUT_BUFFER        256
+#define COMMAND_OUTPUT_BUFFER         256
 
-#define PREFIX_PATH_ON_CPLD_DEV          "/bsp/cpld"
-#define NUM_OF_CPLD                      3
+#define PREFIX_PATH_ON_CPLD_DEV       "/bsp/cpld"
+#define NUM_OF_CPLD                   3
+
 static char arr_cplddev_name[NUM_OF_CPLD][30] =
 {
     "cpld_brd_version",
@@ -55,7 +59,7 @@ static char arr_cplddev_name[NUM_OF_CPLD][30] =
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "x86-64-mlnx-msn2700-r0";
+    return ONL_PLATFORM_NAME;
 }
 
 int
@@ -113,4 +117,19 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     }
 
     return 0;
+}
+
+int
+onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
+{
+    int rv = onlp_onie_read_json(onie,
+                                 "/lib/platform-config/current/onl/etc/onie/eeprom.json");
+    if(rv >= 0) {
+        if(onie->platform_name) {
+            aim_free(onie->platform_name);
+        }
+        onie->platform_name = aim_strdup(ONIE_PLATFORM_NAME);
+    }
+
+    return rv;
 }
