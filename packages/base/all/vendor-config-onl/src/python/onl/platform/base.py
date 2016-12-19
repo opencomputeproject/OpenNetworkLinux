@@ -210,8 +210,10 @@ class OnlPlatformBase(object):
 
         return data
 
+    ONIE_EEPROM_JSON='etc/onie/eeprom.json'
+
     def onie_syseeprom_get(self):
-        se = self.basedir_onl("etc/onie/eeprom.json")
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
         if not os.path.exists(se):
             data = {}
             extensions = []
@@ -229,14 +231,19 @@ class OnlPlatformBase(object):
             if len(extensions):
                 data['0xfd'] = extensions
 
-            if not os.path.exists(os.path.dirname(se)):
-                os.makedirs(os.path.dirname(se))
-
-            with open(se, "w") as f:
-                f.write(json.dumps(data, indent=2))
+            self.onie_syseeprom_set(data)
         else:
             data = json.load(open(se))
         return data
+
+    def onie_syseeprom_set(self, data):
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
+        if not os.path.exists(os.path.dirname(se)):
+            os.makedirs(os.path.dirname(se))
+
+        with open(se, "w") as f:
+            f.write(json.dumps(data, indent=2))
+
 
     def platform(self):
         return self.PLATFORM
