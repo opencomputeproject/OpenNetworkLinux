@@ -95,6 +95,11 @@ onlp_snmp_config_settings_t onlp_snmp_config_settings[] =
 #else
 { ONLP_SNMP_CONFIG_AS_SUBAGENT(__onlp_snmp_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS
+    { __onlp_snmp_config_STRINGIFY_NAME(ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS), __onlp_snmp_config_STRINGIFY_VALUE(ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS) },
+#else
+{ ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS(__onlp_snmp_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __onlp_snmp_config_STRINGIFY_VALUE

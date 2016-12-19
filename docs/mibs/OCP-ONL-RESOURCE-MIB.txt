@@ -34,7 +34,7 @@ CpuAllPercentUtilization OBJECT-TYPE
     MAX-ACCESS read-only
     STATUS     current
     DESCRIPTION
-        "The average CPU utilization (in percent). Provided by mpstat."
+        "The average CPU utilization in percent, multiplied by 100 and rounded to the nearest integer.  Provided by mpstat."
     ::= { Basic 1 }
 
 CpuAllPercentIdle OBJECT-TYPE
@@ -42,7 +42,7 @@ CpuAllPercentIdle OBJECT-TYPE
     MAX-ACCESS read-only
     STATUS     current
     DESCRIPTION
-        "The average CPU idle time (in percent). Provided by mpstat."
+        "The average CPU idle time in percent, multiplied by 100 and rounded to the nearest integer. Provided by mpstat."
     ::= { Basic 2 }
 
 END

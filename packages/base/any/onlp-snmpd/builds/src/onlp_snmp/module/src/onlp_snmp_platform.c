@@ -25,7 +25,7 @@
 #include <onlp_snmp/onlp_snmp_config.h>
 #include "onlp_snmp_log.h"
 
-#include <OS/os_time.h>
+#include <AIM/aim_time.h>
 #include <cjson/cJSON.h>
 #include <cjson_util/cjson_util.h>
 #include <net-snmp/net-snmp-config.h>
@@ -89,9 +89,6 @@ resource_int_register(int index, const char* desc,
 }
 
 
-/* resource objects refreshed with this period; units in seconds */
-#define RESOURCE_UPDATE_PERIOD 5
-
 /* resource objects */
 typedef struct {
     uint32_t utilization_percent;
@@ -103,8 +100,9 @@ static uint64_t resource_update_time;
 
 void resource_update(void)
 {
-    uint64_t now = os_time_monotonic();
-    if (now - resource_update_time > RESOURCE_UPDATE_PERIOD * 1000 * 1000) {
+    uint64_t now = aim_time_monotonic();
+    if (now - resource_update_time >
+        (ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS * 1000 * 1000)) {
         resource_update_time = now;
         AIM_LOG_INFO("update resource objects");
 
@@ -124,7 +122,7 @@ void resource_update(void)
             if (rv == 0) {
                 /* save it */
                 resources.idle_percent = result;
-                resources.utilization_percent = 100 - result;
+                resources.utilization_percent = 100*100 - result;
             }
             cJSON_Delete(root);
         }

@@ -27,7 +27,7 @@ for line in out.split('\n'):
 
     if "Average" in line:
         vals = line.split()[1:]
-        stats[vals[0]] = { k:int(round(float(v))) \
+        stats[vals[0]] = { k:int(round(100*float(v))) \
                                for (k,v) in zip(keys[1:],vals[1:]) }
 
 print json.dumps(stats)
