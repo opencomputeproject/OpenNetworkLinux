@@ -25,6 +25,9 @@
 #include <onlp_snmp/onlp_snmp_config.h>
 #include "onlp_snmp_log.h"
 
+#include <OS/os_time.h>
+#include <cjson/cJSON.h>
+#include <cjson_util/cjson_util.h>
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 #include <net-snmp/agent/net-snmp-agent-includes.h>
@@ -54,7 +57,7 @@ platform_string_register(int index, const char* desc, char* value)
     netsnmp_register_watched_scalar( reg, winfo );
 }
 
-void
+static void
 platform_int_register(int index, char* desc, int value)
 {
     oid tree[] = { 1, 3, 6, 1, 4, 1, 42623, 1, 1, 1, 1, 1};
@@ -69,6 +72,108 @@ platform_int_register(int index, char* desc, int value)
                                   v, NULL);
 }
 
+static void
+resource_int_register(int index, const char* desc,
+                      Netsnmp_Node_Handler *handler)
+{
+    oid tree[] = { 1, 3, 6, 1, 4, 1, 42623, 1, 3, 1, 1 };
+    tree[10] = index;
+
+    netsnmp_handler_registration *reg =
+        netsnmp_create_handler_registration(desc, handler,
+                                            tree, OID_LENGTH(tree),
+                                            HANDLER_CAN_RONLY);
+    if (netsnmp_register_scalar(reg) != MIB_REGISTERED_OK) {
+        AIM_LOG_ERROR("registering handler for %s failed", desc);
+    }
+}
+
+
+/* resource objects refreshed with this period; units in seconds */
+#define RESOURCE_UPDATE_PERIOD 5
+
+/* resource objects */
+typedef struct {
+    uint32_t utilization_percent;
+    uint32_t idle_percent;
+} resources_t;
+
+static resources_t resources;
+static uint64_t resource_update_time;
+
+void resource_update(void)
+{
+    uint64_t now = os_time_monotonic();
+    if (now - resource_update_time > RESOURCE_UPDATE_PERIOD * 1000 * 1000) {
+        resource_update_time = now;
+        AIM_LOG_INFO("update resource objects");
+
+        /* invoke mpstat collection script for json output */
+        FILE *fp = popen("/usr/bin/onl-snmp-mpstat", "r");
+        if (fp == NULL) {
+            AIM_LOG_ERROR("failed invoking onl-snmp-mpstat");
+            return;
+        }
+
+        /* parse json output */
+        char line[1024];
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            cJSON *root = cJSON_Parse(line);
+            int result;
+            int rv = cjson_util_lookup_int(root, &result, "all.%%idle");
+            if (rv == 0) {
+                /* save it */
+                resources.idle_percent = result;
+                resources.utilization_percent = 100 - result;
+            }
+            cJSON_Delete(root);
+        }
+    }
+}
+
+static int
+utilization_handler(netsnmp_mib_handler *handler,
+             netsnmp_handler_registration *reginfo,
+             netsnmp_agent_request_info *reqinfo,
+             netsnmp_request_info *requests)
+{
+    if (MODE_GET == reqinfo->mode) {
+        resource_update();
+        snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
+                                 (u_char *) &resources.utilization_percent,
+                                 sizeof(resources.utilization_percent));
+    } else {
+        netsnmp_assert("bad mode in RO handler");
+    }
+
+    if (handler->next && handler->next->access_method) {
+        return netsnmp_call_next_handler(handler, reginfo, reqinfo, requests);
+    }
+
+    return SNMP_ERR_NOERROR;
+}
+
+static int
+idle_handler(netsnmp_mib_handler *handler,
+             netsnmp_handler_registration *reginfo,
+             netsnmp_agent_request_info *reqinfo,
+             netsnmp_request_info *requests)
+{
+    if (MODE_GET == reqinfo->mode) {
+        resource_update();
+        snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
+                                 (u_char *) &resources.idle_percent,
+                                 sizeof(resources.idle_percent));
+    } else {
+        netsnmp_assert("bad mode in RO handler");
+    }
+
+    if (handler->next && handler->next->access_method) {
+        return netsnmp_call_next_handler(handler, reginfo, reqinfo, requests);
+    }
+
+    return SNMP_ERR_NOERROR;
+}
 
 void
 onlp_snmp_platform_init(void)
@@ -110,5 +215,8 @@ onlp_snmp_platform_init(void)
         REGISTER_STR(14, service_tag);
         REGISTER_STR(15, onie_version);
     }
+
+    resource_int_register(1, "CpuAllPercentUtilization", utilization_handler);
+    resource_int_register(2, "CpuAllPercentIdle", idle_handler);
 }
 
