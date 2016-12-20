@@ -80,6 +80,21 @@ Interface Masters Technologies, Inc.
 <tr> <td> Niagara 2948X6XL     <td> 48x10G  + 6x40G   <td> Intel/AMD x86    <td> Broadcom BCM56850 (Trident2)   <td> Work In Progress** <td> No <td> Yes*** <td> Yes <td> No </tr>
 </table>
 
+Mellanox
+---
+<table class="table table-striped table-hover">
+<thead>
+<tr class="info">
+     <th> Device          <th> Ports       <th> CPU        <th> Forwarding       <th> ONL Certified     <th> In Lab <th> SAI </tr>
+</thead>
+<tr> <td> SN2100 <td> 16x100G <td> Intel Rangeley C2558 <td> Mellanox Spectrum <td> Yes <td> Yes <td> Yes </tr>
+<tr> <td> SN2100B <td> 16x40G <td> Intel Rangeley C2558 <td> Mellanox Spectrum <td> Yes <td> No <td> Yes </tr>
+<tr> <td> SN2410 <td> 48x25G + 8x100G <td> Intel Ivybridge 1047UE <td> Mellanox Spectrum <td> Yes <td> Yes <td> Yes </tr>
+<tr> <td> SN2410B <td> 48x10G + 8x100G <td> Intel Ivybridge 1047UE <td> Mellanox Spectrum <td> Yes <td> No <td> Yes </tr>
+<tr> <td> SN2700 <td> 32x100G <td> Intel Ivybridge 1047UE <td> Mellanox Spectrum <td> Yes <td> Yes <td> Yes </tr>
+<tr> <td> SN2700B <td> 32x40G <td> Intel Ivybridge 1047UE <td> Mellanox Spectrum <td> Yes <td> No <td> Yes </tr>
+</table>
+
 Notes:
 ---
 
