@@ -1,0 +1,33 @@
+#!/usr/bin/python
+
+# call mpstat and generate json output containing stats for all cpus
+
+"""
+sample output from "mpstat 1 1":
+# mpstat 1 1
+Linux 3.8.13-OpenNetworkLinux-e500mc-1.5 (as6700-3) 2016-12-15 _ppc_(4 CPU)
+
+04:59:31 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest   %idle
+04:59:32 PM  all    5.17    0.00    2.07    0.00    0.00    0.00    0.00    0.00   92.76
+Average:     all    5.17    0.00    2.07    0.00    0.00    0.00    0.00    0.00   92.76
+"""
+
+import subprocess
+import json
+
+stats = {}
+
+# 1 second interval, 1 count
+out = subprocess.check_output(['mpstat','1','1'])
+
+for line in out.split('\n'):
+    if "%idle" in line:
+        # extract keys from header line, skipping over time and AM/PM
+        keys = line.split()[2:]
+
+    if "Average" in line:
+        vals = line.split()[1:]
+        stats[vals[0]] = { k:int(round(100*float(v))) \
+                               for (k,v) in zip(keys[1:],vals[1:]) }
+
+print json.dumps(stats)

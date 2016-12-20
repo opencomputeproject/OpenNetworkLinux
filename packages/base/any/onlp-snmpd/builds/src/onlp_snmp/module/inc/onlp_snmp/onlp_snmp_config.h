@@ -191,6 +191,16 @@
 #define ONLP_SNMP_CONFIG_AS_SUBAGENT 0
 #endif
 
+/**
+ * ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS
+ *
+ * Resource object update period in seconds. */
+
+
+#ifndef ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS
+#define ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS 5
+#endif
+
 
 
 /**

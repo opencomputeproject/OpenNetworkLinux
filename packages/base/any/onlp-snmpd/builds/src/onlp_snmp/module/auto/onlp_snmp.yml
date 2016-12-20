@@ -56,6 +56,9 @@ cdefs: &cdefs
 - ONLP_SNMP_CONFIG_AS_SUBAGENT:
     doc: "Configure as an snmp_subagent client."
     default: 0
+- ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS:
+    doc: "Resource object update period in seconds."
+    default: 5
 
 definitions:
   cdefs:
