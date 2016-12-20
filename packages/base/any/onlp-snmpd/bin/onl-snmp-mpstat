@@ -22,8 +22,9 @@ out = subprocess.check_output(['mpstat','1','1'])
 
 for line in out.split('\n'):
     if "%idle" in line:
-        # extract keys from header line, skipping over time and AM/PM
-        keys = line.split()[2:]
+        # extract keys from header line, skipping over time and AM/PM if present
+        tokens = line.split()
+        keys = tokens[tokens.index('CPU'):]
 
     if "Average" in line:
         vals = line.split()[1:]
