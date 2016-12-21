@@ -5,6 +5,7 @@ KERNELS := $(shell $(ONLPM) --find-file onl-kernel-3.9.6-x86-64-all:amd64    ker
 	   $(shell $(ONLPM) --find-file onl-kernel-3.2-deb7-x86-64-all:amd64 kernel-3.2-deb7-x86_64-all) \
 	   $(shell $(ONLPM) --find-file onl-kernel-3.18-x86-64-all:amd64     kernel-3.18-x86_64-all) \
 	   $(shell $(ONLPM) --find-file onl-kernel-3.16+deb8-x86-64-all:amd64 kernel-3.16+deb8-x86_64-all) \
+	   $(shell $(ONLPM) --find-file onl-kernel-3.16-lts-x86-64-all:amd64 kernel-3.16-lts-x86_64-all) \
 
 
 # Loader initrd
@@ -16,5 +17,3 @@ all:
 	cp $(KERNELS) files
 	cp $(INITRD) files
 	cp $(MANIFEST) files
-
-
