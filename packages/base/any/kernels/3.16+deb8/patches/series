@@ -13,3 +13,4 @@ driver-arista-piix4-mux-patch.patch
 3.16-fs-overlayfs.patch
 driver-igb-version-5.3.54.patch
 driver-support-intel-igb-bcm5461X-phy.patch
+driver-i2c-bus-intel-ismt-enable-param.patch
