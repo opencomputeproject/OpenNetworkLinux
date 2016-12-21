@@ -17,7 +17,7 @@ x86-64-mlnx-msn2100-r0:
       --parity=0
       --stop=1
 
-    kernel: 
+    kernel:
       <<: *kernel-3-16
 
     args: >-
@@ -27,6 +27,7 @@ x86-64-mlnx-msn2100-r0:
       rd_NO_LUKS
       acpi_enforce_resources=lax
       acpi=noirq
+      i2c-ismt.enable=0
 
   ##network
   ##  interfaces:
