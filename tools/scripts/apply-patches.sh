@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 ############################################################
 # <bsn.cl fy=2015 v=onl>
 #
@@ -34,7 +34,10 @@ if [ -f "${PATCH_SERIES}" ]; then
     # The series file contains the patch order.
     #
     for p in `cat ${PATCH_SERIES}`; do
-        echo "Appying ${p}..."
+        if [[ $p = \#* ]]; then
+            continue;
+        fi
+        echo "*** Appying ${p}..."
         if [ -x "${PATCHDIR}/${p}" ]; then
             "${PATCHDIR}/${p}" "${KERNDIR}"
         else
