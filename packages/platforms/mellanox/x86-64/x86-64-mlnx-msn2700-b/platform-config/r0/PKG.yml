@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=mellanox PLATFORM=x86-64-mlnx-msn2700-b-r0

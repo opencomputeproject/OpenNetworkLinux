@@ -36,8 +36,8 @@
 #include "x86_64_mlnx_msn2700_int.h"
 #include "x86_64_mlnx_msn2700_log.h"
 
-#define ONL_PLATFORM_NAME             "x86-64-mlnx-msn2700-r0"
-#define ONIE_PLATFORM_NAME            "x86_64-mlnx_msn2700-r0"
+
+static const char* __ONIE_PLATFORM_NAME = NULL;
 
 #define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
 #define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
@@ -59,7 +59,21 @@ static char arr_cplddev_name[NUM_OF_CPLD][30] =
 const char*
 onlp_sysi_platform_get(void)
 {
-    return ONL_PLATFORM_NAME;
+    return "x86-64-mlnx-msn2700-all";
+}
+
+int
+onlp_sysi_platform_set(const char* platform)
+{
+    if(!strcmp(platform, "x86-64-mlnx-msn2700-r0")) {
+        __ONIE_PLATFORM_NAME = "x86-64-mlnx_msn2700-r0";
+        return 0;
+    }
+    if(!strcmp(platform, "x86-64-mlnx-msn2700-b-r0")) {
+        __ONIE_PLATFORM_NAME = "x86-64-mlnx_msn2700-b-r0";
+        return 0;
+    }
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int
@@ -128,7 +142,7 @@ onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
         if(onie->platform_name) {
             aim_free(onie->platform_name);
         }
-        onie->platform_name = aim_strdup(ONIE_PLATFORM_NAME);
+        onie->platform_name = aim_strdup(__ONIE_PLATFORM_NAME);
     }
 
     return rv;
