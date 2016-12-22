@@ -37,7 +37,7 @@ if [ -f "${PATCH_SERIES}" ]; then
         if [[ $p = \#* ]]; then
             continue;
         fi
-        echo "*** Appying ${p}..."
+        echo "*** Applying ${p}..."
         if [ -x "${PATCHDIR}/${p}" ]; then
             "${PATCHDIR}/${p}" "${KERNDIR}"
         else
