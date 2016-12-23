@@ -27,12 +27,12 @@ index d9ee43c..b2b3856 100644
  /* Bus speed control bits for slow debuggers - refer to the docs for usage */
 -static unsigned int bus_speed;
 +static unsigned int bus_speed = 100;
-+static unsigned int delay = 1000;
++static unsigned int delay = 0;
  module_param(bus_speed, uint, S_IRUGO);
 -MODULE_PARM_DESC(bus_speed, "Bus Speed in kHz (0 = BIOS default)");
 +MODULE_PARM_DESC(bus_speed, "Bus Speed in kHz (1000 by default)");
 +module_param(delay, uint, S_IRUGO);
-+MODULE_PARM_DESC(delay, "Delay in microsecs before access (1000 by default)");
++MODULE_PARM_DESC(delay, "Delay in microsecs before access (0 by default)");
  
  /**
   * __ismt_desc_dump() - dump the contents of a specific descriptor
