@@ -137,25 +137,27 @@ class OnlMountManager(object):
         self.missing = None
 
     def init(self, timeout=5):
+
         for(k, v) in self.mdata['mounts'].iteritems():
             #
             # Get the partition device for the given label.
             # The timeout logic is here to handle waiting for the
             # block devices to arrive at boot.
             #
-            while timeout >= 0:
+            t = timeout
+            while t >= 0:
                 try:
                     v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
                     break
                 except subprocess.CalledProcessError:
                         self.logger.debug("Block label %s does not yet exist..." % k)
                         time.sleep(1)
-                        timeout -= 1
+                        t -= 1
 
-                if 'device' not in v:
-                    self.logger.error("Timeout waiting for block label %s after %d seconds." % (k, timeout))
-                    self.missing = k
-                    return False
+            if 'device' not in v:
+                self.logger.error("Timeout waiting for block label %s after %d seconds." % (k, timeout))
+                self.missing = k
+                return False
 
             #
             # Make the mount point for future use.
