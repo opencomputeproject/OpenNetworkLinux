@@ -141,6 +141,9 @@ int onlp_file_open(int flags, int log, const char* fmt, ...);
 int onlp_file_vopen(int flags, int log, const char* fmt, va_list vargs);
 
 
-
+/**
+ * @brief Search a directory tree for the given file.
+ */
+int onlp_file_find(char* root, char* fname, char** rpath);
 
 #endif /* __ONLPLIB_FILE_H__ */
