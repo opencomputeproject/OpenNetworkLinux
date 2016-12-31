@@ -190,6 +190,26 @@ class OnlPlatformBase(object):
     def baseconfig(self):
         return True
 
+    def insmod(self, module, required=True):
+        kv = os.uname()[2]
+
+        # Search paths in this order:
+        locations = [ self.PLATFORM,
+                      '-'.join(self.PLATFORM.split('-')[:-1]),
+                      ".",
+        ]
+        for l in locations:
+            path = os.path.join("/lib/modules/%s/%s/%s" % (kv, l, module))
+            print "searching: %s" % path
+            if os.path.exists(path):
+                subprocess.check_call("insmod %s" % path, shell=True)
+                return True
+
+        if required:
+            raise RuntimeError("kernel module %s could not be found." % path)
+        else:
+            return False
+
     def onie_machine_get(self):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
