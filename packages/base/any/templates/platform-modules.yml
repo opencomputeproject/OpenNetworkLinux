@@ -1,0 +1,21 @@
+############################################################
+#
+# PKG template for all platform module packages
+#
+############################################################
+prerequisites:
+  packages: [ $KERNELS ]
+
+packages:
+  - name: onl-platform-modules-${PLATFORM}
+    version: 1.0.0
+    arch: $ARCH
+    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+    maintainer: support@bigswitch.com
+    support: opennetworklinux@googlegroups.com
+    summary: ONL Platform Modules Package for the ${PLATFORM}
+
+    files:
+      builds/lib: /lib
+
+    changelog: Changes
