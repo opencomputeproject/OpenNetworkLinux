@@ -480,7 +480,10 @@ class OnlPackageGroup(object):
             return True
 
     def prerequisite_packages(self):
-        return list(onlu.sflatten(self._pkgs.get('prerequisites', {}).get('packages', [])))
+        rv = []
+        for e in list(onlu.sflatten(self._pkgs.get('prerequisites', {}).get('packages', []))):
+            rv += e.split(',')
+        return rv
 
     def prerequisite_submodules(self):
         return self._pkgs.get('prerequisites', {}).get('submodules', [])
