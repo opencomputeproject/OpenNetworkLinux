@@ -4,7 +4,7 @@
 #
 ############################################################
 prerequisites:
-  packages: [ "onl-vendor-config-${VENDOR}:all" ]
+  packages: [ "onl-vendor-config-${VENDOR}:all", "$MODULES" ]
 
 packages:
   - name: onl-platform-config-${PLATFORM}
