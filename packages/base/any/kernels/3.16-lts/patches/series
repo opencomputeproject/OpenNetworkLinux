@@ -14,5 +14,4 @@ driver-arista-piix4-mux-patch.patch
 driver-igb-version-5.3.54.patch
 driver-support-intel-igb-bcm5461X-phy.patch
 driver-i2c-bus-intel-ismt-enable-param.patch
-drivers-platform-x86-dell-s6000-s1220.patch
 drivers-i2c-busses-i2c-isch-probe-param.patch
