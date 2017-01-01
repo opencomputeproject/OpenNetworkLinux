@@ -192,21 +192,24 @@ class OnlPlatformBase(object):
 
     def insmod(self, module, required=True):
         kv = os.uname()[2]
+        searched = []
 
         # Search paths in this order:
         locations = [ self.PLATFORM,
                       '-'.join(self.PLATFORM.split('-')[:-1]),
+                      'onl',
                       ".",
         ]
         for l in locations:
-            path = os.path.join("/lib/modules/%s/%s/%s" % (kv, l, module))
-            print "searching: %s" % path
-            if os.path.exists(path):
-                subprocess.check_call("insmod %s" % path, shell=True)
-                return True
+            for e in [ ".ko", "" ]:
+                path = "/lib/modules/%s/%s/%s%s" % (kv, l, module, e)
+                searched.append(path)
+                if os.path.exists(path):
+                    subprocess.check_call("insmod %s" % path, shell=True)
+                    return True
 
         if required:
-            raise RuntimeError("kernel module %s could not be found." % path)
+            raise RuntimeError("kernel module %s could not be found. Searched: %s" % (module, searched))
         else:
             return False
 
