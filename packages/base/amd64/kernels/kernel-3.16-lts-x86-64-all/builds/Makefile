@@ -14,7 +14,7 @@ include $(ONL)/make/config.mk
 
 kernel:
 	$(MAKE) -C $(ONL)/packages/base/any/kernels/3.16-lts/configs/x86_64-all K_TARGET_DIR=$(THIS_DIR) $(ONL_MAKE_PARALLEL)
-	$(ONL)/tools/scripts/kmodbuild.sh linux-3.16.39-mbuild $(wildcard $(ONL)/packages/base/any/kernels/modules/*) onl
+	ARCH=x86_64 $(ONL)/tools/scripts/kmodbuild.sh linux-3.16.39-mbuild $(wildcard $(ONL)/packages/base/any/kernels/modules/*) onl
 
 clean:
 	rm -rf linux-3.16* kernel-3.16*
