@@ -1,3 +1,5 @@
+variables:
+  basename: onl-kernel-3.16-lts-x86-64-all
 
 common:
   arch: amd64
@@ -7,12 +9,21 @@ common:
   support: opennetworklinux@googlegroups.com
 
 packages:
-  - name: onl-kernel-3.16-lts-x86-64-all
+  - name: $basename
     version: 1.0.0
-    summary: Open Network Linux Kernel 3.16 LTS for X86_64 Platforms.
+    summary: Open Network Linux 3.16 LTS Kernel for X86_64 Platforms.
 
     files:
       builds/kernel-3.16* : $$PKG_INSTALL/
       builds/linux-*mbuild   : $$PKG_INSTALL/mbuilds
+
+    changelog:  Change changes changes.,
+
+  - name: $basename-modules
+    version: 1.0.0
+    summary: Open Network Linux 3.16 LTS Kernel Modules for X86_64 Platforms
+
+    files:
+      builds/lib: /lib
 
     changelog:  Change changes changes.,
