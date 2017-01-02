@@ -68,7 +68,7 @@ psu_status_info_get(int id, char *node, int *value)
 }
 
 static int
-psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
+psu_ym2651_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1]    = {0};
@@ -99,38 +99,84 @@ onlp_psui_init(void)
 }
 
 static int
-psu_ym2651y_info_get(onlp_psu_info_t* info)
+psu_ym2651_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
-    
-    /* Set capability
-     */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
-	if (info->status & ONLP_PSU_STATUS_FAILED) {
-	    return ONLP_STATUS_OK;
-	}
+
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
 
     /* Read voltage, current and power */
-    if (psu_ym2651y_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+    if (psu_ym2651_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
         info->caps |= ONLP_PSU_CAPS_VOUT;
     }
 
-    if (psu_ym2651y_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+    if (psu_ym2651_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
 
-    if (psu_ym2651y_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+    if (psu_ym2651_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
     } 
+
+    return ONLP_STATUS_OK;
+}
+
+#include <onlplib/i2c.h>
+#define DC12V_750_REG_TO_CURRENT(low, high) (((low << 4 | high >> 4) * 20 * 1000) / 754)
+#define DC12V_750_REG_TO_VOLTAGE(low, high) ((low << 4 | high >> 4) * 25)
+
+static int
+psu_dc12v_750_info_get(onlp_psu_info_t* info)
+{
+    int pid = ONLP_OID_ID_GET(info->hdr.id);
+    int bus = (PSU1_ID == pid) ? 11 : 10;
+    int iout_low, iout_high;
+    int vout_low, vout_high;
+
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_DC12;
+    
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Get current
+     */
+    iout_low  = onlp_i2c_readb(bus, 0x6f, 0x0, ONLP_I2C_F_FORCE);
+    iout_high = onlp_i2c_readb(bus, 0x6f, 0x1, ONLP_I2C_F_FORCE);
+
+    if ((iout_low >= 0) && (iout_high >= 0)) {
+        info->miout = DC12V_750_REG_TO_CURRENT(iout_low, iout_high);
+        info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    /* Get voltage
+     */
+    vout_low  = onlp_i2c_readb(bus, 0x6f, 0x2, ONLP_I2C_F_FORCE);
+    vout_high = onlp_i2c_readb(bus, 0x6f, 0x3, ONLP_I2C_F_FORCE);
+
+    if ((vout_low >= 0) && (vout_high >= 0)) {
+        info->mvout = DC12V_750_REG_TO_VOLTAGE(vout_low, vout_high);
+        info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    /* Get power based on current and voltage
+     */
+    if ((info->caps & ONLP_PSU_CAPS_IOUT) && (info->caps & ONLP_PSU_CAPS_VOUT)) {
+        info->mpout = (info->miout * info->mvout) / 1000;
+        info->caps |= ONLP_PSU_CAPS_POUT;
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -191,7 +237,18 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
-            ret = psu_ym2651y_info_get(info);
+            info->caps = ONLP_PSU_CAPS_AC;
+            ret = psu_ym2651_info_get(info);
+            break;
+        case PSU_TYPE_DC_48V_F2B:
+        case PSU_TYPE_DC_48V_B2F:
+            info->caps = ONLP_PSU_CAPS_DC48;
+            ret = psu_ym2651_info_get(info);
+            break;
+        case PSU_TYPE_DC_12V_F2B:
+        case PSU_TYPE_DC_12V_B2F:
+        case PSU_TYPE_DC_12V_FANLESS:
+            ret = psu_dc12v_750_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
             info->status |= ONLP_PSU_STATUS_UNPLUGGED;
