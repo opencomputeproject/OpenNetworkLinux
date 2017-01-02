@@ -124,6 +124,7 @@ onlp_file_vread(uint8_t* data, int max, int* len, const char* fmt, va_list vargs
         rv = fd;
     }
     else {
+        memset(data, 0, max);
         if ((*len = read(fd, data, max)) <= 0) {
             AIM_LOG_ERROR("Failed to read input file '%s'", fname);
             rv = ONLP_STATUS_E_INTERNAL;
