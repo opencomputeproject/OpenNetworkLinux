@@ -9,6 +9,10 @@ class OnlPlatform_x86_64_accton_as5812_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5812.54.1"
 
     def baseconfig(self):
+        self.insmod('cpr_4011_4mxx', required=False)
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
+            self.insmod("x86-64-accton-as5812-54x-%s.ko" % m, required=False)
+
         ########### initialize I2C bus 0 ###########
 
         # initialize CPLDs
