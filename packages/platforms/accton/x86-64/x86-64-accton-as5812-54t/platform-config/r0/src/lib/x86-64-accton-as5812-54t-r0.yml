@@ -17,8 +17,8 @@ x86-64-accton-as5812-54t-r0:
       --parity=no
       --stop=1
 
-    kernel: 
-      <<: *kernel-3-2
+    kernel:
+      <<: *kernel-3-16
 
     args: >-
       nopat
