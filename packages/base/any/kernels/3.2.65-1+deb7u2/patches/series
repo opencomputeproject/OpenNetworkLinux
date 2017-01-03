@@ -243,3 +243,4 @@ arch-intel-reboot-cf9-cold.patch
 drivers-hwmon-adm1021-detect.patch
 drivers-i2c-busses-i2c-isch-timeout.patch
 CVE-2016-5195.patch
+drivers-net-ethernet-broadcom-tg3-preamble-reset.patch
