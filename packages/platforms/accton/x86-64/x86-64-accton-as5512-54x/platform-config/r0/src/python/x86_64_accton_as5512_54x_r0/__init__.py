@@ -8,6 +8,11 @@ class OnlPlatform_x86_64_accton_as5512_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5512.54.1"
 
     def baseconfig(self):
+
+        self.insmod('cpr_4011_4mxx')
+        self.insmod('accton_i2c_cpld')
+        self.insmod_platform()
+
         ########### initialize I2C bus 0 ###########
 
         # initialize multiplexer (PCA9548)
