@@ -16,6 +16,7 @@ import re
 import yaml
 import onl.YamlUtils
 import subprocess
+import platform
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -42,6 +43,9 @@ class OnlInfoObject(object):
     def __str__(self, indent=DEFAULT_INDENT):
         """String representation of the information container."""
         return OnlInfoObject.string(self._data, indent)
+
+    def update(self, d):
+        self._data.update(d)
 
     @staticmethod
     def string(d, indent=DEFAULT_INDENT):
@@ -114,6 +118,11 @@ class OnlPlatformBase(object):
         self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
                            required=False)
 
+        if hasattr(self, "platform_info"):
+            self.platform_info.update(self.dmi_versions())
+        else:
+            self.add_info_dict("platform_info", self.dmi_versions())
+
         # Find the base platform config
         if self.platform().startswith('x86-64'):
             y1 = self.CONFIG_DEFAULT_GRUB
@@ -149,8 +158,12 @@ class OnlPlatformBase(object):
 
     def add_info_json(self, name, f, klass=None, required=True):
         if os.path.exists(f):
-            d = json.load(file(f))
-            self.add_info_dict(name, d, klass)
+            try:
+                d = json.load(file(f))
+                self.add_info_dict(name, d, klass)
+            except ValueError, e:
+                if required:
+                    raise e
         elif required:
             raise RuntimeError("A required system file (%s) is missing." % f)
 
@@ -176,6 +189,97 @@ class OnlPlatformBase(object):
 
     def baseconfig(self):
         return True
+
+    def insmod(self, module, required=True):
+        kv = os.uname()[2]
+        searched = []
+
+        # Search paths in this order:
+        locations = [ self.PLATFORM,
+                      '-'.join(self.PLATFORM.split('-')[:-1]),
+                      'onl',
+                      ".",
+        ]
+        for l in locations:
+            for e in [ ".ko", "" ]:
+                path = "/lib/modules/%s/%s/%s%s" % (kv, l, module, e)
+                searched.append(path)
+                if os.path.exists(path):
+                    subprocess.check_call("insmod %s" % path, shell=True)
+                    return True
+
+        if required:
+            raise RuntimeError("kernel module %s could not be found. Searched: %s" % (module, searched))
+        else:
+            return False
+
+    def insmod_platform(self):
+        kv = os.uname()[2]
+        # Insert all modules in the platform module directories
+        directories = [ self.PLATFORM,
+                        '-'.join(self.PLATFORM.split('-')[:-1]) ]
+
+        for subdir in directories:
+            d = "/lib/modules/%s/%s" % (kv, subdir)
+            if os.path.isdir(d):
+                for f in os.listdir(d):
+                    if f.endswith(".ko"):
+                        self.insmod(f)
+
+    def onie_machine_get(self):
+        mc = self.basedir_onl("etc/onie/machine.json")
+        if not os.path.exists(mc):
+            data = {}
+            mcconf = subprocess.check_output("""onie-shell -c "cat /etc/machine.conf" """, shell=True)
+            for entry in mcconf.split():
+                (k,e,v) = entry.partition('=')
+                if e:
+                    data[k] = v
+
+            if not os.path.exists(os.path.dirname(mc)):
+                os.makedirs(os.path.dirname(mc))
+
+            with open(mc, "w") as f:
+                f.write(json.dumps(data, indent=2))
+        else:
+            data = json.load(open(mc))
+
+        return data
+
+    ONIE_EEPROM_JSON='etc/onie/eeprom.json'
+
+    def onie_syseeprom_get(self):
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
+        if not os.path.exists(se):
+            data = {}
+            extensions = []
+            syseeprom = subprocess.check_output("""onie-shell -c onie-syseeprom""", shell=True)
+            e = re.compile(r'(.*?) (0x[0-9a-fA-F][0-9a-fA-F])[ ]+(\d+) (.*)')
+            for line in syseeprom.split('\n'):
+                m = e.match(line)
+                if m:
+                    value = m.groups(0)[3]
+                    code = m.groups(0)[1].lower()
+                    if code == '0xfd':
+                        extensions.append(value)
+                    else:
+                        data[code] = value
+            if len(extensions):
+                data['0xfd'] = extensions
+
+            self.onie_syseeprom_set(data)
+        else:
+            data = json.load(open(se))
+        return data
+
+    def onie_syseeprom_set(self, data):
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
+        if not os.path.exists(os.path.dirname(se)):
+            os.makedirs(os.path.dirname(se))
+
+        with open(se, "w") as f:
+            f.write(json.dumps(data, indent=2))
+
 
     def platform(self):
         return self.PLATFORM
@@ -223,6 +327,39 @@ class OnlPlatformBase(object):
 
     def firmware_version(self):
         return self.platform_info.CPLD_VERSIONS
+
+    def dmi_versions(self):
+        # Note - the dmidecode module returns empty lists for powerpc systems.
+        if platform.machine() != "x86_64":
+            return {}
+
+        try:
+            import dmidecode
+        except ImportError:
+            return {}
+
+        fields = [
+            {
+                'name': 'DMI BIOS Version',
+                'subsystem': dmidecode.bios,
+                'dmi_type' : 0,
+                'key' : 'Version',
+                },
+
+            {
+                'name': 'DMI System Version',
+                'subsystem': dmidecode.system,
+                'dmi_type' : 1,
+                'key' : 'Version',
+                },
+            ]
+        rv = {}
+        for field in fields:
+                for v in field['subsystem']().values():
+                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
+                                rv[field['name']] = v['data'][field['key']]
+
+        return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
         if override_dir:

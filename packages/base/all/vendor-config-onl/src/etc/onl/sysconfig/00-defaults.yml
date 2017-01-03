@@ -22,13 +22,16 @@ upgrade:
     package:
       dir: /lib/platform-config/current/onl/upgrade/onie
 
+  system:
+    auto: force
+
   firmware:
     auto: advisory
     package:
       dir: /lib/platform-config/current/onl/upgrade/firmware
 
   loader:
-    auto: advisory
+    auto: force
     versions: /etc/onl/loader/versions.json
     package:
       dir: /etc/onl/upgrade/$PARCH

@@ -30,7 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 #define MAX_SFP_PATH 64
@@ -345,6 +345,34 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
     }
 
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = front_port_to_cpld_mux_index(port);
+    return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int bus = front_port_to_cpld_mux_index(port);
+    return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = front_port_to_cpld_mux_index(port);
+    return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int bus = front_port_to_cpld_mux_index(port);
+    return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int

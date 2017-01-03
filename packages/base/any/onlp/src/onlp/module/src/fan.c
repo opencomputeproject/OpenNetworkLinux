@@ -119,6 +119,37 @@ onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* fip)
 }
 ONLP_LOCKED_API2(onlp_fan_info_get, onlp_oid_t, oid, onlp_fan_info_t*, fip);
 
+static int
+onlp_fan_status_get_locked__(onlp_oid_t oid, uint32_t* status)
+{
+    int rv = onlp_fani_status_get(oid, status);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_fan_info_t fi;
+        rv = onlp_fani_info_get(oid, &fi);
+        *status = fi.status;
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_fan_status_get, onlp_oid_t, oid, uint32_t*, status);
+
+static int
+onlp_fan_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
+{
+    int rv = onlp_fani_hdr_get(oid, hdr);
+    if(ONLP_SUCCESS(rv)) {
+        return rv;
+    }
+    if(ONLP_UNSUPPORTED(rv)) {
+        onlp_fan_info_t fi;
+        rv = onlp_fani_info_get(oid, &fi);
+        memcpy(hdr, &fi.hdr, sizeof(fi.hdr));
+    }
+    return rv;
+}
+ONLP_LOCKED_API2(onlp_fan_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
 
 static int
 onlp_fan_present__(onlp_oid_t id, onlp_fan_info_t* info)

@@ -49,6 +49,10 @@ typedef enum onlp_status_e {
         }                                       \
     } while(0)
 
+#define ONLP_FAILURE(_rv) ((_rv) < 0)
+#define ONLP_SUCCESS(_rv) (!(ONLP_FAILURE(_rv)))
+#define ONLP_UNSUPPORTED(_rv) \
+    ((_rv) == ONLP_STATUS_E_UNSUPPORTED)
 
 /**
  * @brief Initialize all subsystems.

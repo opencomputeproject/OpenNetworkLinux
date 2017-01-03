@@ -1,0 +1,5 @@
+#!/bin/sh
+############################################################
+onlfs mount images --rw
+(cd /mnt/onl/images && rm -f *.swi && wget $1)
+onlfs mount images

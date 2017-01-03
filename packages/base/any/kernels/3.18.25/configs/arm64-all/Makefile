@@ -15,7 +15,7 @@ K_PATCH_SERIES=series.arm64
 
 include ../../kconfig.mk
 K_CONFIG := arm64-all.config
-K_BUILD_TARGET := Image Image.gz arm64-nxp-ls2080ardb-r0.dtb
+K_BUILD_TARGET := Image Image.gz arm64-nxp-ls2080ardb-r0.dtb arm64-nxp-ls2088ardb-r1.dtb
 K_COPY_SRC := arch/arm64/boot/Image
 K_COPY_GZIP := 1
 ifndef K_COPY_DST

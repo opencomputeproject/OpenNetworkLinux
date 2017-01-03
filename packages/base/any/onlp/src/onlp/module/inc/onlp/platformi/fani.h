@@ -40,6 +40,22 @@ int onlp_fani_init(void);
 int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
 
 /**
+ * @brief Retrieve the fan's operational status.
+ * @param id The fan OID.
+ * @param rv [out] Receives the fan's operations status flags.
+ * @notes Only operational state needs to be returned -
+ *        PRESENT/FAILED
+ */
+int onlp_fani_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Retrieve the fan's OID hdr.
+ * @param id The fan OID.
+ * @param rv [out] Receives the OID header.
+ */
+int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr);
+
+/**
  * @brief Set the fan speed in RPM.
  * @param id The fan OID
  * @param rpm The new RPM

@@ -69,8 +69,6 @@ Configure:
     - 'nfs-common remove'
     - 'rpcbind remove'
     - 'motd remove'
-    - 'kexec remove'
-    - 'kexec-load remove'
     - 'mountall-bootclean.sh remove'
     - 'mountall.sh remove'
     - 'checkfs.sh remove'

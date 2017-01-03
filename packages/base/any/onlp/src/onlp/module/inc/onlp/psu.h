@@ -97,6 +97,20 @@ int onlp_psu_init(void);
 int onlp_psu_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
 
 /**
+ * @brief Get the PSU's operational status.
+ * @param id The PSU OID.
+ * @param rv [out] Receives the operational status.
+ */
+int onlp_psu_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Get the PSU's oid header.
+ * @param id The PSU OID.
+ * @param rv [out] Receives the header.
+ */
+int onlp_psu_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+
+/**
  * @brief Issue a PSU ioctl.
  * @param id The PSU OID
  * @param ... Ioctl arguments.

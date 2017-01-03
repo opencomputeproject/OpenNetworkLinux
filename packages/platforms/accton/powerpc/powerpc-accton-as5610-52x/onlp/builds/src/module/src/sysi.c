@@ -128,6 +128,17 @@ static const temp_sensor_threshold_t temp_sensor_threshold_b2f[NUM_OF_CHASSIS_TH
 #include <onlp/platformi/thermali.h>
 
 int
+onlp_sysi_platform_manage_init(void)
+{
+    /*
+     * Bring the fan to max.
+     * These will be reduced after the first platform management sequence.
+     */
+    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
+    return 0;
+}
+
+int
 onlp_sysi_platform_manage_fans(void)
 {
     int i = 0, rc;

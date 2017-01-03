@@ -28,4 +28,6 @@
 
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_status_get(onlp_oid_t id, uint32_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_ioctl(int code, va_list vargs));

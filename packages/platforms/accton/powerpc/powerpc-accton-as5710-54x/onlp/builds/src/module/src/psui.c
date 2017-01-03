@@ -169,6 +169,56 @@ psu_um400d_info_get(onlp_psu_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+#include <onlplib/i2c.h>
+#define DC12V_650_REG_TO_CURRENT(low, high) (((low << 4 | high >> 4) * 20 * 1000) / 754)
+#define DC12V_650_REG_TO_VOLTAGE(low, high) ((low << 4 | high >> 4) * 25)
+
+static int
+psu_dc12v_650_info_get(onlp_psu_info_t* info)
+{
+    int pid = ONLP_OID_ID_GET(info->hdr.id);
+    int bus = (PSU1_ID == pid) ? 5 : 6;
+    int iout_low, iout_high;
+    int vout_low, vout_high;
+
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_DC12;
+    
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Get current
+     */
+    iout_low  = onlp_i2c_readb(bus, 0x6f, 0x0, ONLP_I2C_F_FORCE);
+    iout_high = onlp_i2c_readb(bus, 0x6f, 0x1, ONLP_I2C_F_FORCE);
+
+    if ((iout_low >= 0) && (iout_high >= 0)) {
+        info->miout = DC12V_650_REG_TO_CURRENT(iout_low, iout_high);
+        info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    /* Get voltage
+    */
+    vout_low  = onlp_i2c_readb(bus, 0x6f, 0x2, ONLP_I2C_F_FORCE);
+    vout_high = onlp_i2c_readb(bus, 0x6f, 0x3, ONLP_I2C_F_FORCE);
+
+    if ((vout_low >= 0) && (vout_high >= 0)) {
+        info->mvout = DC12V_650_REG_TO_VOLTAGE(vout_low, vout_high);
+        info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    /* Get power based on current and voltage
+    */
+    if ((info->caps & ONLP_PSU_CAPS_IOUT) && (info->caps & ONLP_PSU_CAPS_VOUT)) {
+        info->mpout = (info->miout * info->mvout) / 1000;
+        info->caps |= ONLP_PSU_CAPS_POUT;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 /*
  * Get all information about the given PSU oid.
  */
@@ -230,6 +280,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         case PSU_TYPE_DC_48V_F2B:
         case PSU_TYPE_DC_48V_B2F:
             ret = psu_um400d_info_get(info);
+            break;
+        case PSU_TYPE_DC_12V_F2B:
+        case PSU_TYPE_DC_12V_B2F:
+        case PSU_TYPE_DC_12V_FANLESS:
+            ret = psu_dc12v_650_info_get(info);
             break;
         default:
             ret = ONLP_STATUS_E_UNSUPPORTED;

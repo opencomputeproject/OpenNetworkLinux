@@ -8,6 +8,11 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7512.32"
 
     def baseconfig(self):
+
+        self.insmod("ym2651y")
+        self.insmod("accton_i2c_cpld")
+        self.insmod_platform()
+
         ########### initialize I2C bus 0 ###########
         # initialize multiplexer (PCA9548)
         self.new_i2c_device('pca9548', 0x76, 0)

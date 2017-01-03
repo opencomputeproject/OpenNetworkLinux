@@ -176,8 +176,9 @@ class BaseUpgrade(object):
     def update_upgrade_status(self, key, value):
         data = self.upgrade_status_get()
         data[key] = value
-        with open(self.UPGRADE_STATUS_JSON, "w") as f:
-            json.dump(data, f)
+        if os.path.exists(os.path.dirname(BaseUpgrade.UPGRADE_STATUS_JSON)):
+            with open(self.UPGRADE_STATUS_JSON, "w") as f:
+                json.dump(data, f)
 
     #
     # Initialize self.current_version, self.next_Version
@@ -390,24 +391,23 @@ class BaseOnieUpgrade(BaseUpgrade):
                 dst = os.path.join(self.ONIE_UPDATER_PATH, f)
                 self.copyfile(src, dst)
 
+    def onie_fwpkg_add(self, pkg):
+        import onl.grub
+        onl.grub.onie_fwpkg("add %s" % pkg)
+        onl.grub.onie_fwpkg("show")
 
     def initiate_onie_update(self):
         self.logger.info("Initiating %s Update." % self.Name)
+
         if self.arch == 'ppc':
             # Initiate update
             self.fw_setenv('onie_boot_reason', 'update')
             self.reboot()
 
         elif self.arch == 'x86_64':
-            OB = "/mnt/onie-boot"
-            self.mount(OB, label="ONIE-BOOT")
-            if os.system("/mnt/onie-boot/onie/tools/bin/onie-boot-mode -o update") != 0:
-                self.abort("Could not set ONIE Boot Mode to Update. Upgrade cannot continue.")
-            self.umount(OB)
-
-            with OnlMountContextReadWrite("ONL-BOOT", logger=None):
-                with open("/mnt/onl/boot/grub/grub.cfg", "a") as f:
-                    f.write("set default=ONIE\n")
+            import onl.grub
+            onl.grub.onie_boot_mode_set("update")
+            onl.grub.boot_onie()
             self.reboot()
 
         else:

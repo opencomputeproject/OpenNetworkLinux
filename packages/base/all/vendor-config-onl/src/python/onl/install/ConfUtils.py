@@ -7,6 +7,7 @@ import os
 import logging
 import subprocess
 from InstallUtils import SubprocessMixin, ChrootSubprocessMixin, MountContext
+from cStringIO import StringIO
 
 class ConfBase:
 
@@ -44,6 +45,14 @@ class ConfBase:
 
     def __setattr__(self, attr, val):
         self.__dict__['_data'][attr] = val
+
+    def dumps(self):
+        """Generate a serialized representation."""
+        buf = StringIO()
+        data = self.__dict__.get('_data', {})
+        for key, val in data.iteritems():
+            buf.write("%s=\"%s\"\n" % (key, val,))
+        return buf.getvalue()
 
 class ConfFileBase(ConfBase):
 

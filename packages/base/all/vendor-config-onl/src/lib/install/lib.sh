@@ -62,17 +62,26 @@ installer_mkchroot() {
   local rootdir
   rootdir=$1
 
+  local hasDevTmpfs
+  if grep -q devtmpfs /proc/filesystems; then
+    hasDevTmpfs=1
+  fi
+
   # special handling for /dev, which usually already has nested mounts
   installer_say "Setting up /dev"
   rm -fr "${rootdir}/dev"/*
-  for dev in /dev/*; do
-    if test -d "$dev"; then
-      mkdir "${rootdir}${dev}"
-    else
-      cp -a "$dev" "${rootdir}${dev}"
-    fi
-  done
-  mkdir -p "${rootdir}/dev/pts"
+  if test "$hasDevTmpfs"; then
+    :
+  else
+    for dev in /dev/*; do
+      if test -d "$dev"; then
+        mkdir "${rootdir}${dev}"
+      else
+        cp -a "$dev" "${rootdir}${dev}"
+      fi
+    done
+    mkdir -p "${rootdir}/dev/pts"
+  fi
 
   installer_say "Setting up /run"
   rm -fr "${rootdir}/run"/*
@@ -99,6 +108,10 @@ installer_mkchroot() {
   installer_say "Setting up mounts"
   mount -t proc proc "${rootdir}/proc"
   mount -t sysfs sysfs "${rootdir}/sys"
+  if test "$hasDevTmpfs"; then
+    mount -t devtmpfs devtmpfs "${rootdir}/dev"
+    mkdir -p ${rootdir}/dev/pts
+  fi
   mount -t devpts devpts "${rootdir}/dev/pts"
 
   if test ${TMPDIR+set}; then

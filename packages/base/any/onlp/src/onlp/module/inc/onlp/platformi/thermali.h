@@ -41,6 +41,20 @@ int onlp_thermali_init(void);
 int onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv);
 
 /**
+ * @brief Retrieve the thermal's operational status.
+ * @param id The thermal oid.
+ * @param rv [out] Receives the operational status.
+ */
+int onlp_thermali_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Retrieve the thermal's oid header.
+ * @param id The thermal oid.
+ * @param rv [out] Receives the header.
+ */
+int onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+
+/**
  * @brief Generic ioctl.
  */
 int onlp_thermali_ioctl(int id, va_list vargs);

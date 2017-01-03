@@ -63,6 +63,11 @@ int onlp_sys_info_get(onlp_sys_info_t* rv);
 void onlp_sys_info_free(onlp_sys_info_t* info);
 
 /**
+ * @brief Get the system header.
+ */
+int onlp_sys_hdr_get(onlp_oid_hdr_t* hdr);
+
+/**
  * @brief SYS OID debug dump.
  * @param id The SYS OID.
  * @param pvs The output pvs.

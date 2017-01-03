@@ -127,12 +127,6 @@ onlp_fani_init(void)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    /*
-     * Bring both fans to max.
-     * These will be reduced after the first platform management sequence.
-     */
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_PERCENTAGE_MAX);
-
     return ONLP_STATUS_OK;
 }
 

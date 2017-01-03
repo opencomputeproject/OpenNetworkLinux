@@ -69,70 +69,6 @@ onlp_snmp_fan_flow_type_valid(onlp_snmp_fan_flow_type_t e)
 }
 
 
-aim_map_si_t onlp_snmp_sensor_status_map[] =
-{
-    { "missing", ONLP_SNMP_SENSOR_STATUS_MISSING },
-    { "good", ONLP_SNMP_SENSOR_STATUS_GOOD },
-    { "failed", ONLP_SNMP_SENSOR_STATUS_FAILED },
-    { "unplugged", ONLP_SNMP_SENSOR_STATUS_UNPLUGGED },
-    { NULL, 0 }
-};
-
-aim_map_si_t onlp_snmp_sensor_status_desc_map[] =
-{
-    { "None", ONLP_SNMP_SENSOR_STATUS_MISSING },
-    { "None", ONLP_SNMP_SENSOR_STATUS_GOOD },
-    { "None", ONLP_SNMP_SENSOR_STATUS_FAILED },
-    { "None", ONLP_SNMP_SENSOR_STATUS_UNPLUGGED },
-    { NULL, 0 }
-};
-
-const char*
-onlp_snmp_sensor_status_name(onlp_snmp_sensor_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_snmp_sensor_status_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_snmp_sensor_status'";
-    }
-}
-
-int
-onlp_snmp_sensor_status_value(const char* str, onlp_snmp_sensor_status_t* e, int substr)
-{
-    int i;
-    AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_snmp_sensor_status_map, 0)) {
-        /* Enum Found */
-        *e = i;
-        return 0;
-    }
-    else {
-        return -1;
-    }
-}
-
-const char*
-onlp_snmp_sensor_status_desc(onlp_snmp_sensor_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_snmp_sensor_status_desc_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_snmp_sensor_status'";
-    }
-}
-
-int
-onlp_snmp_sensor_status_valid(onlp_snmp_sensor_status_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_snmp_sensor_status_map, 0) ? 1 : 0;
-}
-
-
 aim_map_si_t onlp_snmp_psu_type_map[] =
 {
     { "unknown", ONLP_SNMP_PSU_TYPE_UNKNOWN },
@@ -194,6 +130,70 @@ int
 onlp_snmp_psu_type_valid(onlp_snmp_psu_type_t e)
 {
     return aim_map_si_i(NULL, e, onlp_snmp_psu_type_map, 0) ? 1 : 0;
+}
+
+
+aim_map_si_t onlp_snmp_sensor_status_map[] =
+{
+    { "missing", ONLP_SNMP_SENSOR_STATUS_MISSING },
+    { "good", ONLP_SNMP_SENSOR_STATUS_GOOD },
+    { "failed", ONLP_SNMP_SENSOR_STATUS_FAILED },
+    { "unplugged", ONLP_SNMP_SENSOR_STATUS_UNPLUGGED },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_snmp_sensor_status_desc_map[] =
+{
+    { "None", ONLP_SNMP_SENSOR_STATUS_MISSING },
+    { "None", ONLP_SNMP_SENSOR_STATUS_GOOD },
+    { "None", ONLP_SNMP_SENSOR_STATUS_FAILED },
+    { "None", ONLP_SNMP_SENSOR_STATUS_UNPLUGGED },
+    { NULL, 0 }
+};
+
+const char*
+onlp_snmp_sensor_status_name(onlp_snmp_sensor_status_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_snmp_sensor_status_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_snmp_sensor_status'";
+    }
+}
+
+int
+onlp_snmp_sensor_status_value(const char* str, onlp_snmp_sensor_status_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_snmp_sensor_status_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_snmp_sensor_status_desc(onlp_snmp_sensor_status_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_snmp_sensor_status_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_snmp_sensor_status'";
+    }
+}
+
+int
+onlp_snmp_sensor_status_valid(onlp_snmp_sensor_status_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_snmp_sensor_status_map, 0) ? 1 : 0;
 }
 
 

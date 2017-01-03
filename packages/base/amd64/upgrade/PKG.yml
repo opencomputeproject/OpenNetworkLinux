@@ -3,7 +3,7 @@ prerequisites:
       - onl-kernel-3.9.6-x86-64-all:amd64
       - onl-kernel-3.2-deb7-x86-64-all:amd64
       - onl-kernel-3.18-x86-64-all:amd64
-      - onl-kernel-3.16+deb8-x86-64-all:amd64
+      - onl-kernel-3.16-lts-x86-64-all:amd64
       - onl-loader-initrd:amd64
 
 common:
@@ -11,6 +11,7 @@ common:
   version: 1.0.0
   copyright: Copyright 2013, 2014, 2015 Big Switch Networks
   maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
 
 packages:
   - name: onl-upgrade

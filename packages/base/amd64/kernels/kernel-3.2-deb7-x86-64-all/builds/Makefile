@@ -14,6 +14,6 @@ include $(ONL)/make/config.mk
 
 kernel:
 	$(MAKE) -C $(ONL)/packages/base/any/kernels/3.2.65-1+deb7u2/configs/x86_64-all K_TARGET_DIR=$(THIS_DIR) $(ONL_MAKE_PARALLEL)
-
+	ARCH=x86_64 $(ONL)/tools/scripts/kmodbuild.sh linux-3.2.65-1+deb7u2-mbuild "$(wildcard $(ONL)/packages/base/any/kernels/modules/*)" onl
 clean:
 	rm -rf linux-3.2.65-1+deb7u2 linux-3.2.65-1+deb7u2-mbuild

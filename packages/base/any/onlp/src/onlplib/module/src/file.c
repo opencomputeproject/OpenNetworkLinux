@@ -23,6 +23,7 @@
  *
  ***********************************************************/
 #include <onlplib/onlplib_config.h>
+#include "onlplib_log.h"
 #include <onlplib/file.h>
 #include <limits.h>
 #include <unistd.h>
@@ -74,8 +75,25 @@ vopen__(char** dst, int flags, const char* fmt, va_list vargs)
     int fd;
     struct stat sb;
     char fname[PATH_MAX];
+    char* asterisk;
 
     ONLPLIB_VSNPRINTF(fname, sizeof(fname)-1, fmt, vargs);
+
+    /**
+     * An asterisk in the filename separates a search root
+     * directory from a filename.
+     */
+    if( (asterisk = strchr(fname, '*')) ) {
+        char* root = fname;
+        char* rpath = NULL;
+        *asterisk = 0;
+        if(onlp_file_find(root, asterisk+1, &rpath) < 0) {
+            return ONLP_STATUS_E_MISSING;
+        }
+        strcpy(fname, rpath);
+        aim_free(rpath);
+    }
+
     if(dst) {
         *dst = aim_strdup(fname);
     }
@@ -106,6 +124,7 @@ onlp_file_vread(uint8_t* data, int max, int* len, const char* fmt, va_list vargs
         rv = fd;
     }
     else {
+        memset(data, 0, max);
         if ((*len = read(fd, data, max)) <= 0) {
             AIM_LOG_ERROR("Failed to read input file '%s'", fname);
             rv = ONLP_STATUS_E_INTERNAL;
@@ -281,4 +300,41 @@ onlp_file_vopen(int flags, int log, const char* fmt, va_list vargs)
     }
     aim_free(fname);
     return rv;
+}
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <err.h>
+#include <fts.h>
+
+int
+onlp_file_find(char* root, char* fname, char** rpath)
+{
+    FTS *fs;
+    FTSENT *ent;
+    char* argv[] = { NULL, NULL };
+    argv[0] = root;
+
+    if ((fs = fts_open(argv, FTS_PHYSICAL | FTS_NOCHDIR | FTS_COMFOLLOW,
+                       NULL)) == NULL) {
+        AIM_LOG_ERROR("fts_open(%s): %{errno}", argv[0], errno);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    while ((ent = fts_read(fs)) != NULL) {
+        switch (ent->fts_info)
+            {
+            case FTS_F:
+                {
+                    if(!strcmp(fname, ent->fts_name)) {
+                        *rpath = realpath(ent->fts_path, NULL);
+                        fts_close(fs);
+                        return ONLP_STATUS_OK;
+                    }
+                }
+                break;
+            }
+    }
+    fts_close(fs);
+    return ONLP_STATUS_E_MISSING;
 }

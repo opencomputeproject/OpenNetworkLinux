@@ -3,7 +3,7 @@
 Base classes for installers.
 """
 
-import os, stat
+import os, sys, stat
 import subprocess
 import re
 import tempfile
@@ -13,13 +13,24 @@ import parted
 import yaml
 import zipfile
 import shutil
+import imp
+import fnmatch, glob
 
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
+from Plugin import Plugin
 
 import onl.YamlUtils
 from onl.sysconfig import sysconfig
+
+try:
+    PartedException = parted._ped.PartedException
+    DiskException = parted._ped.DiskException
+except AttributeError:
+    import _ped
+    PartedException = _ped.PartedException
+    DiskException = _ped.DiskException
 
 class Base:
 
@@ -80,11 +91,23 @@ class Base:
         self.zf = None
         # zipfile handle to installer archive
 
+        self.plugins = []
+        # dynamically-detected plugins
+
     def run(self):
         self.log.error("not implemented")
         return 1
 
+    def upgradeBootLoader(self):
+        self.log.error("not implemented")
+        return 1
+
     def shutdown(self):
+
+        plugins, self.plugins = self.plugins, []
+        for plugin in plugins:
+            plugin.shutdown()
+
         zf, self.zf = self.zf, None
         if zf: zf.close()
 
@@ -94,7 +117,7 @@ class Base:
         src = os.path.join(self.im.installerConf.installer_dir, basename)
         if os.path.exists(src):
             self.copy2(src, dst)
-            return
+            return True
 
         if basename in self.zf.namelist():
             self.log.debug("+ unzip -p %s %s > %s",
@@ -102,10 +125,12 @@ class Base:
             with self.zf.open(basename, "r") as rfd:
                 with open(dst, "wb") as wfd:
                     shutil.copyfileobj(rfd, wfd)
-            return
+            return True
 
         if not optional:
             raise ValueError("missing installer file %s" % basename)
+
+        return False
 
     def installerDd(self, basename, device):
 
@@ -346,7 +371,10 @@ class Base:
         basename = 'boot-config'
         with MountContext(dev.device, log=self.log) as ctx:
             dst = os.path.join(ctx.dir, basename)
-            self.installerCopy(basename, dst)
+
+            if not self.installerCopy(basename, dst, True):
+                return
+
             with open(dst) as fd:
                 buf = fd.read()
 
@@ -382,7 +410,7 @@ class Base:
         for m in pm.mounts:
             if m.device.startswith(self.device):
                 if not self.force:
-                    self.log.error("mount %s on %s will be erased by install",
+                    self.log.error("mount %s on %s will be erased by install (try --force)",
                                    m.dir, m.device)
                     return 1
                 else:
@@ -396,14 +424,84 @@ class Base:
 
         return 0
 
+    def loadPluginsFromFile(self, pyPath):
+        self.log.info("loading plugins from %s", pyPath)
+        with open(pyPath) as fd:
+            sfx = ('.py', 'U', imp.PY_SOURCE,)
+            moduleName = os.path.splitext(os.path.basename(pyPath))[0]
+            mod = imp.load_module("onl_install_plugin_%s" % moduleName, fd, pyPath, sfx)
+            for attr in dir(mod):
+                klass = getattr(mod, attr)
+                if isinstance(klass, type) and issubclass(klass, Plugin):
+                    self.log.info("%s: found plugin %s", pyPath, attr)
+                    plugin = klass(self)
+                    self.plugins.append(plugin)
+
+    def loadPlugins(self):
+
+        # scrape any plugins from the installer working directory
+        pat = os.path.join(self.im.installerConf.installer_dir, "plugins", "*.py")
+        for src in glob.glob(pat):
+            self.loadPluginsFromFile(src)
+
+        # scrape any plugins from the installer archive
+        pat = "plugins/*.py"
+        for basename in self.zf.namelist():
+            if not fnmatch.fnmatch(basename, pat): continue
+            try:
+                src = None
+                with self.zf.open(basename, "r") as rfd:
+                    wfno, src = tempfile.mkstemp(prefix="plugin-",
+                                                 suffix=".py")
+                    with os.fdopen(wfno, "w") as wfd:
+                        shutil.copyfileobj(rfd, wfd)
+                    self.loadPluginsFromFile(src)
+            finally:
+                if src and os.path.exists(src):
+                    os.unlink(src)
+
+        # scrape plugins from the loader runtime
+        # (any plugins dropped into $pydir/onl/install/plugins/*.py)
+        try:
+            import onl.install.plugins
+            plugindir = os.path.dirname(onl.install.plugins.__file__)
+        except ImportError:
+            plugindir = None
+        if plugindir:
+            pat = os.path.join(plugindir, "*.py")
+            for src in glob.glob(pat):
+                self.loadPluginsFromFile(src)
+
+        return 0
+
+    def runPlugins(self, mode):
+        self.log.info("running plugins: %s", mode)
+        for plugin in self.plugins:
+            try:
+                code = plugin.run(mode)
+            except:
+                self.log.exception("plugin failed")
+                code = 1
+            if code: return code
+        return 0
+
 GRUB_TPL = """\
 serial %(serial)s
 terminal_input serial
 terminal_output serial
 set timeout=5
 
+# Always boot the saved_entry value
+load_env
+if [ "${saved_entry}" ] ; then
+   set default="${saved_entry}"
+fi
+
 menuentry %(boot_menu_entry)s {
   search --no-floppy --label --set=root ONL-BOOT
+  # Always return to this entry by default.
+  set saved_entry="0"
+  save_env saved_entry
   echo 'Loading %(boot_loading_name)s ...'
   insmod gzio
   insmod part_msdos
@@ -414,6 +512,9 @@ menuentry %(boot_menu_entry)s {
 # Menu entry to chainload ONIE
 menuentry ONIE {
   search --no-floppy --label --set=root ONIE-BOOT
+  # Always return to entry 0 by default.
+  set saved_entry="0"
+  save_env saved_entry
   echo 'Loading ONIE ...'
   chainloader +1
 }
@@ -511,19 +612,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installLoader(self):
 
-        ctx = {}
-
-        kernel = self.im.platformConf['grub']['kernel']
-        ctx['kernel'] = kernel['='] if type(kernel) == dict else kernel
-        ctx['args'] = self.im.platformConf['grub']['args']
-        ctx['platform'] = self.im.installerConf.installer_platform
-        ctx['serial'] = self.im.platformConf['grub']['serial']
-
-        ctx['boot_menu_entry'] = sysconfig.installer.menu_name
-        ctx['boot_loading_name'] = sysconfig.installer.os_name
-
         kernels = []
-
         for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
             if 'kernel' in f:
                 kernels.append(f)
@@ -535,10 +624,9 @@ class GrubInstaller(SubprocessMixin, Base):
                     initrd = i
                     break
 
-        cf = GRUB_TPL % ctx
-
-        self.log.info("Installing kernel")
         dev = self.blkidParts['ONL-BOOT']
+
+        self.log.info("Installing kernel to %s", dev.device)
 
         with MountContext(dev.device, log=self.log) as ctx:
             def _cp(b, dstname=None):
@@ -548,8 +636,32 @@ class GrubInstaller(SubprocessMixin, Base):
                 self.installerCopy(b, dst, optional=True)
             [_cp(e) for e in kernels]
             _cp(initrd, "%s.cpio.gz" % self.im.installerConf.installer_platform)
+
+        return 0
+
+    def installGrubCfg(self):
+
+        dev = self.blkidParts['ONL-BOOT']
+
+        self.log.info("Installing grub.cfg to %s", dev.device)
+
+        ctx = {}
+
+        kernel = self.im.platformConf['grub']['kernel']
+        ctx['kernel'] = kernel['='] if type(kernel) == dict else kernel
+        ctx['args'] = self.im.platformConf['grub']['args']
+        ctx['platform'] = self.im.installerConf.installer_platform
+        ctx['serial'] = self.im.platformConf['grub']['serial']
+
+        ctx['boot_menu_entry'] = sysconfig.installer.menu_name
+        ctx['boot_loading_name'] = sysconfig.installer.os_name
+
+        cf = GRUB_TPL % ctx
+
+        with MountContext(dev.device, log=self.log) as ctx:
             d = os.path.join(ctx.dir, "grub")
-            self.makedirs(d)
+            if not os.path.exists(d):
+                self.makedirs(d)
             dst = os.path.join(ctx.dir, 'grub/grub.cfg')
             with open(dst, "w") as fd:
                 fd.write(cf)
@@ -562,6 +674,17 @@ class GrubInstaller(SubprocessMixin, Base):
         return 0
 
     def installGpt(self):
+
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
+        code = self.loadPlugins()
+        if code: return code
+
+        code = self.runPlugins(Plugin.PLUGIN_PREINSTALL)
+        if code: return code
 
         code = self.findGpt()
         if code: return code
@@ -600,15 +723,13 @@ class GrubInstaller(SubprocessMixin, Base):
         self.im.grubEnv.__dict__['bootPart'] = dev.device
         self.im.grubEnv.__dict__['bootDir'] = None
 
-        # get a handle to the installer zip
-        p = os.path.join(self.im.installerConf.installer_dir,
-                         self.im.installerConf.installer_zip)
-        self.zf = zipfile.ZipFile(p)
-
         code = self.installSwi()
         if code: return code
 
         code = self.installLoader()
+        if code: return code
+
+        code = self.installGrubCfg()
         if code: return code
 
         code = self.installBootConfig()
@@ -618,6 +739,9 @@ class GrubInstaller(SubprocessMixin, Base):
         if code: return code
 
         code = self.installGrub()
+        if code: return code
+
+        code = self.runPlugins(Plugin.PLUGIN_POSTINSTALL)
         if code: return code
 
         self.log.info("ONL loader install successful.")
@@ -634,6 +758,16 @@ class GrubInstaller(SubprocessMixin, Base):
             self.log.error("invalid GRUB label in platform config: %s", label)
             return 1
         return self.installGpt()
+
+    def upgradeBootLoader(self):
+        """Upgrade the boot loader settings."""
+
+        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
+
+        code = self.installGrubCfg()
+        if code: return code
+
+        return 0
 
     def shutdown(self):
         Base.shutdown(self)
@@ -668,9 +802,6 @@ class UbootInstaller(SubprocessMixin, Base):
 
         self.device = self.im.getDevice()
 
-        code = self.assertUnmounted()
-        if code: return code
-
         self.rawLoaderDevice = None
         # set to a partition device for raw loader install,
         # default to None for FS-based install
@@ -686,11 +817,17 @@ class UbootInstaller(SubprocessMixin, Base):
                 return 0
             self.log.warn("disk %s has wrong label %s",
                           self.device, self.partedDisk.type)
-        except Exception as ex:
+        except (DiskException, PartedException) as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
+        except Exception:
+            self.log.exception("cannot get partition table from %s",
+                               self.device)
 
-        self.log.info("creating msdos label on %s")
+        self.log.info("clobbering disk label on %s", self.device)
+        self.partedDevice.clobber()
+
+        self.log.info("creating msdos label on %s", self.device)
         self.partedDisk = parted.freshDisk(self.partedDevice, 'msdos')
 
         return 0
@@ -783,6 +920,20 @@ class UbootInstaller(SubprocessMixin, Base):
             self.log.error("not a block device: %s", self.device)
             return 1
 
+        # get a handle to the installer zip
+        p = os.path.join(self.im.installerConf.installer_dir,
+                         self.im.installerConf.installer_zip)
+        self.zf = zipfile.ZipFile(p)
+
+        code = self.loadPlugins()
+        if code: return code
+
+        code = self.runPlugins(Plugin.PLUGIN_PREINSTALL)
+        if code: return code
+
+        code = self.assertUnmounted()
+        if code: return code
+
         code = self.maybeCreateLabel()
         if code: return code
 
@@ -825,11 +976,6 @@ class UbootInstaller(SubprocessMixin, Base):
                 self.rawLoaderDevice = self.device + str(partIdx+1)
                 break
 
-        # get a handle to the installer zip
-        p = os.path.join(self.im.installerConf.installer_dir,
-                         self.im.installerConf.installer_zip)
-        self.zf = zipfile.ZipFile(p)
-
         code = self.installSwi()
         if code: return code
 
@@ -854,6 +1000,9 @@ class UbootInstaller(SubprocessMixin, Base):
         code = self.installUbootEnv()
         if code: return code
 
+        code = self.runPlugins(Plugin.PLUGIN_POSTINSTALL)
+        if code: return code
+
         return 0
 
     def run(self):
@@ -863,6 +1012,18 @@ class UbootInstaller(SubprocessMixin, Base):
             return 1
 
         return self.installUboot()
+
+    def upgradeBootLoader(self):
+        """Upgrade the boot loader settings as part of a loader upgrade."""
+
+        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
+
+        # XXX boot-config (and saved boot-config) should be unchanged during loader upgrade
+
+        code = self.installUbootEnv()
+        if code: return code
+
+        return 0
 
     def shutdown(self):
         Base.shutdown(self)

@@ -1,3 +1,4 @@
 versions/
-module-manifest.mk
+modules/module*
+
 

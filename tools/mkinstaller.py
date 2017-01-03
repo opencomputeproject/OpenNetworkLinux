@@ -106,6 +106,18 @@ class InstallerShar(object):
         self.files.append(filename)
         self.files = list(set(self.files))
 
+    def add_file_as(self, source, basename):
+        if not os.path.exists(source):
+            self.abort("File %s does not exist." % source)
+
+        tmpdir = os.path.join(self.work_dir, "tmp")
+        if not os.path.exists(tmpdir):
+            os.mkdir(tmpdir)
+
+        dst = os.path.join(tmpdir, basename)
+        shutil.copy(source, dst)
+        self.add_file(dst)
+
     def add_dir(self, dir_):
         if not os.path.isdir(dir_):
             self.abort("Directory %s does not exist." % dir_)
@@ -166,13 +178,21 @@ if __name__ == '__main__':
                     choices = ['amd64', 'powerpc', 'armel', 'arm64'])
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
     ap.add_argument("--fit", nargs=2, help="The system FIT image.")
-    ap.add_argument("--boot-config", help="The boot-config source.", required=True)
+    ap.add_argument("--boot-config", help="The boot-config source.")
     ap.add_argument("--add-file", help="Add the given file  to the installer package.", nargs='+', default=[])
     ap.add_argument("--add-dir", help="Optional directory to include in the installer.", nargs='+', default=[])
     ap.add_argument("--swi", help="Include the given SWI in the installer.")
     ap.add_argument("--work-dir", help="Set work directory and keep intermediates for debugging.")
     ap.add_argument("--verbose", '-v', help="Verbose output.", action='store_true')
     ap.add_argument("--out", help="Destination Filename")
+
+    ap.add_argument("--preinstall-script",
+                    help="Specify a preinstall script (runs before installer)")
+    ap.add_argument("--postinstall-script",
+                    help="Specify a preinstall script (runs after installer)")
+
+    ap.add_argument("--plugin", action='append',
+                    help="Specify a Python plugin (runs from within the installer chroot)")
 
     ops = ap.parse_args()
     installer = InstallerShar(ops.arch, ops.work_dir)
@@ -197,7 +217,8 @@ if __name__ == '__main__':
     if ops.fit:
         installer.add_fit(*ops.fit)
 
-    installer.add_file(ops.boot_config)
+    if ops.boot_config:
+        installer.add_file(ops.boot_config)
 
     for f in ops.add_file:
         installer.add_file(f)
@@ -207,6 +228,32 @@ if __name__ == '__main__':
 
     if ops.swi:
         installer.add_swi(ops.swi)
+
+    hookdir = os.path.join(installer.work_dir, "tmp")
+    if not os.path.exists(hookdir):
+        os.makedirs(hookdir)
+
+    plugindir = os.path.join(installer.work_dir, "tmp/plugins")
+    if not os.path.exists(plugindir):
+        os.makedirs(plugindir)
+
+    if ops.preinstall_script:
+        installer.add_file_as(ops.preinstall_script, "preinstall.sh")
+    if ops.postinstall_script:
+        installer.add_file_as(ops.postinstall_script, "postinstall.sh")
+
+    if ops.plugin:
+        for plugin in ops.plugin:
+            basename = os.path.split(plugin)[1]
+            basename = os.path.splitext(basename)[0]
+            dst = tempfile.mktemp(dir=plugindir,
+                                  prefix=basename+'-',
+                                  suffix='.py')
+            shutil.copy(plugin, dst)
+
+    l = os.listdir(plugindir)
+    if l:
+        installer.add_dir(plugindir)
 
     iname = os.path.abspath(ops.out)
     installer.build(iname)

@@ -13,6 +13,7 @@ common:
   version: 1.0.0
   copyright: Copyright 2016 Big Switch Networks
   maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
 
 
 

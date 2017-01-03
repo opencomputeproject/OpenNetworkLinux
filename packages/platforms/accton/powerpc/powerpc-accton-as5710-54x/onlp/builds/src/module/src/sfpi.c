@@ -30,7 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 static int
@@ -331,6 +331,75 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
     set_active_port(0);
 
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int rc;
+
+    if (set_active_port(port+1) != 0) {
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    rc= onlp_i2c_readb(SFP_BUS, devaddr, addr, ONLP_I2C_F_FORCE);
+
+    set_active_port(0);
+
+    return rc;
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int rc;
+
+    if (set_active_port(port+1) != 0) {
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    rc = onlp_i2c_writeb(SFP_BUS, devaddr, addr, value, ONLP_I2C_F_FORCE);
+
+    set_active_port(0);
+
+    return rc;
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int rc;
+
+    if (set_active_port(port+1) != 0) {
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    rc= onlp_i2c_readw(SFP_BUS, devaddr, addr, ONLP_I2C_F_FORCE);
+
+    set_active_port(0);
+
+    return rc;
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int rc;
+
+    if (set_active_port(port+1) != 0) {
+        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    rc = onlp_i2c_writew(SFP_BUS, devaddr, addr, value, ONLP_I2C_F_FORCE);
+
+    set_active_port(0);
+
+    return rc;
+
 }
 
 int

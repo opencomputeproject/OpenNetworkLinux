@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2015 Accton Technology Corporation.
+ *           Copyright 2014 Accton Technology Corporation.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -30,10 +30,6 @@
 #include <fcntl.h>
 #include "platform_lib.h"
 
-#define prefix_path "/sys/bus/i2c/devices/"
-#define filename    "temp1_input"
-#define LOCAL_DEBUG 0
-
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_THERMAL(_id)) {         \
@@ -41,19 +37,14 @@
         }                                       \
     } while(0)
 
-#define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, r_data, nbytes)) <= 0){ \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
-
-enum onlp_thermal_id
+int
+onlp_thermali_init(void)
 {
+    return ONLP_STATUS_OK;
+}
+
+
+enum onlp_thermal_id {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
     THERMAL_1_ON_MAIN_BROAD,
@@ -64,24 +55,23 @@ enum onlp_thermal_id
     THERMAL_1_ON_PSU2,
 };
 
-static char* last_path[] =  /* must map with onlp_thermal_id */
-{
+static char* devfiles[] = { /* must map with onlp_thermal_id */
     "reserved",
     NULL, /* CPU Core */
-    "38-0048/temp1_input",
-    "39-0049/temp1_input",
-    "40-004a/temp1_input",
-    "41-004b/temp1_input",
-    "35-003c/psu_temp1_input",
-    "36-003f/psu_temp1_input",
+    "/sys/bus/i2c/devices/38-0048*temp1_input",
+    "/sys/bus/i2c/devices/39-0049*temp1_input",
+    "/sys/bus/i2c/devices/40-004a*temp1_input",
+    "/sys/bus/i2c/devices/41-004b*temp1_input",
+    "/sys/bus/i2c/devices/35-003c*psu_temp1_input",
+    "/sys/bus/i2c/devices/36-003f*psu_temp1_input",
 };
 
 static char* cpu_coretemp_files[] =
     {
-        "/sys/devices/platform/coretemp.0/temp2_input",
-        "/sys/devices/platform/coretemp.0/temp3_input",
-        "/sys/devices/platform/coretemp.0/temp4_input",
-        "/sys/devices/platform/coretemp.0/temp5_input",
+        "/sys/devices/platform/coretemp.0*temp2_input",
+        "/sys/devices/platform/coretemp.0*temp3_input",
+        "/sys/devices/platform/coretemp.0*temp4_input",
+        "/sys/devices/platform/coretemp.0*temp5_input",
         NULL,
     };
 
@@ -118,35 +108,13 @@ static onlp_thermal_info_t linfo[] = {
         }
 };
 
-/*
- * This will be called to intiialize the thermali subsystem.
- */
-int
-onlp_thermali_init(void)
-{
-    return ONLP_STATUS_OK;
-}
-
-/*
- * Retrieve the information structure for the given thermal OID.
- *
- * If the OID is invalid, return ONLP_E_STATUS_INVALID.
- * If an unexpected error occurs, return ONLP_E_STATUS_INTERNAL.
- * Otherwise, return ONLP_STATUS_OK with the OID's information.
- *
- * Note -- it is expected that you fill out the information
- * structure even if the sensor described by the OID is not present.
- */
 int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
-    int   fd, len, nbytes = 10, temp_base=1, local_id;
-    char  r_data[10]   = {0};
-    char  fullpath[50] = {0};
+    int local_id;
     VALIDATE(id);
 
     local_id = ONLP_OID_ID_GET(id);
-    DEBUG_PRINT("\n[Debug][%s][%d][local_id: %d]", __FUNCTION__, __LINE__, local_id);
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[local_id];
@@ -156,12 +124,5 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         return rv;
     }
 
-    /* get fullpath */
-    sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);
-
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
-    info->mcelsius = atoi(r_data) / temp_base;
-    DEBUG_PRINT("\n[Debug][%s][%d][save data: %d]\n", __FUNCTION__, __LINE__, info->mcelsius);
-
-    return ONLP_STATUS_OK;
+    return onlp_file_read_int(&info->mcelsius, devfiles[local_id]);
 }

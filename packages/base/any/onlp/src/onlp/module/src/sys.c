@@ -168,6 +168,15 @@ onlp_sys_info_free(onlp_sys_info_t* info)
     onlp_sysi_platform_info_free(&info->platform_info);
 }
 
+static int
+onlp_sys_hdr_get_locked__(onlp_oid_hdr_t* hdr)
+{
+    memset(hdr, 0, sizeof(*hdr));
+    return onlp_sysi_oids_get(hdr->coids, AIM_ARRAYSIZE(hdr->coids));
+}
+ONLP_LOCKED_API1(onlp_sys_hdr_get, onlp_oid_hdr_t*, hdr);
+
+
 void
 onlp_sys_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
 {

@@ -28,4 +28,6 @@
 
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_psui_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_psui_status_get(onlp_oid_t id, uint32_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_psui_ioctl(onlp_oid_t pid, va_list vargs));

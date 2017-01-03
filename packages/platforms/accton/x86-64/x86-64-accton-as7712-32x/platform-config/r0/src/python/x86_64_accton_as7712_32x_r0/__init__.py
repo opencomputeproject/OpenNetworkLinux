@@ -8,6 +8,11 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7712.32"
 
     def baseconfig(self):
+        self.insmod('ym2651y')
+        self.insmod('accton_i2c_cpld')
+        for m in [ 'fan', 'psu', 'leds', 'sfp' ]:
+            self.insmod("x86-64-accton-as7712-32x-%s.ko" % m)
+
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([
 

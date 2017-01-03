@@ -1,0 +1,11 @@
+#!/bin/sh
+############################################################
+if [ -z "$1" ]; then
+    echo "usage: $0 <kernel url>"
+    exit 1
+fi
+
+dir=`mktemp -d`
+(cd $dir && wget $1)
+onlfs rw boot mv $dir/* /mnt/onl/boot
+rmdir $dir

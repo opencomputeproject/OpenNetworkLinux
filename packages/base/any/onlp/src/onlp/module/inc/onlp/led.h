@@ -113,6 +113,20 @@ int onlp_led_init(void);
 int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
 
 /**
+ * @brief Get the LED operational status.
+ * @param id The LED OID
+ * @param rv [out] Receives the operational status.
+ */
+int onlp_led_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Get the LED header.
+ * @param id The LED OID
+ * @param rv [out] Receives the header.
+ */
+int onlp_led_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+
+/**
  * @brief Turn an LED on or off.
  * @param id The LED OID
  * @param on_or_off Led on (1) or LED off (0)

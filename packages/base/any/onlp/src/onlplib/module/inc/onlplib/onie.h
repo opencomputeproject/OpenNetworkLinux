@@ -100,4 +100,9 @@ void onlp_onie_show(onlp_onie_info_t* info, aim_pvs_t* pvs);
  */
 void onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs);
 
+/**
+ * Read ONIE fields from a JSON file.
+ */
+int onlp_onie_read_json(onlp_onie_info_t* info, const char* fname);
+
 #endif /* __ONLP_ONIE_H__ */

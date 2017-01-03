@@ -8,8 +8,7 @@
 - smartmontools
 - grub2
 - onl-upgrade
-- kexec-tools
-
-
-
-
+- hw-management
+- sx-kernel
+- onl-kernel-3.16-lts-x86-64-all-modules
+- onl-kernel-3.2-deb7-x86-64-all-modules
