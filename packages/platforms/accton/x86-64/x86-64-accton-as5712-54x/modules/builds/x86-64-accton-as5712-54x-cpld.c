@@ -33,6 +33,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
 #include <linux/dmi.h>
+#include <linux/version.h>
 
 static struct dmi_system_id as5712_dmi_table[] = {
     {
@@ -266,7 +267,7 @@ static ssize_t show_cpld_version(struct device *dev, struct device_attribute *at
     len = sprintf(buf, "%d", i2c_smbus_read_byte_data(client, reg));
 
     return len;
-}	
+}
 
 static struct device_attribute ver = __ATTR(version, 0600, show_cpld_version, NULL);
 
@@ -313,9 +314,11 @@ static int accton_i2c_cpld_mux_probe(struct i2c_client *client,
         int idx;
 #endif
         data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0, chan,
-                                I2C_CLASS_HWMON | I2C_CLASS_SPD,
-                                accton_i2c_cpld_mux_select_chan,
-                                accton_i2c_cpld_mux_deselect_mux);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+                                                     I2C_CLASS_HWMON | I2C_CLASS_SPD,
+#endif
+                                                     accton_i2c_cpld_mux_select_chan,
+                                                     accton_i2c_cpld_mux_deselect_mux);
 
         if (data->virt_adaps[chan] == NULL) {
             ret = -ENODEV;
@@ -463,5 +466,3 @@ MODULE_LICENSE("GPL");
 
 module_init(accton_i2c_cpld_mux_init);
 module_exit(accton_i2c_cpld_mux_exit);
-
-

@@ -34,6 +34,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
 #include <linux/dmi.h>
+#include <linux/version.h>
 
 static struct dmi_system_id as6812_dmi_table[] = {
 	{
@@ -132,7 +133,7 @@ static int accton_i2c_cpld_mux_reg_write(struct i2c_adapter *adap,
 		/* Retry automatically on arbitration loss */
 		orig_jiffies = jiffies;
 		for (res = 0, try = 0; try <= adap->retries; try++) {
-			res = adap->algo->smbus_xfer(adap, client->addr, flags, 
+			res = adap->algo->smbus_xfer(adap, client->addr, flags,
 													 I2C_SMBUS_WRITE, 0x2,
 													 I2C_SMBUS_BYTE_DATA, &data);
 			if (res != -EAGAIN)
@@ -170,21 +171,21 @@ static int accton_i2c_cpld_mux_deselect_mux(struct i2c_adapter *adap,
 
 	/* Deselect active channel */
 	data->last_chan = chips[data->type].deselectChan;
-	
+
 	return accton_i2c_cpld_mux_reg_write(adap, client, data->last_chan);
 }
 
 static void accton_i2c_cpld_add_client(struct i2c_client *client)
 {
 	struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node), GFP_KERNEL);
-	
+
 	if (!node) {
 		dev_dbg(&client->dev, "Can't allocate cpld_client_node (0x%x)\n", client->addr);
 		return;
 	}
-	
+
 	node->client = client;
-	
+
 	mutex_lock(&list_lock);
 	list_add(&node->list, &cpld_client_list);
 	mutex_unlock(&list_lock);
@@ -195,24 +196,24 @@ static void accton_i2c_cpld_remove_client(struct i2c_client *client)
 	struct list_head		*list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int found = 0;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
 	{
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
-		
+
 		if (cpld_node->client == client) {
 			found = 1;
 			break;
 		}
 	}
-	
+
 	if (found) {
 		list_del(list_node);
 		kfree(cpld_node);
 	}
-	
+
 	mutex_unlock(&list_lock);
 }
 
@@ -226,7 +227,7 @@ static ssize_t show_cpld_version(struct device *dev, struct device_attribute *at
 	len = sprintf(buf, "%d", i2c_smbus_read_byte_data(client, reg));
 
 	return len;
-}	
+}
 
 static struct device_attribute ver = __ATTR(version, 0600, show_cpld_version, NULL);
 
@@ -258,17 +259,19 @@ static int accton_i2c_cpld_mux_probe(struct i2c_client *client,
 		data->last_chan = chips[data->type].deselectChan; /* force the first selection */
 
 		/* Now create an adapter for each channel */
-		for (chan = 0; chan < chips[data->type].nchans; chan++) {		 
+		for (chan = 0; chan < chips[data->type].nchans; chan++) {
 			data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0, chan,
-                                I2C_CLASS_HWMON | I2C_CLASS_SPD,
-					accton_i2c_cpld_mux_select_chan,
-					accton_i2c_cpld_mux_deselect_mux);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
+                                                                     I2C_CLASS_HWMON | I2C_CLASS_SPD,
+#endif
+                                                                     accton_i2c_cpld_mux_select_chan,
+                                                                     accton_i2c_cpld_mux_deselect_mux);
 
 			if (data->virt_adaps[chan] == NULL) {
 				ret = -ENODEV;
 				dev_err(&client->dev, "failed to register multiplexed adapter %d\n", chan);
 				goto virt_reg_failed;
-			}	   
+			}
 		}
 
 		dev_info(&client->dev, "registered %d multiplexed busses for I2C mux %s\n",
@@ -302,14 +305,14 @@ static int accton_i2c_cpld_mux_remove(struct i2c_client *client)
 
 	for (chan = 0; chan < chip->nchans; ++chan) {
 		if (data->virt_adaps[chan]) {
-			i2c_del_mux_adapter(data->virt_adaps[chan]); 
+			i2c_del_mux_adapter(data->virt_adaps[chan]);
 			data->virt_adaps[chan] = NULL;
 		}
 	}
 
 	kfree(data);
 	accton_i2c_cpld_remove_client(client);
-	
+
 	return 0;
 }
 
@@ -318,19 +321,19 @@ int as6812_32x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
 	struct list_head   *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int ret = -EPERM;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
 	{
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
-		
+
 		if (cpld_node->client->addr == cpld_addr) {
 			ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
 			break;
 		}
 	}
-	
+
 	mutex_unlock(&list_lock);
 
 	return ret;
@@ -342,19 +345,19 @@ int as6812_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 	struct list_head   *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int ret = -EIO;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
 	{
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
-		
+
 		if (cpld_node->client->addr == cpld_addr) {
 			ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
 			break;
 		}
 	}
-	
+
 	mutex_unlock(&list_lock);
 
 	return ret;
