@@ -1,3 +1,5 @@
+variables:
+  basename: onl-kernel-3.2-deb7-x86-64-all
 
 common:
   arch: amd64
@@ -7,7 +9,7 @@ common:
   support: opennetworklinux@googlegroups.com
 
 packages:
-  - name: onl-kernel-3.2-deb7-x86-64-all
+  - name: $basename
     version: 1.0.0
     summary: Open Network Linux Kernel 3.2-deb7 for X86_64 Platforms.
 
@@ -17,6 +19,11 @@ packages:
 
     changelog:  Change changes changes.,
 
+  - name: $basename-modules
+    version: 1.0.0
+    summary: Open Network Linux 3.2 Kernel Modules for X86_64 Platforms
 
+    files:
+      builds/lib: /lib
 
-
+    changelog:  Change changes changes.,
