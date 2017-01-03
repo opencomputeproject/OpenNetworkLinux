@@ -213,6 +213,19 @@ class OnlPlatformBase(object):
         else:
             return False
 
+    def insmod_platform(self):
+        kv = os.uname()[2]
+        # Insert all modules in the platform module directories
+        directories = [ self.PLATFORM,
+                        '-'.join(self.PLATFORM.split('-')[:-1]) ]
+
+        for subdir in directories:
+            d = "/lib/modules/%s/%s" % (kv, subdir)
+            if os.path.isdir(d):
+                for f in os.listdir(d):
+                    if f.endswith(".ko"):
+                        self.insmod(f)
+
     def onie_machine_get(self):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
