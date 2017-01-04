@@ -16,3 +16,4 @@ driver-support-intel-igb-bcm5461X-phy.patch
 driver-i2c-bus-intel-ismt-enable-param.patch
 drivers-i2c-busses-i2c-isch-probe-param.patch
 drivers-i2c-muxes-pca954x-deselect-on-exit.patch
+driver-early-dma-allocator.patch
