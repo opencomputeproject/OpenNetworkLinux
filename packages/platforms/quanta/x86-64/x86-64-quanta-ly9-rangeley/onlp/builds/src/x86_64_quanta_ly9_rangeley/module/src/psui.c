@@ -6,15 +6,15 @@
  *
  *
  ***********************************************************/
-#include <x86_64_quanta_ly8_rangeley/x86_64_quanta_ly8_rangeley_config.h>
-#include <x86_64_quanta_ly8_rangeley/x86_64_quanta_ly8_rangeley_gpio_table.h>
+#include <x86_64_quanta_ly9_rangeley/x86_64_quanta_ly9_rangeley_config.h>
+#include <x86_64_quanta_ly9_rangeley/x86_64_quanta_ly9_rangeley_gpio_table.h>
 #include <onlp/platformi/psui.h>
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
 #include <quanta_lib/i2c.h>
 #include <quanta_lib/gpio.h>
-#include "x86_64_quanta_ly8_rangeley_int.h"
-#include "x86_64_quanta_ly8_rangeley_log.h"
+#include "x86_64_quanta_ly9_rangeley_int.h"
+#include "x86_64_quanta_ly9_rangeley_log.h"
 
 struct psu_info_s psu_info[] = {
 	{}, /* Not used */
@@ -33,7 +33,7 @@ static onlp_psu_info_t psus__[] = {
     {
         {
             PSU_OID_PSU1,
-            "Quanta LY8 RPSU-1",
+            "Quanta LY9 RPSU-1",
             0,
             {
                 FAN_OID_FAN9,
@@ -43,7 +43,7 @@ static onlp_psu_info_t psus__[] = {
     {
         {
             PSU_OID_PSU2,
-            "Quanta LY8 RPSU-2",
+            "Quanta LY9 RPSU-2",
             0,
             {
                 FAN_OID_FAN10,
