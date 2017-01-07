@@ -1,0 +1,2 @@
+none:
+	@mkdir -p lib
