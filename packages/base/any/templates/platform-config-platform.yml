@@ -13,7 +13,7 @@ prerequisites:
 
 packages:
   - name: onl-platform-config-$PLATFORM
-    depends: onl-vendor-config-$VENDOR
+    depends: onl-vendor-config-$VENDOR,onl-platform-modules-$BASENAME
     version: 1.0.0
     arch: $ARCH
     copyright: Copyright 2013, 2014, 2015 Big Switch Networks
