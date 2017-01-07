@@ -1,1 +1,1 @@
-!include $ONL/packages/base/any/templates/platform-config-platform.yml ARCH=powerpc VENDOR=accton PLATFORM=powerpc-accton-as5710-54x-r0b
+!include $ONL/packages/base/any/templates/platform-config-platform.yml ARCH=powerpc VENDOR=accton BASENAME=powerpc-accton-as5710-54x REVISION=r0b
