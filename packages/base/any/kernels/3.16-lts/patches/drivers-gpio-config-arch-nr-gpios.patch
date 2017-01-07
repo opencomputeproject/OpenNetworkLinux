@@ -1,0 +1,41 @@
+diff -urpN a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
+--- a/drivers/gpio/Kconfig	2016-11-20 01:17:41.000000000 +0000
++++ b/drivers/gpio/Kconfig	2017-01-06 18:06:11.520439745 +0000
+@@ -30,6 +30,23 @@ config ARCH_REQUIRE_GPIOLIB
+ 	  Selecting this from the architecture code will cause the gpiolib
+ 	  code to always get built in.
+ 
++config ARCH_NR_GPIOS
++     int "Max number gpios"
++     default 256
++     range 256 2048
++     help
++       Platforms may implement their GPIO interface with library code,
++       at a small performance cost for non-inlined operations and some
++       extra memory (for code and for per-GPIO table entries).
++
++       While the GPIO programming interface defines valid GPIO numbers
++       to be in the range 0..MAX_INT, this library restricts them to the
++       smaller range 0..ARCH_NR_GPIOS-1.
++
++       ARCH_NR_GPIOS is somewhat arbitrary; it usually reflects the sum of
++       builtin/SoC GPIOs plus a number of GPIOs on expanders; the latter is
++       actually an estimate of a board-specific value.
++
+ 
+ menuconfig GPIOLIB
+ 	bool "GPIO Support"
+diff -urpN a/include/asm-generic/gpio.h b/include/asm-generic/gpio.h
+--- a/include/asm-generic/gpio.h	2016-11-20 01:17:41.000000000 +0000
++++ b/include/asm-generic/gpio.h	2017-01-06 18:02:56.124435505 +0000
+@@ -26,6 +26,10 @@
+  * actually an estimate of a board-specific value.
+  */
+ 
++#ifdef CONFIG_ARCH_NR_GPIOS
++#define ARCH_NR_GPIOS CONFIG_ARCH_NR_GPIOS
++#endif
++
+ #ifndef ARCH_NR_GPIOS
+ #define ARCH_NR_GPIOS		256
+ #endif
