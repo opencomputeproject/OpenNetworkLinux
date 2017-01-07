@@ -1,0 +1,21 @@
+############################################################
+#
+# PKG template for a vendor's common modules
+#
+############################################################
+prerequisites:
+  packages: [ $KERNELS ]
+
+packages:
+  - name: onl-vendor-${VENDOR}-modules
+    version: 1.0.0
+    arch: $ARCH
+    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+    maintainer: support@bigswitch.com
+    support: opennetworklinux@googlegroups.com
+    summary: ONL Vendor Modules Package for ${vendor}
+
+    files:
+      builds/lib: /lib
+
+    changelog: Changes
