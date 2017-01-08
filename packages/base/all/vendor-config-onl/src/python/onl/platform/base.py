@@ -190,26 +190,50 @@ class OnlPlatformBase(object):
     def baseconfig(self):
         return True
 
-    def insmod(self, module, required=True):
-        kv = os.uname()[2]
-        searched = []
+    def insmod(self, module, required=True, params={}):
+        #
+        # Search for modules in this order:
+        #
+        # 1. Fully qualified platform name
+        #    /lib/modules/<kernel>/onl/<vendor>/<platform-name>
+        # 2. Basename
+        #    /lib/modules/<kernel>/onl/<vendor>/<basename>
+        # 3. Vendor common
+        #    /lib/modules/<kernel>/onl/<vendor>/common
+        # 4. ONL common
+        #    /lib/modules/<kernel>/onl/onl/common
+        # 5. ONL Top-Level
+        #    /lib/modules/<kernel>/onl
+        # 5. Kernel Top-level
+        #    /lib/modules/<kernel>
+        #
 
-        # Search paths in this order:
-        locations = [ self.PLATFORM,
-                      '-'.join(self.PLATFORM.split('-')[:-1]),
-                      'onl',
-                      ".",
-        ]
-        for l in locations:
+        kdir = "/lib/modules/%s" % os.uname()[2]
+        basename = "-".join(self.PLATFORM.split('-')[:-1])
+        odir = "%s/onl" % kdir
+        vdir = "%s/%s" % (odir, self.MANUFACTURER.lower())
+        bdir = "%s/%s" % (vdir, basename)
+        pdir = "%s/%s" % (vdir, self.PLATFORM)
+
+        searchdirs = [ os.path.join(vdir, self.PLATFORM),
+                       os.path.join(vdir, basename),
+                       os.path.join(vdir, "common"),
+                       os.path.join(odir, "onl", "common"),
+                       odir,
+                       kdir,
+                       ]
+
+        for d in searchdirs:
             for e in [ ".ko", "" ]:
-                path = "/lib/modules/%s/%s/%s%s" % (kv, l, module, e)
-                searched.append(path)
+                path = os.path.join(d, "%s%s" % (module, e))
+                print "Searching %s..." % path
                 if os.path.exists(path):
-                    subprocess.check_call("insmod %s" % path, shell=True)
+                    cmd = "insmod %s %s" % (path, " ".join([ "%s=%s" % (k,v) for (k,v) in params.iteritems() ]))
+                    subprocess.check_call(cmd, shell=True);
                     return True
 
         if required:
-            raise RuntimeError("kernel module %s could not be found. Searched: %s" % (module, searched))
+            raise RuntimeError("kernel module %s could not be found." % (module))
         else:
             return False
 
