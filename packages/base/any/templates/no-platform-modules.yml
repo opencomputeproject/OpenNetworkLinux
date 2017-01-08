@@ -15,5 +15,6 @@ packages:
     maintainer: support@bigswitch.com
     support: opennetworklinux@googlegroups.com
     summary: ONL Platform Modules Package for the $BASENAME
+    depends: onl-vendor-${VENDOR}-modules
 
     changelog: Changes
