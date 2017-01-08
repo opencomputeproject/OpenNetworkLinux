@@ -114,7 +114,7 @@ psu_fan_info_get__(onlp_fan_info_t* info, int id)
     extern struct psu_info_s psu_info[];
     char* dir = psu_info[id].path;
 
-    return onlp_file_read_int(&info->rpm, "%s/fan1_input", dir);
+    return onlp_file_read_int(&info->rpm, "%s*fan1_input", dir);
 }
 
 
@@ -166,5 +166,3 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv)
 
 	return ONLP_STATUS_E_INVALID;
 }
-
-
