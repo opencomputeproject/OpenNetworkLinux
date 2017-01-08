@@ -8,6 +8,10 @@ class OnlPlatform_x86_64_quanta_ly8_rangeley_r0(OnlPlatformQuanta,
     SYS_OBJECT_ID=".8.1"
 
     def baseconfig(self):
+        self.insmod("emerson700")
+        self.insmod("quanta_hwmon")
+        self.insmod("quanta_switch", params=dict(platform="x86-64-quanta-ly8-rangeley"))
+
         # fixme
         try:
             files = os.listdir("%s/etc/init.d" % self.basedir_onl())
