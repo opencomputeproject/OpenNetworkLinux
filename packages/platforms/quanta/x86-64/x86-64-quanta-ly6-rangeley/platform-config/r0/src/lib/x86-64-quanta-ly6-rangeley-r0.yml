@@ -18,7 +18,7 @@ x86-64-quanta-ly6-rangeley-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-3-9-6
+      <<: *kernel-3-16
 
     args: >-
       console=ttyS1,115200n8
