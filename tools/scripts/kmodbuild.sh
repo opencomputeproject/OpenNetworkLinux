@@ -6,7 +6,7 @@ set -e
 #
 
 #
-# build <kernel-package> <module-directory> <platform-install-subdir>
+# build <kernel-package> <module-directory> <install-subdir>
 #
 function build
 {
