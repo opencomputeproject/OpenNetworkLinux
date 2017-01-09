@@ -226,7 +226,6 @@ class OnlPlatformBase(object):
         for d in searchdirs:
             for e in [ ".ko", "" ]:
                 path = os.path.join(d, "%s%s" % (module, e))
-                print "Searching %s..." % path
                 if os.path.exists(path):
                     cmd = "insmod %s %s" % (path, " ".join([ "%s=%s" % (k,v) for (k,v) in params.iteritems() ]))
                     subprocess.check_call(cmd, shell=True);
