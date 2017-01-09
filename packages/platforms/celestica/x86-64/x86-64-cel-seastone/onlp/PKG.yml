@@ -1,5 +1,5 @@
 variables:
-    platform: x86-64-cel-seastone-r0
+  platform: x86-64-cel-seastone-r0
   install: /lib/platform-config/${platform}/onl
 
 common:
