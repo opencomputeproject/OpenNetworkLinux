@@ -8,6 +8,11 @@ class OnlPlatform_x86_64_quanta_ly6_rangeley_r0(OnlPlatformQuanta,
     SYS_OBJECT_ID='.6.1'
 
     def baseconfig(self):
+        self.insmod("emerson700")
+        self.insmod("quanta_hwmon")
+        self.insmod("quanta-ly6-i2c-mux")
+        self.insmod("quanta_switch", params=dict(platform="x86-64-quanta-ly6-rangeley"))
+
         # fixme
         try:
             files = os.listdir("%s/etc/init.d" % self.basedir_onl())
