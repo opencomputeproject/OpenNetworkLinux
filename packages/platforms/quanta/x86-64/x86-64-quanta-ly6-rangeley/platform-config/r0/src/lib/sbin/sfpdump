@@ -1,0 +1,102 @@
+#!/bin/bash
+
+############################################################
+# <bsn.cl fy=2013 v=onl>
+# 
+#        Copyright 2013, 2014 Big Switch Networks, Inc.       
+# 
+# Licensed under the Eclipse Public License, Version 1.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+# 
+#        http://www.eclipse.org/legal/epl-v10.html
+# 
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific
+# language governing permissions and limitations under the
+# License.
+# 
+# </bsn.cl>
+############################################################
+#
+# Platform: Quanta LY6
+#
+# Linux assigns I2C bus numbers as it enumerates the I2C master/mux
+# devices in the device tree breadth-first.  The bus numbers below may
+# change if the device tree changes.
+#
+# XXX roth -- does not reflect the device ordering the DTS file!
+#
+############################################################
+
+cur_dir=$(dirname $0)
+if [ -x $cur_dir/functions ]; then
+	. $cur_dir/functions
+else
+	echo "$cur_dir/functions not found"
+	exit 1
+fi
+
+base=/sys/devices/pci0000:00/0000:00:1f.3/i2c-0
+
+for port in $(seq 1 1 32); do
+
+	if [ $port -lt 9 ]; then
+		mux=16
+	elif [ $port -lt 17 ]; then
+		mux=17
+	elif [ $port -lt 25 ]; then
+		mux=18
+	else
+		mux=19
+	fi
+	gdev=$[ $port + 31 ]
+	eep=$(printf "%s/i2c-%d/i2c-%d/%d-0050/eeprom" $base $mux $gdev $gdev) 
+	value=$(hexdump -vC $eep 2>/dev/null | head -1 | head -c 12 | sed 's/^.*00000000  //g')
+	
+	if [ "$value" != "" ]; then
+		echo "QSFP port $port: present"
+	    echo "eeprom"
+	    hexdump -vC $eep 2>/dev/null
+	else
+		echo "QSFP port $port: Missing"
+	fi
+	
+done
+#CPLD will not always be stable, use eeprom read instead
+#gpio_base=128
+#
+#for port in $(seq 1 1 32); do
+#
+#  port_check=$(($port%2))
+#  
+#  if [ $port_check -eq 0 ]; then
+#      gpio_CPLD=$(($((gpio_base+$(($(($port-2))*4))))+1))
+#  else
+#      gpio_CPLD=$(($((gpio_base+$((port*4))))+1))
+#  fi
+#  
+#  cpld_gpio_get $gpio_CPLD
+#  
+#  if [ $value -eq 1 ]; then
+#	  echo "QSFP port $port: Missing"
+#  else	  
+#	  if [ $port -lt 9 ]; then
+#		  mux=16
+#	  elif [ $port -lt 17 ]; then
+#		  mux=17	
+#	  elif [ $port -lt 25 ]; then		  
+#		  mux=18		  
+#	  else
+#		  mux=19
+#	  fi  
+#	  gdev=$[ $port + 31 ]  
+#	  eep=$(printf "%s/i2c-%d/i2c-%d/%d-0050/eeprom" $base $mux $gdev $gdev)  
+#	  echo "QSFP port $port: present"
+#	  echo "eeprom"
+#	  hexdump -vC $eep 2>/dev/null
+#   fi
+#   
+#done

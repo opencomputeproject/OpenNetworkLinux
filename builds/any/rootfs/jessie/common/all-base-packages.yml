@@ -37,6 +37,8 @@
 - python-pypcap
 - snmpd
 - snmp
+- lm-sensors
+- fancontrol
 - pciutils
 - usbutils
 - mtd-utils

@@ -55,7 +55,7 @@ static onlp_psu_info_t psus__[] = {
 #define PMBUS_MFR_MODEL			0x9A
 #define PMBUS_MFR_SERIAL		0x9E
 #define PMBUS_MFR_MODEL_LEN		20
-#define PMBUS_MFR_SERIAL_LEN	7
+#define PMBUS_MFR_SERIAL_LEN	19
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -85,15 +85,17 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
+    buffer[buffer[0] + 1] = 0x00;
     if(rv >= 0)
-        strncpy(info->model, (char *) (buffer+1), buffer[0]);
+        strncpy(info->model, (char *) (buffer+1), (buffer[0] + 1));
     else
         strcpy(info->model, "Missing");
 
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
+    buffer[buffer[0] + 1] = 0x00;
     if(rv >= 0)
-        strncpy(info->serial, (char *) (buffer+1), buffer[0]);
+        strncpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
     else
         strcpy(info->serial, "Missing");
 
