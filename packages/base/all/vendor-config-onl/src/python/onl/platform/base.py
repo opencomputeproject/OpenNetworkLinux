@@ -243,7 +243,9 @@ class OnlPlatformBase(object):
                         '-'.join(self.PLATFORM.split('-')[:-1]) ]
 
         for subdir in directories:
-            d = "/lib/modules/%s/%s" % (kv, subdir)
+            d = "/lib/modules/%s/onl/%s/%s" % (kv,
+                                               self.MANUFACTURER.lower(),
+                                               subdir)
             if os.path.isdir(d):
                 for f in os.listdir(d):
                     if f.endswith(".ko"):
