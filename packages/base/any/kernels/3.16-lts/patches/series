@@ -20,3 +20,4 @@ driver-early-dma-allocator.patch
 driver-esdhc-p2020-broken-timeout.patch
 drivers-gpio-config-arch-nr-gpios.patch
 driver-hwmon-emerson-update-pmbus-core.patch
+drivers-net-ethernet-broadcom-tg3-preamble-reset.patch
