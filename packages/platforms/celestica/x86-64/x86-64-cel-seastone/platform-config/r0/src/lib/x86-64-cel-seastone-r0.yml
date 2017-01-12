@@ -18,8 +18,8 @@ x86-64-cel-seastone-r0:
       --parity=0
       --stop=1
 
-    kernel: 
-      <<: *kernel-3-2
+    kernel:
+      <<: *kernel-3-16
 
     args: >-
       nopat
