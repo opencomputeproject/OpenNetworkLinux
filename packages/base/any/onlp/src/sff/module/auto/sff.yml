@@ -67,6 +67,8 @@ sff_module_types: &sff_module_types
     desc: "40GBASE-CR"
 - 40G_BASE_SR2:
     desc: "40GBASE-SR2"
+- 25G_BASE_CR:
+    desc: "25GBASE-CR"
 - 10G_BASE_SR:
     desc: "10GBASE-SR"
 - 10G_BASE_LR:
@@ -102,8 +104,9 @@ sff_module_caps: &sff_module_caps
 - F_100  : 0x1
 - F_1G   : 0x2
 - F_10G  : 0x4
-- F_40G  : 0x8
-- F_100G : 0x10
+- F_25G  : 0x8
+- F_40G  : 0x10
+- F_100G : 0x20
 
 sff_sfp_types: &sff_sfp_types
 - SFP:

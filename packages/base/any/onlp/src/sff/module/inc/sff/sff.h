@@ -68,8 +68,9 @@ typedef enum sff_module_caps_e {
     SFF_MODULE_CAPS_F_100 = 1,
     SFF_MODULE_CAPS_F_1G = 2,
     SFF_MODULE_CAPS_F_10G = 4,
-    SFF_MODULE_CAPS_F_40G = 8,
-    SFF_MODULE_CAPS_F_100G = 16,
+    SFF_MODULE_CAPS_F_25G = 8,
+    SFF_MODULE_CAPS_F_40G = 16,
+    SFF_MODULE_CAPS_F_100G = 32,
 } sff_module_caps_t;
 
 /** Enum names. */
@@ -107,6 +108,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_40G_BASE_ACTIVE,
     SFF_MODULE_TYPE_40G_BASE_CR,
     SFF_MODULE_TYPE_40G_BASE_SR2,
+    SFF_MODULE_TYPE_25G_BASE_CR,
     SFF_MODULE_TYPE_10G_BASE_SR,
     SFF_MODULE_TYPE_10G_BASE_LR,
     SFF_MODULE_TYPE_10G_BASE_LRM,
@@ -142,6 +144,7 @@ typedef enum sff_module_type_e {
     "40G_BASE_ACTIVE", \
     "40G_BASE_CR", \
     "40G_BASE_SR2", \
+    "25G_BASE_CR", \
     "10G_BASE_SR", \
     "10G_BASE_LR", \
     "10G_BASE_LRM", \

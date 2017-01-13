@@ -166,6 +166,11 @@ sff_module_type_get(const uint8_t* eeprom)
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_cr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_CR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_GBE_SX(eeprom))
         return SFF_MODULE_TYPE_1G_BASE_SX;
 
@@ -214,6 +219,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_100G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR:
+        case SFF_MODULE_TYPE_25G_BASE_CR:
         case SFF_MODULE_TYPE_10G_BASE_CR:
         case SFF_MODULE_TYPE_1G_BASE_CX:
         case SFF_MODULE_TYPE_1G_BASE_T:
@@ -276,6 +282,10 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
         case SFF_MODULE_TYPE_40G_BASE_CR:
         case SFF_MODULE_TYPE_40G_BASE_SR2:
             *caps |= SFF_MODULE_CAPS_F_40G;
+            return 0;
+
+        case SFF_MODULE_TYPE_25G_BASE_CR:
+            *caps |= SFF_MODULE_CAPS_F_25G;
             return 0;
 
         case SFF_MODULE_TYPE_10G_BASE_SR:
