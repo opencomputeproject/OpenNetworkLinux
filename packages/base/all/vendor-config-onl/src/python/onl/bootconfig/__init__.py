@@ -113,17 +113,29 @@ class OnlBootConfigNet(OnlBootConfig):
         self.delete('NETGW')
         self.set('NETAUTO', 'dhcp')
 
+    def netauto_get(self):
+        return self.keys.get('NETAUTO', None)
+
     def netip_set(self, addr):
         self.delete('NETAUTO')
         self.keys['NETIP'] = addr
+
+    def netip_get(self):
+        return self.keys.get('NETIP', None)
 
     def netmask_set(self, mask):
         self.delete('NETAUTO')
         self.keys['NETMASK'] = mask
 
+    def netmask_get(self):
+        return self.keys.get('NETMASK', None)
+
     def netgw_set(self, gw):
         self.delete('NETAUTO')
         self.keys['NETGW'] = gw
+
+    def netgw_get(self):
+        return self.keys.get('NETGW', None)
 
     def __validate(self):
         if 'NETAUTO' not in self.keys:
@@ -221,4 +233,3 @@ class OnlBootConfigNet(OnlBootConfig):
 if __name__ == '__main__':
     bc = OnlBootConfigNet()
     bc.main("onl-boot-config")
-
