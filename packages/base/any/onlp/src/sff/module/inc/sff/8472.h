@@ -72,6 +72,7 @@
 #define SFF8472_CONN_HSSDC_II    0x20
 #define SFF8472_CONN_CU_PIGTAIL  0x21
 #define SFF8472_CONN_RJ45        0x22
+#define SFF8472_CONN_NOSEP       0x23
 
 /* module compliance codes (SFP type) */
 
@@ -943,7 +944,7 @@ _sff8472_sfp_10g_aoc(const uint8_t *idprom)
 static inline int
 _sff8472_sfp_10g_aoc_length(const uint8_t *idprom)
 {
-    /* module should be qsfp */
+    /* module should be sfp */
     if (!SFF8472_MODULE_SFP(idprom)) return -1;
 
     /* does not report a fiber length, but does report a cable length */
@@ -957,4 +958,19 @@ _sff8472_sfp_10g_aoc_length(const uint8_t *idprom)
     return -1;
 }
 
+/*
+ * SFP28
+ */
+static inline int
+_sff8472_media_sfp28_cr(const uint8_t* idprom)
+{
+    /* module should be sfp */
+    if (!SFF8472_MODULE_SFP(idprom)) return 0;
+
+    if (idprom[2] != SFF8472_CONN_NOSEP) return 0;
+    if ((idprom[3] & SFF8472_CC3_INF_1X_CU_PASSIVE) == 0) return 0;
+    if (idprom[12] == 0xFF) return 1;
+
+    return 0;
+}
 #endif
