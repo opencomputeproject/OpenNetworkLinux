@@ -10,6 +10,10 @@
 #include "x86_64_quanta_ly8_rangeley_int.h"
 #include "x86_64_quanta_ly8_rangeley_log.h"
 #include <quanta_sys_eeprom/eeprom.h>
+#include <x86_64_quanta_ly8_rangeley/x86_64_quanta_ly8_rangeley_gpio_table.h>
+#include <quanta_lib/gpio.h>
+
+struct led_control_s led_control;
 
 const char*
 onlp_sysi_platform_get(void)
@@ -20,6 +24,16 @@ onlp_sysi_platform_get(void)
 int
 onlp_sysi_init(void)
 {
+    led_control.PMCnt = 0;
+    led_control.psu1_mvin = 0;
+    led_control.psu2_mvin = 0;
+    led_control.fan1_rpm = 0;
+    led_control.fan2_rpm = 0;
+    led_control.fan3_rpm = 0;
+    led_control.fan5_rpm = 0;
+    led_control.fan6_rpm = 0;
+    led_control.fan7_rpm = 0;
+
     return ONLP_STATUS_OK;
 }
 
@@ -75,4 +89,63 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
      * Todo - LEDs
      */
     return 0;
+}
+
+int
+onlp_sysi_platform_manage_leds(void)
+{
+    led_control.PMCnt++;
+    if(led_control.PMCnt>300)
+        led_control.PMCnt = 0;
+    if(led_control.PMCnt % 5 == 1){//Each 10 seconds detect one time
+        if(led_control.psu1_mvin != 0) {
+            pca953x_gpio_value_set(PSU_GPIO_PSU1_GREEN_R, 1);
+            pca953x_gpio_value_set(PSU_GPIO_PSU1_RED_R, 0);
+        }
+        else{
+            pca953x_gpio_value_set(PSU_GPIO_PSU1_GREEN_R, 0);
+            pca953x_gpio_value_set(PSU_GPIO_PSU1_RED_R, 1);
+        }
+
+        if(led_control.psu2_mvin != 0) {
+            pca953x_gpio_value_set(PSU_GPIO_PSU2_GREEN_R, 1);
+            pca953x_gpio_value_set(PSU_GPIO_PSU2_RED_R, 0);
+        }
+        else{
+            pca953x_gpio_value_set(PSU_GPIO_PSU2_GREEN_R, 0);
+            pca953x_gpio_value_set(PSU_GPIO_PSU2_RED_R, 1);
+        }
+
+        if(led_control.fan1_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan5_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD) {
+             pca953x_gpio_value_set(FAN_FAIL_LED_1, 0);
+        }
+        else{
+             pca953x_gpio_value_set(FAN_FAIL_LED_1, 1);
+        }
+
+        if(led_control.fan2_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan6_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD) {
+             pca953x_gpio_value_set(FAN_FAIL_LED_2, 0);
+        }
+        else{
+             pca953x_gpio_value_set(FAN_FAIL_LED_2, 1);
+        }
+
+        if(led_control.fan3_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan7_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD) {
+             pca953x_gpio_value_set(FAN_FAIL_LED_3, 0);
+        }
+        else{
+             pca953x_gpio_value_set(FAN_FAIL_LED_3, 1);
+        }
+
+        if(led_control.fan1_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan2_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan3_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan5_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan6_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD && led_control.fan7_rpm >= X86_64_QUANTA_LY8_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD){
+             pca953x_gpio_value_set(PSU_GPIO_FAN_GREEN_R, 1);
+             pca953x_gpio_value_set(PSU_GPIO_FAN_RED_R, 0);
+        }
+        else{
+             pca953x_gpio_value_set(PSU_GPIO_FAN_GREEN_R, 0);
+             pca953x_gpio_value_set(PSU_GPIO_FAN_RED_R, 1);
+        }
+    }
+
+    return ONLP_STATUS_OK;
 }

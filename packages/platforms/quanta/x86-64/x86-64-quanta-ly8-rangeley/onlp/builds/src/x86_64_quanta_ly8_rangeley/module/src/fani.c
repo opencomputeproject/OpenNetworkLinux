@@ -60,6 +60,7 @@ sys_fan_info_get__(onlp_fan_info_t* info, int id)
 {
     int value = 0;
     int rv;
+    extern struct led_control_s led_control;
 
 	if(pca953x_gpio_value_get(fan_gpio[id].present, &value) == ONLP_STATUS_OK
 			&& value == GPIO_LOW) {
@@ -80,6 +81,19 @@ sys_fan_info_get__(onlp_fan_info_t* info, int id)
 
     rv = onlp_file_read_int(&info->rpm,
                             SYS_HWMON_PREFIX "/fan%d_input", id);
+
+    if(id == 1)
+        led_control.fan1_rpm = info->rpm;
+    else if(id == 2)
+        led_control.fan2_rpm = info->rpm;
+    else if(id == 3)
+        led_control.fan3_rpm = info->rpm;
+    else if(id == 5)
+        led_control.fan5_rpm = info->rpm;
+    else if(id == 6)
+        led_control.fan6_rpm = info->rpm;
+    else if(id == 7)
+        led_control.fan7_rpm = info->rpm;
 
     if(rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
