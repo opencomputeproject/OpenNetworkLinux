@@ -66,6 +66,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     const char* dir = psu_info[pid].path;
     uint8_t buffer[ONLP_CONFIG_INFO_STR_MAX];
 	int value = -1;
+    extern struct led_control_s led_control;
 
 	rv = pca953x_gpio_value_get(psu_info[pid].present, &value);
 	if(rv < 0) {
@@ -80,11 +81,17 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_VIN;
     }
 
+    if(pid == 1)
+        led_control.psu1_mvin= info->mvin;
+    else
+        led_control.psu2_mvin= info->mvin;
+
     /* PSU is present and powered. */
     info->status |= 1;
 
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
+    buffer[buffer[0] + 1] = 0x00;
     if(rv >= 0)
         strncpy(info->model, (char *) (buffer+1), (buffer[0] + 1));
     else
@@ -92,6 +99,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
+    buffer[buffer[0] + 1] = 0x00;
     if(rv >= 0)
         strncpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
     else

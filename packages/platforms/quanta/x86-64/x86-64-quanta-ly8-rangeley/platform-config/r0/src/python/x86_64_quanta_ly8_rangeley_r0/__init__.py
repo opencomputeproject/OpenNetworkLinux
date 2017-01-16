@@ -16,4 +16,14 @@ class OnlPlatform_x86_64_quanta_ly8_rangeley_r0(OnlPlatformQuanta,
         os.system("ln -snf /dev/rtc1 /dev/rtc")
         os.system("hwclock --hctosys")
 
+        # set system led to green
+        os.system("echo 74 > /sys/class/gpio/export")
+        os.system("echo out > /sys/class/gpio/gpio74/direction")
+        os.system("echo 0 > /sys/class/gpio/gpio74/value")
+        os.system("echo 74 > /sys/class/gpio/unexport")
+        os.system("echo 75 > /sys/class/gpio/export")
+        os.system("echo out > /sys/class/gpio/gpio75/direction")
+        os.system("echo 1 > /sys/class/gpio/gpio75/value")
+        os.system("echo 75 > /sys/class/gpio/unexport")
+
         return True

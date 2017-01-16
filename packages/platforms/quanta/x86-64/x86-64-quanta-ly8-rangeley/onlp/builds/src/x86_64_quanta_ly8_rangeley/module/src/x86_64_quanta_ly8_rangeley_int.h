@@ -225,6 +225,17 @@ struct psu_info_s {
 	int addr;
 };
 
+struct led_control_s{
+    int PMCnt;
+    int psu1_mvin;
+    int psu2_mvin;
+    int fan1_rpm;
+    int fan2_rpm;
+    int fan3_rpm;
+    int fan5_rpm;
+    int fan6_rpm;
+    int fan7_rpm;
+};
 
 #define SYS_HWMON_PREFIX "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-004e"
 
