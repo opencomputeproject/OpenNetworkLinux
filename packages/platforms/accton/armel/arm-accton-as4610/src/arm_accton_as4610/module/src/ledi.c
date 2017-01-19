@@ -76,10 +76,11 @@ typedef enum onlp_led_id
     LED_STK1,
     LED_STK2,
     LED_FAN,
-    LED_POE
+    LED_POE,
+    LED_ALARM
 } onlp_led_id_t;
 
-static char onlp_led_node_subname[][20] =  /* must map with onlp_led_id */
+static char* onlp_led_node_subname[] =  /* must map with onlp_led_id */
 {
     "reserved",
     "7seg_tens",
@@ -93,7 +94,8 @@ static char onlp_led_node_subname[][20] =  /* must map with onlp_led_id */
     "stk1",
     "stk2",
     "fan",
-    "poe"
+    "poe",
+    "alarm"
 };
 
 /*
@@ -162,6 +164,12 @@ static onlp_led_info_t linfo[] =
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN_BLINKING | 
         ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING,
     },
+    {
+        { ONLP_LED_ID_CREATE(LED_ALARM), "alarm", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN_BLINKING | 
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING,
+    },
 };
 
 static int conver_led_light_mode_to_onl(uint32_t id, int led_ligth_mode)
@@ -172,6 +180,7 @@ static int conver_led_light_mode_to_onl(uint32_t id, int led_ligth_mode)
     case LED_STK1:
     case LED_STK2:
     case LED_POE:
+    case LED_ALARM:
     case LED_7SEG_DP1:
     case LED_7SEG_DP2:
         switch (led_ligth_mode) {
@@ -203,6 +212,7 @@ static int conver_onlp_led_light_mode_to_driver(uint32_t id, int led_ligth_mode)
     case LED_STK1:
     case LED_STK2:
     case LED_POE:
+    case LED_ALARM:
     case LED_7SEG_DP1:
     case LED_7SEG_DP2:
         switch (led_ligth_mode) {
@@ -304,24 +314,48 @@ int onlp_ledi_char_get(onlp_oid_t id, char* c)
     return ONLP_STATUS_OK;
 }
 
+static int
+onlp_ledi_oid_to_internal_id(onlp_oid_t id)
+{
+	enum as4610_product_id pid = get_product_id();
+	int lid = ONLP_OID_ID_GET(id);
+
+	if (pid != PID_AS4610T_B) {
+		return lid;
+	}
+	
+	switch (lid) {
+	case 1:	return LED_SYS;
+	case 2: return LED_PRI;
+	case 3: return LED_PSU1;
+	case 4: return LED_PSU2;
+	case 5: return LED_STK1;
+	case 6:	return LED_STK2;
+	case 7:	return LED_FAN;
+	case 8:	return LED_ALARM;
+	}
+
+	return lid;
+}
+
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  fd, len, nbytes=1;
     char data[2]      = {0};
     char fullpath[50] = {0};
-    int lid = ONLP_OID_ID_GET(id);
+    int lid = onlp_ledi_oid_to_internal_id(id);
 
     VALIDATE(id);
 
     /* Set the onlp_oid_hdr_t and capabilities */		
-    *info = linfo[ONLP_OID_ID_GET(id)];
+    *info = linfo[lid];
 
     if (linfo[lid].caps & ONLP_LED_CAPS_CHAR) {
         return onlp_ledi_char_get(id, &info->character);
     }
     else {
-        sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[ONLP_OID_ID_GET(id)], led_filename);
+        sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[lid], led_filename);
 
         /* Set current mode */
         if ((fd = open(fullpath, O_RDONLY)) == -1) {
@@ -338,7 +372,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        info->mode = conver_led_light_mode_to_onl(ONLP_OID_ID_GET(id),atoi(data));
+        info->mode = conver_led_light_mode_to_onl(lid, atoi(data));
 
         /* Set the on/off status */
         if (info->mode != ONLP_LED_MODE_OFF) {
@@ -382,7 +416,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     int  fd, len, driver_mode, nbytes=1;
     char data[2]      = {0};	
     char fullpath[50] = {0};		
-    int lid = ONLP_OID_ID_GET(id);
+    int lid = onlp_ledi_oid_to_internal_id(id);
     
     VALIDATE(id);
 
@@ -390,9 +424,9 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 	
-    sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[ONLP_OID_ID_GET(id)], led_filename);		
+    sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[lid], led_filename);		
 
-    driver_mode = conver_onlp_led_light_mode_to_driver(ONLP_OID_ID_GET(id),mode);
+    driver_mode = conver_onlp_led_light_mode_to_driver(lid, mode);
     sprintf(data, "%d", driver_mode);
 	
     /* Create output file descriptor */
