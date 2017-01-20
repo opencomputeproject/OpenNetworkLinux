@@ -150,7 +150,7 @@ enum as4610_product_id get_product_id(void)
     }
 
     pid = atoi(buf);
-    if (pid >= PID_UNKNOWN || pid < PID_AS4610_30T) {
+    if (pid >= PID_UNKNOWN || pid < PID_AS4610_30T || pid == PID_RESERVED) {
         return PID_UNKNOWN;
     }
 
@@ -160,11 +160,21 @@ enum as4610_product_id get_product_id(void)
 int chassis_fan_count(void)
 {
     enum as4610_product_id pid = get_product_id();
+
+	if (pid == PID_AS4610T_B) {
+		return 2;
+	}
+
     return (pid == PID_AS4610_30P || pid == PID_AS4610P) ? 1 : 0;
 }
 
 int chassis_led_count(void)
 {
     enum as4610_product_id pid = get_product_id();
+
+	if (pid == PID_AS4610T_B) {
+		return 8;
+	}
+	
     return (pid == PID_AS4610_30P || pid == PID_AS4610P) ? 12 : 10;
 }
