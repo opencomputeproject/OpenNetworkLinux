@@ -28,9 +28,20 @@ export BUILD_DIR_BASE=BUILD/$(ONL_DEBIAN_SUITE)
 
 
 # Use the new module database tool to resolve dependencies dynamically.
+ifndef BUILDER_MODULE_DATABASE
 export BUILDER_MODULE_DATABASE := $(ONL)/make/modules/modules.json
+endif
+
 # Regenerate the module manifest if necessary.
-export MODULEMANIFEST := $(shell $(BUILDER)/tools/modtool.py --db $(BUILDER_MODULE_DATABASE) --dbroot $(ONL) --make-manifest $(ONL)/make/modules/modules.mk)
+ifndef BUILDER_MODULE_DATABASE_ROOT
+BUILDER_MODULE_DATABASE_ROOT := $(ONL)
+endif
+
+ifndef BUILDER_MODULE_MANIFEST
+BUILDER_MODULE_MANIFEST := $(ONL)/make/modules/modules.mk
+endif
+
+export MODULEMANIFEST := $(shell $(BUILDER)/tools/modtool.py --db $(BUILDER_MODULE_DATABASE) --dbroot $(BUILDER_MODULE_DATABASE_ROOT) --make-manifest $(BUILDER_MODULE_MANIFEST))
 
 # Generate versions if necessary.
 $(shell $(ONL)/tools/make-versions.py --import-file=$(ONL)/tools/onlvi --class-name=OnlVersionImplementation --output-dir $(ONL)/make/versions)
@@ -74,5 +85,3 @@ ONL_MAKE := $(MAKE) $(ONL_MAKE_FLAGS)
 #
 export SUBMODULE_INFRA := $(ONL)/sm/infra
 export SUBMODULE_BIGCODE := $(ONL)/sm/bigcode
-
-
