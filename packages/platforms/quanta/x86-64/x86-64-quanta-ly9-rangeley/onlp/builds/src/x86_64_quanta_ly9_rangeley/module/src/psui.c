@@ -15,6 +15,7 @@
 #include <quanta_lib/gpio.h>
 #include "x86_64_quanta_ly9_rangeley_int.h"
 #include "x86_64_quanta_ly9_rangeley_log.h"
+#include <AIM/aim_string.h>
 
 struct psu_info_s psu_info[] = {
 	{}, /* Not used */
@@ -76,7 +77,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         return 0;
 	}
 
-    if(onlp_file_read_int(&info->mvin, "%s/in1_input", dir) == 0 && info->mvin >= 0) {
+    if(onlp_file_read_int(&info->mvin, "%s*in1_input", dir) == 0 && info->mvin >= 0) {
         info->caps |= ONLP_PSU_CAPS_VIN;
     }
 
@@ -86,36 +87,40 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
     buffer[buffer[0] + 1] = 0x00;
-    if(rv >= 0)
-        strncpy(info->model, (char *) (buffer+1), (buffer[0] + 1));
-    else
+    if(rv >= 0){
+        aim_strlcpy(info->model, (char *) (buffer+1), (buffer[0] + 1));
+    }
+    else{
         strcpy(info->model, "Missing");
+    }
 
     memset(buffer, 0, sizeof(buffer));
     rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
     buffer[buffer[0] + 1] = 0x00;
-    if(rv >= 0)
-        strncpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
-    else
+    if(rv >= 0){
+        aim_strlcpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
+    }
+    else{
         strcpy(info->serial, "Missing");
+    }
 
     info->caps |= ONLP_PSU_CAPS_AC;
 
-    if(onlp_file_read_int(&info->miin, "%s/curr1_input", dir) == 0 && info->miin >= 0) {
+    if(onlp_file_read_int(&info->miin, "%s*curr1_input", dir) == 0 && info->miin >= 0) {
         info->caps |= ONLP_PSU_CAPS_IIN;
     }
-    if(onlp_file_read_int(&info->miout, "%s/curr2_input", dir) == 0 && info->miout >= 0) {
+    if(onlp_file_read_int(&info->miout, "%s*/curr2_input", dir) == 0 && info->miout >= 0) {
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
-    if(onlp_file_read_int(&info->mvout, "%s/in2_input", dir) == 0 && info->mvout >= 0) {
+    if(onlp_file_read_int(&info->mvout, "%s*in2_input", dir) == 0 && info->mvout >= 0) {
         info->caps |= ONLP_PSU_CAPS_VOUT;
     }
-    if(onlp_file_read_int(&info->mpin, "%s/power1_input", dir) == 0 && info->mpin >= 0) {
+    if(onlp_file_read_int(&info->mpin, "%s*power1_input", dir) == 0 && info->mpin >= 0) {
         info->caps |= ONLP_PSU_CAPS_PIN;
         /* The pmbus driver reports power in micro-units */
         info->mpin /= 1000;
     }
-    if(onlp_file_read_int(&info->mpout, "%s/power2_input", dir) == 0 && info->mpout >= 0) {
+    if(onlp_file_read_int(&info->mpout, "%s*power2_input", dir) == 0 && info->mpout >= 0) {
         info->caps |= ONLP_PSU_CAPS_POUT;
         /* the pmbus driver reports power in micro-units */
         info->mpout /= 1000;
