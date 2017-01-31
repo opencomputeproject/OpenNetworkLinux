@@ -125,6 +125,11 @@ sff_module_type_get(const uint8_t* eeprom)
         return SFF_MODULE_TYPE_40G_BASE_LM4;
     }
 
+    if (SFF8436_MODULE_QSFP_PLUS_V2(eeprom)
+        && _sff8436_qsfp_40g_sm4(eeprom)) {
+        return SFF_MODULE_TYPE_40G_BASE_SM4;
+    }
+
     if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_XGE_SR(eeprom)
         && !_sff8472_media_gbe_sx_fc_hack(eeprom))
@@ -234,6 +239,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_40G_BASE_LM4:
         case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
         case SFF_MODULE_TYPE_40G_BASE_SR2:
+        case SFF_MODULE_TYPE_40G_BASE_SM4:
         case SFF_MODULE_TYPE_10G_BASE_SR:
         case SFF_MODULE_TYPE_10G_BASE_LR:
         case SFF_MODULE_TYPE_10G_BASE_LRM:
@@ -281,6 +287,7 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
         case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
         case SFF_MODULE_TYPE_40G_BASE_CR:
         case SFF_MODULE_TYPE_40G_BASE_SR2:
+        case SFF_MODULE_TYPE_40G_BASE_SM4:
             *caps |= SFF_MODULE_CAPS_F_40G;
             return 0;
 

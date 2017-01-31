@@ -108,6 +108,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_40G_BASE_ACTIVE,
     SFF_MODULE_TYPE_40G_BASE_CR,
     SFF_MODULE_TYPE_40G_BASE_SR2,
+    SFF_MODULE_TYPE_40G_BASE_SM4,
     SFF_MODULE_TYPE_25G_BASE_CR,
     SFF_MODULE_TYPE_10G_BASE_SR,
     SFF_MODULE_TYPE_10G_BASE_LR,
@@ -144,6 +145,7 @@ typedef enum sff_module_type_e {
     "40G_BASE_ACTIVE", \
     "40G_BASE_CR", \
     "40G_BASE_SR2", \
+    "40G_BASE_SM4", \
     "25G_BASE_CR", \
     "10G_BASE_SR", \
     "10G_BASE_LR", \
