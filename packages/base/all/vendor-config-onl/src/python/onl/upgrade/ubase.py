@@ -393,6 +393,7 @@ class BaseOnieUpgrade(BaseUpgrade):
 
     def onie_fwpkg_add(self, pkg):
         import onl.grub
+        onl.grub.onie_fwpkg("-f purge")
         onl.grub.onie_fwpkg("add %s" % pkg)
         onl.grub.onie_fwpkg("show")
 

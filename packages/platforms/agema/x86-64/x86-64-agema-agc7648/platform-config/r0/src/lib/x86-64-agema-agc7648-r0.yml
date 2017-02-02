@@ -1,0 +1,35 @@
+---
+
+######################################################################
+#
+# platform-config for x86_64-agema-agc7648-r0
+#
+#
+######################################################################
+
+x86-64-agema-agc7648-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=0
+      --stop=1
+
+    kernel:
+      <<: *kernel-3-16
+
+    args: >-
+      nopat
+      console=ttyS0,57600n8
+      rd_NO_MD
+      rd_NO_LUKS
+      intel_iommu=off
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

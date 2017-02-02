@@ -41,6 +41,7 @@ enum onlp_fan_id
 {
     FAN_RESERVED = 0,
     FAN_1_ON_MAIN_BOARD,
+    FAN_2_ON_MAIN_BOARD,
     FAN_1_ON_PSU1,
     FAN_1_ON_PSU2
 };
@@ -64,6 +65,7 @@ typedef struct fan_path_S
 static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
 {
     { }, /* Not used */
+    MAKE_FAN_PATH_ON_MAIN_BOARD(1),
     MAKE_FAN_PATH_ON_MAIN_BOARD(2),
     MAKE_FAN_PATH_ON_PSU(8-0058),
     MAKE_FAN_PATH_ON_PSU(8-0059)
@@ -93,6 +95,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
 onlp_fan_info_t linfo[] = {
     { }, /* Not used */
     MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(1),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(2),
     MAKE_FAN_INFO_NODE_ON_PSU(1,1),
     MAKE_FAN_INFO_NODE_ON_PSU(2,1),
 };
@@ -222,6 +225,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             rc = _onlp_fani_info_get_fan_on_psu(local_id, info);
             break;
         case FAN_1_ON_MAIN_BOARD:
+		case FAN_2_ON_MAIN_BOARD:
             rc =_onlp_fani_info_get_fan(local_id, info);
             break;
         default:
@@ -282,6 +286,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].ctrl_speed);
             break;
         case FAN_1_ON_MAIN_BOARD:
+		case FAN_2_ON_MAIN_BOARD:
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].ctrl_speed);
             break;
         default:

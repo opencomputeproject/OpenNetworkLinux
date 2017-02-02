@@ -83,7 +83,7 @@ resource_int_register(int index, const char* desc,
         netsnmp_create_handler_registration(desc, handler,
                                             tree, OID_LENGTH(tree),
                                             HANDLER_CAN_RONLY);
-    if (netsnmp_register_scalar(reg) != MIB_REGISTERED_OK) {
+    if (netsnmp_register_instance(reg) != MIB_REGISTERED_OK) {
         AIM_LOG_ERROR("registering handler for %s failed", desc);
     }
 }

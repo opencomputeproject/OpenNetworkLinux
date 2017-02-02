@@ -271,6 +271,23 @@ _sff8436_qsfp_40g_lm4(const uint8_t* idprom)
 }
 
 static inline int
+_sff8436_qsfp_40g_sm4(const uint8_t* idprom)
+{
+    if(!SFF8436_MODULE_QSFP_PLUS_V2(idprom)) {
+        return 0;
+    }
+
+    if (!SFF8436_MEDIA_NONE(idprom)) return 0;
+    /* 850nm tx technology */
+    if (idprom[147] & 0xF0) return 0;
+    /* length is 200m(OM3) or 250m(OM4) */
+    if ((idprom[143] != 100) && (idprom[146] != 125)) {
+        return 0;
+    }
+    return 1;
+}
+
+static inline int
 _sff8436_bitrate(const uint8_t *idprom)
 {
     if (idprom[12] == 0)

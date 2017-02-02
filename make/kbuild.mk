@@ -164,7 +164,7 @@ endif
 endif
 
 
-MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib
+MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib drivers
 
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
@@ -172,6 +172,8 @@ mbuild: build
 	rm -rf $(K_MBUILD_DIR)
 	mkdir -p $(K_MBUILD_DIR)
 	$(foreach f,$(MODSYNCLIST),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
+	find $(K_MBUILD_DIR) -name "*.o*" -delete
+	find $(K_MBUILD_DIR) -name "*.c" -delete
 
 dtbs: mbuild
 ifdef DTS_LIST

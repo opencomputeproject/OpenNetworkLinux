@@ -277,8 +277,8 @@ index 0000000..3934bcd
 + */
 +static const u8 fan_reg[] = {
 +	0x2B, /* fan PWM(for all fan) */
-+	0x2C, /* fan 1 speed(rpm) */
-+	0x2D, /* fan 2 speed(rpm) */
++	0x2D, /* fan 1 speed(rpm) */
++	0x2C, /* fan 2 speed(rpm) */
 +	0x11, /* fan1-2 operating status */
 +};
 +
@@ -382,7 +382,7 @@ index 0000000..3934bcd
 +
 +static u8 is_fan_fault(struct as4610_fan_data *data, enum fan_id id)
 +{
-+	u8 mask = (id == FAN1_ID) ? 0x10 : 0x20;
++	u8 mask = (id == FAN1_ID) ? 0x20 : 0x10;
 +
 +	return !(data->reg_val[FAN_FAULT] & mask);
 +}
@@ -1862,10 +1862,10 @@ index e4f6bf5..db2dab8 100644
  obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
 diff --git a/drivers/leds/leds-accton_as4610.c b/drivers/leds/leds-accton_as4610.c
 new file mode 100644
-index 0000000..6f20735
+index 0000000..0c4b535
 --- /dev/null
 +++ b/drivers/leds/leds-accton_as4610.c
-@@ -0,0 +1,719 @@
+@@ -0,0 +1,678 @@
 +/*
 + * A LED driver for the accton_as4610_led
 + *
@@ -1896,6 +1896,7 @@ index 0000000..6f20735
 +#include <linux/err.h>
 +#include <linux/leds.h>
 +#include <linux/slab.h>
++#include <linux/bitops.h>
 +#include <linux/accton_i2c_cpld.h>
 +
 +extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
@@ -1903,8 +1904,6 @@ index 0000000..6f20735
 +
 +extern void led_classdev_unregister(struct led_classdev *led_cdev);
 +extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
-+extern void led_classdev_resume(struct led_classdev *led_cdev);
-+extern void led_classdev_suspend(struct led_classdev *led_cdev);
 +
 +#define DRVNAME "as4610_led"
 +
@@ -1913,12 +1912,12 @@ index 0000000..6f20735
 +	struct mutex	 update_lock;
 +	char			 valid;			  /* != 0 if registers are valid */
 +	unsigned long	 last_updated;	  /* In jiffies */
-+	u8				 num_of_led;
++	int				 led_map;
 +	u8				 reg_val[5];	 /* Register value, 0 = (0x1A) Blinking function
 +														1 = (0x30) 7-seg 2
 +														2 = (0x31) 7-seg 1
 +														3 = (0x32) SYS/PRI/PSU1-2 LED
-+														4 = (0x33) STK1-2/Fan/PoE LED */
++														4 = (0x33) STK1-2/Fan/PoE/Alarm LED */
 +};
 +
 +static struct as4610_led_data  *ledctl = NULL;
@@ -1934,50 +1933,35 @@ index 0000000..6f20735
 +#define LED_NORMAL_OFF_VALUE	 0x00
 +
 +#define LED_TYPE_SYS_REG_MASK	 0xC0
-+#define LED_MODE_SYS_GREEN_MASK	 0x80
-+#define LED_MODE_SYS_AMBER_MASK	 0x40
-+#define LED_MODE_SYS_OFF_MASK	 0x00
-+#define LED_MODE_SYS_BLINK_MASK	 0x80
++#define LED_MODE_SYS_BLINK_MASK  0x80
 +
-+#define LED_TYPE_PRI_REG_MASK	 0x30
-+#define LED_MODE_PRI_GREEN_MASK	 0x20
-+#define LED_MODE_PRI_AMBER_MASK	 0x10
-+#define LED_MODE_PRI_OFF_MASK	 0x00
-+#define LED_MODE_PRI_BLINK_MASK	 0x40
++#define LED_TYPE_PRI_REG_MASK    0x30
++#define LED_MODE_PRI_BLINK_MASK  0x40
 +
-+#define LED_TYPE_PSU1_REG_MASK	 0x0C
++#define LED_TYPE_PSU1_REG_MASK	  0x0C
 +#define LED_MODE_PSU1_BLINK_MASK 0x20
 +
-+#define LED_TYPE_PSU2_REG_MASK	 0x03
++#define LED_TYPE_PSU2_REG_MASK   0x03
 +#define LED_MODE_PSU2_BLINK_MASK 0x10
 +
-+#define LED_TYPE_STK1_REG_MASK	 0xC0
-+#define LED_MODE_STK1_GREEN_MASK 0x80
-+#define LED_MODE_STK1_AMBER_MASK 0x40
-+#define LED_MODE_STK1_OFF_MASK	 0x00
++#define LED_TYPE_STK1_REG_MASK   0xC0
 +#define LED_MODE_STK1_BLINK_MASK 0x08
 +
-+#define LED_TYPE_STK2_REG_MASK	 0x30
-+#define LED_MODE_STK2_GREEN_MASK 0x20
-+#define LED_MODE_STK2_AMBER_MASK 0x10
-+#define LED_MODE_STK2_OFF_MASK	 0x00
++#define LED_TYPE_STK2_REG_MASK   0x30
 +#define LED_MODE_STK2_BLINK_MASK 0x04
 +
-+#define LED_TYPE_FAN_REG_MASK	 0x0C
-+#define LED_MODE_FAN_BLINK_MASK	 0x02
++#define LED_TYPE_FAN_REG_MASK    0x0C
++#define LED_MODE_FAN_BLINK_MASK  0x02
 +
-+#define LED_TYPE_POE_REG_MASK	 0x03
-+#define LED_MODE_POE_GREEN_MASK	 0x02
-+#define LED_MODE_POE_AMBER_MASK	 0x01
-+#define LED_MODE_POE_OFF_MASK	 0x00
-+#define LED_MODE_POE_BLINK_MASK	 0x01
++#define LED_TYPE_POE_ALARM_REG_MASK   0x03
++#define LED_MODE_POE_ALARM_BLINK_MASK 0x01
 +
 +static const u8 led_reg[] = {
 +	0x1A, /* Blinking function */
 +	0x30, /* 7-seg 1 */
 +	0x31, /* 7-seg 2 */
 +	0x32, /* SYS/PRI/PSU1-2 LED */
-+	0x33, /* STK1-2/Fan/PoE LED */
++	0x33, /* STK1-2/Fan/PoE/Alarm LED */
 +};
 +
 +enum led_type {
@@ -1992,7 +1976,26 @@ index 0000000..6f20735
 +	LED_TYPE_7SEG_DIGITS,
 +	LED_TYPE_7SEG_DIGITS_POINT,
 +	LED_TYPE_FAN,
-+	LED_TYPE_POE
++	LED_TYPE_POE,
++	LED_TYPE_ALARM,
++	NUM_OF_LED
++};
++
++#define AS4610_COMMON_LED_MAP	(BIT(LED_TYPE_SYS) | BIT(LED_TYPE_PRI) | BIT(LED_TYPE_PSU1) | \
++							 	 BIT(LED_TYPE_PSU2)| BIT(LED_TYPE_STK1)| BIT(LED_TYPE_STK2))
++#define AS4610_NPOE_LED_MAP		(AS4610_COMMON_LED_MAP | BIT(LED_TYPE_7SEG_TENS) | \
++							 	 BIT(LED_TYPE_7SEG_TENS_POINT) | BIT(LED_TYPE_7SEG_DIGITS) | \
++							 	 BIT(LED_TYPE_7SEG_DIGITS_POINT))
++#define AS4610_POE_LED_MAP 		(AS4610_NPOE_LED_MAP | BIT(LED_TYPE_FAN) | BIT(LED_TYPE_POE))
++#define AS4610_54T_B_LED_MAP 	(AS4610_COMMON_LED_MAP | BIT(LED_TYPE_FAN) | BIT(LED_TYPE_ALARM))
++
++static int as4610_ledmaps[] = {
++	[PID_AS4610_30T] 	= AS4610_NPOE_LED_MAP,
++	[PID_AS4610_30P] 	= AS4610_POE_LED_MAP,
++	[PID_AS4610_54T] 	= AS4610_NPOE_LED_MAP,
++	[PID_AS4610_54P] 	= AS4610_POE_LED_MAP,
++	[PID_AS4610_54T_B] 	= AS4610_54T_B_LED_MAP,
++	[PID_RESERVED]	 	= 0,
 +};
 +
 +enum led_light_mode {
@@ -2059,12 +2062,6 @@ index 0000000..6f20735
 +{
 +	as4610_led_update();
 +	return (ledctl->reg_val[reg_id] & LED_7SEG_REG_MASK);
-+#if 0
-+	as4610_led_update();
-+
-+	return (ledctl->reg_val[2] & LED_7SEG_REG_MASK) * 10 +
-+		   (ledctl->reg_val[1] & LED_7SEG_REG_MASK);
-+#endif
 +}
 +
 +static void seven_segment_set(struct led_classdev *cdev, enum led_brightness mode, u8 reg_id)
@@ -2076,23 +2073,6 @@ index 0000000..6f20735
 +	ledctl->reg_val[reg_id] &= 0xF0;
 +	ledctl->reg_val[reg_id] |= mode;
 +	as4610_led_write_value(led_reg[reg_id], ledctl->reg_val[reg_id]);
-+
-+#if 0
-+	u8 digits, tens;
-+
-+	if (mode > LED_MODE_SEVEN_SEGMENT_MAX) {
-+		return;
-+	}
-+
-+	digits = mode % 10;
-+	tens   = mode / 10;
-+	ledctl->reg_val[1] &= 0xF0;
-+	ledctl->reg_val[1] |= digits;
-+	ledctl->reg_val[2] &= 0xF0;
-+	ledctl->reg_val[2] |= tens;
-+	as4610_led_write_value(led_reg[1], ledctl->reg_val[1]);
-+	as4610_led_write_value(led_reg[2], ledctl->reg_val[2]);
-+#endif
 +}
 +
 +static enum led_brightness seven_segment_digits_get(struct led_classdev *cdev)
@@ -2322,16 +2302,16 @@ index 0000000..6f20735
 +	return as4610_led_normal_get(3, LED_MODE_PRI_BLINK_MASK, 4);
 +}
 +
-+static void as4610_led_poe_set(struct led_classdev *cdev,
++static void as4610_led_poe_alarm_set(struct led_classdev *cdev,
 +										  enum led_brightness mode)
 +{
-+	as4610_led_normal_set(cdev, mode, LED_MODE_POE_BLINK_MASK,
-+							  4, LED_TYPE_POE_REG_MASK, 0);
++	as4610_led_normal_set(cdev, mode, LED_MODE_POE_ALARM_BLINK_MASK,
++							  4, LED_TYPE_POE_ALARM_REG_MASK, 0);
 +}
 +
-+static enum led_brightness as4610_led_poe_get(struct led_classdev *cdev)
++static enum led_brightness as4610_led_poe_alarm_get(struct led_classdev *cdev)
 +{
-+	return as4610_led_normal_get(4, LED_MODE_POE_BLINK_MASK, 0);
++	return as4610_led_normal_get(4, LED_MODE_POE_ALARM_BLINK_MASK, 0);
 +}
 +
 +static void as4610_led_stk1_set(struct led_classdev *cdev,
@@ -2364,7 +2344,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_sys_set,
 +		.brightness_get	 = as4610_led_sys_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AMBER_BLINK,
 +	},
 +	[LED_TYPE_PRI] = {
@@ -2372,7 +2351,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_pri_set,
 +		.brightness_get	 = as4610_led_pri_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AMBER_BLINK,
 +	},
 +	[LED_TYPE_PSU1] = {
@@ -2380,7 +2358,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_psu1_set,
 +		.brightness_get	 = as4610_led_psu1_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AUTO_BLINKING,
 +	},
 +	[LED_TYPE_PSU2] = {
@@ -2388,7 +2365,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_psu2_set,
 +		.brightness_get	 = as4610_led_psu2_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AUTO_BLINKING,
 +	},
 +	[LED_TYPE_STK1] = {
@@ -2396,7 +2372,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_stk1_set,
 +		.brightness_get	 = as4610_led_stk1_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AMBER_BLINK,
 +	},
 +	[LED_TYPE_STK2] = {
@@ -2404,7 +2379,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_stk2_set,
 +		.brightness_get	 = as4610_led_stk2_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AMBER_BLINK,
 +	},
 +	[LED_TYPE_7SEG_TENS] = {
@@ -2412,7 +2386,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = seven_segment_tens_set,
 +		.brightness_get	 = seven_segment_tens_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_SEVEN_SEGMENT_MAX,
 +	},
 +	[LED_TYPE_7SEG_TENS_POINT] = {
@@ -2420,7 +2393,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = seven_segment_tens_point_set,
 +		.brightness_get	 = seven_segment_tens_point_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_GREEN,
 +	},
 +	[LED_TYPE_7SEG_DIGITS] = {
@@ -2428,7 +2400,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = seven_segment_digits_set,
 +		.brightness_get	 = seven_segment_digits_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_SEVEN_SEGMENT_MAX,
 +	},
 +	[LED_TYPE_7SEG_DIGITS_POINT] = {
@@ -2436,7 +2407,6 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = seven_segment_digits_point_set,
 +		.brightness_get	 = seven_segment_digits_point_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_GREEN,
 +	},
 +	[LED_TYPE_FAN] = {
@@ -2444,61 +2414,49 @@ index 0000000..6f20735
 +		.default_trigger = "unused",
 +		.brightness_set	 = as4610_led_fan_set,
 +		.brightness_get	 = as4610_led_fan_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
 +		.max_brightness	 = LED_MODE_AUTO_BLINKING,
 +	},
 +	[LED_TYPE_POE] = {
 +		.name			 = "as4610::poe",
 +		.default_trigger = "unused",
-+		.brightness_set	 = as4610_led_poe_set,
-+		.brightness_get	 = as4610_led_poe_get,
-+		.flags			 = LED_CORE_SUSPENDRESUME,
++		.brightness_set	 = as4610_led_poe_alarm_set,
++		.brightness_get	 = as4610_led_poe_alarm_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_ALARM] = {
++		.name			 = "as4610::alarm",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_poe_alarm_set,
++		.brightness_get	 = as4610_led_poe_alarm_get,
 +		.max_brightness	 = LED_MODE_AMBER_BLINK,
 +	},
 +};
-+
-+static int as4610_led_suspend(struct platform_device *dev,
-+		pm_message_t state)
-+{
-+	int i = 0;
-+
-+	for (i = 0; i < ledctl->num_of_led; i++) {
-+		led_classdev_suspend(&as4610_leds[i]);
-+	}
-+
-+	return 0;
-+}
-+
-+static int as4610_led_resume(struct platform_device *dev)
-+{
-+	int i = 0;
-+
-+	for (i = 0; i < ledctl->num_of_led; i++) {
-+		led_classdev_resume(&as4610_leds[i]);
-+	}
-+
-+	return 0;
-+}
 +
 +static int as4610_led_probe(struct platform_device *pdev)
 +{
 +	int ret = 0, i;
 +
-+	for (i = 0; i < ledctl->num_of_led; i++) {
++	for (i = 0; i < NUM_OF_LED; i++) {
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
++		}
++		
 +		ret = led_classdev_register(&pdev->dev, &as4610_leds[i]);
-+
-+		if (ret < 0)
-+			break;
++		if (ret < 0) {
++			goto error;
++		}
 +	}
 +
-+	/* Check if all LEDs were successfully registered */
-+	if (i != ledctl->num_of_led){
-+		int j;
++	return 0;
 +
++error:
++	for (i = i-1; i >= 0; i--) {
 +		/* only unregister the LEDs that were successfully registered */
-+		for (j = 0; j < i; j++) {
-+			led_classdev_unregister(&as4610_leds[i]);
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
 +		}
++
++		led_classdev_unregister(&as4610_leds[i]);
 +	}
 +
 +	return ret;
@@ -2508,7 +2466,11 @@ index 0000000..6f20735
 +{
 +	int i;
 +
-+	for (i = 0; i < ledctl->num_of_led; i++) {
++	for (i = 0; i < NUM_OF_LED; i++) {
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
++		}
++		
 +		led_classdev_unregister(&as4610_leds[i]);
 +	}
 +
@@ -2518,8 +2480,6 @@ index 0000000..6f20735
 +static struct platform_driver as4610_led_driver = {
 +	.probe		= as4610_led_probe,
 +	.remove		= as4610_led_remove,
-+	.suspend	= as4610_led_suspend,
-+	.resume		= as4610_led_resume,
 +	.driver		= {
 +	.name	= DRVNAME,
 +	.owner	= THIS_MODULE,
@@ -2528,7 +2488,7 @@ index 0000000..6f20735
 +
 +static int __init as4610_led_init(void)
 +{
-+	int ret;
++	int ret, pid;
 +
 +	if (as4610_product_id() == PID_UNKNOWN) {
 +		return -ENODEV;
@@ -2546,13 +2506,12 @@ index 0000000..6f20735
 +		goto exit;
 +	}
 +
-+	if (as4610_is_poe_system()) {
-+		ledctl->num_of_led = LED_TYPE_POE - LED_TYPE_SYS + 1;
-+	}
-+	else {
-+		ledctl->num_of_led = LED_TYPE_7SEG_DIGITS_POINT - LED_TYPE_SYS + 1;
++	pid = as4610_product_id();
++	if (pid == PID_UNKNOWN) {
++		return -ENODEV;
 +	}
 +
++	ledctl->led_map = as4610_ledmaps[pid];
 +	mutex_init(&ledctl->update_lock);
 +
 +	ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
@@ -2615,10 +2574,10 @@ index 9edd559..12f7cae 100644
 +obj-$(CONFIG_EEPROM_ACCTON_AS4610_SFP) += accton_as4610_sfp.o
 diff --git a/drivers/misc/eeprom/accton_as4610_sfp.c b/drivers/misc/eeprom/accton_as4610_sfp.c
 new file mode 100644
-index 0000000..51488b4
+index 0000000..39c17ec
 --- /dev/null
 +++ b/drivers/misc/eeprom/accton_as4610_sfp.c
-@@ -0,0 +1,1265 @@
+@@ -0,0 +1,1269 @@
 +/*
 + * SFP driver for accton as4610 sfp
 + *
@@ -2941,7 +2900,7 @@ index 0000000..51488b4
 +	DEBUG_PRINT("Present status = 0x%lx", data->present);
 +exit:
 +	mutex_unlock(&data->update_lock);
-+	return data;
++	return (status < 0) ? ERR_PTR(status) : data;
 +}
 +
 +static struct sfp_port_data *sfp_update_tx_rx_status(struct device *dev)
@@ -3168,7 +3127,6 @@ index 0000000..51488b4
 +	for (i = 0; i < ARRAY_SIZE(reg); i++) {
 +		status = sfp_eeprom_read(client, reg[i], &buf, sizeof(buf));
 +		if (unlikely(status < 0)) {
-+			data = ERR_PTR(status);
 +			goto exit;
 +		}
 +	}
@@ -3178,7 +3136,6 @@ index 0000000..51488b4
 +	for (i = 0; i < ARRAY_SIZE(reg); i++) {
 +		status = sfp_eeprom_read(client, reg[i], &buf, sizeof(buf));
 +		if (unlikely(status < 0)) {
-+			data = ERR_PTR(status);
 +			goto exit;
 +		}
 +
@@ -3191,7 +3148,7 @@ index 0000000..51488b4
 +
 +exit:
 +	mutex_unlock(&data->update_lock);
-+	return data;
++	return (status < 0) ? ERR_PTR(status) : data;
 +}
 +
 +static ssize_t qsfp_show_tx_rx_status(struct device *dev, struct device_attribute *da,
@@ -3210,7 +3167,7 @@ index 0000000..51488b4
 +
 +	if (present == 0) {
 +		/* port is not present */
-+		return -ENODEV;
++		return -ENXIO;
 +	}
 +
 +	data = qsfp_update_tx_rx_status(dev);
@@ -3220,31 +3177,31 @@ index 0000000..51488b4
 +
 +	switch (attr->index) {
 +	case TX_FAULT:
-+		val = (data->qsfp->status[2] & 0xF) ? 1 : 0;
++		val = !!(data->qsfp->status[2] & 0xF);
 +		break;
 +	case TX_FAULT1:
 +	case TX_FAULT2:
 +	case TX_FAULT3:
 +	case TX_FAULT4:
-+		val = (data->qsfp->status[2] & BIT_INDEX(attr->index - TX_FAULT1)) ? 1 : 0;
++		val = !!(data->qsfp->status[2] & BIT_INDEX(attr->index - TX_FAULT1));
 +		break;
 +	case TX_DISABLE:
-+		val = (data->qsfp->status[1] & 0xF) ? 1 : 0;
++		val = data->qsfp->status[1] & 0xF;
 +		break;
 +	case TX_DISABLE1:
 +	case TX_DISABLE2:
 +	case TX_DISABLE3:
 +	case TX_DISABLE4:
-+		val = (data->qsfp->status[1] & BIT_INDEX(attr->index - TX_DISABLE1)) ? 1 : 0;
++		val = !!(data->qsfp->status[1] & BIT_INDEX(attr->index - TX_DISABLE1));
 +		break;
 +	case RX_LOS:
-+		val = (data->qsfp->status[0] & 0xF) ? 1 : 0;
++		val = !!(data->qsfp->status[0] & 0xF);
 +		break;
 +	case RX_LOS1:
 +	case RX_LOS2:
 +	case RX_LOS3:
 +	case RX_LOS4:
-+		val = (data->qsfp->status[0] & BIT_INDEX(attr->index - RX_LOS1)) ? 1 : 0;
++		val = !!(data->qsfp->status[0] & BIT_INDEX(attr->index - RX_LOS1));
 +		break;
 +	default:
 +		break;
@@ -3259,7 +3216,18 @@ index 0000000..51488b4
 +	long disable;
 +	int status;
 +	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-+	struct sfp_port_data *data = NULL;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);	
++
++	status = sfp_is_port_present(client, data->port);
++	if (IS_ERR_VALUE(status)) {
++		return status;
++	}
++
++	if (!status) {
++		/* port is not present */
++		return -ENXIO;
++	}
 +
 +	status = kstrtol(buf, 10, &disable);
 +	if (status) {
@@ -3274,12 +3242,7 @@ index 0000000..51488b4
 +	mutex_lock(&data->update_lock);
 +
 +	if (attr->index == TX_DISABLE) {
-+		if (disable) {
-+			data->qsfp->status[1] |= 0xF;
-+		}
-+		else {
-+			data->qsfp->status[1] &= ~0xF;
-+		}
++		data->qsfp->status[1] = disable & 0xF;
 +	}
 +	else {/* TX_DISABLE1 ~ TX_DISABLE4*/
 +		if (disable) {
@@ -3323,7 +3286,7 @@ index 0000000..51488b4
 +		return status;
 +	}
 +
-+	return sprintf(buf, "%d\n", (ddm & SFF8472_DIAG_MON_TYPE_DDM_MASK) ? 1 : 0);
++	return sprintf(buf, "%d\n", !!(ddm & SFF8472_DIAG_MON_TYPE_DDM_MASK));
 +}
 +
 +/* Platform dependent +++ */
@@ -3855,7 +3818,7 @@ index 0000000..51488b4
 +
 +/* Addresses scanned
 + */
-+static const unsigned short normal_i2c[] = { SFP_EEPROM_A0_I2C_ADDR, SFP_EEPROM_A2_I2C_ADDR, I2C_CLIENT_END };
++static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 +
 +static struct i2c_driver sfp_driver = {
 +	.driver = {
@@ -3881,15 +3844,15 @@ index 0000000..51488b4
 +MODULE_DESCRIPTION("accton as4610_sfp driver");
 +MODULE_LICENSE("GPL");
 +
-+module_init(sfp_init);
++late_initcall(sfp_init);
 +module_exit(sfp_exit);
 +
 diff --git a/include/linux/accton_i2c_cpld.h b/include/linux/accton_i2c_cpld.h
 new file mode 100644
-index 0000000..3f13209
+index 0000000..9b75abd
 --- /dev/null
 +++ b/include/linux/accton_i2c_cpld.h
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,76 @@
 +/*
 + * A hwmon driver for the accton_i2c_cpld
 + *
@@ -3922,6 +3885,8 @@ index 0000000..3f13209
 +	PID_AS4610_30P,
 +	PID_AS4610_54T,
 +	PID_AS4610_54P,
++	PID_RESERVED,
++	PID_AS4610_54T_B,
 +	PID_UNKNOWN
 +};
 +
@@ -3929,7 +3894,12 @@ index 0000000..3f13209
 +{
 +	int pid = accton_i2c_cpld_read(AS4610_CPLD_SLAVE_ADDR, AS4610_CPLD_PID_OFFSET);
 +	pid &= 0xF;
-+	return (pid < PID_AS4610_30T || pid > PID_AS4610_54P) ? PID_UNKNOWN : pid;
++
++	if (pid < PID_AS4610_30T || pid > PID_AS4610_54T_B || pid == PID_RESERVED) {
++		return PID_UNKNOWN;
++	}
++
++	return pid;
 +}
 +
 +static inline int as4610_is_poe_system(void)
@@ -3940,7 +3910,23 @@ index 0000000..3f13209
 +
 +static inline int as4610_number_of_system_fan(void)
 +{
-+	return as4610_is_poe_system() ? 1 : 0;
++	int nFan = 0;
++	int pid = as4610_product_id();
++
++	switch (pid) {
++	case PID_AS4610_30P:
++	case PID_AS4610_54P:
++		nFan = 1;
++		break;
++	case PID_AS4610_54T_B:
++		nFan = 2;
++		break;
++	default:
++		nFan = 0;
++		break;
++	}
++
++	return nFan;
 +}
 +
 

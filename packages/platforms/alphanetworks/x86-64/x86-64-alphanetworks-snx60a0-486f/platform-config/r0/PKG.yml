@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=alphanetworks BASENAME=x86-64-alphanetworks-snx60a0-486f REVISION=r0

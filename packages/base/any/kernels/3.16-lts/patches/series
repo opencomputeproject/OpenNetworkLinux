@@ -15,3 +15,9 @@ driver-igb-version-5.3.54.patch
 driver-support-intel-igb-bcm5461X-phy.patch
 driver-i2c-bus-intel-ismt-enable-param.patch
 drivers-i2c-busses-i2c-isch-probe-param.patch
+drivers-i2c-muxes-pca954x-deselect-on-exit.patch
+driver-early-dma-allocator.patch
+driver-esdhc-p2020-broken-timeout.patch
+drivers-gpio-config-arch-nr-gpios.patch
+driver-hwmon-emerson-update-pmbus-core.patch
+drivers-net-ethernet-broadcom-tg3-preamble-reset.patch

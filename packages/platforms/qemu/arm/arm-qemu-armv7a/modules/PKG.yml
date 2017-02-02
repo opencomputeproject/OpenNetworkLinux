@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/no-platform-modules.yml ARCH=armel VENDOR=qemu BASENAME=arm-qemu-armv7a

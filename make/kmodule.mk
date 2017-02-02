@@ -6,14 +6,24 @@ ifndef KMODULES
 $(error $$KMODULES must be set)
 endif
 
-ifndef PLATFORM
-$(error $$PLATFORM must be set)
-endif
-
 ifndef ARCH
 $(error $$ARCH must be set)
 endif
 
+ifndef SUBDIR
+
+ifndef VENDOR
+$(error $$VENDOR must be set.)
+endif
+
+ifndef BASENAME
+$(error $$BASENAME must be set.)
+endif
+
+SUBDIR := "onl/$(VENDOR)/$(BASENAME)"
+
+endif
 
 modules:
-	ARCH=$(ARCH) $(ONL)/tools/scripts/kmodbuild.sh "$(KERNELS)" "$(KMODULES)" $(PLATFORM)
+	rm -rf lib
+	ARCH=$(ARCH) $(ONL)/tools/scripts/kmodbuild.sh "$(KERNELS)" "$(KMODULES)" "$(SUBDIR)"
