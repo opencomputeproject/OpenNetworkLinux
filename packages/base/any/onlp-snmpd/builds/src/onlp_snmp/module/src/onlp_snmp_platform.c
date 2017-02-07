@@ -126,6 +126,8 @@ void resource_update(void)
             }
             cJSON_Delete(root);
         }
+
+        pclose(fp);
     }
 }
 
