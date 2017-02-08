@@ -109,8 +109,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     if(onlp_file_read_int(&info->mvout, "%s/in2_input", dir) == 0 && info->mvout >= 0) {
         info->caps |= ONLP_PSU_CAPS_VOUT;
-        /* Empirical */
-        info->mvout /= 500;
     }
     if(onlp_file_read_int(&info->mpin, "%s/power1_input", dir) == 0 && info->mpin >= 0) {
         info->caps |= ONLP_PSU_CAPS_PIN;
