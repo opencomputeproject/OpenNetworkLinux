@@ -23,12 +23,13 @@
  *
  *
  ***********************************************************/
-#include <sys/mman.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <onlp/onlp.h>
+#include <onlplib/file.h>
 #include <AIM/aim.h>
 #include "platform_lib.h"
 
@@ -121,6 +122,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 }
 
 #define I2C_PSU_MODEL_NAME_LEN 13
+#define STRLEN(x) (sizeof(x) - 1)
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
@@ -128,54 +130,122 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     char model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
 
     /* Check AC model name */
-    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_model_name) : PSU2_AC_HWMON_NODE(psu_model_name);
+    node = (id == PSU1_ID) ? PSU1_AC_EEPROM_NODE(psu_model_name) : PSU2_AC_EEPROM_NODE(psu_model_name);
 
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
-        if (strncmp(model_name, "CPR-4011-4M11", strlen("CPR-4011-4M11")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
-            return PSU_TYPE_AC_F2B;
-        }
-        else if (strncmp(model_name, "CPR-4011-4M21", strlen("CPR-4011-4M21")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
-            return PSU_TYPE_AC_B2F;
-        }
-        else if (strncmp(model_name, "CPR-6011-2M11", strlen("CPR-6011-2M11")) == 0) {
+        if (strncmp(model_name, "CPR-4011-4M11", STRLEN("CPR-4011-4M11")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, modelname_len-1);
+            strncpy(modelname, model_name, sizeof(model_name));
             }
-            return PSU_TYPE_AC_F2B;
+            return PSU_TYPE_AC_COMPUWARE_F2B;
         }
-        else if (strncmp(model_name, "CPR-6011-2M21", strlen("CPR-6011-2M21")) == 0) {
+        else if (strncmp(model_name, "CPR-4011-4M21", STRLEN("CPR-4011-4M21")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, modelname_len-1);
+            strncpy(modelname, model_name, sizeof(model_name));
             }
-            return PSU_TYPE_AC_B2F;
+            return PSU_TYPE_AC_COMPUWARE_B2F;
+        }
+        else if (strncmp(model_name, "CPR-6011-2M11", STRLEN("CPR-6011-2M11")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, sizeof(model_name));
+            }
+            return PSU_TYPE_AC_COMPUWARE_F2B;
+        }
+        else if (strncmp(model_name, "CPR-6011-2M21", STRLEN("CPR-6011-2M21")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, sizeof(model_name));
+            }
+            return PSU_TYPE_AC_COMPUWARE_B2F;
+        }
+    }
+
+    /* Check 3Y-Power AC model name */
+    memset(model_name, 0, sizeof(model_name));
+    node = (id == PSU1_ID) ? PSU1_AC_3YPOWER_EEPROM_NODE(psu_model_name) : PSU2_AC_3YPOWER_EEPROM_NODE(psu_model_name);	
+
+    if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
+        if (strncmp(model_name, "YM-2401JCR", STRLEN("YM-2401JCR")) == 0) {
+            if (modelname) {
+            model_name[STRLEN("YM-2401JCR")] = 0;
+            strncpy(modelname, model_name, 11);
+            }
+            return PSU_TYPE_AC_3YPOWER_F2B;
+        }
+        else if (strncmp(model_name, "YM-2401JDR", STRLEN("YM-2401JDR")) == 0) {
+            if (modelname) {
+            model_name[STRLEN("YM-2401JDR")] = 0;
+            strncpy(modelname, model_name, 11);
+            }
+            return PSU_TYPE_AC_3YPOWER_B2F;
         }
     }
 
     /* Check DC model name */
     memset(model_name, 0, sizeof(model_name));
-    node = (id == PSU1_ID) ? PSU1_DC_HWMON_NODE(psu_model_name) : PSU2_DC_HWMON_NODE(psu_model_name);
+    node = (id == PSU1_ID) ? PSU1_DC_EEPROM_NODE(psu_model_name) : PSU2_DC_EEPROM_NODE(psu_model_name);
 
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
-        if (strncmp(model_name, "um400d01G", strlen("um400d01G")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+        if (strncmp(model_name, "um400d01G", STRLEN("um400d01G")) == 0) {
+            if (modelname) {
+            model_name[STRLEN("um400d01G")] = 0;
+            strncpy(modelname, model_name, 10);
+            }
             return PSU_TYPE_DC_48V_B2F;
         }
-        else if (strncmp(model_name, "um400d01-01G", strlen("um400d01-01G")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+        else if (strncmp(model_name, "um400d01-01G", STRLEN("um400d01-01G")) == 0) {
+            if (modelname) {
+            model_name[STRLEN("um400d01-01G")] = 0;
+            strncpy(modelname, model_name, 13);
+            }
             return PSU_TYPE_DC_48V_F2B;
         }
     }
 
     return PSU_TYPE_UNKNOWN;
+}
+
+int psu_ym2401_pmbus_info_get(int id, char *node, int *value)
+{
+    int  ret = 0;
+    char path[64] = {0};
+    
+    *value = 0;
+
+    if (PSU1_ID == id) {
+        sprintf(path, "%s%s", PSU1_AC_3YPOWER_PMBUS_PREFIX, node);
+    }
+    else {
+        sprintf(path, "%s%s", PSU2_AC_3YPOWER_PMBUS_PREFIX, node);
+    }
+
+    if (onlp_file_read_int(value, path) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ret;
+}
+
+int psu_ym2401_pmbus_info_set(int id, char *node, int value)
+{
+    char path[64] = {0};
+
+    switch (id) {
+    case PSU1_ID:
+        sprintf(path, "%s%s", PSU1_AC_3YPOWER_PMBUS_PREFIX, node);
+        break;
+    case PSU2_ID:
+        sprintf(path, "%s%s", PSU2_AC_3YPOWER_PMBUS_PREFIX, node);
+        break;
+    default:
+        return ONLP_STATUS_E_UNSUPPORTED;
+    };
+
+    if (deviceNodeWriteInt(path, value, 0) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
 }
 
