@@ -12,6 +12,7 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
         ########### initialize I2C bus 0 ###########
         self.insmod("accton_i2c_cpld")
         self.insmod("cpr_4011_4mxx")
+        self.insmod("ym2651y")
         for m in [ "sfp", "psu", "fan", "leds" ]:
             self.insmod("x86-64-accton-as5812-54t-%s" % m)
 
@@ -36,12 +37,16 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
                 ('pca9548', 0x70, 1),
 
                 # initiate PSU-1 AC Power
-                ('as5812_54t_psu', 0x38, 11),
+                ('as5812_54t_psu1', 0x38, 11),
                 ('cpr_4011_4mxx',  0x3c, 11),
+                ('as5812_54t_psu1', 0x50, 11),
+                ('ym2401',  0x58, 11),
 
                 # initiate PSU-2 AC Power
-                ('as5812_54t_psu', 0x3b, 12),
+                ('as5812_54t_psu2', 0x3b, 12),
                 ('cpr_4011_4mxx',  0x3f, 12),
+                ('as5812_54t_psu2', 0x53, 12),
+                ('ym2401',  0x5b, 12),
 
                 # initiate lm75
                 ('lm75', 0x48, 15),
