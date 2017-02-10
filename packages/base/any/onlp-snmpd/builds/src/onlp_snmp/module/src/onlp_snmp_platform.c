@@ -33,6 +33,12 @@
 #include <net-snmp/agent/net-snmp-agent-includes.h>
 #include <onlp/sys.h>
 
+
+/*
+ * Resource Value Update period
+ */
+static uint32_t update_period__ = ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS;
+
 static void
 platform_string_register(int index, const char* desc, char* value)
 {
@@ -96,49 +102,43 @@ typedef struct {
 } resources_t;
 
 static resources_t resources;
-static uint64_t resource_update_time;
 
-void resource_update(void)
+static void
+resource_update__(void)
 {
-    uint64_t now = aim_time_monotonic();
-    if (now - resource_update_time >
-        (ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS * 1000 * 1000)) {
-        resource_update_time = now;
-        AIM_LOG_INFO("update resource objects");
+    AIM_LOG_INFO("update resource objects");
 
-        /* invoke mpstat collection script for json output */
-        FILE *fp = popen("/usr/bin/onl-snmp-mpstat", "r");
-        if (fp == NULL) {
-            AIM_LOG_ERROR("failed invoking onl-snmp-mpstat");
-            return;
-        }
-
-        /* parse json output */
-        char line[1024];
-        while (fgets(line, sizeof(line), fp) != NULL) {
-            cJSON *root = cJSON_Parse(line);
-            int result;
-            int rv = cjson_util_lookup_int(root, &result, "all.%%idle");
-            if (rv == 0) {
-                /* save it */
-                resources.idle_percent = result;
-                resources.utilization_percent = 100*100 - result;
-            }
-            cJSON_Delete(root);
-        }
-
-        pclose(fp);
+    /* invoke mpstat collection script for json output, sampling over 1s */
+    FILE *fp = popen("/usr/bin/onl-snmp-mpstat 1", "r");
+    if (fp == NULL) {
+        AIM_LOG_ERROR("failed invoking onl-snmp-mpstat");
+        return;
     }
+
+    /* parse json output */
+    char line[1024];
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        cJSON *root = cJSON_Parse(line);
+        int result;
+        int rv = cjson_util_lookup_int(root, &result, "all.%%idle");
+        if (rv == 0) {
+            /* save it */
+            resources.idle_percent = result;
+            resources.utilization_percent = 100*100 - result;
+        }
+        cJSON_Delete(root);
+    }
+
+    pclose(fp);
 }
 
 static int
 utilization_handler(netsnmp_mib_handler *handler,
-             netsnmp_handler_registration *reginfo,
-             netsnmp_agent_request_info *reqinfo,
-             netsnmp_request_info *requests)
+                    netsnmp_handler_registration *reginfo,
+                    netsnmp_agent_request_info *reqinfo,
+                    netsnmp_request_info *requests)
 {
     if (MODE_GET == reqinfo->mode) {
-        resource_update();
         snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
                                  (u_char *) &resources.utilization_percent,
                                  sizeof(resources.utilization_percent));
@@ -160,7 +160,6 @@ idle_handler(netsnmp_mib_handler *handler,
              netsnmp_request_info *requests)
 {
     if (MODE_GET == reqinfo->mode) {
-        resource_update();
         snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
                                  (u_char *) &resources.idle_percent,
                                  sizeof(resources.idle_percent));
@@ -173,6 +172,25 @@ idle_handler(netsnmp_mib_handler *handler,
     }
 
     return SNMP_ERR_NOERROR;
+}
+
+/* helper function to be registered with snmp_alarm_register;
+ * resource updates happen within alarm handler, avoiding slowing down
+ * the resource handlers during snmp requests */
+static void
+periodic_update__(unsigned int reg, void *clientarg)
+{
+    resource_update__();
+}
+
+/* populates initial stats and sets up periodic timer */
+static void
+setup_alarm__(void)
+{
+    /* initial stats population */
+    resource_update__();
+    /* registration of periodic timer */
+    snmp_alarm_register(update_period__, SA_REPEAT, periodic_update__, NULL);
 }
 
 void
@@ -218,5 +236,6 @@ onlp_snmp_platform_init(void)
 
     resource_int_register(1, "CpuAllPercentUtilization", utilization_handler);
     resource_int_register(2, "CpuAllPercentIdle", idle_handler);
+    setup_alarm__();
 }
 
