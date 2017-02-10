@@ -129,7 +129,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-	info->status |= value ? ONLP_FAN_STATUS_B2F : ONLP_FAN_STATUS_F2B;
+	info->status |= value ? ONLP_FAN_STATUS_F2B : ONLP_FAN_STATUS_B2F;
 
 
     /* get front fan speed
@@ -312,7 +312,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         case FAN_4_ON_FAN_BOARD:
         case FAN_5_ON_FAN_BOARD:
         case FAN_6_ON_FAN_BOARD:
-			path = FAN_NODE("fan_duty_cycle_percentage");
+			path = FAN_NODE(fan_duty_cycle_percentage);
 			break;
         default:
             return ONLP_STATUS_E_INVALID;

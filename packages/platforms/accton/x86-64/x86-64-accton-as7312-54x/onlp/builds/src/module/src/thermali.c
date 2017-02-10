@@ -28,8 +28,8 @@
 #include <onlp/platformi/thermali.h>
 #include "platform_lib.h"
 
-#define THERMAL_PATH_FORMAT 	"/sys/bus/i2c/devices/%s/hwmon/hwmon%d/temp1_input"
-#define PSU_THERMAL_PATH_FORMAT "/sys/bus/i2c/devices/%s/hwmon/hwmon%d/psu_temp1_input"
+#define THERMAL_PATH_FORMAT 	"/sys/bus/i2c/devices/%s/*temp1_input"
+#define PSU_THERMAL_PATH_FORMAT "/sys/bus/i2c/devices/%s/*psu_temp1_input"
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -64,10 +64,10 @@ static char* directory[] =  /* must map with onlp_thermal_id */
 
 static char* cpu_coretemp_files[] =
     {
-        "/sys/devices/platform/coretemp.0/temp2_input",
-        "/sys/devices/platform/coretemp.0/temp3_input",
-        "/sys/devices/platform/coretemp.0/temp4_input",
-        "/sys/devices/platform/coretemp.0/temp5_input",
+        "/sys/devices/platform/coretemp.0*temp2_input",
+        "/sys/devices/platform/coretemp.0*temp3_input",
+        "/sys/devices/platform/coretemp.0*temp4_input",
+        "/sys/devices/platform/coretemp.0*temp5_input",
         NULL,
     };
 

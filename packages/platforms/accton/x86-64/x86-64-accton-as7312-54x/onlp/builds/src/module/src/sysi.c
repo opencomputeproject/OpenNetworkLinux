@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include <onlp/platformi/sysi.h>
 #include <onlp/platformi/ledi.h>
@@ -120,10 +121,259 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
+/* Thermal plan:
+ * $TMP = (CPU_core + LM75_1+ LM75_2 + LM75_3 + LM75_4)/5
+ * 1. If any FAN failed, set all the other fans as full speed (100%)
+ * 2. In default, fan speed is 31.25% and direction is F2B.
+ * 3. When $TMP >= 40 C, set fan speed to duty 62.5%.
+ * 4. When $TMP >= 45 C, set fan speed to duty 100%.
+ * 6. When $TMP <  35 C, set fan speed to duty 31.25%. 
+ * 7. Direction factor, when B2F, duty + 13%.
+ *
+ * Note, all chassis fans share 1 single duty setting.
+ */
+
+#define  FAN_DUTY_CYCLE_MAX      (100)
+#define  FAN_DUTY_CYCLE_DEFAULT  (32)
+#define  FAN_DUTY_PLUS_FOR_DIR   (13)
+/* Note, all chassis fans share 1 single duty setting. 
+ * Here use fan 1 to represent global fan duty value.*/
+#define  FAN_ID_FOR_SET_FAN_DUTY    (1)
+#define  CELSIUS_RECORD_NUMBER       (2)  /*Must >= 2*/
+
+typedef struct fan_ctrl_policy {
+   int duty_cycle;        /* In percetage */  
+   int step_up_thermal;   /* In mini-Celsius */
+   int step_dn_thermal;   /* In mini-Celsius */
+} fan_ctrl_policy_t;
+
+fan_ctrl_policy_t  fan_ctrl_policy_[] = {
+{FAN_DUTY_CYCLE_MAX     ,   45000,  INT_MIN},
+{63                     ,   40000,  INT_MIN},
+{32                     , INT_MAX,  35000},
+};
+
+struct fan_control_data_s {
+   int duty_cycle; 
+   int dir_plus;
+   int mcelsius_pre[CELSIUS_RECORD_NUMBER];
+} fan_control_data_pre = 
+{
+    .duty_cycle = FAN_DUTY_CYCLE_DEFAULT,
+    .dir_plus = 0,
+    .mcelsius_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
+};
+
+static int 
+sysi_check_fan(uint32_t *fan_dir){
+    int i, present;
+    
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
+    {
+        onlp_fan_info_t fan_info;
+
+        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to get fan(%d) status\r\n", i);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        present = fan_info.status & ONLP_FAN_STATUS_PRESENT;     
+        if ((fan_info.status & ONLP_FAN_STATUS_FAILED) || !present) {
+            AIM_LOG_WARN("Fan(%d) is not working, set the other fans as full speed\r\n", i);
+            int ret = onlp_fani_percentage_set(
+                    ONLP_FAN_ID_CREATE(FAN_ID_FOR_SET_FAN_DUTY), FAN_DUTY_CYCLE_MAX);
+            if (ret != ONLP_STATUS_OK) 
+                return ret; 
+            else    
+                return ONLP_STATUS_E_MISSING;                    
+        }
+        
+        /* Get fan direction (Only get the first one since all fan direction are the same)
+         */
+        if (i == 1) {
+            *fan_dir = fan_info.status & (ONLP_FAN_STATUS_F2B|ONLP_FAN_STATUS_B2F);
+        }        
+    }
+    
+    return ONLP_STATUS_OK;
+}    
+
+static int
+sysi_get_fan_duty(int *cur_duty_cycle){
+    int   fd, len;
+    char  buf[10] = {0};
+    char  *node = FAN_NODE(fan_duty_cycle_percentage);
+    
+    /* Get current fan duty*/
+    fd = open(node, O_RDONLY);
+    if (fd == -1){
+        AIM_LOG_ERROR("Unable to open fan speed control node (%s)", node);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    len = read(fd, buf, sizeof(buf));
+    close(fd);
+    if (len <= 0) {
+        AIM_LOG_ERROR("Unable to read fan speed from (%s)", node);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    *cur_duty_cycle = atoi(buf);
+    
+    return ONLP_STATUS_OK;    
+}    
+
+static int 
+sysi_get_thermal_sum(int *mcelsius){
+    onlp_thermal_info_t thermal_info;
+    int i; 
+
+    *mcelsius = 0;
+    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
+        if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal_info) 
+            != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to read thermal status");
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        *mcelsius += thermal_info.mcelsius;
+    }
+    return ONLP_STATUS_OK;    
+    
+}
+static int 
+sysi_get_duty_by_tempurature(int *duty_cycle){
+    int mcelsius_avg;    
+    int i, new_duty_cycle, ret; 
+    int maxtrix_len;
+    int trend, trembled;
+    int mcelsius[CELSIUS_RECORD_NUMBER+1] = {0};
+    int *mcelsius_pre_p = &mcelsius[1];
+    int *mcelsius_now_p = &mcelsius[0];    
+    
+    /* Fill up mcelsius array, 
+     * [0] is current temperature, others are history.
+     */
+    *mcelsius_now_p = 0; 
+    ret = sysi_get_thermal_sum(mcelsius_now_p);
+    if(ONLP_STATUS_OK != ret){
+        return ret;
+    }
+    mcelsius_avg = (*mcelsius_now_p)/CHASSIS_THERMAL_COUNT;
+    memcpy (mcelsius_pre_p, fan_control_data_pre.mcelsius_pre, sizeof(fan_control_data_pre.mcelsius_pre));
+    
+    /* Get heat up/down trend. */
+    trend = 0;
+    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) {    
+        if (( mcelsius[i+1] < mcelsius[i])){  
+            trend++;
+        }else if (( mcelsius[i+1] > mcelsius[i])){    
+            trend--;   
+        }            
+    }
+
+    /*For more than half changes are same direction, it's a firm trend.*/
+    trembled = (abs(trend) >= ((CELSIUS_RECORD_NUMBER+1)/2))? 0:1;
+
+    DEBUG_PRINT("[ROY]%s#%d, mcelsius:%d!\n", __func__, __LINE__, mcelsius_avg);
+    DEBUG_PRINT("[ROY]%s#%d, trembled: %d, UP/DW: %d mcelsius:", __func__, __LINE__, trembled, trend );
+    for (i = 0; i < AIM_ARRAYSIZE(mcelsius); i++) { 
+        DEBUG_PRINT(" %d =>", mcelsius[i]);
+    }
+    DEBUG_PRINT("%c\n", ' ');
+    
+    /* Update Record by shiftting right*/
+    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) { 
+        fan_control_data_pre.mcelsius_pre[i] = mcelsius[i];        
+    }
+
+    /* Only change duty on consecutive heat rising or falling.*/    
+    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_);    
+    new_duty_cycle = fan_control_data_pre.duty_cycle;
+    if (!trembled)
+    {
+        int matched = 0;
+        if (trend > 0)
+        {
+        	for (i = 0; i < maxtrix_len; i++) {
+                if ((mcelsius_avg >= fan_ctrl_policy_[i].step_up_thermal)) {
+            	    new_duty_cycle = fan_ctrl_policy_[i].duty_cycle;
+            	    matched = !matched;
+            	    break;
+            	}
+            }
+        }
+        else if (trend < 0)
+        {
+        	for (i = maxtrix_len-1; i>=0; i--) {        
+        	    if ((mcelsius_avg <= fan_ctrl_policy_[i].step_dn_thermal)) {
+            	    new_duty_cycle = fan_ctrl_policy_[i].duty_cycle;
+            	    matched = !matched;            	    
+            	    break;
+                }            	    
+        	}
+        }
+        if (!matched) {
+            DEBUG_PRINT("%s#%d, celsius(%d) falls into undefined range!!\n", 
+                    __func__, __LINE__, mcelsius_avg);
+    	}    	
+    }
+    *duty_cycle = new_duty_cycle;
+    return ONLP_STATUS_OK;
+}
+
 int
 onlp_sysi_platform_manage_fans(void)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    uint32_t fan_dir;
+    int ret;
+    int cur_duty_cycle, new_duty_cycle;    
+    int direct_addon = 0;
+    onlp_oid_t fan_duty_oid = ONLP_FAN_ID_CREATE(FAN_ID_FOR_SET_FAN_DUTY);
+    
+    /**********************************************************
+     * Decision 1: Set fan as full speed if any fan is failed.
+     **********************************************************/
+    ret = sysi_check_fan(&fan_dir);
+    if(ONLP_STATUS_OK != ret){
+        return ret;
+    }
+
+    if (fan_dir & ONLP_FAN_STATUS_B2F) {
+        direct_addon = FAN_DUTY_PLUS_FOR_DIR;
+    }
+    
+    /**********************************************************
+     * Decision 2: If no matched fan speed is found from the policy,
+     *             use FAN_DUTY_CYCLE_MIN as default speed
+     **********************************************************/
+    ret = sysi_get_fan_duty(&cur_duty_cycle);
+    if(ONLP_STATUS_OK != ret){
+        return ret;
+    }
+	
+    /**********************************************************
+     * Decision 3: Decide new fan speed depend on fan direction and temperature
+     **********************************************************/
+    ret = sysi_get_duty_by_tempurature(&new_duty_cycle);
+    if (ONLP_STATUS_OK != ret){
+        return ret;
+    }
+
+    fan_control_data_pre.duty_cycle = new_duty_cycle; 
+    fan_control_data_pre.dir_plus = direct_addon; 
+    
+    DEBUG_PRINT("[ROY]%s#%d, new duty: %d = %d + %d (%d)!\n", __func__, __LINE__, 
+    new_duty_cycle + direct_addon, new_duty_cycle, direct_addon, cur_duty_cycle);
+    
+    new_duty_cycle += direct_addon;
+    new_duty_cycle = (new_duty_cycle > FAN_DUTY_CYCLE_MAX)?
+         FAN_DUTY_CYCLE_MAX : new_duty_cycle;
+       
+	if (new_duty_cycle == cur_duty_cycle) {
+        /* Duty cycle does not change, just return */
+	    return ONLP_STATUS_OK;
+	}
+
+    return onlp_fani_percentage_set(fan_duty_oid, new_duty_cycle);
 }
 
 int
