@@ -168,12 +168,16 @@ MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/
 
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
+# This file must be preserved for PPC module builds.
+MODSYNCKEEP := arch/powerpc/lib/crtsavres.o
+
 mbuild: build
 	rm -rf $(K_MBUILD_DIR)
 	mkdir -p $(K_MBUILD_DIR)
 	$(foreach f,$(MODSYNCLIST),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
 	find $(K_MBUILD_DIR) -name "*.o*" -delete
 	find $(K_MBUILD_DIR) -name "*.c" -delete
+	$(foreach f,$(MODSYNCKEEP), cp $(K_SOURCE_DIR)/$(f) $(K_MBUILD_DIR)/$(f) || true;)
 
 dtbs: mbuild
 ifdef DTS_LIST
