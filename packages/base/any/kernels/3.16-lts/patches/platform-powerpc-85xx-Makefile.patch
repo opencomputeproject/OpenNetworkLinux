@@ -1,0 +1,41 @@
+Changes to arch/powerpc/platforms/85xx/Makefile and Kconfig.
+
+Keep these separate from the individual platform patches because all
+platforms need to touch these two files.  By keeping these changes in
+a separate patch allows the platform specific patchsets to sink/float
+without conflicts in these two files.
+
+diff --git a/arch/powerpc/platforms/85xx/Kconfig b/arch/powerpc/platforms/85xx/Kconfig
+index b9a2559..2c1aa86 100644
+--- a/arch/powerpc/platforms/85xx/Kconfig
++++ b/arch/powerpc/platforms/85xx/Kconfig
+@@ -278,6 +278,19 @@ config CORENET_GENERIC
+	  The following boards are supported for both 32bit and 64bit kernel:
+	  P5020 DS, P5040 DS and T104xQDS
+
++config QUANTA_LB
++	bool "Quanta LBx"
++	select DEFAULT_UIMAGE
++	select HAS_RAPIDIO
++	help
++	  This option enables support for the Quanta LBx board
++
++config DELTA_7448
++	bool "Delta ET-7448BF"
++	select DEFAULT_UIMAGE
++	help
++	  This option enables support for the Delta ET-7448BF board
++
+ endif # FSL_SOC_BOOKE
+
+ config TQM85xx
+diff --git a/arch/powerpc/platforms/85xx/Makefile b/arch/powerpc/platforms/85xx/Makefile
+index bc5acb9..d04e66c 100644
+--- a/arch/powerpc/platforms/85xx/Makefile
++++ b/arch/powerpc/platforms/85xx/Makefile
+@@ -30,3 +30,5 @@ obj-$(CONFIG_XES_MPC85xx) += xes_mpc85xx.o
+ obj-$(CONFIG_GE_IMP3A)    += ge_imp3a.o
+ obj-$(CONFIG_PPC_QEMU_E500) += qemu_e500.o
+ obj-$(CONFIG_SGY_CTS1000) += sgy_cts1000.o
++obj-$(CONFIG_DELTA_7448)    += delta_7448.o
++obj-$(CONFIG_QUANTA_LB)   += quanta_lb.o
