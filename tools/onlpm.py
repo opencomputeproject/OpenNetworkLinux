@@ -815,9 +815,14 @@ class OnlPackageRepo(object):
         force: Passed to extract() as the force option."""
 
         edir = self.extract(pkg, force=force)
-        for root, dirs, files in os.walk(edir):
-            if os.path.basename(root) == dirname and root != edir:
-                return root
+        if os.path.isabs(dirname):
+            apath = os.path.join(edir, dirname[1:]);
+            if os.path.isdir(apath):
+                return apath
+        else:
+            for root, dirs, files in os.walk(edir):
+                if os.path.basename(root) == dirname and root != edir:
+                    return root
 
         if ex:
             raise OnlPackageMissingDirError(pkg, dirname)
