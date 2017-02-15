@@ -167,7 +167,7 @@ endif
 MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts drivers \
 			arch/x86/include arch/x86/Makefile \
 			arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/powerpc/boot/dts \
-			arch/arm/include arch/arm/Makefile arch/arm/lib
+			arch/arm/include arch/arm/Makefile arch/arm/lib arch/arm/boot/dts
 
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
 
