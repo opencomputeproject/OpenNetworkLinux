@@ -18,5 +18,9 @@ endif
 
 .DEFAULT_GOAL := $(DTB_LIST)
 
-clean:
+$(DTB_LIST): setup
+
+clean::
 	rm -rf *.dtb
+
+setup::
