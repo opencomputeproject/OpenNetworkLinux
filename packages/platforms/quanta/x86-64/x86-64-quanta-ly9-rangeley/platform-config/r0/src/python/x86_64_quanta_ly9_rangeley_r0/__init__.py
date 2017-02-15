@@ -11,7 +11,7 @@ class OnlPlatform_x86_64_quanta_ly9_rangeley_r0(OnlPlatformQuanta,
         self.insmod("emerson700")
         self.insmod("quanta_hwmon")
         self.insmod("qci_cpld")
-        self.insmod("quanta_switch", params=dict(platform="x86-64-quanta-ly9-rangeley"))
+        self.insmod("quanta_platform_ly9")
 
         # make ds1339 as default rtc
         os.system("ln -snf /dev/rtc1 /dev/rtc")
