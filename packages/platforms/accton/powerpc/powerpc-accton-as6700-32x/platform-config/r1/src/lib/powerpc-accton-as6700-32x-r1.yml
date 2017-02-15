@@ -13,7 +13,7 @@ powerpc-accton-as6700-32x-r1:
       <<: *e500mc-kernel
     dtb:
       =: powerpc-accton-as6700-32x-r1.dtb
-      <<: *e500mc-kernel-package
+      package: onl-platform-build-powerpc-accton-as6700-32x-r1:powerpc
 
   loader:
     device: /dev/sda
