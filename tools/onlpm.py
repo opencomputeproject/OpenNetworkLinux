@@ -242,12 +242,13 @@ class OnlPackage(object):
         return True
 
 
-    def _validate_files(self):
+    def _validate_files(self, key, required=True):
         """Validate the existence of the required input files for the current package."""
-        self.pkg['files'] = onlu.validate_src_dst_file_tuples(self.dir,
-                                                              self.pkg['files'],
-                                                              dict(PKG=self.pkg['name'], PKG_INSTALL='/usr/share/onl/packages/%s/%s' % (self.pkg['arch'], self.pkg['name'])),
-                                                              OnlPackageError)
+        self.pkg[key] = onlu.validate_src_dst_file_tuples(self.dir,
+                                                          self.pkg[key],
+                                                          dict(PKG=self.pkg['name'], PKG_INSTALL='/usr/share/onl/packages/%s/%s' % (self.pkg['arch'], self.pkg['name'])),
+                                                          OnlPackageError,
+                                                          required=required)
     def _validate(self):
         """Validate the package contents."""
 
@@ -328,7 +329,10 @@ class OnlPackage(object):
 
         # Make sure all required files exist
         if 'files' in self.pkg:
-            self._validate_files()
+            self._validate_files('files', True)
+
+        if 'optional-files' in self.pkg:
+            self._validate_files('optional-files', False)
 
         # If dir_ is not specified, leave package in local package directory.
         if dir_ is None:
@@ -343,6 +347,10 @@ class OnlPackage(object):
 
         for (src,dst) in self.pkg.get('files', {}):
             OnlPackage.copyf(src, dst, root)
+
+        for (src,dst) in self.pkg.get('optional-files', {}):
+            if os.path.exists(src):
+                OnlPackage.copyf(src, dst, root)
 
         for (link,src) in self.pkg.get('links', {}).iteritems():
             logger.info("Linking %s -> %s..." % (link, src))
