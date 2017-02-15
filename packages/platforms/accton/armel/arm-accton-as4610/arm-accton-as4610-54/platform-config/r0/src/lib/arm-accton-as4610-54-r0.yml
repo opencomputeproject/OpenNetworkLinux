@@ -11,8 +11,9 @@ arm-accton-as4610-54-r0:
     kernel:
       <<: *arm-iproc-kernel
     dtb:
-      =: accton_as4610_54.dtb
-      <<: *arm-iproc-kernel-package
+      =: arm-accton-as4610-54-r0.dtb
+      package: onl-platform-build-arm-accton-as4610-54-r0:armel
+
     itb:
       <<: *arm-itb
 
@@ -27,4 +28,3 @@ arm-accton-as4610-54-r0:
       env_offset: 0x00000000
       env_size: 0x00002000
       sector_size: 0x00010000
-    
