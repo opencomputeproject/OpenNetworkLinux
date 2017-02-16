@@ -1,0 +1,83 @@
+diff --git a/arch/powerpc/platforms/85xx/delta_7448.c b/arch/powerpc/platforms/85xx/delta_7448.c
+new file mode 100644
+index 0000000..4618bef
+--- /dev/null
++++ b/arch/powerpc/platforms/85xx/delta_7448.c
+@@ -0,0 +1,77 @@
++/*
++ * Delta ET-7448BF platform setup
++ *
++ * Copyright 2013 Big Switch Networks, Inc.
++ *
++ * This program is free software; you can redistribute  it and/or modify it
++ * under  the terms of  the GNU General  Public License as published by the
++ * Free Software Foundation;  either version 2 of the  License, or (at your
++ * option) any later version.
++ */
++
++#include <linux/pci.h>
++#include <asm/udbg.h>
++#include <asm/mpic.h>
++#include <sysdev/fsl_soc.h>
++#include <sysdev/fsl_pci.h>
++
++#include "mpc85xx.h"
++#include "smp.h"
++
++static void delta_7448_restart(char *cmd)
++{
++    struct device_node *cpld;
++
++    cpld = of_find_compatible_node(NULL, NULL, "delta-7448-cpld");
++    if (cpld) {
++        uint8_t __iomem *cpld_regs = of_iomap(cpld, 0);
++        of_node_put(cpld);
++        if (cpld_regs) {
++            writeb(0, cpld_regs + 0x20);
++        }
++    }
++
++    fsl_rstcr_restart(NULL);
++}
++
++static void __init delta_7448_pic_init(void)
++{
++    struct mpic *mpic = mpic_alloc(NULL, 0, MPIC_BIG_ENDIAN, 0, 256,
++                                       " OpenPIC  ");
++    BUG_ON(!mpic);
++    mpic_init(mpic);
++}
++
++static void __init delta_7448_setup_arch(void)
++{
++    if (ppc_md.progress)
++        ppc_md.progress("delta_7448_setup_arch()", 0);
++    fsl_pci_assign_primary();
++    mpc85xx_smp_init();
++}
++
++static void delta_7448_show_cpuinfo(struct seq_file *m)
++{
++    seq_printf(m, "PVR\t\t: 0x%lx\n", mfspr(SPRN_PVR));
++    seq_printf(m, "SVR\t\t: 0x%lx\n", mfspr(SPRN_SVR));
++    seq_printf(m, "PLL\t\t: 0x%lx\n", (mfspr(SPRN_HID1) >> 24) & 0x3f);
++}
++
++static int __init delta_7448_probe(void)
++{
++    return of_flat_dt_is_compatible(of_get_flat_dt_root(), "delta-7448");
++}
++
++machine_arch_initcall(delta_7448, mpc85xx_common_publish_devices);
++
++define_machine(delta_7448) {
++    .name           = "Delta ET-7448BF",
++    .probe          = delta_7448_probe,
++    .setup_arch     = delta_7448_setup_arch,
++    .init_IRQ       = delta_7448_pic_init,
++    .show_cpuinfo   = delta_7448_show_cpuinfo,
++    .get_irq        = mpic_get_irq,
++    .restart        = delta_7448_restart,
++    .calibrate_decr = generic_calibrate_decr,
++    .progress       = udbg_progress,
++};
