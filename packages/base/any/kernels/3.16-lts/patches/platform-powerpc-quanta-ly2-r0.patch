@@ -1,0 +1,1468 @@
+diff -rupN a/arch/powerpc/boot/dts/powerpc-quanta-ly2-r0.dts b/arch/powerpc/boot/dts/powerpc-quanta-ly2-r0.dts
+--- a/arch/powerpc/boot/dts/powerpc-quanta-ly2-r0.dts	1969-12-31 16:00:00.000000000 -0800
++++ b/arch/powerpc/boot/dts/powerpc-quanta-ly2-r0.dts	2015-05-18 13:39:01.764648504 -0700
+@@ -0,0 +1,1464 @@
++/*
++ * <bsn.cl fy=2013 v=gpl>
++ *
++ *        Copyright 2013, 2014 BigSwitch Networks, Inc.
++ *
++ * This program is free software; you can redistribute it
++ * and/or modify it under  the terms ofthe GNU General Public License as
++ * published by the Free Software Foundation;  either version 2 of the  License,
++ * or (at your option) any later version.
++ *
++ *
++ * </bsn.cl>
++ *
++ *
++ * Device tree for the Quanta LY2.
++ *
++ */
++
++
++/dts-v1/;
++
++/ {
++	model = "powerpc-quanta-ly2-r0";
++	compatible = "fsl,P2020RDB";
++	#address-cells = <2>;
++	#size-cells = <2>;
++
++	aliases {
++		ethernet0 = &enet0;
++		serial0 = &serial0;
++		serial1 = &serial1;
++		pci2 = &pci2;
++		mpic-msgr-block0 = &mpic_msgr_block0;
++		mpic-msgr-block1 = &mpic_msgr_block1;
++	};
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		PowerPC,P2020@0 {
++			device_type = "cpu";
++			reg = <0x0>;
++			next-level-cache = <&l2>;
++		};
++
++		PowerPC,P2020@1 {
++			device_type = "cpu";
++			reg = <0x1>;
++			next-level-cache = <&l2>;
++		};
++	};
++
++	memory {
++		device_type = "memory";
++	};
++
++	localbus@ffe05000 {
++		#address-cells = <2>;
++		#size-cells = <1>;
++		compatible = "fsl,p2020-elbc", "fsl,elbc", "simple-bus";
++		reg = <0 0xffe05000 0 0x1000>;
++		interrupts = <19 2>;
++		interrupt-parent = <&mpic>;
++
++		ranges = <0x0 0x0 0x0 0xee000000 0x2000000
++			  0x1 0x0 0x0 0xec000000 0x2000000>;
++
++		flash@0,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "cfi-flash";
++			reg = <0x0 0x0 0x2000000>;
++			bank-width = <2>;
++
++			/*
++ 			 * ONIE flash layout (reverse-engineered:
++			 * - one ~27MiB loader partition
++			 * - 4 MiB onie partition
++			 * - uboot-env and uboot
++			 * - 32MiB leftover space for jffs2
++			 *
++			 */
++
++			flash@0 {
++				label = "onl-loader";
++				reg = <0x00000000 0x01b60000>;
++			};
++
++			flash@1 {
++				label = "onie";
++				reg = <0x01b60000 0x00400000>;
++				read-only;
++			};
++
++			flash@2 {
++				label = "uboot-env";
++				reg = <0x01f60000 0x00020000>;
++			};
++
++			flash@3 {
++				label = "uboot";
++				reg = <0x01f80000 0x00080000>;
++				read-only;
++			};
++
++		};
++
++		flash@1,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "cfi-flash";
++			reg = <0x1 0x0 0x2000000>;
++			bank-width = <2>;
++
++			flash@4 {
++				label = "mnt-flash";
++				reg = <0x00000000 0x02000000>;
++			};
++		};
++	};
++
++	soc@ffe00000 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		device_type = "soc";
++		compatible = "fsl,p2020-immr", "simple-bus";
++		ranges = <0x0  0x0 0xffe00000 0x100000>;
++		bus-frequency = <0>;
++
++		ecm-law@0 {
++			compatible = "fsl,ecm-law";
++			reg = <0x0 0x1000>;
++			fsl,num-laws = <12>;
++		};
++
++		ecm@1000 {
++			compatible = "fsl,p2020-ecm", "fsl,ecm";
++			reg = <0x1000 0x1000>;
++			interrupts = <17 2>;
++			interrupt-parent = <&mpic>;
++		};
++
++		memory-controller@2000 {
++			compatible = "fsl,p2020-memory-controller";
++			reg = <0x2000 0x1000>;
++			interrupt-parent = <&mpic>;
++			interrupts = <18 2>;
++		};
++
++		i2c@3000 {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			cell-index = <0>;
++			compatible = "fsl-i2c";
++			reg = <0x3000 0x100>;
++			interrupts = <43 2>;
++			interrupt-parent = <&mpic>;
++			dfsrr;
++
++			dimm@51 {
++				compatible = "at,spd";
++				reg = <0x51>;
++				read-only;
++			};
++
++			rtc@68 {
++				compatible = "dallas,ds1338";
++				reg = <0x68>;
++			};
++
++			mux@71 {
++				compatible = "nxp,pca9546";
++				reg = <0x71>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					eeprom-mb@54 {
++						compatible = "at,24c02";
++						reg = <0x54>;
++						read-only;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					temp-fan@2e {
++						compatible = "quanta_ly_hwmon";
++						reg = <0x2e>;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++				};
++			};
++
++			mux@75 {
++				compatible = "nxp,pca9546";
++				reg = <0x75>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					psu-1@58 {
++						compatible = "pmbus";
++						reg = <0x58>;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					psu-2@59 {
++						compatible = "pmbus";
++						reg = <0x59>;
++					};
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					gpio-psu-1@24 {
++						compatible = "nxp,pca9555";
++						reg = <0x24>;
++						#gpio-cells = <2>;
++						gpio-controller;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++
++					gpio-psu-2@25 {
++						compatible = "nxp,pca9555";
++						reg = <0x25>;
++						#gpio-cells = <2>;
++						gpio-controller;
++					};
++				};
++			};
++		};
++
++		i2c@3100 {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			cell-index = <1>;
++			compatible = "fsl-i2c";
++			reg = <0x3100 0x100>;
++			interrupts = <43 2>;
++			interrupt-parent = <&mpic>;
++			dfsrr;
++
++			mux@25 {
++				compatible = "quanta_ly2_i2c_mux";
++				reg = <0x25>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					eeprom-sfp-2@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-2@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					eeprom-sfp-1@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-1@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					eeprom-sfp-4@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-4@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++
++					eeprom-sfp-3@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-3@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@4 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <4>;
++
++					eeprom-sfp-6@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-6@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@5 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <5>;
++
++					eeprom-sfp-5@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-5@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@6 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <6>;
++
++					eeprom-sfp-8@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-8@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@7 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <7>;
++
++					eeprom-sfp-7@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-7@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@8 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <8>;
++
++					eeprom-sfp-10@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-10@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@9 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <9>;
++
++					eeprom-sfp-9@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-9@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@10 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <10>;
++
++					eeprom-sfp-12@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-12@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@11 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <11>;
++
++					eeprom-sfp-11@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-11@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@12 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <12>;
++
++					eeprom-sfp-14@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-14@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@13 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <13>;
++
++					eeprom-sfp-13@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-13@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@14 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <14>;
++
++					eeprom-sfp-16@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-16@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@15 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <15>;
++
++					eeprom-sfp-15@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-15@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++			};
++
++			mux@26 {
++				compatible = "quanta_ly2_i2c_mux";
++				reg = <0x26>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					eeprom-sfp-18@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-18@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					eeprom-sfp-17@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-17@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					eeprom-sfp-20@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-20@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++
++					eeprom-sfp-19@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-19@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@4 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <4>;
++
++					eeprom-sfp-22@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-22@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@5 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <5>;
++
++					eeprom-sfp-21@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-21@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@6 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <6>;
++
++					eeprom-sfp-24@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-24@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@7 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <7>;
++
++					eeprom-sfp-23@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-23@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@8 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <8>;
++
++					eeprom-sfp-26@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-26@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@9 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <9>;
++
++					eeprom-sfp-25@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-25@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@10 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <10>;
++
++					eeprom-sfp-28@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-28@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@11 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <11>;
++
++					eeprom-sfp-27@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-27@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@12 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <12>;
++
++					eeprom-sfp-30@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-30@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@13 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <13>;
++
++					eeprom-sfp-29@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-29@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@14 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <14>;
++
++					eeprom-sfp-32@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-32@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@15 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <15>;
++
++					eeprom-sfp-31@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-31@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++			};
++
++			mux@27 {
++				compatible = "quanta_ly2_i2c_mux";
++				reg = <0x27>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					eeprom-sfp-34@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-34@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					eeprom-sfp-33@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-33@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					eeprom-sfp-36@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-36@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++
++					eeprom-sfp-35@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-35@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@4 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <4>;
++
++					eeprom-sfp-38@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-38@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@5 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <5>;
++
++					eeprom-sfp-37@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-37@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@6 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <6>;
++
++					eeprom-sfp-40@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-40@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@7 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <7>;
++
++					eeprom-sfp-39@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-39@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@8 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <8>;
++
++					eeprom-sfp-42@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-42@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@9 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <9>;
++
++					eeprom-sfp-41@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-41@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@10 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <10>;
++
++					eeprom-sfp-44@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-44@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@11 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <11>;
++
++					eeprom-sfp-43@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-43@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@12 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <12>;
++
++					eeprom-sfp-46@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-46@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@13 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <13>;
++
++					eeprom-sfp-45@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-45@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@14 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <14>;
++
++					eeprom-sfp-48@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-48@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@15 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <15>;
++
++					eeprom-sfp-47@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-sfp-47@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++			};
++
++			mux@73 {
++				compatible = "nxp,pca9546";
++				reg = <0x73>;
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				i2c@0 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <0>;
++
++					eeprom-qsfp-1@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-qsfp-1@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@1 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <1>;
++
++					eeprom-qsfp-2@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-qsfp-2@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@2 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <2>;
++
++					eeprom-qsfp-3@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-qsfp-3@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++
++				i2c@3 {
++					#address-cells = <1>;
++					#size-cells = <0>;
++					reg = <3>;
++
++					eeprom-qsfp-4@50 {
++						compatible = "at,24c02";
++						reg = <0x50>;
++						read-only;
++					};
++					eeprom-qsfp-4@51 {
++						compatible = "at,24c02";
++						reg = <0x51>;
++						read-only;
++					};
++				};
++			};
++		};
++
++		serial0: serial@4500 {
++			cell-index = <0>;
++			device_type = "serial";
++			compatible = "ns16550";
++			reg = <0x4500 0x100>;
++			clock-frequency = <0>;
++			interrupts = <42 2>;
++			interrupt-parent = <&mpic>;
++		};
++
++		serial1: serial@4600 {
++			cell-index = <1>;
++			device_type = "serial";
++			compatible = "ns16550";
++			reg = <0x4600 0x100>;
++			clock-frequency = <0>;
++			interrupts = <42 2>;
++			interrupt-parent = <&mpic>;
++		};
++
++		dma@c300 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "fsl,eloplus-dma";
++			reg = <0xc300 0x4>;
++			ranges = <0x0 0xc100 0x200>;
++			cell-index = <1>;
++			dma-channel@0 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x0 0x80>;
++				cell-index = <0>;
++				interrupt-parent = <&mpic>;
++				interrupts = <76 2>;
++			};
++			dma-channel@80 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x80 0x80>;
++				cell-index = <1>;
++				interrupt-parent = <&mpic>;
++				interrupts = <77 2>;
++			};
++			dma-channel@100 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x100 0x80>;
++				cell-index = <2>;
++				interrupt-parent = <&mpic>;
++				interrupts = <78 2>;
++			};
++			dma-channel@180 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x180 0x80>;
++				cell-index = <3>;
++				interrupt-parent = <&mpic>;
++				interrupts = <79 2>;
++			};
++		};
++
++		gpio: gpio-controller@f000 {
++			#gpio-cells = <2>;
++			compatible = "fsl,mpc8572-gpio";
++			reg = <0xf000 0x100>;
++			interrupts = <47 0x2>;
++			interrupt-parent = <&mpic>;
++			gpio-controller;
++		};
++
++		l2: l2-cache-controller@20000 {
++			compatible = "fsl,p2020-l2-cache-controller";
++			reg = <0x20000 0x1000>;
++			cache-line-size = <32>;	// 32 bytes
++			cache-size = <0x80000>; // L2,512K
++			interrupt-parent = <&mpic>;
++			interrupts = <16 2>;
++		};
++
++		dma@21300 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "fsl,eloplus-dma";
++			reg = <0x21300 0x4>;
++			ranges = <0x0 0x21100 0x200>;
++			cell-index = <0>;
++			dma-channel@0 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x0 0x80>;
++				cell-index = <0>;
++				interrupt-parent = <&mpic>;
++				interrupts = <20 2>;
++			};
++			dma-channel@80 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x80 0x80>;
++				cell-index = <1>;
++				interrupt-parent = <&mpic>;
++				interrupts = <21 2>;
++			};
++			dma-channel@100 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x100 0x80>;
++				cell-index = <2>;
++				interrupt-parent = <&mpic>;
++				interrupts = <22 2>;
++			};
++			dma-channel@180 {
++				compatible = "fsl,eloplus-dma-channel";
++				reg = <0x180 0x80>;
++				cell-index = <3>;
++				interrupt-parent = <&mpic>;
++				interrupts = <23 2>;
++			};
++		};
++
++/*		usb@22000 {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			compatible = "fsl-usb2-dr";
++			reg = <0x22000 0x1000>;
++			interrupt-parent = <&mpic>;
++			interrupts = <28 0x2>;
++			phy_type = "ulpi";
++		};
++*/
++		ptp_timer: ptimer@24e00 {
++			compatible = "fsl,gianfar-ptp-timer";
++			reg = <0x24e00 0xb0>;
++		};
++
++		enet0: ethernet@24000 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			cell-index = <0>;
++			device_type = "network";
++			model = "eTSEC";
++			compatible = "gianfar";
++			reg = <0x24000 0x1000>;
++			ranges = <0x0 0x24000 0x1000>;
++			local-mac-address = [ 00 00 00 00 00 00 ];
++			interrupts = <29 2 30 2 34 2>;
++			interrupt-parent = <&mpic>;
++			phy-connection-type = "sgmii";
++			phy-handle = <&phy0>;
++			tbi-handle = <&tbi0>;
++		};
++
++		mdio@24520 {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			compatible = "fsl,gianfar-mdio";
++			reg = <0x24520 0x20>;
++
++			phy0: ethernet-phy@0 {
++				reg = <0x1>;
++				device_type = "ethernet-phy";
++			};
++			tbi0: tbi-phy@11 {
++				reg = <0x11>;
++				device_type = "tbi-phy";
++			};
++		};
++
++		sdhci@2e000 {
++			compatible = "fsl,p2020-esdhc", "fsl,esdhc";
++			reg = <0x2e000 0x1000>;
++			interrupts = <72 0x2>;
++			interrupt-parent = <&mpic>;
++			clock-frequency = <0>;
++		};
++
++		crypto@30000 {
++			compatible = "fsl,sec3.1", "fsl,sec3.0", "fsl,sec2.4",
++				     "fsl,sec2.2", "fsl,sec2.1", "fsl,sec2.0";
++			reg = <0x30000 0x10000>;
++			interrupts = <45 2 58 2>;
++			interrupt-parent = <&mpic>;
++			fsl,num-channels = <4>;
++			fsl,channel-fifo-len = <24>;
++			fsl,exec-units-mask = <0xbfe>;
++			fsl,descriptor-types-mask = <0x3ab0ebf>;
++			fsl,multi-host-mode = "dual";
++			fsl,channel-remap = <0x3>;
++		};
++
++		mpic: pic@40000 {
++			interrupt-controller;
++			#address-cells = <0>;
++			#interrupt-cells = <2>;
++			reg = <0x40000 0x40000>;
++			compatible = "chrp,open-pic";
++			device_type = "open-pic";
++		};
++
++		mpic_msgr_block0: message@41400 {
++			compatible = "fsl,mpic-v3.1-msgr";
++			reg = <0x41400 0x200>;
++			interrupts = <
++				0xb0 2
++				0xb1 2
++				0xb2 2
++				0xb3 2>;
++			interrupt-parent = <&mpic>;
++		};
++
++		mpic_msgr_block1: message@42400 {
++			compatible = "fsl,mpic-v3.1-msgr";
++			reg = <0x42400 0x200>;
++			interrupts = <
++				0xb4 2
++				0xb5 2
++				0xb6 2
++				0xb7 2>;
++			interrupt-parent = <&mpic>;
++		};
++
++		msi@41600 {
++			compatible = "fsl,p2020-msi", "fsl,mpic-msi";
++			reg = <0x41600 0x80>;
++			msi-available-ranges = <0 0x100>;
++			interrupts = <
++				0xe0 0
++				0xe1 0
++				0xe2 0
++				0xe3 0
++				0xe4 0
++				0xe5 0
++				0xe6 0
++				0xe7 0>;
++			interrupt-parent = <&mpic>;
++		};
++
++		global-utilities@e0000 {
++			compatible = "fsl,p2020-guts";
++			reg = <0xe0000 0x1000>;
++			fsl,has-rstcr;
++		};
++	};
++
++	pci2: pcie@ffe0a000 {
++		compatible = "fsl,mpc8548-pcie";
++		device_type = "pci";
++		#interrupt-cells = <1>;
++		#size-cells = <2>;
++		#address-cells = <3>;
++		reg = <0 0xffe0a000 0 0x1000>;
++		bus-range = <0 255>;
++		ranges = <0x2000000 0x0 0xc0000000 0 0xc0000000 0x0 0x20000000
++			  0x1000000 0x0 0x00000000 0 0xffc20000 0x0 0x10000>;
++		clock-frequency = <100000000>;
++		interrupt-parent = <&mpic>;
++		interrupts = <26 2>;
++		interrupt-map-mask = <0xf800 0x0 0x0 0x7>;
++		interrupt-map = <
++			/* IDSEL 0x0 */
++			0000 0x0 0x0 0x1 &mpic 0x0 0x1
++			0000 0x0 0x0 0x2 &mpic 0x1 0x1
++			0000 0x0 0x0 0x3 &mpic 0x2 0x1
++			0000 0x0 0x0 0x4 &mpic 0x3 0x1
++			>;
++		pcie@0 {
++			reg = <0x0 0x0 0x0 0x0 0x0>;
++			#size-cells = <2>;
++			#address-cells = <3>;
++			device_type = "pci";
++			ranges = <0x2000000 0x0 0xc0000000
++				  0x2000000 0x0 0xc0000000
++				  0x0 0x20000000
++
++				  0x1000000 0x0 0x0
++				  0x1000000 0x0 0x0
++				  0x0 0x10000>;
++		};
++	};
++};
