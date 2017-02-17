@@ -1,0 +1,2 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=dni BASENAME=x86-64-dni-wb2448 REVISION=r0
+
