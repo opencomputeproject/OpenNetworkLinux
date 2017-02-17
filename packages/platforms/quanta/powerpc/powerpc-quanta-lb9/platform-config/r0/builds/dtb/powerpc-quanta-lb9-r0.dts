@@ -1,0 +1,480 @@
+/*
+ * <bsn.cl fy=2013 v=gpl>
+ *
+ *        Copyright 2013, 2014 BigSwitch Networks, Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under  the terms ofthe GNU General Public License as
+ * published by the Free Software Foundation;  either version 2 of the  License,
+ * or (at your option) any later version.
+ *
+ *
+ * </bsn.cl>
+ *
+ *
+ * Device tree for the Quanta LB9
+ *
+ */
+
+
+/dts-v1/;
+
+/ {
+	model = "powerpc-quanta-lb9-r0";
+	compatible = "quanta-lb";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	aliases {
+		ethernet0 = &enet0;
+		serial0 = &serial0;
+		pci0 = &pci0;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		PowerPC,8541@0 {
+			device_type = "cpu";
+			reg = <0x0>;
+			d-cache-line-size = <32>;	// 32 bytes
+			i-cache-line-size = <32>;	// 32 bytes
+			d-cache-size = <0x8000>;	// L1, 32K
+			i-cache-size = <0x8000>;	// L1, 32K
+			timebase-frequency = <0>;	// 33 MHz
+			bus-frequency = <0>;	// 166 MHz
+			clock-frequency = <0>;	// 825 MHz
+			next-level-cache = <&L2>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;	// 512M at 0x0
+	};
+
+	soc8541@e0000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		device_type = "soc";
+		compatible = "simple-bus";
+		ranges = <0x0 0xe0000000 0x100000>;
+		reg = <0xe0000000 0x1000>;	// CCSRBAR 1M
+		bus-frequency = <0>;
+
+		ecm-law@0 {
+			compatible = "fsl,ecm-law";
+			reg = <0x0 0x1000>;
+			fsl,num-laws = <8>;
+		};
+
+		ecm@1000 {
+			compatible = "fsl,mpc8541-ecm", "fsl,ecm";
+			reg = <0x1000 0x1000>;
+			interrupts = <17 2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		memory-controller@2000 {
+			compatible = "fsl,8541-memory-controller";
+			reg = <0x2000 0x1000>;
+			interrupt-parent = <&mpic>;
+			interrupts = <18 2>;
+		};
+
+		L2: l2-cache-controller@20000 {
+			compatible = "fsl,8541-l2-cache-controller";
+			reg = <0x20000 0x1000>;
+			cache-line-size = <32>;	// 32 bytes
+			cache-size = <0x40000>;	// L2, 256K
+			interrupt-parent = <&mpic>;
+			interrupts = <16 2>;
+		};
+
+		i2c@3000 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cell-index = <0>;
+			compatible = "fsl-i2c";
+			reg = <0x3000 0x100>;
+			interrupts = <43 2>;
+			interrupt-parent = <&mpic>;
+			dfsrr;
+
+			gpio-phy@20 {
+				compatible = "nxp,pca9555";
+				reg = <0x20>;
+				#gpio-cells = <2>;
+				gpio-controller;
+			};
+
+			gpio-psu-1@24 {
+				compatible = "nxp,pca9555";
+				reg = <0x24>;
+				#gpio-cells = <2>;
+				gpio-controller;
+			};
+
+			gpio-psu-2@25 {
+				compatible = "nxp,pca9555";
+				reg = <0x25>;
+				#gpio-cells = <2>;
+				gpio-controller;
+			};
+
+			eeprom-mb@53 {
+				compatible = "at,24c02";
+				reg = <0x53>;
+				read-only;
+			};
+
+			dimm@57 {
+				compatible = "at,spd";
+				reg = <0x57>;
+				read-only;
+			};
+
+			rtc@68 {
+				compatible = "dallas,ds1338";
+				reg = <0x68>;
+			};
+
+			mux@70 {
+				compatible = "nxp,pca9548";
+				reg = <0x70>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+
+					eeprom-sfp-1@50 {
+						compatible = "at,24c02";
+						reg = <0x50>;
+						read-only;
+					};
+					eeprom-sfp-1@51 {
+						compatible = "at,24c02";
+						reg = <0x51>;
+						read-only;
+					};
+				};
+
+				i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+
+					eeprom-sfp-2@50 {
+						compatible = "at,24c02";
+						reg = <0x50>;
+						read-only;
+					};
+					eeprom-sfp-2@51 {
+						compatible = "at,24c02";
+						reg = <0x51>;
+						read-only;
+					};
+				};
+
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+
+					eeprom-sfp-3@50 {
+						compatible = "at,24c02";
+						reg = <0x50>;
+						read-only;
+					};
+					eeprom-sfp-3@51 {
+						compatible = "at,24c02";
+						reg = <0x51>;
+						read-only;
+					};
+				};
+
+				i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+
+					eeprom-sfp-4@50 {
+						compatible = "at,24c02";
+						reg = <0x50>;
+						read-only;
+					};
+					eeprom-sfp-4@51 {
+						compatible = "at,24c02";
+						reg = <0x51>;
+						read-only;
+					};
+				};
+
+				i2c@4 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <4>;
+
+					temp-fan-1@2c {
+						compatible = "adi,adt7470";
+						reg = <0x2c>;
+					};
+				};
+
+				i2c@5 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <5>;
+
+					temp-fan-2@2f {
+						compatible = "adi,adt7470";
+						reg = <0x2f>;
+					};
+				};
+
+				i2c@6 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <6>;
+
+					psu-1@58 {
+						compatible = "pmbus";
+						reg = <0x58>;
+					};
+				};
+
+				i2c@7 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <7>;
+
+					psu-2@59 {
+						compatible = "pmbus";
+						reg = <0x59>;
+					};
+				};
+			};
+		};
+
+		dma@21300 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "fsl,mpc8541-dma", "fsl,eloplus-dma";
+			reg = <0x21300 0x4>;
+			ranges = <0x0 0x21100 0x200>;
+			cell-index = <0>;
+			dma-channel@0 {
+				compatible = "fsl,mpc8541-dma-channel",
+						"fsl,eloplus-dma-channel";
+				reg = <0x0 0x80>;
+				cell-index = <0>;
+				interrupt-parent = <&mpic>;
+				interrupts = <20 2>;
+			};
+			dma-channel@80 {
+				compatible = "fsl,mpc8541-dma-channel",
+						"fsl,eloplus-dma-channel";
+				reg = <0x80 0x80>;
+				cell-index = <1>;
+				interrupt-parent = <&mpic>;
+				interrupts = <21 2>;
+			};
+			dma-channel@100 {
+				compatible = "fsl,mpc8541-dma-channel",
+						"fsl,eloplus-dma-channel";
+				reg = <0x100 0x80>;
+				cell-index = <2>;
+				interrupt-parent = <&mpic>;
+				interrupts = <22 2>;
+			};
+			dma-channel@180 {
+				compatible = "fsl,mpc8541-dma-channel",
+						"fsl,eloplus-dma-channel";
+				reg = <0x180 0x80>;
+				cell-index = <3>;
+				interrupt-parent = <&mpic>;
+				interrupts = <23 2>;
+			};
+		};
+
+		enet0: ethernet@24000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			cell-index = <0>;
+			device_type = "network";
+			model = "TSEC";
+			compatible = "gianfar";
+			reg = <0x24000 0x1000>;
+			ranges = <0x0 0x24000 0x1000>;
+			local-mac-address = [ 00 00 00 00 00 00 ];
+			interrupts = <29 2 30 2 34 2>;
+			interrupt-parent = <&mpic>;
+			phy-handle = <&phy0>;
+
+			mdio@520 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "fsl,gianfar-mdio";
+				reg = <0x520 0x20>;
+
+				phy0: ethernet-phy@0 {
+					interrupt-parent = <&mpic>;
+					reg = <0x0>;
+					device_type = "ethernet-phy";
+				};
+			};
+		};
+
+		serial0: serial@4500 {
+			cell-index = <0>;
+			device_type = "serial";
+			compatible = "fsl,ns16550", "ns16550";
+			reg = <0x4500 0x100>; 	// reg base, size
+			clock-frequency = <0>;
+			interrupts = <42 2>;
+			interrupt-parent = <&mpic>;
+		};
+
+		mpic: pic@40000 {
+			interrupt-controller;
+			#address-cells = <0>;
+			#interrupt-cells = <2>;
+			reg = <0x40000 0x40000>;
+			compatible = "chrp,open-pic";
+			device_type = "open-pic";
+		};
+
+		cpm@919c0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "fsl,mpc8541-cpm", "fsl,cpm2";
+			reg = <0x919c0 0x30>;
+			ranges;
+
+			gpio0: cpm-pario-a@10d00 {
+				#gpio-cells = <2>;
+				compatible = "fsl,cpm2-pario-bank";
+				reg = <0x90d00 0x14>;
+				gpio-controller;
+			};
+
+			cpm-pario-b@90d20 {
+				#gpio-cells = <2>;
+				compatible = "fsl,cpm2-pario-bank";
+				reg = <0x90d20 0x14>;
+				gpio-controller;
+			};
+
+			cpm-pario-c@90d40 {
+				#gpio-cells = <2>;
+				compatible = "fsl,cpm2-pario-bank";
+				reg = <0x90d40 0x14>;
+				gpio-controller;
+			};
+
+			cpm-pario-d@90d60 {
+				#gpio-cells = <2>;
+				compatible = "fsl,cpm2-pario-bank";
+				reg = <0x90d60 0x14>;
+				gpio-controller;
+			};
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		system-status {
+			gpios = <&gpio0 22 1>;
+			linux,default-trigger = "default-on";
+		};
+	};
+
+	pci0: pci@e0008000 {
+		cell-index = <0>;
+		interrupt-map-mask = <0x1f800 0x0 0x0 0x7>;
+		interrupt-map = <
+
+			/* IDSEL 0x12 (Slot 1) */
+			0x9000 0x0 0x0 0x1 &mpic 0x3 0x1
+		>;
+
+		interrupt-parent = <&mpic>;
+		interrupts = <24 2>;
+		bus-range = <0 0>;
+		ranges = <0x2000000 0x0 0x80000000 0x80000000 0x0 0x20000000
+			  0x1000000 0x0 0x0 0xe2000000 0x0 0x100000>;
+		clock-frequency = <66666666>;
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		#address-cells = <3>;
+		reg = <0xe0008000 0x1000>;
+		compatible = "fsl,mpc8540-pci";
+		device_type = "pci";
+
+	};
+
+	localbus@f0010100 {
+		#address-cells = <2>;
+		#size-cells = <1>;
+		compatible = "fsl,mpc8541-localbus",
+			     "fsl,pq2-localbus",
+			     "simple-bus";
+		reg = <0xf0010100 0x40>;
+		interrupt-parent = <&mpic>;
+		interrupts = <19 2>;
+		ranges = <0x0 0x0 0xfe000000 0x2000000
+			  0x1 0x0 0xf0000000 0x10000
+			  0x2 0x0 0xf0010000 0x10000>;
+
+		flash@0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "cfi-flash";
+			reg = <0x0 0x0 0x2000000>;
+			bank-width = <2>;
+			device-width = <1>;
+
+			/* partition names must be sorted alphanumerically */
+			/* otherwise kexec/Linux may reorder mtd devices */
+
+			flash-00@00000000 {
+				label = "onl-loader";
+				reg = <0x00000000 0x00800000>;
+			};
+
+			flash-01@00800000 {
+				label = "mnt-flash";
+				reg = <0x00800000 0x01360000>;
+			};
+
+			flash-02@01b60000 {
+				label = "onie";
+				reg = <0x01b60000 0x00400000>;
+				read-only;
+			};
+
+			flash-03@01f60000 {
+				label = "uboot-env";
+				reg = <0x01f60000 0x00020000>;
+			};
+
+			flash-04@01f80000 {
+				label = "uboot";
+				reg = <0x01f80000 0x00080000>;
+				read-only;
+			};
+		};
+
+		pata@3,0 {
+			compatible = "quanta-lb-ata";
+			reg = <0x1 0x0 0x10000 0x2 0x0 0x10000>;
+			#interrupt-cells = <1>;
+			interrupts = <2 2>;
+			interrupt-parent = <&mpic>;
+		};
+	};
+};

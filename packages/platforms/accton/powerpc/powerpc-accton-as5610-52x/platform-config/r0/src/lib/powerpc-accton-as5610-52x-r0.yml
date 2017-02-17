@@ -12,8 +12,8 @@ powerpc-accton-as5610-52x-r0:
     kernel:
       <<: *e500v-kernel
     dtb:
-      =: powerpc-as5610-52x.dtb
-      <<: *e500v-kernel-package
+      =: powerpc-accton-as5610-52x-r0.dtb
+      package: onl-platform-build-powerpc-accton-as5610-52x-r0:powerpc
 
   loader:
     device: /dev/sda

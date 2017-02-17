@@ -34,14 +34,19 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
+#define MAX_MODEL_NAME          16
+
+#define DC12V_FAN_DIR_OFFSET    0x34
+#define DC12V_FAN_DIR_LEN       3
+
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
 static int as7716_32x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
 extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned 
  */
-static const unsigned short normal_i2c[] = { 0x50, 0x53, I2C_CLIENT_END };
+static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 
 /* Each client has this additional data 
  */
@@ -52,7 +57,8 @@ struct as7716_32x_psu_data {
     unsigned long       last_updated;    /* In jiffies */
     u8  index;           /* PSU index */
     u8  status;          /* Status(present/power_good) register read from CPLD */
-    char model_name[9]; /* Model name, read from eeprom */
+    char model_name[MAX_MODEL_NAME+1]; /* Model name, read from eeprom */
+    char fan_dir[DC12V_FAN_DIR_LEN+1]; /* DC12V fan direction */
 };
 
 static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *dev);             
@@ -60,19 +66,22 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
 enum as7716_32x_psu_sysfs_attributes {
     PSU_PRESENT,
     PSU_MODEL_NAME,
-    PSU_POWER_GOOD
+    PSU_POWER_GOOD,
+    PSU_FAN_DIR /* For DC12V only */
 };
 
 /* sysfs attributes for hwmon 
  */
-static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status,    NULL, PSU_PRESENT);
-static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
-static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,    NULL, PSU_POWER_GOOD);
+static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status, NULL, PSU_PRESENT);
+static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_string, NULL, PSU_MODEL_NAME);
+static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status, NULL, PSU_POWER_GOOD);
+static SENSOR_DEVICE_ATTR(psu_fan_dir,       S_IRUGO, show_string, NULL, PSU_FAN_DIR);
 
 static struct attribute *as7716_32x_psu_attributes[] = {
     &sensor_dev_attr_psu_present.dev_attr.attr,
     &sensor_dev_attr_psu_model_name.dev_attr.attr,
     &sensor_dev_attr_psu_power_good.dev_attr.attr,
+    &sensor_dev_attr_psu_fan_dir.dev_attr.attr,
     NULL
 };
 
@@ -82,6 +91,10 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct as7716_32x_psu_data *data = as7716_32x_psu_update_device(dev);
     u8 status = 0;
+
+    if (!data->valid) {
+        return -EIO;
+    }
 
     if (attr->index == PSU_PRESENT) {
         status = !(data->status >> (1-data->index) & 0x1);
@@ -93,12 +106,25 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     return sprintf(buf, "%d\n", status);
 }
 
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
+static ssize_t show_string(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct as7716_32x_psu_data *data = as7716_32x_psu_update_device(dev);
-    
-    return sprintf(buf, "%s\n", data->model_name);
+    char *ptr = NULL;
+
+    if (!data->valid) {
+        return -EIO;
+    }
+
+    if (attr->index == PSU_MODEL_NAME) {
+        ptr = data->model_name;
+    }
+    else { /* PSU_FAN_DIR */
+        ptr = data->fan_dir;
+    }
+
+    return sprintf(buf, "%s\n", ptr);
 }
 
 static const struct attribute_group as7716_32x_psu_group = {
@@ -219,6 +245,59 @@ static int as7716_32x_psu_read_block(struct i2c_client *client, u8 command, u8 *
     return result;
 }
 
+enum psu_type {
+    PSU_TYPE_AC_110V,
+    PSU_TYPE_DC_48V,
+    PSU_TYPE_DC_12V
+};
+
+struct model_name_info {
+    enum psu_type type;
+    u8 offset;
+    u8 length;
+    char* model_name;
+};
+
+struct model_name_info models[] = {
+{PSU_TYPE_AC_110V, 0x20, 8,  "YM-2651Y"},
+{PSU_TYPE_DC_48V,  0x20, 8,  "YM-2651V"},
+{PSU_TYPE_DC_12V,  0x00, 11, "PSU-12V-750"},
+};
+
+static int as7716_32x_psu_model_name_get(struct device *dev)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7716_32x_psu_data *data = i2c_get_clientdata(client);
+    int i, status;
+
+    for (i = 0; i < ARRAY_SIZE(models); i++) {
+        memset(data->model_name, 0, sizeof(data->model_name));
+
+        status = as7716_32x_psu_read_block(client, models[i].offset,
+                                           data->model_name, models[i].length);
+        if (status < 0) {
+            data->model_name[0] = '\0';
+            dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x%x)\n", 
+                                  client->addr, models[i].offset);
+            return status;
+        }
+        else {
+            data->model_name[models[i].length] = '\0';
+        }
+
+        /* Determine if the model name is known, if not, read next index
+         */
+        if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
+            return 0;
+        }
+        else {
+            data->model_name[0] = '\0';
+        }
+    }
+
+    return -ENODATA;
+}
+
 static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *dev)
 {
     struct i2c_client *client = to_i2c_client(dev);
@@ -231,6 +310,7 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
         int status;
 		int power_good = 0;
 
+        data->valid = 0;
         dev_dbg(&client->dev, "Starting as7716_32x update\n");
 
         /* Read psu status */
@@ -238,6 +318,7 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
         
         if (status < 0) {
             dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
+            goto exit;
         }
         else {
             data->status = status;
@@ -245,18 +326,27 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
 		
         /* Read model name */
         memset(data->model_name, 0, sizeof(data->model_name));
+        memset(data->fan_dir, 0, sizeof(data->fan_dir));
         power_good = (data->status >> (3-data->index) & 0x1);
 		
         if (power_good) {
-            status = as7716_32x_psu_read_block(client, 0x20, data->model_name, 
-                                               ARRAY_SIZE(data->model_name)-1);
-
-            if (status < 0) {
-                data->model_name[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+            if (as7716_32x_psu_model_name_get(dev) < 0) {
+                goto exit;
             }
-            else {
-                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
+
+            if (strncmp(data->model_name, 
+                        models[PSU_TYPE_DC_12V].model_name,
+                        models[PSU_TYPE_DC_12V].length) == 0) {
+                /* Read fan direction */
+                status = as7716_32x_psu_read_block(client, DC12V_FAN_DIR_OFFSET, 
+                                                   data->fan_dir, DC12V_FAN_DIR_LEN);
+
+                if (status < 0) {
+                    data->fan_dir[0] = '\0';
+                    dev_dbg(&client->dev, "unable to read fan direction from (0x%x) offset(0x%x)\n", 
+                                          client->addr, DC12V_FAN_DIR_OFFSET);
+                    goto exit;
+                }
             }
         }
         
@@ -264,6 +354,7 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
         data->valid = 1;
     }
 
+exit:
     mutex_unlock(&data->update_lock);
 
     return data;

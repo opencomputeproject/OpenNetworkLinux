@@ -24,10 +24,9 @@
  *
  ***********************************************************/
 #include <unistd.h>
-#include <onlplib/mmap.h>
 #include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
-#include <fcntl.h>
+#include "platform_lib.h"
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -67,7 +66,6 @@ static char* cpu_coretemp_files[] =
         NULL,
     };
 
-
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
 	{ }, /* Not used */
@@ -97,9 +95,6 @@ static onlp_thermal_info_t linfo[] = {
         },
 };
 
-
-
-
 /*
  * This will be called to intiialize the thermali subsystem.
  */
@@ -108,7 +103,6 @@ onlp_thermali_init(void)
 {
     return ONLP_STATUS_OK;
 }
-
 
 /*
  * Retrieve the information structure for the given thermal OID.
@@ -124,6 +118,9 @@ int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int local_id;
+    int psu_id;
+    psu_type_t psu_type;
+
     VALIDATE(id);
 
     local_id = ONLP_OID_ID_GET(id);
@@ -136,5 +133,14 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         return rv;
     }
 
+    psu_id   = local_id - THERMAL_1_ON_PSU1 + 1;
+    psu_type = get_psu_type(psu_id, NULL, 0);
+
+    if (psu_type == PSU_TYPE_AC_3YPOWER_F2B || psu_type == PSU_TYPE_AC_3YPOWER_B2F  ) {
+        int rv = psu_ym2401_pmbus_info_get(psu_id, "psu_temp1_input", &info->mcelsius);
+        return rv;
+    }
+
     return onlp_file_read_int(&info->mcelsius, devfiles__[local_id]);
 }
+

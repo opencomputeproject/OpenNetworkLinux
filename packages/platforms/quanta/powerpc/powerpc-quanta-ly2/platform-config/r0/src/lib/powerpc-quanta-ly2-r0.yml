@@ -13,7 +13,7 @@ powerpc-quanta-ly2-r0:
       <<: *e500v-kernel
     dtb:
       =: powerpc-quanta-ly2-r0.dtb
-      <<: *e500v-kernel-package
+      package: onl-platform-build-powerpc-quanta-ly2-r0:powerpc
 
   loader:
     device: /dev/mmcblk0
