@@ -15,7 +15,7 @@ class OnlPlatform_powerpc_quanta_ly2_r0(OnlPlatformQuanta,
         self.insmod("quanta-ly-hwmon.ko")
         subprocess.check_call("%s/sbin/gpio_init" % self.basedir_onl())
 
-        fan_dir='/sys/devices/soc@ffe00000/ffe03000.i2c/i2c-0/i2c-4/4-002e/fan_dir'
+        fan_dir='/sys/bus/i2c/devices/4-002e/fan_dir'
         if os.path.exists(fan_dir):
             with open(fan_dir) as f:
                 data = f.read()
