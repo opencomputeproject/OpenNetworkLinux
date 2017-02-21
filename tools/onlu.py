@@ -159,7 +159,7 @@ class Lock(object):
         self.handle.close()
 
 
-def filepath(absdir, relpath, eklass):
+def filepath(absdir, relpath, eklass, required=True):
     """Return the absolute path for the given absdir/repath file."""
     p = None
     if os.path.isabs(relpath):
@@ -170,7 +170,8 @@ def filepath(absdir, relpath, eklass):
     # Globs that result in a single file are allowed:
     g = glob.glob(p)
     if len(g) is 0:
-        raise eklass("'%s' did not match any files." % p)
+        if required:
+            raise eklass("'%s' did not match any files." % p)
     elif len(g) > 1:
             raise eklass("'%s' matched too many files %s" % (p, g))
     else:
@@ -178,7 +179,7 @@ def filepath(absdir, relpath, eklass):
 
     return p
 
-def validate_src_dst_file_tuples(absdir, data, dstsubs, eklass):
+def validate_src_dst_file_tuples(absdir, data, dstsubs, eklass, required=True):
     files = []
     if type(data) is dict:
         for (s,d) in data.iteritems():
@@ -202,11 +203,11 @@ def validate_src_dst_file_tuples(absdir, data, dstsubs, eklass):
     #
     flist = []
     for f in files:
-        src = filepath(absdir, f[0], eklass)
-        if not os.path.exists(src):
+        src = filepath(absdir, f[0], eklass, required)
+        if os.path.exists(src):
+            t = Template(f[1])
+            dst = t.substitute(dstsubs)
+            flist.append((src, dst))
+        elif required:
             raise eklass("Source file or directory '%s' does not exist." % src)
-        t = Template(f[1])
-        dst = t.substitute(dstsubs)
-        flist.append((src, dst))
-
     return flist

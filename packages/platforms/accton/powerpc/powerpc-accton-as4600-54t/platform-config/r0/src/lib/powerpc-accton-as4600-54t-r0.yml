@@ -11,8 +11,8 @@ powerpc-accton-as4600-54t-r0:
     kernel:
       <<: *e500v-kernel
     dtb:
-      =: powerpc-as4600-54t.dtb
-      <<: *e500v-kernel-package
+      =: powerpc-accton-as4600-54t-r0.dtb
+      package: onl-platform-build-powerpc-accton-as4600-54t-r0:powerpc
 
   loader:
     device: /dev/sda
