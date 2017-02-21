@@ -32,7 +32,7 @@ K_BUILD_TARGET := Image
 K_COPY_SRC := arch/arm/boot/Image
 K_COPY_GZIP := 1
 ifndef K_COPY_DST
-K_COPY_DST := kernel-3.2-deb7-arm-iproc-all.bin.gz
+K_COPY_DST := kernel-3.2-lts-arm-iproc-all.bin.gz
 endif
 
 export ARCH=arm
