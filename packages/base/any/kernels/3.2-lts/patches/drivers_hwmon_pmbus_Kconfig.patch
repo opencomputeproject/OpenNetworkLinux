@@ -1,0 +1,39 @@
+--- a/drivers/hwmon/pmbus/Kconfig
++++ b/drivers/hwmon/pmbus/Kconfig
+@@ -119,4 +119,34 @@ config SENSORS_ZL6100
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called zl6100.
+ 
++config SENSORS_DPS460
++	tristate "Delta DPS460"
++	default n
++	help
++	  If you say yes here you get hardware monitoring support for Delta
++	  DPSXXX Power Supply.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called dps460.
++
++config SENSORS_PS2471
++	tristate "Lite-ON PS2471"
++	default n
++	help
++	  If you say yes here you get hardware monitoring support for Lite
++	  -ON PS2471.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called ps2471.
++
++config SENSORS_CPR4011
++	tristate "Compuware CPR4011 4M11/21"
++	default n
++	help
++	  If you say yes here you get hardware monitoring support for Compuware
++	  CPR4011 4M11/21
++
++	  This driver can also be built as a module. If so, the module will
++	  be called cpr4011.
++
+ endif # PMBUS
+diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
+index 789376c..85aeddf 100644

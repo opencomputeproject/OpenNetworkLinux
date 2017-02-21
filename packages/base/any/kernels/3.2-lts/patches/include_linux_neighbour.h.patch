@@ -1,0 +1,26 @@
+--- a/include/linux/neighbour.h
++++ b/include/linux/neighbour.h
+@@ -20,6 +20,11 @@ enum {
+ 	NDA_LLADDR,
+ 	NDA_CACHEINFO,
+ 	NDA_PROBES,
++	NDA_VLAN,
++	NDA_PORT,
++	NDA_VNI,
++	NDA_IFINDEX,
++	NDA_MASTER,
+ 	__NDA_MAX
+ };
+ 
+@@ -33,6 +38,9 @@ enum {
+ #define NTF_PROXY	0x08	/* == ATF_PUBL */
+ #define NTF_ROUTER	0x80
+ 
++#define NTF_SELF        0x02
++#define NTF_MASTER      0x04
++
+ /*
+  *	Neighbor Cache Entry States.
+  */
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 4b04097..e2bde14 100644

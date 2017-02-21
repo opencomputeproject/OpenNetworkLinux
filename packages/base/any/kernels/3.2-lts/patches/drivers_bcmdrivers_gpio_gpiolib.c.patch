@@ -1,0 +1,265 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gpio/gpiolib.c
+@@ -0,0 +1,259 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/spinlock.h>
++#include <linux/ioport.h>
++#include <linux/interrupt.h>
++
++#include <mach/io_map.h>
++#include <mach/reg_utils.h>
++#include <mach/memory.h>
++
++#include <asm/pgtable.h>
++
++#include "gpio.h"
++#include "gpio_cfg.h"
++
++
++#if defined(IPROC_GPIO_CCA)
++
++extern struct iproc_gpio_irqcfg cca_gpio_irqcfg;
++
++#if (defined(CONFIG_MACH_NS) || defined(CONFIG_MACH_NSP))
++
++extern struct iproc_gpio_cfg cca_gpio_cfg;
++
++#endif /*CONFIG_MACH_NS || CONFIG_MACH_NSP */
++
++static struct resource iproc_gpio_cca_config_resource[] = {
++    [0] = {
++		.start	= IPROC_CCA_BASE,
++		.end	= IPROC_CCA_BASE + IPROC_GPIO_REG_SIZE - 1,
++		.flags	= IORESOURCE_MEM,
++		.name   = "intr",
++    },
++#if (defined(CONFIG_MACH_NS) || defined(CONFIG_MACH_NSP))
++    [1] = {
++		.start	= IPROC_DMU_BASE,
++		.end	= IPROC_DMU_BASE + 0x200 - 1,
++		.flags	= IORESOURCE_MEM,
++		.name   = "dmu",
++    },
++#else
++    [1] = {.name = "",},
++#endif
++};
++
++#endif /* IPROC_GPIO_CCA */
++
++
++#if defined(IPROC_GPIO_CCB) || defined(IPROC_GPIO_CCG)
++
++extern struct iproc_gpio_irqcfg ccb_gpio_irqcfg;
++extern struct iproc_gpio_cfg ccb_gpio_cfg;
++
++#endif /* IPROC_GPIO_CCB || IPROC_GPIO_CCG */
++
++
++#if defined(IPROC_GPIO_CCG)
++static struct resource iproc_gpio_resources[] = {
++	[0] = {
++		.start	= IPROC_GPIO_CCG_BASE,
++		.end	= IPROC_GPIO_CCG_BASE + IPROC_GPIO_REG_SIZE -1,
++		.flags	= IORESOURCE_MEM,
++	},
++};
++#else
++static struct resource iproc_gpio_resources[] = {
++	[0] = {
++		.start	= IPROC_GPIO_CCA_BASE,
++		.end	= IPROC_GPIO_CCA_BASE + IPROC_GPIO_REG_SIZE - 1,
++		.flags	= IORESOURCE_MEM,
++		.child = iproc_gpio_cca_config_resource,
++	},
++	[1] = {
++		.start	= IPROC_GPIO_CCB_BASE,
++		.end	= IPROC_GPIO_CCB_BASE + IPROC_GPIO_REG_SIZE -1,
++		.flags	= IORESOURCE_MEM,
++	}
++};
++#endif
++
++#if defined(CONFIG_MACH_NS) || defined(CONFIG_MACH_NSP)
++
++struct iproc_gpio_chip iproc_gpios_config[] = {
++    [0] = {
++        .id   = IPROC_GPIO_CCA_ID,
++        .config = &cca_gpio_cfg,
++        .chip   = {
++            .base           = 0,
++            .label          = "GPIOA",
++            .ngpio          = 24,
++        },
++        .irq_base = IPROC_GPIO_CCA_IRQ_BASE,
++        .resource = &iproc_gpio_resources[0],
++        .irq = IPROC_GPIO_CCA_INT,
++        .irqcfg = &cca_gpio_irqcfg,
++        .pin_offset = 0,
++    },
++};
++/* CONFIG_MACH_NS */
++#elif defined(CONFIG_MACH_HX4) || defined(CONFIG_MACH_KT2) || \
++        defined(CONFIG_MACH_DNI_3448P) || defined(CONFIG_MACH_ACCTON_AS4610_54)
++/*
++ * Chip level GPIO 0-3 from CMICD,
++ * GPIO 4-11 from ChipcommonA gpio pin 0 - 7
++ * Hence the base is 4 and the number is 8.
++ */
++struct iproc_gpio_chip iproc_gpios_config[] = {
++    [0] = {
++        .id   = IPROC_GPIO_CCA_ID,
++        .chip   = {
++            .base           = 4,
++            .label          = "GPIOA",
++            .ngpio          = 8,
++        },
++        .irq_base = IPROC_GPIO_CCA_IRQ_BASE,
++        .resource = &iproc_gpio_resources[0],
++        .irq = IPROC_GPIO_CCA_INT,
++        .irqcfg = &cca_gpio_irqcfg,
++        .pin_offset = 0,
++    },
++};
++#elif defined(CONFIG_MACH_HR2)
++/*
++ * Chip level GPIO 0-3 from CMICD,
++ * GPIO 4-15 are from ChipcommonA gpio pin 0 - 11
++ * where GPIO 8-15 are shared with MII or LED depends on strap pin
++ * Hence the base is 4 and the number is 12.
++ */
++struct iproc_gpio_chip iproc_gpios_config[] = {
++    [0] = {
++        .id   = IPROC_GPIO_CCA_ID,
++        .chip   = {
++            .base           = 4,
++            .label          = "GPIOA",
++            .ngpio          = 12,
++        },
++        .irq_base = IPROC_GPIO_CCA_IRQ_BASE,
++        .resource = &iproc_gpio_resources[0],
++        .irq = IPROC_GPIO_CCA_INT,
++        .irqcfg = &cca_gpio_irqcfg,
++        .pin_offset = 0,
++    },
++};
++#elif defined(CONFIG_MACH_GH)
++/*
++* Chip level GPIO 0-3 from CMICD,
++* GPIO 4-15 are from ChipcommonG gpio pin 4 - 15
++*/
++struct iproc_gpio_chip iproc_gpios_config[] = {
++    [0] = {
++        .id = IPROC_GPIO_CCG_ID,
++	.config = &ccb_gpio_cfg,
++        .chip = {
++            .base           = 4,
++            .label          = "GPIOG",
++            .ngpio          = 12,
++           },
++           .irq_base = IPROC_GPIO_CCG_IRQ_BASE,
++           .resource = &iproc_gpio_resources[0],
++           .irq = IPROC_GPIO_CCG_INT,
++           .irqcfg = &ccb_gpio_irqcfg,
++           .pin_offset = 4,
++    },
++};
++#else
++struct iproc_gpio_chip iproc_gpios_config[] = {
++    [0] = {
++        .id   = IPROC_GPIO_CCA_ID,
++        .chip   = {
++            .base           = 0,
++            .label          = "GPIOA",
++            .ngpio          = 32,
++        },
++        .irq_base = IPROC_GPIO_CCA_IRQ_BASE,
++        .resource = &iproc_gpio_resources[0],
++        .irq = IPROC_GPIO_CCA_INT,
++        .irqcfg = &cca_gpio_irqcfg,
++        .pin_offset = 0,
++    },
++    [1] = {
++        .id   = IPROC_GPIO_CCB_ID,
++        .chip   = {
++            .base           = -EINVAL,
++            .label          = "GPIOB",
++            .ngpio          = 4,
++        },
++        .irq_base = IPROC_GPIO_CCB_IRQ_BASE,
++        .resource = &iproc_gpio_resources[1],
++        .irq = IPROC_GPIO_CCB_INT,
++        .irqcfg = &ccb_gpio_irqcfg,
++        .pin_offset = 0,
++    },
++};
++#endif
++
++int iproc_gpiolib_init(void)
++{
++    struct iproc_gpio_chip *chip = iproc_gpios_config;
++    int gpn;
++    int temp_base;
++
++#if defined(CONFIG_MACH_NS)
++    /* bcm53012 support 24 gpios; bcm53010/53011 support 16 gpios */
++    if ((__REG32(IPROC_IDM_REGISTER_VA + 0xd500) & 0xc) != 0x0) {
++        iproc_gpios_config[0].chip.ngpio = 16;
++    }
++#endif
++#if defined(CONFIG_MACH_NSP)
++        /* bcm53025 support 32 gpios; bcm53022/53023 support 24 gpios */
++        reg32_write((volatile uint32_t *)(IPROC_PCIE_AXIB0_REG_VA + PAXB_0_CONFIG_IND_ADDR_BASE), 0);
++
++/*
++	the mechanism to get the chip number does not work, always reads 22K.
++	OTP must be programmed and then need to look at OTP
++	for now assume 25K chip
++
++        if ((__REG32(IPROC_PCIE_AXIB0_REG_VA + PAXB_0_CONFIG_IND_DATA_BASE)
++            & 0xffff0000) == 0x80250000) {
++*/
++        if (1) {
++            iproc_gpios_config[0].chip.ngpio = 32;
++        }
++#endif
++
++
++    temp_base = 0;
++    for (gpn = 0; gpn < ARRAY_SIZE(iproc_gpios_config); gpn++, chip++) {
++        if (gpn >= MAX_NS_GPIO){
++            printk("Unavailabe to add gpiolib\n");
++            return -EINVAL;
++        }
++
++        if (chip->chip.base == -EINVAL) {
++            chip->chip.base = temp_base;
++        }
++
++        iproc_gpiolib_add(chip);
++        temp_base = chip->chip.base + chip->chip.ngpio;
++	}
++
++	return 0;
++}
+diff --git a/drivers/bcmdrivers/include/Readme.txt b/drivers/bcmdrivers/include/Readme.txt
+new file mode 100644
+index 0000000..41eb87c

@@ -1,0 +1,25 @@
+--- a/drivers/mtd/chips/Kconfig
++++ b/drivers/mtd/chips/Kconfig
+@@ -52,8 +52,8 @@ config MTD_CFI_NOSWAP
+ 	  'NO', which is the default when CONFIG_MTD_CFI_ADV_OPTIONS isn't
+ 	  enabled, means that the CPU will not do any swapping; the chips
+ 	  are expected to be wired to the CPU in 'host-endian' form.
+-	  Specific arrangements are possible with the BIG_ENDIAN_BYTE and
+-	  LITTLE_ENDIAN_BYTE, if the bytes are reversed.
++	  Specific arrangements are possible with the BIG_ENDIAN_BYTE,
++	  LITTLE_ENDIAN_BYTE, and OF_BYTE_SWAP if the bytes are reversed.
+ 
+ 	  If you have a LART, on which the data (and address) lines were
+ 	  connected in a fashion which ensured that the nets were as short
+@@ -68,6 +68,9 @@ config MTD_CFI_BE_BYTE_SWAP
+ config MTD_CFI_LE_BYTE_SWAP
+ 	bool "LITTLE_ENDIAN_BYTE"
+ 
++config MTD_CFI_OF_BYTE_SWAP
++	bool "OF_BYTESWAP_PROPERTY"
++
+ endchoice
+ 
+ config MTD_CFI_GEOMETRY
+diff --git a/drivers/mtd/chips/cfi_cmdset_0020.c b/drivers/mtd/chips/cfi_cmdset_0020.c
+index 179814a..aa272a3 100644

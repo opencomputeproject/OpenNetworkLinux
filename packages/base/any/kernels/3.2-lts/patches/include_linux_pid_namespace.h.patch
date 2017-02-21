@@ -1,0 +1,13 @@
+--- a/include/linux/pid_namespace.h
++++ b/include/linux/pid_namespace.h
+@@ -30,6 +30,8 @@ struct pid_namespace {
+ #ifdef CONFIG_BSD_PROCESS_ACCT
+ 	struct bsd_acct_struct *bacct;
+ #endif
++	gid_t pid_gid;
++	int hide_pid;
+ };
+ 
+ extern struct pid_namespace init_pid_ns;
+diff --git a/include/linux/pkt_sched.h b/include/linux/pkt_sched.h
+index 7281d5a..443655d 100644

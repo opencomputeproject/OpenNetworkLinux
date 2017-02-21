@@ -1,0 +1,39 @@
+--- a/drivers/i2c/busses/Kconfig
++++ b/drivers/i2c/busses/Kconfig
+@@ -120,6 +120,16 @@ config I2C_ISCH
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called i2c-isch.
+ 
++config I2C_ISMT
++	tristate "Intel iSMT SMBus Controller"
++	depends on PCI && X86
++	help
++	  If you say yes to this option, support will be included for the Intel
++	  iSMT SMBus host controller interface.
++
++	  This driver can also be built as a module.  If so, the module will be
++	  called i2c-ismt.
++
+ config I2C_PIIX4
+ 	tristate "Intel PIIX4 and compatible (ATI/AMD/Serverworks/Broadcom/SMSC)"
+ 	depends on PCI
+@@ -330,6 +340,17 @@ config I2C_BLACKFIN_TWI_CLK_KHZ
+ 	help
+ 	  The unit of the TWI clock is kHz.
+ 
++config I2C_CEL_CPLD
++	tristate "Celestica CPLD I2C Driver"
++	depends on CEL_REDSTONE
++	help
++	  If you say yes to this option, support will be included for
++	  the Celestica CPLD I2C interface.  This interface is for
++	  interacting with SFP+ and QSFP modules.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called i2c-cel-cpld.
++
+ config I2C_CPM
+ 	tristate "Freescale CPM1 or CPM2 (MPC8xx/826x)"
+ 	depends on (CPM1 || CPM2) && OF_I2C
+diff --git a/drivers/i2c/busses/Makefile b/drivers/i2c/busses/Makefile
+index d6b8779..b3f56c8 100644

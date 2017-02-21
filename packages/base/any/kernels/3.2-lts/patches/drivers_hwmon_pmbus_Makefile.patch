@@ -1,0 +1,12 @@
+--- a/drivers/hwmon/pmbus/Makefile
++++ b/drivers/hwmon/pmbus/Makefile
+@@ -13,3 +13,6 @@ obj-$(CONFIG_SENSORS_MAX8688)	+= max8688.o
+ obj-$(CONFIG_SENSORS_UCD9000)	+= ucd9000.o
+ obj-$(CONFIG_SENSORS_UCD9200)	+= ucd9200.o
+ obj-$(CONFIG_SENSORS_ZL6100)	+= zl6100.o
++obj-$(CONFIG_SENSORS_DPS460)	+= dps460.o
++obj-$(CONFIG_SENSORS_PS2471)    += ps2471.o
++obj-$(CONFIG_SENSORS_CPR4011)   += cpr4011.o
+diff --git a/drivers/hwmon/pmbus/cpr4011.c b/drivers/hwmon/pmbus/cpr4011.c
+new file mode 100644
+index 0000000..4cd976a

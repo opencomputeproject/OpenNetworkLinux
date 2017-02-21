@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pwm/Kconfig
+@@ -0,0 +1,8 @@
++config IPROC_PWM
++	tristate "PWM support"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Add PWM support
++
++	  If unsure, say N.
+diff --git a/drivers/bcmdrivers/pwm/Makefile b/drivers/bcmdrivers/pwm/Makefile
+new file mode 100644
+index 0000000..18ac980

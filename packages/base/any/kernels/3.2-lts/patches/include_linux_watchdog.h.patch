@@ -1,0 +1,18 @@
+--- a/include/linux/watchdog.h
++++ b/include/linux/watchdog.h
+@@ -122,6 +122,13 @@ struct watchdog_device {
+ #define WDOG_NO_WAY_OUT		3	/* Is 'nowayout' feature set ? */
+ };
+ 
++/* Use the following function to set the nowayout feature */
++static inline void watchdog_set_nowayout(struct watchdog_device *wdd, bool nowayout)
++{
++	if (nowayout)
++		set_bit(WDOG_NO_WAY_OUT, &wdd->status);
++}
++
+ /* Use the following functions to manipulate watchdog driver specific data */
+ static inline void watchdog_set_drvdata(struct watchdog_device *wdd, void *data)
+ {
+diff --git a/include/net/addrconf.h b/include/net/addrconf.h
+index 44b1110..401ed48 100644

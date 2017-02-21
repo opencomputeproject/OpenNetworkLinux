@@ -1,0 +1,8 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/wdt/Makefile
+@@ -0,0 +1,2 @@
++
++obj-$(CONFIG_IPROC_WDT) += iproc_wdt.o
+diff --git a/drivers/bcmdrivers/wdt/iproc_wdt.c b/drivers/bcmdrivers/wdt/iproc_wdt.c
+new file mode 100755
+index 0000000..33812fa

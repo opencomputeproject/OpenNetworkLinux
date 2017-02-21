@@ -1,0 +1,46 @@
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -880,6 +880,30 @@ static int do_isapnp_entry(const char *filename,
+ 	return 1;
+ }
+ 
++/* LOOKS like x86cpu:vendor:VVVV:family:FFFF:model:MMMM:feature:*,FEAT,*
++ * All fields are numbers. It would be nicer to use strings for vendor
++ * and feature, but getting those out of the build system here is too
++ * complicated.
++ */
++
++static int do_x86cpu_entry(const char *filename, struct x86_cpu_id *id,
++			   char *alias)
++{
++	id->feature = TO_NATIVE(id->feature);
++	id->family = TO_NATIVE(id->family);
++	id->model = TO_NATIVE(id->model);
++	id->vendor = TO_NATIVE(id->vendor);
++
++	strcpy(alias, "x86cpu:");
++	ADD(alias, "vendor:",  id->vendor != X86_VENDOR_ANY, id->vendor);
++	ADD(alias, ":family:", id->family != X86_FAMILY_ANY, id->family);
++	ADD(alias, ":model:",  id->model  != X86_MODEL_ANY,  id->model);
++	strcat(alias, ":feature:*");
++	if (id->feature != X86_FEATURE_ANY)
++		sprintf(alias + strlen(alias), "%04X*", id->feature);
++	return 1;
++}
++
+ /* Ignore any prefix, eg. some architectures prepend _ */
+ static inline int sym_is(const char *symbol, const char *name)
+ {
+@@ -1051,6 +1075,10 @@ void handle_moddevtable(struct module *mod, struct elf_info *info,
+ 		do_table(symval, sym->st_size,
+ 			sizeof(struct isapnp_device_id), "isa",
+ 			do_isapnp_entry, mod);
++	else if (sym_is(symname, "__mod_x86cpu_device_table"))
++		do_table(symval, sym->st_size,
++			 sizeof(struct x86_cpu_id), "x86cpu",
++			 do_x86cpu_entry, mod);
+ 	free(zeros);
+ }
+ 
+diff --git a/scripts/package/Makefile b/scripts/package/Makefile
+index bc6aa00..b0817f9 100644

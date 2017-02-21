@@ -1,0 +1,13 @@
+--- a/arch/arm/include/asm/processor.h
++++ b/arch/arm/include/asm/processor.h
+@@ -119,6 +119,8 @@ static inline void prefetch(const void *ptr)
+ 
+ #endif
+ 
++#define HAVE_ARCH_PICK_MMAP_LAYOUT
++
+ #endif
+ 
+ #endif /* __ASM_ARM_PROCESSOR_H */
+diff --git a/arch/arm/kernel/entry-armv.S b/arch/arm/kernel/entry-armv.S
+index ece0996..5ad6b59 100644

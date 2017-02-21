@@ -1,0 +1,11 @@
+--- a/drivers/Kconfig
++++ b/drivers/Kconfig
+@@ -136,4 +136,6 @@ source "drivers/hv/Kconfig"
+ 
+ source "drivers/devfreq/Kconfig"
+ 
++source "drivers/bcmdrivers/Kconfig"
++
+ endmenu
+diff --git a/drivers/Makefile b/drivers/Makefile
+index 1b31421..9352f86 100644

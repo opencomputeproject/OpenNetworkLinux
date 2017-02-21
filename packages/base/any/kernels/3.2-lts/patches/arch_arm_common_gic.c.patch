@@ -1,0 +1,44 @@
+--- a/arch/arm/common/gic.c
++++ b/arch/arm/common/gic.c
+@@ -40,6 +40,8 @@
+ #include <linux/slab.h>
+ 
+ #include <asm/irq.h>
++#include <asm/exception.h>
++#include <asm/smp_plat.h>
+ #include <asm/mach/irq.h>
+ #include <asm/hardware/gic.h>
+ 
+@@ -215,6 +217,29 @@ static int gic_set_wake(struct irq_data *d, unsigned int on)
+ #define gic_set_wake	NULL
+ #endif
+ 
++asmlinkage void __exception_irq_entry gic_handle_irq(struct pt_regs *regs)
++{
++	u32 irqstat, irqnr;
++
++	do {
++		irqstat = readl_relaxed(gic_cpu_base_addr + GIC_CPU_INTACK);
++		irqnr = irqstat & ~0x1c00;
++
++		if (likely(irqnr > 15 && irqnr < 1021)) {
++			handle_IRQ(irqnr, regs);
++			continue;
++		}
++		if (irqnr < 16) {
++			writel_relaxed(irqstat, gic_cpu_base_addr + GIC_CPU_EOI);
++#ifdef CONFIG_SMP
++			do_IPI(irqnr, regs);
++#endif
++			continue;
++		}
++		break;
++	} while (1);
++}
++
+ static void gic_handle_cascade_irq(unsigned int irq, struct irq_desc *desc)
+ {
+ 	struct gic_chip_data *chip_data = irq_get_handler_data(irq);
+diff --git a/arch/arm/configs/iproc_defconfig b/arch/arm/configs/iproc_defconfig
+new file mode 100644
+index 0000000..c401047

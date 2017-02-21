@@ -1,0 +1,14 @@
+--- a/arch/arm/mm/Kconfig
++++ b/arch/arm/mm/Kconfig
+@@ -821,7 +821,8 @@ config CACHE_L2X0
+ 		   REALVIEW_EB_A9MP || ARCH_IMX_V6_V7 || MACH_REALVIEW_PBX || \
+ 		   ARCH_NOMADIK || ARCH_OMAP4 || ARCH_EXYNOS4 || ARCH_TEGRA || \
+ 		   ARCH_U8500 || ARCH_VEXPRESS_CA9X4 || ARCH_SHMOBILE || \
+-		   ARCH_PRIMA2 || ARCH_ZYNQ || ARCH_CNS3XXX || ARCH_HIGHBANK
++		   ARCH_PRIMA2 || ARCH_ZYNQ || ARCH_CNS3XXX || ARCH_HIGHBANK || \
++		   ARCH_IPROC
+ 	default y
+ 	select OUTER_CACHE
+ 	select OUTER_CACHE_SYNC
+diff --git a/arch/arm/mm/init.c b/arch/arm/mm/init.c
+index cc3f35d..ee3a9f1 100644

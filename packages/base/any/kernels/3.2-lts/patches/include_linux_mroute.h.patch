@@ -1,0 +1,13 @@
+--- a/include/linux/mroute.h
++++ b/include/linux/mroute.h
+@@ -34,7 +34,7 @@
+ #define SIOCGETSGCNT	(SIOCPROTOPRIVATE+1)
+ #define SIOCGETRPF	(SIOCPROTOPRIVATE+2)
+ 
+-#define MAXVIFS		32	
++#define MAXVIFS		256
+ typedef unsigned long vifbitmap_t;	/* User mode code depends on this lot */
+ typedef unsigned short vifi_t;
+ #define ALL_VIFS	((vifi_t)(-1))
+diff --git a/include/linux/msi.h b/include/linux/msi.h
+index 05acced..11b750e 100644

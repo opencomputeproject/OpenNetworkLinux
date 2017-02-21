@@ -1,0 +1,29 @@
+--- a/drivers/usb/misc/emi26.c
++++ b/drivers/usb/misc/emi26.c
+@@ -96,21 +96,17 @@ static int emi26_load_firmware (struct usb_device *dev)
+ 
+ 	err = request_ihex_firmware(&loader_fw, "emi26/loader.fw", &dev->dev);
+ 	if (err)
+-		goto nofw;
++		goto wraperr;
+ 
+ 	err = request_ihex_firmware(&bitstream_fw, "emi26/bitstream.fw",
+ 				    &dev->dev);
+ 	if (err)
+-		goto nofw;
++		goto wraperr;
+ 
+ 	err = request_ihex_firmware(&firmware_fw, "emi26/firmware.fw",
+ 				    &dev->dev);
+-	if (err) {
+-	nofw:
+-		dev_err(&dev->dev, "%s - request_firmware() failed\n",
+-			__func__);
++	if (err)
+ 		goto wraperr;
+-	}
+ 
+ 	/* Assert reset (stop the CPU in the EMI) */
+ 	err = emi26_set_reset(dev,1);
+diff --git a/drivers/usb/misc/emi62.c b/drivers/usb/misc/emi62.c
+index 723e833..1941439 100644

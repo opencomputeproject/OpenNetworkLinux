@@ -1,0 +1,15 @@
+--- a/drivers/base/Kconfig
++++ b/drivers/base/Kconfig
+@@ -172,6 +172,10 @@ config SYS_HYPERVISOR
+ 	bool
+ 	default n
+ 
++config GENERIC_CPU_DEVICES
++	bool
++	default n
++
+ source "drivers/base/regmap/Kconfig"
+ 
+ endmenu
+diff --git a/drivers/base/Makefile b/drivers/base/Makefile
+index 99a375a..1334d89 100644

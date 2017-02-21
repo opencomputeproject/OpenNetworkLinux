@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/dma/Kconfig
+@@ -0,0 +1,15 @@
++config IPROC_DMA
++	tristate "DMA support"
++	depends on ARCH_IPROC
++	select DMADEVICES
++	select DMADEVICES_DEBUG
++	select DMADEVICES_VDEBUG
++	select DMA_ENGINE
++	select PL330
++	select DMAC_PL330
++	select DMATEST
++	default n
++	help
++	  DMA support for pl330
++
++	  If unsure, say N.
+diff --git a/drivers/bcmdrivers/dma/Makefile b/drivers/bcmdrivers/dma/Makefile
+new file mode 100644
+index 0000000..0b6a480

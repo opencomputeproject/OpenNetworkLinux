@@ -1,0 +1,15 @@
+--- a/include/linux/device-mapper.h
++++ b/include/linux/device-mapper.h
+@@ -72,8 +72,8 @@ typedef void (*dm_postsuspend_fn) (struct dm_target *ti);
+ typedef int (*dm_preresume_fn) (struct dm_target *ti);
+ typedef void (*dm_resume_fn) (struct dm_target *ti);
+ 
+-typedef void (*dm_status_fn) (struct dm_target *ti, status_type_t status_type,
+-			      char *result, unsigned maxlen);
++typedef int (*dm_status_fn) (struct dm_target *ti, status_type_t status_type,
++			      char *result, unsigned int maxlen);
+ 
+ typedef int (*dm_message_fn) (struct dm_target *ti, unsigned argc, char **argv);
+ 
+diff --git a/include/linux/device.h b/include/linux/device.h
+index a31c5d0..34b5d6b 100644

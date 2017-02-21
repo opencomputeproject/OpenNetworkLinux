@@ -1,0 +1,27 @@
+--- a/include/linux/init.h
++++ b/include/linux/init.h
+@@ -82,12 +82,22 @@
+ #define __exit          __section(.exit.text) __exitused __cold notrace
+ 
+ /* Used for HOTPLUG */
++/* XXX - hack to disable __devinit for DPA drivers */
++#ifdef CONFIG_DPA
++#define __devinit
++#define __devinitdata
++#define __devinitconst
++#define __devexit
++#define __devexitdata
++#define __devexitconst
++#else
+ #define __devinit        __section(.devinit.text) __cold notrace
+ #define __devinitdata    __section(.devinit.data)
+ #define __devinitconst   __section(.devinit.rodata)
+ #define __devexit        __section(.devexit.text) __exitused __cold notrace
+ #define __devexitdata    __section(.devexit.data)
+ #define __devexitconst   __section(.devexit.rodata)
++#endif
+ 
+ /* Used for HOTPLUG_CPU */
+ #define __cpuinit        __section(.cpuinit.text) __cold notrace
+diff --git a/include/linux/input/mt.h b/include/linux/input/mt.h
+index 318bb82..0c74dfd 100644

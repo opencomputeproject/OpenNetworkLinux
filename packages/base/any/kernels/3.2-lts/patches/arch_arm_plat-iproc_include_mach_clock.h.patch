@@ -1,0 +1,41 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/include/mach/clock.h
+@@ -0,0 +1,35 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#ifndef CLOCK_H
++#define CLOCK_H
++
++#include <linux/clk.h>
++
++/*
++ * Operations on clocks -
++ * See <linux/clk.h> for description
++ */
++struct clk_ops {
++	int	(* enable)(struct clk *);
++	void	(* disable)(struct clk *);
++	long	(* round)(struct clk *, unsigned long);
++	int	(* setrate)(struct clk *, unsigned long);
++	/* Update current rate and return running status */
++	int	(* status)(struct clk *);
++};
++
++#endif
+diff --git a/arch/arm/plat-iproc/include/mach/common.h b/arch/arm/plat-iproc/include/mach/common.h
+new file mode 100644
+index 0000000..69f8f95

@@ -1,0 +1,172 @@
+--- /dev/null
++++ b/arch/arm/boot/dts/dni_3448p.dts
+@@ -0,0 +1,166 @@
++/*
++ * Delta Networks, Inc. 3448p Device Tree Source
++ *
++ * Copyright 2015, Cumulus Networks, Inc.
++ *
++ * This program is free software; you can redistribute	it and/or modify it
++ * under  the terms of	the GNU General  Public License as published by the
++ * Free Software Foundation;  either version 2 of the  License, or (at your
++ * option) any later version.
++ *
++ */
++/dts-v1/;
++/include/ "helix4.dtsi"
++
++/ {
++	model = "dni,3448p";
++	compatible = "dni,dni_3448p";
++
++	memory {
++		reg = <0x61000000 0x3f000000>;
++	};
++
++	aliases {
++		serial0 = &uart0;
++		i2c-controller0 = &i2c0;
++		i2c-controller1 = &i2c1;
++	};
++
++	cpus {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		cpu@0 {
++			device_type = "cpu";
++			compatible = "arm,cortex-a9";
++			next-level-cache = <&L2>;
++			reg = <0x00>;
++		};
++		cpu@1 {
++			device_type = "cpu";
++			compatible = "arm,cortex-a9";
++			next-level-cache = <&L2>;
++			reg = <0x01>;
++		};
++	};
++
++	localbus@1c000000 {
++		#address-cells = <0x2>;
++		#size-cells = <0x1>;
++		/* NAND Flash */
++		ranges = <
++			0x0 0x0 0x0 0x1c000000 0x00120000
++			0x1 0x0 0x0 0x1c120000 0x00040000
++		>;
++
++		flash@0,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "cfi-flash";
++			reg = <0x0 0x0 0x02000000>;
++			byteswap;
++
++			partition@0 {
++				/* uboot */
++				reg = <0x00000000 0x00100000>;
++				label = "uboot";
++			};
++			partition@1 {
++				/* uboot-env */
++				reg = <0x00100000 0x00400000>;
++				label = "uboot-env";
++				env_size = <0x10000>;
++			};
++			partition@2 {
++				/* vpd */
++				reg = <0x00500000 0x00200000>;
++				label = "vpd";
++			};
++			partition@3 {
++				/* shmoo */
++				reg = <0x00700000 0x00200000>;
++				label = "shmoo";
++			};
++			partition@4 {
++				/* open */
++				reg = <0x00900000 0xf9500000>;
++				label = "open";
++			};
++			partition@5 {
++				/* onie */
++				reg = <0xf9e00000 0x00c00000>;
++				label = "onie";
++			};
++			partition@6 {
++				/* onie2 */
++				reg = <0xfaa00000 0x00c00000>;
++				label = "onie2";
++			};
++			partition@7 {
++				/* board_eeprom */
++				reg = <0xfb600000 0x00600000>;
++				label = "board_eeprom";
++			};
++			partition@8 {
++				/* diags */
++				reg = <0xfbc00000 0x02000000>;
++				label = "diag";
++			};
++			partition@9 {
++				/* diags2 */
++				reg = <0xfdc00000 0x02000000>;
++				label = "diag2";
++			};
++		};
++		cpld@1,0 {
++			compatible = "dni,3448p-cpld";
++			reg = <0x1 0x0 0x00040000>;
++		};
++	};
++
++	i2c0: i2c@18038000 {
++		compatible = "iproc-smb";
++		reg = <0x18038000 0x1000>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++		interrupts = <0x0 127 0x0>;
++		clock-frequency = <100000>;
++		rtc@68 {
++			compatible = "stm,m41st85";
++			reg = <0x68>;
++		};
++		tmon@49 {
++			compatible = "ti,tmp75";
++			reg = <0x49>;
++		};
++		tmon@4a {
++			compatible = "ti,tmp75";
++			reg = <0x4a>;
++		};
++		CPLD1@1,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "dni,3448p-cpld";
++			label = "cpld";
++			reg = <0x28>;
++		};
++	};
++
++	i2c1: i2c@1803b000 {
++		compatible = "iproc-smb";
++		reg = <0x1803b000 0x1000>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++		interrupts = <0x0 128 0x0>;
++		clock-frequency = <100000>;
++
++		fan@2c {
++			compatible = "maxim,max6639";
++			reg = <0x2c>;
++		};
++		psumux@01 {
++			compatible = "3448p-psu-mux";
++			reg = <0x01>;
++		};
++	};
++};
+diff --git a/arch/arm/boot/dts/helix4.dtsi b/arch/arm/boot/dts/helix4.dtsi
+new file mode 100644
+index 0000000..1a7ce9e

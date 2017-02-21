@@ -1,0 +1,1103 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/board_bu.c
+@@ -0,0 +1,1097 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include <linux/version.h>
++#include <linux/init.h>
++#include <linux/device.h>
++#include <linux/platform_device.h>
++#include <linux/interrupt.h>
++#include <linux/dma-mapping.h>
++#include <linux/clkdev.h>
++#include <asm/hardware/gic.h>
++#ifdef CONFIG_EARLY_DMA_ALLOC
++#include <linux/early_dma_alloc.h>
++#endif
++
++
++#include <linux/i2c.h>
++#include <linux/delay.h>
++#include <linux/irq.h>
++#include <linux/input.h>
++#include <linux/i2c/tsc2007.h>
++#include <linux/i2c/pca954x.h>
++#include <linux/spi/spi.h>
++#include <mach/hardware.h>
++#include <asm/mach/arch.h>
++#include <asm/mach-types.h>
++#include <mach/sdio_platform.h>
++#include <mach/iproc.h>
++#include <mach/system.h>
++#include <asm/io.h>
++#include <mach/io_map.h>
++#include <mach/reg_utils.h>
++#include <linux/pwm.h>
++#include <linux/amba/bus.h>
++#include <linux/i2c/at24.h>
++
++#include "northstar.h"
++#include "common.h"
++#ifdef HNDCTF
++#include <typedefs.h>
++#include <ctf/hndctf.h>
++#endif /* HNDCTF */
++
++#include <linux/of_device.h>
++#include <linux/of_platform.h>
++#include <linux/of_address.h>
++
++#include <linux/amba/pl022.h>
++
++/* Fast device at 0x6000 offset */
++static AMBA_APB_DEVICE(pl020, "pl020", 0, 0x18028000,
++	{ 111 }, NULL);
++static AMBA_APB_DEVICE(pl021, "pl021", 0, 0x18029000,
++	{ 111 }, NULL);
++
++struct pl022_config_chip spi_chip_info = {
++	/* available POLLING_TRANSFER, INTERRUPT_TRANSFER, DMA_TRANSFER */
++	.com_mode = DMA_TRANSFER,
++	.iface = SSP_INTERFACE_MOTOROLA_SPI,
++	/* We can only act as master but SSP_SLAVE is possible in theory */
++	.hierarchy = SSP_MASTER,
++	/* 0 = drive TX even as slave, 1 = do not drive TX as slave */
++	.slave_tx_disable = 0,
++	.rx_lev_trig = SSP_RX_4_OR_MORE_ELEM,
++	.tx_lev_trig = SSP_TX_4_OR_MORE_EMPTY_LOC,
++	.ctrl_len = SSP_BITS_12,
++	.wait_state = SSP_MWIRE_WAIT_ZERO,
++	.duplex = SSP_MICROWIRE_CHANNEL_FULL_DUPLEX,
++};
++
++static struct pl022_ssp_controller ssp_platform_data[] = {
++	{
++		/* If you have several SPI buses this varies, we have only bus 0 */
++		.bus_id = 0,
++		/*
++		 * On the APP CPU GPIO 4, 5 and 6 are connected as generic
++		 * chip selects for SPI. (Same on U330, U335 and U365.)
++		 * TODO: make sure the GPIO driver can select these properly
++		 * and do padmuxing accordingly too.
++		 */
++		.num_chipselect = 1,
++		.enable_dma = 1,
++     },
++	{
++		/* If you have several SPI buses this varies, we have only bus 0 */
++		.bus_id = 1,
++		/*
++		 * On the APP CPU GPIO 4, 5 and 6 are connected as generic
++		 * chip selects for SPI. (Same on U330, U335 and U365.)
++		 * TODO: make sure the GPIO driver can select these properly
++		 * and do padmuxing accordingly too.
++		 */
++		.num_chipselect = 1,
++		.enable_dma = 1,
++     },
++};
++
++static struct spi_board_info iproc_spi_devices[] = {
++	{
++		/* A dummy chip used for loopback tests */
++		.modalias       = "spidev0",
++		/* Really dummy, pass in additional chip config here */
++		.platform_data  = NULL,
++		/* This defines how the controller shall handle the device */
++		.controller_data = &spi_chip_info,
++		/* .irq - no external IRQ routed from this device */
++		.max_speed_hz   = 1000000,
++		.bus_num        = 0, /* Only one bus on this chip */
++		.chip_select    = 0,
++		/* Means SPI_CS_HIGH, change if e.g low CS */
++		.mode           = SPI_MODE_2 | SPI_NO_CS,
++	},
++	{
++		/* A dummy chip used for loopback tests */
++		.modalias       = "spidev1",
++		/* Really dummy, pass in additional chip config here */
++		.platform_data  = NULL,
++		/* This defines how the controller shall handle the device */
++		.controller_data = &spi_chip_info,
++		/* .irq - no external IRQ routed from this device */
++		.max_speed_hz   = 1000000,
++		.bus_num        = 1, /* Only one bus on this chip */
++		.chip_select    = 0,
++		/* Means SPI_CS_HIGH, change if e.g low CS */
++		.mode           = SPI_MODE_2 | SPI_NO_CS,
++	},
++};
++
++/*
++ * The order of device declaration may be important, since some devices
++ * have dependencies on other devices being initialized first.
++ */
++static struct amba_device *amba_pl_devs[] __initdata = {
++	&pl020_device,
++	&pl021_device,
++
++};
++
++void __init iproc_spi_init(struct amba_device *adev, int i)
++{
++	adev->dev.platform_data = &ssp_platform_data[i];
++}
++
++void __init iproc_spi_register_board_devices(void)
++{
++	/* Register any SPI devices */
++	spi_register_board_info(iproc_spi_devices, ARRAY_SIZE(iproc_spi_devices));
++}
++
++void __init iproc_init_devics(void)
++{
++	int i;
++
++	/* Register the AMBA devices in the AMBA bus abstraction layer */
++	for (i = 0; i < ARRAY_SIZE(amba_pl_devs); i++) {
++		struct amba_device *d = amba_pl_devs[i];
++	    iproc_spi_init(d, i);
++		amba_device_register(d, &iomem_resource);
++	}
++
++	/* Register SPI bus */
++	iproc_spi_register_board_devices();
++}
++
++
++#if defined(CONFIG_IPROC_SD) || defined(CONFIG_IPROC_SD_MODULE)
++#define IPROC_SDIO_PA   	IPROC_SDIO3_REG_BASE
++#define SDIO_CORE_REG_SIZE	0x10000
++#define BSC_CORE_REG_SIZE	0x1000
++#define SDIO_IDM_IDM_RESET_CONTROL  (0x16800)
++#define IPROC_SDIO_IRQ		(177)
++#endif
++
++#if defined(CONFIG_MACH_NSP)
++#define SATA_M0_IDM_IO_CONTROL_DIRECT_VA   HW_IO_PHYS_TO_VIRT(SATA_M0_IDM_IO_CONTROL_DIRECT)
++#define SATA_M0_IDM_IDM_RESET_CONTROL_VA   HW_IO_PHYS_TO_VIRT(SATA_M0_IDM_IDM_RESET_CONTROL)
++#define SATA_TOP_CTRL_BUS_CTRL_VA   HW_IO_PHYS_TO_VIRT(SATA_TOP_CTRL_BUS_CTRL)
++#define SATA3_PCB_UPPER_REG15_VA   HW_IO_PHYS_TO_VIRT(SATA3_PCB_UPPER_REG15)
++#define SATA3_PCB_UPPER_REG0_VA   HW_IO_PHYS_TO_VIRT(SATA3_PCB_UPPER_REG0)
++#define SATA3_PCB_UPPER_REG1_VA   HW_IO_PHYS_TO_VIRT(SATA3_PCB_UPPER_REG1)
++#define SATA3_PCB_UPPER_REG11_VA   HW_IO_PHYS_TO_VIRT(SATA3_PCB_UPPER_REG11)
++#define SATA3_PCB_UPPER_REG5_VA   HW_IO_PHYS_TO_VIRT(SATA3_PCB_UPPER_REG5)
++#define AXIIC_sata_m0_fn_mod_VA   HW_IO_PHYS_TO_VIRT(AXIIC_sata_m0_fn_mod)
++#define BCM_INT_SATA 190
++#define NSP_CHIPID 0x3F00CF1E
++#endif
++
++#ifndef CONFIG_MACH_CYGNUS
++extern void request_idm_timeout_interrupts(void);
++#endif
++
++extern irqreturn_t idm_timeout_handler(int val, void *ptr);
++#if (defined(CONFIG_MACH_NSP) && defined(CONFIG_IPROC_OTP))
++extern void*	bcm5301x_otp_init(void);
++extern int	bcm5301x_otp_exit(void);
++extern int	bcm5301x_otp_read_dword(void *oh, uint wn, u32 *data);
++#endif /* (defined(CONFIG_MACH_NSP) && defined(CONFIG_IPROC_OTP)) */
++
++#ifdef	CONFIG_MACH_CYGNUS_EMULATION  //cygnus:emulator:
++	/* This is the main reference clock 25MHz from external crystal */
++	static struct clk clk_ref = {
++		.name = "Refclk",
++		.rate = CONFIG_CYGNUS_EMULATION_SCLK,   /* run-time override */
++		.fixed = 1,
++		.type  = 0,
++	};
++#else
++/* This is the main reference clock 25MHz from external crystal */
++static struct clk clk_ref = {
++	.name = "Refclk",
++	.rate = 25 * 1000000,   /* run-time override */
++	.fixed = 1,
++	.type  = 0,
++};
++#endif /* END of CYGNUS */
++
++#ifdef HNDCTF
++ctf_t *kcih = NULL;
++EXPORT_SYMBOL(kcih);
++ctf_attach_t ctf_attach_fn = NULL;
++EXPORT_SYMBOL(ctf_attach_fn);
++#endif /* HNDCTF */
++
++static struct clk_lookup board_clk_lookups[] = {
++	{
++	.con_id         = "refclk",
++	.clk            = &clk_ref,
++	}
++};
++
++extern void __init northstar_timer_init(struct clk *clk_ref);
++
++#if defined(CONFIG_IPROC_SD) || defined(CONFIG_IPROC_SD_MODULE)
++/* sdio */
++static struct sdio_platform_cfg sdio_platform_data = {
++	.devtype = SDIO_DEV_TYPE_SDMMC,
++};
++static struct resource sdio_resources[] = {
++	[0] = {
++		.start	= IPROC_SDIO_PA,
++		.end	= IPROC_SDIO_PA + BSC_CORE_REG_SIZE - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++	[1] = {
++		.start	= IPROC_SDIO_IRQ,
++		.end	= IPROC_SDIO_IRQ,
++		.flags	= IORESOURCE_IRQ,
++	}
++};
++
++static struct platform_device board_sdio_device = {
++	.name		=	"iproc-sdio",
++	.id		=	0,
++	.dev		=	{
++		.platform_data	= &sdio_platform_data,
++	},
++	.num_resources  = ARRAY_SIZE(sdio_resources),
++   .resource	= sdio_resources,
++};
++
++static void setup_sdio(void)
++{
++    void __iomem *idm_base;
++    struct platform_device *sdio_plat_dev[1];
++    idm_base = (void __iomem *)IPROC_IDM_REGISTER_VA;
++	printk("%s: %d %p\n", __FUNCTION__, __LINE__, idm_base + SDIO_IDM_IDM_RESET_CONTROL);
++    writel_relaxed(0, idm_base + SDIO_IDM_IDM_RESET_CONTROL);
++    sdio_plat_dev[0] = &board_sdio_device;
++    platform_add_devices(sdio_plat_dev, 1);
++
++}
++#endif /* CONFIG_IPROC_SD || CONFIG_IPROC_SD_MODULE */
++
++#if defined(CONFIG_IPROC_PWM) || defined(CONFIG_IPROC_PWM_MODULE)
++static struct resource iproc_pwm_resources = {
++	.start	= IPROC_CCB_PWM_CTL,
++	.end	= IPROC_CCB_PWM_CTL + SZ_4K - 1,
++	.flags	= IORESOURCE_MEM,
++};
++
++static struct platform_device board_pwm_device = {
++	.name		= "iproc_pwmc",
++	.id	        = -1,
++   .resource	= &iproc_pwm_resources,
++   .num_resources  = 1,
++};
++static struct pwm_lookup board_pwm_lookup[] = {
++    PWM_LOOKUP("iproc_pwmc", 0,"iproc_pwmc","pwm-0"),
++    PWM_LOOKUP("iproc_pwmc", 1,"iproc_pwmc","pwm-1"),
++    PWM_LOOKUP("iproc_pwmc", 2,"iproc_pwmc","pwm-2"),
++    PWM_LOOKUP("iproc_pwmc", 3,"iproc_pwmc","pwm-3"),
++
++};
++
++#endif /* CONFIG_IPROC_PWM || CONFIG_IPROC_PWM_MODULE */
++
++#if defined(CONFIG_IPROC_WDT) || defined(CONFIG_IPROC_WDT_MODULE)
++/* watchdog */
++static struct resource wdt_resources[] = {
++	[0] = {
++		.start	= IPROC_CCA_REG_BASE,
++		.end	= IPROC_CCA_REG_BASE + 0x1000 - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++};
++
++static struct platform_device board_wdt_device = {
++	.name		=	"iproc_wdt",
++	.id		    =	-1,
++	.num_resources  = ARRAY_SIZE(wdt_resources),
++   .resource	= wdt_resources,
++};
++#endif /* CONFIG_IPROC_WDT || CONFIG_IPROC_WDT_MODULE */
++
++#if defined(CONFIG_ARM_SP805_WATCHDOG) || defined(CONFIG_ARM_SP805_WATCHDOG_MODULE)
++static AMBA_APB_DEVICE(sp805_wdt, "sp805-wdt", 0x00141805,
++								IPROC_SP805_WDT_REG_BASE, { }, NULL);
++#endif
++
++#if defined(CONFIG_IPROC_CCB_TIMER) || defined(CONFIG_IPROC_CCB_TIMER_MODULE)
++static struct resource ccb_timer_resources[] = {
++	[0] = {
++		.start	= IPROC_CCB_TIMER_INT_START,
++		.end	= IPROC_CCB_TIMER_INT_START + IPROC_CCB_TIMER_INT_COUNT - 1,
++		.flags	= IORESOURCE_IRQ,
++	},
++	[1] = {
++		.start	= IPROC_CCB_TIMER0_REGS_VA,
++		.end	= IPROC_CCB_TIMER0_REGS_VA + 0x20 - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++	[2] = {
++		.start	= IPROC_CCB_TIMER1_REGS_VA,
++		.end	= IPROC_CCB_TIMER1_REGS_VA + 0x20 - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++	[3] = {
++		.start	= IPROC_CCB_TIMER2_REGS_VA,
++		.end	= IPROC_CCB_TIMER2_REGS_VA + 0x20 - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++	[4] = {
++		.start	= IPROC_CCB_TIMER3_REGS_VA,
++		.end	= IPROC_CCB_TIMER3_REGS_VA + 0x20 - 1,
++		.flags	= IORESOURCE_MEM,
++	},
++};
++
++static struct platform_device board_timer_device = {
++	.name		=	"iproc_ccb_timer",
++	.id		    =	-1,
++	.num_resources  = ARRAY_SIZE(ccb_timer_resources),
++   .resource	= ccb_timer_resources,
++};
++#endif /* CONFIG_IPROC_CCB_TIMER || CONFIG_IPROC_CCB_TIMER_MODULE */
++
++#if defined(CONFIG_IPROC_FA2)
++#if defined(CONFIG_MACH_NSP)
++static struct resource fa2_resources[] = {
++    [0] = {
++        .start  = CTF_CONTROL_REG, /* Macro is in socregs_nsp.h */
++        .end    = CTF_CONTROL_REG + SZ_1K - 1,
++        .flags  = IORESOURCE_MEM,
++    },
++    [1] = {
++        .start  = 178,
++        .end    = 178,
++        .flags  = IORESOURCE_IRQ,
++    }
++};
++#endif
++#endif /* CONFIG_IPROC_FA2 */
++
++#if !(defined(CONFIG_MACH_DNI_3448P) || defined(CONFIG_MACH_ACCTON_AS4610_54))
++#if defined(CONFIG_MACH_HX4) || defined(CONFIG_MACH_KT2)
++/* Helix4 */
++static struct resource smbus_resources[] = {
++    [0] = {
++        .start  = ChipcommonB_SMBus_Config, /* Macro is in socregs_hx4.h */
++        .end    = ChipcommonB_SMBus_Config + SZ_4K - 1,
++        .flags  = IORESOURCE_MEM,
++    },
++    [1] = {
++        .start  = 127,
++        .end    = 127,
++        .flags  = IORESOURCE_IRQ,
++    }
++};
++
++static struct resource smbus_resources1[] = {
++    [0] = {
++        .start  = ChipcommonB_SMBus1_SMBus_Config, /* Macro is in socregs_hx4.h */
++        .end    = ChipcommonB_SMBus1_SMBus_Config + SZ_4K - 1,
++        .flags  = IORESOURCE_MEM
++    },
++    [1] = {
++        .start  = 128, /* macro in irqs.h (plat-iproc) */
++        .end    = 128,
++        .flags  = IORESOURCE_IRQ,
++    }
++};
++#elif defined(CONFIG_MACH_NSP)
++/* Northstar plus */
++static struct resource smbus_resources[] = {
++    [0] = {
++        .start  = ChipcommonB_SMBus_Config, /* Macro is in socregs_hx4.h */
++        .end    = ChipcommonB_SMBus_Config + SZ_4K - 1,
++        .flags  = IORESOURCE_MEM,
++    },
++    [1] = {
++        .start  = 121,
++        .end    = 121,
++        .flags  = IORESOURCE_IRQ,
++    }
++};
++#else
++/* Northstar */
++static struct resource smbus_resources[] = {
++    [0] = {
++        .start  = CCB_SMBUS_START, /* Define this macro is socregs.h, or
++                                    in iproc_regs.h */
++        .end    = CCB_SMBUS_START + SZ_4K - 1,
++        .flags  = IORESOURCE_MEM,
++    },
++    [1] = {
++        .start  = BCM_INT_ID_CCB_SMBUS, /* macro in irqs.h (plat-iproc) */
++        .end    = BCM_INT_ID_CCB_SMBUS,
++        .flags  = IORESOURCE_IRQ,
++    }
++};
++#endif
++
++/* Common to Northstar, Helix4 */
++static struct platform_device board_smbus_device = {
++    .name= "iproc-smb",
++    .id = 0,
++    .dev= {
++        .platform_data  = NULL, /* Can be defined, if reqd */
++    },
++    .num_resources = ARRAY_SIZE(smbus_resources),
++    .resource = smbus_resources,
++};
++#if defined(CONFIG_MACH_HX4) || defined(CONFIG_MACH_KT2)
++static struct platform_device board_smbus_device1 = {
++    .name= "iproc-smb",
++    .id = 1,
++    .dev= {
++        .platform_data  = NULL, /* Can be defined, if reqd */
++    },
++    .num_resources = ARRAY_SIZE(smbus_resources1),
++    .resource = smbus_resources1,
++};
++
++#endif /* CONFIG_MACH_HX4 */
++#endif /* Not ACCTON-AS4610-54, dni-3448p */
++
++#if defined(CONFIG_IPROC_FA2)
++#if defined(CONFIG_MACH_NSP)
++static struct platform_device board_fa2_device = {
++    .name= "fa2",
++    .id = 0,
++    .dev= {
++        .platform_data  = NULL, /* Can be defined, if reqd */
++    },
++    .num_resources = ARRAY_SIZE(fa2_resources),
++    .resource = fa2_resources,
++};
++#endif
++#endif /* CONFIG_IPROC_FA2 */
++
++#ifdef CONFIG_IPROC_USB3H
++static struct resource bcm_xhci_resources[] = {
++        [0] = {
++                .start  = USB30_BASE,
++                .end    = USB30_BASE + SZ_4K - 1,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start  = BCM_INT_ID_USB3H2CORE_USB2_INT0,
++                .end    = BCM_INT_ID_USB3H2CORE_USB2_INT0,
++                .flags  = IORESOURCE_IRQ,
++        },
++};
++
++static u64 xhci_dmamask = DMA_BIT_MASK(32);
++
++static struct platform_device bcm_xhci_device = {
++	.name		=	"bcm-xhci",
++	.id		=	0,
++	.dev		=	{
++//		 .platform_data	= &xhci_platform_data,
++		 .dma_mask       = &xhci_dmamask,
++		 .coherent_dma_mask = DMA_BIT_MASK(32),
++	},
++   .resource	= bcm_xhci_resources,
++	.num_resources  = ARRAY_SIZE(bcm_xhci_resources),
++};
++#endif /* CONFIG_IPROC_USB3 */
++
++#ifdef CONFIG_USB_EHCI_BCM
++
++static u64 ehci_dmamask = DMA_BIT_MASK(32);
++
++static struct resource usbh_ehci_resource[] = {
++	[0] = {
++		.start = IPROC_USB20_REG_BASE,
++		.end = IPROC_USB20_REG_BASE + 0x0FFF,
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		// FIXME Cumulus: Helix4 IRQ value should be 117,
++		// some #define in plat-iproc irqgs.h is messed up
++		.start = 117,
++		.end = 117,
++		//.start = BCM_INT_ID_USB2H2CORE_USB2_INT,
++		//.end = BCM_INT_ID_USB2H2CORE_USB2_INT,
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct platform_device usbh_ehci_device =
++{
++	.name = "bcm-ehci",
++	.id = 0,
++	.resource = usbh_ehci_resource,
++	.num_resources = ARRAY_SIZE(usbh_ehci_resource),
++	.dev = {
++		.dma_mask = &ehci_dmamask,
++		.coherent_dma_mask = DMA_BIT_MASK(32),
++	},
++};
++#endif
++
++#ifdef CONFIG_USB_OHCI_BCM
++
++static u64 ohci_dmamask = DMA_BIT_MASK(32);
++
++static struct resource usbh_ohci_resource[] = {
++	[0] = {
++		.start = IPROC_USB20_REG_BASE + 0x1000,
++		.end = IPROC_USB20_REG_BASE + 0x1000 + 0x0FFF,
++		.flags = IORESOURCE_MEM,
++	},
++	[1] = {
++		// FIXME Cumulus: Helix4 IRQ value should be 117,
++		// some #define in plat-iproc irqgs.h is messed up
++		.start = 117,
++		.end = 117,
++		//.start = BCM_INT_ID_USB2H2CORE_USB2_INT,
++		//.end = BCM_INT_ID_USB2H2CORE_USB2_INT,
++		.flags = IORESOURCE_IRQ,
++	},
++};
++
++static struct platform_device usbh_ohci_device =
++{
++	.name = "bcm-ohci",
++	.id = 0,
++	.resource = usbh_ohci_resource,
++	.num_resources = ARRAY_SIZE(usbh_ohci_resource),
++	.dev = {
++		.dma_mask = &ohci_dmamask,
++		.coherent_dma_mask = DMA_BIT_MASK(32),
++	},
++};
++#endif
++
++#ifdef CONFIG_SATA_AHCI_PLATFORM
++static struct resource bcm_sata_resources[] = {
++        [0] = {
++                .start  = SATA_AHCI_GHC_HBA_CAP,
++                .end    = SATA_AHCI_GHC_HBA_CAP + SZ_4K - 1,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start  = BCM_INT_SATA,
++                .end    = BCM_INT_SATA,
++                .flags  = IORESOURCE_IRQ,
++        },
++};
++static u64 sata_dmamask = DMA_BIT_MASK(32);
++
++static struct platform_device bcm_sata_device = {
++	.name		=	"strict-ahci",
++	.id		=	0,
++	.dev		=	{
++		 .dma_mask       = &sata_dmamask,
++		 .coherent_dma_mask = DMA_BIT_MASK(32),
++	},
++   .resource	= bcm_sata_resources,
++	.num_resources  = ARRAY_SIZE(bcm_sata_resources),
++};
++#endif
++
++#ifdef CONFIG_DMAC_PL330
++#include "../../../../bcmdrivers/dma/pl330-pdata.h"
++static struct iproc_pl330_data iproc_pl330_pdata =	{
++	/* Non Secure DMAC virtual base address */
++	.dmac_ns_base = IPROC_DMAC_REG_VA,
++	/* Secure DMAC virtual base address */
++	.dmac_s_base = IPROC_DMAC_REG_VA,
++	/* # of PL330 dmac channels 'configurable' */
++	.num_pl330_chans = 8,
++	/* irq number to use */
++	.irq_base = BCM_INT_ID_DMAC,
++	/* # of PL330 Interrupt lines connected to GIC */
++	.irq_line_count = 16,
++};
++
++static struct platform_device pl330_dmac_device = {
++	.name = "iproc-dmac-pl330",
++	.id = 0,
++	.dev = {
++		.platform_data = &iproc_pl330_pdata,
++		.coherent_dma_mask  = DMA_BIT_MASK(64),
++	},
++};
++#endif
++
++
++#if defined(CONFIG_MACH_NSP)
++void config_AHCI( void )
++{
++	volatile unsigned int sata_clk_enable;
++	volatile unsigned int bustopcfg;
++
++	printk("\nConfigure AHCI ...\n");
++	sata_clk_enable = readl_relaxed(SATA_M0_IDM_IO_CONTROL_DIRECT_VA);
++    sata_clk_enable |= 0x1;
++    writel_relaxed( sata_clk_enable, SATA_M0_IDM_IO_CONTROL_DIRECT_VA);
++    sata_clk_enable = readl_relaxed(SATA_M0_IDM_IO_CONTROL_DIRECT_VA);
++    udelay(1000);
++
++
++    /* Reset core */
++    writel_relaxed(0x0, SATA_M0_IDM_IDM_RESET_CONTROL_VA);
++    udelay(1000);
++    sata_clk_enable = readl_relaxed(SATA_M0_IDM_IDM_RESET_CONTROL_VA);
++    bustopcfg = __raw_readl(SATA_TOP_CTRL_BUS_CTRL_VA);  // JIRA:LINUXDEV-39
++    bustopcfg &= ~ (( 3 << 2) | ( 3 << 4 ));
++    bustopcfg |= (( 2 << 2) | ( 2 << 4 ));//| ( 2<< 6 ));
++    //bustopcfg |= ( ( 0x2 << 8 ) | ( 0x2 << 17 ) );
++    writel_relaxed(bustopcfg, SATA_TOP_CTRL_BUS_CTRL_VA);
++}
++void configure_SATA_PHY ( void )
++{
++	unsigned int i, tmp;
++	void __iomem *bs = ioremap(AXIIC_sata_m0_fn_mod, 4);
++
++	void __iomem *id = IOMEM(IPROC_CCA_CORE_REG_VA);
++
++	printk("\nConfigure PHY ...\n");
++
++	writel_relaxed(0x0150,SATA3_PCB_UPPER_REG15_VA);
++	writel_relaxed( 0xF6F6, SATA3_PCB_UPPER_REG0_VA);
++	writel_relaxed( 0x2e96, SATA3_PCB_UPPER_REG1_VA);
++
++	writel_relaxed(0x0160,SATA3_PCB_UPPER_REG15_VA);
++	writel_relaxed( 0xF6F6, SATA3_PCB_UPPER_REG0_VA);
++	writel_relaxed( 0x2e96, SATA3_PCB_UPPER_REG1_VA);
++
++	//access SATA PLL
++	writel_relaxed(0x0050,SATA3_PCB_UPPER_REG15_VA);
++	//Audio PLL 0x8B
++	i = readl_relaxed(SATA3_PCB_UPPER_REG11_VA);
++	i &= ~ (( 0x1f) << 9 );
++	i |= ( 0xC << 9);
++	writel_relaxed( i, SATA3_PCB_UPPER_REG11_VA);
++
++	//Sequence for restarting PLL. Please try after changing the divider.
++	//'PLL_CapCtrl[10] = 1, PLL_CapCtrl[7:0] = F0h
++	//SATA3_PLL: PLL Register Bank address 0x50
++
++	//set register SATA3_PLL_capControl ( 0x85 )
++	i = readl_relaxed(SATA3_PCB_UPPER_REG5_VA);
++	i =  ( i | 0x4f0 ) & 0xFF0;
++	writel_relaxed( i, SATA3_PCB_UPPER_REG5_VA);
++
++	//'PLL_Ctrl[13:12] = 11
++	//Set register SATA3_PLL_CONTROL ( 0x81 )
++	i = readl_relaxed(SATA3_PCB_UPPER_REG1_VA);
++	i |= 0x3000;
++	writel_relaxed( i, SATA3_PCB_UPPER_REG1_VA);
++
++	//'PLL_ReStart
++	i = readl_relaxed(SATA3_PCB_UPPER_REG1_VA);
++	i &= 0x7FFF;
++	writel_relaxed( i, SATA3_PCB_UPPER_REG1_VA);
++	mdelay(100);
++	i = readl_relaxed(SATA3_PCB_UPPER_REG1_VA);
++	i |= 0x8000;
++	writel_relaxed( i, SATA3_PCB_UPPER_REG1_VA);
++	mdelay(1000);
++	writel_relaxed(0x0000,SATA3_PCB_UPPER_REG15_VA);
++	i = readl_relaxed(SATA3_PCB_UPPER_REG1_VA);
++	tmp = readl(id);
++	if (tmp == NSP_CHIPID)
++	{
++		tmp = readl(bs);
++		tmp |= 0x3;
++		writel(tmp, bs);
++		tmp = readl(bs);
++	}
++}
++#endif
++
++#ifdef CONFIG_MACH_CYGNUS
++#include "include/mach/iproc_regs.h"
++#ifdef CONFIG_IPROC_DS1WM
++#include "../../../../../bcmgpldrivers/d1w/ds1wm.h"
++
++
++static struct ds1wm_driver_data ds1wm_platform_data = {
++        .clock_rate             = 80000000,
++        .reset_recover_delay    = 1, /*ms*/
++};
++
++static struct resource ds1wm_resources[] = {
++        [0] = {
++                .start  = IPROC_D1W_REG_BASE,
++                .end    = IPROC_D1W_REG_BASE+0x0F,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start = IPROC_D1W_CLK_GATE_CTRL,
++                .end   = IPROC_D1W_CLK_GATE_CTRL+0x03
++        },
++        [2] = {
++                .start = IPROC_D1W_IO_MUX_REG,
++                .end   = IPROC_D1W_IO_MUX_REG+0x03
++        },
++        [3] = {
++                .start  = IPROC_D1W_INTR,
++                .end    = IPROC_D1W_INTR,
++                .flags  = IORESOURCE_IRQ,
++        }
++};
++
++static struct platform_device ds1wm_device = {
++        .name           =       "ds1wm",
++        .id             =       -1,
++        .dev            =       {
++                .platform_data  = &ds1wm_platform_data,
++        },
++        .num_resources  = ARRAY_SIZE(ds1wm_resources),
++        .resource       = ds1wm_resources,
++};
++#endif
++
++#ifdef CONFIG_IPROC_KEYPAD
++#include "../../../../../bcmdrivers/keypad/keypad.h"
++static iproc_keypad_t keypad_info = {
++    .max_rows       = 4,
++    .max_cols       = 4,
++    .StatFilEn      = 1,
++    .StatFilType    = 0x5,
++    .ColFilEn       = 1,
++    .ColFilType     = 0x05,
++    .IoMode         = 0,
++    .SwapRc         = 0,
++    .ScanMode       = 0
++};
++
++static struct resource keypad_resources[] = {
++        [0] = {
++                .start  = IPROC_KEYPAD_REG_BASE,
++                .end    = IPROC_KEYPAD_REG_BASE+0x4B,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start  = IPROC_CRMU_ASIU_KEYPAD_CLK_DIV,
++                .end    = IPROC_CRMU_ASIU_KEYPAD_CLK_DIV+0x03,
++                .flags  = IORESOURCE_MEM,
++        },
++        [2] = {
++                .start  = IPROC_IO_MUX_REG_BASE,
++                .end    = IPROC_IO_MUX_REG_BASE+0x07,
++                .flags  = IORESOURCE_MEM,
++        },
++        [3] = {
++                .start  = IPROC_CLK_GATING_CTRL,
++                .end    = IPROC_CLK_GATING_CTRL + 0x03,
++                .flags  = IORESOURCE_MEM,
++        },
++        [4] = {
++                .start  = IPROC_KEYPAD_INTR,
++                .end    = IPROC_KEYPAD_INTR,
++                .flags  = IORESOURCE_IRQ,
++        }
++};
++
++static struct platform_device keypad_device = {
++        .name           =       "iproc-keypad",
++        .id             =       -1,
++        .dev            =       {
++                .platform_data  = &keypad_info,
++        },
++        .num_resources  = ARRAY_SIZE(keypad_resources),
++        .resource       = keypad_resources,
++};
++#endif
++#ifdef CONFIG_IPROC_TOUCHSCREEN
++static struct resource tsc_resources[] = {
++        [0] = {
++                .start  = IPROC_TSC_REG_BASE,
++                .end    = IPROC_TSC_REG_BASE+0x3F,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start  = IPROC_TSC_INTR,
++                .end    = IPROC_TSC_INTR,
++                .flags  = IORESOURCE_IRQ,
++        }
++};
++
++static struct platform_device tsc_device = {
++        .name           =       "iproc-tsc",
++        .id             =       -1,
++        .dev            =       {
++                .platform_data  = NULL,
++        },
++        .num_resources  = ARRAY_SIZE(tsc_resources),
++        .resource       = tsc_resources,
++};
++#endif
++
++#ifdef CONFIG_IPROC_ADC
++static struct resource adc_resources[] = {
++        [0] = {
++                .start  = IPROC_ADC_REG_BASE,
++                .end    = IPROC_ADC_REG_BASE+0x3F,
++                .flags  = IORESOURCE_MEM,
++        },
++        [1] = {
++                .start  = IPROC_ADC_INTR,
++                .end    = IPROC_ADC_INTR,
++                .flags  = IORESOURCE_IRQ,
++        }
++};
++
++static struct platform_device adc_device = {
++        .name           =       "iproc-adc",
++        .id             =       -1,
++        .dev            =       {
++                .platform_data  = NULL,
++        },
++        .num_resources  = ARRAY_SIZE(adc_resources),
++        .resource       = adc_resources,
++};
++#endif
++
++#endif
++
++void __init board_map_io(void)
++{
++
++	/*
++	 * Install clock sources in the lookup table.
++	 */
++	clkdev_add_table(board_clk_lookups,
++			ARRAY_SIZE(board_clk_lookups));
++
++	/* Map machine specific iodesc here */
++	northstar_map_io();
++}
++
++void __init iproc_init_early(void)
++{
++
++	/*
++	 * SDK allocates coherent buffers from atomic
++	 * context. Increase size of atomic coherent pool to make sure such
++	 * the allocations won't fail.
++	 */
++#ifdef CONFIG_CMA
++	init_dma_coherent_pool_size(SZ_1M * 16);
++#endif
++    /*
++     * Allocate contiguous himem block for SDK usage
++     */
++#ifdef CONFIG_EARLY_DMA_ALLOC
++    eda_init();
++#endif
++}
++
++static struct platform_device *board_sata_device[] __initdata = {
++#ifdef CONFIG_SATA_AHCI_PLATFORM
++	&bcm_sata_device,
++#endif
++};
++
++static struct of_dev_auxdata iproc_auxdata_lookup[] __initdata =
++{
++    { /* sentinel */ },
++};
++static struct platform_device *board_devices[] __initdata = {
++#if !(defined(CONFIG_MACH_DNI_3448P) || defined(CONFIG_MACH_ACCTON_AS4610_54))
++    &board_smbus_device,
++#if defined(CONFIG_MACH_HX4) || defined(CONFIG_MACH_KT2)
++    &board_smbus_device1,
++#endif
++#endif /*Don't use for Accton */
++
++#if defined(CONFIG_IPROC_FA2)
++#if defined(CONFIG_MACH_NSP)
++    &board_fa2_device,
++#endif
++#endif /* FA+ */
++
++#if defined(CONFIG_IPROC_CCB_TIMER) || defined(CONFIG_IPROC_CCB_TIMER_MODULE)
++    &board_timer_device,
++#endif /* CONFIG_IPROC_CCB_TIMER || CONFIG_IPROC_CCB_TIMER_MODULE */
++#if defined(CONFIG_IPROC_WDT) || defined(CONFIG_IPROC_WDT_MODULE)
++    &board_wdt_device,
++#endif /* CONFIG_IPROC_WDT || CONFIG_IPROC_WDT_MODULE */
++#if defined(CONFIG_IPROC_PWM) || defined(CONFIG_IPROC_PWM_MODULE)
++	&board_pwm_device,
++#endif /* CONFIG_IPROC_PWM || CONFIG_IPROC_PWM_MODULE */
++#ifdef CONFIG_IPROC_USB3H
++	&bcm_xhci_device,
++#endif
++#ifdef CONFIG_USB_EHCI_BCM
++	&usbh_ehci_device,
++#endif
++#ifdef CONFIG_USB_OHCI_BCM
++	&usbh_ohci_device,
++#endif
++#ifdef CONFIG_DMAC_PL330
++	&pl330_dmac_device,
++#endif
++#ifdef CONFIG_MACH_CYGNUS
++#ifdef CONFIG_IPROC_DS1WM
++    &ds1wm_device,
++#endif
++#ifdef CONFIG_IPROC_KEYPAD
++    &keypad_device,
++#endif
++#endif
++};
++
++static struct amba_device *amba_devs[] __initdata = {
++#if defined(CONFIG_ARM_SP805_WATCHDOG) || defined(CONFIG_ARM_SP805_WATCHDOG_MODULE)
++	&sp805_wdt_device,
++#endif
++};
++
++static void __init board_add_devices(void)
++{
++	int i;
++
++	platform_add_devices(board_devices, ARRAY_SIZE(board_devices));
++//    if (iproc_get_chipid() == 53010) {
++//    }
++	for (i = 0; i < ARRAY_SIZE(amba_devs); i++) {
++		amba_device_register(amba_devs[i], &iomem_resource);
++	}
++}
++
++static void __init board_add_sata_device(void)
++{
++	platform_add_devices(board_sata_device, sizeof(board_sata_device)/sizeof((board_sata_device)[0]));
++}
++
++
++/* SPI device info of GSIO(SPI) interface */
++static struct spi_board_info bcm5301x_spi_device[] = {
++	{
++		.modalias = "spidev",
++		.platform_data = NULL,
++		.controller_data = NULL,
++		.max_speed_hz = 2 * 1000 * 1000,
++		.bus_num = 0,
++		.chip_select = 0,
++		.mode = SPI_MODE_0,
++	},
++};
++
++void __init board_timer_init(void)
++{
++	northstar_timer_init(&clk_ref);
++}
++
++struct sys_timer board_timer = {
++	.init   = board_timer_init,
++};
++
++
++void __init board_init(void)
++{
++	uint32_t	sata_enable=0;
++
++#if (defined(CONFIG_MACH_NSP) && defined(CONFIG_IPROC_OTP))
++	void		*oh;
++#endif /* (defined(CONFIG_MACH_NSP) && defined(CONFIG_IPROC_OTP)) */
++
++	/*
++	 * Add common platform devices that do not have board dependent HW
++	 * configurations
++	 */
++	board_add_common_devices(&clk_ref);
++#ifndef CONFIG_MACH_CYGNUS
++#ifndef CONFIG_MACH_NS
++	/* register IDM timeout interrupt handler */
++	request_idm_timeout_interrupts();
++#endif
++#endif
++
++#if defined(CONFIG_MACH_NSP)
++  #if defined(CONFIG_IPROC_OTP)
++	/* read otp row 0xd to figure if sata is enabled */
++	oh = bcm5301x_otp_init();
++	if (oh != NULL)
++	{
++		bcm5301x_otp_read_dword(oh, 0xd, &sata_enable);
++		printk("%s: %d %08x\n", __FUNCTION__, __LINE__, sata_enable);
++		if ((sata_enable & 0x40000000) == 0x40000000)
++		{
++			config_AHCI();
++			configure_SATA_PHY();
++		}
++		bcm5301x_otp_exit();
++	}
++	else
++		printk("%s: %d bcm5301x_otp_init failed\n", __FUNCTION__, __LINE__);
++  #else /* defined(CONFIG_IPROC_OTP) */
++	printk("%s(): IPROC OTP not configured, can not determine if SATA is enabled.\n", __FUNCTION__);
++  #endif /* defined(CONFIG_IPROC_OTP) */
++#endif
++
++	board_add_devices();
++	if ((sata_enable & 0x40000000) == 0x40000000)
++		board_add_sata_device();
++
++
++#if defined(CONFIG_IPROC_SD) || defined(CONFIG_IPROC_SD_MODULE)
++	/* only bcm53012 support sdio */
++	if ((__REG32(IPROC_IDM_REGISTER_VA + 0xd500) & 0xc) == 0x0) {
++		setup_sdio();
++	}
++#endif
++
++#if defined(CONFIG_IPROC_PWM) || defined(CONFIG_IPROC_PWM_MODULE)
++        writel_relaxed(0xf, IPROC_CCB_GPIO_REG_VA + IPROC_GPIO_CCB_AUX_SEL);
++       pwm_add_table(board_pwm_lookup, ARRAY_SIZE(board_pwm_lookup));
++#endif
++
++	/* Register SPI device info */
++	spi_register_board_info(bcm5301x_spi_device,
++	ARRAY_SIZE(bcm5301x_spi_device));
++
++	of_platform_populate(NULL, of_default_bus_match_table,
++                            iproc_auxdata_lookup, NULL);
++	printk(KERN_DEBUG "board_init: Leave\n");
++}
++
++MACHINE_START(IPROC, "Broadcom iProc")
++
++// 	Used micro9 as a reference.  Micro9 removed these two fields,
++//	and replaced them with a call to ep93xx_map_io(), which in turn
++// 	calls iotable_init().  Northstar appears to have an equivalent
++//	init (refer to northstar_io_desc[] array, in io_map.c
++	.map_io = board_map_io,
++	.init_early	= iproc_init_early,
++	.init_irq = iproc_init_irq,
++	.handle_irq     = gic_handle_irq,
++	.timer  = &board_timer,
++	.init_machine = board_init,
++MACHINE_END
++
++static const char * helix4_dt_board_compat[] = {
++    "dni,dni_3448p",
++    "accton,as4610_54",
++    NULL
++};
++
++DT_MACHINE_START(HELIX4_DT, "Broadcom Helix4 (Flattened Device Tree)")
++    .map_io     = board_map_io,
++    .init_early = iproc_init_early,
++    .init_irq   = iproc_init_irq,
++    .handle_irq     = gic_handle_irq,
++    .timer      = &board_timer,
++    .init_machine   = board_init,
++    .dt_compat  = helix4_dt_board_compat,
++MACHINE_END
+diff --git a/arch/arm/mach-iproc/common.c b/arch/arm/mach-iproc/common.c
+new file mode 100644
+index 0000000..b116ffc

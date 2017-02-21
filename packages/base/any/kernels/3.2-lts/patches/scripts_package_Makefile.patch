@@ -1,0 +1,31 @@
+--- a/scripts/package/Makefile
++++ b/scripts/package/Makefile
+@@ -77,8 +77,8 @@ clean-files += $(objtree)/binkernel.spec
+ 
+ # Deb target
+ # ---------------------------------------------------------------------------
+-quiet_cmd_builddeb = BUILDDEB
+-      cmd_builddeb = set -e; \
++#quiet_cmd_builddeb = BUILDDEB
++#      cmd_builddeb = set -e; \
+ 	test `id -u` = 0 || \
+ 	test -n "$(KBUILD_PKG_ROOTCMD)" || { \
+ 		which fakeroot >/dev/null 2>&1 && \
+@@ -95,11 +95,11 @@ quiet_cmd_builddeb = BUILDDEB
+ 	$$KBUILD_PKG_ROOTCMD $(CONFIG_SHELL) \
+ 		$(srctree)/scripts/package/builddeb
+ 
+-deb-pkg: FORCE
+-	$(MAKE) KBUILD_SRC=
+-	$(call cmd,builddeb)
++#deb-pkg: FORCE
++#	$(MAKE) KBUILD_SRC=
++#	$(call cmd,builddeb)
+ 
+-clean-dirs += $(objtree)/debian/
++#clean-dirs += $(objtree)/debian/
+ 
+ 
+ # tarball targets
+diff --git a/security/apparmor/Kconfig b/security/apparmor/Kconfig
+index 9b9013b..51ebf96 100644
