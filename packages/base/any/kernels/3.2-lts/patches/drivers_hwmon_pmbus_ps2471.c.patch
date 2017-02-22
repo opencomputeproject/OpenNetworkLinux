@@ -1,0 +1,94 @@
+--- /dev/null
++++ b/drivers/hwmon/pmbus/ps2471.c
+@@ -0,0 +1,89 @@
++/*
++ * Hardware monitoring driver for Lite-ON PS2471 Power Supply
++ *
++ * Copyright (C) 2015 Cumulus Networks, LLC
++ * Author: Puneet Shenoy <puneet@cumulusnetworks.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/err.h>
++#include <linux/slab.h>
++#include <linux/i2c.h>
++#include <linux/i2c/pmbus.h>
++#include "pmbus.h"
++
++enum chips { ps2471 };
++
++static int ps2471_probe(struct i2c_client *client,
++			const struct i2c_device_id *id)
++{
++	struct pmbus_driver_info *info;
++	int ret;
++
++	if (!i2c_check_functionality(client->adapter,
++				     I2C_FUNC_SMBUS_BYTE_DATA |
++				     I2C_FUNC_SMBUS_WORD_DATA)) {
++		pr_err("i2c check functionality failed\n");
++		return -ENODEV;
++	}
++	info = kzalloc(sizeof(struct pmbus_driver_info), GFP_KERNEL);
++	if (!info)
++		return -ENOMEM;
++
++	info->pages = 1;
++	info->func[0] = PMBUS_HAVE_FAN12 | PMBUS_HAVE_STATUS_FAN12 |
++		PMBUS_HAVE_TEMP | PMBUS_HAVE_TEMP2 | PMBUS_HAVE_STATUS_TEMP;
++	info->format[PSC_PWM] = linear;
++
++	if ((i2c_check_functionality(client->adapter,
++				     I2C_FUNC_SMBUS_READ_I2C_BLOCK)) ||
++	    (i2c_check_functionality(client->adapter,
++				     I2C_FUNC_SMBUS_BLOCK_DATA)))
++		info->func[0] |= PMBUS_HAVE_MFR_INFO;
++
++	ret = pmbus_do_probe(client, id, info);
++	if (ret < 0)
++		kfree(info);
++	return ret;
++}
++
++static int ps2471_remove(struct i2c_client *client)
++{
++	pmbus_do_remove(client);
++	return 0;
++}
++
++static const struct i2c_device_id ps2471_id[] = {
++	{"ps2471", ps2471},
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, ps2471_id);
++
++static struct i2c_driver ps2471_driver = {
++	.driver = { .name = "ps2471",},
++	.probe = ps2471_probe,
++	.remove = ps2471_remove,
++	.id_table = ps2471_id,
++};
++
++module_i2c_driver(ps2471_driver);
++
++MODULE_AUTHOR("Puneet Shenoy");
++MODULE_DESCRIPTION("PMBus driver for Lite-ON PS2471 Power Supply");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/hwmon/via-cputemp.c b/drivers/hwmon/via-cputemp.c
+index 8eac67d..8689664 100644

@@ -1,0 +1,20 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gmac/et/Kconfig
+@@ -0,0 +1,14 @@
++config IPROC_GMAC
++	tristate "GMAC support "
++	select NETDEVICES
++	select PCI
++	select HND
++	select ET
++	select ET_47XX
++	select ET_ALL_PASSIVE_ON
++	depends on ARCH_IPROC
++	default n
++	help
++	  Add GMAC  support
++
++	  If unsure, say N.
+diff --git a/drivers/bcmdrivers/gmac/et/Makefile b/drivers/bcmdrivers/gmac/et/Makefile
+new file mode 100755
+index 0000000..4f603a0

@@ -1,0 +1,42 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/dma/pl330-pdata.h
+@@ -0,0 +1,36 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++#ifndef __DMA_PL330_PDATA_H
++#define __DMA_PL330_PDATA_H
++
++/*
++ * The platforms just need to provide this info to the KONA DMA API
++ */
++struct iproc_pl330_data {
++	/* Non Secure DMAC virtual base address */
++	unsigned int dmac_ns_base;
++	/* Secure DMAC virtual base address */
++	unsigned int dmac_s_base;
++	/* # of PL330 dmac channels 'configurable' */
++	unsigned int num_pl330_chans;
++	/* DMAC irq number, connected to GIC */
++	int irq_base;
++	/* # of PL330 Interrupts/events 'configurable' */
++	unsigned int irq_line_count;
++	//int dmac_abort_irq;
++};
++
++#endif /* __DMA_PL330_PDATA_H */
+diff --git a/drivers/bcmdrivers/gmac/et/.gitignore b/drivers/bcmdrivers/gmac/et/.gitignore
+new file mode 100644
+index 0000000..752a208

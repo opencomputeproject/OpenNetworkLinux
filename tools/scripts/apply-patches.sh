@@ -37,11 +37,13 @@ if [ -f "${PATCH_SERIES}" ]; then
         if [[ $p = \#* ]]; then
             continue;
         fi
-        echo "*** Applying ${p}..."
-        if [ -x "${PATCHDIR}/${p}" ]; then
-            "${PATCHDIR}/${p}" "${KERNDIR}"
-        else
-            patch --batch -p 1 -d ${KERNDIR} < "${PATCHDIR}/${p}"
+        if [ -f "${PATCHDIR}/${p}" ]; then
+            echo "Applying: ${p}"
+            if [ -x "${PATCHDIR}/${p}" ]; then
+                "${PATCHDIR}/${p}" "${KERNDIR}"
+            else
+                patch --batch -p 1 -d ${KERNDIR} < "${PATCHDIR}/${p}"
+            fi
         fi
     done
 else

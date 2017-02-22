@@ -1,0 +1,20 @@
+--- a/drivers/mtd/devices/Kconfig
++++ b/drivers/mtd/devices/Kconfig
+@@ -102,6 +102,15 @@ config M25PXX_USE_FAST_READ
+ 	help
+ 	  This option enables FAST_READ access supported by ST M25Pxx.
+ 
++config M25PXX_STAY_IN_3BYTE_MODE
++   bool "Stay in 3-byte address mode when idle"
++   depends on MTD_M25P80
++   default n
++   help
++     This option forces the flash to stay in 3-byte address mode when idle
++     (even for flashes that require 4-byte address). This is work around the
++     reset problem if the controller cannot issue 4-byte OPCODE when booting.
++
+ config MTD_SST25L
+ 	tristate "Support SST25L (non JEDEC) SPI Flash chips"
+ 	depends on SPI_MASTER
+diff --git a/drivers/mtd/devices/m25p80.c b/drivers/mtd/devices/m25p80.c
+index 3d6beb7..9145658 100644

@@ -1,0 +1,31 @@
+--- a/drivers/mtd/maps/physmap_of.c
++++ b/drivers/mtd/maps/physmap_of.c
+@@ -161,6 +161,9 @@ static int __devinit of_flash_probe(struct platform_device *dev)
+ 	struct of_flash *info;
+ 	const char *probe_type;
+ 	const __be32 *width;
++#ifdef CONFIG_MTD_CFI_OF_BYTE_SWAP
++	struct property * byteswap_prop;
++#endif
+ 	int err;
+ 	int i;
+ 	int count;
+@@ -236,6 +239,16 @@ static int __devinit of_flash_probe(struct platform_device *dev)
+ 		info->list[i].map.size = res_size;
+ 		info->list[i].map.bankwidth = be32_to_cpup(width);
+ 
++#ifdef CONFIG_MTD_CFI_OF_BYTE_SWAP
++		byteswap_prop = of_find_property(dp, "byteswap", NULL);
++		if (byteswap_prop == NULL) {
++			info->list[i].map.byteswap = 0;
++		} else {
++			info->list[i].map.byteswap = 1;
++			dev_info(&dev->dev, "byteswapping configured in OF\n");
++		}
++#endif
++
+ 		err = -ENOMEM;
+ 		info->list[i].map.virt = ioremap(info->list[i].map.phys,
+ 						 info->list[i].map.size);
+diff --git a/drivers/mtd/mtdoops.c b/drivers/mtd/mtdoops.c
+index f3cdce9..b7883e5 100644

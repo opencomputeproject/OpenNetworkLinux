@@ -1,0 +1,17 @@
+--- a/drivers/usb/serial/keyspan_pda.c
++++ b/drivers/usb/serial/keyspan_pda.c
+@@ -768,11 +768,8 @@ static int keyspan_pda_fake_startup(struct usb_serial *serial)
+ 			__func__);
+ 		return -ENODEV;
+ 	}
+-	if (request_ihex_firmware(&fw, fw_name, &serial->dev->dev)) {
+-		dev_err(&serial->dev->dev, "failed to load firmware \"%s\"\n",
+-			fw_name);
++	if (request_ihex_firmware(&fw, fw_name, &serial->dev->dev))
+ 		return -ENOENT;
+-	}
+ 	record = (const struct ihex_binrec *)fw->data;
+ 
+ 	while (record) {
+diff --git a/drivers/usb/serial/ti_usb_3410_5052.c b/drivers/usb/serial/ti_usb_3410_5052.c
+index 885d15d..7a27c18 100644

@@ -1,0 +1,13 @@
+--- a/mm/slab.c
++++ b/mm/slab.c
+@@ -121,6 +121,8 @@
+ #include	<asm/tlbflush.h>
+ #include	<asm/page.h>
+ 
++#include <trace/events/kmem.h>
++
+ /*
+  * DEBUG	- 1 for kmem_cache_create() to honour; SLAB_RED_ZONE & SLAB_POISON.
+  *		  0 for faster, smaller code (especially in the critical paths).
+diff --git a/mm/sparse-vmemmap.c b/mm/sparse-vmemmap.c
+index 1b7e22a..22b7e18 100644

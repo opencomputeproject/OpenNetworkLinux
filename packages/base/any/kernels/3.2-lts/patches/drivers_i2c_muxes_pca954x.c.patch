@@ -1,0 +1,45 @@
+--- a/drivers/i2c/muxes/pca954x.c
++++ b/drivers/i2c/muxes/pca954x.c
+@@ -188,6 +188,7 @@ static int pca954x_probe(struct i2c_client *client,
+ 	struct pca954x_platform_data *pdata = client->dev.platform_data;
+ 	int num, force;
+ 	struct pca954x *data;
++	int deselect_on_exit = 0;
+ 	int ret = -ENODEV;
+ 
+ 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
+@@ -210,6 +211,17 @@ static int pca954x_probe(struct i2c_client *client,
+ 		goto exit_free;
+ 	}
+ 
++	/*
++	 * Check whether we want to deselect the mux after the
++	 * transaction.  This can be specified in one of two ways:
++	 *
++	 * 1. using platform data: pdata->modes[num].deselect_on_exit
++	 * 2. using the device tree property deselect_on_exit
++	 */
++	if (of_find_property(client->dev.of_node, "deselect-on-exit", NULL)) {
++		deselect_on_exit = 1;
++	}
++
+ 	data->type = id->driver_data;
+ 	data->last_chan = 0;		   /* force the first selection */
+ 
+@@ -226,10 +238,10 @@ static int pca954x_probe(struct i2c_client *client,
+ 		}
+ 
+ 		data->virt_adaps[num] =
+-			i2c_add_mux_adapter(adap, client,
++			i2c_add_mux_adapter(adap, &client->dev, client,
+ 				force, num, pca954x_select_chan,
+-				(pdata && pdata->modes[num].deselect_on_exit)
+-					? pca954x_deselect_mux : NULL);
++				(pdata && pdata->modes[num].deselect_on_exit) || deselect_on_exit
++					    ? pca954x_deselect_mux : NULL);
+ 
+ 		if (data->virt_adaps[num] == NULL) {
+ 			ret = -ENODEV;
+diff --git a/drivers/i2c/muxes/quanta-i2cmux.c b/drivers/i2c/muxes/quanta-i2cmux.c
+new file mode 100644
+index 0000000..498f6e7

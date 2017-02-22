@@ -1,0 +1,13 @@
+--- a/drivers/mtd/ubi/build.c
++++ b/drivers/mtd/ubi/build.c
+@@ -1286,7 +1286,7 @@ out:
+ 	ubi_err("UBI error: cannot initialize UBI, error %d", err);
+ 	return err;
+ }
+-module_init(ubi_init);
++late_initcall(ubi_init);
+ 
+ static void __exit ubi_exit(void)
+ {
+diff --git a/drivers/net/Kconfig b/drivers/net/Kconfig
+index 61d3d1f..05ac9bc 100644

@@ -1,0 +1,17 @@
+--- a/include/linux/u64_stats_sync.h
++++ b/include/linux/u64_stats_sync.h
+@@ -67,6 +67,12 @@ struct u64_stats_sync {
+ #endif
+ };
+ 
++#if BITS_PER_LONG == 32 && defined(CONFIG_SMP)
++# define u64_stats_init(syncp)  seqcount_init(syncp.seq)
++#else
++# define u64_stats_init(syncp)  do { } while (0)
++#endif
++
+ static inline void u64_stats_update_begin(struct u64_stats_sync *syncp)
+ {
+ #if BITS_PER_LONG==32 && defined(CONFIG_SMP)
+diff --git a/include/linux/usb.h b/include/linux/usb.h
+index 93629fc..3959c62 100644

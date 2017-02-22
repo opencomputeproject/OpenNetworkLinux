@@ -50,8 +50,8 @@ static onlp_psu_info_t psus__[] = {
 
 char* psu_paths[] = {
     NULL, /* Not used */
-    "/sys/devices/soc.0/ffe03000.i2c/i2c-0/i2c-6/6-0058",
-    "/sys/devices/soc.0/ffe03000.i2c/i2c-0/i2c-7/7-0059",
+    "/sys/bus/i2c/devices/6-0058/hwmon/hwmon0",
+    "/sys/bus/i2c/devices/7-0059/hwmon/hwmon1",
 };
 
 int

@@ -1,0 +1,3932 @@
+Device driver patches for accton as4610 54 (fan/psu/cpld/led/sfp)
+
+diff --git a/arch/arm/boot/dts/accton_as4610_54.dts b/arch/arm/boot/dts/accton_as4610_54.dts
+index 9276c0a..8848f8c 100644
+--- a/arch/arm/boot/dts/accton_as4610_54.dts
++++ b/arch/arm/boot/dts/accton_as4610_54.dts
+@@ -105,46 +105,46 @@
+     };
+ 
+     i2c0: i2c@18038000 {
+-            compatible = "iproc-smb";
+-            reg = <0x18038000 0x1000>;
++        compatible = "iproc-smb";
++        reg = <0x18038000 0x1000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        interrupts = < 127 >;
++        clock-frequency = <400000>;
++        cpld@1,0 {
+             #address-cells = <1>;
+-            #size-cells = <0>;
+-            interrupts = < 127 >;
+-            clock-frequency = <400000>;
+-            cpld@1,0 {
+-                #address-cells = <1>;
+-                #size-cells = <1>;
+-                compatible = "accton,as4610-54-cpld";
+-                label = "cpld";
+-                reg = <0x30>;
+-            };
++            #size-cells = <1>;
++            compatible = "accton,as4610_54_cpld";
++            label = "cpld";
++            reg = <0x30>;
++        };
+     };
+ 
+     i2c1: i2c@1803b000 {
+-            compatible = "iproc-smb";
+-            reg = <0x1803b000 0x1000>;
++        compatible = "iproc-smb";
++        reg = <0x1803b000 0x1000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        interrupts = < 128 >;
++        clock-frequency = <100000>;
++        mux@70 {
++            compatible = "ti,pca9548";
++            reg = <0x70>;
+             #address-cells = <1>;
+             #size-cells = <0>;
+-            interrupts = < 128 >;
+-            clock-frequency = <100000>;
+-            mux@70 {
+-                compatible = "ti,pca9548";
+-                reg = <0x70>;
++            deselect-on-exit;
++
++            // SFP+ 1
++            i2c@0 {
+                 #address-cells = <1>;
+                 #size-cells = <0>;
+-                deselect-on-exit;
+-
+-                // SFP+ 1
+-                i2c@0 {
+-                    #address-cells = <1>;
+-                    #size-cells = <0>;
+-                    reg = <0>;
+-                    sfp_eeprom@50 {
+-                        compatible = "at,24c04";
+-                        reg = <0x50>;
+-                        label = "port49";
+-                    };
++                reg = <0>;
++                sfp_eeprom@50 {
++                    compatible = "at,as4610_sfp1";
++                    reg = <0x50>;
++                    label = "port49";
+                 };
++            };
+ 
+             // SFP+ 2
+             i2c@1 {
+@@ -152,7 +152,7 @@
+                 #size-cells = <0>;
+                 reg = <1>;
+                 sfp_eeprom@50 {
+-                    compatible = "at,24c04";
++                    compatible = "accton,as4610_sfp2";
+                     reg = <0x50>;
+                     label = "port50";
+                 };
+@@ -164,7 +164,7 @@
+                 #size-cells = <0>;
+                 reg = <2>;
+                 sfp_eeprom@50 {
+-                    compatible = "at,24c04";
++                    compatible = "accton,as4610_sfp3";
+                     reg = <0x50>;
+                     label = "port51";
+                 };
+@@ -176,7 +176,7 @@
+                 #size-cells = <0>;
+                 reg = <3>;
+                 sfp_eeprom@50 {
+-                    compatible = "at,24c04";
++                    compatible = "accton,as4610_sfp4";
+                     reg = <0x50>;
+                     label = "port52";
+                 };
+@@ -188,7 +188,7 @@
+                 #size-cells = <0>;
+                 reg = <4>;
+                 sfp_eeprom@50 {
+-                    compatible = "at,24c04";
++                    compatible = "accton,as4610_sfp5";
+                     reg = <0x50>;
+                 };
+             };
+@@ -199,7 +199,7 @@
+                 #size-cells = <0>;
+                 reg = <5>;
+                 sfp_eeprom@50 {
+-                    compatible = "at,24c04";
++                    compatible = "accton,as4610_sfp6";
+                     reg = <0x50>;
+                 };
+             };
+@@ -209,17 +209,21 @@
+                 #address-cells = <1>;
+                 #size-cells = <0>;
+                 reg = <6>;
+-                psu_eeprom@50 {
+-                    compatible = "at,24c02";
++                psu1_eeprom@50 {
++                    compatible = "accton,as4610_psu1";
+                     reg = <0x50>;
+-                    label = "psu1_eeprom";
+-                    read-only;
+                 };
+-                psu_eeprom@51 {
+-                    compatible = "at,24c02";
++                psu1_pmbus@58 {
++                    compatible = "3y-power,ym1921";
++                    reg = <0x58>;
++                };
++                psu2_eeprom@51 {
++                    compatible = "accton,as4610_psu2";
+                     reg = <0x51>;
+-                    label = "psu2_eeprom";
+-                    read-only;
++                };
++                psu2_pmbus@59 {
++                    compatible = "3y-power,ym1921";
++                    reg = <0x59>;
+                 };
+             };
+ 
+diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
+index 5c984a6..df89e25 100644
+--- a/drivers/hwmon/Kconfig
++++ b/drivers/hwmon/Kconfig
+@@ -1412,6 +1412,43 @@ config SENSORS_MC13783_ADC
+         help
+           Support for the A/D converter on MC13783 PMIC.
+ 
++config SENSORS_ACCTON_I2C_CPLD
++	tristate "Accton i2c cpld"
++	depends on I2C
++	help
++	  If you say yes here you get support for Accton i2c cpld.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_i2c_cpld.
++
++config SENSORS_ACCTON_AS4610_FAN
++	tristate "Accton as4610 fan"
++	depends on I2C && SENSORS_ACCTON_I2C_CPLD
++	help
++	  If you say yes here you get support for Accton as4610 fan.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_as4610_fan.
++
++config SENSORS_ACCTON_AS4610_PSU
++	tristate "Accton as4610 psu"
++	depends on I2C && SENSORS_ACCTON_I2C_CPLD
++	help
++	  If you say yes here you get support for Accton as4610 psu.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_as4610_psu.
++
++config SENSORS_YM2651Y
++	tristate "3Y Power (YM-2651Y, YM1921Y) Power Module"
++	depends on I2C
++	help
++	  If you say yes here you get support for 3Y Power YM-2651Y and YM1921Y
++	  Power Module.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called ym2651y.
++
+ if ACPI
+ 
+ comment "ACPI drivers"
+diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
+index ff3a18e..39c9888 100644
+--- a/drivers/hwmon/Makefile
++++ b/drivers/hwmon/Makefile
+@@ -21,6 +21,9 @@ obj-$(CONFIG_SENSORS_W83791D)	+= w83791d.o
+ 
+ obj-$(CONFIG_SENSORS_ABITUGURU)	+= abituguru.o
+ obj-$(CONFIG_SENSORS_ABITUGURU3)+= abituguru3.o
++obj-$(CONFIG_SENSORS_ACCTON_I2C_CPLD) += accton_i2c_cpld.o
++obj-$(CONFIG_SENSORS_ACCTON_AS4610_FAN) += accton_as4610_fan.o
++obj-$(CONFIG_SENSORS_ACCTON_AS4610_PSU) += accton_as4610_psu.o
+ obj-$(CONFIG_SENSORS_AD7314)	+= ad7314.o
+ obj-$(CONFIG_SENSORS_AD7414)	+= ad7414.o
+ obj-$(CONFIG_SENSORS_AD7418)	+= ad7418.o
+@@ -130,6 +133,7 @@ obj-$(CONFIG_SENSORS_W83L785TS)	+= w83l785ts.o
+ obj-$(CONFIG_SENSORS_W83L786NG)	+= w83l786ng.o
+ obj-$(CONFIG_SENSORS_WM831X)	+= wm831x-hwmon.o
+ obj-$(CONFIG_SENSORS_WM8350)	+= wm8350-hwmon.o
++obj-$(CONFIG_SENSORS_YM2651Y)	+= ym2651y.o
+ 
+ obj-$(CONFIG_PMBUS)		+= pmbus/
+ 
+diff --git a/drivers/hwmon/accton_as4610_fan.c b/drivers/hwmon/accton_as4610_fan.c
+new file mode 100644
+index 0000000..3934bcd
+--- /dev/null
++++ b/drivers/hwmon/accton_as4610_fan.c
+@@ -0,0 +1,344 @@
++/*
++ * A hwmon driver for the Accton as4610 fan
++ *
++ * Copyright (C) 2016 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++#include <linux/platform_device.h>
++#include <linux/accton_i2c_cpld.h>
++
++#define DRVNAME "as4610_fan"
++
++static struct as4610_fan_data *as4610_fan_update_device(struct device *dev);
++static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count);
++
++/* fan related data, the index should match sysfs_fan_attributes
++ */
++static const u8 fan_reg[] = {
++	0x2B, /* fan PWM(for all fan) */
++	0x2D, /* fan 1 speed(rpm) */
++	0x2C, /* fan 2 speed(rpm) */
++	0x11, /* fan1-2 operating status */
++};
++
++static struct as4610_fan_data *fan_data = NULL;
++
++/* Each client has this additional data */
++struct as4610_fan_data {
++	struct platform_device *pdev;
++	struct device	*hwmon_dev;
++	struct mutex	 update_lock;
++	char			 valid;			  /* != 0 if registers are valid */
++	unsigned long	 last_updated;	  /* In jiffies */
++	u8				 reg_val[ARRAY_SIZE(fan_reg)]; /* Register value */
++};
++
++enum fan_id {
++	FAN1_ID,
++	FAN2_ID
++};
++
++enum sysfs_fan_attributes {
++	FAN_DUTY_CYCLE_PERCENTAGE, /* Only one CPLD register to control duty cycle for all fans */
++	FAN1_SPEED_RPM,
++	FAN2_SPEED_RPM,
++	FAN_FAULT,
++	FAN1_FAULT,
++	FAN2_FAULT
++};
++
++/* Define attributes
++ */
++#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
++#define DECLARE_FAN_FAULT_ATTR(index)	   &sensor_dev_attr_fan##index##_fault.dev_attr.attr
++
++#define DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_duty_cycle_percentage, S_IWUSR | S_IRUGO, fan_show_value, set_duty_cycle, FAN##index##_DUTY_CYCLE_PERCENTAGE)
++#define DECLARE_FAN_DUTY_CYCLE_ATTR(index) &sensor_dev_attr_fan##index##_duty_cycle_percentage.dev_attr.attr
++
++#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index) \
++	static SENSOR_DEVICE_ATTR(fan##index##_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_SPEED_RPM)
++#define DECLARE_FAN_SPEED_RPM_ATTR(index)  &sensor_dev_attr_fan##index##_speed_rpm.dev_attr.attr
++
++/* fan fault attributes in this platform */
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2);
++/* fan speed(rpm) attributes in this platform */
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1);
++DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2);
++/* 1 fan duty cycle attribute in this platform */
++DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
++
++static struct attribute *as4610_fan_attributes[] = {
++	/* fan related attributes */
++	DECLARE_FAN_FAULT_ATTR(1),
++	DECLARE_FAN_FAULT_ATTR(2),
++	DECLARE_FAN_SPEED_RPM_ATTR(1),
++	DECLARE_FAN_SPEED_RPM_ATTR(2),
++	DECLARE_FAN_DUTY_CYCLE_ATTR(),
++	NULL
++};
++
++#define FAN_DUTY_CYCLE_REG_MASK			0xF
++#define FAN_MAX_DUTY_CYCLE				100
++#define FAN_REG_VAL_TO_SPEED_RPM_STEP	100
++
++static int as4610_fan_read_value(u8 reg)
++{
++	return accton_i2c_cpld_read(AS4610_CPLD_SLAVE_ADDR, reg);
++}
++
++static int as4610_fan_write_value(u8 reg, u8 value)
++{
++	return accton_i2c_cpld_write(AS4610_CPLD_SLAVE_ADDR, reg, value);
++}
++
++/* fan utility functions
++ */
++static u32 reg_val_to_duty_cycle(u8 reg_val)
++{
++	reg_val &= FAN_DUTY_CYCLE_REG_MASK;
++	return (u32)((reg_val * 125 + 5)/10);
++}
++
++static u8 duty_cycle_to_reg_val(u8 duty_cycle)
++{
++	return ((u32)duty_cycle * 10 / 125);
++}
++
++static u32 reg_val_to_speed_rpm(u8 reg_val)
++{
++	/* Count Frequency is 1.515KHz= 0.66ms
++	 * Count Period = 400 cycle = 400*0.66ms = 264ms
++	 * R.P.M value = read value x3.79*60/2
++	 * 3.79 = 1000ms/264ms
++	 * 60 = 1min =60s
++	 * 2 = 1 rotation of fan has two pulses.
++	 */
++	return (u32)reg_val * 379 * 60 / 2 / 100;
++}
++
++static u8 is_fan_fault(struct as4610_fan_data *data, enum fan_id id)
++{
++	u8 mask = (id == FAN1_ID) ? 0x20 : 0x10;
++
++	return !(data->reg_val[FAN_FAULT] & mask);
++}
++
++static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	int error, value;
++
++	error = kstrtoint(buf, 10, &value);
++	if (error)
++		return error;
++
++	if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
++		return -EINVAL;
++
++	as4610_fan_write_value(fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
++	return count;
++}
++
++static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct as4610_fan_data *data = as4610_fan_update_device(dev);
++	ssize_t ret = 0;
++
++	if (data->valid) {
++		switch (attr->index) {
++			case FAN_DUTY_CYCLE_PERCENTAGE:
++			{
++				u32 duty_cycle = reg_val_to_duty_cycle(data->reg_val[attr->index]);
++				ret = sprintf(buf, "%u\n", duty_cycle);
++				break;
++			}
++			case FAN1_SPEED_RPM:
++			case FAN2_SPEED_RPM:
++				ret = sprintf(buf, "%u\n", reg_val_to_speed_rpm(data->reg_val[attr->index]));
++				break;
++			case FAN1_FAULT:
++			case FAN2_FAULT:
++				ret = sprintf(buf, "%d\n", is_fan_fault(data, attr->index - FAN1_FAULT));
++				break;
++			default:
++				break;
++		}
++	}
++
++	return ret;
++}
++
++static const struct attribute_group as4610_fan_group = {
++	.attrs = as4610_fan_attributes,
++};
++
++static struct as4610_fan_data *as4610_fan_update_device(struct device *dev)
++{
++	mutex_lock(&fan_data->update_lock);
++
++	if (time_after(jiffies, fan_data->last_updated + HZ + HZ / 2) ||
++		!fan_data->valid) {
++		int i;
++
++		dev_dbg(fan_data->hwmon_dev, "Starting as4610_fan update\n");
++		fan_data->valid = 0;
++
++		/* Update fan data
++		 */
++		for (i = 0; i < ARRAY_SIZE(fan_data->reg_val); i++) {
++			int status = as4610_fan_read_value(fan_reg[i]);
++
++			if (status < 0) {
++				fan_data->valid = 0;
++				mutex_unlock(&fan_data->update_lock);
++				dev_dbg(fan_data->hwmon_dev, "reg %d, err %d\n", fan_reg[i], status);
++				return fan_data;
++			}
++			else {
++				fan_data->reg_val[i] = status;
++			}
++		}
++
++		fan_data->last_updated = jiffies;
++		fan_data->valid = 1;
++	}
++
++	mutex_unlock(&fan_data->update_lock);
++
++	return fan_data;
++}
++
++static int as4610_fan_probe(struct platform_device *pdev)
++{
++	int status = -1;
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&pdev->dev.kobj, &as4610_fan_group);
++	if (status) {
++		goto exit;
++
++	}
++
++	fan_data->hwmon_dev = hwmon_device_register(&pdev->dev);
++	if (IS_ERR(fan_data->hwmon_dev)) {
++		status = PTR_ERR(fan_data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&pdev->dev, "accton_as4610_fan\n");
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&pdev->dev.kobj, &as4610_fan_group);
++exit:
++	return status;
++}
++
++static int as4610_fan_remove(struct platform_device *pdev)
++{
++	hwmon_device_unregister(fan_data->hwmon_dev);
++	sysfs_remove_group(&pdev->dev.kobj, &as4610_fan_group);
++
++	return 0;
++}
++
++static const struct i2c_device_id as4610_fan_id[] = {
++	{ "as4610_fan", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, as4610_fan_id);
++
++static struct platform_driver as4610_fan_driver = {
++	.probe		= as4610_fan_probe,
++	.remove		= as4610_fan_remove,
++	.driver		= {
++		.name	= DRVNAME,
++		.owner	= THIS_MODULE,
++	},
++};
++
++static int __init as4610_fan_init(void)
++{
++	int ret;
++
++	if (as4610_number_of_system_fan() == 0) {
++		return -ENODEV;
++	}
++
++	ret = platform_driver_register(&as4610_fan_driver);
++	if (ret < 0) {
++		goto exit;
++	}
++
++	fan_data = kzalloc(sizeof(struct as4610_fan_data), GFP_KERNEL);
++	if (!fan_data) {
++		ret = -ENOMEM;
++		platform_driver_unregister(&as4610_fan_driver);
++		goto exit;
++	}
++
++	mutex_init(&fan_data->update_lock);
++	fan_data->valid = 0;
++
++	fan_data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
++	if (IS_ERR(fan_data->pdev)) {
++		ret = PTR_ERR(fan_data->pdev);
++		platform_driver_unregister(&as4610_fan_driver);
++		kfree(fan_data);
++		goto exit;
++	}
++
++exit:
++	return ret;
++}
++
++static void __exit as4610_fan_exit(void)
++{
++	if (!fan_data) {
++		return;
++	}
++
++	platform_device_unregister(fan_data->pdev);
++	platform_driver_unregister(&as4610_fan_driver);
++	kfree(fan_data);
++}
++
++late_initcall(as4610_fan_init);
++module_exit(as4610_fan_exit);
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("as4610_fan driver");
++MODULE_LICENSE("GPL");
++
+diff --git a/drivers/hwmon/accton_as4610_psu.c b/drivers/hwmon/accton_as4610_psu.c
+new file mode 100644
+index 0000000..1f0d79d
+--- /dev/null
++++ b/drivers/hwmon/accton_as4610_psu.c
+@@ -0,0 +1,286 @@
++/*
++ * An hwmon driver for accton as4610 Power Module
++ *
++ * Copyright (C) 2016 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++#include <linux/delay.h>
++#include <linux/dmi.h>
++
++static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
++static int as4610_psu_read_data(struct i2c_client *client, u8 command, u8 *data,int data_len);
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { 0x50, 0x53, I2C_CLIENT_END };
++
++/* Each client has this additional data
++ */
++struct as4610_psu_data {
++	struct device	   *hwmon_dev;
++	struct mutex		update_lock;
++	char				valid;			 /* !=0 if registers are valid */
++	unsigned long		last_updated;	 /* In jiffies */
++	u8	index;			 /* PSU index */
++	u8	status;			 /* Status(present/power_good) register read from CPLD */
++	char model_name[9]; /* Model name, read from eeprom */
++};
++
++static struct as4610_psu_data *as4610_psu_update_device(struct device *dev);
++
++enum as4610_psu_sysfs_attributes {
++	PSU_PRESENT,
++	PSU_MODEL_NAME,
++	PSU_POWER_GOOD
++};
++
++/* sysfs attributes for hwmon
++ */
++static SENSOR_DEVICE_ATTR(psu_present,	  S_IRUGO, show_status,	   NULL, PSU_PRESENT);
++static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
++static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,	   NULL, PSU_POWER_GOOD);
++
++static struct attribute *as4610_psu_attributes[] = {
++	&sensor_dev_attr_psu_present.dev_attr.attr,
++	&sensor_dev_attr_psu_model_name.dev_attr.attr,
++	&sensor_dev_attr_psu_power_good.dev_attr.attr,
++	NULL
++};
++
++static ssize_t show_status(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct as4610_psu_data *data = as4610_psu_update_device(dev);
++	u8 status = 0;
++
++	if (attr->index == PSU_PRESENT) {
++		status = (data->status >> (data->index*2) & 0x1);
++	}
++	else { /* PSU_POWER_GOOD */
++		status = (data->status >> (data->index*2 + 1) & 0x1);
++	}
++
++	return sprintf(buf, "%d\n", status);
++}
++
++static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct as4610_psu_data *data = as4610_psu_update_device(dev);
++
++	return sprintf(buf, "%s\n", data->model_name);
++}
++
++static const struct attribute_group as4610_psu_group = {
++	.attrs = as4610_psu_attributes,
++};
++
++static int as4610_psu_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct as4610_psu_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct as4610_psu_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	i2c_set_clientdata(client, data);
++	data->valid = 0;
++	data->index = dev_id->driver_data;
++	mutex_init(&data->update_lock);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &as4610_psu_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&client->dev, "%s: psu '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &as4610_psu_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int as4610_psu_remove(struct i2c_client *client)
++{
++	struct as4610_psu_data *data = i2c_get_clientdata(client);
++
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &as4610_psu_group);
++	kfree(data);
++
++	return 0;
++}
++
++enum psu_index
++{
++	as4610_psu1,
++	as4610_psu2
++};
++
++static const struct i2c_device_id as4610_psu_id[] = {
++	{ "as4610_psu1", as4610_psu1 },
++	{ "as4610_psu2", as4610_psu2 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, as4610_psu_id);
++
++static struct i2c_driver as4610_psu_driver = {
++	.class		  = I2C_CLASS_HWMON,
++	.driver = {
++		.name	  = "as4610_psu",
++	},
++	.probe		  = as4610_psu_probe,
++	.remove		  = as4610_psu_remove,
++	.id_table	  = as4610_psu_id,
++	.address_list = normal_i2c,
++};
++
++static int as4610_psu_read_data(struct i2c_client *client, u8 command, u8 *data,
++			  int count)
++{
++	int status = 0;
++
++	while (count) {
++		status = i2c_smbus_read_byte_data(client, command);
++		if (unlikely(status < 0)) {
++			break;
++		}
++
++		*data	 = (u8)status;
++		data	+= 1;
++		command += 1;
++		count	-= 1;
++	}
++
++	return status;
++}
++
++static struct as4610_psu_data *as4610_psu_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct as4610_psu_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
++		|| !data->valid) {
++		int status;
++		int present = 0;
++
++		data->valid	 = 0;
++		data->status = 0;
++		dev_dbg(&client->dev, "Starting as4610 update\n");
++
++		/* Read psu status */
++		status = accton_i2c_cpld_read(0x30, 0x11);
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "cpld reg 0x30 err %d\n", status);
++			goto exit;
++		}
++		else {
++			data->status = status;
++		}
++
++		/* Read model name */
++		memset(data->model_name, 0, sizeof(data->model_name));
++		present = (data->status >> (data->index*2) & 0x1);
++
++		if (present) {
++			int len = ARRAY_SIZE(data->model_name)-1;
++
++			status = as4610_psu_read_data(client, 0x20, data->model_name,
++											   ARRAY_SIZE(data->model_name)-1);
++
++			if (status < 0) {
++				data->model_name[0] = '\0';
++				dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
++				goto exit;
++			}
++			else {
++				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
++			}
++		}
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int __init as4610_psu_init(void)
++{
++	return i2c_add_driver(&as4610_psu_driver);
++}
++
++static void __exit as4610_psu_exit(void)
++{
++	i2c_del_driver(&as4610_psu_driver);
++}
++
++module_init(as4610_psu_init);
++module_exit(as4610_psu_exit);
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("as4610_psu driver");
++MODULE_LICENSE("GPL");
++
+diff --git a/drivers/hwmon/accton_i2c_cpld.c b/drivers/hwmon/accton_i2c_cpld.c
+new file mode 100644
+index 0000000..0b9762e
+--- /dev/null
++++ b/drivers/hwmon/accton_i2c_cpld.c
+@@ -0,0 +1,285 @@
++/*
++ * A hwmon driver for the accton_i2c_cpld
++ *
++ * Copyright (C) 2013 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/i2c.h>
++#include <linux/slab.h>
++#include <linux/list.h>
++#include <linux/dmi.h>
++#include <linux/accton_i2c_cpld.h>
++
++static LIST_HEAD(cpld_client_list);
++static struct mutex	 list_lock;
++
++enum cpld_device_id {
++	as4610_30_cpld,
++	as4610_54_cpld
++};
++
++struct cpld_data {
++	enum cpld_device_id id;
++};
++
++struct cpld_client_node {
++	struct i2c_client *client;
++	struct list_head   list;
++};
++
++/* Addresses scanned for accton_i2c_cpld
++ */
++static const unsigned short normal_i2c[] = { 0x31, 0x35, 0x60, 0x61, 0x62, I2C_CLIENT_END };
++
++static u8 cpld_product_id_offset(enum cpld_device_id id)
++{
++	switch (id) {
++		case as4610_30_cpld:
++		case as4610_54_cpld:
++			return 0x1;
++	}
++
++	return 0;
++}
++
++static int cpld_has_product_id(const struct i2c_device_id *dev_id)
++{
++	return (dev_id->driver_data == as4610_30_cpld) ||
++		   (dev_id->driver_data == as4610_54_cpld);
++}
++
++static ssize_t show_cpld_product_id(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	int val = 0;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct cpld_data *data = i2c_get_clientdata(client);
++
++	val = i2c_smbus_read_byte_data(client, cpld_product_id_offset(data->id));
++	if (val < 0) {
++		dev_dbg(&client->dev, "cpld(0x%x) reg(0x%x) err %d\n", client->addr, cpld_product_id_offset(data->id), val);
++	}
++
++	return sprintf(buf, "%d\n", (val & 0xF));
++}
++
++static u8 cpld_version_offset(enum cpld_device_id id)
++{
++	switch (id) {
++		case as4610_30_cpld:
++		case as4610_54_cpld:
++			return 0xB;
++	}
++
++	return 0;
++}
++
++static ssize_t show_cpld_version(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	int val = 0;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct cpld_data *data = i2c_get_clientdata(client);
++
++	val = i2c_smbus_read_byte_data(client, cpld_version_offset(data->id));
++	if (val < 0) {
++		dev_dbg(&client->dev, "cpld(0x%x) reg(0xB) err %d\n", client->addr, val);
++	}
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static void accton_i2c_cpld_add_client(struct i2c_client *client, enum cpld_device_id id)
++{
++	struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node), GFP_KERNEL);
++	struct cpld_data *data = kzalloc(sizeof(struct cpld_data), GFP_KERNEL);
++
++	if (!node) {
++		dev_dbg(&client->dev, "Can't allocate cpld_client_node (0x%x)\n", client->addr);
++		return;
++	}
++
++	if (!data) {
++		dev_dbg(&client->dev, "Can't allocate cpld_client_data (0x%x)\n", client->addr);
++		return;
++	}
++
++	data->id = id;
++	i2c_set_clientdata(client, data);
++	node->client = client;
++
++	mutex_lock(&list_lock);
++	list_add(&node->list, &cpld_client_list);
++	mutex_unlock(&list_lock);
++}
++
++static void accton_i2c_cpld_remove_client(struct i2c_client *client)
++{
++	struct list_head		*list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int found = 0;
++
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++
++		if (cpld_node->client == client) {
++			found = 1;
++			break;
++		}
++	}
++
++	if (found) {
++		list_del(list_node);
++		kfree(cpld_node);
++	}
++
++	mutex_unlock(&list_lock);
++}
++
++static struct device_attribute ver = __ATTR(version, 0600, show_cpld_version, NULL);
++static struct device_attribute pid = __ATTR(product_id, 0600, show_cpld_product_id, NULL);
++
++static int accton_i2c_cpld_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
++		dev_dbg(&client->dev, "i2c_check_functionality failed (0x%x)\n", client->addr);
++		status = -EIO;
++		goto exit;
++	}
++
++	status = sysfs_create_file(&client->dev.kobj, &ver.attr);
++	if (status) {
++		goto exit;
++	}
++
++	if (cpld_has_product_id(dev_id)) {
++		status = sysfs_create_file(&client->dev.kobj, &pid.attr);
++		if (status) {
++			goto exit;
++		}
++	}
++
++	dev_info(&client->dev, "chip found\n");
++	accton_i2c_cpld_add_client(client, (enum cpld_device_id)dev_id->driver_data);
++
++	return 0;
++
++exit:
++	return status;
++}
++
++static int accton_i2c_cpld_remove(struct i2c_client *client)
++{
++	sysfs_remove_file(&client->dev.kobj, &ver.attr);
++	accton_i2c_cpld_remove_client(client);
++
++	return 0;
++}
++
++static const struct i2c_device_id accton_i2c_cpld_id[] = {
++	{ "as4610_30_cpld", as4610_30_cpld },
++	{ "as4610_54_cpld", as4610_54_cpld },
++	{ /* LIST END */}
++};
++MODULE_DEVICE_TABLE(i2c, accton_i2c_cpld_id);
++
++static struct i2c_driver accton_i2c_cpld_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name = "accton_i2c_cpld",
++	},
++	.probe		= accton_i2c_cpld_probe,
++	.remove		= accton_i2c_cpld_remove,
++	.id_table	= accton_i2c_cpld_id,
++	.address_list = normal_i2c,
++};
++
++int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
++{
++	struct list_head   *list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int ret = -EPERM;
++
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++
++		if (cpld_node->client->addr == cpld_addr) {
++			ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
++			break;
++		}
++	}
++
++	mutex_unlock(&list_lock);
++
++	return ret;
++}
++EXPORT_SYMBOL(accton_i2c_cpld_read);
++
++int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
++{
++	struct list_head   *list_node = NULL;
++	struct cpld_client_node *cpld_node = NULL;
++	int ret = -EIO;
++
++	mutex_lock(&list_lock);
++
++	list_for_each(list_node, &cpld_client_list)
++	{
++		cpld_node = list_entry(list_node, struct cpld_client_node, list);
++
++		if (cpld_node->client->addr == cpld_addr) {
++			ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
++			break;
++		}
++	}
++
++	mutex_unlock(&list_lock);
++
++	return ret;
++}
++EXPORT_SYMBOL(accton_i2c_cpld_write);
++
++static int __init accton_i2c_cpld_init(void)
++{
++	mutex_init(&list_lock);
++	return i2c_add_driver(&accton_i2c_cpld_driver);
++}
++
++static void __exit accton_i2c_cpld_exit(void)
++{
++	i2c_del_driver(&accton_i2c_cpld_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("accton_i2c_cpld driver");
++MODULE_LICENSE("GPL");
++
++module_init(accton_i2c_cpld_init);
++module_exit(accton_i2c_cpld_exit);
++
+diff --git a/drivers/hwmon/lm77.c b/drivers/hwmon/lm77.c
+index 8dfc678..b9eafcf 100644
+--- a/drivers/hwmon/lm77.c
++++ b/drivers/hwmon/lm77.c
+@@ -36,7 +36,7 @@
+ #include <linux/mutex.h>
+ 
+ /* Addresses to scan */
+-static const unsigned short normal_i2c[] = { 0x48, 0x49, 0x4a, 0x4b,
++static const unsigned short normal_i2c[] = { /*0x48,*/ 0x49, 0x4a, 0x4b,
+ 						I2C_CLIENT_END };
+ 
+ /* The LM77 registers */
+diff --git a/drivers/hwmon/ym2651y.c b/drivers/hwmon/ym2651y.c
+new file mode 100644
+index 0000000..e761a74
+--- /dev/null
++++ b/drivers/hwmon/ym2651y.c
+@@ -0,0 +1,651 @@
++/*
++ * An hwmon driver for the 3Y Power YM-2651Y Power Module
++ *
++ * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++
++#define USE_I2C_BLOCK_READ 0
++#if USE_I2C_BLOCK_READ
++	#define I2C_FUNCTION (I2C_FUNC_SMBUS_BYTE_DATA | \
++						  I2C_FUNC_SMBUS_WORD_DATA | \
++						  I2C_FUNC_SMBUS_I2C_BLOCK)
++#else
++	#define I2C_FUNCTION (I2C_FUNC_SMBUS_BYTE_DATA | \
++						  I2C_FUNC_SMBUS_WORD_DATA)
++#endif
++
++#define MAX_FAN_DUTY_CYCLE 100
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { 0x58, 0x5b, I2C_CLIENT_END };
++
++/* Each client has this additional data
++ */
++struct ym2651y_data {
++	struct device	   *hwmon_dev;
++	struct mutex		update_lock;
++	char				valid;			 /* !=0 if registers are valid */
++	unsigned long		last_updated;	 /* In jiffies */
++	u8	 capability;	 /* Register value */
++	u16	 status_word;	 /* Register value */
++	u8	 fan_fault;		 /* Register value */
++	u8	 over_temp;		 /* Register value */
++	u16	 v_out;			 /* Register value */
++	u16	 i_out;			 /* Register value */
++	u16	 p_out;			 /* Register value */
++	u16	 temp;			 /* Register value */
++	u16	 fan_speed;		 /* Register value */
++	u16	 fan_duty_cycle[2];	 /* Register value */
++	u8	 pmbus_revision; /* Register value */
++	u16	 mfr_vin_min;	 /* Register value */
++	u16	 mfr_vin_max;	 /* Register value */
++	u16	 mfr_iin_max;	 /* Register value */
++	u16	 mfr_iout_max;	 /* Register value */
++	u16	 mfr_pin_max;	 /* Register value */
++	u16	 mfr_pout_max;	 /* Register value */
++	u16	 mfr_vout_min;	 /* Register value */
++	u16	 mfr_vout_max;	 /* Register value */
++#if USE_I2C_BLOCK_READ
++	u8	 fan_dir[4];	 /* Register value */
++	u8	 mfr_id[10];	 /* Register value */
++	u8	 mfr_model[10];	 /* Register value */
++	u8	 mfr_revsion[3]; /* Register value */
++#endif
++
++};
++
++static ssize_t show_byte(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_word(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_linear(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_fan_fault(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_over_temp(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
++			 char *buf);
++static struct ym2651y_data *ym2651y_update_device(struct device *dev);
++static ssize_t set_fan_duty_cycle(struct device *dev, struct device_attribute *da,
++			 const char *buf, size_t count);
++static int ym2651y_write_word(struct i2c_client *client, u8 reg, u16 value);
++
++enum ym2651y_sysfs_attributes {
++	PSU_POWER_ON = 0,
++	PSU_TEMP_FAULT,
++	PSU_POWER_GOOD,
++	PSU_FAN1_FAULT,
++	PSU_FAN_DIRECTION,
++	PSU_OVER_TEMP,
++	PSU_V_OUT,
++	PSU_I_OUT,
++	PSU_P_OUT,
++	PSU_TEMP1_INPUT,
++	PSU_FAN1_SPEED,
++	PSU_FAN1_DUTY_CYCLE,
++	PSU_PMBUS_REVISION,
++	PSU_MFR_ID,
++	PSU_MFR_MODEL,
++	PSU_MFR_REVISION,
++	PSU_MFR_VIN_MIN,
++	PSU_MFR_VIN_MAX,
++	PSU_MFR_VOUT_MIN,
++	PSU_MFR_VOUT_MAX,
++	PSU_MFR_IIN_MAX,
++	PSU_MFR_IOUT_MAX,
++	PSU_MFR_PIN_MAX,
++	PSU_MFR_POUT_MAX
++};
++
++/* sysfs attributes for hwmon
++ */
++static SENSOR_DEVICE_ATTR(psu_power_on,	   S_IRUGO, show_word,		NULL, PSU_POWER_ON);
++static SENSOR_DEVICE_ATTR(psu_temp_fault,  S_IRUGO, show_word,		NULL, PSU_TEMP_FAULT);
++static SENSOR_DEVICE_ATTR(psu_power_good,  S_IRUGO, show_word,		NULL, PSU_POWER_GOOD);
++static SENSOR_DEVICE_ATTR(psu_fan1_fault,  S_IRUGO, show_fan_fault, NULL, PSU_FAN1_FAULT);
++static SENSOR_DEVICE_ATTR(psu_over_temp,   S_IRUGO, show_over_temp, NULL, PSU_OVER_TEMP);
++static SENSOR_DEVICE_ATTR(psu_v_out,	   S_IRUGO, show_linear,	NULL, PSU_V_OUT);
++static SENSOR_DEVICE_ATTR(psu_i_out,	   S_IRUGO, show_linear,	NULL, PSU_I_OUT);
++static SENSOR_DEVICE_ATTR(psu_p_out,	   S_IRUGO, show_linear,	NULL, PSU_P_OUT);
++static SENSOR_DEVICE_ATTR(psu_temp1_input, S_IRUGO, show_linear,	NULL, PSU_TEMP1_INPUT);
++static SENSOR_DEVICE_ATTR(psu_fan1_speed_rpm, S_IRUGO, show_linear, NULL, PSU_FAN1_SPEED);
++static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUSR | S_IRUGO, show_linear, set_fan_duty_cycle, PSU_FAN1_DUTY_CYCLE);
++static SENSOR_DEVICE_ATTR(psu_pmbus_revision, S_IRUGO, show_byte,	NULL, PSU_PMBUS_REVISION);
++static SENSOR_DEVICE_ATTR(psu_mfr_vin_min,	  S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MIN);
++static SENSOR_DEVICE_ATTR(psu_mfr_vin_max,	  S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_vout_min,	  S_IRUGO, show_linear, NULL, PSU_MFR_VOUT_MIN);
++static SENSOR_DEVICE_ATTR(psu_mfr_vout_max,	  S_IRUGO, show_linear, NULL, PSU_MFR_VOUT_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_iin_max,	 S_IRUGO, show_linear, NULL, PSU_MFR_IIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_iout_max,	  S_IRUGO, show_linear, NULL, PSU_MFR_IOUT_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_pin_max,	 S_IRUGO, show_linear, NULL, PSU_MFR_PIN_MAX);
++static SENSOR_DEVICE_ATTR(psu_mfr_pout_max,	  S_IRUGO, show_linear, NULL, PSU_MFR_POUT_MAX);
++#if USE_I2C_BLOCK_READ
++static SENSOR_DEVICE_ATTR(psu_fan_dir,	   S_IRUGO, show_ascii,		NULL, PSU_FAN_DIRECTION);
++static SENSOR_DEVICE_ATTR(psu_mfr_id,		  S_IRUGO, show_ascii,	NULL, PSU_MFR_ID);
++static SENSOR_DEVICE_ATTR(psu_mfr_model,	  S_IRUGO, show_ascii,	NULL, PSU_MFR_MODEL);
++static SENSOR_DEVICE_ATTR(psu_mfr_revision,	   S_IRUGO, show_ascii, NULL, PSU_MFR_REVISION);
++#endif
++
++
++static struct attribute *ym2651y_attributes[] = {
++	&sensor_dev_attr_psu_power_on.dev_attr.attr,
++	&sensor_dev_attr_psu_temp_fault.dev_attr.attr,
++	&sensor_dev_attr_psu_power_good.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_fault.dev_attr.attr,
++	&sensor_dev_attr_psu_over_temp.dev_attr.attr,
++	&sensor_dev_attr_psu_v_out.dev_attr.attr,
++	&sensor_dev_attr_psu_i_out.dev_attr.attr,
++	&sensor_dev_attr_psu_p_out.dev_attr.attr,
++	&sensor_dev_attr_psu_temp1_input.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_speed_rpm.dev_attr.attr,
++	&sensor_dev_attr_psu_fan1_duty_cycle_percentage.dev_attr.attr,
++	&sensor_dev_attr_psu_pmbus_revision.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vin_min.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_pout_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_iin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_pin_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vout_min.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_vout_max.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_iout_max.dev_attr.attr,
++#if USE_I2C_BLOCK_READ
++	&sensor_dev_attr_psu_fan_dir.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_id.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_model.dev_attr.attr,
++	&sensor_dev_attr_psu_mfr_revision.dev_attr.attr,
++#endif
++	NULL
++};
++
++static ssize_t show_byte(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	return (attr->index == PSU_PMBUS_REVISION) ? sprintf(buf, "%d\n", data->pmbus_revision) :
++								 sprintf(buf, "0\n");
++}
++
++static ssize_t show_word(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	u16 status = 0;
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	switch (attr->index) {
++	case PSU_POWER_ON: /* psu_power_on, low byte bit 6 of status_word, 0=>ON, 1=>OFF */
++		status = (data->status_word & 0x40) ? 0 : 1;
++		break;
++	case PSU_TEMP_FAULT: /* psu_temp_fault, low byte bit 2 of status_word, 0=>Normal, 1=>temp fault */
++		status = (data->status_word & 0x4) >> 2;
++		break;
++	case PSU_POWER_GOOD: /* psu_power_good, high byte bit 3 of status_word, 0=>OK, 1=>FAIL */
++		status = (data->status_word & 0x800) ? 0 : 1;
++		break;
++	}
++
++	return sprintf(buf, "%d\n", status);
++}
++
++static int two_complement_to_int(u16 data, u8 valid_bit, int mask)
++{
++	u16	 valid_data	 = data & mask;
++	bool is_negative = valid_data >> (valid_bit - 1);
++
++	return is_negative ? (-(((~valid_data) & mask) + 1)) : valid_data;
++}
++
++static ssize_t set_fan_duty_cycle(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct i2c_client *client = to_i2c_client(dev);
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++	int nr = (attr->index == PSU_FAN1_DUTY_CYCLE) ? 0 : 1;
++	long speed;
++	int error;
++
++	error = kstrtol(buf, 10, &speed);
++	if (error)
++		return error;
++
++	if (speed < 0 || speed > MAX_FAN_DUTY_CYCLE)
++		return -EINVAL;
++
++	mutex_lock(&data->update_lock);
++	data->fan_duty_cycle[nr] = speed;
++	ym2651y_write_word(client, 0x3B + nr, data->fan_duty_cycle[nr]);
++	mutex_unlock(&data->update_lock);
++
++	return count;
++}
++
++static ssize_t show_linear(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	u16 value = 0;
++	int exponent, mantissa;
++	int multiplier = 1000;
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	switch (attr->index) {
++	case PSU_V_OUT:
++		value = data->v_out;
++		break;
++	case PSU_I_OUT:
++		value = data->i_out;
++		break;
++	case PSU_P_OUT:
++		value = data->p_out;
++		break;
++	case PSU_TEMP1_INPUT:
++		value = data->temp;
++		break;
++	case PSU_FAN1_SPEED:
++		value = data->fan_speed;
++		multiplier = 1;
++		break;
++	case PSU_FAN1_DUTY_CYCLE:
++		value = data->fan_duty_cycle[0];
++		multiplier = 1;
++		break;
++	case PSU_MFR_VIN_MIN:
++		value = data->mfr_vin_min;
++		break;
++	case PSU_MFR_VIN_MAX:
++		value = data->mfr_vin_max;
++		break;
++	case PSU_MFR_VOUT_MIN:
++		value = data->mfr_vout_min;
++		break;
++	case PSU_MFR_VOUT_MAX:
++		value = data->mfr_vout_max;
++		break;
++	case PSU_MFR_PIN_MAX:
++		value = data->mfr_pin_max;
++		break;
++	case PSU_MFR_POUT_MAX:
++		value = data->mfr_pout_max;
++		break;
++	case PSU_MFR_IOUT_MAX:
++		value = data->mfr_iout_max;
++		break;
++	case PSU_MFR_IIN_MAX:
++		value = data->mfr_iin_max;
++		break;
++	}
++
++	exponent = two_complement_to_int(value >> 11, 5, 0x1f);
++	mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
++
++	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
++							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));
++}
++
++static ssize_t show_fan_fault(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	u8 shift = (attr->index == PSU_FAN1_FAULT) ? 7 : 6;
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	return sprintf(buf, "%d\n", data->fan_fault >> shift);
++}
++
++static ssize_t show_over_temp(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	return sprintf(buf, "%d\n", data->over_temp >> 7);
++}
++
++#if USE_I2C_BLOCK_READ
++static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct ym2651y_data *data = ym2651y_update_device(dev);
++	u8 *ptr = NULL;
++
++	if (!data->valid) {
++		return 0;
++	}
++
++	switch (attr->index) {
++	case PSU_FAN_DIRECTION: /* psu_fan_dir */
++		ptr = data->fan_dir;
++		break;
++	case PSU_MFR_ID: /* psu_mfr_id */
++		ptr = data->mfr_id;
++		break;
++	case PSU_MFR_MODEL: /* psu_mfr_model */
++		ptr = data->mfr_model;
++		break;
++	case PSU_MFR_REVISION: /* psu_mfr_revision */
++		ptr = data->mfr_revsion;
++		break;
++	default:
++		return 0;
++	}
++
++	return sprintf(buf, "%s\n", ptr);
++}
++#endif
++
++static const struct attribute_group ym2651y_group = {
++	.attrs = ym2651y_attributes,
++};
++
++static int ym2651y_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct ym2651y_data *data;
++	int status;
++
++	if (!i2c_check_functionality(client->adapter, I2C_FUNCTION)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	data = kzalloc(sizeof(struct ym2651y_data), GFP_KERNEL);
++	if (!data) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	i2c_set_clientdata(client, data);
++	mutex_init(&data->update_lock);
++
++	dev_info(&client->dev, "chip found\n");
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &ym2651y_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	data->hwmon_dev = hwmon_device_register(&client->dev);
++	if (IS_ERR(data->hwmon_dev)) {
++		status = PTR_ERR(data->hwmon_dev);
++		goto exit_remove;
++	}
++
++	dev_info(&client->dev, "%s: psu '%s'\n",
++		 dev_name(data->hwmon_dev), client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &ym2651y_group);
++exit_free:
++	kfree(data);
++exit:
++
++	return status;
++}
++
++static int ym2651y_remove(struct i2c_client *client)
++{
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++
++	hwmon_device_unregister(data->hwmon_dev);
++	sysfs_remove_group(&client->dev.kobj, &ym2651y_group);
++	kfree(data);
++
++	return 0;
++}
++
++static const struct i2c_device_id ym2651y_id[] = {
++	{ "ym2651", 0 },
++	{ "ym1921", 1 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, ym2651y_id);
++
++static struct i2c_driver ym2651y_driver = {
++	.class		  = I2C_CLASS_HWMON,
++	.driver = {
++		.name	 = "ym2651",
++	},
++	.probe		= ym2651y_probe,
++	.remove		 = ym2651y_remove,
++	.id_table = ym2651y_id,
++	.address_list = normal_i2c,
++};
++
++static int ym2651y_read_byte(struct i2c_client *client, u8 reg)
++{
++	return i2c_smbus_read_byte_data(client, reg);
++}
++
++static int ym2651y_read_word(struct i2c_client *client, u8 reg)
++{
++	return i2c_smbus_read_word_data(client, reg);
++}
++
++static int ym2651y_write_word(struct i2c_client *client, u8 reg, u16 value)
++{
++	return i2c_smbus_write_word_data(client, reg, value);
++}
++
++#if USE_I2C_BLOCK_READ
++static int ym2651y_read_block(struct i2c_client *client, u8 command, u8 *data,
++			  int data_len)
++{
++	int result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
++
++	if (unlikely(result < 0))
++		goto abort;
++	if (unlikely(result != data_len)) {
++		result = -EIO;
++		goto abort;
++	}
++
++	result = 0;
++
++abort:
++	return result;
++}
++#endif
++
++struct reg_data_byte {
++	u8	 reg;
++	u8	*value;
++};
++
++struct reg_data_word {
++	u8	 reg;
++	u16 *value;
++};
++
++static struct ym2651y_data *ym2651y_update_device(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct ym2651y_data *data = i2c_get_clientdata(client);
++
++	mutex_lock(&data->update_lock);
++
++	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
++		|| !data->valid) {
++		int i, status;
++		u8 command;
++		u8 fan_dir[5] = {0};
++		struct reg_data_byte regs_byte[] = { {0x19, &data->capability},
++											 {0x7d, &data->over_temp},
++											 {0x81, &data->fan_fault},
++											 {0x98, &data->pmbus_revision}};
++		struct reg_data_word regs_word[] = { {0x79, &data->status_word},
++											 {0x8b, &data->v_out},
++											 {0x8c, &data->i_out},
++											 {0x96, &data->p_out},
++											 {0x8d, &data->temp},
++											 {0x3b, &(data->fan_duty_cycle[0])},
++											 {0x3c, &(data->fan_duty_cycle[1])},
++											 {0x90, &data->fan_speed},
++											 {0xa0, &data->mfr_vin_min},
++											 {0xa1, &data->mfr_vin_max},
++											 {0xa2, &data->mfr_iin_max},
++											 {0xa3, &data->mfr_pin_max},
++											 {0xa4, &data->mfr_vout_min},
++											 {0xa5, &data->mfr_vout_max},
++											 {0xa6, &data->mfr_iout_max},
++											 {0xa7, &data->mfr_pout_max}};
++
++		dev_dbg(&client->dev, "Starting ym2651 update\n");
++		data->valid = 0;
++
++		/* Read byte data */
++		for (i = 0; i < ARRAY_SIZE(regs_byte); i++) {
++			status = ym2651y_read_byte(client, regs_byte[i].reg);
++
++			if (status < 0) {
++				dev_dbg(&client->dev, "reg %d, err %d\n", regs_byte[i].reg, status);
++				goto exit;
++			}
++			else {
++				*(regs_byte[i].value) = status;
++			}
++		}
++
++		/* Read word data */
++		for (i = 0; i < ARRAY_SIZE(regs_word); i++) {
++			status = ym2651y_read_word(client, regs_word[i].reg);
++
++			if (status < 0) {
++				dev_dbg(&client->dev, "reg %d, err %d\n", regs_word[i].reg, status);
++				goto exit;
++			}
++			else {
++				*(regs_word[i].value) = status;
++			}
++		}
++
++#if USE_I2C_BLOCK_READ
++		/* Read fan_direction */
++		command = 0xC3;
++		status = ym2651y_read_block(client, command, fan_dir, ARRAY_SIZE(fan_dir)-1);
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		strncpy(data->fan_dir, fan_dir+1, ARRAY_SIZE(data->fan_dir)-1);
++		data->fan_dir[ARRAY_SIZE(data->fan_dir)-1] = '\0';
++
++		/* Read mfr_id */
++		command = 0x99;
++		status = ym2651y_read_block(client, command, data->mfr_id,
++										 ARRAY_SIZE(data->mfr_id)-1);
++		data->mfr_id[ARRAY_SIZE(data->mfr_id)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		/* Read mfr_model */
++		command = 0x9a;
++		status = ym2651y_read_block(client, command, data->mfr_model,
++										 ARRAY_SIZE(data->mfr_model)-1);
++		data->mfr_model[ARRAY_SIZE(data->mfr_model)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++
++		/* Read mfr_revsion */
++		command = 0x9b;
++		status = ym2651y_read_block(client, command, data->mfr_revsion,
++										 ARRAY_SIZE(data->mfr_revsion)-1);
++		data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
++
++		if (status < 0) {
++			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
++			goto exit;
++		}
++#endif
++
++		data->last_updated = jiffies;
++		data->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&data->update_lock);
++
++	return data;
++}
++
++static int __init ym2651y_init(void)
++{
++	return i2c_add_driver(&ym2651y_driver);
++}
++
++static void __exit ym2651y_exit(void)
++{
++	i2c_del_driver(&ym2651y_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("3Y Power YM-2651Y driver");
++MODULE_LICENSE("GPL");
++
++module_init(ym2651y_init);
++module_exit(ym2651y_exit);
++
+diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
+index ff203a4..97d4d54 100644
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -387,6 +387,13 @@ config LEDS_RENESAS_TPU
+ 	  pin function. The latter to support brightness control.
+ 	  Brightness control is supported but hardware blinking is not.
+ 
++config LEDS_ACCTON_AS4610
++	tristate "LED support for the Accton as4610"
++	depends on LEDS_CLASS && SENSORS_ACCTON_I2C_CPLD
++	help
++	  This option enables support for the LEDs on the Accton as4610.
++	  Say Y to enable LEDs on the Accton as4610.
++
+ config LEDS_TRIGGERS
+ 	bool "LED Trigger support"
+ 	depends on LEDS_CLASS
+diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
+index e4f6bf5..db2dab8 100644
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -43,6 +43,7 @@ obj-$(CONFIG_LEDS_NS2)			+= leds-ns2.o
+ obj-$(CONFIG_LEDS_NETXBIG)		+= leds-netxbig.o
+ obj-$(CONFIG_LEDS_ASIC3)		+= leds-asic3.o
+ obj-$(CONFIG_LEDS_RENESAS_TPU)		+= leds-renesas-tpu.o
++obj-$(CONFIG_LEDS_ACCTON_AS4610)	+= leds-accton_as4610.o
+ 
+ # LED SPI Drivers
+ obj-$(CONFIG_LEDS_DAC124S085)		+= leds-dac124s085.o
+diff --git a/drivers/leds/leds-accton_as4610.c b/drivers/leds/leds-accton_as4610.c
+new file mode 100644
+index 0000000..0c4b535
+--- /dev/null
++++ b/drivers/leds/leds-accton_as4610.c
+@@ -0,0 +1,678 @@
++/*
++ * A LED driver for the accton_as4610_led
++ *
++ * Copyright (C) 2016 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++/*#define DEBUG*/
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/platform_device.h>
++#include <linux/err.h>
++#include <linux/leds.h>
++#include <linux/slab.h>
++#include <linux/bitops.h>
++#include <linux/accton_i2c_cpld.h>
++
++extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++extern void led_classdev_unregister(struct led_classdev *led_cdev);
++extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
++
++#define DRVNAME "as4610_led"
++
++struct as4610_led_data {
++	struct platform_device *pdev;
++	struct mutex	 update_lock;
++	char			 valid;			  /* != 0 if registers are valid */
++	unsigned long	 last_updated;	  /* In jiffies */
++	int				 led_map;
++	u8				 reg_val[5];	 /* Register value, 0 = (0x1A) Blinking function
++														1 = (0x30) 7-seg 2
++														2 = (0x31) 7-seg 1
++														3 = (0x32) SYS/PRI/PSU1-2 LED
++														4 = (0x33) STK1-2/Fan/PoE/Alarm LED */
++};
++
++static struct as4610_led_data  *ledctl = NULL;
++
++/* LED related data
++ */
++#define LED_7SEG_REG_MASK		 0x0F
++#define LED_7SEG_POINT_REG_MASK	 0x10
++
++#define LED_NORMAL_MASK			 0x03
++#define LED_NORMAL_GREEN_VALUE	 0x02
++#define LED_NORMAL_AMBER_VALUE	 0x01
++#define LED_NORMAL_OFF_VALUE	 0x00
++
++#define LED_TYPE_SYS_REG_MASK	 0xC0
++#define LED_MODE_SYS_BLINK_MASK  0x80
++
++#define LED_TYPE_PRI_REG_MASK    0x30
++#define LED_MODE_PRI_BLINK_MASK  0x40
++
++#define LED_TYPE_PSU1_REG_MASK	  0x0C
++#define LED_MODE_PSU1_BLINK_MASK 0x20
++
++#define LED_TYPE_PSU2_REG_MASK   0x03
++#define LED_MODE_PSU2_BLINK_MASK 0x10
++
++#define LED_TYPE_STK1_REG_MASK   0xC0
++#define LED_MODE_STK1_BLINK_MASK 0x08
++
++#define LED_TYPE_STK2_REG_MASK   0x30
++#define LED_MODE_STK2_BLINK_MASK 0x04
++
++#define LED_TYPE_FAN_REG_MASK    0x0C
++#define LED_MODE_FAN_BLINK_MASK  0x02
++
++#define LED_TYPE_POE_ALARM_REG_MASK   0x03
++#define LED_MODE_POE_ALARM_BLINK_MASK 0x01
++
++static const u8 led_reg[] = {
++	0x1A, /* Blinking function */
++	0x30, /* 7-seg 1 */
++	0x31, /* 7-seg 2 */
++	0x32, /* SYS/PRI/PSU1-2 LED */
++	0x33, /* STK1-2/Fan/PoE/Alarm LED */
++};
++
++enum led_type {
++	LED_TYPE_SYS,
++	LED_TYPE_PRI,
++	LED_TYPE_PSU1,
++	LED_TYPE_PSU2,
++	LED_TYPE_STK1,
++	LED_TYPE_STK2,
++	LED_TYPE_7SEG_TENS,
++	LED_TYPE_7SEG_TENS_POINT,
++	LED_TYPE_7SEG_DIGITS,
++	LED_TYPE_7SEG_DIGITS_POINT,
++	LED_TYPE_FAN,
++	LED_TYPE_POE,
++	LED_TYPE_ALARM,
++	NUM_OF_LED
++};
++
++#define AS4610_COMMON_LED_MAP	(BIT(LED_TYPE_SYS) | BIT(LED_TYPE_PRI) | BIT(LED_TYPE_PSU1) | \
++							 	 BIT(LED_TYPE_PSU2)| BIT(LED_TYPE_STK1)| BIT(LED_TYPE_STK2))
++#define AS4610_NPOE_LED_MAP		(AS4610_COMMON_LED_MAP | BIT(LED_TYPE_7SEG_TENS) | \
++							 	 BIT(LED_TYPE_7SEG_TENS_POINT) | BIT(LED_TYPE_7SEG_DIGITS) | \
++							 	 BIT(LED_TYPE_7SEG_DIGITS_POINT))
++#define AS4610_POE_LED_MAP 		(AS4610_NPOE_LED_MAP | BIT(LED_TYPE_FAN) | BIT(LED_TYPE_POE))
++#define AS4610_54T_B_LED_MAP 	(AS4610_COMMON_LED_MAP | BIT(LED_TYPE_FAN) | BIT(LED_TYPE_ALARM))
++
++static int as4610_ledmaps[] = {
++	[PID_AS4610_30T] 	= AS4610_NPOE_LED_MAP,
++	[PID_AS4610_30P] 	= AS4610_POE_LED_MAP,
++	[PID_AS4610_54T] 	= AS4610_NPOE_LED_MAP,
++	[PID_AS4610_54P] 	= AS4610_POE_LED_MAP,
++	[PID_AS4610_54T_B] 	= AS4610_54T_B_LED_MAP,
++	[PID_RESERVED]	 	= 0,
++};
++
++enum led_light_mode {
++	LED_MODE_OFF = 0,
++	LED_MODE_GREEN,
++	LED_MODE_GREEN_BLINK,
++	LED_MODE_AMBER,
++	LED_MODE_AMBER_BLINK,
++	LED_MODE_RED,
++	LED_MODE_RED_BLINK,
++	LED_MODE_BLUE,
++	LED_MODE_BLUE_BLINK,
++	LED_MODE_AUTO,
++	LED_MODE_AUTO_BLINKING,
++	LED_MODE_UNKNOWN,
++	LED_MODE_SEVEN_SEGMENT_MAX = 9,
++};
++
++static int as4610_led_read_value(u8 reg)
++{
++	return accton_i2c_cpld_read(0x30, reg);
++}
++
++static int as4610_led_write_value(u8 reg, u8 value)
++{
++	return accton_i2c_cpld_write(0x30, reg, value);
++}
++
++static void as4610_led_update(void)
++{
++	mutex_lock(&ledctl->update_lock);
++
++	if (time_after(jiffies, ledctl->last_updated + HZ + HZ / 2)
++		|| !ledctl->valid) {
++		int i;
++
++		dev_dbg(&ledctl->pdev->dev, "Starting as4610_led update\n");
++
++		/* Update LED data
++		 */
++		for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
++			int status = as4610_led_read_value(led_reg[i]);
++
++			if (status < 0) {
++				ledctl->valid = 0;
++				dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg[i], status);
++				goto exit;
++			}
++			else
++			{
++				ledctl->reg_val[i] = status;
++			}
++		}
++
++		ledctl->last_updated = jiffies;
++		ledctl->valid = 1;
++	}
++
++exit:
++	mutex_unlock(&ledctl->update_lock);
++}
++
++static enum led_brightness seven_segment_get(struct led_classdev *cdev, u8 reg_id)
++{
++	as4610_led_update();
++	return (ledctl->reg_val[reg_id] & LED_7SEG_REG_MASK);
++}
++
++static void seven_segment_set(struct led_classdev *cdev, enum led_brightness mode, u8 reg_id)
++{
++	if (mode > cdev->max_brightness) {
++		return;
++	}
++
++	ledctl->reg_val[reg_id] &= 0xF0;
++	ledctl->reg_val[reg_id] |= mode;
++	as4610_led_write_value(led_reg[reg_id], ledctl->reg_val[reg_id]);
++}
++
++static enum led_brightness seven_segment_digits_get(struct led_classdev *cdev)
++{
++	return seven_segment_get(cdev, 1);
++}
++
++static void seven_segment_digits_set(struct led_classdev *cdev, enum led_brightness mode)
++{
++	seven_segment_set(cdev, mode, 1);
++}
++
++static enum led_brightness seven_segment_tens_get(struct led_classdev *cdev)
++{
++	return seven_segment_get(cdev, 2);
++}
++
++static void seven_segment_tens_set(struct led_classdev *cdev, enum led_brightness mode)
++{
++	seven_segment_set(cdev, mode, 2);
++}
++
++static enum led_brightness seven_segment_point_get(struct led_classdev *cdev, u8 reg_id)
++{
++	as4610_led_update();
++	return (ledctl->reg_val[reg_id] & LED_7SEG_POINT_REG_MASK) ? LED_MODE_GREEN : LED_MODE_OFF;
++}
++
++static void seven_segment_point_set(struct led_classdev *cdev,
++										  enum led_brightness mode, u8 reg_id)
++{
++	/* Validate brightness */
++	if ((int)mode < LED_MODE_OFF || mode > cdev->max_brightness) {
++		return;
++	}
++
++	if ((int)mode == (int)LED_MODE_OFF) {
++		ledctl->reg_val[reg_id] &= ~LED_7SEG_POINT_REG_MASK;
++	}
++	else { /* LED_MODE_GREEN */
++		ledctl->reg_val[reg_id] |= LED_7SEG_POINT_REG_MASK;
++	}
++
++	as4610_led_write_value(led_reg[reg_id], ledctl->reg_val[reg_id]);
++}
++
++static enum led_brightness seven_segment_tens_point_get(struct led_classdev *cdev)
++{
++	return seven_segment_point_get(cdev, 2);
++}
++
++static void seven_segment_tens_point_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	seven_segment_point_set(cdev, mode, 2);
++}
++
++static enum led_brightness seven_segment_digits_point_get(struct led_classdev *cdev)
++{
++	return seven_segment_point_get(cdev, 1);
++}
++
++static void seven_segment_digits_point_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	seven_segment_point_set(cdev, mode, 1);
++}
++
++static u8 led_is_blinking_mode(enum led_brightness mode)
++{
++	return ((int)mode == (int)LED_MODE_GREEN_BLINK ||
++			(int)mode == (int)LED_MODE_AMBER_BLINK ||
++			(int)mode == (int)LED_MODE_AUTO_BLINKING);
++}
++
++static enum led_brightness as4610_led_auto_get(u8 blink_mask)
++{
++	as4610_led_update();
++	return (ledctl->reg_val[0] & blink_mask) ? LED_MODE_AUTO_BLINKING : LED_MODE_AUTO;
++}
++
++static void as4610_led_auto_set(struct led_classdev *cdev,
++							 enum led_brightness mode, u8 blink_mask)
++{
++	/* Validate brightness */
++	if ((int)mode < (int)LED_MODE_AUTO || mode > cdev->max_brightness) {
++		return;
++	}
++
++	/* Set blinking */
++	if (led_is_blinking_mode(mode)) {
++		ledctl->reg_val[0] |= blink_mask;
++	}
++	else {
++		ledctl->reg_val[0] &= ~blink_mask;
++	}
++	as4610_led_write_value(led_reg[0], ledctl->reg_val[0]);
++}
++
++static enum led_brightness as4610_led_psu1_get(struct led_classdev *cdev)
++{
++   return as4610_led_auto_get(LED_MODE_PSU1_BLINK_MASK);
++}
++
++static void as4610_led_psu1_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_auto_set(cdev, mode, LED_MODE_PSU1_BLINK_MASK);
++}
++
++static enum led_brightness as4610_led_psu2_get(struct led_classdev *cdev)
++{
++	return as4610_led_auto_get(LED_MODE_PSU2_BLINK_MASK);
++}
++
++static void as4610_led_psu2_set(struct led_classdev *led_cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_auto_set(led_cdev, mode, LED_MODE_PSU2_BLINK_MASK);
++}
++
++static enum led_brightness as4610_led_fan_get(struct led_classdev *cdev)
++{
++	return as4610_led_auto_get(LED_MODE_FAN_BLINK_MASK);
++}
++
++static void as4610_led_fan_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_auto_set(cdev, mode, LED_MODE_FAN_BLINK_MASK);
++}
++
++static u8 led_normal_light_mode_to_reg_val(enum led_brightness mode)
++{
++	if (led_is_blinking_mode(mode)) {
++		mode -= 1; /* convert blinking mode to non-blinking mode */
++	}
++
++	if ((int)mode == (int)LED_MODE_GREEN) {
++		return LED_NORMAL_GREEN_VALUE;
++	}
++	else if ((int)mode == (int)LED_MODE_AMBER) {
++		return LED_NORMAL_AMBER_VALUE;
++	}
++
++	return LED_NORMAL_OFF_VALUE;
++}
++
++static enum led_brightness led_normal_reg_val_to_light_mode(u8 reg_val)
++{
++	reg_val &= LED_NORMAL_MASK;
++
++	if (reg_val & LED_NORMAL_GREEN_VALUE) {
++		return LED_MODE_GREEN;
++	}
++	else if (reg_val & LED_NORMAL_AMBER_VALUE) {
++		return LED_MODE_AMBER;
++	}
++
++	return LED_MODE_OFF;
++}
++
++static void as4610_led_normal_set(struct led_classdev *cdev,
++	enum led_brightness mode, u8 blink_mask, u8 reg_id, u8 reg_mask, u8 shift)
++{
++	/* Validate brightness */
++	if (mode > cdev->max_brightness) {
++		return;
++	}
++
++	/* Set blinking */
++	if (led_is_blinking_mode(mode)) {
++		ledctl->reg_val[0] |= blink_mask;
++	}
++	else {
++		ledctl->reg_val[0] &= ~blink_mask;
++	}
++	as4610_led_write_value(led_reg[0], ledctl->reg_val[0]);
++
++	/* Set color */
++	ledctl->reg_val[reg_id] &= ~reg_mask;
++	ledctl->reg_val[reg_id] |= (led_normal_light_mode_to_reg_val(mode) << shift);
++	as4610_led_write_value(led_reg[reg_id], ledctl->reg_val[reg_id]);
++}
++
++static enum led_brightness as4610_led_normal_get(u8 reg_id, u8 blink_mask, u8 shift)
++{
++	u8 blinking = 0;
++	enum led_brightness mode;
++
++	as4610_led_update();
++
++	mode = led_normal_reg_val_to_light_mode(ledctl->reg_val[reg_id] >> shift);
++	if ((int)mode == (int)LED_MODE_OFF) {
++		return mode;
++	}
++
++	/* Checking blinking */
++	if (ledctl->reg_val[0] & blink_mask) {
++		blinking = 1;
++	}
++
++	return blinking ? (mode+1) : mode;
++}
++
++static void as4610_led_sys_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_normal_set(cdev, mode, LED_MODE_SYS_BLINK_MASK,
++							  3, LED_TYPE_SYS_REG_MASK, 6);
++}
++
++static enum led_brightness as4610_led_sys_get(struct led_classdev *cdev)
++{
++	return as4610_led_normal_get(3, LED_MODE_SYS_BLINK_MASK, 6);
++}
++
++static void as4610_led_pri_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_normal_set(cdev, mode, LED_MODE_PRI_BLINK_MASK,
++							  3, LED_TYPE_PRI_REG_MASK, 4);
++}
++
++static enum led_brightness as4610_led_pri_get(struct led_classdev *cdev)
++{
++	return as4610_led_normal_get(3, LED_MODE_PRI_BLINK_MASK, 4);
++}
++
++static void as4610_led_poe_alarm_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_normal_set(cdev, mode, LED_MODE_POE_ALARM_BLINK_MASK,
++							  4, LED_TYPE_POE_ALARM_REG_MASK, 0);
++}
++
++static enum led_brightness as4610_led_poe_alarm_get(struct led_classdev *cdev)
++{
++	return as4610_led_normal_get(4, LED_MODE_POE_ALARM_BLINK_MASK, 0);
++}
++
++static void as4610_led_stk1_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_normal_set(cdev, mode, LED_MODE_STK1_BLINK_MASK,
++							  4, LED_TYPE_STK1_REG_MASK, 6);
++}
++
++static enum led_brightness as4610_led_stk1_get(struct led_classdev *cdev)
++{
++	return as4610_led_normal_get(4, LED_MODE_STK1_BLINK_MASK, 6);
++}
++
++static void as4610_led_stk2_set(struct led_classdev *cdev,
++										  enum led_brightness mode)
++{
++	as4610_led_normal_set(cdev, mode, LED_MODE_STK2_BLINK_MASK,
++							  4, LED_TYPE_STK2_REG_MASK, 4);
++}
++
++static enum led_brightness as4610_led_stk2_get(struct led_classdev *cdev)
++{
++	return as4610_led_normal_get(4, LED_MODE_STK2_BLINK_MASK, 4);
++}
++
++static struct led_classdev as4610_leds[] = {
++	[LED_TYPE_SYS] = {
++		.name			 = "as4610::sys",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_sys_set,
++		.brightness_get	 = as4610_led_sys_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_PRI] = {
++		.name			 = "as4610::pri",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_pri_set,
++		.brightness_get	 = as4610_led_pri_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_PSU1] = {
++		.name			 = "as4610::psu1",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_psu1_set,
++		.brightness_get	 = as4610_led_psu1_get,
++		.max_brightness	 = LED_MODE_AUTO_BLINKING,
++	},
++	[LED_TYPE_PSU2] = {
++		.name			 = "as4610::psu2",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_psu2_set,
++		.brightness_get	 = as4610_led_psu2_get,
++		.max_brightness	 = LED_MODE_AUTO_BLINKING,
++	},
++	[LED_TYPE_STK1] = {
++		.name			 = "as4610::stk1",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_stk1_set,
++		.brightness_get	 = as4610_led_stk1_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_STK2] = {
++		.name			 = "as4610::stk2",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_stk2_set,
++		.brightness_get	 = as4610_led_stk2_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_7SEG_TENS] = {
++		.name			 = "as4610::7seg_tens",
++		.default_trigger = "unused",
++		.brightness_set	 = seven_segment_tens_set,
++		.brightness_get	 = seven_segment_tens_get,
++		.max_brightness	 = LED_MODE_SEVEN_SEGMENT_MAX,
++	},
++	[LED_TYPE_7SEG_TENS_POINT] = {
++		.name			 = "as4610::7seg_tens_point",
++		.default_trigger = "unused",
++		.brightness_set	 = seven_segment_tens_point_set,
++		.brightness_get	 = seven_segment_tens_point_get,
++		.max_brightness	 = LED_MODE_GREEN,
++	},
++	[LED_TYPE_7SEG_DIGITS] = {
++		.name			 = "as4610::7seg_digits",
++		.default_trigger = "unused",
++		.brightness_set	 = seven_segment_digits_set,
++		.brightness_get	 = seven_segment_digits_get,
++		.max_brightness	 = LED_MODE_SEVEN_SEGMENT_MAX,
++	},
++	[LED_TYPE_7SEG_DIGITS_POINT] = {
++		.name			 = "as4610::7seg_digits_point",
++		.default_trigger = "unused",
++		.brightness_set	 = seven_segment_digits_point_set,
++		.brightness_get	 = seven_segment_digits_point_get,
++		.max_brightness	 = LED_MODE_GREEN,
++	},
++	[LED_TYPE_FAN] = {
++		.name			 = "as4610::fan",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_fan_set,
++		.brightness_get	 = as4610_led_fan_get,
++		.max_brightness	 = LED_MODE_AUTO_BLINKING,
++	},
++	[LED_TYPE_POE] = {
++		.name			 = "as4610::poe",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_poe_alarm_set,
++		.brightness_get	 = as4610_led_poe_alarm_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++	[LED_TYPE_ALARM] = {
++		.name			 = "as4610::alarm",
++		.default_trigger = "unused",
++		.brightness_set	 = as4610_led_poe_alarm_set,
++		.brightness_get	 = as4610_led_poe_alarm_get,
++		.max_brightness	 = LED_MODE_AMBER_BLINK,
++	},
++};
++
++static int as4610_led_probe(struct platform_device *pdev)
++{
++	int ret = 0, i;
++
++	for (i = 0; i < NUM_OF_LED; i++) {
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
++		}
++		
++		ret = led_classdev_register(&pdev->dev, &as4610_leds[i]);
++		if (ret < 0) {
++			goto error;
++		}
++	}
++
++	return 0;
++
++error:
++	for (i = i-1; i >= 0; i--) {
++		/* only unregister the LEDs that were successfully registered */
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
++		}
++
++		led_classdev_unregister(&as4610_leds[i]);
++	}
++
++	return ret;
++}
++
++static int as4610_led_remove(struct platform_device *pdev)
++{
++	int i;
++
++	for (i = 0; i < NUM_OF_LED; i++) {
++		if (!(ledctl->led_map & BIT(i))) {
++			continue;
++		}
++		
++		led_classdev_unregister(&as4610_leds[i]);
++	}
++
++	return 0;
++}
++
++static struct platform_driver as4610_led_driver = {
++	.probe		= as4610_led_probe,
++	.remove		= as4610_led_remove,
++	.driver		= {
++	.name	= DRVNAME,
++	.owner	= THIS_MODULE,
++	},
++};
++
++static int __init as4610_led_init(void)
++{
++	int ret, pid;
++
++	if (as4610_product_id() == PID_UNKNOWN) {
++		return -ENODEV;
++	}
++
++	ret = platform_driver_register(&as4610_led_driver);
++	if (ret < 0) {
++		goto exit;
++	}
++
++	ledctl = kzalloc(sizeof(struct as4610_led_data), GFP_KERNEL);
++	if (!ledctl) {
++		ret = -ENOMEM;
++		platform_driver_unregister(&as4610_led_driver);
++		goto exit;
++	}
++
++	pid = as4610_product_id();
++	if (pid == PID_UNKNOWN) {
++		return -ENODEV;
++	}
++
++	ledctl->led_map = as4610_ledmaps[pid];
++	mutex_init(&ledctl->update_lock);
++
++	ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
++	if (IS_ERR(ledctl->pdev)) {
++		ret = PTR_ERR(ledctl->pdev);
++		platform_driver_unregister(&as4610_led_driver);
++		kfree(ledctl);
++		goto exit;
++	}
++
++exit:
++	return ret;
++}
++
++static void __exit as4610_led_exit(void)
++{
++	if (!ledctl) {
++		return;
++	}
++
++	platform_device_unregister(ledctl->pdev);
++	platform_driver_unregister(&as4610_led_driver);
++	kfree(ledctl);
++}
++
++late_initcall(as4610_led_init);
++module_exit(as4610_led_exit);
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("as4610_led driver");
++MODULE_LICENSE("GPL");
++
+diff --git a/drivers/misc/eeprom/Kconfig b/drivers/misc/eeprom/Kconfig
+index 7c7b208..1c62b33 100644
+--- a/drivers/misc/eeprom/Kconfig
++++ b/drivers/misc/eeprom/Kconfig
+@@ -117,5 +117,14 @@ config EEPROM_SFF_8436
+ 
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called sff_8436.
++      
++config EEPROM_ACCTON_AS4610_SFP
++	tristate "Accton as4610 sfp"
++	depends on I2C && SENSORS_ACCTON_I2C_CPLD
++	help
++	  If you say yes here you get support for Accton as4610 sfp.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called accton_as4610_sfp.
+ 
+ endmenu
+diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
+index 9edd559..12f7cae 100644
+--- a/drivers/misc/eeprom/Makefile
++++ b/drivers/misc/eeprom/Makefile
+@@ -7,3 +7,4 @@ obj-$(CONFIG_EEPROM_93CX6)	+= eeprom_93cx6.o
+ obj-$(CONFIG_EEPROM_93XX46)	+= eeprom_93xx46.o
+ obj-$(CONFIG_EEPROM_DIGSY_MTC_CFG) += digsy_mtc_eeprom.o
+ obj-$(CONFIG_EEPROM_SFF_8436) += sff_8436_eeprom.o
++obj-$(CONFIG_EEPROM_ACCTON_AS4610_SFP) += accton_as4610_sfp.o
+diff --git a/drivers/misc/eeprom/accton_as4610_sfp.c b/drivers/misc/eeprom/accton_as4610_sfp.c
+new file mode 100644
+index 0000000..39c17ec
+--- /dev/null
++++ b/drivers/misc/eeprom/accton_as4610_sfp.c
+@@ -0,0 +1,1269 @@
++/*
++ * SFP driver for accton as4610 sfp
++ *
++ * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * Based on ad7414.c
++ * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/sysfs.h>
++#include <linux/slab.h>
++#include <linux/delay.h>
++
++#define DRIVER_NAME		"as4610_sfp" /* Platform dependent */
++
++#define DEBUG_MODE 0
++
++#if (DEBUG_MODE == 1)
++	#define DEBUG_PRINT(fmt, args...)										 \
++		printk (KERN_INFO "%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)
++#else
++	#define DEBUG_PRINT(fmt, args...)
++#endif
++
++#define NUM_OF_SFP_PORT			32
++#define EEPROM_NAME				"sfp_eeprom"
++#define EEPROM_SIZE				256	/*	256 byte eeprom */
++#define BIT_INDEX(i)			(1ULL << (i))
++#define USE_I2C_BLOCK_READ		0	/* Platform dependent */
++#define I2C_RW_RETRY_COUNT		3
++#define I2C_RW_RETRY_INTERVAL	100 /* ms */
++
++#define SFP_EEPROM_A0_I2C_ADDR (0xA0 >> 1)
++#define SFP_EEPROM_A2_I2C_ADDR (0xA2 >> 1)
++
++#define SFF8024_PHYSICAL_DEVICE_ID_ADDR		0x0
++#define SFF8024_DEVICE_ID_SFP				0x3
++#define SFF8024_DEVICE_ID_QSFP				0xC
++#define SFF8024_DEVICE_ID_QSFP_PLUS			0xD
++#define SFF8024_DEVICE_ID_QSFP28			0x11
++
++#define SFF8472_DIAG_MON_TYPE_ADDR			92
++#define SFF8472_DIAG_MON_TYPE_DDM_MASK		0x40
++#define SFF8472_10G_ETH_COMPLIANCE_ADDR		0x3
++#define SFF8472_10G_BASE_MASK				0xF0
++
++#define SFF8436_RX_LOS_ADDR					3
++#define SFF8436_TX_FAULT_ADDR				4
++#define SFF8436_TX_DISABLE_ADDR				86
++
++static ssize_t show_port_number(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t show_port_type(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t show_present(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t sfp_show_tx_rx_status(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t qsfp_show_tx_rx_status(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t sfp_set_tx_disable(struct device *dev, struct device_attribute *da, const char *buf, size_t count);
++static ssize_t qsfp_set_tx_disable(struct device *dev, struct device_attribute *da, const char *buf, size_t count);;
++static ssize_t sfp_show_ddm_implemented(struct device *dev, struct device_attribute *da, char *buf);
++static ssize_t sfp_eeprom_read(struct i2c_client *, u8, u8 *,int);
++static ssize_t sfp_eeprom_write(struct i2c_client *, u8 , const char *,int);
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++enum sfp_sysfs_attributes {
++	PRESENT,
++	PRESENT_ALL,
++	PORT_NUMBER,
++	PORT_TYPE,
++	DDM_IMPLEMENTED,
++	TX_FAULT,
++	TX_FAULT1,
++	TX_FAULT2,
++	TX_FAULT3,
++	TX_FAULT4,
++	TX_DISABLE,
++	TX_DISABLE1,
++	TX_DISABLE2,
++	TX_DISABLE3,
++	TX_DISABLE4,
++	RX_LOS,
++	RX_LOS1,
++	RX_LOS2,
++	RX_LOS3,
++	RX_LOS4,
++	RX_LOS_ALL
++};
++
++/* SFP/QSFP common attributes for sysfs */
++static SENSOR_DEVICE_ATTR(sfp_port_number, S_IRUGO, show_port_number, NULL, PORT_NUMBER);
++static SENSOR_DEVICE_ATTR(sfp_port_type, S_IRUGO, show_port_type, NULL, PORT_TYPE);
++static SENSOR_DEVICE_ATTR(sfp_is_present,  S_IRUGO, show_present, NULL, PRESENT);
++static SENSOR_DEVICE_ATTR(sfp_is_present_all,  S_IRUGO, show_present, NULL, PRESENT_ALL);
++static SENSOR_DEVICE_ATTR(sfp_rx_los,  S_IRUGO, sfp_show_tx_rx_status, NULL, RX_LOS);
++static SENSOR_DEVICE_ATTR(sfp_tx_disable,  S_IWUSR | S_IRUGO, sfp_show_tx_rx_status, sfp_set_tx_disable, TX_DISABLE);
++static SENSOR_DEVICE_ATTR(sfp_tx_fault,	 S_IRUGO, sfp_show_tx_rx_status, NULL, TX_FAULT);
++
++/* QSFP attributes for sysfs */
++static SENSOR_DEVICE_ATTR(sfp_rx_los1, S_IRUGO, qsfp_show_tx_rx_status, NULL, RX_LOS1);
++static SENSOR_DEVICE_ATTR(sfp_rx_los2, S_IRUGO, qsfp_show_tx_rx_status, NULL, RX_LOS2);
++static SENSOR_DEVICE_ATTR(sfp_rx_los3, S_IRUGO, qsfp_show_tx_rx_status, NULL, RX_LOS3);
++static SENSOR_DEVICE_ATTR(sfp_rx_los4, S_IRUGO, qsfp_show_tx_rx_status, NULL, RX_LOS4);
++static SENSOR_DEVICE_ATTR(sfp_tx_disable1, S_IWUSR | S_IRUGO, qsfp_show_tx_rx_status, qsfp_set_tx_disable, TX_DISABLE1);
++static SENSOR_DEVICE_ATTR(sfp_tx_disable2, S_IWUSR | S_IRUGO, qsfp_show_tx_rx_status, qsfp_set_tx_disable, TX_DISABLE2);
++static SENSOR_DEVICE_ATTR(sfp_tx_disable3, S_IWUSR | S_IRUGO, qsfp_show_tx_rx_status, qsfp_set_tx_disable, TX_DISABLE3);
++static SENSOR_DEVICE_ATTR(sfp_tx_disable4, S_IWUSR | S_IRUGO, qsfp_show_tx_rx_status, qsfp_set_tx_disable, TX_DISABLE4);
++static SENSOR_DEVICE_ATTR(sfp_tx_fault1, S_IRUGO, qsfp_show_tx_rx_status, NULL, TX_FAULT1);
++static SENSOR_DEVICE_ATTR(sfp_tx_fault2, S_IRUGO, qsfp_show_tx_rx_status, NULL, TX_FAULT2);
++static SENSOR_DEVICE_ATTR(sfp_tx_fault3, S_IRUGO, qsfp_show_tx_rx_status, NULL, TX_FAULT3);
++static SENSOR_DEVICE_ATTR(sfp_tx_fault4, S_IRUGO, qsfp_show_tx_rx_status, NULL, TX_FAULT4);
++static struct attribute *qsfp_attributes[] = {
++	&sensor_dev_attr_sfp_port_number.dev_attr.attr,
++	&sensor_dev_attr_sfp_port_type.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present_all.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los1.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los2.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los3.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los4.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable1.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable2.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable3.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable4.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault1.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault2.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault3.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault4.dev_attr.attr,
++	NULL
++};
++
++/* SFP msa attributes for sysfs */
++static SENSOR_DEVICE_ATTR(sfp_ddm_implemented,	 S_IRUGO, sfp_show_ddm_implemented, NULL, DDM_IMPLEMENTED);
++static SENSOR_DEVICE_ATTR(sfp_rx_los_all,  S_IRUGO, sfp_show_tx_rx_status, NULL, RX_LOS_ALL);
++static struct attribute *sfp_msa_attributes[] = {
++	&sensor_dev_attr_sfp_port_number.dev_attr.attr,
++	&sensor_dev_attr_sfp_port_type.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present.dev_attr.attr,
++	&sensor_dev_attr_sfp_is_present_all.dev_attr.attr,
++	&sensor_dev_attr_sfp_ddm_implemented.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_fault.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los.dev_attr.attr,
++	&sensor_dev_attr_sfp_rx_los_all.dev_attr.attr,
++	&sensor_dev_attr_sfp_tx_disable.dev_attr.attr,
++	NULL
++};
++
++/* SFP ddm attributes for sysfs */
++static struct attribute *sfp_ddm_attributes[] = {
++	NULL
++};
++
++/* Platform dependent +++ */
++enum port_numbers {
++as4610_sfp1, /* Port 25 for as4610_30, Port 49 for as4610_54 */
++as4610_sfp2, /* Port 26 for as4610_30, Port 50 for as4610_54 */
++as4610_sfp3, /* Port 27 for as4610_30, Port 51 for as4610_54 */
++as4610_sfp4, /* Port 28 for as4610_30, Port 52 for as4610_54 */
++as4610_sfp5, /* Port 29 for as4610_30, Port 53 for as4610_54 */
++as4610_sfp6, /* Port 30 for as4610_30, Port 54 for as4610_54 */
++};
++
++static const struct i2c_device_id sfp_device_id[] = {
++{"as4610_sfp1", as4610_sfp1},
++{"as4610_sfp2", as4610_sfp2},
++{"as4610_sfp3", as4610_sfp3},
++{"as4610_sfp4", as4610_sfp4},
++{"as4610_sfp5", as4610_sfp5},
++{"as4610_sfp6", as4610_sfp6},
++{ /* LIST END */ }
++};
++MODULE_DEVICE_TABLE(i2c, sfp_device_id);
++/* Platform dependent --- */
++
++/*
++ * list of valid port types
++ * note OOM_PORT_TYPE_NOT_PRESENT to indicate no
++ * module is present in this port
++ */
++typedef enum oom_driver_port_type_e {
++	OOM_DRIVER_PORT_TYPE_INVALID,
++	OOM_DRIVER_PORT_TYPE_NOT_PRESENT,
++	OOM_DRIVER_PORT_TYPE_SFP,
++	OOM_DRIVER_PORT_TYPE_SFP_PLUS,
++	OOM_DRIVER_PORT_TYPE_QSFP,
++	OOM_DRIVER_PORT_TYPE_QSFP_PLUS,
++	OOM_DRIVER_PORT_TYPE_QSFP28
++} oom_driver_port_type_t;
++
++enum driver_type_e {
++	DRIVER_TYPE_SFP_MSA,
++	DRIVER_TYPE_SFP_DDM,
++	DRIVER_TYPE_QSFP
++};
++
++/* Each client has this additional data
++ */
++struct eeprom_data {
++	char				 valid;			/* !=0 if registers are valid */
++	unsigned long		 last_updated;	/* In jiffies */
++	struct bin_attribute bin;			/* eeprom data */
++};
++
++struct sfp_msa_data {
++	char			valid;			/* !=0 if registers are valid */
++	unsigned long	last_updated;	/* In jiffies */
++	u64				status[6];		/* bit0:port0, bit1:port1 and so on */
++									/* index 0 => tx_fail
++											 1 => tx_disable
++											 2 => rx_loss
++											 3 => device id
++											 4 => 10G Ethernet Compliance Codes
++												  to distinguish SFP or SFP+
++											 5 => DIAGNOSTIC MONITORING TYPE */
++	struct eeprom_data				eeprom;
++};
++
++struct sfp_ddm_data {
++	struct eeprom_data				eeprom;
++};
++
++struct qsfp_data {
++	char			valid;			/* !=0 if registers are valid */
++	unsigned long	last_updated;	/* In jiffies */
++	u8				status[3];		/* bit0:port0, bit1:port1 and so on */
++									/* index 0 => tx_fail
++											 1 => tx_disable
++											 2 => rx_loss */
++
++	u8					device_id;
++	struct eeprom_data	eeprom;
++};
++
++struct sfp_port_data {
++	struct mutex		   update_lock;
++	enum driver_type_e	   driver_type;
++	int					   port;		/* CPLD port index */
++	oom_driver_port_type_t port_type;
++	u64					   present;		/* present status, bit0:port0, bit1:port1 and so on */
++
++	struct sfp_msa_data	  *msa;
++	struct sfp_ddm_data	  *ddm;
++	struct qsfp_data	  *qsfp;
++
++	struct i2c_client	  *client;
++};
++
++static ssize_t show_port_number(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	return sprintf(buf, "sfp %d\n", data->port);
++}
++
++/* Platform dependent +++ */
++static struct sfp_port_data *sfp_update_present(struct i2c_client *client)
++{
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	int i = 0;
++	int status = -1;
++	u8 regs[] = {0x2, 0x3, 0x21};
++
++	DEBUG_PRINT("Starting sfp present status update");
++	mutex_lock(&data->update_lock);
++
++	/* Read present status of port 49~54 */
++	data->present = 0;
++
++	for (i = 0; i < ARRAY_SIZE(regs); i++) {
++		status = accton_i2c_cpld_read(0x30, regs[i]);
++
++		if (status < 0) {
++			DEBUG_PRINT("cpld(0x30) reg(0x%x) err %d", regs[i], status);
++			goto exit;
++		}
++
++		DEBUG_PRINT("Present status = 0x%lx", data->present);
++		switch (i) {
++		case 0:
++			data->present |= (status & BIT_INDEX(6)) >> 6; /* port 25/49 */
++			data->present |= (status & BIT_INDEX(2)) >> 1; /* port 26/50 */
++			break;
++		case 1:
++			data->present |= (status & BIT_INDEX(6)) >> 4; /* port 27/51 */
++			data->present |= (status & BIT_INDEX(2)) << 1; /* port 28/52 */
++			break;
++		case 2:
++			data->present |= (status & BIT_INDEX(0)) << 4; /* port 29/53 */
++			data->present |= (status & BIT_INDEX(4)) << 1; /* port 30/54 */
++			break;
++		default:
++			break;
++		}
++	}
++
++	DEBUG_PRINT("Present status = 0x%lx", data->present);
++exit:
++	mutex_unlock(&data->update_lock);
++	return (status < 0) ? ERR_PTR(status) : data;
++}
++
++static struct sfp_port_data *sfp_update_tx_rx_status(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	int i = 0;
++	int status = -1;
++	u8 regs[] = {0x2, 0x3, 0x21};
++
++	if (time_before(jiffies, data->msa->last_updated + HZ + HZ / 2) && data->msa->valid) {
++		return data;
++	}
++
++	DEBUG_PRINT("Starting as4610 sfp tx rx status update");
++	mutex_lock(&data->update_lock);
++	data->msa->valid = 0;
++	memset(data->msa->status, 0, sizeof(data->msa->status));
++
++	/* Read status of port 49~52(SFP port) */
++	for (i = 0; i < ARRAY_SIZE(regs); i++) {
++		status = accton_i2c_cpld_read(0x30, regs[i]);
++
++		if (status < 0) {
++			DEBUG_PRINT("cpld(0x30) reg(0x%x) err %d", regs[i], status);
++			goto exit;
++		}
++
++		DEBUG_PRINT("TX_FAULT = 0x%lx, TX_DISABLE = 0x%lx, TX_FAULT = 0x%lx",
++					 data->msa->status[0], data->msa->status[1], data->msa->status[2]);
++		switch (i) {
++		case 0:
++			/* port 25/49 */
++			data->msa->status[0] |= (status & BIT_INDEX(5)) >> 5; /* tx_fail */
++			data->msa->status[2] |= (status & BIT_INDEX(4)) >> 4; /* rx_los */
++			/* port 26/50 */
++			data->msa->status[0] |= (status & BIT_INDEX(1)) << 0; /* tx_fail */
++			data->msa->status[2] |= (status & BIT_INDEX(0)) << 1; /* rx_los */
++			break;
++		case 1:
++			/* port 27/51 */
++			data->msa->status[0] |= (status & BIT_INDEX(5)) >> 3; /* tx_fail */
++			data->msa->status[2] |= (status & BIT_INDEX(4)) >> 2; /* rx_los */
++			/* port 28/52 */
++			data->msa->status[0] |= (status & BIT_INDEX(1)) << 1; /* tx_fail */
++			data->msa->status[2] |= (status & BIT_INDEX(0)) << 2; /* rx_los */
++			break;
++		default:
++			break;
++		}
++	}
++
++	DEBUG_PRINT("TX_FAULT = 0x%lx, TX_DISABLE = 0x%lx, TX_FAULT = 0x%lx",
++			 data->msa->status[0], data->msa->status[1], data->msa->status[2]);
++	data->msa->valid = 1;
++	data->msa->last_updated = jiffies;
++
++exit:
++	mutex_unlock(&data->update_lock);
++	return data;
++}
++/* Platform dependent --- */
++
++static ssize_t sfp_set_tx_disable(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	if (data->driver_type == DRIVER_TYPE_QSFP) {
++		return qsfp_set_tx_disable(dev, da, buf, count);
++	}
++
++	return 0;
++}
++
++static int sfp_is_port_present(struct i2c_client *client, int port)
++{
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	data = sfp_update_present(client);
++	if (IS_ERR(data)) {
++		return PTR_ERR(data);
++	}
++
++	return (data->present & BIT_INDEX(data->port)) ? 1 : 0; /* Platform dependent */
++}
++
++/* Platform dependent +++ */
++static ssize_t show_present(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct i2c_client *client = to_i2c_client(dev);
++
++	if (PRESENT_ALL == attr->index) {
++		struct sfp_port_data *data = sfp_update_present(client);
++
++		if (IS_ERR(data)) {
++			return PTR_ERR(data);
++		}
++
++		/* Return values 25/49 -> 30/54 in order */
++		return sprintf(buf, "%.2x\n", (u8)(data->present));
++	}
++	else {
++		struct sfp_port_data *data = i2c_get_clientdata(client);
++		int present = sfp_is_port_present(client, data->port);
++
++		if (IS_ERR_VALUE(present)) {
++			return present;
++		}
++
++		/* PRESENT */
++		return sprintf(buf, "%d\n", present);
++	}
++}
++/* Platform dependent --- */
++
++static struct sfp_port_data *sfp_update_port_type(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	u8 buf = 0;
++	int status;
++
++	mutex_lock(&data->update_lock);
++
++	switch (data->driver_type) {
++		case DRIVER_TYPE_SFP_MSA:
++		{
++			status = sfp_eeprom_read(client, SFF8024_PHYSICAL_DEVICE_ID_ADDR, &buf, sizeof(buf));
++			if (unlikely(status < 0)) {
++				data->port_type = OOM_DRIVER_PORT_TYPE_INVALID;
++				break;
++			}
++
++			if (buf != SFF8024_DEVICE_ID_SFP) {
++				data->port_type = OOM_DRIVER_PORT_TYPE_INVALID;
++				break;
++			}
++
++			status = sfp_eeprom_read(client, SFF8472_10G_ETH_COMPLIANCE_ADDR, &buf, sizeof(buf));
++			if (unlikely(status < 0)) {
++				data->port_type = OOM_DRIVER_PORT_TYPE_INVALID;
++				break;
++			}
++
++			DEBUG_PRINT("sfp port type (0x3) data = (0x%x)", buf);
++			data->port_type = buf & SFF8472_10G_BASE_MASK ? OOM_DRIVER_PORT_TYPE_SFP_PLUS : OOM_DRIVER_PORT_TYPE_SFP;
++			break;
++		}
++		case DRIVER_TYPE_QSFP:
++		{
++			status = sfp_eeprom_read(client, SFF8024_PHYSICAL_DEVICE_ID_ADDR, &buf, sizeof(buf));
++			if (unlikely(status < 0)) {
++				data->port_type = OOM_DRIVER_PORT_TYPE_INVALID;
++				break;
++			}
++
++			DEBUG_PRINT("qsfp port type (0x0) buf = (0x%x)", buf);
++			switch (buf) {
++			case SFF8024_DEVICE_ID_QSFP:
++				data->port_type = OOM_DRIVER_PORT_TYPE_QSFP;
++				break;
++			case SFF8024_DEVICE_ID_QSFP_PLUS:
++				data->port_type = OOM_DRIVER_PORT_TYPE_QSFP_PLUS;
++				break;
++			case SFF8024_DEVICE_ID_QSFP28:
++				data->port_type = OOM_DRIVER_PORT_TYPE_QSFP_PLUS;
++				break;
++			default:
++				data->port_type = OOM_DRIVER_PORT_TYPE_INVALID;
++				break;
++			}
++
++			break;
++		}
++		default:
++			break;
++	}
++
++	mutex_unlock(&data->update_lock);
++	return data;
++}
++
++static ssize_t show_port_type(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	int present = sfp_is_port_present(client, data->port);
++
++	if (IS_ERR_VALUE(present)) {
++		return present;
++	}
++
++	if (!present) {
++		return sprintf(buf, "%d\n", OOM_DRIVER_PORT_TYPE_NOT_PRESENT);
++	}
++
++	sfp_update_port_type(dev);
++	return sprintf(buf, "%d\n", data->port_type);
++}
++
++static struct sfp_port_data *qsfp_update_tx_rx_status(struct device *dev)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	int i, status = -1;
++	u8 buf = 0;
++	u8 reg[] = {SFF8436_TX_FAULT_ADDR, SFF8436_TX_DISABLE_ADDR, SFF8436_RX_LOS_ADDR};
++
++	if (time_before(jiffies, data->qsfp->last_updated + HZ + HZ / 2) && data->qsfp->valid) {
++		return data;
++	}
++
++	DEBUG_PRINT("Starting sfp tx rx status update");
++	mutex_lock(&data->update_lock);
++	data->qsfp->valid = 0;
++	memset(data->qsfp->status, 0, sizeof(data->qsfp->status));
++
++	/* Notify device to update tx fault/ tx disable/ rx los status */
++	for (i = 0; i < ARRAY_SIZE(reg); i++) {
++		status = sfp_eeprom_read(client, reg[i], &buf, sizeof(buf));
++		if (unlikely(status < 0)) {
++			goto exit;
++		}
++	}
++	msleep(200);
++
++	/* Read actual tx fault/ tx disable/ rx los status */
++	for (i = 0; i < ARRAY_SIZE(reg); i++) {
++		status = sfp_eeprom_read(client, reg[i], &buf, sizeof(buf));
++		if (unlikely(status < 0)) {
++			goto exit;
++		}
++
++		DEBUG_PRINT("qsfp reg(0x%x) status = (0x%x)", reg[i], data->qsfp->status[i]);
++		data->qsfp->status[i] = (buf & 0xF);
++	}
++
++	data->qsfp->valid = 1;
++	data->qsfp->last_updated = jiffies;
++
++exit:
++	mutex_unlock(&data->update_lock);
++	return (status < 0) ? ERR_PTR(status) : data;
++}
++
++static ssize_t qsfp_show_tx_rx_status(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	int present;
++	u8 val = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	present = sfp_is_port_present(client, data->port);
++	if (IS_ERR_VALUE(present)) {
++		return present;
++	}
++
++	if (present == 0) {
++		/* port is not present */
++		return -ENXIO;
++	}
++
++	data = qsfp_update_tx_rx_status(dev);
++	if (IS_ERR(data)) {
++		return PTR_ERR(data);
++	}
++
++	switch (attr->index) {
++	case TX_FAULT:
++		val = !!(data->qsfp->status[2] & 0xF);
++		break;
++	case TX_FAULT1:
++	case TX_FAULT2:
++	case TX_FAULT3:
++	case TX_FAULT4:
++		val = !!(data->qsfp->status[2] & BIT_INDEX(attr->index - TX_FAULT1));
++		break;
++	case TX_DISABLE:
++		val = data->qsfp->status[1] & 0xF;
++		break;
++	case TX_DISABLE1:
++	case TX_DISABLE2:
++	case TX_DISABLE3:
++	case TX_DISABLE4:
++		val = !!(data->qsfp->status[1] & BIT_INDEX(attr->index - TX_DISABLE1));
++		break;
++	case RX_LOS:
++		val = !!(data->qsfp->status[0] & 0xF);
++		break;
++	case RX_LOS1:
++	case RX_LOS2:
++	case RX_LOS3:
++	case RX_LOS4:
++		val = !!(data->qsfp->status[0] & BIT_INDEX(attr->index - RX_LOS1));
++		break;
++	default:
++		break;
++	}
++
++	return sprintf(buf, "%d\n", val);
++}
++
++static ssize_t qsfp_set_tx_disable(struct device *dev, struct device_attribute *da,
++			const char *buf, size_t count)
++{
++	long disable;
++	int status;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);	
++
++	status = sfp_is_port_present(client, data->port);
++	if (IS_ERR_VALUE(status)) {
++		return status;
++	}
++
++	if (!status) {
++		/* port is not present */
++		return -ENXIO;
++	}
++
++	status = kstrtol(buf, 10, &disable);
++	if (status) {
++		return status;
++	}
++
++	data = qsfp_update_tx_rx_status(dev);
++	if (IS_ERR(data)) {
++		return PTR_ERR(data);
++	}
++
++	mutex_lock(&data->update_lock);
++
++	if (attr->index == TX_DISABLE) {
++		data->qsfp->status[1] = disable & 0xF;
++	}
++	else {/* TX_DISABLE1 ~ TX_DISABLE4*/
++		if (disable) {
++			data->qsfp->status[1] |= (1 << (attr->index - TX_DISABLE1));
++		}
++		else {
++			data->qsfp->status[1] &= ~(1 << (attr->index - TX_DISABLE1));
++		}
++	}
++
++	DEBUG_PRINT("index = (%d), status = (0x%x)", attr->index, data->qsfp->status[1]);
++	status = sfp_eeprom_write(data->client, SFF8436_TX_DISABLE_ADDR, &data->qsfp->status[1], sizeof(data->qsfp->status[1]));
++	if (unlikely(status < 0)) {
++		count = status;
++	}
++
++	mutex_unlock(&data->update_lock);
++	return count;
++}
++
++static ssize_t sfp_show_ddm_implemented(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	int status;
++	char ddm;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	status = sfp_is_port_present(client, data->port);
++	if (IS_ERR_VALUE(status)) {
++		return status;
++	}
++
++	if (status == 0) {
++		/* port is not present */
++		return -ENODEV;
++	}
++
++	status = sfp_eeprom_read(client, SFF8472_DIAG_MON_TYPE_ADDR, &ddm, sizeof(ddm));
++	if (unlikely(status < 0)) {
++		return status;
++	}
++
++	return sprintf(buf, "%d\n", !!(ddm & SFF8472_DIAG_MON_TYPE_DDM_MASK));
++}
++
++/* Platform dependent +++ */
++static ssize_t sfp_show_tx_rx_status(struct device *dev, struct device_attribute *da,
++			 char *buf)
++{
++	u8 val = 0, index = 0;
++	struct i2c_client *client = to_i2c_client(dev);
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
++
++	if (data->driver_type == DRIVER_TYPE_QSFP) {
++		return qsfp_show_tx_rx_status(dev, da, buf);
++	}
++
++	data = sfp_update_tx_rx_status(dev);
++	if (IS_ERR(data)) {
++		return PTR_ERR(data);
++	}
++
++	if(attr->index == RX_LOS_ALL) {
++		/** Return values 25/49 -> 28/52 in order */
++		return sprintf(buf, "%.2x\n", (u8)(data->msa->status[2]));
++	}
++
++	switch (attr->index) {
++	case TX_FAULT:
++		index = 0;
++		break;
++	case TX_DISABLE:
++		index = 1;
++		break;
++	case RX_LOS:
++		index = 2;
++		break;
++	default:
++		return 0;
++	}
++
++	val = (data->msa->status[index] & BIT_INDEX(data->port)) ? 1 : 0;
++	return sprintf(buf, "%d\n", val);
++}
++/* Platform dependent --- */
++static ssize_t sfp_eeprom_write(struct i2c_client *client, u8 command, const char *data,
++			  int data_len)
++{
++#if USE_I2C_BLOCK_READ
++	int status, retry = I2C_RW_RETRY_COUNT;
++
++	if (data_len > I2C_SMBUS_BLOCK_MAX) {
++		data_len = I2C_SMBUS_BLOCK_MAX;
++	}
++
++	while (retry) {
++		status = i2c_smbus_write_i2c_block_data(client, command, data_len, data);
++		if (unlikely(status < 0)) {
++			msleep(I2C_RW_RETRY_INTERVAL);
++			retry--;
++			continue;
++		}
++
++		break;
++	}
++
++	if (unlikely(status < 0)) {
++		return status;
++	}
++
++	return data_len;
++#else
++	int status, retry = I2C_RW_RETRY_COUNT;
++
++	while (retry) {
++		status = i2c_smbus_write_byte_data(client, command, *data);
++		if (unlikely(status < 0)) {
++			msleep(I2C_RW_RETRY_INTERVAL);
++			retry--;
++			continue;
++		}
++
++		break;
++	}
++
++	if (unlikely(status < 0)) {
++		return status;
++	}
++
++	return 1;
++#endif
++
++
++}
++
++static ssize_t sfp_port_write(struct sfp_port_data *data,
++						  const char *buf, loff_t off, size_t count)
++{
++	ssize_t retval = 0;
++
++	if (unlikely(!count)) {
++		return count;
++	}
++
++	/*
++	 * Write data to chip, protecting against concurrent updates
++	 * from this host, but not from other I2C masters.
++	 */
++	mutex_lock(&data->update_lock);
++
++	while (count) {
++		ssize_t status;
++
++		status = sfp_eeprom_write(data->client, off, buf, count);
++		if (status <= 0) {
++			if (retval == 0) {
++				retval = status;
++			}
++			break;
++		}
++		buf += status;
++		off += status;
++		count -= status;
++		retval += status;
++	}
++
++	mutex_unlock(&data->update_lock);
++	return retval;
++}
++
++
++static ssize_t sfp_bin_write(struct file *filp, struct kobject *kobj,
++				struct bin_attribute *attr,
++				char *buf, loff_t off, size_t count)
++{
++	int present;
++	struct sfp_port_data *data;
++	DEBUG_PRINT("%s(%d) offset = (%d), count = (%d)", off, count);
++	data = dev_get_drvdata(container_of(kobj, struct device, kobj));
++
++	present = sfp_is_port_present(data->client, data->port);
++	if (IS_ERR_VALUE(present)) {
++		return present;
++	}
++
++	if (present == 0) {
++		/* port is not present */
++		return -ENODEV;
++	}
++
++	return sfp_port_write(data, buf, off, count);
++}
++
++static ssize_t sfp_eeprom_read(struct i2c_client *client, u8 command, u8 *data,
++			  int data_len)
++{
++#if USE_I2C_BLOCK_READ
++	int status, retry = I2C_RW_RETRY_COUNT;
++
++	if (data_len > I2C_SMBUS_BLOCK_MAX) {
++		data_len = I2C_SMBUS_BLOCK_MAX;
++	}
++
++	while (retry) {
++		status = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
++		if (unlikely(status < 0)) {
++			msleep(I2C_RW_RETRY_INTERVAL);
++			retry--;
++			continue;
++		}
++
++		break;
++	}
++
++	if (unlikely(status < 0)) {
++		goto abort;
++	}
++	if (unlikely(status != data_len)) {
++		status = -EIO;
++		goto abort;
++	}
++
++	//result = data_len;
++
++abort:
++	return status;
++#else
++	int status, retry = I2C_RW_RETRY_COUNT;
++
++	while (retry) {
++		status = i2c_smbus_read_byte_data(client, command);
++		if (unlikely(status < 0)) {
++			msleep(I2C_RW_RETRY_INTERVAL);
++			retry--;
++			continue;
++		}
++
++		break;
++	}
++
++	if (unlikely(status < 0)) {
++		dev_dbg(&client->dev, "sfp read byte data failed, command(0x%2x), data(0x%2x)\r\n", command, status);
++		goto abort;
++	}
++
++	*data  = (u8)status;
++	status = 1;
++
++abort:
++	return status;
++#endif
++}
++
++static ssize_t sfp_port_read(struct sfp_port_data *data,
++				char *buf, loff_t off, size_t count)
++{
++	ssize_t retval = 0;
++
++	if (unlikely(!count)) {
++		DEBUG_PRINT("Count = 0, return");
++		return count;
++	}
++
++	/*
++	 * Read data from chip, protecting against concurrent updates
++	 * from this host, but not from other I2C masters.
++	 */
++	mutex_lock(&data->update_lock);
++
++	while (count) {
++		ssize_t status;
++
++		status = sfp_eeprom_read(data->client, off, buf, count);
++		if (status <= 0) {
++			if (retval == 0) {
++				retval = status;
++			}
++			break;
++		}
++
++		buf += status;
++		off += status;
++		count -= status;
++		retval += status;
++	}
++
++	mutex_unlock(&data->update_lock);
++	return retval;
++
++}
++
++static ssize_t sfp_bin_read(struct file *filp, struct kobject *kobj,
++		struct bin_attribute *attr,
++		char *buf, loff_t off, size_t count)
++{
++	int present;
++	struct sfp_port_data *data;
++	DEBUG_PRINT("offset = (%d), count = (%d)", off, count);
++	data = dev_get_drvdata(container_of(kobj, struct device, kobj));
++
++	present = sfp_is_port_present(data->client, data->port);
++	if (IS_ERR_VALUE(present)) {
++		return present;
++	}
++
++	if (present == 0) {
++		/* port is not present */
++		return -ENODEV;
++	}
++
++	return sfp_port_read(data, buf, off, count);
++}
++
++static int sfp_sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
++{
++	int err;
++
++	sysfs_bin_attr_init(eeprom);
++	eeprom->attr.name = EEPROM_NAME;
++	eeprom->attr.mode = S_IWUSR | S_IRUGO;
++	eeprom->read	  = sfp_bin_read;
++	eeprom->write	  = sfp_bin_write;
++	eeprom->size	  = EEPROM_SIZE;
++
++	/* Create eeprom file */
++	err = sysfs_create_bin_file(kobj, eeprom);
++	if (err) {
++		return err;
++	}
++
++	return 0;
++}
++
++static int sfp_sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eeprom)
++{
++	sysfs_remove_bin_file(kobj, eeprom);
++	return 0;
++}
++
++static const struct attribute_group sfp_msa_group = {
++	.attrs = sfp_msa_attributes,
++};
++
++static int sfp_i2c_check_functionality(struct i2c_client *client)
++{
++#if USE_I2C_BLOCK_READ
++	return i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK);
++#else
++	return i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA);
++#endif
++}
++
++static int sfp_msa_probe(struct i2c_client *client, const struct i2c_device_id *dev_id,
++							   struct sfp_msa_data **data)
++{
++	int status;
++	struct sfp_msa_data *msa;
++
++	if (!sfp_i2c_check_functionality(client)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	msa = kzalloc(sizeof(struct sfp_msa_data), GFP_KERNEL);
++	if (!msa) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &sfp_msa_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	/* init eeprom */
++	status = sfp_sysfs_eeprom_init(&client->dev.kobj, &msa->eeprom.bin);
++	if (status) {
++		goto exit_remove;
++	}
++
++	*data = msa;
++	dev_info(&client->dev, "sfp msa '%s'\n", client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &sfp_msa_group);
++exit_free:
++	kfree(msa);
++exit:
++
++	return status;
++}
++
++static const struct attribute_group sfp_ddm_group = {
++	.attrs = sfp_ddm_attributes,
++};
++
++static int sfp_ddm_probe(struct i2c_client *client, const struct i2c_device_id *dev_id,
++							   struct sfp_ddm_data **data)
++{
++	int status;
++	struct sfp_ddm_data *ddm;
++
++	if (!sfp_i2c_check_functionality(client)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	ddm = kzalloc(sizeof(struct sfp_ddm_data), GFP_KERNEL);
++	if (!ddm) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &sfp_ddm_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	/* init eeprom */
++	status = sfp_sysfs_eeprom_init(&client->dev.kobj, &ddm->eeprom.bin);
++	if (status) {
++		goto exit_remove;
++	}
++
++	*data = ddm;
++	dev_info(&client->dev, "sfp ddm '%s'\n", client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &sfp_ddm_group);
++exit_free:
++	kfree(ddm);
++exit:
++
++	return status;
++}
++
++static const struct attribute_group qsfp_group = {
++	.attrs = qsfp_attributes,
++};
++
++static int qsfp_probe(struct i2c_client *client, const struct i2c_device_id *dev_id,
++						  struct qsfp_data **data)
++{
++	int status;
++	struct qsfp_data *qsfp;
++
++	if (!sfp_i2c_check_functionality(client)) {
++		status = -EIO;
++		goto exit;
++	}
++
++	qsfp = kzalloc(sizeof(struct qsfp_data), GFP_KERNEL);
++	if (!qsfp) {
++		status = -ENOMEM;
++		goto exit;
++	}
++
++	/* Register sysfs hooks */
++	status = sysfs_create_group(&client->dev.kobj, &qsfp_group);
++	if (status) {
++		goto exit_free;
++	}
++
++	/* init eeprom */
++	status = sfp_sysfs_eeprom_init(&client->dev.kobj, &qsfp->eeprom.bin);
++	if (status) {
++		goto exit_remove;
++	}
++
++	*data = qsfp;
++	dev_info(&client->dev, "qsfp '%s'\n", client->name);
++
++	return 0;
++
++exit_remove:
++	sysfs_remove_group(&client->dev.kobj, &qsfp_group);
++exit_free:
++	kfree(qsfp);
++exit:
++
++	return status;
++}
++
++/* Platform dependent +++ */
++static int sfp_device_probe(struct i2c_client *client,
++			const struct i2c_device_id *dev_id)
++{
++	struct sfp_port_data *data = NULL;
++
++	data = kzalloc(sizeof(struct sfp_port_data), GFP_KERNEL);
++	if (!data) {
++		return -ENOMEM;
++	}
++
++	i2c_set_clientdata(client, data);
++	mutex_init(&data->update_lock);
++	data->port	 = dev_id->driver_data;
++	data->client = client;
++
++	if (client->addr != SFP_EEPROM_A0_I2C_ADDR &&
++		client->addr != SFP_EEPROM_A2_I2C_ADDR	) {
++		return -ENODEV;
++	}
++
++	if (dev_id->driver_data >= as4610_sfp1 && dev_id->driver_data <= as4610_sfp4) {
++		if (client->addr == SFP_EEPROM_A0_I2C_ADDR) {
++			data->driver_type = DRIVER_TYPE_SFP_MSA;
++			return sfp_msa_probe(client, dev_id, &data->msa);
++		}
++		else if (client->addr == SFP_EEPROM_A2_I2C_ADDR) {
++			data->driver_type = DRIVER_TYPE_SFP_DDM;
++			return sfp_ddm_probe(client, dev_id, &data->ddm);
++		}
++	}
++	else if (dev_id->driver_data >= as4610_sfp5 && dev_id->driver_data <= as4610_sfp6) {
++		if (client->addr == SFP_EEPROM_A0_I2C_ADDR) {
++			data->driver_type = DRIVER_TYPE_QSFP;
++			return qsfp_probe(client, dev_id, &data->qsfp);
++		}
++	}
++
++	return -ENODEV;
++}
++/* Platform dependent --- */
++
++static int sfp_msa_remove(struct i2c_client *client, struct sfp_msa_data *data)
++{
++	sfp_sysfs_eeprom_cleanup(&client->dev.kobj, &data->eeprom.bin);
++	sysfs_remove_group(&client->dev.kobj, &sfp_msa_group);
++	kfree(data);
++	return 0;
++}
++
++static int sfp_ddm_remove(struct i2c_client *client, struct sfp_ddm_data *data)
++{
++	sfp_sysfs_eeprom_cleanup(&client->dev.kobj, &data->eeprom.bin);
++	sysfs_remove_group(&client->dev.kobj, &sfp_ddm_group);
++	kfree(data);
++	return 0;
++}
++
++static int qfp_remove(struct i2c_client *client, struct qsfp_data *data)
++{
++	sfp_sysfs_eeprom_cleanup(&client->dev.kobj, &data->eeprom.bin);
++	sysfs_remove_group(&client->dev.kobj, &qsfp_group);
++	kfree(data);
++	return 0;
++}
++
++static int sfp_device_remove(struct i2c_client *client)
++{
++	struct sfp_port_data *data = i2c_get_clientdata(client);
++
++	switch (data->driver_type) {
++		case DRIVER_TYPE_SFP_MSA:
++			return sfp_msa_remove(client, data->msa);
++		case DRIVER_TYPE_SFP_DDM:
++			return sfp_ddm_remove(client, data->ddm);
++		case DRIVER_TYPE_QSFP:
++			return qfp_remove(client, data->qsfp);
++	}
++
++	return 0;
++}
++
++/* Addresses scanned
++ */
++static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
++
++static struct i2c_driver sfp_driver = {
++	.driver = {
++		.name	  = DRIVER_NAME,
++	},
++	.probe		  = sfp_device_probe,
++	.remove		  = sfp_device_remove,
++	.id_table	  = sfp_device_id,
++	.address_list = normal_i2c,
++};
++
++static int __init sfp_init(void)
++{
++	return i2c_add_driver(&sfp_driver);
++}
++
++static void __exit sfp_exit(void)
++{
++	i2c_del_driver(&sfp_driver);
++}
++
++MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
++MODULE_DESCRIPTION("accton as4610_sfp driver");
++MODULE_LICENSE("GPL");
++
++late_initcall(sfp_init);
++module_exit(sfp_exit);
++
+diff --git a/include/linux/accton_i2c_cpld.h b/include/linux/accton_i2c_cpld.h
+new file mode 100644
+index 0000000..9b75abd
+--- /dev/null
++++ b/include/linux/accton_i2c_cpld.h
+@@ -0,0 +1,76 @@
++/*
++ * A hwmon driver for the accton_i2c_cpld
++ *
++ * Copyright (C) 2016 Accton Technology Corporation.
++ * Brandon Chuang <brandon_chuang@accton.com.tw>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
++extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
++
++#define AS4610_CPLD_SLAVE_ADDR 0x30
++#define AS4610_CPLD_PID_OFFSET 0x01	 /* Product ID offset */
++
++enum as4610_product_id_e {
++	PID_AS4610_30T,
++	PID_AS4610_30P,
++	PID_AS4610_54T,
++	PID_AS4610_54P,
++	PID_RESERVED,
++	PID_AS4610_54T_B,
++	PID_UNKNOWN
++};
++
++static inline int as4610_product_id(void)
++{
++	int pid = accton_i2c_cpld_read(AS4610_CPLD_SLAVE_ADDR, AS4610_CPLD_PID_OFFSET);
++	pid &= 0xF;
++
++	if (pid < PID_AS4610_30T || pid > PID_AS4610_54T_B || pid == PID_RESERVED) {
++		return PID_UNKNOWN;
++	}
++
++	return pid;
++}
++
++static inline int as4610_is_poe_system(void)
++{
++	int pid = as4610_product_id();
++	return (pid == PID_AS4610_30P || pid == PID_AS4610_54P);
++}
++
++static inline int as4610_number_of_system_fan(void)
++{
++	int nFan = 0;
++	int pid = as4610_product_id();
++
++	switch (pid) {
++	case PID_AS4610_30P:
++	case PID_AS4610_54P:
++		nFan = 1;
++		break;
++	case PID_AS4610_54T_B:
++		nFan = 2;
++		break;
++	default:
++		nFan = 0;
++		break;
++	}
++
++	return nFan;
++}
++
+

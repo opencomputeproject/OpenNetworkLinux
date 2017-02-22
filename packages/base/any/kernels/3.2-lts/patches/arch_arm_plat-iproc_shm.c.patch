@@ -1,0 +1,177 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/shm.c
+@@ -0,0 +1,171 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include "include/plat/shm.h"
++/**
++ * iproc_platform_get_irq - get an IRQ for a device
++ *           wrapper function for platform_get_irq
++ * @dev: platform device
++ * @num: IRQ number index
++ */
++int iproc_platform_get_irq(struct platform_device *dev, unsigned int num)
++{
++	return platform_get_irq(dev, num);
++}
++EXPORT_SYMBOL(iproc_platform_get_irq);
++
++
++/**
++ *	iproc_platform_get_resource_byname -
++ *           wrapper function for platform_get_resource_byname
++ * @dev: platform device
++ * @type: resource type
++ * @name: resource name
++ */
++struct resource *
++iproc_platform_get_resource_byname(struct platform_device *dev,
++					      unsigned int type,
++					      const char *name)
++{
++	return platform_get_resource_byname(dev, type, name);
++}
++EXPORT_SYMBOL(iproc_platform_get_resource_byname);
++
++
++/**
++ *	iproc_platform_get_resource -
++ *           wrapper function for platform_get_resource
++ *	@dev: platform device
++ *	@type: resource type
++ *	@num: resource index
++ */
++struct resource *
++iproc_platform_get_resource(struct platform_device *dev, unsigned int type,
++		      unsigned int num)
++{
++	return platform_get_resource(dev, type, num);
++}
++EXPORT_SYMBOL(iproc_platform_get_resource);
++
++
++/**
++ *	iproc_platform_driver_register -
++ *           wrapper function for platform_driver_register
++ *	@drv: platform driver structure
++ */
++int iproc_platform_driver_register(struct platform_driver *drv)
++{
++	return platform_driver_register(drv);
++}
++EXPORT_SYMBOL(iproc_platform_driver_register);
++
++
++/**
++ *	iproc_platform_driver_unregister
++ *           wrapper function for platform_driver_unregister
++ *	@drv: platform driver structure
++ */
++void iproc_platform_driver_unregister(struct platform_driver *drv)
++{
++	return platform_driver_unregister(drv);
++}
++EXPORT_SYMBOL(iproc_platform_driver_unregister);
++
++
++/**
++ *      iproc_platform_device_register - add a platform-level device
++ *          wrapper function for platform_device_register
++ *      @pdev:  platform device we're adding
++ *
++ */
++int iproc_platform_device_register(struct platform_device * pdev)
++{
++        return platform_device_register(pdev);
++}
++EXPORT_SYMBOL(iproc_platform_device_register);
++
++
++/**
++ *	iproc_platform_device_unregister -
++ *          wrapper function for platform_device_unregister
++ *	@pdev:	platform device we're unregistering
++ */
++void iproc_platform_device_unregister(struct platform_device * pdev)
++{
++	return platform_device_unregister(pdev);
++}
++EXPORT_SYMBOL(iproc_platform_device_unregister);
++
++
++/**
++ *	iproc_platform_device_alloc -
++ *          wrapper function for platform_device_alloc
++ *    @name: base name of the device we're adding
++ *    @id: instance id
++ */
++struct platform_device *iproc_platform_device_alloc(const char *name, int id)
++{
++	return platform_device_alloc(name, id);
++}
++EXPORT_SYMBOL(iproc_platform_device_alloc);
++
++/**
++ *	iproc_platform_device_add -
++ *			wrapper function for platform_device_add
++ *	@pdev:	platform device we're adding
++ */
++int iproc_platform_device_add(struct platform_device *pdev)
++{
++	return platform_device_add(pdev);
++}
++EXPORT_SYMBOL(iproc_platform_device_add);
++
++/**
++ *	iproc_platform_device_put -
++ *			wrapper function for platform_device_put
++ *	@pdev:	platform device to free
++ */
++void iproc_platform_device_put(struct platform_device *pdev)
++{
++	platform_device_put(pdev);
++}
++EXPORT_SYMBOL(iproc_platform_device_put);
++
++
++/**
++ *	iproc_platform_device_put -
++ *			wrapper function for sysfs_create_group
++ *    @kobj:	The kobject to create the group on
++ *    @grp:	The attribute group to create
++ */
++int iproc_sysfs_create_group(struct kobject *kobj, const struct attribute_group *grp)
++{
++	return sysfs_create_group(kobj, grp);
++}
++EXPORT_SYMBOL(iproc_sysfs_create_group);
++
++
++/**
++ *	iproc_sysfs_remove_group -
++ *			wrapper function for sysfs_remove_group
++ *    @kobj:	The kobject which the group is on
++ *    @grp:	The attribute group to remove
++ */
++void iproc_sysfs_remove_group(struct kobject * kobj, const struct attribute_group * grp)
++{
++	sysfs_remove_group(kobj, grp);
++}
++EXPORT_SYMBOL(iproc_sysfs_remove_group);
+diff --git a/arch/arm/plat-iproc/swreset_rec.c b/arch/arm/plat-iproc/swreset_rec.c
+new file mode 100644
+index 0000000..aaa0d61

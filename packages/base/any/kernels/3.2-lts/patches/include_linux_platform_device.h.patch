@@ -1,0 +1,34 @@
+--- a/include/linux/platform_device.h
++++ b/include/linux/platform_device.h
+@@ -14,6 +14,9 @@
+ #include <linux/device.h>
+ #include <linux/mod_devicetable.h>
+ 
++#define PLATFORM_DEVID_NONE	(-1)
++#define PLATFORM_DEVID_AUTO	(-2)
++
+ struct mfd_cell;
+ 
+ struct platform_device {
+@@ -196,16 +199,8 @@ static inline void platform_set_drvdata(struct platform_device *pdev, void *data
+  * calling it replaces module_init() and module_exit()
+  */
+ #define module_platform_driver(__platform_driver) \
+-static int __init __platform_driver##_init(void) \
+-{ \
+-	return platform_driver_register(&(__platform_driver)); \
+-} \
+-module_init(__platform_driver##_init); \
+-static void __exit __platform_driver##_exit(void) \
+-{ \
+-	platform_driver_unregister(&(__platform_driver)); \
+-} \
+-module_exit(__platform_driver##_exit);
++	module_driver(__platform_driver, platform_driver_register, \
++			platform_driver_unregister)
+ 
+ extern struct platform_device *platform_create_bundle(struct platform_driver *driver,
+ 					int (*probe)(struct platform_device *),
+diff --git a/include/linux/port.h b/include/linux/port.h
+new file mode 100644
+index 0000000..6389048

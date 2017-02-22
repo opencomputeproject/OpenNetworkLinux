@@ -1,0 +1,10 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/timer/.gitignore
+@@ -0,0 +1,4 @@
++/.built-in.o.cmd
++/built-in.o
++/modules.builtin
++/modules.order
+diff --git a/drivers/bcmdrivers/timer/Kconfig b/drivers/bcmdrivers/timer/Kconfig
+new file mode 100644
+index 0000000..9dc584f

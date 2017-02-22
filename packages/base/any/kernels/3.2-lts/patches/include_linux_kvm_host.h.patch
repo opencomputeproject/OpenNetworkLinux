@@ -1,0 +1,12 @@
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -50,6 +50,7 @@
+ #define KVM_REQ_APF_HALT          12
+ #define KVM_REQ_STEAL_UPDATE      13
+ #define KVM_REQ_NMI               14
++#define KVM_REQ_IMMEDIATE_EXIT    15
+ 
+ #define KVM_USERSPACE_IRQ_SOURCE_ID	0
+ 
+diff --git a/include/linux/libata.h b/include/linux/libata.h
+index 000434e..a548ffd 100644

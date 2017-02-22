@@ -1,0 +1,102 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/Kconfig
+@@ -0,0 +1,96 @@
++# Kernel configuration for Broadcom iProc based boards
++
++menu	"Broadcom IPROC architecture based implementations"
++	depends on ARCH_IPROC
++
++choice
++	prompt "Broadcom iProc SoC Type"
++	default ARCH_NORTHSTAR
++
++config ARCH_NORTHSTAR
++	bool "BROADCOM Northstar SoC"
++	help
++	  Support for the Broadcom Northstar SoC platform.
++
++config MACH_IPROC
++	bool "BROADCOM Generic IPROC SoC"
++	help
++	  Support for the Broadcom IPROC SoC platform.
++
++endchoice
++
++config IPROC_64K_PAGE
++	bool "64K page support"
++	depends on ARCH_IPROC
++	help
++
++config GP_TIMER_CLOCK_OFF_FIX
++	bool "Enable the fix for general purpose timer clock off issue."
++	depends on ARCH_RHEA || ARCH_SAMOA
++	help
++	  Say Y if you want to enable the general purpose timer clock off fix
++
++config GP_TIMER_COMPARATOR_LOAD_DELAY
++        bool "Enable the delay after loading general purpose timer compare register"
++        depends on ARCH_RHEA || ARCH_ISLAND || ARCH_SAMOA || ARCH_HANA || ARCH_NORTHSTAR || MACH_IPROC
++        default y
++
++config IPROC_DCACHE_INVALIDATION
++	bool "Have Linux invalidate D-Cache"
++        default y
++	help
++	  Say Y if you want Linux to invalidate primary core D-Cache during Linux
++	  decompression and boot.
++
++config IPROC_TIMER_UNIT_TESTS
++	bool "Include iProc Timer unit test code"
++	help
++	  Say Y if you want to test the AON,Peripheral Timer modules using the sysfs interface
++
++config IPROC_SW_RESET_RECORD
++	bool "Include Software Reset Records"
++	help
++	  Say Y if you want to enable interface to access Software Reset Record.
++	  Software Reset Record is a set of variables whose value could be retained
++	  after reset (but will be cleared if powered off).
++
++config BRCM_PROP_MODULES
++	bool "Include Broadcom proprietary modules"
++	default n
++	help
++	  Say Y if you want to include the Broadcom proprietary modules.
++
++config BCM_STM
++	bool "Enable System Trace Module"
++	default n
++	help
++	  Say Y if you want to enable the Broadcom System Trace Module
++
++config DMAC_PL330
++	bool "PL330 DMAC driver support for Kona architecture"
++	depends on ARCH_RHEA
++	select PL330
++	help
++	 Support for PL330 DMA Controller driver for Rhea SOC/KONA architecture
++
++config BCM_ZRELADDR
++	hex "Compressed ZREL address"
++
++config BCM_PARAMS_PHYS
++	hex "Address where tagged parameters are to be found"
++
++config BCM_RAM_BASE
++	hex "RAM base address"
++	help
++	 Set the physical base address of RAM
++
++config BCM_RAM_START_RESERVED_SIZE
++	hex "RAM start reserved memory size in bytes"
++	default 0
++	help
++	 Reserve memory at the start of RAM. This memory
++	 may be used for LCD frame buffer, DSP, modem, etc.
++
++#source "drivers/bcmdrivers/Kconfig"
++
++endmenu
+diff --git a/arch/arm/plat-iproc/Makefile b/arch/arm/plat-iproc/Makefile
+new file mode 100644
+index 0000000..2474a9d

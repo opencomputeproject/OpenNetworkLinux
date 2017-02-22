@@ -1,0 +1,15 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pmu/Kconfig
+@@ -0,0 +1,9 @@
++
++config IPROC_PMU
++	tristate "Iproc PMU support"
++	depends on ARCH_IPROC
++	default y
++	help
++	  Iproc PMU support
++	  This config provides kernel-side support for iProc PMU description.
++	  Its generic driver is perf_event.c
+diff --git a/drivers/bcmdrivers/pmu/Makefile b/drivers/bcmdrivers/pmu/Makefile
+new file mode 100644
+index 0000000..b491218

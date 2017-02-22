@@ -1,0 +1,8 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/Makefile.boot
+@@ -0,0 +1,2 @@
++zreladdr-y      := $(CONFIG_BCM_ZRELADDR)
++params_phys-y   := $(CONFIG_BCM_PARAMS_PHYS)
+diff --git a/arch/arm/mach-iproc/board_bu.c b/arch/arm/mach-iproc/board_bu.c
+new file mode 100644
+index 0000000..7e07ed1
