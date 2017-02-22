@@ -12,15 +12,15 @@
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
 #include <quanta_lib/i2c.h>
-#include <quanta_lib/gpio.h>
+#include <onlplib/gpio.h>
 #include "x86_64_quanta_ly6_rangeley_int.h"
 #include "x86_64_quanta_ly6_rangeley_log.h"
 #include <AIM/aim_string.h>
 
 struct psu_info_s psu_info[] = {
 	{}, /* Not used */
-	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-24/24-0058", .present = PSU_GPIO_PSU1_PRSNT_N, .busno = 24, .addr = 0x58},
-	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-25/25-0059", .present = PSU_GPIO_PSU2_PRSNT_N, .busno = 25, .addr = 0x59},
+	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-24/24-0058", .present = QUANTA_LY6_PSU_GPIO_PSU1_PRSNT_N, .busno = 24, .addr = 0x58},
+	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-25/25-0059", .present = QUANTA_LY6_PSU_GPIO_PSU2_PRSNT_N, .busno = 25, .addr = 0x59},
 };
 
 int
@@ -68,11 +68,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     uint8_t buffer[ONLP_CONFIG_INFO_STR_MAX];
 	int value = -1;
 
-	rv = pca953x_gpio_value_get(psu_info[pid].present, &value);
+	rv = onlp_gpio_get(psu_info[pid].present, &value);
 	if(rv < 0) {
         return rv;
     }
-	else if(value == GPIO_HIGH) {
+	else if(value == 1) {
         info->status &= ~1;
         return 0;
 	}

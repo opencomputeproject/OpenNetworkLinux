@@ -63,22 +63,22 @@ typedef struct qsfpmap_s {
 
 static qsfpmap_t qsfpmap__[] =
     {
-        { 53, QSFP_QDB_GPIO_PRSNT_53_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-48/48-0050/eeprom", NULL },
-        { 54, QSFP_QDB_GPIO_PRSNT_54_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-49/49-0050/eeprom", NULL },
+        { 53, QUANTA_LY9_QSFP_QDB_GPIO_PRSNT_53_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-48/48-0050/eeprom", NULL },
+        { 54, QUANTA_LY9_QSFP_QDB_GPIO_PRSNT_54_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-49/49-0050/eeprom", NULL },
   };
 
 int
 onlp_sfpi_init(void)
 {
     int value = -1, ret;
-    ret = pca953x_gpio_value_get(QSFP_EN_GPIO_P3V3_PW_EN, &value);
+    ret = pca953x_gpio_value_get(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, &value);
     if(ret == ONLP_STATUS_OK && value != GPIO_LOW) {
-        ret = pca953x_gpio_value_set(QSFP_EN_GPIO_P3V3_PW_EN, GPIO_LOW);
+        ret = pca953x_gpio_value_set(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, GPIO_LOW);
     }
     if(ret == ONLP_STATUS_OK) {
-        ret = pca953x_gpio_value_get(QSFP_QDB_GPIO_MOD_EN_N, &value);
+        ret = pca953x_gpio_value_get(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, &value);
         if(ret == ONLP_STATUS_OK && value != GPIO_LOW) {
-            ret = pca953x_gpio_value_set(QSFP_QDB_GPIO_MOD_EN_N, GPIO_LOW);
+            ret = pca953x_gpio_value_set(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, GPIO_LOW);
         }
     }
 

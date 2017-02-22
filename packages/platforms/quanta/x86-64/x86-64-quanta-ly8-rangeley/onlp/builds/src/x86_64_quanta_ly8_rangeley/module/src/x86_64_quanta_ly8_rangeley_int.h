@@ -225,7 +225,7 @@ struct psu_info_s {
 	int addr;
 };
 
-/** fan_id */
+/** led_id */
 typedef enum led_id_e {
     LED_ID_SYSTEM = 1,
     LED_ID_FAN = 2,
