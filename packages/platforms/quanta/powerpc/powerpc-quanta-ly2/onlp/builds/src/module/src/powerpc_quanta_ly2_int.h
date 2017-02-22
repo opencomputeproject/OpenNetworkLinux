@@ -199,6 +199,6 @@ extern aim_map_si_t fan_oid_desc_map[];
 /* <auto.end.enum(ALL).header> */
 
 
-#define SYS_HWMON_PREFIX "/sys/devices/soc.0/ffe03000.i2c/i2c-0/i2c-4/4-002e"
+#define SYS_HWMON_PREFIX "/sys/devices/soc@ffe00000/ffe03000.i2c/i2c-0/i2c-4/4-002e"
 
 #endif /* __POWERPC_QUANTA_LY2_R0_INT_H__ */
