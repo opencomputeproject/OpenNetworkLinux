@@ -1,0 +1,16 @@
+--- a/drivers/dma/Kconfig
++++ b/drivers/dma/Kconfig
+@@ -262,6 +262,11 @@ config NET_DMA
+ 	  Say Y here if you enabled INTEL_IOATDMA or FSL_DMA, otherwise
+ 	  say N.
+ 
++config NET_DMA_DUMMY
++	bool
++	depends on DMA_ENGINE && NET
++	default (INTEL_IOATDMA || FSL_DMA)
++
+ config ASYNC_TX_DMA
+ 	bool "Async_tx: Offload support for the async_tx api"
+ 	depends on DMA_ENGINE
+diff --git a/drivers/dma/imx-sdma.c b/drivers/dma/imx-sdma.c
+index f993955..7021ecb 100644

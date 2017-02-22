@@ -1,0 +1,32 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/include/mach/iproc.h
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++#ifndef __PLAT_IPROC_H
++#define __PLAT_IPROC_H
++
++#include <asm/mach/time.h>
++
++extern struct sys_timer iproc_timer;
++
++extern void __init iproc_init_irq(void);
++//static void __init gic_dist_init(struct gic_chip_data *gic);
++
++#endif /* __PLAT_IPROC_H */
+diff --git a/arch/arm/plat-iproc/include/mach/iproc_timer.h b/arch/arm/plat-iproc/include/mach/iproc_timer.h
+new file mode 100644
+index 0000000..5809403

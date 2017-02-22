@@ -1,0 +1,113 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/Kconfig
+@@ -0,0 +1,107 @@
++menu	"iProc SoC based Machine types"
++	depends on MACH_IPROC
++
++config MACH_CYGNUS
++	bool "Cygnus bring-up board"
++	help
++	  Support for the Broadcom Cygnus bring-up board.
++
++config MACH_NS
++	bool "Support Broadcom Northstar bring-up board"
++	help
++	  Support for the Broadcom Northstar bring-up board.
++
++config MACH_HX4
++	bool "Support Broadcom Helix4 bring-up board"
++	help
++	  Support for the Broadcom Helix4 bring-up board.
++
++config MACH_HR2
++	bool "Support Broadcom Hurricane2 bring-up board"
++	help
++	  Support for the Broadcom Hurricane2 bring-up board.
++
++config MACH_NSP
++	bool "Support Broadcom Northstar Plus bring-up board"
++	help
++	  Support for the Broadcom Northstar Plus bring-up board.
++
++config MACH_KT2
++	bool "Support Broadcom Katana2 bring-up board"
++	help
++	  Support for the Broadcom Katana2 bring-up board.
++
++config MACH_GH
++	bool "Support Broadcom Greyhound bring-up board"
++	select MACH_IPROC_P7
++	help
++	  Support for the Broadcom Greyhound bring-up board.
++
++config MACH_DNI_3448P
++	select ARM_L1_CACHE_SHIFT_6
++	bool "Support Delta Networks Inc. 3448P board"
++	help
++	  Support for the Broadcom Greyhound bring-up board.
++
++config MACH_ACCTON_AS4610_54
++	select ARM_L1_CACHE_SHIFT_6
++	bool "Support Accton AS4610 54 POE and non-POE board"
++	help
++	  Support for Accton AS4610-54 POE and non -POE board.
++
++config MACH_IPROC_P7
++	bool "Support iProc Profile 7 architecture"
++	depends on MACH_GH
++	help
++	  Support for iProc Profile 7 architecture.
++
++config MACH_IPROC_EMULATION
++	bool "Support  iProc emulation"
++	help
++	  Support for the iProc emulation.
++
++if MACH_CYGNUS
++
++config MACH_CYGNUS_EMULATION
++	bool "Is it Cygnus emulation ?"
++	default y
++	help
++	Support for the Broadcom Cygnus emulation
++
++if MACH_CYGNUS_EMULATION
++
++config CYGNUS_EMULATION_RTL_VER
++	string "specify RTL version"
++	default "Cygnus RTL-5.1"
++	help
++	running rtl version used for emulation build
++
++config CYGNUS_EMULATION_ARM_CLK
++	int "Hz - iHost clk don't change"
++	default 250000000
++	help
++	iHost clock in emulator
++
++config CYGNUS_EMULATION_PCLK
++	int "Hz - axi81 (pclk) in xls"
++	default 62500000
++	help
++	pheripheral clock in emulator
++
++config CYGNUS_EMULATION_SCLK
++	int "Hz - sclk in xls"
++	default 154380
++	help
++	uart clock in emulator
++
++config CYGNUS_EMULATION_CLK_125
++	int "Hz - axi41 clock in xls"
++	default 154380
++	help
++	125Mhz equialent clock in emulator
++
++endif #MACH_CYGNUS_EMULATION
++
++endif #MACH_CYGNUS
++
++endmenu
+diff --git a/arch/arm/mach-iproc/Makefile b/arch/arm/mach-iproc/Makefile
+new file mode 100644
+index 0000000..b4a7ff3

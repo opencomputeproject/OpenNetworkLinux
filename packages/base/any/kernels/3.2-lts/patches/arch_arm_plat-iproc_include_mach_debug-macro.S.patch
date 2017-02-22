@@ -1,0 +1,41 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/include/mach/debug-macro.S
+@@ -0,0 +1,35 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++/*
++ * Debugging macro include header
++ */
++#include <mach/io_map.h>
++#include <mach/memory.h>
++#include <asm/pgtable.h>
++
++	.macro addruart,  tmp, tmp2, rx
++	ldr	\tmp, =IPROC_UART_LLDEBUG_PA 		@ MMU off, Physical
++	ldr	\tmp2, =IPROC_UART_LLDEBUG_VA		@ MMU on, Virtual
++	.endm
++
++#chandra:
++#ifdef CONFIG_MACH_CYGNUS
++	#define UART_SHIFT      2       //for synopsysUart has 4 byte addressing
++#else
++	#define UART_SHIFT      0       //for CCA_UART has 1 byte addressing
++#endif
++
++#include <asm/hardware/debug-8250.S>
+diff --git a/arch/arm/plat-iproc/include/mach/entry-macro.S b/arch/arm/plat-iproc/include/mach/entry-macro.S
+new file mode 100644
+index 0000000..d859b49

@@ -1,0 +1,205 @@
+--- a/drivers/misc/eeprom/at24.c
++++ b/drivers/misc/eeprom/at24.c
+@@ -23,6 +23,7 @@
+ #include <linux/of.h>
+ #include <linux/i2c.h>
+ #include <linux/i2c/at24.h>
++#include <linux/eeprom_class.h>
+ 
+ /*
+  * I2C EEPROMs from most vendors are inexpensive and mostly interchangeable.
+@@ -68,6 +69,8 @@ struct at24_data {
+ 	unsigned write_max;
+ 	unsigned num_addresses;
+ 
++	struct eeprom_device *eeprom_dev;
++
+ 	/*
+ 	 * Some chips tie up multiple I2C addresses; dummy devices reserve
+ 	 * them for us, and we'll use them with SMBus calls.
+@@ -192,7 +195,8 @@ static ssize_t at24_eeprom_read(struct at24_data *at24, char *buf,
+ 			count = I2C_SMBUS_BLOCK_MAX;
+ 		break;
+ 	case I2C_SMBUS_WORD_DATA:
+-		count = 2;
++		/* Check for odd length transaction */
++		count = (count == 1) ? 1 : 2;
+ 		break;
+ 	case I2C_SMBUS_BYTE_DATA:
+ 		count = 1;
+@@ -237,12 +241,20 @@ static ssize_t at24_eeprom_read(struct at24_data *at24, char *buf,
+ 			status = i2c_smbus_read_word_data(client, offset);
+ 			if (status >= 0) {
+ 				buf[0] = status & 0xff;
+-				buf[1] = status >> 8;
++				if (count == 2)
++					buf[1] = status >> 8;
+ 				status = count;
+ 			}
+ 			break;
+ 		case I2C_SMBUS_BYTE_DATA:
+-			status = i2c_smbus_read_byte_data(client, offset);
++			if (at24->chip.flags & AT24_FLAG_ADDR16) {
++				status = i2c_smbus_write_byte_data(client, (offset >> 8) & 0xff, offset & 0xff);
++				if (status >= 0) {
++					status = i2c_smbus_read_byte(client);
++				}
++			} else {
++				status = i2c_smbus_read_byte_data(client, offset);
++			}
+ 			if (status >= 0) {
+ 				buf[0] = status;
+ 				status = count;
+@@ -327,6 +339,7 @@ static ssize_t at24_eeprom_write(struct at24_data *at24, const char *buf,
+ 	ssize_t status;
+ 	unsigned long timeout, write_time;
+ 	unsigned next_page;
++	int i = 0;
+ 
+ 	/* Get corresponding I2C address and adjust offset */
+ 	client = at24_translate_offset(at24, &offset);
+@@ -340,10 +353,22 @@ static ssize_t at24_eeprom_write(struct at24_data *at24, const char *buf,
+ 	if (offset + count > next_page)
+ 		count = next_page - offset;
+ 
+-	/* If we'll use I2C calls for I/O, set up the message */
+-	if (!at24->use_smbus) {
+-		int i = 0;
+ 
++	switch (at24->use_smbus) {
++	case I2C_SMBUS_I2C_BLOCK_DATA:
++		/* Smaller eeproms can work given some SMBus extension calls */
++		if (count > I2C_SMBUS_BLOCK_MAX)
++			count = I2C_SMBUS_BLOCK_MAX;
++		break;
++	case I2C_SMBUS_WORD_DATA:
++		/* Check for odd length transaction */
++		count = (count == 1) ? 1 : 2;
++		break;
++	case I2C_SMBUS_BYTE_DATA:
++		count = 1;
++		break;
++	default:
++	/* If we'll use I2C calls for I/O, set up the message */
+ 		msg.addr = client->addr;
+ 		msg.flags = 0;
+ 
+@@ -355,6 +380,7 @@ static ssize_t at24_eeprom_write(struct at24_data *at24, const char *buf,
+ 		msg.buf[i++] = offset;
+ 		memcpy(&msg.buf[i], buf, count);
+ 		msg.len = i + count;
++		break;
+ 	}
+ 
+ 	/*
+@@ -365,15 +391,40 @@ static ssize_t at24_eeprom_write(struct at24_data *at24, const char *buf,
+ 	timeout = jiffies + msecs_to_jiffies(write_timeout);
+ 	do {
+ 		write_time = jiffies;
+-		if (at24->use_smbus) {
++		switch (at24->use_smbus) {
++		case I2C_SMBUS_I2C_BLOCK_DATA:
+ 			status = i2c_smbus_write_i2c_block_data(client,
+ 					offset, count, buf);
+ 			if (status == 0)
+ 				status = count;
+-		} else {
++			break;
++		case I2C_SMBUS_WORD_DATA:
++			if (count == 2) {
++				status = i2c_smbus_write_word_data(
++					client,offset,(u16)((buf[0]) |
++							    (buf[1] << 8)));
++			} else {
++				/* count = 1 */
++				status = i2c_smbus_write_byte_data(
++					client, offset, buf[0]);
++			}
++			if (status == 0)
++				status = count;
++			break;
++		case I2C_SMBUS_BYTE_DATA:
++			if (at24->chip.flags & AT24_FLAG_ADDR16) {
++				status = i2c_smbus_write_word_data(client, (offset >> 8) & 0xff, buf[0] << 8 | (offset & 0xff));
++			} else {
++				status = i2c_smbus_write_byte_data(client, offset,  buf[0]);
++			}
++			if (status == 0)
++				status = count;
++			break;
++		default:
+ 			status = i2c_transfer(client->adapter, &msg, 1);
+ 			if (status == 1)
+ 				status = count;
++			break;
+ 		}
+ 		dev_dbg(&client->dev, "write %zu@%d --> %zd (%ld)\n",
+ 				count, offset, status, jiffies);
+@@ -512,6 +563,7 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 
+ 		chip.setup = NULL;
+ 		chip.context = NULL;
++		chip.eeprom_data = NULL;
+ 	}
+ 
+ 	if (!is_power_of_2(chip.byte_len))
+@@ -529,11 +581,10 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 	/* Use I2C operations unless we're stuck with SMBus extensions. */
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+ 		if (chip.flags & AT24_FLAG_ADDR16) {
+-			err = -EPFNOSUPPORT;
+-			goto err_out;
+-		}
+-		if (i2c_check_functionality(client->adapter,
+-				I2C_FUNC_SMBUS_READ_I2C_BLOCK)) {
++			use_smbus = I2C_SMBUS_BYTE_DATA;
++		} else if (!(chip.flags & AT24_FLAG_DISABLE_I2CBLOCK) &&
++			   (i2c_check_functionality(client->adapter,
++						    I2C_FUNC_SMBUS_READ_I2C_BLOCK))) {
+ 			use_smbus = I2C_SMBUS_I2C_BLOCK_DATA;
+ 		} else if (i2c_check_functionality(client->adapter,
+ 				I2C_FUNC_SMBUS_READ_WORD_DATA)) {
+@@ -579,9 +630,14 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 
+ 	writable = !(chip.flags & AT24_FLAG_READONLY);
+ 	if (writable) {
+-		if (!use_smbus || i2c_check_functionality(client->adapter,
+-				I2C_FUNC_SMBUS_WRITE_I2C_BLOCK)) {
+-
++		if (!use_smbus ||
++		    (!(chip.flags & AT24_FLAG_DISABLE_I2CBLOCK) &&
++		    i2c_check_functionality(client->adapter,
++					    I2C_FUNC_SMBUS_WRITE_I2C_BLOCK)) ||
++		    i2c_check_functionality(client->adapter,
++					    I2C_FUNC_SMBUS_WRITE_WORD_DATA) ||
++		    i2c_check_functionality(client->adapter,
++					    I2C_FUNC_SMBUS_WRITE_BYTE_DATA)) {
+ 			unsigned write_max = chip.page_size;
+ 
+ 			at24->macc.write = at24_macc_write;
+@@ -625,6 +681,13 @@ static int at24_probe(struct i2c_client *client, const struct i2c_device_id *id)
+ 	if (err)
+ 		goto err_clients;
+ 
++	at24->eeprom_dev = eeprom_device_register(&client->dev, chip.eeprom_data);
++	if (IS_ERR(at24->eeprom_dev)) {
++		dev_err(&client->dev, "error registering eeprom device.\n");
++		err = PTR_ERR(at24->eeprom_dev);
++		goto err_clients;
++	}
++
+ 	i2c_set_clientdata(client, at24);
+ 
+ 	dev_info(&client->dev, "%zu byte %s EEPROM, %s, %u bytes/write\n",
+@@ -667,6 +730,8 @@ static int __devexit at24_remove(struct i2c_client *client)
+ 	for (i = 1; i < at24->num_addresses; i++)
+ 		i2c_unregister_device(at24->client[i]);
+ 
++	eeprom_device_unregister(at24->eeprom_dev);
++
+ 	kfree(at24->writebuf);
+ 	kfree(at24);
+ 	return 0;
+diff --git a/drivers/misc/eeprom/eeprom_class.c b/drivers/misc/eeprom/eeprom_class.c
+new file mode 100644
+index 0000000..e01a81a

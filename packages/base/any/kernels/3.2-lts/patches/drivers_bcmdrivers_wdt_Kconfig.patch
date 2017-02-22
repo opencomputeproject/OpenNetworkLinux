@@ -1,0 +1,13 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/wdt/Kconfig
+@@ -0,0 +1,7 @@
++config IPROC_WDT
++	tristate "Watchdog Timer support"
++	select WATCHDOG
++	depends on ARCH_IPROC && MACH_NS
++	help
++	  This selects a driver for the hardware watchdog on Broadcom
++	  iProc chips.
+diff --git a/drivers/bcmdrivers/wdt/Makefile b/drivers/bcmdrivers/wdt/Makefile
+new file mode 100644
+index 0000000..aefed3e

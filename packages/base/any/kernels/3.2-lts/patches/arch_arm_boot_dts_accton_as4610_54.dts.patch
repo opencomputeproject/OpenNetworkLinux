@@ -1,0 +1,256 @@
+--- /dev/null
++++ b/arch/arm/boot/dts/accton_as4610_54.dts
+@@ -0,0 +1,250 @@
++/*
++ * Accton AS4610 54 Device Tree Source
++ *
++ * Copyright 2015, Cumulus Networks, Inc.
++ *
++ * This program is free software; you can redistribute  it and/or modify it
++ * under  the terms of  the GNU General  Public License as published by the
++ * Free Software Foundation;  either version 2 of the  License, or (at your
++ * option) any later version.
++ *
++ */
++/dts-v1/;
++/include/ "helix4.dtsi"
++
++/ {
++    model = "accton,as4610_54";
++    compatible = "accton,as4610_54";
++
++    aliases {
++        serial0 = &uart0;
++        i2c-controller0 = &i2c0;
++        i2c-controller1 = &i2c1;
++    };
++
++    memory {
++        reg = <0x61000000 0x7f000000>;
++    };
++
++    cpus {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        cpu@0 {
++            device_type = "cpu";
++            compatible = "arm,cortex-a9";
++            next-level-cache = <&L2>;
++            reg = <0x00>;
++        };
++        cpu@1 {
++            device_type = "cpu";
++            compatible = "arm,cortex-a9";
++            next-level-cache = <&L2>;
++            reg = <0x01>;
++        };
++    };
++
++    localbus@1c000000 {
++        #address-cells = <0x2>;
++        #size-cells = <0x1>;
++        /* NAND Flash */
++        ranges = <
++            0x0 0x0 0x0 0x1c000000 0x00120000
++            0x1 0x0 0x0 0x1c120000 0x00040000
++        >;
++
++        flash@0,0 {
++            #address-cells = <1>;
++            #size-cells = <1>;
++            compatible = "cfi-flash";
++            reg = <0x0 0x0 0x02000000>;
++            byteswap;
++
++            partition@0 {
++                /* uboot */
++                reg = <0x00000000 0x00100000>;
++                label = "uboot";
++            };
++            partition@1 {
++                /* uboot-env */
++                reg = <0x00100000 0x00100000>;
++                label = "uboot-env";
++                env_size = <0x2000>;
++            };
++            partition@2 {
++                /* board_eeprom */
++                reg = <0x00200000 0x00100000>;
++                label = "board_eeprom";
++            };
++            partition@3 {
++                /* shmoo */
++                reg = <0x00300000 0x00100000>;
++                label = "shmoo";
++            };
++            partition@4 {
++                /* onie */
++                reg = <0x00400000 0x00800000>;
++                label = "onie";
++            };
++            partition@5 {
++                /* open */
++                reg = <0x00c00000 0x03c00000>;
++                label = "open";
++            };
++            partition@6 {
++                /* open2 */
++                reg = <0x04800000 0x7d000000>;
++                label = "open2";
++            };
++            partition@7 {
++                /* diag */
++                reg = <0xfec00000 0x01000000>;
++                label = "diag";
++            };
++        };
++    };
++
++    i2c0: i2c@18038000 {
++            compatible = "iproc-smb";
++            reg = <0x18038000 0x1000>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            interrupts = < 127 >;
++            clock-frequency = <400000>;
++            cpld@1,0 {
++                #address-cells = <1>;
++                #size-cells = <1>;
++                compatible = "accton,as4610-54-cpld";
++                label = "cpld";
++                reg = <0x30>;
++            };
++    };
++
++    i2c1: i2c@1803b000 {
++            compatible = "iproc-smb";
++            reg = <0x1803b000 0x1000>;
++            #address-cells = <1>;
++            #size-cells = <0>;
++            interrupts = < 128 >;
++            clock-frequency = <100000>;
++            mux@70 {
++                compatible = "ti,pca9548";
++                reg = <0x70>;
++                #address-cells = <1>;
++                #size-cells = <0>;
++                deselect-on-exit;
++
++                // SFP+ 1
++                i2c@0 {
++                    #address-cells = <1>;
++                    #size-cells = <0>;
++                    reg = <0>;
++                    sfp_eeprom@50 {
++                        compatible = "at,24c04";
++                        reg = <0x50>;
++                        label = "port49";
++                    };
++                };
++
++            // SFP+ 2
++            i2c@1 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <1>;
++                sfp_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                    label = "port50";
++                };
++            };
++
++            // SFP+ 3
++            i2c@2 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <2>;
++                sfp_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                    label = "port51";
++                };
++            };
++
++            // SFP+ 4
++            i2c@3 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <3>;
++                sfp_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                    label = "port52";
++                };
++            };
++
++            // QSFP+ STK1
++            i2c@4 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <4>;
++                sfp_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                };
++            };
++
++            // QSFP+ STK2
++            i2c@5 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <5>;
++                sfp_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                };
++            };
++
++            // PSU EEPROM
++            i2c@6 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <6>;
++                psu_eeprom@50 {
++                    compatible = "at,24c02";
++                    reg = <0x50>;
++                    label = "psu1_eeprom";
++                    read-only;
++                };
++                psu_eeprom@51 {
++                    compatible = "at,24c02";
++                    reg = <0x51>;
++                    label = "psu2_eeprom";
++                    read-only;
++                };
++            };
++
++            i2c@7 {
++                #address-cells = <1>;
++                #size-cells = <0>;
++                reg = <7>;
++
++                temp@48 {
++                    compatible = "nxp,lm77";
++                    reg = <0x48>;
++                };
++
++                rtc@68 {
++                    /* Actually M41T11 */
++                    compatible = "dallas,ds1307";
++                    reg = <0x68>;
++                };
++
++                board_eeprom@50 {
++                    compatible = "at,24c04";
++                    reg = <0x50>;
++                    label = "board_eeprom";
++                };
++            };
++        };
++    };
++};
+diff --git a/arch/arm/boot/dts/dni_3448p.dts b/arch/arm/boot/dts/dni_3448p.dts
+new file mode 100644
+index 0000000..29ce09c

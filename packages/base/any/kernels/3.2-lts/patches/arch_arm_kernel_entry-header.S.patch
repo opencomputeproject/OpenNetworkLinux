@@ -1,0 +1,15 @@
+--- a/arch/arm/kernel/entry-header.S
++++ b/arch/arm/kernel/entry-header.S
+@@ -13,8 +13,10 @@
+ #define BAD_DATA	1
+ #define BAD_ADDREXCPTN	2
+ #define BAD_IRQ		3
++
+ #define BAD_UNDEFINSTR	4
+ 
++
+ @
+ @ Most of the stack format comes from struct pt_regs, but with
+ @ the addition of 8 bytes for storing syscall args 5 and 6.
+diff --git a/arch/arm/kernel/head.S b/arch/arm/kernel/head.S
+index 3606e85..f364802 100644

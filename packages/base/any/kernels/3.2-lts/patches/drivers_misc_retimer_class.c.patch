@@ -1,0 +1,165 @@
+--- /dev/null
++++ b/drivers/misc/retimer_class.c
+@@ -0,0 +1,160 @@
++/*
++ * retimer_class.c
++ *
++ * This file defines the sysfs class "retimer", for use by RETIMER
++ * drivers.
++ *
++ * Copyright (C) 2014 Cumulus Networks, Inc.
++ * Author: Puneet Shenoy <puneet@cumulusnetworks.com>
++ *
++ * Ideas and structure graciously borrowed from the eeprom_class class:
++ * Copyright (C) 2013 Curt Brune <curt@cumulusnetworks.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; version 2 of the License.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/kdev_t.h>
++#include <linux/idr.h>
++#include <linux/retimer_class.h>
++#include <linux/gfp.h>
++#include <linux/spinlock.h>
++#include <linux/pci.h>
++#include <linux/of.h>
++
++/* Root retimer "class" object (corresponds to '/<sysfs>/class/retimer_dev/') */
++static struct class *retimer_class;
++
++#define RETIMER_CLASS_NAME "retimer_dev"
++#define RETIMER_ID_PREFIX "retimer"
++#define RETIMER_ID_FORMAT RETIMER_ID_PREFIX "%d"
++
++static DEFINE_IDA(retimer_ida);
++
++/**
++ * retimer_device_register - register w/ retimer class
++ * @dev: the device to register
++ *
++ * retimer_device_unregister() must be called when the device is no
++ * longer needed.
++ *
++ * Creates a new retimer class device that is a child of @dev.  Also
++ * creates a symlink in /<sysfs>/class/retimer_dev/retimer[N] pointing
++ * to the new device.
++ *
++ * Returns the pointer to the new device.
++ */
++struct device *retimer_device_register(struct device *dev)
++{
++	struct device *retimer_dev;
++	int id;
++
++	id = ida_simple_get(&retimer_ida, 0, 0, GFP_KERNEL);
++	if (id < 0)
++		return ERR_PTR(id);
++
++	retimer_dev = device_create(retimer_class, dev, MKDEV(0, 0), NULL,
++				   RETIMER_ID_FORMAT, id);
++
++	if (IS_ERR(retimer_dev))
++		ida_simple_remove(&retimer_ida, id);
++
++	return retimer_dev;
++}
++
++/**
++ * retimer_device_unregister - removes the previously registered class device
++ *
++ * @dev: the class device to destroy
++ */
++void retimer_device_unregister(struct device *dev)
++{
++	int id;
++
++	if (likely(sscanf(dev_name(dev), RETIMER_ID_FORMAT, &id) == 1)) {
++		device_unregister(dev);
++		ida_simple_remove(&retimer_ida, id);
++	} else
++		dev_dbg(dev->parent,
++			"retimer_device_unregister() failed: bad class ID!\n");
++}
++
++/**
++ * Each member of the retimer class exports a sysfs file called
++ * "label", containing the label property from the corresponding
++ * device tree node.
++ *
++ *  Userspace can use the label to identify what the RETIMER is for.
++ */
++static ssize_t label_show(struct device *dev,
++			  struct device_attribute *attr,
++			  char *buf)
++{
++	const char* cp = NULL;
++	int len = 0;
++
++	/*
++	 * The class device is a child of the original device,
++	 * i.e. dev->parent points to the original device.
++	 */
++	if (dev->parent && dev->parent->of_node)
++		cp = of_get_property(dev->parent->of_node, "label", &len);
++
++	if ((cp == NULL) || (len == 0)) {
++		cp = "unknown";
++		len = strlen(cp) + 1;
++	}
++
++	strncpy(buf, cp, len - 1);
++	buf[len - 1] = '\n';
++	buf[len] = '\0';
++
++	return len;
++}
++
++struct device_attribute retimer_class_dev_attrs[] = {
++	__ATTR_RO(label),
++	__ATTR_NULL,
++};
++
++static int __init retimer_init(void)
++{
++	retimer_class = class_create(THIS_MODULE, RETIMER_CLASS_NAME);
++	if (IS_ERR(retimer_class)) {
++		pr_err("couldn't create sysfs class\n");
++		return PTR_ERR(retimer_class);
++	}
++
++	retimer_class->dev_attrs = retimer_class_dev_attrs;
++
++	return 0;
++}
++
++static void __exit retimer_exit(void)
++{
++	class_destroy(retimer_class);
++}
++
++subsys_initcall(retimer_init);
++module_exit(retimer_exit);
++
++EXPORT_SYMBOL_GPL(retimer_device_register);
++EXPORT_SYMBOL_GPL(retimer_device_unregister);
++
++MODULE_AUTHOR("Puneet Shenoy <puneet@cumulusnetworks.com>");
++MODULE_DESCRIPTION("retimer sysfs/class support");
++MODULE_LICENSE("GPL v2");
+diff --git a/drivers/misc/ti-st/st_kim.c b/drivers/misc/ti-st/st_kim.c
+index 43ef8d1..5e4fe09 100644

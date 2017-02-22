@@ -1,0 +1,14 @@
+--- a/drivers/mtd/mtdoops.c
++++ b/drivers/mtd/mtdoops.c
+@@ -311,8 +311,7 @@ static void mtdoops_do_dump(struct kmsg_dumper *dumper,
+ 	char *dst;
+ 
+ 	if (reason != KMSG_DUMP_OOPS &&
+-	    reason != KMSG_DUMP_PANIC &&
+-	    reason != KMSG_DUMP_KEXEC)
++	    reason != KMSG_DUMP_PANIC)
+ 		return;
+ 
+ 	/* Only dump oopses if dump_oops is set */
+diff --git a/drivers/mtd/ubi/build.c b/drivers/mtd/ubi/build.c
+index 1f9c363..bc431fb 100644

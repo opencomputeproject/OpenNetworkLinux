@@ -1,0 +1,15 @@
+--- a/lib/nlattr.c
++++ b/lib/nlattr.c
+@@ -12,8 +12,10 @@
+ #include <linux/netdevice.h>
+ #include <linux/skbuff.h>
+ #include <linux/string.h>
++#ifndef __GENKSYMS__
+ #include <linux/ratelimit.h>
+ #include <linux/sched.h>
++#endif
+ #include <linux/types.h>
+ #include <net/netlink.h>
+ 
+diff --git a/lib/swiotlb.c b/lib/swiotlb.c
+index 99093b3..058935e 100644

@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/smbus/Kconfig
+@@ -0,0 +1,8 @@
++config IPROC_I2C
++    tristate "I2C support"
++    depends on ARCH_IPROC
++    default n
++    help
++      I2C support
++
++      If unsure, say N.
+diff --git a/drivers/bcmdrivers/smbus/Makefile b/drivers/bcmdrivers/smbus/Makefile
+new file mode 100644
+index 0000000..812c7a1

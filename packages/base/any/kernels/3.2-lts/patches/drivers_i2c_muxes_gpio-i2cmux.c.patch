@@ -1,0 +1,14 @@
+--- a/drivers/i2c/muxes/gpio-i2cmux.c
++++ b/drivers/i2c/muxes/gpio-i2cmux.c
+@@ -105,7 +105,8 @@ static int __devinit gpiomux_probe(struct platform_device *pdev)
+ 	for (i = 0; i < pdata->n_values; i++) {
+ 		u32 nr = pdata->base_nr ? (pdata->base_nr + i) : 0;
+ 
+-		mux->adap[i] = i2c_add_mux_adapter(parent, mux, nr, i,
++		mux->adap[i] = i2c_add_mux_adapter(parent, &pdev->dev, mux,
++						   nr, i,
+ 						   gpiomux_select, deselect);
+ 		if (!mux->adap[i]) {
+ 			ret = -ENODEV;
+diff --git a/drivers/i2c/muxes/pca9541.c b/drivers/i2c/muxes/pca9541.c
+index ed699c5..e9e07ba 100644

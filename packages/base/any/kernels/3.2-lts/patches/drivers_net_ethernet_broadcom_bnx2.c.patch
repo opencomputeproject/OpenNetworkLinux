@@ -1,0 +1,65 @@
+--- a/drivers/net/ethernet/broadcom/bnx2.c
++++ b/drivers/net/ethernet/broadcom/bnx2.c
+@@ -2823,6 +2823,7 @@ bnx2_tx_int(struct bnx2 *bp, struct bnx2_napi *bnapi, int budget)
+ 	struct bnx2_tx_ring_info *txr = &bnapi->tx_ring;
+ 	u16 hw_cons, sw_cons, sw_ring_cons;
+ 	int tx_pkt = 0, index;
++	unsigned int tx_bytes = 0;
+ 	struct netdev_queue *txq;
+ 
+ 	index = (bnapi - bp->bnx2_napi);
+@@ -2877,6 +2878,7 @@ bnx2_tx_int(struct bnx2 *bp, struct bnx2_napi *bnapi, int budget)
+ 
+ 		sw_cons = NEXT_TX_BD(sw_cons);
+ 
++		tx_bytes += skb->len;
+ 		dev_kfree_skb(skb);
+ 		tx_pkt++;
+ 		if (tx_pkt == budget)
+@@ -2886,6 +2888,7 @@ bnx2_tx_int(struct bnx2 *bp, struct bnx2_napi *bnapi, int budget)
+ 			hw_cons = bnx2_get_hw_tx_cons(bnapi);
+ 	}
+ 
++	netdev_tx_completed_queue(txq, tx_pkt, tx_bytes);
+ 	txr->hw_tx_cons = hw_cons;
+ 	txr->tx_cons = sw_cons;
+ 
+@@ -3678,16 +3681,13 @@ static int bnx2_request_uncached_firmware(struct bnx2 *bp)
+ 	}
+ 
+ 	rc = request_firmware(&bp->mips_firmware, mips_fw_file, &bp->pdev->dev);
+-	if (rc) {
+-		pr_err("Can't load firmware file \"%s\"\n", mips_fw_file);
++	if (rc)
+ 		goto out;
+-	}
+ 
+ 	rc = request_firmware(&bp->rv2p_firmware, rv2p_fw_file, &bp->pdev->dev);
+-	if (rc) {
+-		pr_err("Can't load firmware file \"%s\"\n", rv2p_fw_file);
++	if (rc)
+ 		goto err_release_mips_firmware;
+-	}
++
+ 	mips_fw = (const struct bnx2_mips_fw_file *) bp->mips_firmware->data;
+ 	rv2p_fw = (const struct bnx2_rv2p_fw_file *) bp->rv2p_firmware->data;
+ 	if (bp->mips_firmware->size < sizeof(*mips_fw) ||
+@@ -5400,6 +5400,7 @@ bnx2_free_tx_skbs(struct bnx2 *bp)
+ 			}
+ 			dev_kfree_skb(skb);
+ 		}
++		netdev_tx_reset_queue(netdev_get_tx_queue(bp->dev, i));
+ 	}
+ }
+ 
+@@ -6552,6 +6553,8 @@ bnx2_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ 	}
+ 	txbd->tx_bd_vlan_tag_flags |= TX_BD_FLAGS_END;
+ 
++	netdev_tx_sent_queue(txq, skb->len);
++
+ 	prod = NEXT_TX_BD(prod);
+ 	txr->tx_prod_bseq += skb->len;
+ 
+diff --git a/drivers/net/ethernet/broadcom/bnx2x/bnx2x_cmn.c b/drivers/net/ethernet/broadcom/bnx2x/bnx2x_cmn.c
+index e367ab1..d1e7ee8 100644

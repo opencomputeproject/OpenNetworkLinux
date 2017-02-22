@@ -1,0 +1,15 @@
+--- a/drivers/mtd/chips/cfi_cmdset_0020.c
++++ b/drivers/mtd/chips/cfi_cmdset_0020.c
+@@ -139,8 +139,8 @@ struct mtd_info *cfi_cmdset_0020(struct map_info *map, int primary)
+ 		}
+ 
+ 		/* Do some byteswapping if necessary */
+-		extp->FeatureSupport = cfi32_to_cpu(extp->FeatureSupport);
+-		extp->BlkStatusRegMask = cfi32_to_cpu(extp->BlkStatusRegMask);
++		extp->FeatureSupport = cfi32_to_cpu(map, extp->FeatureSupport);
++		extp->BlkStatusRegMask = cfi32_to_cpu(map, extp->BlkStatusRegMask);
+ 
+ #ifdef DEBUG_CFI_FEATURES
+ 		/* Tell the user about it in lots of lovely detail */
+diff --git a/drivers/mtd/devices/Kconfig b/drivers/mtd/devices/Kconfig
+index 283d887..95cc3ad 100644

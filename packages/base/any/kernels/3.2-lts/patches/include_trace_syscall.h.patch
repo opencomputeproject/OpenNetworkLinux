@@ -1,0 +1,14 @@
+--- a/include/trace/syscall.h
++++ b/include/trace/syscall.h
+@@ -4,7 +4,9 @@
+ #include <linux/tracepoint.h>
+ #include <linux/unistd.h>
+ #include <linux/ftrace_event.h>
++#ifndef __GENKSYMS__
+ #include <linux/thread_info.h>
++#endif
+ 
+ #include <asm/ptrace.h>
+ 
+diff --git a/init/Kconfig b/init/Kconfig
+index b8dc1de..d37670d 100644

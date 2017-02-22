@@ -1,0 +1,13 @@
+--- a/scripts/Makefile.fwinst
++++ b/scripts/Makefile.fwinst
+@@ -13,7 +13,7 @@ src := $(obj)
+ -include $(objtree)/.config
+ 
+ include scripts/Kbuild.include
+-include $(srctree)/$(obj)/Makefile
++-include $(srctree)/$(obj)/Makefile
+ 
+ include scripts/Makefile.host
+ 
+diff --git a/scripts/kconfig/conf.c b/scripts/kconfig/conf.c
+index f208f90..78dd083 100644

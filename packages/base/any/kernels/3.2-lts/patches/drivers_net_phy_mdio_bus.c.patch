@@ -1,0 +1,77 @@
+--- a/drivers/net/phy/mdio_bus.c
++++ b/drivers/net/phy/mdio_bus.c
+@@ -75,6 +75,38 @@ static struct class mdio_bus_class = {
+ 	.dev_release	= mdiobus_release,
+ };
+ 
++#ifdef CONFIG_OF_MDIO
++/* Helper function for of_mdio_find_bus */
++static int of_mdio_bus_match(struct device *dev, void *mdio_bus_np)
++{
++	return dev->of_node == mdio_bus_np;
++}
++/**
++ * of_mdio_find_bus - Given an mii_bus node, find the mii_bus.
++ * @mdio_np: Pointer to the mii_bus.
++ *
++ * Returns a pointer to the mii_bus, or NULL if none found.
++ *
++ * Because the association of a device_node and mii_bus is made via
++ * of_mdiobus_register(), the mii_bus cannot be found before it is
++ * registered with of_mdiobus_register().
++ *
++ */
++struct mii_bus *of_mdio_find_bus(struct device_node *mdio_bus_np)
++{
++	struct device *d;
++
++	if (!mdio_bus_np)
++		return NULL;
++
++	d = class_find_device(&mdio_bus_class, NULL,  mdio_bus_np,
++			      of_mdio_bus_match);
++
++	return d ? to_mii_bus(d) : NULL;
++}
++EXPORT_SYMBOL(of_mdio_find_bus);
++#endif
++
+ /**
+  * mdiobus_register - bring up all the PHYs on a given bus and attach them to bus
+  * @bus: target mii_bus
+@@ -208,14 +240,14 @@ EXPORT_SYMBOL(mdiobus_scan);
+  * because the bus read/write functions may wait for an interrupt
+  * to conclude the operation.
+  */
+-int mdiobus_read(struct mii_bus *bus, int addr, u32 regnum)
++int mdiobus_read(struct mii_bus *bus, int addr, int devad, u16 regnum)
+ {
+ 	int retval;
+ 
+ 	BUG_ON(in_interrupt());
+ 
+ 	mutex_lock(&bus->mdio_lock);
+-	retval = bus->read(bus, addr, regnum);
++	retval = bus->read(bus, addr, devad, regnum);
+ 	mutex_unlock(&bus->mdio_lock);
+ 
+ 	return retval;
+@@ -233,14 +265,14 @@ EXPORT_SYMBOL(mdiobus_read);
+  * because the bus read/write functions may wait for an interrupt
+  * to conclude the operation.
+  */
+-int mdiobus_write(struct mii_bus *bus, int addr, u32 regnum, u16 val)
++int mdiobus_write(struct mii_bus *bus, int addr, int devad, u16 regnum, u16 val)
+ {
+ 	int err;
+ 
+ 	BUG_ON(in_interrupt());
+ 
+ 	mutex_lock(&bus->mdio_lock);
+-	err = bus->write(bus, addr, regnum, val);
++	err = bus->write(bus, addr, devad, regnum, val);
+ 	mutex_unlock(&bus->mdio_lock);
+ 
+ 	return err;
+diff --git a/drivers/net/phy/phy.c b/drivers/net/phy/phy.c
+index 3cbda08..0825a78 100644

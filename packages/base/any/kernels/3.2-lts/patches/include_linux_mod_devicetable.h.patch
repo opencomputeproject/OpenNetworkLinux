@@ -1,0 +1,44 @@
+--- a/include/linux/mod_devicetable.h
++++ b/include/linux/mod_devicetable.h
+@@ -461,8 +461,13 @@ enum dmi_field {
+ };
+ 
+ struct dmi_strmatch {
++#ifndef __GENKSYMS__
++	/* Layout supported by dmi_check_system_2() and dmi_first_match_2() */
+ 	unsigned char slot:7;
+ 	unsigned char exact_match:1;
++#else
++	unsigned char slot;
++#endif
+ 	char substr[79];
+ };
+ 
+@@ -544,4 +549,25 @@ struct isapnp_device_id {
+ 	kernel_ulong_t driver_data;	/* data private to the driver */
+ };
+ 
++/*
++ * Match x86 CPUs for CPU specific drivers.
++ * See documentation of "x86_match_cpu" for details.
++ */
++
++struct x86_cpu_id {
++	__u16 vendor;
++	__u16 family;
++	__u16 model;
++	__u16 feature;	/* bit index */
++	kernel_ulong_t driver_data;
++};
++
++#define X86_FEATURE_MATCH(x) \
++	{ X86_VENDOR_ANY, X86_FAMILY_ANY, X86_MODEL_ANY, x }
++
++#define X86_VENDOR_ANY 0xffff
++#define X86_FAMILY_ANY 0
++#define X86_MODEL_ANY  0
++#define X86_FEATURE_ANY 0	/* Same as FPU, you can't test for that */
++
+ #endif /* LINUX_MOD_DEVICETABLE_H */
+diff --git a/include/linux/mount.h b/include/linux/mount.h
+index fc17c4d..e1e7aba 100644

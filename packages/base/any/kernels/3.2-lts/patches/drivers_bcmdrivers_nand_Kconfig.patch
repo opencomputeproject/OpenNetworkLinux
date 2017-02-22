@@ -1,0 +1,30 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/nand/Kconfig
+@@ -0,0 +1,24 @@
++menuconfig IPROC_MTD_NAND
++	tristate "NAND support"
++	depends on ARCH_IPROC
++	select MTD
++	select MTD_NAND
++	default n
++	help
++	  This selects a driver for the iProc NAND Controller.
++
++	  If unsure, say N.
++
++if IPROC_MTD_NAND
++
++config IPROC_MTD_NAND_USE_JFFS2
++	bool "Use JFFS2 on NAND"
++    default n
++	help
++	  Enable this if JFFS2 will be used on NAND. This is to solve compatibility
++	  issue for the NAND controller to work with JFFS2 (with some performance
++	  degrade).
++
++	  If unsure, say N.
++
++endif # IPROC_MTD_NAND
+diff --git a/drivers/bcmdrivers/nand/Makefile b/drivers/bcmdrivers/nand/Makefile
+new file mode 100644
+index 0000000..5d2b01d

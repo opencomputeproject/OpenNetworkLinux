@@ -1,0 +1,51 @@
+--- a/drivers/net/phy/phy.c
++++ b/drivers/net/phy/phy.c
+@@ -6,7 +6,7 @@
+  *
+  * Author: Andy Fleming
+  *
+- * Copyright (c) 2004 Freescale Semiconductor, Inc.
++ * Copyright (c) 2004,2011 Freescale Semiconductor, Inc.
+  * Copyright (c) 2006, 2007  Maciej W. Rozycki
+  *
+  * This program is free software; you can redistribute  it and/or modify it
+@@ -322,7 +322,7 @@ int phy_mii_ioctl(struct phy_device *phydev,
+ 
+ 	case SIOCGMIIREG:
+ 		mii_data->val_out = mdiobus_read(phydev->bus, mii_data->phy_id,
+-						 mii_data->reg_num);
++						 0, mii_data->reg_num);
+ 		break;
+ 
+ 	case SIOCSMIIREG:
+@@ -353,7 +353,7 @@ int phy_mii_ioctl(struct phy_device *phydev,
+ 			}
+ 		}
+ 
+-		mdiobus_write(phydev->bus, mii_data->phy_id,
++		mdiobus_write(phydev->bus, mii_data->phy_id, 0,
+ 			      mii_data->reg_num, val);
+ 
+ 		if (mii_data->reg_num == MII_BMCR &&
+@@ -479,6 +479,10 @@ static void phy_force_reduction(struct phy_device *phydev)
+ 
+ 	idx = phy_find_valid(idx, phydev->supported);
+ 
++	/* Avoid reaching an invalid speed and duplex combination */
++	if (!(settings[idx].setting & phydev->supported))
++		return;
++
+ 	phydev->speed = settings[idx].speed;
+ 	phydev->duplex = settings[idx].duplex;
+ 
+@@ -869,6 +873,8 @@ void phy_state_machine(struct work_struct *work)
+ 				if (0 == phydev->link_timeout--) {
+ 					phy_force_reduction(phydev);
+ 					needs_aneg = 1;
++					phydev->link_timeout =
++						PHY_FORCE_TIMEOUT;
+ 				}
+ 			}
+ 
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 83a5a5a..e88f49a 100644

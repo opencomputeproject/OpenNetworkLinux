@@ -1,0 +1,14 @@
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -31,7 +31,9 @@
+ #include <linux/backing-dev.h>
+ #include <linux/memcontrol.h>
+ #include <linux/gfp.h>
++#ifndef __GENKSYMS__
+ #include <linux/hugetlb.h>
++#endif
+ 
+ #include "internal.h"
+ 
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 143883a..3915b9e 100644

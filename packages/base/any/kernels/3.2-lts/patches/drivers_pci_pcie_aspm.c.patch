@@ -1,0 +1,30 @@
+--- a/drivers/pci/pcie/aspm.c
++++ b/drivers/pci/pcie/aspm.c
+@@ -440,7 +440,7 @@ static void pcie_config_aspm_dev(struct pci_dev *pdev, u32 val)
+ 	int pos = pci_pcie_cap(pdev);
+ 
+ 	pci_read_config_word(pdev, pos + PCI_EXP_LNKCTL, &reg16);
+-	reg16 &= ~0x3;
++	reg16 &= ~PCI_EXP_LNKCTL_ASPMC;
+ 	reg16 |= val;
+ 	pci_write_config_word(pdev, pos + PCI_EXP_LNKCTL, reg16);
+ }
+@@ -457,12 +457,12 @@ static void pcie_config_aspm_link(struct pcie_link_state *link, u32 state)
+ 		return;
+ 	/* Convert ASPM state to upstream/downstream ASPM register state */
+ 	if (state & ASPM_STATE_L0S_UP)
+-		dwstream |= PCIE_LINK_STATE_L0S;
++		dwstream |= PCI_EXP_LNKCTL_ASPM_L0S;
+ 	if (state & ASPM_STATE_L0S_DW)
+-		upstream |= PCIE_LINK_STATE_L0S;
++		upstream |= PCI_EXP_LNKCTL_ASPM_L0S;
+ 	if (state & ASPM_STATE_L1) {
+-		upstream |= PCIE_LINK_STATE_L1;
+-		dwstream |= PCIE_LINK_STATE_L1;
++		upstream |= PCI_EXP_LNKCTL_ASPM_L1;
++		dwstream |= PCI_EXP_LNKCTL_ASPM_L1;
+ 	}
+ 	/*
+ 	 * Spec 2.0 suggests all functions should be configured the
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index bc92c47..757c9d2 100644

@@ -1,0 +1,68 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gmac/hnd/shared_ksyms.c
+@@ -0,0 +1,62 @@
++#include <linux/module.h>
++#include <bcmutils.h>
++#include <siutils.h>
++#include <bcmrobo.h>
++#include <bcmnvram.h>
++EXPORT_SYMBOL(bcm_atoi);
++EXPORT_SYMBOL(bcm_binit);
++EXPORT_SYMBOL(bcm_bprintf);
++EXPORT_SYMBOL(bcm_ether_atoe);
++EXPORT_SYMBOL(bcm_ether_ntoa);
++EXPORT_SYMBOL(bcm_robo_attach);
++EXPORT_SYMBOL(bcm_robo_config_vlan);
++EXPORT_SYMBOL(bcm_robo_detach);
++EXPORT_SYMBOL(bcm_robo_enable_device);
++EXPORT_SYMBOL(bcm_robo_enable_switch);
++EXPORT_SYMBOL(bcm_strtoul);
++EXPORT_SYMBOL(getgpiopin);
++EXPORT_SYMBOL(getintvar);
++EXPORT_SYMBOL(getvar);
++EXPORT_SYMBOL(nvram_env_gmac_name);
++EXPORT_SYMBOL(nvram_get);
++#ifdef CTFPOOL
++EXPORT_SYMBOL(osl_ctfpool_add);
++EXPORT_SYMBOL(osl_ctfpool_cleanup);
++EXPORT_SYMBOL(osl_ctfpool_init);
++EXPORT_SYMBOL(osl_ctfpool_replenish);
++EXPORT_SYMBOL(osl_ctfpool_stats);
++#endif
++EXPORT_SYMBOL(osl_delay);
++EXPORT_SYMBOL(osl_detach);
++EXPORT_SYMBOL(osl_dma_map);
++EXPORT_SYMBOL(osl_malloc);
++EXPORT_SYMBOL(osl_malloced);
++EXPORT_SYMBOL(osl_mfree);
++EXPORT_SYMBOL(osl_pkt_frmnative);
++EXPORT_SYMBOL(osl_pkt_tonative);
++EXPORT_SYMBOL(osl_pktfree);
++EXPORT_SYMBOL(pktsetprio);
++EXPORT_SYMBOL(robo_bprintf_mib);
++EXPORT_SYMBOL(robo_dump_mib);
++EXPORT_SYMBOL(robo_dump_regs);
++EXPORT_SYMBOL(robo_is_port_cfg);
++EXPORT_SYMBOL(robo_power_save_mode_get);
++EXPORT_SYMBOL(robo_power_save_mode_set);
++EXPORT_SYMBOL(robo_power_save_mode_update);
++EXPORT_SYMBOL(robo_power_save_toggle);
++EXPORT_SYMBOL(robo_reset_mib);
++EXPORT_SYMBOL(robo_watchdog);
++EXPORT_SYMBOL(si_core_cflags);
++EXPORT_SYMBOL(si_core_disable);
++EXPORT_SYMBOL(si_core_reset);
++EXPORT_SYMBOL(si_core_sflags);
++EXPORT_SYMBOL(si_coreid);
++EXPORT_SYMBOL(si_coreidx);
++EXPORT_SYMBOL(si_corerev);
++EXPORT_SYMBOL(si_coreunit);
++EXPORT_SYMBOL(si_detach);
++EXPORT_SYMBOL(si_gpioout);
++EXPORT_SYMBOL(si_gpioouten);
++EXPORT_SYMBOL(si_iscoreup);
++EXPORT_SYMBOL(si_kattach);
++EXPORT_SYMBOL(si_setcoreidx);
+diff --git a/drivers/bcmdrivers/gmac/hnd/shared_ksyms.sh b/drivers/bcmdrivers/gmac/hnd/shared_ksyms.sh
+new file mode 100755
+index 0000000..8b537a3

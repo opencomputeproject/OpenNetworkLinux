@@ -1,0 +1,22 @@
+--- a/drivers/usb/serial/io_ti.c
++++ b/drivers/usb/serial/io_ti.c
+@@ -886,8 +886,6 @@ static int build_i2c_fw_hdr(__u8 *header, struct device *dev)
+ 
+ 	err = request_firmware(&fw, fw_name, dev);
+ 	if (err) {
+-		printk(KERN_ERR "Failed to load image \"%s\" err %d\n",
+-		       fw_name, err);
+ 		kfree(buffer);
+ 		return err;
+ 	}
+@@ -1452,8 +1450,6 @@ static int download_fw(struct edgeport_serial *serial)
+ 
+ 		err = request_firmware(&fw, fw_name, dev);
+ 		if (err) {
+-			printk(KERN_ERR "Failed to load image \"%s\" err %d\n",
+-			       fw_name, err);
+ 			kfree(buffer);
+ 			return err;
+ 		}
+diff --git a/drivers/usb/serial/keyspan.c b/drivers/usb/serial/keyspan.c
+index e9b39e3..472fddb 100644

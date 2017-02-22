@@ -1,0 +1,16 @@
+--- a/drivers/tty/cyclades.c
++++ b/drivers/tty/cyclades.c
+@@ -3543,10 +3543,8 @@ static int __devinit cyz_load_fw(struct pci_dev *pdev, void __iomem *base_addr,
+ 	int retval;
+ 
+ 	retval = request_firmware(&fw, "cyzfirm.bin", &pdev->dev);
+-	if (retval) {
+-		dev_err(&pdev->dev, "can't get firmware\n");
++	if (retval)
+ 		goto err;
+-	}
+ 
+ 	/* Check whether the firmware is already loaded and running. If
+ 	   positive, skip this board */
+diff --git a/drivers/tty/hvc/hvc_vio.c b/drivers/tty/hvc/hvc_vio.c
+index fc3c3ad..4cc036f 100644

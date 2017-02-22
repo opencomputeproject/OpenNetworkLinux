@@ -17,7 +17,7 @@ default:
     # Default kernel packages provided by ONL
     #
     ##############################
-    
+
     e500v-kernel-package: &e500v-kernel-package
       package: onl-kernel-3.9.6-powerpc-e500v:powerpc
 
@@ -38,12 +38,12 @@ default:
     e500mc-kernel: &e500mc-kernel
       =: kernel-3.8.13-powerpc-e500mc.bin.gz
       <<: *e500mc-kernel-package
-      
+
     arm-iproc-kernel-package: &arm-iproc-kernel-package
-      package: onl-kernel-3.2-deb7-arm-iproc-all:armel
+      package: onl-kernel-3.2-lts-arm-iproc-all:armel
 
     arm-iproc-kernel: &arm-iproc-kernel
-      =: kernel-3.2-deb7-arm-iproc-all.bin.gz
+      =: kernel-3.2-lts-arm-iproc-all.bin.gz
       <<: *arm-iproc-kernel-package
 
     arm64-kernel-package: &arm64-kernel-package
@@ -59,8 +59,8 @@ default:
     # to compose a 'kernel' and 'dtb' key
     #
     ##############################
-    
-    ### Example, pick one kernel and one DTB      
+
+    ### Example, pick one kernel and one DTB
     ##kernel:
     ##  <<: *e500v-kernel
     ##dtb:
@@ -68,7 +68,7 @@ default:
     ##  <<: *e500v-kernel-package
 
     ##############################
-    # 
+    #
     # pick an actual loader file,
     # usually the 'all' image
     #
@@ -139,7 +139,7 @@ default:
     ##  env_offset: 0x00000000
     ##  env_size: 0x00002000
     ##  sector_size: 0x00020000
-      
+
   # Default partitioning scheme
   # boot, config --> 128MiB (ext2)
   # images --> 1GiB
@@ -172,7 +172,7 @@ default:
       # this should work for most systems
       ma1:
         name: eth0
-      
+
       # for other wierd corner cases
       ##ma1:
       ##  name: ~

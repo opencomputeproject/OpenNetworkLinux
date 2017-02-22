@@ -1,0 +1,38 @@
+--- a/include/linux/perf_event.h
++++ b/include/linux/perf_event.h
+@@ -796,7 +796,11 @@ struct perf_event {
+ 	struct hw_perf_event		hw;
+ 
+ 	struct perf_event_context	*ctx;
++#ifdef __GENKSYMS__
++	struct file			*filp;
++#else
+ 	atomic_long_t			refcount;
++#endif
+ 
+ 	/*
+ 	 * These accumulate total time (in nanoseconds) that children
+@@ -821,6 +825,9 @@ struct perf_event {
+ 	/* mmap bits */
+ 	struct mutex			mmap_mutex;
+ 	atomic_t			mmap_count;
++	/* These two are unused but kept here for ABI compat */
++	int				mmap_locked;
++	struct user_struct		*mmap_user;
+ 
+ 	struct ring_buffer		*rb;
+ 	struct list_head		rb_entry;
+@@ -929,7 +936,11 @@ struct perf_cpu_context {
+ 	int				exclusive;
+ 	struct list_head		rotation_list;
+ 	int				jiffies_interval;
++#ifdef __GENKSYMS__
++	struct pmu			*active_pmu;
++#else
+ 	struct pmu			*unique_pmu;
++#endif
+ 	struct perf_cgroup		*cgrp;
+ };
+ 
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index 79f337c..1efebc0 100644

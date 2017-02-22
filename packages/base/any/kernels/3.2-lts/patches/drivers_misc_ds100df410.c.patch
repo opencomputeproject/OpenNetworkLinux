@@ -1,0 +1,332 @@
+--- /dev/null
++++ b/drivers/misc/ds100df410.c
+@@ -0,0 +1,326 @@
++/*
++ *  ds100df410.c - I2c client driver to manage DS100DF410
++ *  DS100DF410 Low Power 10GbE Quad Channel Retimer
++ *
++ *  Copyright (C) 2014 Cumulus Networks, Inc.
++ *  Author: Puneet Shenoy <puneet@cumulusnetworks.com>
++ *
++ *  Ideas and structure regarding introducing the class device graciously borrowed
++ *  from the eeprom sysfs/class support by:
++ *  Copyright (C) 2013 CumulusNetworks, Inc.
++ *  Author: Curt Brune <curt@cumulusnetworks.com
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/slab.h>
++#include <linux/i2c.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/kdev_t.h>
++#include <linux/idr.h>
++#include <linux/gfp.h>
++#include <linux/spinlock.h>
++
++#ifdef CONFIG_RETIMER_CLASS
++#include <linux/retimer_class.h>
++#endif
++
++#define DS100DF410_DRV_NAME             "ds100df410"
++#define DRIVER_VERSION                  "1.0"
++
++#define DS100DF410_RESET_REG            0x00
++#define DS100DF410_OVERRIDE_REG         0x09
++#define DS100DF410_CDR_RST_REG          0x0a
++#define DS100DF410_TAP_DEM_REG          0x15
++#define DS100DF410_PFD_PRBS_DFE_REG     0x1e
++#define DS100DF410_DRV_SEL_VOD_REG      0x2d
++#define DS100DF410_ADAPT_EQ_SM_REG      0x31
++#define DS100DF410_VEO_CLK_CDR_CAP_REG  0x36
++#define DS100DF410_CHANNELS_REG         0xff
++
++struct ds100df410_data {
++	struct i2c_client *client;
++
++#ifdef CONFIG_RETIMER_CLASS
++	struct device *retimer_dev;
++#endif
++	struct mutex lock;
++};
++
++static u32 ds100df410_read(struct device *dev, u8 reg, char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	u32 ret = i2c_smbus_read_byte_data(client, reg);
++
++	return sprintf(buf, "%d\n", ret);
++}
++
++static u32 ds100df410_write(struct device *dev, u8 reg, const char *buf,
++			    size_t count)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	unsigned long val;
++	int ret;
++
++	if (strict_strtoul(buf, 0, &val) < 0)
++		return -EINVAL;
++
++	ret = i2c_smbus_write_byte_data(client, reg, (u8)val);
++	if (ret < 0)
++		return ret;
++
++	return count;
++}
++
++static ssize_t ds100df410_show_cdr_rst(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_CDR_RST_REG, buf);
++}
++
++static ssize_t ds100df410_store_cdr_rst(struct device *dev,
++					 struct device_attribute *attr,
++					 const char *buf, size_t count)
++{
++	return ds100df410_write(dev, DS100DF410_CDR_RST_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_tap_dem(struct device *dev,
++				       struct device_attribute *attr,
++				       char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_TAP_DEM_REG, buf);
++}
++
++static ssize_t ds100df410_store_tap_dem(struct device *dev,
++					struct device_attribute *attr,
++					const char *buf, size_t count)
++{
++	return ds100df410_write(dev, DS100DF410_TAP_DEM_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_pfd_prbs_dfe(struct device *dev,
++					    struct device_attribute *attr,
++					    char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_PFD_PRBS_DFE_REG, buf);
++}
++
++static ssize_t ds100df410_store_pfd_prbs_dfe(struct device *dev,
++					     struct device_attribute *attr,
++					     const char *buf, size_t count)
++{
++	return ds100df410_write(dev, DS100DF410_PFD_PRBS_DFE_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_drv_sel_vod(struct device *dev,
++					   struct device_attribute *attr,
++					   char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_DRV_SEL_VOD_REG, buf);
++}
++
++static ssize_t ds100df410_store_drv_sel_vod(struct device *dev,
++					    struct device_attribute *attr,
++					    const char *buf, size_t count)
++{
++	return ds100df410_write(dev, DS100DF410_DRV_SEL_VOD_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_adapt_eq_sm(struct device *dev,
++					   struct device_attribute *attr,
++					   char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_ADAPT_EQ_SM_REG, buf);
++}
++
++static ssize_t ds100df410_store_adapt_eq_sm(struct device *dev,
++					    struct device_attribute *attr,
++					    const char *buf, size_t count)
++{
++	return ds100df410_write(dev, DS100DF410_ADAPT_EQ_SM_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_veo_clk_cdr_cap(struct device *dev,
++					       struct device_attribute *attr,
++					       char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_VEO_CLK_CDR_CAP_REG, buf);
++}
++
++static ssize_t ds100df410_store_veo_clk_cdr_cap(struct device *dev,
++						struct device_attribute *attr,
++						const char *buf, size_t count)
++{
++        return ds100df410_write(dev, DS100DF410_VEO_CLK_CDR_CAP_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_channels(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_CHANNELS_REG, buf);
++}
++
++static ssize_t ds100df410_store_channels(struct device *dev,
++					 struct device_attribute *attr,
++					 const char *buf, size_t count)
++{
++        return ds100df410_write(dev, DS100DF410_CHANNELS_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_override(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_OVERRIDE_REG, buf);
++}
++
++static ssize_t ds100df410_store_override(struct device *dev,
++					 struct device_attribute *attr,
++					 const char *buf, size_t count)
++{
++        return ds100df410_write(dev, DS100DF410_OVERRIDE_REG, buf, count);
++}
++
++static ssize_t ds100df410_show_reset(struct device *dev,
++					struct device_attribute *attr,
++					char *buf)
++{
++	return ds100df410_read(dev, DS100DF410_RESET_REG, buf);
++}
++
++static ssize_t ds100df410_store_reset(struct device *dev,
++					 struct device_attribute *attr,
++					 const char *buf, size_t count)
++{
++        return ds100df410_write(dev, DS100DF410_RESET_REG, buf, count);
++}
++
++static DEVICE_ATTR(cdr_rst, S_IWUSR | S_IRUGO,
++		   ds100df410_show_cdr_rst, ds100df410_store_cdr_rst);
++static DEVICE_ATTR(tap_dem, S_IWUSR | S_IRUGO,
++		   ds100df410_show_tap_dem, ds100df410_store_tap_dem);
++static DEVICE_ATTR(pfd_prbs_dfe, S_IWUSR | S_IRUGO,
++		   ds100df410_show_pfd_prbs_dfe, ds100df410_store_pfd_prbs_dfe);
++static DEVICE_ATTR(drv_sel_vod, S_IWUSR | S_IRUGO,
++		   ds100df410_show_drv_sel_vod, ds100df410_store_drv_sel_vod);
++static DEVICE_ATTR(adapt_eq_sm, S_IWUSR | S_IRUGO,
++		   ds100df410_show_adapt_eq_sm, ds100df410_store_adapt_eq_sm);
++static DEVICE_ATTR(veo_clk_cdr_cap, S_IWUSR | S_IRUGO,
++		   ds100df410_show_veo_clk_cdr_cap,
++		   ds100df410_store_veo_clk_cdr_cap);
++static DEVICE_ATTR(channels, S_IWUSR | S_IRUGO,
++		   ds100df410_show_channels, ds100df410_store_channels);
++static DEVICE_ATTR(override, S_IWUSR | S_IRUGO,
++		   ds100df410_show_override, ds100df410_store_override);
++static DEVICE_ATTR(reset, S_IWUSR | S_IRUGO,
++		   ds100df410_show_reset, ds100df410_store_reset);
++
++static struct attribute *ds100df410_attributes[] = {
++	&dev_attr_cdr_rst.attr,
++	&dev_attr_tap_dem.attr,
++	&dev_attr_pfd_prbs_dfe.attr,
++	&dev_attr_drv_sel_vod.attr,
++	&dev_attr_adapt_eq_sm.attr,
++	&dev_attr_veo_clk_cdr_cap.attr,
++	&dev_attr_channels.attr,
++	&dev_attr_override.attr,
++	&dev_attr_reset.attr,
++	NULL
++};
++
++static const struct attribute_group ds100df410_attr_group = {
++	.attrs = ds100df410_attributes,
++};
++
++static int __devinit ds100df410_probe(struct i2c_client *client,
++				    const struct i2c_device_id *id)
++{
++	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
++	struct ds100df410_data *data;
++	int err = 0;
++
++	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE)) {
++		return -EIO;
++	}
++
++	data = kzalloc(sizeof(struct ds100df410_data), GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++	data->client = client;
++	mutex_init(&data->lock);
++
++	/* register sysfs hooks */
++	err = sysfs_create_group(&client->dev.kobj, &ds100df410_attr_group);
++	if (err)
++		goto exit_kfree;
++
++
++#ifdef CONFIG_RETIMER_CLASS
++	data->retimer_dev = retimer_device_register(&client->dev);
++	if (IS_ERR(data->retimer_dev)) {
++		dev_err(&client->dev, "error registering retimer device.\n");
++		err = PTR_ERR(data->retimer_dev);
++		goto exit_kfree;
++	}
++#endif
++
++	i2c_set_clientdata(client, data);
++	return 0;
++exit_kfree:
++	kfree(data);
++	return err;
++}
++
++static int __devexit ds100df410_remove(struct i2c_client *client)
++{
++	struct ds100df410_data *data;
++
++	data = i2c_get_clientdata(client);
++	sysfs_remove_group(&client->dev.kobj, &ds100df410_attr_group);
++
++#ifdef CONFIG_RETIMER_CLASS
++	retimer_device_unregister(data->retimer_dev);
++#endif
++
++	kfree(data);
++	return 0;
++}
++
++static const struct i2c_device_id ds100df410_id[] = {
++	{ "ds100df410", 0 },
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, ds100df410_id);
++
++static struct i2c_driver ds100df410_driver = {
++	.driver = {
++		.name	= DS100DF410_DRV_NAME,
++	},
++	.probe	= ds100df410_probe,
++	.remove	= __devexit_p(ds100df410_remove),
++	.id_table = ds100df410_id,
++};
++
++module_i2c_driver(ds100df410_driver);
++MODULE_AUTHOR("Puneet Shenoy <puneet@cumulusnetworks.com>");
++MODULE_DESCRIPTION("I2C client for DS100DF410 10GE Quad Core Retimer");
++MODULE_LICENSE("GPL v2");
++MODULE_VERSION(DRIVER_VERSION);
+diff --git a/drivers/misc/early_dma_alloc.c b/drivers/misc/early_dma_alloc.c
+new file mode 100644
+index 0000000..609a858

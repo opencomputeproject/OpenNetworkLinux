@@ -1,0 +1,17 @@
+--- a/drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c
++++ b/drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c
+@@ -10573,11 +10573,8 @@ int bnx2x_init_firmware(struct bnx2x *bp)
+ 
+ 		rc = request_firmware(&bp->firmware, fw_file_name,
+ 				      &bp->pdev->dev);
+-		if (rc) {
+-			BNX2X_ERR("Can't load firmware file %s\n",
+-				  fw_file_name);
++		if (rc)
+ 			goto request_firmware_exit;
+-		}
+ 
+ 		rc = bnx2x_check_firmware(bp);
+ 		if (rc) {
+diff --git a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+index d0ebf9c..32d4e7f 100644
