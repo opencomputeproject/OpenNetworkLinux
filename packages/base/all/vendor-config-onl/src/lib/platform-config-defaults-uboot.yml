@@ -25,6 +25,13 @@ default:
       =: kernel-3.9.6-powerpc-e500v.bin.gz
       <<: *e500v-kernel-package
 
+    e500v-3-16-package: &e500v-3-16-package
+      package: onl-kernel-3.16-lts-powerpc-e500v-all:powerpc
+
+    e500v-3.16: &e500v-3-16
+      =: kernel-3.16-lts-powerpc-e500v-all.bin.gz
+      <<: *e500v-3-16-package
+
     e500mc-kernel-package: &e500mc-kernel-package
       package: onl-kernel-3.8.13-powerpc-e500mc:powerpc
 

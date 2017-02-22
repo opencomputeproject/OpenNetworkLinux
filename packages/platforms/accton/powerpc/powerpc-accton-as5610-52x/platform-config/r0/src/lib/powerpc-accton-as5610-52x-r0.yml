@@ -10,7 +10,7 @@ powerpc-accton-as5610-52x-r0:
 
   flat_image_tree:
     kernel:
-      <<: *e500v-kernel
+      <<: *e500v-3-16
     dtb:
       =: powerpc-accton-as5610-52x-r0.dtb
       package: onl-platform-build-powerpc-accton-as5610-52x-r0:powerpc
