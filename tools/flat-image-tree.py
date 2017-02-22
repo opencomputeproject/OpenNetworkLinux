@@ -43,7 +43,7 @@ class Image(object):
             raise ValueError("invalid image specifier: %s" % repr(data))
 
         if pkg is not None:
-            pm.require(pkg, force=False, build_missing=False)
+            pm.require(pkg, force=False, build_missing=True)
             self.data = pm.opr.get_file(pkg, fname)
         else:
             self.data = data
@@ -213,10 +213,10 @@ class FlatImageTree(object):
         platform = package.replace(":%s" % ops.arch, "").replace("onl-platform-config-", "")
 
         vpkg = "onl-vendor-config-onl:all"
-        pm.require(vpkg, force=False, build_missing=False)
+        pm.require(vpkg, force=False, build_missing=True)
         y1 = pm.opr.get_file(vpkg, "platform-config-defaults-uboot.yml")
 
-        pm.require(package, force=False, build_missing=False)
+        pm.require(package, force=False, build_missing=True)
         y2 = pm.opr.get_file(package, platform + '.yml')
 
         self.add_yaml(platform, y2, defaults=y1)
@@ -338,7 +338,7 @@ if __name__ == '__main__':
         # Add support for the platforms listed in the initrd's platform manifest
         (package,f) = initrd.split(':')
         pkg = package + ':' + ops.arch
-        pm.require(pkg, force=False, build_missing=False)
+        pm.require(pkg, force=False, build_missing=True)
         mfile = pm.opr.get_file(pkg, "manifest.json")
         manifest = json.load(open(mfile))
         ops.add_platform = [[ "%s" % p for p in manifest['platforms'] ]]
