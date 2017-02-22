@@ -26,12 +26,11 @@
 #include <x86_64_quanta_ly6_rangeley/x86_64_quanta_ly6_rangeley_gpio_table.h>
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/sfp.h>
+#include <onlplib/gpio.h>
 #include "x86_64_quanta_ly6_rangeley_log.h"
 
 #include <unistd.h>
 #include <fcntl.h>
-
-#include <quanta_lib/gpio.h>
 
 /**
  * This table maps the presence gpio, reset gpio, and eeprom file
@@ -86,9 +85,12 @@ int
 onlp_sfpi_init(void)
 {
     int value = -1, ret;
-    ret = pca953x_gpio_value_get(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, &value);
-    if(ret == ONLP_STATUS_OK && value != GPIO_HIGH) {
-        ret = pca953x_gpio_value_set(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, GPIO_HIGH);
+
+    onlp_gpio_export(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_IN);
+    ret = onlp_gpio_get(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, &value);
+    if(ret == ONLP_STATUS_OK && value != 1) {
+        onlp_gpio_export(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+        ret = onlp_gpio_set(QUANTA_LY6_QSFP_EN_GPIO_P3V3_PW_EN, 1);
         sleep(1);
     }
 
@@ -115,8 +117,8 @@ onlp_sfpi_is_present(int port)
 	int value = 0;
     sfpmap_t* sfp = SFP_GET(port);
     if(sfp->present_gpio > 0) {
-		if(pca953x_gpio_value_get(sfp->present_gpio, &value) == ONLP_STATUS_OK)
-			return (value == GPIO_LOW);
+		if(onlp_gpio_get(sfp->present_gpio, &value) == ONLP_STATUS_OK)
+			return (value == 0);
 		else
 			return ONLP_STATUS_E_MISSING;
     }

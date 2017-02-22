@@ -11,7 +11,6 @@
 #include <onlp/platformi/psui.h>
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
-#include <quanta_lib/i2c.h>
 #include <onlplib/gpio.h>
 #include "x86_64_quanta_ly8_rangeley_int.h"
 #include "x86_64_quanta_ly8_rangeley_log.h"
@@ -85,7 +84,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     info->status |= 1;
 
     memset(buffer, 0, sizeof(buffer));
-    rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
+    rv = onlp_i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
     if(rv >= 0) {
         aim_strlcpy(info->model, (char *) (buffer+1), (buffer[0]+1));
     }
@@ -94,7 +93,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     memset(buffer, 0, sizeof(buffer));
-    rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
+    rv = onlp_i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
     if(rv >= 0) {
         aim_strlcpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
     } else {
