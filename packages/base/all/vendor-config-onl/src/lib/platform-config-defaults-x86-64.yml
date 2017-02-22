@@ -19,25 +19,13 @@ default:
     # this is mostly to *reject* invalid disk labels,
     # since we will never create our own
 
-    kernel-3.2: &kernel-3-2
-      =: kernel-3.2-deb7-x86_64-all
-      package: onl-kernel-3.2-deb7-x86-64-all:amd64
-
-    kernel-3.9.6: &kernel-3-9-6
-      =: kernel-3.9.6-x86-64-all
-      package: onl-kernel-3.9.6-x86-64-all:amd64
-
-    kernel-3.18: &kernel-3-18
-      =: kernel-3.18-x86_64-all
-      package: onl-kernel-3.18-x86-64-all:amd64
-
     kernel-3.16: &kernel-3-16
       =: kernel-3.16-lts-x86_64-all
       package: onl-kernel-3.16-lts-x86-64-all:amd64
 
     # pick one of the above kernels
     kernel:
-      <<: *kernel-3-2
+      <<: *kernel-3-16
 
     # GRUB command line arguments for 'serial' declaration
     # this is equivalent to, but not in the same format as,
