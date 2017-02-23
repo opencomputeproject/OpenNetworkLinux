@@ -2,7 +2,6 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *        Copyright 2014, 2015 Big Switch Networks, Inc.
- *        Copyright 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -92,12 +91,6 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
     }
 	    
 	return rv;
-}
-
-void
-onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
-{
-    aim_free(pi->cpld_versions);
 }
 
 void
