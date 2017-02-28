@@ -12,7 +12,7 @@ endif
 
 include $(ONL)/make/config.mk
 
-all: amd64 ppc arm
+all: amd64 ppc arm arm64
 	$(MAKE) -C REPO build-clean
 
 onl-amd64 onl-x86 x86 x86_64 amd64: packages_base_all
