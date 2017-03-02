@@ -11,7 +11,7 @@
  *
  * </bsn.cl>
  *
- * A hwmon driver for the Quanta LY6
+ * A hwmon driver for the Quanta LY6/LY8/LY9
  */
 
 #include <linux/module.h>
@@ -39,40 +39,40 @@ static const unsigned short normal_i2c[] = { 0x4E, I2C_CLIENT_END };
 
 #define QUANTA_HWMON_NUM_FANS 6
 
-struct quanta_hwmon_data {
+struct quanta_hwmon_ly_series_data {
 	struct device		*hwmon_dev;
 	struct attribute_group	attrs;
 	struct mutex		lock;
 };
 
-enum quanta_hwmon_s {
+enum quanta_hwmon_ly_series_s {
 	quanta_ly6_hwmon,
 	quanta_ly6f_hwmon,
 	quanta_ly8_hwmon,
 	quanta_ly9_hwmon,
 };
 
-static int quanta_hwmon_probe(struct i2c_client *client,
+static int quanta_hwmon_ly_series_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id);
-static int quanta_hwmon_remove(struct i2c_client *client);
+static int quanta_hwmon_ly_series_remove(struct i2c_client *client);
 
-static const struct i2c_device_id quanta_hwmon_id[] = {
+static const struct i2c_device_id quanta_hwmon_ly_series_id[] = {
 	{ "quanta_ly6_hwmon",	quanta_ly6_hwmon },
 	{ "quanta_ly6f_hwmon",	quanta_ly6f_hwmon },
 	{ "quanta_ly8_hwmon",	quanta_ly8_hwmon },
 	{ "quanta_ly9_hwmon",	quanta_ly9_hwmon },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, quanta_hwmon_id);
+MODULE_DEVICE_TABLE(i2c, quanta_hwmon_ly_series_id);
 
-static struct i2c_driver quanta_hwmon_driver = {
+static struct i2c_driver quanta_hwmon_ly_series_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.driver = {
-		.name	= "quanta_hwmon",
+		.name	= "quanta_hwmon_ly_series",
 	},
-	.probe		= quanta_hwmon_probe,
-	.remove		= quanta_hwmon_remove,
-	.id_table	= quanta_hwmon_id,
+	.probe		= quanta_hwmon_ly_series_probe,
+	.remove		= quanta_hwmon_ly_series_remove,
+	.id_table	= quanta_hwmon_ly_series_id,
 	.address_list	= normal_i2c,
 };
 
@@ -81,7 +81,7 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *devattr,
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
-	struct quanta_hwmon_data *data = i2c_get_clientdata(client);
+	struct quanta_hwmon_ly_series_data *data = i2c_get_clientdata(client);
 	int temp;
 
 	mutex_lock(&data->lock);
@@ -97,7 +97,7 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *devattr,
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
-	struct quanta_hwmon_data *data = i2c_get_clientdata(client);
+	struct quanta_hwmon_ly_series_data *data = i2c_get_clientdata(client);
 	int fan;
 
 	mutex_lock(&data->lock);
@@ -113,7 +113,7 @@ static ssize_t show_pwm(struct device *dev, struct device_attribute *devattr,
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
-	struct quanta_hwmon_data *data = i2c_get_clientdata(client);
+	struct quanta_hwmon_ly_series_data *data = i2c_get_clientdata(client);
 	int pwm;
 
 	mutex_lock(&data->lock);
@@ -129,7 +129,7 @@ static ssize_t set_pwm(struct device *dev, struct device_attribute *devattr,
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
-	struct quanta_hwmon_data *data = i2c_get_clientdata(client);
+	struct quanta_hwmon_ly_series_data *data = i2c_get_clientdata(client);
 	long val;
 	int ret;
 
@@ -158,7 +158,7 @@ static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO, show_fan, NULL, 5);
 static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO, show_fan, NULL, 6);
 static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 0);
 
-static struct attribute *quanta_hwmon_attr[] = {
+static struct attribute *quanta_hwmon_ly_series_attr[] = {
 	&sensor_dev_attr_temp1_input.dev_attr.attr,
 	&sensor_dev_attr_temp2_input.dev_attr.attr,
 	&sensor_dev_attr_temp3_input.dev_attr.attr,
@@ -174,7 +174,7 @@ static struct attribute *quanta_hwmon_attr[] = {
 	NULL
 };
 
-static struct attribute *quanta_hwmon_attr_6temps_3fans[] = {
+static struct attribute *quanta_hwmon_ly_series_attr_6temps_3fans[] = {
 	&sensor_dev_attr_temp1_input.dev_attr.attr,
 	&sensor_dev_attr_temp2_input.dev_attr.attr,
 	&sensor_dev_attr_temp3_input.dev_attr.attr,
@@ -191,13 +191,13 @@ static struct attribute *quanta_hwmon_attr_6temps_3fans[] = {
 	NULL
 };
 
-static int quanta_hwmon_probe(struct i2c_client *client,
+static int quanta_hwmon_ly_series_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
-	struct quanta_hwmon_data *data;
+	struct quanta_hwmon_ly_series_data *data;
 	int err;
 
-	data = devm_kzalloc(&client->dev, sizeof(struct quanta_hwmon_data),
+	data = devm_kzalloc(&client->dev, sizeof(struct quanta_hwmon_ly_series_data),
 			GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -208,10 +208,10 @@ static int quanta_hwmon_probe(struct i2c_client *client,
 	dev_info(&client->dev, "%s chip found\n", client->name);
 
     if(!strcmp(client->name, "quanta_ly9_hwmon")){
-	    data->attrs.attrs = quanta_hwmon_attr_6temps_3fans;
+	    data->attrs.attrs = quanta_hwmon_ly_series_attr_6temps_3fans;
     }
     else{
-	    data->attrs.attrs = quanta_hwmon_attr;
+	    data->attrs.attrs = quanta_hwmon_ly_series_attr;
     }
 	err = sysfs_create_group(&client->dev.kobj, &data->attrs);
 	if (err)
@@ -234,17 +234,18 @@ exit_remove:
 	return err;
 }
 
-static int quanta_hwmon_remove(struct i2c_client *client)
+static int quanta_hwmon_ly_series_remove(struct i2c_client *client)
 {
-	struct quanta_hwmon_data *data = i2c_get_clientdata(client);
+	struct quanta_hwmon_ly_series_data *data = i2c_get_clientdata(client);
 
 	hwmon_device_unregister(data->hwmon_dev);
 	sysfs_remove_group(&client->dev.kobj, &data->attrs);
 	return 0;
 }
 
-module_i2c_driver(quanta_hwmon_driver);
+module_i2c_driver(quanta_hwmon_ly_series_driver);
 
-MODULE_AUTHOR("QCT Technical <support@quantaqct.com>");
-MODULE_DESCRIPTION("Quanta LY6 hardware monitor driver");
+MODULE_AUTHOR("Jonathan Tsai (jonathan.tsai@quantatw.com)");
+MODULE_VERSION("1.0");
+MODULE_DESCRIPTION("Quanta LY6/LY8/LY9 hardware monitor driver");
 MODULE_LICENSE("GPL");

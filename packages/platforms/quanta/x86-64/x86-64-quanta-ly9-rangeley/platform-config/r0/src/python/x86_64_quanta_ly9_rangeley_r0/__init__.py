@@ -9,7 +9,7 @@ class OnlPlatform_x86_64_quanta_ly9_rangeley_r0(OnlPlatformQuanta,
 
     def baseconfig(self):
         self.insmod("emerson700")
-        self.insmod("quanta_hwmon")
+        self.insmod("quanta_hwmon_ly_series")
         self.insmod("qci_cpld")
         self.insmod("quanta_platform_ly9")
 
