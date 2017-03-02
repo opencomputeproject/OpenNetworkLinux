@@ -328,7 +328,7 @@ static void
 make_printable__(char* string, int size)
 {
     char* p;
-    for(p = string; p && *p & size; p++) {
+    for(p = string; p && *p && size; p++) {
         if(!isprint(*p)) {
             *p = '?';
         }
