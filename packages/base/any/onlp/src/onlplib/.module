@@ -1,2 +1,2 @@
 name: onlplib
-depends: cjson_util
+depends: [ cjson_util, BigList ]
