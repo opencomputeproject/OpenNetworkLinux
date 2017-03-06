@@ -43,8 +43,6 @@ do 											\
     }                                       \
 } while(0)
 		
-#define MAX_FAN_SPEED 18000
-
 enum onlp_fan_id
 {    
     FAN_RESERVED = 0,    
@@ -108,7 +106,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     if(rv == ONLP_STATUS_OK)
 	{
 		info->rpm = u4Data;
-		info->percentage = (info->rpm * 100) / MAX_FAN_SPEED;
+		info->percentage = (info->rpm * 100) / x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX;
     }
 	
 	return rv;

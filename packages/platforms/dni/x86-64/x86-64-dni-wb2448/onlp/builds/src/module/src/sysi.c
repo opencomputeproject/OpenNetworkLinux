@@ -34,7 +34,7 @@
 
 #define NUM_OF_THERMAL_ON_MAIN_BROAD	5
 #define NUM_OF_LED_ON_MAIN_BROAD		5
-#define NUM_OF_PSU_ON_MAIN_BROAD		0
+#define NUM_OF_PSU_ON_MAIN_BROAD		1
 #define NUM_OF_FAN_ON_MAIN_BROAD		2
 
 #define I2C_BUS					0x04
@@ -109,25 +109,6 @@ onlp_sysi_onie_data_free(uint8_t* data)
      */
 }
 
-int 
-onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
-{
-    onie->product_name      = "TBD";
-    onie->part_number       = "TBD";
-    onie->serial_number     = "TBD";
-    onie->manufacture_date  = "TBD";
-    onie->label_revision    = "TBD";
-    onie->platform_name     = "x86-64-dni-wb2448-r0";
-    onie->onie_version      = "TBD";
-    onie->manufacturer      = "TBD";
-    onie->country_code      = "886";
-    onie->vendor            = "DNI";
-    onie->diag_version      = "TBD";
-    onie->service_tag       = "TBD";
-    onie->_hdr_id_string    = "TBD";
-
-    return ONLP_STATUS_OK;
-}
 
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
@@ -149,7 +130,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         *e++ = ONLP_LED_ID_CREATE(i);
     }
 
-    /* 0 PSUs on the chassis */
+    /* 1 PSUs on the chassis */
     for (i = 1; i <= NUM_OF_PSU_ON_MAIN_BROAD; i++)
     {
         *e++ = ONLP_PSU_ID_CREATE(i);

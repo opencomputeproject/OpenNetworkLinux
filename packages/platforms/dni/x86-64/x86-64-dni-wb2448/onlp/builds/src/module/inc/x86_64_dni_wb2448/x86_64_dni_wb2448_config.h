@@ -99,10 +99,25 @@
 #define x86_64_dni_wb2448_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION 0
 #endif
 
+/**
+ * x86_64_dni_wb2448_CONFIG_SFP_COUNT
+ *
+ * SFP port numbers. */
+ 
+ 
 #ifndef x86_64_dni_wb2448_CONFIG_SFP_COUNT
 #define x86_64_dni_wb2448_CONFIG_SFP_COUNT 4
 #endif
 
+/**
+ * x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX
+ *
+ * Max fan speed. */
+ 
+ 
+#ifndef x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX
+#define x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX 18000
+#endif
 
 /**
  * All compile time options can be queried or displayed

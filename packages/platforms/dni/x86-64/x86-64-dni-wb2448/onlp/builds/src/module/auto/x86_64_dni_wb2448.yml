@@ -29,6 +29,12 @@ cdefs: &cdefs
 - x86_64_dni_wb2448_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION:
     doc: "Assume chassis fan direction is the same as the PSU fan direction."
     default: 0
+- x86_64_dni_wb2448_CONFIG_SFP_COUNT:
+    doc: "SFP port numbers."
+    default: 4
+- x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX:
+    doc: "Max fan speed."
+    default: 18000
 
 definitions:
   cdefs:

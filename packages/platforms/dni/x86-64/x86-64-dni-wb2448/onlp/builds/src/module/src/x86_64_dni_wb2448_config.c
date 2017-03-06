@@ -52,6 +52,16 @@ x86_64_dni_wb2448_config_settings_t x86_64_dni_wb2448_config_settings[] =
 #else
 { x86_64_dni_wb2448_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION(__x86_64_dni_wb2448_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef x86_64_dni_wb2448_CONFIG_SFP_COUNT
+    { __x86_64_dni_wb2448_config_STRINGIFY_NAME(x86_64_dni_wb2448_CONFIG_SFP_COUNT), __x86_64_dni_wb2448_config_STRINGIFY_VALUE(x86_64_dni_wb2448_CONFIG_SFP_COUNT) },
+#else
+{ x86_64_dni_wb2448_CONFIG_SFP_COUNT(__x86_64_dni_wb2448_config_STRINGIFY_NAME), "__undefined__" },
+#endif
+#ifdef x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX
+    { __x86_64_dni_wb2448_config_STRINGIFY_NAME(x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX), __x86_64_dni_wb2448_config_STRINGIFY_VALUE(x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX) },
+#else
+{ x86_64_dni_wb2448_CONFIG_FAN_RPM_MAX(__x86_64_dni_wb2448_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __x86_64_dni_wb2448_config_STRINGIFY_VALUE
