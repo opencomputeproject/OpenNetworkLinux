@@ -9,7 +9,7 @@ class OnlPlatform_x86_64_quanta_ly8_rangeley_r0(OnlPlatformQuanta,
 
     def baseconfig(self):
         self.insmod("emerson700")
-        self.insmod("quanta_hwmon")
+        self.insmod("quanta_hwmon_ly_series")
         self.insmod("quanta_platform_ly8")
 
         # make ds1339 as default rtc

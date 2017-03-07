@@ -26,12 +26,11 @@
 #include <x86_64_quanta_ly8_rangeley/x86_64_quanta_ly8_rangeley_gpio_table.h>
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/sfp.h>
+#include <onlplib/gpio.h>
 #include "x86_64_quanta_ly8_rangeley_log.h"
 
 #include <unistd.h>
 #include <fcntl.h>
-
-#include <quanta_lib/gpio.h>
 
 /**
  * This table maps the presence gpio, reset gpio, and eeprom file
@@ -103,20 +102,33 @@ static sfpmap_t sfpmap__[] =
         { 70, QUANTA_LY8_QSFP_QDB_GPIO_PRSNT_70_N /* 446 */, "/sys/class/gpio/gpio446/value", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0050/eeprom", "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-89/89-0051/eeprom" },
   };
 
+#define SFP_GET(_port) (sfpmap__ + _port)
+
 int
 onlp_sfpi_init(void)
 {
-    int value = -1, ret;
-    ret = pca953x_gpio_value_get(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, &value);
-    if(ret == ONLP_STATUS_OK && value != GPIO_HIGH) {
-        ret = pca953x_gpio_value_set(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, GPIO_HIGH);
+    int value = -1, ret, i;
+    sfpmap_t* sfp;
+
+    onlp_gpio_export(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_IN);
+    ret = onlp_gpio_get(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, &value);
+    if(ret == ONLP_STATUS_OK && value != 1) {
+        onlp_gpio_export(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+        ret = onlp_gpio_set(QUANTA_LY8_QSFP_EN_GPIO_P3V3_PW_EN, 1);
     }
 
     if(ret == ONLP_STATUS_OK) {
-        ret = pca953x_gpio_value_get(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, &value);
-        if(ret == ONLP_STATUS_OK && value != GPIO_LOW) {
-            ret = pca953x_gpio_value_set(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, GPIO_LOW);
+        onlp_gpio_export(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, ONLP_GPIO_DIRECTION_IN);
+        ret = onlp_gpio_get(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, &value);
+        if(ret == ONLP_STATUS_OK && value != 0) {
+            onlp_gpio_export(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, ONLP_GPIO_DIRECTION_OUT);
+            ret = onlp_gpio_set(QUANTA_LY8_QSFP_QDB_GPIO_MOD_EN_N, 0);
         }
+    }
+
+    for(i = 0; i < 54; i++) {
+        sfp = SFP_GET(i);
+        onlp_gpio_export(sfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
     }
 
     return ret;
@@ -134,16 +146,14 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
     return ONLP_STATUS_OK;
 }
 
-#define SFP_GET(_port) (sfpmap__ + _port)
-
 int
 onlp_sfpi_is_present(int port)
 {
 	int value = 0;
     sfpmap_t* sfp = SFP_GET(port);
     if(sfp->present_gpio > 0) {
-		if(pca953x_gpio_value_get(sfp->present_gpio, &value) == ONLP_STATUS_OK)
-			return (value == GPIO_LOW);
+		if(onlp_gpio_get(sfp->present_gpio, &value) == ONLP_STATUS_OK)
+			return (value == 0);
 		else
 			return ONLP_STATUS_E_MISSING;
     }
