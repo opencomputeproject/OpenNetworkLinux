@@ -205,6 +205,13 @@ onlp_sysi_platform_manage_fans(void)
             return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
 
+        /* Decision 1.1: Set fan as full speed if any fan is not present.
+         */
+        if (!(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
+            AIM_LOG_ERROR("Fan(%d) is not present, set the other fans as full speed\r\n", i);
+            return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+        }
+
         /* Get fan direction (Only get the first one since all fan direction are the same)
          */
         if (i == 1) {
@@ -252,9 +259,9 @@ onlp_sysi_platform_manage_fans(void)
 
     /* Get current temperature
      */
-    if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(1), &thermal_1) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(2), &thermal_2) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(3), &thermal_3) != ONLP_STATUS_OK) {
+    if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(2), &thermal_1) != ONLP_STATUS_OK ||
+        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(3), &thermal_2) != ONLP_STATUS_OK ||
+        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(4), &thermal_3) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read thermal status");
         return ONLP_STATUS_E_INTERNAL;
     }
