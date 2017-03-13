@@ -257,7 +257,7 @@ onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         }
         else {
             /* Not present */
-            iof_iprintf(&iof, "State: Missing.");
+            onlp_oid_show_state_missing(&iof);
         }
     }
     iof_pop(&iof);
