@@ -163,13 +163,13 @@ int psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
     *value = 0;
 
     if (PSU1_ID == id) {
-        sprintf(path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+        ret = onlp_file_read_int(value, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
     }
     else {
-        sprintf(path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+		ret = onlp_file_read_int(value, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
     }
 
-    if (onlp_file_read_int(value, path) < 0) {
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }

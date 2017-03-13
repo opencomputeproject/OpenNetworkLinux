@@ -170,8 +170,6 @@ int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  lid, value;
-    char path[64] = {0};
-		
     VALIDATE(id);
 	
     lid = ONLP_OID_ID_GET(id);
@@ -180,10 +178,8 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Get LED mode */
-	sprintf(path, LED_FORMAT, leds[lid]);
-	
-    if (onlp_file_read_int(&value, path) < 0) {
-        DEBUG_PRINT("Unable to read status from file (%s)", path);
+    if (onlp_file_read_int(&value, LED_FORMAT, leds[lid]) < 0) {
+        DEBUG_PRINT("Unable to read status from file (%s)", leds[lid]);
         return ONLP_STATUS_E_INTERNAL;
     }
 

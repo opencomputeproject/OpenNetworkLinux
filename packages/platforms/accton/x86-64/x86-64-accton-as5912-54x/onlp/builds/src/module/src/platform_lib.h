@@ -80,7 +80,7 @@ enum onlp_thermal_id
     THERMAL_1_ON_PSU2,
 };
 
-#define DEBUG_MODE 1
+#define DEBUG_MODE 0
 
 #if (DEBUG_MODE == 1)
 	#define DEBUG_PRINT(fmt, args...)                                        \

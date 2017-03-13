@@ -86,14 +86,13 @@ onlp_fan_info_t finfo[] = {
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
-	int   value;
+	int   value, ret;
 	char  path[64] = {0};
 
 	/* get fan present status
 	 */
-	sprintf(path, "%s""fan%d_present", FAN_BOARD_PATH, fid);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+	ret = onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -106,9 +105,8 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get fan fault status (turn on when any one fails)
      */
-	sprintf(path, "%s""fan%d_fault", FAN_BOARD_PATH, fid);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+    ret = onlp_file_read_int(&value, "%s""fan%d_fault", FAN_BOARD_PATH, fid);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -120,9 +118,8 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get fan direction (both : the same)
      */
-	sprintf(path, "%s""fan%d_direction", FAN_BOARD_PATH, fid);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+    ret = onlp_file_read_int(&value, "%s""fan%d_direction", FAN_BOARD_PATH, fid);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -132,9 +129,8 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get front fan speed
      */
-	sprintf(path, "%s""fan%d_front_speed_rpm", FAN_BOARD_PATH, fid);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+    ret = onlp_file_read_int(&value, "%s""fan%d_front_speed_rpm", FAN_BOARD_PATH, fid);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -142,9 +138,8 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
 	/* get rear fan speed
 	 */
-	sprintf(path, "%s""fan%d_rear_speed_rpm", FAN_BOARD_PATH, fid);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+	ret = onlp_file_read_int(&value, "%s""fan%d_rear_speed_rpm", FAN_BOARD_PATH, fid);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -157,9 +152,8 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get speed percentage from rpm 
 	 */
-	sprintf(path, "%s""fan_max_speed_rpm", FAN_BOARD_PATH);
-
-    if (onlp_file_read_int(&value, path) < 0) {
+	ret = onlp_file_read_int(&value, "%s""fan_max_speed_rpm", FAN_BOARD_PATH);
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }

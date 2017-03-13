@@ -49,13 +49,13 @@ psu_status_info_get(int id, char *node, int *value)
     *value = 0;
 
     if (PSU1_ID == id) {
-        sprintf(path, "%s%s", PSU1_AC_HWMON_PREFIX, node);
+        ret = onlp_file_read_int(value, "%s%s", PSU1_AC_HWMON_PREFIX, node);
     }
     else if (PSU2_ID == id) {
-        sprintf(path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
+        ret = onlp_file_read_int(value, "%s%s", PSU2_AC_HWMON_PREFIX, node);
     }
 
-    if (onlp_file_read_int(value, path) < 0) {
+    if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
