@@ -352,8 +352,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     int  fd, len, nbytes=10, local_id;
     char data[10] = {0};	
     char fullpath[70] = {0};
-    int psu_id;
-    psu_type_t psu_type;
 
     VALIDATE(id);
 
@@ -363,23 +361,28 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     if (p == 0){
         return ONLP_STATUS_E_INVALID;
     }
-
-    psu_id   = local_id - FAN_1_ON_PSU1 + 1;
-    psu_type = get_psu_type(psu_id, NULL, 0);
-
-    if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
-        psu_type == PSU_TYPE_AC_3YPOWER_B2F  )
-    {
-        return psu_ym2401_pmbus_info_set(psu_id, "psu_fan1_duty_cycle_percentage", p);
-    }
     
     /* get fullpath */
     switch (local_id)
     {
         case FAN_1_ON_PSU1:
         case FAN_1_ON_PSU2:
+        {
+            int psu_id;
+            psu_type_t psu_type;
+
+            psu_id   = local_id - FAN_1_ON_PSU1 + 1;
+            psu_type = get_psu_type(psu_id, NULL, 0);
+
+            if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
+                psu_type == PSU_TYPE_AC_3YPOWER_B2F  ) {
+                return psu_ym2401_pmbus_info_set(psu_id, "psu_fan1_duty_cycle_percentage", p);
+            }
+
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, last_path[local_id].ctrl_speed);		
             break;
+        }
+
         default:
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, last_path[local_id].ctrl_speed);
             break;
