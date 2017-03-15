@@ -67,9 +67,10 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst);
 /**
  * @brief Read the SFP EEPROM.
  * @param port The port number.
+ * @param dev_addr EEPROM device address.
  * @param data Receives the SFP data.
  */
-int onlp_sfpi_eeprom_read(int port, uint8_t data[256]);
+int onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256]);
 
 /**
  * @brief Read a byte from an address on the given SFP port's bus.
@@ -97,14 +98,6 @@ int onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr);
  * @brief Write a byte to an address on the given SFP port's bus.
  */
 int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value);
-
-
-/**
- * @brief Read the SFP DOM EEPROM.
- * @param port The port number.
- * @param data Receives the SFP data.
- */
-int onlp_sfpi_dom_read(int port, uint8_t data[256]);
 
 /**
  * @brief Perform any actions required after an SFP is inserted.

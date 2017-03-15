@@ -116,9 +116,9 @@ _sfp_rx_los(int port)
         //return ONLP_STATUS_E_MISSING;
 
     if (port <= 48) {
-        _read_sfp(port, &byte, ALL_SFP_DIAG_I2C_ADDRESS, SFP_XFP_LOS_ADDR, SFP_XFP_LOS_SIZE);
+        _read_sfp(port, &byte, SFP_DOM_ADDR, SFP_XFP_LOS_ADDR, SFP_XFP_LOS_SIZE);
     } else if (port <= 54) {
-        _read_sfp(port, &byte, ALL_SFP_DIAG_I2C_ADDRESS, QSFP_LOS_ADDR, SFP_XFP_LOS_SIZE);
+        _read_sfp(port, &byte, SFP_DOM_ADDR, QSFP_LOS_ADDR, SFP_XFP_LOS_SIZE);
     }
 
     if (SFP_LOS_MASK == (byte & SFP_LOS_MASK))
@@ -143,9 +143,9 @@ _sfp_tx_fault(int port)
         return -1;
 
     if (port <= 48) {
-        _read_sfp(port, (uint8_t *)&option, ALL_SFP_DIAG_I2C_ADDRESS, SFP_OPTIONS_ADDR, SFP_OPTIONS_SIZE);
+        _read_sfp(port, (uint8_t *)&option, SFP_DOM_ADDR, SFP_OPTIONS_ADDR, SFP_OPTIONS_SIZE);
     } else if (port <= 54) {
-        _read_sfp(port, (uint8_t *)&option, ALL_SFP_DIAG_I2C_ADDRESS, QSFP_TX_FAULT_ADDR, SFP_OPTIONS_SIZE);
+        _read_sfp(port, (uint8_t *)&option, SFP_DOM_ADDR, QSFP_TX_FAULT_ADDR, SFP_OPTIONS_SIZE);
     }
 
     if (SFP_TX_FAULT_MASK & option)
@@ -240,17 +240,21 @@ onlp_sfpi_port_map(int port, int* rport)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
 {
     if (port > CEL_REDSTONE_MAX_PORT) {
         return ONLP_STATUS_E_MISSING;
+    }
+
+    if ((dev_addr != SFP_IDPROM_ADDR) && (dev_addr != SFP_DOM_ADDR)) {
+        return ONLP_STATUS_E_PARAM;
     }
 
     if (!_get_sfp_state(port))
         return ONLP_STATUS_E_MISSING;
 
     memset(data, 0, 256);
-    if (_read_sfp(port, data, ALL_SFP_I2C_ADDRESS, 0, 256) == -1)
+    if (_read_sfp(port, data, dev_addr, 0, 256) == -1)
         return ONLP_STATUS_OK;
 
     return ONLP_STATUS_OK;

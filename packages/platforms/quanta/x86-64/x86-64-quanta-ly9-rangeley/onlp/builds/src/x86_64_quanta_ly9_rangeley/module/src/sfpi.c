@@ -157,31 +157,30 @@ onlp_sfpi_is_present(int port)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
 {
+    const char * path;
 
-    if(port > 52){
-        qsfpmap_t* qsfp = QSFP_GET(port);
-
-        return onlplib_sfp_eeprom_read_file(qsfp->eeprom, data);
+    if (dev_addr == SFP_IDPROM_ADDR) {
+        if(port > 52){
+            qsfpmap_t* qsfp = QSFP_GET(port);
+            path = qsfp->eeprom;
+        }
+        else{
+            sfpmap_t* sfp = SFP_GET(port);
+            path = sfp->eeprom;
+        }
+    } else if (dev_addr == SFP_DOM_ADDR) {
+        if(port > 52){
+            qsfpmap_t* qsfp = QSFP_GET(port);
+            path = qsfp->dom;
+        }
+        else{
+            sfpmap_t* sfp = SFP_GET(port);
+            path = sfp->dom;
+        }
+    } else {
+        return ONLP_STATUS_E_PARAM;
     }
-    else{
-        sfpmap_t* sfp = SFP_GET(port);
-
-        return onlplib_sfp_eeprom_read_file(sfp->eeprom, data);
-    }
+    return onlplib_sfp_eeprom_read_file(path, data);
 }
-
-int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
-{
-    if(port > 52){
-        qsfpmap_t* qsfp = QSFP_GET(port);
-        return onlplib_sfp_eeprom_read_file(qsfp->dom, data);
-    }
-    else{
-        sfpmap_t* sfp = SFP_GET(port);
-        return onlplib_sfp_eeprom_read_file(sfp->dom, data);
-    }
-}
-

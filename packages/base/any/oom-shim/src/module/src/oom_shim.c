@@ -101,9 +101,9 @@ int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int 
      **/
 
     if (address == 0xa0) {
-        rv = onlp_sfp_eeprom_read(port_num, &idprom);
+        rv = onlp_sfp_eeprom_read(port_num, SFP_IDPROM_ADDR, &idprom);
     } else if (address == 0xa2) {
-        rv = onlp_sfp_dom_read(port_num, &idprom);
+        rv = onlp_sfp_eeprom_read(port_num, SFP_DOM_ADDR, &idprom);
     } else {
         aim_printf(&aim_pvs_stdout, "Error invalid address: 0x%02x\n", address);
         return -EINVAL;

@@ -280,8 +280,17 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
 {
+    char *eeprom_path;
+
+    if (dev_addr == SFP_IDPROM_ADDR) {
+        eeprom_path = SFP_HWMON_NODE(sfp_eeprom);
+    } else if (dev_addr == SFP_DOM_ADDR) {
+        eeprom_path = SFP_HWMON_DOM_NODE(eeprom);
+    } else
+        return ONLP_STATUS_E_PARAM;
+
     /*
      * Read the SFP eeprom into data[]
      *
@@ -295,34 +304,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    if (deviceNodeReadBinary(SFP_HWMON_NODE(sfp_eeprom), (char*)data, 256, 256) != 0) {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        set_active_port(0);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    set_active_port(0);
-
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
-{
-    /*
-     * Read the SFP DOM page into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
-    memset(data, 0, 256);
-
-    if (set_active_port(port+1) != 0) {
-        AIM_LOG_ERROR("Unable to set active port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    if (deviceNodeReadBinary(SFP_HWMON_DOM_NODE(eeprom), (char*)data, 256, 256) != 0) {
+    if (deviceNodeReadBinary(eeprom_path, (char*)data, 256, 256) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         set_active_port(0);
         return ONLP_STATUS_E_INTERNAL;

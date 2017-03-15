@@ -75,7 +75,7 @@ show_inventory__(aim_pvs_t* pvs, int database)
                 continue;
             }
 
-            rv = onlp_sfp_eeprom_read(port, &data);
+            rv = onlp_sfp_eeprom_read(port, SFP_IDPROM_ADDR, &data);
 
             if(rv < 0) {
                 aim_printf(pvs, "%4d  Error %{onlp_status}\n", port, rv);

@@ -693,17 +693,13 @@ sfpi_read_addr__(int port, int addr, uint8_t data[256])
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
 {
-    return sfpi_read_addr__(port, SFP_IDPROM_ADDR, data);
+    if ((dev_addr == SFP_IDPROM_ADDR) || (dev_addr == SFP_DOM_ADDR)) {
+        return sfpi_read_addr__(port, dev_addr, data);
+    }
+    return ONLP_STATUS_E_PARAM;
 }
-
-int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
-{
-    return sfpi_read_addr__(port, SFP_DOM_ADDR, data);
-}
-
 
 int
 onlp_sfpi_enable_set(int port, int enable)
