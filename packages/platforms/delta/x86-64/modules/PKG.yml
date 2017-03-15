@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/arch-vendor-modules.yml ARCH=amd64 VENDOR=delta KERNELS="onl-kernel-3.16-lts-x86-64-all:amd64"
