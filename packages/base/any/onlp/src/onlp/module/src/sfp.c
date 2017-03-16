@@ -139,38 +139,21 @@ onlp_sfp_port_valid(int port)
 }
 
 static int
-onlp_sfp_eeprom_read_locked__(int port, uint8_t** datap)
+onlp_sfp_eeprom_read_locked__(int port, int dev_addr, uint8_t** datap)
 {
     int rv;
     uint8_t* data;
     ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
 
     data = aim_zmalloc(256);
-    if((rv = onlp_sfpi_eeprom_read(port, data)) < 0) {
+    if((rv = onlp_sfpi_eeprom_read(port, dev_addr, data)) < 0) {
         aim_free(data);
         data = NULL;
     }
     *datap = data;
     return rv;
 }
-ONLP_LOCKED_API2(onlp_sfp_eeprom_read, int, port, uint8_t**, rv);
-
-static int
-onlp_sfp_dom_read_locked__(int port, uint8_t** datap)
-{
-    int rv;
-    uint8_t* data;
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-
-    data = aim_zmalloc(256);
-    if((rv = onlp_sfpi_dom_read(port, data)) < 0) {
-        aim_free(data);
-        data = NULL;
-    }
-    *datap = data;
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_sfp_dom_read, int, port, uint8_t**, rv);
+ONLP_LOCKED_API3(onlp_sfp_eeprom_read, int, port, int, dev_addr, uint8_t**, rv);
 
 void
 onlp_sfp_dump(aim_pvs_t* pvs)
@@ -228,7 +211,7 @@ onlp_sfp_dump(aim_pvs_t* pvs)
         }
         if(rv == 1) {
             uint8_t* idprom = NULL;
-            rv = onlp_sfp_eeprom_read(p, &idprom);
+            rv = onlp_sfp_eeprom_read(p, SFP_IDPROM_ADDR, &idprom);
             if(rv < 0) {
                 aim_printf(pvs, "Error reading eeprom: %{onlp_status}\n");
             }

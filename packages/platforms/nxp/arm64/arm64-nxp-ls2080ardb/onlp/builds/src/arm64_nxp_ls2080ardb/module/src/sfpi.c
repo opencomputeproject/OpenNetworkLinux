@@ -61,7 +61,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
  * in the data buffer provided.
  */
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
 {
     return ONLP_STATUS_E_MISSING;
 }
