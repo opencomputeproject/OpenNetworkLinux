@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.delta import *
 
 class OnlPlatform_x86_64_delta_agc7648a_r0(OnlPlatformDelta,
-                                              OnlPlatformPortConfig_32x100):
+                                              OnlPlatformPortConfig_48x10_6x100):
     PLATFORM='x86-64-delta-agc7648a-r0'
     MODEL="AGC7648A"
     SYS_OBJECT_ID=".7648"
