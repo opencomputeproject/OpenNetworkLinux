@@ -160,7 +160,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     /*
      * Read the SFP eeprom into data[]
