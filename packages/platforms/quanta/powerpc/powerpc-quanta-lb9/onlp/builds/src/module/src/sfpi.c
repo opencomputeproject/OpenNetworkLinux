@@ -137,14 +137,15 @@ onlp_sfpi_is_present(int port)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     sfpmap_t* sfp = SFP_GET(port);
+    return onlplib_sfp_eeprom_read_file(sfp->eeprom, data);
+}
 
-    if (dev_addr == SFP_IDPROM_ADDR) {
-        return onlplib_sfp_eeprom_read_file(sfp->eeprom, data);
-    } else if (dev_addr == SFP_DOM_ADDR) {
-        return onlplib_sfp_eeprom_read_file(sfp->dom, data);
-    }
-    return ONLP_STATUS_E_PARAM;
+int
+onlp_sfpi_dom_read(int port, uint8_t data[256])
+{
+    sfpmap_t* sfp = SFP_GET(port);
+    return onlplib_sfp_eeprom_read_file(sfp->dom, data);
 }

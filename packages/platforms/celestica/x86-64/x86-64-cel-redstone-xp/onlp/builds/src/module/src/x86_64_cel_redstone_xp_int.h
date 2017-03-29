@@ -328,6 +328,8 @@ extern aim_map_si_t cpld5_reg_desc_map[];
 /* <auto.end.enum(ALL).header> */
 
 #define CEL_REDSTONE_MAX_PORT   54
+#define ALL_SFP_I2C_ADDRESS     (0xA0 >> 1)
+#define ALL_SFP_DIAG_I2C_ADDRESS (0xA2 >> 1)
 #define SFP_XFP_LOS_ADDR 110
 #define SFP_XFP_LOS_SIZE 1
 #define QSFP_LOS_ADDR 3

@@ -47,6 +47,9 @@
 #define CPLD_SFP_3_BIT_MASK  0x20
 #define CPLD_SFP_4_BIT_MASK  0x10
 
+#define I2C_SLAVE_ADDRESS_SFP_EEPROM_50 0x50
+#define I2C_SLAVE_ADDRESS_SFP_EEPROM_51 0x51
+
 #define I2C_SLAVE_ADDR_PCA9548  0x70
 
 #define PCA9548_PORT_0_BIT_MASK 0x01
@@ -203,13 +206,19 @@ onlp_sfpi_read_addr__(int port, int addr, unsigned char *data)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, unsigned char *data)
+onlp_sfpi_eeprom_read(int port, unsigned char *data)
 {
-    if ((dev_addr == SFP_IDPROM_ADDR) || (dev_addr == SFP_DOM_ADDR)) {
-        return onlp_sfpi_read_addr__(port, dev_addr, data);
-    }
-    return ONLP_STATUS_E_PARAM;
+    return onlp_sfpi_read_addr__(port, I2C_SLAVE_ADDRESS_SFP_EEPROM_50,
+                                 data);
 }
+
+int
+onlp_sfpi_dom_read(int port, unsigned char* data)
+{
+    return onlp_sfpi_read_addr__(port, I2C_SLAVE_ADDRESS_SFP_EEPROM_51,
+                                 data);
+}
+
 
 /*
  * Manually enable or disable the given SFP.

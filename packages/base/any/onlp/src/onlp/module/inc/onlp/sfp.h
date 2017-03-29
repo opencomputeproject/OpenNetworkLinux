@@ -31,9 +31,6 @@
 #include <AIM/aim_pvs.h>
 #include <sff/sff.h>
 
-#define SFP_IDPROM_ADDR 0x50
-#define SFP_DOM_ADDR    0x51
-
 /* <auto.start.enum(tag:sfp1).define> */
 /** onlp_sfp_control */
 typedef enum onlp_sfp_control_e {
@@ -111,15 +108,27 @@ int onlp_sfp_is_present(int port);
 int onlp_sfp_presence_bitmap_get(onlp_sfp_bitmap_t* dst);
 
 /**
- * @brief Read SFP EEPROM data from the given port.
+ * @brief Read IEEE standard EEPROM data from the given port.
  * @param port The SFP Port
- * @param dev_addr EEPROM device address
  * @param rv Receives a buffer containing the EEPROM data.
  * @notes The buffer must be freed after use.
  * @returns The size of the eeprom data, if successful
  * @returns -1 on error.
  */
-int onlp_sfp_eeprom_read(int port, int dev_addr, uint8_t** rv);
+int onlp_sfp_eeprom_read(int port, uint8_t** rv);
+
+
+/**
+ * @brief Read the DOM data from the given port.
+ * @param port The SFP Port
+ * @param rv Receives a buffer containing the DOM data.
+ * @notes The buffer must be freed after use.
+ * @returns The size of the eeprom data, if successful
+ * @returns -1 on error.
+ * @note This should only be called if the SFP
+ * has advertised DOM support.
+ */
+int onlp_sfp_dom_read(int port, uint8_t** rv);
 
 /**
  * @brief Deinitialize the SFP subsystem.

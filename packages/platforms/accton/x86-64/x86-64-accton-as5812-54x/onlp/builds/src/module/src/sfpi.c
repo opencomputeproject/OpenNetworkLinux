@@ -313,16 +313,9 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char* path;
-
-    if (dev_addr == SFP_IDPROM_ADDR) {
-        path = as5812_54x_sfp_get_port_path(port, "sfp_eeprom");
-    } else if (dev_addr == SFP_DOM_ADDR) {
-        path = as5812_54x_sfp_get_port_path_addr(port, 51, "sfp_eeprom");
-    } else
-        return ONLP_STATUS_E_PARAM;
+    char* path = as5812_54x_sfp_get_port_path(port, "sfp_eeprom");
 
     /*
      * Read the SFP eeprom into data[]
@@ -330,6 +323,20 @@ onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
      * Return MISSING if SFP is missing.
      * Return OK if eeprom is read
      */
+    memset(data, 0, 256);
+
+    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
+        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_dom_read(int port, uint8_t data[256])
+{
+    char* path = as5812_54x_sfp_get_port_path_addr(port, 51, "sfp_eeprom");
     memset(data, 0, 256);
 
     if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {

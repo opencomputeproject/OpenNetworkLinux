@@ -101,7 +101,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
  * in the data buffer provided.
  */
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     if(port == 17 || port == 19) {
         /* These ports have SFPs inserted in this example */

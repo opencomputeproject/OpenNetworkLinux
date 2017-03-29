@@ -130,7 +130,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, int dev_addr, uint8_t data[256])
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     char* path = msn2410_sfp_get_port_path(port, "");
 
