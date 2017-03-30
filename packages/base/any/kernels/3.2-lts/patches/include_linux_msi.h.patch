@@ -1,0 +1,12 @@
+--- a/include/linux/msi.h
++++ b/include/linux/msi.h
+@@ -1,6 +1,7 @@
+ #ifndef LINUX_MSI_H
+ #define LINUX_MSI_H
+ 
++#include <linux/kobject.h>
+ #include <linux/list.h>
+ 
+ struct msi_msg {
+diff --git a/include/linux/mtd/cfi.h b/include/linux/mtd/cfi.h
+index d249254..d5d2ec6 100644

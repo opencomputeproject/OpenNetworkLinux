@@ -1,0 +1,18 @@
+--- a/drivers/net/can/softing/softing_fw.c
++++ b/drivers/net/can/softing/softing_fw.c
+@@ -237,11 +237,8 @@ int softing_load_app_fw(const char *file, struct softing *card)
+ 	int8_t type_end = 0, type_entrypoint = 0;
+ 
+ 	ret = request_firmware(&fw, file, &card->pdev->dev);
+-	if (ret) {
+-		dev_alert(&card->pdev->dev, "request_firmware(%s) got %i\n",
+-			file, ret);
++	if (ret)
+ 		return ret;
+-	}
+ 	dev_dbg(&card->pdev->dev, "firmware(%s) got %lu bytes\n",
+ 		file, (unsigned long)fw->size);
+ 	/* parse the firmware */
+diff --git a/drivers/net/dpa/Makefile b/drivers/net/dpa/Makefile
+new file mode 100644
+index 0000000..0e59076

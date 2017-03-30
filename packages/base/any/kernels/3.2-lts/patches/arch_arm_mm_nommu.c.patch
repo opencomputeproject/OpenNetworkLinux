@@ -1,0 +1,14 @@
+--- a/arch/arm/mm/nommu.c
++++ b/arch/arm/mm/nommu.c
+@@ -29,6 +29,8 @@ void __init arm_mm_memblock_reserve(void)
+ 
+ void __init sanity_check_meminfo(void)
+ {
++    phys_addr_t end = bank_phys_end(&meminfo.bank[meminfo.nr_banks - 1]);
++    high_memory = __va(end - 1) + 1;
+ }
+ 
+ /*
+diff --git a/arch/arm/net/Makefile b/arch/arm/net/Makefile
+new file mode 100644
+index 0000000..c2c1084

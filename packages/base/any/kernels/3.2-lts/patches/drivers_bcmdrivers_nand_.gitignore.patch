@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/nand/.gitignore
+@@ -0,0 +1,8 @@
++/.built-in.o.cmd
++/built-in.o
++/modules.builtin
++/modules.order
++/.iproc_mtd_nand.o.cmd
++/.nand_iproc.o.cmd
++/iproc_mtd_nand.o
++/nand_iproc.o
+diff --git a/drivers/bcmdrivers/nand/Kconfig b/drivers/bcmdrivers/nand/Kconfig
+new file mode 100644
+index 0000000..1cd1050

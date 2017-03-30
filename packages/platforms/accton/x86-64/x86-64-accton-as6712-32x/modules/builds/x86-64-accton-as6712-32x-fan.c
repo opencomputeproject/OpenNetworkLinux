@@ -32,6 +32,7 @@
 #include <linux/kthread.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/delay.h>
 
 #define FAN_MAX_NUMBER                   5
 #define FAN_SPEED_CPLD_TO_RPM_STEP       150
@@ -269,7 +270,8 @@ static void accton_as6712_32x_fan_update_device(struct device *dev)
 {
     int speed, r_speed, fault, r_fault, direction, ctrl_speed;
     int i;
-    
+    int retry_count = 5;
+
     mutex_lock(&fan_data->update_lock);
 
     DEBUG_PRINT("Starting accton_as6712_32x_fan update \n");    
@@ -314,12 +316,21 @@ static void accton_as6712_32x_fan_update_device(struct device *dev)
         
         /* fan speed 
          */
-        speed   = accton_as6712_32x_fan_read_value(fan_speed_reg[i]);
-        r_speed = accton_as6712_32x_fan_read_value(fanr_speed_reg[i]);
-        if ( (speed < 0) || (r_speed < 0) )
-        {      
-            DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);      
-            goto _exit; /* error */ 
+        while (retry_count) {
+            retry_count--;
+            speed   = accton_as6712_32x_fan_read_value(fan_speed_reg[i]);
+            r_speed = accton_as6712_32x_fan_read_value(fanr_speed_reg[i]);
+            if ( (speed < 0) || (r_speed < 0) )
+            {
+                DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);
+                goto _exit; /* error */
+            }
+            if ( (speed == 0) || (r_speed == 0) )
+            {
+                msleep(200);
+                continue;
+            }
+            break;
         }
 
         DEBUG_PRINT("[fan%d:] speed:%d, r_speed=%d \n", i, speed, r_speed);    

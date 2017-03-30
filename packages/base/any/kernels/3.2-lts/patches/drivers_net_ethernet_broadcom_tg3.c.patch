@@ -1,0 +1,50 @@
+--- a/drivers/net/ethernet/broadcom/tg3.c
++++ b/drivers/net/ethernet/broadcom/tg3.c
+@@ -5362,6 +5362,7 @@ static void tg3_tx(struct tg3_napi *tnapi)
+ 	u32 sw_idx = tnapi->tx_cons;
+ 	struct netdev_queue *txq;
+ 	int index = tnapi - tp->napi;
++	unsigned int pkts_compl = 0, bytes_compl = 0;
+ 
+ 	if (tg3_flag(tp, ENABLE_TSS))
+ 		index--;
+@@ -5420,6 +5421,8 @@ static void tg3_tx(struct tg3_napi *tnapi)
+ 		}
+ 	}
+ 
++	netdev_tx_completed_queue(txq, pkts_compl, bytes_compl);
++
+ 	tnapi->tx_cons = sw_idx;
+ 
+ 	/* Need to make the tx_cons update visible to tg3_start_xmit()
+@@ -6863,6 +6866,7 @@ static netdev_tx_t tg3_start_xmit(struct sk_buff *skb, struct net_device *dev)
+ 	}
+ 
+ 	skb_tx_timestamp(skb);
++	netdev_tx_sent_queue(txq, skb->len);
+ 
+ 	/* Packets are ready, update Tx producer idx local and on card. */
+ 	tw32_tx_mbox(tnapi->prodmbox, entry);
+@@ -7343,6 +7347,7 @@ static void tg3_free_rings(struct tg3 *tp)
+ 
+ 			dev_kfree_skb_any(skb);
+ 		}
++		netdev_tx_reset_queue(netdev_get_tx_queue(tp->dev, j));
+ 	}
+ }
+ 
+@@ -9595,11 +9600,8 @@ static int tg3_request_firmware(struct tg3 *tp)
+ {
+ 	const __be32 *fw_data;
+ 
+-	if (request_firmware(&tp->fw, tp->fw_needed, &tp->pdev->dev)) {
+-		netdev_err(tp->dev, "Failed to load firmware \"%s\"\n",
+-			   tp->fw_needed);
++	if (request_firmware(&tp->fw, tp->fw_needed, &tp->pdev->dev))
+ 		return -ENOENT;
+-	}
+ 
+ 	fw_data = (void *)tp->fw->data;
+ 
+diff --git a/drivers/net/ethernet/brocade/bna/cna_fwimg.c b/drivers/net/ethernet/brocade/bna/cna_fwimg.c
+index 725b9ff..0c072b3 100644

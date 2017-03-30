@@ -36,8 +36,23 @@
 #include "x86_64_accton_as7312_54x_int.h"
 #include "x86_64_accton_as7312_54x_log.h"
 
+
 #define PREFIX_PATH_ON_CPLD_DEV          "/sys/bus/i2c/devices/"
 #define NUM_OF_CPLD                      3
+#define FAN_DUTY_CYCLE_MAX         (100)
+#define FAN_DUTY_CYCLE_DEFAULT     (32)
+#define FAN_DUTY_PLUS_FOR_DIR      (13)
+/* Note, all chassis fans share 1 single duty setting. 
+ * Here use fan 1 to represent global fan duty value.*/
+#define FAN_ID_FOR_SET_FAN_DUTY    (1)
+#define CELSIUS_RECORD_NUMBER      (2)  /*Must >= 2*/
+
+typedef struct fan_ctrl_policy {
+   int duty_cycle;        /* In percetage */  
+   int step_up_thermal;   /* In mini-Celsius */
+   int step_dn_thermal;   /* In mini-Celsius */
+} fan_ctrl_policy_t;
+
 static char arr_cplddev_name[NUM_OF_CPLD][10] =
 {
  "4-0060",
@@ -123,45 +138,40 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 
 /* Thermal plan:
  * $TMP = (CPU_core + LM75_1+ LM75_2 + LM75_3 + LM75_4)/5
- * 1. If any FAN failed, set all the other fans as full speed (100%)
- * 2. In default, fan speed is 31.25% and direction is F2B.
- * 3. When $TMP >= 40 C, set fan speed to duty 62.5%.
- * 4. When $TMP >= 45 C, set fan speed to duty 100%.
+ * 1. If any FAN failed, set all the other fans as full speed, 100%.
+ * 2. If any sensor is high than 45 degrees, set fan speed to duty 62.5%.
+ * 3. If any sensor is high than 50 degrees, set fan speed to duty 100%.
+ * 4. When $TMP >= 40 C, set fan speed to duty 62.5%.
+ * 5. When $TMP >= 45 C, set fan speed to duty 100%.
  * 6. When $TMP <  35 C, set fan speed to duty 31.25%. 
- * 7. Direction factor, when B2F, duty + 13%.
+ * 7. Direction factor, when B2F, duty + 12.5%.
  *
  * Note, all chassis fans share 1 single duty setting.
  */
-
-#define  FAN_DUTY_CYCLE_MAX      (100)
-#define  FAN_DUTY_CYCLE_DEFAULT  (32)
-#define  FAN_DUTY_PLUS_FOR_DIR   (13)
-/* Note, all chassis fans share 1 single duty setting. 
- * Here use fan 1 to represent global fan duty value.*/
-#define  FAN_ID_FOR_SET_FAN_DUTY    (1)
-#define  CELSIUS_RECORD_NUMBER       (2)  /*Must >= 2*/
-
-typedef struct fan_ctrl_policy {
-   int duty_cycle;        /* In percetage */  
-   int step_up_thermal;   /* In mini-Celsius */
-   int step_dn_thermal;   /* In mini-Celsius */
-} fan_ctrl_policy_t;
-
-fan_ctrl_policy_t  fan_ctrl_policy_[] = {
+fan_ctrl_policy_t  fan_ctrl_policy_avg[] = {
 {FAN_DUTY_CYCLE_MAX     ,   45000,  INT_MIN},
 {63                     ,   40000,  INT_MIN},
 {32                     , INT_MAX,  35000},
 };
 
+fan_ctrl_policy_t  fan_ctrl_policy_single[] = {
+{FAN_DUTY_CYCLE_MAX     ,   50000,  INT_MIN},
+{63                     ,   45000,  INT_MIN},
+};
+
 struct fan_control_data_s {
    int duty_cycle; 
    int dir_plus;
-   int mcelsius_pre[CELSIUS_RECORD_NUMBER];
+   int mc_avg_pre[CELSIUS_RECORD_NUMBER];
+   int mc_high_pre[CELSIUS_RECORD_NUMBER];
+   
 } fan_control_data_pre = 
 {
     .duty_cycle = FAN_DUTY_CYCLE_DEFAULT,
     .dir_plus = 0,
-    .mcelsius_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
+    .mc_avg_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
+    .mc_high_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
+    
 };
 
 static int 
@@ -235,19 +245,126 @@ sysi_get_thermal_sum(int *mcelsius){
             return ONLP_STATUS_E_INTERNAL;
         }
         *mcelsius += thermal_info.mcelsius;
+
+        DEBUG_PRINT("Thermal %d: %d \n ", i, thermal_info.mcelsius);
+        
     }
+    
     return ONLP_STATUS_OK;    
     
 }
+
 static int 
-sysi_get_duty_by_tempurature(int *duty_cycle){
-    int mcelsius_avg;    
-    int i, new_duty_cycle, ret; 
-    int maxtrix_len;
-    int trend, trembled;
-    int mcelsius[CELSIUS_RECORD_NUMBER+1] = {0};
-    int *mcelsius_pre_p = &mcelsius[1];
-    int *mcelsius_now_p = &mcelsius[0];    
+sysi_get_highest_thermal(int *mcelsius){
+    onlp_thermal_info_t thermal_info;
+    int i, highest; 
+
+    highest = 0;
+    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
+        if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal_info) 
+            != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to read thermal status");
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        highest = (thermal_info.mcelsius > highest)? 
+                thermal_info.mcelsius : highest;
+    }
+    *mcelsius = highest;
+    return ONLP_STATUS_OK;    
+}
+
+/* Anaylze thermal changing history to judge if the change is a stable trend. */
+static int _is_thermal_a_trend(int *mc_history){
+    int i, trend, trended;
+
+    if (mc_history == NULL) {
+        AIM_LOG_ERROR("Unable to get history of thermal\n");
+        return 0;
+    }
+        
+    /* Get heat up/down trend. */
+    trend = 0;
+    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) {    
+        if (( mc_history[i+1] < mc_history[i])){  
+            trend++;
+        }else if (( mc_history[i+1] > mc_history[i])){    
+            trend--;   
+        }            
+    }
+    
+    trended = (abs(trend) >= ((CELSIUS_RECORD_NUMBER+1)/2))? 1:0;
+#if (DEBUG_MODE == 1)
+    DEBUG_PRINT("[INFO]%s#%d, trended: %d, UP/DW: %d mcelsius:", 
+            __func__, __LINE__, trended, trend );    
+    for (i = 0; i <= CELSIUS_RECORD_NUMBER; i++) { 
+        DEBUG_PRINT(" %d =>", mc_history[i]);
+    }
+    DEBUG_PRINT("%c\n", ' ');
+#endif
+
+    /*For more than half changes are same direction, it's a firm trend.*/
+    return trended;
+}
+
+
+/* Decide duty by highest value of thermal sensors.*/
+static int 
+sysi_get_duty_by_highest(int *duty_cycle){
+    int i, ret, maxtrix_len;
+    int new_duty_cycle = 0 ;
+    int mc_history[CELSIUS_RECORD_NUMBER+1] = {0};
+    int *mcelsius_pre_p = &mc_history[1];
+    int *mcelsius_now_p = &mc_history[0];    
+    
+    /* Fill up mcelsius array, 
+     * [0] is current temperature, others are history.
+     */
+    ret = sysi_get_highest_thermal(mcelsius_now_p);
+    if(ONLP_STATUS_OK != ret){
+        return ret;
+    }
+    memcpy (mcelsius_pre_p, fan_control_data_pre.mc_high_pre, 
+        sizeof(fan_control_data_pre.mc_high_pre));
+    
+    DEBUG_PRINT("[INFO]%s#%d, highest mcelsius:%d!\n", 
+                __func__, __LINE__, *mcelsius_now_p);
+    
+    /* Shift records to the right */
+    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) { 
+        fan_control_data_pre.mc_high_pre[i] = mc_history[i];        
+    }
+
+    /* Only change duty on consecutive heat rising or falling.*/    
+    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_single);
+
+    /* Only change duty when the thermal changing are firm. */    
+    if (_is_thermal_a_trend(mc_history))
+    {
+        int matched = 0;
+    	for (i = 0; i < maxtrix_len; i++) {
+            if ((*mcelsius_now_p > fan_ctrl_policy_single[i].step_up_thermal)) {
+        	    new_duty_cycle = fan_ctrl_policy_single[i].duty_cycle;
+        	    matched = !matched;
+        	    break;
+        	}
+        }
+/*        if (!matched) {
+            DEBUG_PRINT("%s#%d, celsius(%d) falls into undefined range!!\n", 
+                    __func__, __LINE__, *mcelsius_now_p);
+    	}    	*/
+    }
+    *duty_cycle = new_duty_cycle;
+    return ONLP_STATUS_OK;
+}
+
+/* Decide duty by average value of thermal sensors.*/
+static int 
+sysi_get_duty_by_average(int *duty_cycle){
+    int i, mcelsius_avg, ret, maxtrix_len;
+    int new_duty_cycle=0;
+    int mc_history[CELSIUS_RECORD_NUMBER+1] = {0};
+    int *mcelsius_pre_p = &mc_history[1];
+    int *mcelsius_now_p = &mc_history[0];    
     
     /* Fill up mcelsius array, 
      * [0] is current temperature, others are history.
@@ -258,64 +375,44 @@ sysi_get_duty_by_tempurature(int *duty_cycle){
         return ret;
     }
     mcelsius_avg = (*mcelsius_now_p)/CHASSIS_THERMAL_COUNT;
-    memcpy (mcelsius_pre_p, fan_control_data_pre.mcelsius_pre, sizeof(fan_control_data_pre.mcelsius_pre));
-    
-    /* Get heat up/down trend. */
-    trend = 0;
-    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) {    
-        if (( mcelsius[i+1] < mcelsius[i])){  
-            trend++;
-        }else if (( mcelsius[i+1] > mcelsius[i])){    
-            trend--;   
-        }            
-    }
 
-    /*For more than half changes are same direction, it's a firm trend.*/
-    trembled = (abs(trend) >= ((CELSIUS_RECORD_NUMBER+1)/2))? 0:1;
+    memcpy (mcelsius_pre_p, fan_control_data_pre.mc_avg_pre, 
+        sizeof(fan_control_data_pre.mc_avg_pre));
 
-    DEBUG_PRINT("[ROY]%s#%d, mcelsius:%d!\n", __func__, __LINE__, mcelsius_avg);
-    DEBUG_PRINT("[ROY]%s#%d, trembled: %d, UP/DW: %d mcelsius:", __func__, __LINE__, trembled, trend );
-    for (i = 0; i < AIM_ARRAYSIZE(mcelsius); i++) { 
-        DEBUG_PRINT(" %d =>", mcelsius[i]);
-    }
-    DEBUG_PRINT("%c\n", ' ');
-    
-    /* Update Record by shiftting right*/
+    DEBUG_PRINT("[INFO]%s#%d, mcelsius:%d!\n", __func__, __LINE__, mcelsius_avg);    
+
+    /* Shift records to the right */
     for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) { 
-        fan_control_data_pre.mcelsius_pre[i] = mcelsius[i];        
+        fan_control_data_pre.mc_avg_pre[i] = mc_history[i];        
     }
 
     /* Only change duty on consecutive heat rising or falling.*/    
-    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_);    
-    new_duty_cycle = fan_control_data_pre.duty_cycle;
-    if (!trembled)
+    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_avg);    
+
+    /* Only change duty when the thermal changing are firm. */
+    if (_is_thermal_a_trend(mc_history))
     {
         int matched = 0;
-        if (trend > 0)
-        {
-        	for (i = 0; i < maxtrix_len; i++) {
-                if ((mcelsius_avg >= fan_ctrl_policy_[i].step_up_thermal)) {
-            	    new_duty_cycle = fan_ctrl_policy_[i].duty_cycle;
-            	    matched = !matched;
-            	    break;
-            	}
-            }
-        }
-        else if (trend < 0)
-        {
-        	for (i = maxtrix_len-1; i>=0; i--) {        
-        	    if ((mcelsius_avg <= fan_ctrl_policy_[i].step_dn_thermal)) {
-            	    new_duty_cycle = fan_ctrl_policy_[i].duty_cycle;
-            	    matched = !matched;            	    
-            	    break;
-                }            	    
+    	for (i = 0; i < maxtrix_len; i++) {
+            if ((mcelsius_avg >= fan_ctrl_policy_avg[i].step_up_thermal)) {
+        	    new_duty_cycle = fan_ctrl_policy_avg[i].duty_cycle;
+        	    matched = !matched;
+        	    break;
         	}
         }
-        if (!matched) {
+    	for (i = maxtrix_len-1; i>=0; i--) {        
+    	    if ((mcelsius_avg < fan_ctrl_policy_avg[i].step_dn_thermal)) {
+        	    new_duty_cycle = fan_ctrl_policy_avg[i].duty_cycle;
+        	    matched = !matched;            	    
+        	    break;
+            }            	    
+    	}
+        /*if (!matched) {
             DEBUG_PRINT("%s#%d, celsius(%d) falls into undefined range!!\n", 
                     __func__, __LINE__, mcelsius_avg);
-    	}    	
+    	} */   	
     }
+    
     *duty_cycle = new_duty_cycle;
     return ONLP_STATUS_OK;
 }
@@ -325,7 +422,7 @@ onlp_sysi_platform_manage_fans(void)
 {
     uint32_t fan_dir;
     int ret;
-    int cur_duty_cycle, new_duty_cycle;    
+    int cur_duty_cycle, new_duty_cycle, tmp;    
     int direct_addon = 0;
     onlp_oid_t fan_duty_oid = ONLP_FAN_ID_CREATE(FAN_ID_FOR_SET_FAN_DUTY);
     
@@ -353,15 +450,24 @@ onlp_sysi_platform_manage_fans(void)
     /**********************************************************
      * Decision 3: Decide new fan speed depend on fan direction and temperature
      **********************************************************/
-    ret = sysi_get_duty_by_tempurature(&new_duty_cycle);
+    ret = sysi_get_duty_by_average(&new_duty_cycle);
+    if (ONLP_STATUS_OK != ret){
+        return ret;
+    }    
+    ret = sysi_get_duty_by_highest(&tmp);
     if (ONLP_STATUS_OK != ret){
         return ret;
     }
-
-    fan_control_data_pre.duty_cycle = new_duty_cycle; 
-    fan_control_data_pre.dir_plus = direct_addon; 
     
-    DEBUG_PRINT("[ROY]%s#%d, new duty: %d = %d + %d (%d)!\n", __func__, __LINE__, 
+    new_duty_cycle = (tmp > new_duty_cycle)? tmp : new_duty_cycle;
+    if (new_duty_cycle == 0)
+    {
+        new_duty_cycle = fan_control_data_pre.duty_cycle;
+    } else {
+        fan_control_data_pre.duty_cycle = new_duty_cycle; 
+    }        
+    fan_control_data_pre.dir_plus = direct_addon;    
+    DEBUG_PRINT("[INFO]%s#%d, new duty: %d = %d + %d (%d)!\n", __func__, __LINE__, 
     new_duty_cycle + direct_addon, new_duty_cycle, direct_addon, cur_duty_cycle);
     
     new_duty_cycle += direct_addon;

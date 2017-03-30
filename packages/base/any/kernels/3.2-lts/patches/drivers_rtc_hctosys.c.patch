@@ -1,0 +1,86 @@
+--- a/drivers/rtc/hctosys.c
++++ b/drivers/rtc/hctosys.c
+@@ -24,6 +24,57 @@
+ 
+ int rtc_hctosys_ret = -ENODEV;
+ 
++// Approximately the number of seconds in a 42 year span
++#define SECONDS_IN_42_YEARS (42 * 365 * 24 * 3600)
++
++static int __init rtc_hc_fixup(struct rtc_device *rtc, struct rtc_time *p_tm)
++{
++	int err = 0;
++
++	/*
++	 * rtc_time_to_tm() converts seconds since 1970-01-01 to a
++	 * struct rtc_time.
++	 *
++	 * Some RTC drivers only store (year % 100) and assume 2000 on
++	 * read back.  For example when storing 1970, only 70 is
++	 * stored in the hardware, but on read back it would be 2070.
++	 *
++	 * To work around this, pick a default date/time with the
++	 * year > 2000.
++	 *
++	 * Adding 42 years worth of seconds puts the default date/time
++	 * near 2012.
++	 *
++	 * As this code is being written in 2013, a default time
++	 * around 2012 is safe to assume.
++	 *
++	 */
++	rtc_time_to_tm(SECONDS_IN_42_YEARS, p_tm);
++	err = rtc_set_time(rtc, p_tm);
++
++	if (err) {
++		dev_err(rtc->dev.parent,
++			"hc_fixup: unable to set hardware clock date/time\n");
++		return err;
++	}
++
++	err = rtc_read_time(rtc, p_tm);
++	if (err) {
++		dev_err(rtc->dev.parent,
++			"hc_fixup: unable to read the hardware clock\n");
++		return err;
++	}
++
++	err = rtc_valid_tm(p_tm);
++	if (err) {
++		dev_err(rtc->dev.parent,
++			"hc_fixup: unable to fix-up invalid date/time\n");
++		return err;
++	}
++
++	return err;
++}
++
+ static int __init rtc_hctosys(void)
+ {
+ 	int err = -ENODEV;
+@@ -43,15 +94,20 @@ static int __init rtc_hctosys(void)
+ 	if (err) {
+ 		dev_err(rtc->dev.parent,
+ 			"hctosys: unable to read the hardware clock\n");
+-		goto err_read;
+-
++		err = rtc_hc_fixup(rtc, &tm);
++		if (err) {
++			goto err_read;
++		}
+ 	}
+ 
+ 	err = rtc_valid_tm(&tm);
+ 	if (err) {
+ 		dev_err(rtc->dev.parent,
+ 			"hctosys: invalid date/time\n");
+-		goto err_invalid;
++		err = rtc_hc_fixup(rtc, &tm);
++		if (err) {
++			goto err_invalid;
++		}
+ 	}
+ 
+ 	rtc_tm_to_time(&tm, &tv.tv_sec);
+diff --git a/drivers/rtc/rtc-m41t80.c b/drivers/rtc/rtc-m41t80.c
+index 64aedd8..51a6298 100644

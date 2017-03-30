@@ -1,0 +1,63 @@
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -2256,6 +2256,58 @@ static void __devinit quirk_tile_plx_gen1(struct pci_dev *dev)
+ DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_PLX, 0x8624, quirk_tile_plx_gen1);
+ #endif /* CONFIG_TILE */
+ 
++/* Uncorrectable PCIe errors are generated when using the BCM56150
++ * operating at Gen2 (5GT/s) link speed on the E1050 platform
++ * These errors are not observed when operating at Gen1 (2.5GT/s)
++ * link speed.  There are two BCM56150 devices on the E1050
++ * platform (bus 1 and 2), force both to Gen1 speed.  This is
++ * done via the root complex since that is the only way to force
++ * the link to retrain. 0x50 is the Link Control PCIe capability
++ * register on the root complex, 0x70 is the Link Control2 PCIe
++ * PCIe capability register on the root complex.
++ *
++ * NOTE: This patch is a workaround and is not intended to be
++ * upstreamed.  This specific issue is not seen with Linux kernel
++ * 3.16 and may be specific to backported (or lack of backported)
++ * Intel Bay Trail patches from 3.16 to 3.2
++ */
++static void __devinit quirk_bcm56150_gen1(struct pci_dev *dev)
++{
++    u16 config;
++    struct pci_dev *pdev = NULL;
++
++    /* Only interested in BCM56150 function 0 */
++    if (PCI_FUNC(dev->devfn))
++        return;
++    /* Find Intel PCIe root complex function 0 */
++    pdev = pci_get_device(PCI_VENDOR_ID_INTEL, 0x0f48, NULL);
++    if (!pdev) {
++        printk(KERN_INFO "E1050: Could not find Intel PCIe-RC fn 0\n");
++        return;
++    }
++    if (dev->bus->number == 2) {
++        /* If this is the second BCM56150, then find Intel PCIe RC function 1 */
++        pdev = pci_get_slot(pdev->bus,
++                PCI_DEVFN(PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn)+1));
++        if (!pdev) {
++            printk(KERN_INFO "E1050: Could not find Intel PCIe-RC fn 1\n");
++            return;
++        }
++    }
++    /* Set link speed to 2.5GT/s */
++    pci_read_config_word(pdev, 0x70, &config);
++    config &= ~0xf;
++    config |= 0x1;
++    pci_write_config_word(pdev, 0x70, config);
++    /* Initiate link re-training */
++    pci_read_config_word(pdev, 0x50, &config);
++    config |= PCI_EXP_LNKCTL_RL;
++    pci_write_config_word(pdev, 0x50, config);
++    mdelay(50);
++}
++DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_BROADCOM, 0xb150, quirk_bcm56150_gen1);
++DECLARE_PCI_FIXUP_RESUME(PCI_VENDOR_ID_BROADCOM, 0xb150, quirk_bcm56150_gen1);
++
+ #ifdef CONFIG_PCI_MSI
+ /* Some chipsets do not support MSI. We cannot easily rely on setting
+  * PCI_BUS_FLAGS_NO_MSI in its bus flags because there are actually
+diff --git a/drivers/pci/setup-res.c b/drivers/pci/setup-res.c
+index 41f08e5..8d1ee41 100644

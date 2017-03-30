@@ -8,7 +8,7 @@ class OnlPlatform_x86_64_quanta_ly6_rangeley_r0(OnlPlatformQuanta,
     SYS_OBJECT_ID='.6.1'
 
     def baseconfig(self):
-        self.insmod("quanta_hwmon")
+        self.insmod("quanta_hwmon_ly_series")
         self.insmod("quanta-ly6-i2c-mux")
         self.insmod("quanta_platform_ly6")
 

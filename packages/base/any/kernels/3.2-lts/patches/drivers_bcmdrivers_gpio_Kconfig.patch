@@ -1,0 +1,17 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gpio/Kconfig
+@@ -0,0 +1,11 @@
++config IPROC_GPIO
++	tristate "GPIO support"
++	select GENERIC_GPIO
++	select ARCH_REQUIRE_GPIOLIB
++	select GPIOLIB
++	depends on ARCH_IPROC
++	default y
++	help
++	  Add GPIO support
++
++	  If unsure, say N.
+diff --git a/drivers/bcmdrivers/gpio/Makefile b/drivers/bcmdrivers/gpio/Makefile
+new file mode 100644
+index 0000000..edbecf6

@@ -1,0 +1,8 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/nand/Makefile
+@@ -0,0 +1,2 @@
++obj-$(CONFIG_IPROC_MTD_NAND) += iproc_mtd_nand.o
++iproc_mtd_nand-objs := nand_iproc.o
+diff --git a/drivers/bcmdrivers/nand/nand_iproc.c b/drivers/bcmdrivers/nand/nand_iproc.c
+new file mode 100644
+index 0000000..f4b5d90

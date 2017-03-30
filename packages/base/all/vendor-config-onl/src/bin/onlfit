@@ -1,0 +1,13 @@
+#!/bin/sh
+############################################################
+if [ -z "$1" ]; then
+    echo "usage: $0 <itb url>"
+    exit 1
+fi
+
+PLATFORM=$(cat /etc/onl/platform)
+
+dir=`mktemp -d`
+(cd $dir && wget $1)
+onlfs rw boot mv $dir/* /mnt/onl/boot/${PLATFORM}.itb
+rmdir $dir

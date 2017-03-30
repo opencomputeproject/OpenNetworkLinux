@@ -1,0 +1,12 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gmac/src/et/sys/.gitignore
+@@ -0,0 +1,6 @@
++/.et_linux.o.cmd
++/.etc.o.cmd
++/.etcgmac.o.cmd
++/et_linux.o
++/etc.o
++/etcgmac.o
+diff --git a/drivers/bcmdrivers/gmac/src/et/sys/et_cfg.h b/drivers/bcmdrivers/gmac/src/et/sys/et_cfg.h
+new file mode 100755
+index 0000000..38ded3d

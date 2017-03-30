@@ -1,1 +1,1 @@
-!include $ONL_TEMPLATES/no-platform-modules.yml ARCH=powerpc VENDOR=quanta BASENAME=powerpc-quanta-ly2
+!include $ONL_TEMPLATES/platform-modules.yml ARCH=powerpc VENDOR=quanta BASENAME=powerpc-quanta-ly2 KERNELS="onl-kernel-3.16-lts-powerpc-e500v-all:powerpc"

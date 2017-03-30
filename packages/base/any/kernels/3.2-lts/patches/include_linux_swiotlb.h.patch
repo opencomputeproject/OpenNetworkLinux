@@ -1,0 +1,13 @@
+--- a/include/linux/swiotlb.h
++++ b/include/linux/swiotlb.h
+@@ -24,7 +24,7 @@ extern int swiotlb_force;
+ 
+ extern void swiotlb_init(int verbose);
+ extern void swiotlb_init_with_tbl(char *tlb, unsigned long nslabs, int verbose);
+-extern unsigned long swioltb_nr_tbl(void);
++extern unsigned long swiotlb_nr_tbl(void);
+ 
+ /*
+  * Enumeration for sync targets
+diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+index 703cfa3..4154bd4 100644

@@ -1,0 +1,13 @@
+--- a/include/linux/sysrq.h
++++ b/include/linux/sysrq.h
+@@ -18,7 +18,7 @@
+ #include <linux/types.h>
+ 
+ /* Enable/disable SYSRQ support by default (0==no, 1==yes). */
+-#define SYSRQ_DEFAULT_ENABLE	1
++#define SYSRQ_DEFAULT_ENABLE	CONFIG_MAGIC_SYSRQ_DEFAULT_MASK
+ 
+ /* Possible values of bitmask for enabling sysrq functions */
+ /* 0x0001 is reserved for enable everything */
+diff --git a/include/linux/tcp.h b/include/linux/tcp.h
+index 7f59ee9..0d62739 100644

@@ -210,11 +210,11 @@ extern aim_map_si_t thermal_oid_desc_map[];
 
 /* This is the fan controller in F2B mode */
 #define SYS_CONTROLLER_PREFIX_F2B                                       \
-    "/sys/devices/e0000000.soc8541/e0003000.i2c/i2c-0/i2c-5/5-002c"
+    "/sys/bus/i2c/devices/5-002c"
 
 /* This is the fan controller in B2F mode */
 #define SYS_CONTROLLER_PREFIX_B2F                                       \
-    "/sys/devices/e0000000.soc8541/e0003000.i2c/i2c-0/i2c-6/6-002f"
+    "/sys/bus/i2c/devices/6-002f"
 
 /* The temperature controller for both modes */
 #define SYS_CONTROLLER_PREFIX_TEMPERATURE SYS_CONTROLLER_PREFIX_F2B
@@ -223,10 +223,10 @@ extern aim_map_si_t thermal_oid_desc_map[];
  * PSU1 and PSU2 sys paths
  */
 #define SYS_PSU1_PREFIX \
-    "/sys/devices/e0000000.soc8541/e0003000.i2c/i2c-0/i2c-7/7-0058"
+    "/sys/bus/i2c/devices/7-0058/hwmon/hwmon1"
 
 #define SYS_PSU2_PREFIX \
-    "/sys/devices/e0000000.soc8541/e0003000.i2c/i2c-0/i2c-8/8-0059"
+    "/sys/bus/i2c/devices/8-0059/hwmon/hwmon2"
 
 
 #include "system.h"

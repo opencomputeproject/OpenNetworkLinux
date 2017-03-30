@@ -1,0 +1,729 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/idm.c
+@@ -0,0 +1,723 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include <linux/interrupt.h>
++#include <asm/hardware/gic.h>
++
++#include <linux/irq.h>
++#include <mach/iproc.h>
++#include <asm/io.h>
++#include <mach/io_map.h>
++
++#ifdef CONFIG_MACH_NSP
++/* this is actually AXI_PCIE_S2 but for HX4, HR2, and KT2 it has been hijacked by CMICD */
++
++#define CMICD_S0_IDM_IDM_ERROR_LOG_CONTROL AXI_PCIE_S2_IDM_IDM_ERROR_LOG_CONTROL
++#define CMICD_S0_IDM_IDM_ERROR_LOG_COMPLETE AXI_PCIE_S2_IDM_IDM_ERROR_LOG_COMPLETE
++#define CMICD_S0_IDM_IDM_ERROR_LOG_STATUS AXI_PCIE_S2_IDM_IDM_ERROR_LOG_STATUS
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ADDR_LSB AXI_PCIE_S2_IDM_IDM_ERROR_LOG_ADDR_LSB
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ID AXI_PCIE_S2_IDM_IDM_ERROR_LOG_ID
++#define CMICD_S0_IDM_IDM_ERROR_LOG_FLAGS AXI_PCIE_S2_IDM_IDM_ERROR_LOG_FLAGS
++#define CMICD_S0_IDM_IDM_INTERRUPT_STATUS AXI_PCIE_S2_IDM_IDM_INTERRUPT_STATUS
++
++#endif
++
++#ifdef CONFIG_MACH_NS
++
++#define IHOST_S1_IDM_ERROR_LOG_CONTROL 0x18106900
++#define IHOST_S1_IDM_ERROR_LOG_COMPLETE 0x18106904
++#define IHOST_S1_IDM_ERROR_LOG_STATUS 0x18106908
++#define IHOST_S1_IDM_ERROR_LOG_ADDR_LSB 0x1810690C
++#define IHOST_S1_IDM_ERROR_LOG_ID 0x18106914
++#define IHOST_S1_IDM_ERROR_LOG_FLAGS 0x1810691C
++#define IHOST_S1_IDM_INTERRUPT_STATUS 0x18106A00
++
++#define IHOST_S0_IDM_ERROR_LOG_CONTROL 0x18107900
++#define IHOST_S0_IDM_ERROR_LOG_COMPLETE 0x18107904
++#define IHOST_S0_IDM_ERROR_LOG_STATUS 0x18107908
++#define IHOST_S0_IDM_ERROR_LOG_ADDR_LSB 0x1810790C
++#define IHOST_S0_IDM_ERROR_LOG_ID 0x18107914
++#define IHOST_S0_IDM_ERROR_LOG_FLAGS 0x1810791C
++#define IHOST_S0_IDM_INTERRUPT_STATUS 0x18107A00
++
++#define DDR_S1_IDM_ERROR_LOG_CONTROL 0x18108900
++#define DDR_S1_IDM_ERROR_LOG_COMPLETE 0x18108904
++#define DDR_S1_IDM_ERROR_LOG_STATUS 0x18108908
++#define DDR_S1_IDM_ERROR_LOG_ADDR_LSB 0x1810890C
++#define DDR_S1_IDM_ERROR_LOG_ID 0x18108914
++#define DDR_S1_IDM_ERROR_LOG_FLAGS 0x1810891C
++#define DDR_S1_IDM_INTERRUPT_STATUS 0x18108A00
++
++#define DDR_S2_IDM_ERROR_LOG_CONTROL 0x18109900
++#define DDR_S2_IDM_ERROR_LOG_COMPLETE 0x18109904
++#define DDR_S2_IDM_ERROR_LOG_STATUS 0x18109908
++#define DDR_S2_IDM_ERROR_LOG_ADDR_LSB 0x1810990C
++#define DDR_S2_IDM_ERROR_LOG_ID 0x18109914
++#define DDR_S2_IDM_ERROR_LOG_FLAGS 0x1810991C
++#define DDR_S2_IDM_INTERRUPT_STATUS 0x18109A00
++
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_CONTROL 0x1810A900
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_COMPLETE 0x1810A904
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_STATUS 0x1810A908
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1810A90C
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ID 0x1810A914
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_FLAGS 0x1810A91C
++#define AXI_PCIE_S0_IDM_IDM_INTERRUPT_STATUS 0x1810AA00
++
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_CONTROL 0x1810B900
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_COMPLETE 0x1810B904
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_STATUS 0x1810B908
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1810B90C
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_ID 0x1810B914
++#define AXI_PCIE_S1_IDM_IDM_ERROR_LOG_FLAGS 0x1810B91C
++#define AXI_PCIE_S1_IDM_IDM_INTERRUPT_STATUS 0x1810BA00
++
++/* this is actually AXI_PCIE_S2 but for HX4, HR2, and KT2 it has been hijacked by CMICD */
++
++#define CMICD_S0_IDM_IDM_ERROR_LOG_CONTROL 0x1810C900
++#define CMICD_S0_IDM_IDM_ERROR_LOG_COMPLETE 0x1810C904
++#define CMICD_S0_IDM_IDM_ERROR_LOG_STATUS 0x1810C908
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1810C90C
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ID 0x1810C914
++#define CMICD_S0_IDM_IDM_ERROR_LOG_FLAGS 0x1810C91C
++#define CMICD_S0_IDM_IDM_INTERRUPT_STATUS 0x1810CA00
++
++#define ROM_S0_IDM_ERROR_LOG_CONTROL 0x1810D900
++#define ROM_S0_IDM_ERROR_LOG_COMPLETE 0x1810D904
++#define ROM_S0_IDM_ERROR_LOG_STATUS 0x1810D908
++#define ROM_S0_IDM_ERROR_LOG_ADDR_LSB 0x1810D90C
++#define ROM_S0_IDM_ERROR_LOG_ID 0x1810D914
++#define ROM_S0_IDM_ERROR_LOG_FLAGS 0x1810D91C
++#define ROM_S0_IDM_INTERRUPT_STATUS 0x1810DA00
++
++#define NAND_IDM_IDM_ERROR_LOG_CONTROL 0x1811A900
++#define NAND_IDM_IDM_ERROR_LOG_COMPLETE 0x1811A904
++#define NAND_IDM_IDM_ERROR_LOG_STATUS 0x1811A908
++#define NAND_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1811A90C
++#define NAND_IDM_IDM_ERROR_LOG_ID 0x1811A914
++#define NAND_IDM_IDM_ERROR_LOG_FLAGS 0x1811A91C
++#define NAND_IDM_IDM_INTERRUPT_STATUS 0x1811AA00
++
++#define QSPI_IDM_IDM_ERROR_LOG_CONTROL 0x1811B900
++#define QSPI_IDM_IDM_ERROR_LOG_COMPLETE 0x1811B904
++#define QSPI_IDM_IDM_ERROR_LOG_STATUS 0x1811B908
++#define QSPI_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1811B90C
++#define QSPI_IDM_IDM_ERROR_LOG_ID 0x1811B914
++#define QSPI_IDM_IDM_ERROR_LOG_FLAGS 0x1811B91C
++#define QSPI_IDM_IDM_INTERRUPT_STATUS 0x1811BA00
++
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_CONTROL 0x1811C900
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_COMPLETE 0x1811C904
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_STATUS 0x1811C908
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1811C90C
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_ID 0x1811C914
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_FLAGS 0x1811C91C
++#define A9JTAG_S0_IDM_IDM_INTERRUPT_STATUS 0x1811CA00
++
++#define APBX_IDM_IDM_ERROR_LOG_CONTROL 0x18121900
++#define APBX_IDM_IDM_ERROR_LOG_COMPLETE 0x18121904
++#define APBX_IDM_IDM_ERROR_LOG_STATUS 0x18121908
++#define APBX_IDM_IDM_ERROR_LOG_ADDR_LSB 0x1812190C
++#define APBX_IDM_IDM_ERROR_LOG_ID 0x18121914
++#define APBX_IDM_IDM_ERROR_LOG_FLAGS 0x1812191C
++#define APBX_IDM_IDM_INTERRUPT_STATUS 0x1812A900
++
++#define AXIIC_DS_0_IDM_ERROR_LOG_CONTROL 0x18132900
++#define AXIIC_DS_0_IDM_ERROR_LOG_COMPLETE 0x18132904
++#define AXIIC_DS_0_IDM_ERROR_LOG_STATUS 0x181312908
++#define AXIIC_DS_0_IDM_ERROR_LOG_ADDR_LSB 0x1813290c
++#define AXIIC_DS_0_IDM_ERROR_LOG_ID 0x18132910
++#define AXIIC_DS_0_IDM_ERROR_LOG_FLAGS 0x18132904
++#define AXIIC_DS_0_IDM_INTERRUPT_STATUS 0x18132A00
++
++#define AXIIC_DS_1_IDM_ERROR_LOG_CONTROL 0x18133900
++#define AXIIC_DS_1_IDM_ERROR_LOG_COMPLETE 0x18133904
++#define AXIIC_DS_1_IDM_ERROR_LOG_STATUS 0x181313908
++#define AXIIC_DS_1_IDM_ERROR_LOG_ADDR_LSB 0x1813390c
++#define AXIIC_DS_1_IDM_ERROR_LOG_ID 0x18133910
++#define AXIIC_DS_1_IDM_ERROR_LOG_FLAGS 0x18133904
++#define AXIIC_DS_1_IDM_INTERRUPT_STATUS 0x18133A00
++
++#define AXIIC_DS_2_IDM_ERROR_LOG_CONTROL 0x18134900
++#define AXIIC_DS_2_IDM_ERROR_LOG_COMPLETE 0x18134904
++#define AXIIC_DS_2_IDM_ERROR_LOG_STATUS 0x181314908
++#define AXIIC_DS_2_IDM_ERROR_LOG_ADDR_LSB 0x1813490c
++#define AXIIC_DS_2_IDM_ERROR_LOG_ID 0x18134910
++#define AXIIC_DS_2_IDM_ERROR_LOG_FLAGS 0x18134904
++#define AXIIC_DS_2_IDM_INTERRUPT_STATUS 0x18134A00
++
++#define AXIIC_DS_3_IDM_ERROR_LOG_CONTROL 0x18135900
++#define AXIIC_DS_3_IDM_ERROR_LOG_COMPLETE 0x18135904
++#define AXIIC_DS_3_IDM_ERROR_LOG_STATUS 0x181315908
++#define AXIIC_DS_3_IDM_ERROR_LOG_ADDR_LSB 0x1813590c
++#define AXIIC_DS_3_IDM_ERROR_LOG_ID 0x18135910
++#define AXIIC_DS_3_IDM_ERROR_LOG_FLAGS 0x18135904
++#define AXIIC_DS_3_IDM_INTERRUPT_STATUS 0x18135A00
++
++#define AXIIC_DS_4_IDM_ERROR_LOG_CONTROL 0x18136900
++#define AXIIC_DS_4_IDM_ERROR_LOG_COMPLETE 0x18136904
++#define AXIIC_DS_4_IDM_ERROR_LOG_STATUS 0x181316908
++#define AXIIC_DS_4_IDM_ERROR_LOG_ADDR_LSB 0x1813690c
++#define AXIIC_DS_4_IDM_ERROR_LOG_ID 0x18136910
++#define AXIIC_DS_4_IDM_ERROR_LOG_FLAGS 0x18136904
++#define AXIIC_DS_4_IDM_INTERRUPT_STATUS 0x18136A00
++
++#define IHOST_L2C_INT_MASK 0x19022214
++#define IHOST_GICDIST_enable_set2 0x19021108
++
++#endif
++
++#define IHOST_L2C_INT_MASK_VA HW_IO_PHYS_TO_VIRT(IHOST_L2C_INT_MASK)
++#define IHOST_GICDIST_enable_set2_VA HW_IO_PHYS_TO_VIRT(IHOST_GICDIST_enable_set2)
++
++#define IHOST_S1_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_CONTROL)
++#define IHOST_S1_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_COMPLETE)
++#define IHOST_S1_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_STATUS)
++#define IHOST_S1_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_ADDR_LSB)
++#define IHOST_S1_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_ID)
++#define IHOST_S1_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(IHOST_S1_IDM_ERROR_LOG_FLAGS)
++
++#define IHOST_S0_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_CONTROL)
++#define IHOST_S0_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_COMPLETE)
++#define IHOST_S0_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_STATUS)
++#define IHOST_S0_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_ADDR_LSB)
++#define IHOST_S0_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_ID)
++#define IHOST_S0_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(IHOST_S0_IDM_ERROR_LOG_FLAGS)
++
++#define DDR_S1_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_CONTROL)
++#define DDR_S1_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_COMPLETE)
++#define DDR_S1_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_STATUS)
++#define DDR_S1_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_ADDR_LSB)
++#define DDR_S1_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_ID)
++#define DDR_S1_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(DDR_S1_IDM_ERROR_LOG_FLAGS)
++
++#define DDR_S2_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_CONTROL)
++#define DDR_S2_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_COMPLETE)
++#define DDR_S2_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_STATUS)
++#define DDR_S2_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_ADDR_LSB)
++#define DDR_S2_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_ID)
++#define DDR_S2_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(DDR_S2_IDM_ERROR_LOG_FLAGS)
++
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_CONTROL)
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_COMPLETE)
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_STATUS)
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ID)
++#define AXI_PCIE_S0_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define CMICD_S0_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_CONTROL)
++#define CMICD_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_COMPLETE)
++#define CMICD_S0_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_STATUS)
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define CMICD_S0_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_ID)
++#define CMICD_S0_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(CMICD_S0_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define APBY_S0_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_CONTROL)
++#define APBY_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_COMPLETE)
++#define APBY_S0_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_STATUS)
++#define APBY_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define APBY_S0_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_ID)
++#define APBY_S0_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(APBY_S0_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define ROM_S0_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_CONTROL)
++#define ROM_S0_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_COMPLETE)
++#define ROM_S0_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_STATUS)
++#define ROM_S0_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_ADDR_LSB)
++#define ROM_S0_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_ID)
++#define ROM_S0_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(ROM_S0_IDM_ERROR_LOG_FLAGS)
++
++#define NAND_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_CONTROL)
++#define NAND_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_COMPLETE)
++#define NAND_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_STATUS)
++#define NAND_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define NAND_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_ID)
++#define NAND_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(NAND_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define QSPI_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_CONTROL)
++#define QSPI_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_COMPLETE)
++#define QSPI_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_STATUS)
++#define QSPI_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define QSPI_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_ID)
++#define QSPI_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(QSPI_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_CONTROL)
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_COMPLETE)
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_STATUS)
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_ID)
++#define A9JTAG_S0_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(A9JTAG_S0_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define SRAM_S0_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_CONTROL)
++#define SRAM_S0_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_COMPLETE)
++#define SRAM_S0_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_STATUS)
++#define SRAM_S0_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_ADDR_LSB)
++#define SRAM_S0_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_ID)
++#define SRAM_S0_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(SRAM_S0_IDM_ERROR_LOG_FLAGS)
++
++#define APBZ_S0_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_CONTROL)
++#define APBZ_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_COMPLETE)
++#define APBZ_S0_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_STATUS)
++#define APBZ_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define APBZ_S0_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_ID)
++#define APBZ_S0_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(APBZ_S0_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define AXIIC_DS_3_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_CONTROL)
++#define AXIIC_DS_3_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_COMPLETE)
++#define AXIIC_DS_3_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_STATUS)
++#define AXIIC_DS_3_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_ADDR_LSB)
++#define AXIIC_DS_3_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_ID)
++#define AXIIC_DS_3_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_3_IDM_ERROR_LOG_FLAGS)
++
++#define APBW_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_CONTROL)
++#define APBW_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_COMPLETE)
++#define APBW_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_STATUS)
++#define APBW_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define APBW_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_ID)
++#define APBW_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(APBW_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define APBX_IDM_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_CONTROL)
++#define APBX_IDM_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_COMPLETE)
++#define APBX_IDM_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_STATUS)
++#define APBX_IDM_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_ADDR_LSB)
++#define APBX_IDM_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_ID)
++#define APBX_IDM_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(APBX_IDM_IDM_ERROR_LOG_FLAGS)
++
++#define AXIIC_DS_0_IDM_ERROR_LOG_CONTROL_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_CONTROL)
++#define AXIIC_DS_0_IDM_ERROR_LOG_COMPLETE_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_COMPLETE)
++#define AXIIC_DS_0_IDM_ERROR_LOG_STATUS_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_STATUS)
++#define AXIIC_DS_0_IDM_ERROR_LOG_ADDR_LSB_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_ADDR_LSB)
++#define AXIIC_DS_0_IDM_ERROR_LOG_ID_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_ID)
++#define AXIIC_DS_0_IDM_ERROR_LOG_FLAGS_VA HW_IO_PHYS_TO_VIRT(AXIIC_DS_0_IDM_ERROR_LOG_FLAGS)
++
++#define IDM_ERROR_LOG_ENABLE 0x33A
++#define IDM_ERROR_LOG_CLEAR 0x3
++
++#ifdef CONFIG_MACH_IPROC_P7
++#define IHOST_S0_IDM_IRQ 52
++#define DDR_S1_IDM_IRQ 54
++#define DDR_S2_IDM_IRQ 55
++#define AXI_PCIE_S0_IDM_IRQ 56
++#define AXI_PCIE_S1_IDM_IRQ 57
++#define ROM_S0_IDM_IRQ 58
++#define NAND_IDM_IRQ 59
++#define QSPI_IDM_IRQ 60
++#define SRAM_S0_IDM_IRQ 62
++#define A9JTAG_S0_IDM_IRQ 64
++#define APX_IDM_IRQ 68
++#define CMICD_S0_IDM_IRQ 71
++#define AXIIC_DS_0_IDM_IRQ 78
++#define AXIIC_DS_1_IDM_IRQ 79
++#define AXIIC_DS_2_IDM_IRQ 80
++#define AXIIC_DS_3_IDM_IRQ 81
++#define AXIIC_DS_4_IDM_IRQ 83
++#else
++#define IHOST_S1_IDM_IRQ 62
++#define IHOST_S0_IDM_IRQ 63
++#define DDR_S1_IDM_IRQ 64
++#define DDR_S2_IDM_IRQ 65
++#define AXI_PCIE_S0_IDM_IRQ 66
++#define AXI_PCIE_S1_IDM_IRQ 67
++#define CMICD_S0_IDM_IRQ 68
++#define ROM_S0_IDM_IRQ 69
++#define NAND_IDM_IRQ 70
++#define QSPI_IDM_IRQ 71
++#define SATA_IDM_IRQ 72
++#define A9JTAG_S0_IDM_IRQ 73
++#define SRAM_S0_IDM_IRQ 74
++#define APW_IDM_IRQ 75
++#define APX_IDM_IRQ 76
++#define APBY_S0_IDM_IRQ 77
++#define APBZ_S0_IDM_IRQ 78
++#define AXIIC_DS_0_IDM_IRQ 79
++#define AXIIC_DS_1_IDM_IRQ 80
++#define AXIIC_DS_2_IDM_IRQ 81
++#define AXIIC_DS_3_IDM_IRQ 82
++#define AXIIC_DS_4_IDM_IRQ 83
++#endif
++
++static irqreturn_t idm_timeout_handler(int val, void *ptr)
++{
++	u32 errStat;
++//	printk("%s: %d, %d entry\n", __FUNCTION__, __LINE__, val);
++	errStat = __raw_readl(IHOST_S1_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S1_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S1_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S1_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, IHOST_S1_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(IHOST_S1_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(IHOST_S0_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S0_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S0_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(IHOST_S0_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, IHOST_S0_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(IHOST_S0_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(DDR_S1_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S1_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S1_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S1_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, DDR_S1_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(DDR_S1_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(DDR_S2_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S2_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S2_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(DDR_S2_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, DDR_S2_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(DDR_S2_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, AXI_PCIE_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(AXI_PCIE_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(CMICD_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(CMICD_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(CMICD_S0_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(CMICD_S0_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, CMICD_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(CMICD_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#if !defined(CONFIG_MACH_NS) && !defined(CONFIG_MACH_IPROC_P7)
++	errStat = __raw_readl(APBY_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBY_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBY_S0_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBY_S0_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, APBY_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(APBY_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#endif
++	errStat = __raw_readl(ROM_S0_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(ROM_S0_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(ROM_S0_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(ROM_S0_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, ROM_S0_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(ROM_S0_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(NAND_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(NAND_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(NAND_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(NAND_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, NAND_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(NAND_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(QSPI_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(QSPI_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(QSPI_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(QSPI_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, QSPI_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(QSPI_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(A9JTAG_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(A9JTAG_S0_IDM_IDM_ERROR_LOG_ADDR_LSB);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(A9JTAG_S0_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(A9JTAG_S0_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, A9JTAG_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(A9JTAG_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#if !defined(CONFIG_MACH_NS) && !defined(CONFIG_MACH_IPROC_P7)
++	errStat = __raw_readl(SRAM_S0_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(SRAM_S0_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(SRAM_S0_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(SRAM_S0_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, SRAM_S0_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(SRAM_S0_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(APBZ_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBZ_S0_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBZ_S0_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBZ_S0_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, APBZ_S0_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(APBZ_S0_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#endif
++	errStat = __raw_readl(AXIIC_DS_3_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_3_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_3_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_3_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, AXIIC_DS_3_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(AXIIC_DS_3_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#if !defined(CONFIG_MACH_NS) && !defined(CONFIG_MACH_IPROC_P7)
++	errStat = __raw_readl(APBW_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBW_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBW_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBW_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, APBW_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(APBW_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++#endif
++	errStat = __raw_readl(APBX_IDM_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBX_IDM_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBX_IDM_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(APBX_IDM_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, APBX_IDM_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(APBX_IDM_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++	errStat = __raw_readl(AXIIC_DS_0_IDM_ERROR_LOG_STATUS_VA);
++	if (errStat > 0)
++	{
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_0_IDM_ERROR_LOG_ADDR_LSB_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_0_IDM_ERROR_LOG_ID_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		errStat = __raw_readl(AXIIC_DS_0_IDM_ERROR_LOG_FLAGS_VA);
++//		printk("%s: %d, %08x\n", __FUNCTION__, __LINE__, errStat);
++		__raw_writel(IDM_ERROR_LOG_CLEAR, AXIIC_DS_0_IDM_ERROR_LOG_COMPLETE_VA);
++		errStat = __raw_readl(AXIIC_DS_0_IDM_ERROR_LOG_STATUS_VA);
++//		printk("%s: %d, %d\n", __FUNCTION__, __LINE__, errStat);
++	}
++//	printk("%s: %d exit\n", __FUNCTION__, __LINE__);
++	return IRQ_HANDLED;
++}
++
++int l2cc_interrupt_error_handler(int val, void *ptr)
++{
++	printk("%s: %d, %d entry\n", __FUNCTION__, __LINE__, val);
++	printk("%s: %d exit\n", __FUNCTION__, __LINE__);
++	return 0;
++}
++
++void request_idm_timeout_interrupts(void)
++{
++	u32 l2cc_mask;
++	int ret = 0;
++
++//	printk("%s: %d entry\n", __FUNCTION__, __LINE__);
++
++	/* clear all pending idm interrupts */
++	idm_timeout_handler(0, NULL);
++
++	/* enable idm error log for all slaves */
++
++	__raw_writel(IDM_ERROR_LOG_ENABLE, IHOST_S1_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, IHOST_S0_IDM_ERROR_LOG_COMPLETE_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, DDR_S1_IDM_ERROR_LOG_COMPLETE_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, DDR_S2_IDM_ERROR_LOG_COMPLETE_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, AXI_PCIE_S0_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, CMICD_S0_IDM_IDM_ERROR_LOG_CONTROL_VA);
++
++#ifndef CONFIG_MACH_NS
++	__raw_writel(IDM_ERROR_LOG_ENABLE, SRAM_S0_IDM_ERROR_LOG_CONTROL_VA);
++#ifndef CONFIG_MACH_IPROC_P7
++	__raw_writel(IDM_ERROR_LOG_ENABLE, APBY_S0_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, APBZ_S0_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, APBW_IDM_IDM_ERROR_LOG_CONTROL_VA);
++#endif
++#endif
++
++	__raw_writel(IDM_ERROR_LOG_ENABLE, ROM_S0_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, NAND_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, QSPI_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, A9JTAG_S0_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, AXIIC_DS_3_IDM_ERROR_LOG_COMPLETE_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, APBX_IDM_IDM_ERROR_LOG_CONTROL_VA);
++	__raw_writel(IDM_ERROR_LOG_ENABLE, AXIIC_DS_0_IDM_ERROR_LOG_CONTROL_VA);
++
++	/* now enable the idm interrupts */
++
++#ifndef CONFIG_MACH_IPROC_P7
++	ret = request_irq(IHOST_S1_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#endif /* !CONFIG_MACH_IPROC_P7 */
++	ret = request_irq(IHOST_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(DDR_S1_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(DDR_S2_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(AXI_PCIE_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(AXI_PCIE_S1_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(CMICD_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(ROM_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(NAND_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(QSPI_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#ifndef CONFIG_MACH_IPROC_P7
++	ret = request_irq(SATA_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#endif /* !CONFIG_MACH_IPROC_P7 */
++	ret = request_irq(A9JTAG_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(SRAM_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(APX_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#ifndef CONFIG_MACH_IPROC_P7
++	ret = request_irq(APW_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(APBY_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(APBZ_S0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#endif /* !CONFIG_MACH_IPROC_P7 */
++	ret = request_irq(AXIIC_DS_0_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(AXIIC_DS_1_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(AXIIC_DS_2_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++	ret = request_irq(AXIIC_DS_3_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#ifndef CONFIG_MACH_IPROC_P7
++	ret = request_irq(AXIIC_DS_4_IDM_IRQ, (irq_handler_t)idm_timeout_handler, IRQF_DISABLED | IRQF_PERCPU, "IDM", NULL);
++	if (ret != 0)
++		printk("%s: %d request_irq return = %d\n", __FUNCTION__, __LINE__, ret);
++#endif /* !CONFIG_MACH_IPROC_P7 */
++//	printk("%s: %d exit\n", __FUNCTION__, __LINE__);
++}
+diff --git a/arch/arm/mach-iproc/include/mach/io_map.h b/arch/arm/mach-iproc/include/mach/io_map.h
+new file mode 100644
+index 0000000..01dd6fd

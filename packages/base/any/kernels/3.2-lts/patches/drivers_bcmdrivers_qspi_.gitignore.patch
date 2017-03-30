@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/qspi/.gitignore
+@@ -0,0 +1,8 @@
++/.built-in.o.cmd
++/built-in.o
++/modules.builtin
++/modules.order
++/.iproc_qspi.o.cmd
++/.qspi_iproc.o.cmd
++/iproc_qspi.o
++/qspi_iproc.o
+diff --git a/drivers/bcmdrivers/qspi/Kconfig b/drivers/bcmdrivers/qspi/Kconfig
+new file mode 100644
+index 0000000..fac545c

@@ -1,0 +1,55 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/include/mach/timer.h
+@@ -0,0 +1,49 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++#ifndef __PLAT_TIMER_H
++#define __PLAT_TIMER_H
++
++#ifdef __KERNEL__
++
++typedef unsigned int timer_tick_count_t;
++typedef unsigned int timer_tick_rate_t;
++typedef unsigned int timer_msec_t;
++
++
++enum gp_timer_rate {
++    GPT_KHZ_32 = 0,
++    GPT_MHZ_1,
++};
++
++/**
++ * timer configuration identifying the timer to use
++ * as system timer (GP Timer)
++ */
++ struct gp_timer_setup {
++    char *name;
++    int ch_num;
++    enum gp_timer_rate rate;
++ };
++
++void iproc_timer_init (struct gp_timer_setup *gpt);
++
++timer_tick_count_t timer_get_tick_count(void);
++timer_tick_rate_t timer_get_tick_rate(void);
++timer_msec_t timer_get_msec(void);
++timer_msec_t timer_ticks_to_msec(timer_tick_count_t ticks);
++
++#endif /* __KERNEL__ */
++#endif /* __PLAT_TIMER_H */
+diff --git a/arch/arm/plat-iproc/include/mach/timex.h b/arch/arm/plat-iproc/include/mach/timex.h
+new file mode 100644
+index 0000000..265c48b

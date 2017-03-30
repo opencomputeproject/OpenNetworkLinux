@@ -1,0 +1,14 @@
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -5561,6 +5561,9 @@ static void mem_cgroup_move_task(struct cgroup_subsys *ss,
+ 
+ struct cgroup_subsys mem_cgroup_subsys = {
+ 	.name = "memory",
++#ifdef CONFIG_CGROUP_MEM_RES_CTLR_DISABLED
++	.disabled = 1,
++#endif
+ 	.subsys_id = mem_cgroup_subsys_id,
+ 	.create = mem_cgroup_create,
+ 	.pre_destroy = mem_cgroup_pre_destroy,
+diff --git a/mm/rmap.c b/mm/rmap.c
+index 98f0bf7..242fb4c 100644

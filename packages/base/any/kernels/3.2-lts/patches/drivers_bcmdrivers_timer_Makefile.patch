@@ -1,0 +1,8 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/timer/Makefile
+@@ -0,0 +1,2 @@
++
++obj-$(CONFIG_IPROC_CCB_TIMER) += iproc_timer.o
+diff --git a/drivers/bcmdrivers/timer/iproc_timer.c b/drivers/bcmdrivers/timer/iproc_timer.c
+new file mode 100644
+index 0000000..b9d11fc

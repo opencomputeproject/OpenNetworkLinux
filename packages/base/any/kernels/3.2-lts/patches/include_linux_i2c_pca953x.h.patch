@@ -1,0 +1,14 @@
+--- a/include/linux/i2c/pca953x.h
++++ b/include/linux/i2c/pca953x.h
+@@ -11,7 +11,7 @@ struct pca953x_platform_data {
+ 	unsigned	gpio_base;
+ 
+ 	/* initial polarity inversion setting */
+-	uint16_t	invert;
++	uint32_t	invert;
+ 
+ 	/* interrupt base */
+ 	int		irq_base;
+diff --git a/include/linux/i2c/quanta-i2cmux.h b/include/linux/i2c/quanta-i2cmux.h
+new file mode 100644
+index 0000000..042dcd2

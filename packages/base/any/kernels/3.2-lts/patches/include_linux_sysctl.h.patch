@@ -1,0 +1,12 @@
+--- a/include/linux/sysctl.h
++++ b/include/linux/sysctl.h
+@@ -275,6 +275,7 @@ enum
+ 	NET_CORE_AEVENT_ETIME=20,
+ 	NET_CORE_AEVENT_RSEQTH=21,
+ 	NET_CORE_WARNINGS=22,
++	NET_CORE_KILL_ROUTES_ON_LINKDOWN=23,
+ };
+ 
+ /* /proc/sys/net/ethernet */
+diff --git a/include/linux/sysfs.h b/include/linux/sysfs.h
+index 2b9cd8d..ecd4cc5 100644

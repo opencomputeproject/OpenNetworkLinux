@@ -1,0 +1,14 @@
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -20,7 +20,9 @@
+ #include <linux/buffer_head.h>	/* grr. try_to_release_page,
+ 				   do_invalidatepage */
+ #include <linux/cleancache.h>
++#ifndef __GENKSYMS__
+ #include <linux/rmap.h>
++#endif
+ #include "internal.h"
+ 
+ 
+diff --git a/mm/vmalloc.c b/mm/vmalloc.c
+index 1431458..bfe67ef 100644

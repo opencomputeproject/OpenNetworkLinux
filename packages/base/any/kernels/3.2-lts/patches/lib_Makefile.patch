@@ -1,0 +1,14 @@
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -116,6 +116,8 @@ obj-$(CONFIG_CPU_RMAP) += cpu_rmap.o
+ 
+ obj-$(CONFIG_CORDIC) += cordic.o
+ 
++obj-$(CONFIG_DQL) += dynamic_queue_limits.o
++
+ hostprogs-y	:= gen_crc32table
+ clean-files	:= crc32table.h
+ 
+diff --git a/lib/dynamic_queue_limits.c b/lib/dynamic_queue_limits.c
+new file mode 100644
+index 0000000..0777c5a

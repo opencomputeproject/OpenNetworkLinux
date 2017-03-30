@@ -16,7 +16,7 @@ import argparse
 import yaml
 from time import sleep
 
-from onl.platform.current import OnlPlatform
+from onl.platform.current import OnlPlatform, OnlPlatformName
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 
 class BaseUpgrade(object):
@@ -163,7 +163,7 @@ class BaseUpgrade(object):
             return default
 
 
-    UPGRADE_STATUS_JSON = "/lib/platform-config/current/onl/upgrade.json"
+    UPGRADE_STATUS_JSON = "/lib/platform-config/%s/onl/upgrade.json" % (OnlPlatformName)
 
     @staticmethod
     def upgrade_status_get():

@@ -7,7 +7,7 @@ uninstall_x86_64()
         # Clear any ONIE boot selection settings and default to Install
         mkdir -p /mnt/onie-boot
         mount `blkid -L ONIE-BOOT` /mnt/onie-boot
-        rm -rf /mnt/onie-boot/grubenv
+        rm -rf /mnt/onie-boot/grub/grubenv
         umount /mnt/onie-boot
 
         # Force ONIE boot selection
@@ -54,5 +54,3 @@ uninstall()
 uninstall $1
 echo "The NOS will be removed at the next reboot."
 exit 0
-
-

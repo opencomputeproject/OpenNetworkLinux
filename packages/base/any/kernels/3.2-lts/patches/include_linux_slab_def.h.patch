@@ -1,0 +1,13 @@
+--- a/include/linux/slab_def.h
++++ b/include/linux/slab_def.h
+@@ -15,8 +15,6 @@
+ #include <asm/cache.h>		/* kmalloc_sizes.h needs L1_CACHE_BYTES */
+ #include <linux/compiler.h>
+ 
+-#include <trace/events/kmem.h>
+-
+ /*
+  * struct kmem_cache
+  *
+diff --git a/include/linux/snmp.h b/include/linux/snmp.h
+index 64f5ca7..b49eae1 100644
