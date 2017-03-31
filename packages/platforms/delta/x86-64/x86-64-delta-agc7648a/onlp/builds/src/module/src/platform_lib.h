@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright (C) 2017 Delta network Technology Corporation.
+ *           Copyright (C) 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -122,6 +122,7 @@
 #define FAN_DATA_STOP_D2_D0     (0xE0)
 #define TURN_OFF (0)
 #define TURN_ON (1)
+#define FAN_ZERO_TACH 960
 
 #define MAX_REAR_FAN_SPEED  20500
 #define MAX_FRONT_FAN_SPEED 23000

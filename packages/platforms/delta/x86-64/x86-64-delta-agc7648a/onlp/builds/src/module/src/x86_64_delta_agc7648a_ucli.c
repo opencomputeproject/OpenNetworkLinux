@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <x86_64_delta_agc7648a/x86_64_delta_agc7648a_config.h>
 
-#if x86_64_delta_agc7648a_CONFIG_INCLUDE_UCLI == 1
+#if X86_64_DELTA_AGC7648A_CONFIGINCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

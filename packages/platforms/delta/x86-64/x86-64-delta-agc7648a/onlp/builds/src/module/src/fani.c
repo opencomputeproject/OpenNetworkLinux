@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright (C) 2017 Delta network Technology Corporation.
+ *           Copyright (C) 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -103,8 +103,8 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     sprintf(fullpath, "%s/%s", SYS_DEV_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(NULL, fullpath);
 
-    /* Return 960 if fan stop */
-    if(rpm == 960)
+    /* If rpm equal FAN_ZERO_TACH meaning 0 */
+    if(rpm == FAN_ZERO_TACH)
     {
         rpm = 0;
     }

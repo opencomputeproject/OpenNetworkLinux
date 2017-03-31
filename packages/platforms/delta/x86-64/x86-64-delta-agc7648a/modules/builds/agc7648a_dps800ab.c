@@ -2,7 +2,7 @@
  * An hwmon driver for agc7648a PSU
  * dps_800ab_16_d.c - Support for DPS-800AB-16 D Power Supply Module
  *
- * Copyright (C) 2017 Delta network Technology Corporation.
+ * Copyright (C) 2017 Delta Networks, Inc.
  * Masan Xu <masan.xu@deltaww.com>
  *
  * Based on:

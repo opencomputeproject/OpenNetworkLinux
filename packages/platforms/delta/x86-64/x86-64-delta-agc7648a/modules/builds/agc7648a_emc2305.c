@@ -1,12 +1,12 @@
 /*
  * <bsn.cl fy=2013 v=gpl>
  *
- *        Copyright (C) 2017 Delta network Technology Corporation.
+ *        Copyright (C) 2017 Delta Networks, Inc.
  *        Masan Xu <masan.xu@deltaww.com>
  *
  *        Based on:
  *         dni_emc2305.c from Aaron Chang <aaron.mh.chang@deltaww.com>
- *         Copyright (C) 2017 Delta network Technology Corporation.
+ *         Copyright (C) 2017 Delta Networks, Inc.
  *
  *        Based on:
  *         emc2305.c

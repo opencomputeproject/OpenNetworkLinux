@@ -1,7 +1,7 @@
 /*
  * An hwmon driver for agc7648a sfp
  *
- * Copyright (C) 2017 Delta network Technology Corporation.
+ * Copyright (C) 2017 Delta Networks, Inc.
  * Aries Lin <aries.lin@deltaww.com>
  *
  * Based on:

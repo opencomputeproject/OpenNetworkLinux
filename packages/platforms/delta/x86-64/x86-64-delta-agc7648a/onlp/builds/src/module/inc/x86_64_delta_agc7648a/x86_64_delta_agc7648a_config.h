@@ -7,8 +7,8 @@
  * @{
  *
  *****************************************************************************/
-#ifndef __x86_64_delta_agc7648a_CONFIG_H__
-#define __x86_64_delta_agc7648a_CONFIG_H__
+#ifndef __X86_64_DELTA_AGC7648A_CONFIGH__
+#define __X86_64_DELTA_AGC7648A_CONFIGH__
 
 #ifdef GLOBAL_INCLUDE_CUSTOM_CONFIG
 #include <global_custom_config.h>
@@ -17,86 +17,86 @@
 #include <x86_64_delta_agc7648a_custom_config.h>
 #endif
 
-/* <auto.start.cdefs(x86_64_delta_agc7648a_CONFIG_HEADER).header> */
+/* <auto.start.cdefs(X86_64_DELTA_AGC7648A_CONFIGHEADER).header> */
 #include <AIM/aim.h>
 /**
- * x86_64_delta_agc7648a_CONFIG_INCLUDE_LOGGING
+ * X86_64_DELTA_AGC7648A_CONFIGINCLUDE_LOGGING
  *
  * Include or exclude logging. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_INCLUDE_LOGGING
-#define x86_64_delta_agc7648a_CONFIG_INCLUDE_LOGGING 1
+#ifndef X86_64_DELTA_AGC7648A_CONFIGINCLUDE_LOGGING
+#define X86_64_DELTA_AGC7648A_CONFIGINCLUDE_LOGGING 1
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_LOG_OPTIONS_DEFAULT
+ * X86_64_DELTA_AGC7648A_CONFIGLOG_OPTIONS_DEFAULT
  *
  * Default enabled log options. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_LOG_OPTIONS_DEFAULT
-#define x86_64_delta_agc7648a_CONFIG_LOG_OPTIONS_DEFAULT AIM_LOG_OPTIONS_DEFAULT
+#ifndef X86_64_DELTA_AGC7648A_CONFIGLOG_OPTIONS_DEFAULT
+#define X86_64_DELTA_AGC7648A_CONFIGLOG_OPTIONS_DEFAULT AIM_LOG_OPTIONS_DEFAULT
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_LOG_BITS_DEFAULT
+ * X86_64_DELTA_AGC7648A_CONFIGLOG_BITS_DEFAULT
  *
  * Default enabled log bits. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_LOG_BITS_DEFAULT
-#define x86_64_delta_agc7648a_CONFIG_LOG_BITS_DEFAULT AIM_LOG_BITS_DEFAULT
+#ifndef X86_64_DELTA_AGC7648A_CONFIGLOG_BITS_DEFAULT
+#define X86_64_DELTA_AGC7648A_CONFIGLOG_BITS_DEFAULT AIM_LOG_BITS_DEFAULT
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+ * X86_64_DELTA_AGC7648A_CONFIGLOG_CUSTOM_BITS_DEFAULT
  *
  * Default enabled custom log bits. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_LOG_CUSTOM_BITS_DEFAULT
-#define x86_64_delta_agc7648a_CONFIG_LOG_CUSTOM_BITS_DEFAULT 0
+#ifndef X86_64_DELTA_AGC7648A_CONFIGLOG_CUSTOM_BITS_DEFAULT
+#define X86_64_DELTA_AGC7648A_CONFIGLOG_CUSTOM_BITS_DEFAULT 0
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_PORTING_STDLIB
+ * X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB
  *
  * Default all porting macros to use the C standard libraries. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_PORTING_STDLIB
-#define x86_64_delta_agc7648a_CONFIG_PORTING_STDLIB 1
+#ifndef X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB
+#define X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB 1
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
+ * X86_64_DELTA_AGC7648A_CONFIGPORTING_INCLUDE_STDLIB_HEADERS
  *
  * Include standard library headers for stdlib porting macros. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
-#define x86_64_delta_agc7648a_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS x86_64_delta_agc7648a_CONFIG_PORTING_STDLIB
+#ifndef X86_64_DELTA_AGC7648A_CONFIGPORTING_INCLUDE_STDLIB_HEADERS
+#define X86_64_DELTA_AGC7648A_CONFIGPORTING_INCLUDE_STDLIB_HEADERS X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_INCLUDE_UCLI
+ * X86_64_DELTA_AGC7648A_CONFIGINCLUDE_UCLI
  *
  * Include generic uCli support. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_INCLUDE_UCLI
-#define x86_64_delta_agc7648a_CONFIG_INCLUDE_UCLI 0
+#ifndef X86_64_DELTA_AGC7648A_CONFIGINCLUDE_UCLI
+#define X86_64_DELTA_AGC7648A_CONFIGINCLUDE_UCLI 0
 #endif
 
 /**
- * x86_64_delta_agc7648a_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION
+ * X86_64_DELTA_AGC7648A_CONFIGINCLUDE_DEFAULT_FAN_DIRECTION
  *
  * Assume chassis fan direction is the same as the PSU fan direction. */
 
 
-#ifndef x86_64_delta_agc7648a_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION
-#define x86_64_delta_agc7648a_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION 0
+#ifndef X86_64_DELTA_AGC7648A_CONFIGINCLUDE_DEFAULT_FAN_DIRECTION
+#define X86_64_DELTA_AGC7648A_CONFIGINCLUDE_DEFAULT_FAN_DIRECTION 0
 #endif
 
 
@@ -129,9 +129,9 @@ const char* x86_64_delta_agc7648a_config_lookup(const char* setting);
  */
 int x86_64_delta_agc7648a_config_show(struct aim_pvs_s* pvs);
 
-/* <auto.end.cdefs(x86_64_delta_agc7648a_CONFIG_HEADER).header> */
+/* <auto.end.cdefs(X86_64_DELTA_AGC7648A_CONFIGHEADER).header> */
 
 #include "x86_64_delta_agc7648a_porting.h"
 
-#endif /* __x86_64_delta_agc7648a_CONFIG_H__ */
+#endif /* __X86_64_DELTA_AGC7648A_CONFIGH__ */
 /* @} */
