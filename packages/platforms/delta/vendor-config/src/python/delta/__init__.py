@@ -2,6 +2,6 @@
 
 from onl.platform.base import *
 
-class OnlPlatformDELTA(OnlPlatformBase):
-    MANUFACTURER='DELTA'
+class OnlPlatformDelta(OnlPlatformBase):
+    MANUFACTURER='Delta'
     PRIVATE_ENTERPRISE_NUMBER=2254

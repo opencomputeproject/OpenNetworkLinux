@@ -81,7 +81,7 @@ INT4 ifnOS_LINUX_BmcI2CGet(UINT1 u1Bus, UINT1 u1Dev, UINT4 u4Addr, UINT1 u1AddrL
         else
         {
             i4Ret = ONLP_STATUS_E_INTERNAL;
-            printf("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
+            AIM_LOG_ERROR("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
         }
         
         pclose(pFd);
@@ -89,7 +89,7 @@ INT4 ifnOS_LINUX_BmcI2CGet(UINT1 u1Bus, UINT1 u1Dev, UINT4 u4Addr, UINT1 u1AddrL
     else
     {
         i4Ret = ONLP_STATUS_E_INTERNAL;
-        printf("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
+        AIM_LOG_ERROR("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
     }
         
     return i4Ret;
@@ -125,7 +125,7 @@ INT4 ifnOS_LINUX_BmcI2CSet(UINT1 u1Bus, UINT1 u1Dev, UINT4 u4Addr, UINT1 u1AddrL
             sprintf(ai1Cmd, "ipmitool raw 0x38 0x5 %d %d %d %d %d %d %d", u1Bus, u1Dev, u4Addr, ((u4Data&0xFF000000)>>24), ((u4Data&0xFF0000)>>16), ((u4Data&0xFF00)>>8), (u4Data&0xFF));
             break;
         default:
-            printf("ERR: Unsupported data length: %d", u1DataLen);
+            AIM_LOG_ERROR("ERR: Unsupported data length: %d", u1DataLen);
     }
     
     pFd = popen(ai1Cmd, "r");
@@ -137,7 +137,7 @@ INT4 ifnOS_LINUX_BmcI2CSet(UINT1 u1Bus, UINT1 u1Dev, UINT4 u4Addr, UINT1 u1AddrL
     else
     {
         i4Ret = ONLP_STATUS_E_INTERNAL;
-        printf("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
+        AIM_LOG_ERROR("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
     }
     
     return i4Ret;
@@ -175,12 +175,12 @@ INT4 ifnOS_LINUX_BmcI2CProbe(UINT1 u1Bus, UINT1 u1Dev)
             u4Data += (UINT1)MMI_XTOI(au1Temp);
             
             if (u4Data != 0x00)
-                printf("Probe failed (ret: %d)", i4Ret);
+                AIM_LOG_ERROR("Probe failed (ret: %d)", i4Ret);
         }
         else
         {
             i4Ret = ONLP_STATUS_E_INTERNAL;     
-            printf("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
+            AIM_LOG_ERROR("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
         }
         
         pclose(pFd);
@@ -188,7 +188,7 @@ INT4 ifnOS_LINUX_BmcI2CProbe(UINT1 u1Bus, UINT1 u1Dev)
     else
     {
         i4Ret = ONLP_STATUS_E_INTERNAL;
-        printf("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
+        AIM_LOG_ERROR("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
     }
     
     return i4Ret;
@@ -231,7 +231,7 @@ INT4 ifnBmcFanSpeedGet(INT1 *pi1FanName, UINT4 *pu4RetData)
         else
         {
             i4Ret = ONLP_STATUS_E_INTERNAL;
-            printf("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
+            AIM_LOG_ERROR("Command \"%s\": Get Data Failed (ret: %d)", ai1Cmd, i4Ret);
         }
         
         pclose(pFd);
@@ -239,7 +239,7 @@ INT4 ifnBmcFanSpeedGet(INT1 *pi1FanName, UINT4 *pu4RetData)
     else
     {
         i4Ret = ONLP_STATUS_E_INTERNAL;
-        printf("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
+        AIM_LOG_ERROR("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
     }
         
     return i4Ret;
@@ -270,7 +270,7 @@ INT4 ifnBmcFanSpeedSet(UINT4 u4FanNumber, UINT4 u4Percentage)
     else
     {
         i4Ret = ONLP_STATUS_E_INTERNAL;
-        printf("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
+        AIM_LOG_ERROR("Execute command \"%s\" failed (ret: %d)", ai1Cmd, i4Ret);
     }
     
     return i4Ret;

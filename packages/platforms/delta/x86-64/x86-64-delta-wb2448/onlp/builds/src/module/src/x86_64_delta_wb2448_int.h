@@ -4,10 +4,10 @@
  *
  *****************************************************************************/
 
-#ifndef __x86_64_delta_wb2448_INT_H__
-#define __x86_64_delta_wb2448_INT_H__
+#ifndef __X86_64_DELTA_WB2448_INT_H__
+#define __X86_64_DELTA_WB2448_INT_H__
 
 #include <x86_64_delta_wb2448/x86_64_delta_wb2448_config.h>
 
 
-#endif /* __x86_64_delta_wb2448_INT_H__ */
+#endif /* __X86_64_DELTA_WB2448_INT_H__ */

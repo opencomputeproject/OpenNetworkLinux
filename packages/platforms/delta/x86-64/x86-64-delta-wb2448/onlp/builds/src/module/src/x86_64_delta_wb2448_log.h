@@ -5,10 +5,10 @@
  *****************************************************************************/
 
 
-#ifndef __x86_64_delta_wb2448_LOG_H__
-#define __x86_64_delta_wb2448_LOG_H__
+#ifndef __X86_64_DELTA_WB2448_LOG_H__
+#define __X86_64_DELTA_WB2448_LOG_H__
 
 #define AIM_LOG_MODULE_NAME x86_64_delta_wb2448
 #include <AIM/aim_log.h>
 
-#endif /* __x86_64_delta_wb2448_LOG_H__ */
+#endif /* __X86_64_DELTA_WB2448_LOG_H__ */

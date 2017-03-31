@@ -100,16 +100,6 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
-void
-onlp_sysi_onie_data_free(uint8_t* data)
-{
-    /*
-    * We returned a static array in onlp_sysi_onie_data_get()
-    * so no free operation is required.
-    */
-}
-
-
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
 {

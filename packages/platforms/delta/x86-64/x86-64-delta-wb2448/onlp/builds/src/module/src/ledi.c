@@ -187,7 +187,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             break;
         
         default:
-            printf("Invalid LED ID!!\n");
+            AIM_LOG_ERROR("Invalid LED ID!!\n");
             rv = ONLP_STATUS_E_PARAM;
     }
     
@@ -276,7 +276,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             
         default:
             rv = ONLP_STATUS_E_PARAM;
-            printf("Invalid LED ID!!\n");
+            AIM_LOG_ERROR("Invalid LED ID!!\n");
     }
     
     if(rv == ONLP_STATUS_OK)

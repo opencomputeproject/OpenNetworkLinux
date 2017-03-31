@@ -99,14 +99,14 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             break;
                 
         default:
-            printf("Invalid Fan ID!!\n");
+            AIM_LOG_ERROR("Invalid Fan ID!!\n");
             rv = ONLP_STATUS_E_PARAM;
     }
     
     if(rv == ONLP_STATUS_OK)
     {
         info->rpm = u4Data;
-        info->percentage = (info->rpm * 100) / x86_64_delta_wb2448_CONFIG_FAN_RPM_MAX;
+        info->percentage = (info->rpm * 100) / X86_64_DELTA_WB2448_CONFIG_FAN_RPM_MAX;
     }
     
     return rv;
@@ -123,7 +123,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     
     if ( p < 0 || p > 100)
     {
-        printf("Invalid fan percentage !!");
+        AIM_LOG_ERROR("Invalid fan percentage !!");
         return ONLP_STATUS_E_PARAM;
     }
     

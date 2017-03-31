@@ -28,7 +28,7 @@
 
 #define SFP_PORT_BASE	49
 
-static int sfp_count__ = x86_64_delta_wb2448_CONFIG_SFP_COUNT;
+static int sfp_count__ = X86_64_DELTA_WB2448_CONFIG_SFP_COUNT;
 
 int
 onlp_sfpi_init(void)

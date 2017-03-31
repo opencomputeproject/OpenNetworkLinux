@@ -92,7 +92,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     else
     {
-        printf("Unable to read PSU present status: %d\r\n", rv);
+        AIM_LOG_ERROR("Unable to read PSU present status: %d\r\n", rv);
     }
     
     info->status |= ONLP_PSU_STATUS_PRESENT;
@@ -110,7 +110,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     else
     {
-        printf("Unable to read PSU failed/good status: %d\r\n", rv);
+        AIM_LOG_ERROR("Unable to read PSU failed/good status: %d\r\n", rv);
     }
         
     return rv;

@@ -3,8 +3,8 @@
  * x86_64_delta_wb2448 Doxygen Header
  *
  *****************************************************************************/
-#ifndef __x86_64_delta_wb2448_DOX_H__
-#define __x86_64_delta_wb2448_DOX_H__
+#ifndef __X86_64_DELTA_WB2448_DOX_H__
+#define _X86_64_DELTA_WB2448_DOX_H__
 
 /**
  * @defgroup x86_64_delta_wb2448 x86_64_delta_wb2448 - x86_64_delta_wb2448 Description
@@ -23,4 +23,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __x86_64_delta_wb2448_DOX_H__ */
+#endif /* __X86_64_DELTA_WB2448_DOX_H__ */

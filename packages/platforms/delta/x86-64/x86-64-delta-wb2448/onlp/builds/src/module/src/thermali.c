@@ -139,7 +139,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             break;		
             
         default:
-            printf("Invalid Thermal ID!!\n");
+            AIM_LOG_ERROR("Invalid Thermal ID!!\n");
             return ONLP_STATUS_E_PARAM;
     }
     
