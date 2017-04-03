@@ -31,9 +31,9 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
         # initialize CPLD
         self.new_i2c_devices(
             [
-                ('accton_i2c_cpld', 0x60, 0),
-                ('accton_i2c_cpld', 0x62, 0),
-                ('accton_i2c_cpld', 0x64, 0),
+                ('accton_i2c_cpld', 0x60, 4),
+                ('accton_i2c_cpld', 0x62, 5),
+                ('accton_i2c_cpld', 0x64, 6),
                 ]
             )
         ########### initialize I2C bus 1 ###########
@@ -46,11 +46,11 @@ class OnlPlatform_x86_64_accton_as7512_32x_r0(OnlPlatformAccton,
                 ('pca9548', 0x71, 1),
 
                 # initiate PSU-1
-                ('as7512_32x_psu1', 0x50, 10),
+                ('as7512_32x_psu', 0x50, 10),
                 ('ym2651', 0x58, 10),
 
                 # initiate PSU-2
-                ('as7512_32x_psu2', 0x53, 11),
+                ('as7512_32x_psu', 0x53, 11),
                 ('ym2651', 0x5b, 11),
 
                 #initiate max6657 thermal sensor
