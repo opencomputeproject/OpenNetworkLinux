@@ -82,6 +82,10 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	struct as7512_32x_psu_data *data = as7512_32x_psu_update_device(dev);
 	u8 status = 0;
 
+	if (!data->valid) {
+		return -EIO;
+	}
+
 	if (attr->index == PSU_PRESENT) {
 		status = !(data->status >> ((2 - data->index) + 2) & 0x1);
 	}
@@ -230,6 +234,7 @@ static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *d
 		int status;
 		int power_good = 0;
 
+		data->valid = 0;
 		dev_dbg(&client->dev, "Starting as7512_32x update\n");
 
 		/* Read psu status */
@@ -237,6 +242,7 @@ static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *d
 
 		if (status < 0) {
 			dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
+			goto exit;
 		}
 		else {
 			data->status = status;
@@ -253,6 +259,7 @@ static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *d
 			if (status < 0) {
 				data->model_name[0] = '\0';
 				dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+				goto exit;
 			}
 			else {
 				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
@@ -263,6 +270,7 @@ static struct as7512_32x_psu_data *as7512_32x_psu_update_device(struct device *d
 		data->valid = 1;
 	}
 
+exit:
 	mutex_unlock(&data->update_lock);
 
 	return data;
