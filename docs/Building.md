@@ -105,29 +105,10 @@ Adding/Removing packages from a SWI:
 
 The list of packages for a given SWI are in
 
-    $ONL/packages/base/any/rootfs/$suite/common/$ARCH-packages.yml # for $ARCH specific packages
-    $ONL/packages/base/any/rootfs/$suite/common/common-packages.yml	# for $ARCH-independent packages
+    $ONL/builds/any/rootfs/jessie/common/*.yml
 
-Build a software image (SWI) for all powerpc platforms:
-------------------------------------------------------------
-    #> cd $ONL/builds/powerpc/swi
-    #> make
-    #> cd builds
-    #> ls *.swi
-    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC.swi
-    #>
+The "all-base-packages.yml" file is for all architectures and the rest are architecture specific package lists.
 
-Build an ONIE-compatible installer for all powerpc platforms.
-This will incorporate the SWI you just built or build it dynamically if not.
-
-This installer image can be served to ONIE on Quanta or Accton platforms:
-------------------------------------------------------------
-    #> cd $ONL/builds/powerpc/installer/legacy
-    #> make
-    #> cd builds
-    #> ls *INSTALLER
-    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC_INSTALLER
-    #>
 
 Example setup on new Debian 8.2 installation
 ------------------------------------------------------------
