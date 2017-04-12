@@ -154,7 +154,7 @@ update_rpsu_fan_status(void){
     last_status = led_control.psu1_present;
     rv = onlp_gpio_get(QUANTA_LY9_PSU_GPIO_PSU1_PRSNT_N, &value);
     if(rv < 0) {
-        AIM_LOG_ERROR("GPIO %d read Error!\n", QUANTA_LY9_PSU_GPIO_PSU1_PRSNT_N);
+        AIM_LOG_ERROR("GPIO %d read Error!", QUANTA_LY9_PSU_GPIO_PSU1_PRSNT_N);
         return rv;
     }
     led_control.psu1_present = (value ? 0 : 1);
@@ -164,7 +164,7 @@ update_rpsu_fan_status(void){
     last_status = led_control.psu1_power_good;
     rv = onlp_gpio_get(QUANTA_LY9_PSU_GPIO_PSU1_PWRGD, &value);
     if(rv < 0) {
-        AIM_LOG_ERROR("GPIO %d read Error!\n", QUANTA_LY9_PSU_GPIO_PSU1_PWRGD);
+        AIM_LOG_ERROR("GPIO %d read Error!", QUANTA_LY9_PSU_GPIO_PSU1_PWRGD);
         return rv;
     }
     led_control.psu1_power_good = (value ? 1 : 0);
@@ -174,7 +174,7 @@ update_rpsu_fan_status(void){
     last_status = led_control.psu2_present;
     rv = onlp_gpio_get(QUANTA_LY9_PSU_GPIO_PSU2_PRSNT_N, &value);
     if(rv < 0) {
-        AIM_LOG_ERROR("GPIO %d read Error!\n", QUANTA_LY9_PSU_GPIO_PSU2_PRSNT_N);
+        AIM_LOG_ERROR("GPIO %d read Error!", QUANTA_LY9_PSU_GPIO_PSU2_PRSNT_N);
         return rv;
     }
     led_control.psu2_present = (value ? 0 : 1);
@@ -184,7 +184,7 @@ update_rpsu_fan_status(void){
     last_status = led_control.psu2_power_good;
     rv = onlp_gpio_get(QUANTA_LY9_PSU_GPIO_PSU2_PWRGD, &value);
     if(rv < 0) {
-        AIM_LOG_ERROR("GPIO %d read Error!\n", QUANTA_LY9_PSU_GPIO_PSU2_PWRGD);
+        AIM_LOG_ERROR("GPIO %d read Error!", QUANTA_LY9_PSU_GPIO_PSU2_PWRGD);
         return rv;
     }
     led_control.psu2_power_good = (value ? 1 : 0);
