@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Delta Network Technology Corporation.
+ *           Copyright (C) 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -91,6 +91,36 @@ static onlp_led_info_t linfo[] =
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
     },
 };
+
+/* Function to check fan 1-10 speed normally*/
+static int dni_fan_speed_good()
+{
+    int rpm = 0, rpm1 = 0, speed_good = 0;
+
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN5_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN5_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    return speed_good;
+}
+
+
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */
@@ -154,6 +184,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
             break;
         case LED_REAR_FAN_TRAY_1:
+           /* Select fan tray 1 */
            dev_info.addr = FAN_TRAY_1;
            mux_info.channel = 0x00;
            r_data = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG);
@@ -169,6 +200,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
            break;
         case LED_REAR_FAN_TRAY_2:
+           /* Select fan tray 2 */
            dev_info.addr = FAN_TRAY_2;
            mux_info.channel = 0x01;
            r_data = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG);
@@ -184,6 +216,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
            break;
         case LED_REAR_FAN_TRAY_3:
+           /* Select fan tray 3 */
            dev_info.addr = FAN_TRAY_3;
            mux_info.channel = 0x02;
            r_data = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG);
@@ -199,6 +232,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
            break;
         case LED_REAR_FAN_TRAY_4:
+           /* Select fan tray 4 */
            dev_info.addr = FAN_TRAY_4;
            mux_info.channel = 0x03;
            r_data = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG);
@@ -214,6 +248,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
            break;
         case LED_REAR_FAN_TRAY_5:
+           /* Select fan tray 5 */
            dev_info.addr = FAN_TRAY_5;
            mux_info.channel = 0x04;
            r_data = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG_2);
@@ -275,7 +310,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     VALIDATE(id);
     int local_id = ONLP_OID_ID_GET(id);
-    int i = 0, count = 0 ;
+    int i = 0, count = 0;
     int state = 0, fantray_present = -1, rpm = 0, rpm1 = 0;
     uint8_t front_panel_led_value, power_state,fan_tray_led_reg_value,fan_tray_led_reg_2_value;
 
@@ -288,7 +323,6 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     dev_info.offset = 0x00;
     dev_info.flags = DEFAULT_FLAG;
     
-
     front_panel_led_value = dni_lock_swpld_read_attribute(LED_REG);
     fan_tray_led_reg_value = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG);
     fan_tray_led_reg_2_value = dni_lock_swpld_read_attribute(FAN_TRAY_LED_REG_2);
@@ -303,11 +337,11 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 mux_info.channel = i;
                 dev_info.addr = FAN_TRAY_1 + i;
                 fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-                if( fantray_present >= 0 )
+                if( fantray_present >= 0)
                     count++;
             }
             /* Set front light of FAN */
-            if(count == ALL_FAN_TRAY_EXIST)
+            if(count == ALL_FAN_TRAY_EXIST && dni_fan_speed_good() == FAN_SPEED_NORMALLY)
             {
                 front_panel_led_value |= 0x01;
                 dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
@@ -380,30 +414,34 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
             break;
         case LED_REAR_FAN_TRAY_1:
+            /* Select fan tray 1 */
             mux_info.channel = 0x00;
             dev_info.addr = FAN_TRAY_1;
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
+            /* Clean bit 7,6 */
+            fan_tray_led_reg_value &= ~0xC0;
             rpm = dni_i2c_lock_read_attribute(NULL, FAN5_FRONT);
             rpm1 = dni_i2c_lock_read_attribute(NULL, FAN5_REAR);
-            fan_tray_led_reg_value &= ~0xC0;
             if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
-            {
+            {/* Green light */
                 fan_tray_led_reg_value |= 0x40;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
             else
-            {
+            {/* Red light */
                 fan_tray_led_reg_value |= 0x80;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
             break;
         case LED_REAR_FAN_TRAY_2:
+            /* Select fan tray 2 */
             mux_info.channel = 0x01;
             dev_info.addr = FAN_TRAY_2;
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
+            /* Clean bit 5,4 */
+            fan_tray_led_reg_value &= ~0x30;
             rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
             rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
-            fan_tray_led_reg_value &= ~0x30;
            
             if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
             {
@@ -417,10 +455,12 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case LED_REAR_FAN_TRAY_3:
+            /* Select fan tray 3 */
             mux_info.channel = 0x02;
             dev_info.addr = FAN_TRAY_3;
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
             fan_tray_led_reg_value &= ~0x0c;
+            /* Clean bit 3,2 */
             rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
             rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
             if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
@@ -435,9 +475,11 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case LED_REAR_FAN_TRAY_4:
+            /* Select fan tray 4 */
             mux_info.channel = 0x03;
             dev_info.addr = FAN_TRAY_4;
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
+            /* Clean bit 1,0 */
             fan_tray_led_reg_value &= ~0x03;
             rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
             rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
@@ -453,12 +495,14 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case LED_REAR_FAN_TRAY_5:
+            /* Select fan tray 5 */
             mux_info.channel = 0x04;
             dev_info.addr = FAN_TRAY_5;
+            fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
+            /* Clean bit 7,6 */
+            fan_tray_led_reg_2_value &= ~0xC0;
             rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
             rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
-            fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-            fan_tray_led_reg_2_value &= ~0xC0;
             if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 !=0 )
             {
                 fan_tray_led_reg_2_value |= 0x40;

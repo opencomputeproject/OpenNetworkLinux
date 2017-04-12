@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Delta Network Technology Corporation.
+ *           Copyright (C) 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -42,16 +42,16 @@ typedef struct fan_path_S
 static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
 {
     { NULL, NULL, NULL },
-    { "3-002c/fan1_fault", "3-002c/fan1_input", "3-002c/fan1_input" },
-    { "3-002c/fan2_fault", "3-002c/fan2_input", "3-002c/fan2_input" },
-    { "3-002c/fan3_fault", "3-002c/fan3_input", "3-002c/fan3_input" },
-    { "3-002c/fan4_fault", "3-002c/fan4_input", "3-002c/fan4_input" },
-    { "3-002c/fan5_fault", "3-002c/fan5_input", "3-002c/fan5_input" },
-    { "3-002d/fan1_fault", "3-002d/fan1_input", "3-002d/fan1_input" },
-    { "3-002d/fan2_fault", "3-002d/fan2_input", "3-002d/fan2_input" },
-    { "3-002d/fan3_fault", "3-002d/fan3_input", "3-002d/fan3_input" },
-    { "3-002d/fan4_fault", "3-002d/fan4_input", "3-002d/fan4_input" },
-    { "3-002d/fan5_fault", "3-002d/fan5_input", "3-002d/fan5_input" },
+    { "3-002c/fan1_fault", "3-002c/fan1_input", "3-002c/fan1_input_percentage" },
+    { "3-002c/fan2_fault", "3-002c/fan2_input", "3-002c/fan2_input_percentage" },
+    { "3-002c/fan3_fault", "3-002c/fan3_input", "3-002c/fan3_input_percentage" },
+    { "3-002c/fan4_fault", "3-002c/fan4_input", "3-002c/fan4_input_percentage" },
+    { "3-002c/fan5_fault", "3-002c/fan5_input", "3-002c/fan5_input_percentage" },
+    { "3-002d/fan1_fault", "3-002d/fan1_input", "3-002d/fan1_input_percentage" },
+    { "3-002d/fan2_fault", "3-002d/fan2_input", "3-002d/fan2_input_percentage" },
+    { "3-002d/fan3_fault", "3-002d/fan3_input", "3-002d/fan3_input_percentage" },
+    { "3-002d/fan4_fault", "3-002d/fan4_input", "3-002d/fan4_input_percentage" },
+    { "3-002d/fan5_fault", "3-002d/fan5_input", "3-002d/fan5_input_percentage" },
     { "4-0058/psu_fan1_fault", "4-0058/psu_fan1_speed_rpm", "4-0058/psu_fan1_duty_cycle_percentage" },
     { "4-0058/psu_fan1_fault", "4-0058/psu_fan1_speed_rpm", "4-0058/psu_fan1_duty_cycle_percentage" }
 };
@@ -121,8 +121,9 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(&mux_info, fullpath);
     info->rpm = rpm;
-    //check fan not to be 960
-    if(info->rpm == 960)
+
+    /* If rpm is FAN_ZERO_TACH, then the rpm value is zero. */
+    if(info->rpm == FAN_ZERO_TACH)
         info->rpm = 0;
 
     /* get speed percentage from rpm */
@@ -321,13 +322,6 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
             return ONLP_STATUS_E_INVALID;
     }
     sprintf(data, "%d", rpm);
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s][data=%s]\n", __FUNCTION__, __LINE__, fullpath, data);
-
-    mux_info_t mux_info;
-    mux_info.offset = SWPLD_PSU_FAN_I2C_MUX_REG;
-    mux_info.channel = 0x05;
-    mux_info.flags = DEFAULT_FLAG;
-    strcpy(mux_info.dev_data, data);
 
     dni_i2c_lock_write_attribute(NULL, data, fullpath);
 
@@ -364,6 +358,17 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         sprintf(channel_data, "%x", PSU_I2C_SEL_PSU2_EEPROM);
 	dni_i2c_lock_write_attribute(NULL, channel_data,
                              "/sys/bus/i2c/devices/4-0058/psu_select_member");
+        break;
+    case FAN_1_ON_FAN_BOARD:
+    case FAN_2_ON_FAN_BOARD:
+    case FAN_3_ON_FAN_BOARD:
+    case FAN_4_ON_FAN_BOARD:
+    case FAN_5_ON_FAN_BOARD:
+    case FAN_6_ON_FAN_BOARD:
+    case FAN_7_ON_FAN_BOARD:
+    case FAN_8_ON_FAN_BOARD:
+    case FAN_9_ON_FAN_BOARD:
+    case FAN_10_ON_FAN_BOARD:
         break;
     default:
         return ONLP_STATUS_E_INVALID;

@@ -1,7 +1,7 @@
 /*
  * <bsn.cl fy=2013 v=gpl>
  *
- *         Copyright (C) 2016 Delta Network Technology Corporation.
+ *        Copyright (C) 2017 Delta Networks, Inc. 
  *
  * This program is free software; you can redistribute it
  * and/or modify it under  the terms ofthe GNU General Public License as
@@ -34,7 +34,8 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *devattr,
                         char *buf);
 static ssize_t set_fan(struct device *dev, struct device_attribute *devattr,
                        const char *buf, size_t count);
-
+static ssize_t set_fan_percentage(struct device *dev, struct device_attribute *devattr,
+                       const char *buf, size_t count);
 static const unsigned short normal_i2c[] = { 0x2C, 0x2D, 0x2E, 0x2F, 0x4C,
                                              0x4D, I2C_CLIENT_END
                                            };
@@ -97,6 +98,11 @@ static SENSOR_DEVICE_ATTR(fan2_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 1);
 static SENSOR_DEVICE_ATTR(fan3_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 2);
 static SENSOR_DEVICE_ATTR(fan4_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 3);
 static SENSOR_DEVICE_ATTR(fan5_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 4);
+static SENSOR_DEVICE_ATTR(fan1_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 0);
+static SENSOR_DEVICE_ATTR(fan2_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 1);
+static SENSOR_DEVICE_ATTR(fan3_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 2);
+static SENSOR_DEVICE_ATTR(fan4_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 3);
+static SENSOR_DEVICE_ATTR(fan5_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 4);
 static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 0);
 static SENSOR_DEVICE_ATTR(pwm2, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 1);
 static SENSOR_DEVICE_ATTR(pwm3, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 2);
@@ -110,6 +116,11 @@ static struct attribute *emc2305_attr[] =
   &sensor_dev_attr_fan3_input.dev_attr.attr,
   &sensor_dev_attr_fan4_input.dev_attr.attr,
   &sensor_dev_attr_fan5_input.dev_attr.attr,
+  &sensor_dev_attr_fan1_input_percentage.dev_attr.attr,
+  &sensor_dev_attr_fan2_input_percentage.dev_attr.attr,
+  &sensor_dev_attr_fan3_input_percentage.dev_attr.attr,
+  &sensor_dev_attr_fan4_input_percentage.dev_attr.attr,
+  &sensor_dev_attr_fan5_input_percentage.dev_attr.attr,
   &sensor_dev_attr_pwm1.dev_attr.attr,
   &sensor_dev_attr_pwm2.dev_attr.attr,
   &sensor_dev_attr_pwm3.dev_attr.attr,
@@ -117,6 +128,49 @@ static struct attribute *emc2305_attr[] =
   &sensor_dev_attr_pwm5.dev_attr.attr,
   NULL
 };
+
+
+static ssize_t set_fan_percentage(struct device *dev, struct device_attribute *devattr,
+                       const char *buf, size_t count)
+{
+  struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+  struct i2c_client *client = to_i2c_client(dev);
+  struct emc2305_data *data = i2c_get_clientdata(client);
+  unsigned long  hsb, lsb;
+  unsigned long  tech;
+  unsigned long val;
+  int ret;
+
+  MUX_SELECT;
+  ret = kstrtoul(buf, 10, &val);
+  if (ret)
+  {
+    return ret;
+  }
+  if (val > 100)
+  {
+    return -EINVAL;
+  }
+
+  if (val <= 5)
+  {
+    hsb = 0xff; /*high bit*/
+    lsb = 0xe0; /*low bit*/
+  }
+  else
+  {
+    val = val * 230;
+    tech = (3932160 * 2) / (val > 0 ? val : 1);
+    hsb = (uint8_t)(((tech << 3) >> 8) & 0x0ff);
+    lsb = (uint8_t)((tech << 3) & 0x0f8);
+  }
+
+  mutex_lock(&data->lock);
+  i2c_smbus_write_byte_data(client, EMC2305_REG_FAN_REAR_H_RPM(attr->index), hsb);
+  i2c_smbus_write_byte_data(client, EMC2305_REG_FAN_REAR_L_RPM(attr->index), lsb);
+  mutex_unlock(&data->lock);
+  return count;
+}
 
 
 static ssize_t show_fan(struct device *dev, struct device_attribute *devattr,

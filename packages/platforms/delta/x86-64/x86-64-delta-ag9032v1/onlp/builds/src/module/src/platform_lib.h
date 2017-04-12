@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Delta Network Technology Corporation.
+ *           Copyright (C) 2017 Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -63,18 +63,8 @@
 #define SFP_RESET_PATH          "/sys/bus/i2c/devices/5-0050/sfp_reset"
 #define SFP_LP_MODE_PATH        "/sys/bus/i2c/devices/5-0050/sfp_lp_mode"
 
-
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
-
-/*
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/35-0038/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/36-003b/"
-
-#define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
-#define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
-*/
-
 
 /* BUS define */
 #define I2C_BUS_0               (0)
@@ -94,7 +84,12 @@
 #define ALL_FAN_TRAY_EXIST (5)
 #define PSU_STATUS_PRESENT    (1)
 #define PSU_NODE_MAX_PATH_LEN (64)
-
+#define FAN_SPEED_NORMALLY (5)
+#define SPEED_25_PERCENTAGE (25)
+#define SPEED_50_PERCENTAGE (50)
+#define SPEED_75_PERCENTAGE (75)
+#define SPEED_100_PERCENTAGE (100)
+#define FAN_ZERO_TACH (960)
 
 /* REG define*/
 #define DEFAULT_FLAG (0x00)
@@ -141,8 +136,6 @@
 #define SFP_RESET_3     (0x3E)
 #define SFP_RESET_4     (0x3F)
 
-
-//int deviceNodeWriteInt(char *filename, int value, int data_len);
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len);
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
 
@@ -167,13 +160,6 @@ typedef struct mux_info_s
 
 }mux_info_t;
 
-/*
-typedef enum psu_type {
-    PSU_TYPE_UNKNOWN,
-    PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
-} psu_type_t;
-*/
 pthread_mutex_t mutex;
 pthread_mutex_t mutex1;
 int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info);
@@ -182,16 +168,6 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_lock_swpld_read_attribute(int addr);
 int dni_lock_swpld_write_attribute(int addr, int addr1);
-//int dni_i2c_lock_read_attribute_only(char * fullpath);
-//psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-
-#define DEBUG_MODE 0
-
-#if (DEBUG_MODE == 1)
-    #define DEBUG_PRINT(format, ...)   printf(format, __VA_ARGS__)
-#else
-    #define DEBUG_PRINT(format, ...)
-#endif
 
 typedef enum
 {

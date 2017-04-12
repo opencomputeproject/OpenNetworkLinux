@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Delta Network Technology Corporation.
+ *           Copyright 2017 (C) Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -37,17 +37,6 @@
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
-
-#define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, r_data, nbytes)) <= 0){ \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
 
 static char* last_path[] =  /* must map with onlp_thermal_id */
 {
@@ -178,7 +167,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     
     /* Current temperature in milli-celsius */
     info->mcelsius = r_data / temp_base;
-    DEBUG_PRINT("\n[Debug][%s][%d][save data: %d]\n", __FUNCTION__, __LINE__, info->mcelsius);
 
     return ONLP_STATUS_OK;
 }

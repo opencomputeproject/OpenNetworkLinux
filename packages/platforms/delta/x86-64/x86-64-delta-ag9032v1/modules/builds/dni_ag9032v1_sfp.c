@@ -1,9 +1,9 @@
 /*
  * An hwmon driver for delta ag9032v1 qsfp
  *
- * Copyright (C) 2016 Delta Network Technology Corporation.
+ * Copyright (C) 2017 Delta Networks, Inc.
  *
- * DNI <DNIsales@delta.com.tw> 
+ * Aries Lin <aries.lin@deltaww.com> 
  *
  * Based on ad7414.c
  *

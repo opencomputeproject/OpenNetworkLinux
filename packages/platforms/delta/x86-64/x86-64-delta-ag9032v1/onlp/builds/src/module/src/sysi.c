@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Delta Network Technology Corporation.
+ *           Copyright 2017 (C) Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -79,7 +79,7 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 
     cpld_version = onlp_i2c_readb(I2C_BUS_2, CPUCPLD, CPUPLD_VERSION_ADDR, DEFAULT_FLAG); 
     swpld_version = dni_lock_swpld_read_attribute(SWPLD_VERSION_ADDR);
-    pi->cpld_versions = aim_fstrdup("%d.%d", cpld_version, swpld_version);
+    pi->cpld_versions = aim_fstrdup("%d , SWPLD_Versions: %d", cpld_version, swpld_version);
     return ONLP_STATUS_OK;
 }
 
@@ -103,13 +103,13 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         *e++ = ONLP_THERMAL_ID_CREATE(i);
     }
 
-    /* 4 LEDs on the chassis */
+    /* 9 LEDs on the chassis */
     for (i = 1; i <= NUM_OF_LED_ON_BOARDS; i++)
     {
         *e++ = ONLP_LED_ID_CREATE(i);
     }
 
-    /* 4 Fans on the chassis */
+    /* 10 Fans on the chassis */
     for (i = 1; i <= NUM_OF_FAN_ON_FAN_BOARD; i++)
     {
         *e++ = ONLP_FAN_ID_CREATE(i);
@@ -130,7 +130,6 @@ onlp_sysi_platform_manage_fans(void)
      int i = 0;
      int highest_temp = 0;
      onlp_thermal_info_t thermal[8];
-     int new_duty_RPM;
      int new_duty_percentage;
     /* Get current temperature
      */
@@ -158,45 +157,40 @@ onlp_sysi_platform_manage_fans(void)
 
     if (highest_temp > 0 && highest_temp <= 30)
     {
-        new_duty_RPM = 6000;
+        new_duty_percentage = SPEED_25_PERCENTAGE;
     } 
     else if (highest_temp > 30 && highest_temp <= 40)
     {
-        new_duty_RPM = 12000;
+       new_duty_percentage = SPEED_50_PERCENTAGE;
     }
     else if (highest_temp > 40 && highest_temp <= 50)
     {
-        new_duty_RPM = 18000;
-    } else
-    {
-        new_duty_RPM = 23000;
+        new_duty_percentage = SPEED_75_PERCENTAGE;
     }
-
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_3_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_4_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_5_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_6_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_7_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_8_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_9_ON_FAN_BOARD), new_duty_RPM);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_10_ON_FAN_BOARD), new_duty_RPM);
-
+    else
+    {
+        new_duty_percentage = SPEED_100_PERCENTAGE;
+    }
+    /* Set speed on fan 1-10*/
+    for(i = 1 ; i <= 10; i++)
+    {
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), new_duty_percentage);
+    }
+    
     /*Set fans' speed of PSU 1, 2 
      */
     if(highest_temp >= 0 && highest_temp <= 55)
     {
-	new_duty_percentage = 50;	 
+	new_duty_percentage = SPEED_50_PERCENTAGE;
     }
     else if(highest_temp > 55)
     {
-        new_duty_percentage = 100;
+        new_duty_percentage = SPEED_100_PERCENTAGE;
     }
     else
     {
-	new_duty_percentage = 100;
-	AIM_LOG_ERROR("Unable to get thermal temp");
+	new_duty_percentage = SPEED_100_PERCENTAGE;
+	AIM_LOG_ERROR("Unable to get thermal temperature");
     }
     onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1) , new_duty_percentage);
     onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1_ON_PSU2) , new_duty_percentage);
@@ -233,7 +227,7 @@ onlp_sysi_platform_manage_leds(void)
     else
         onlp_ledi_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR2), TURN_ON);
     
-    /* Rare light fan tray 1 */
+    /* Rear light fan tray 1-5 */
     dev_info_t dev_info;
     dev_info.bus = I2C_BUS_3;
     dev_info.addr = FAN_IO_CTL;
@@ -245,7 +239,7 @@ onlp_sysi_platform_manage_leds(void)
     mux_info.flags = DEFAULT_FLAG;
     mux_info.channel = 0x07;
  
-    /* Turn on or off the leds */
+    /* Turn on or off the fan trays' leds */
     present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
     if((present_bit & ((bit+1)<<4)) == 0)
         onlp_ledi_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1), TURN_OFF);

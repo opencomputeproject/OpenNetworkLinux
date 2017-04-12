@@ -1,14 +1,14 @@
 /*
  * I2C for CPLD
  *
- * Copyright (C) 2017 Delta network Technology Corporation.
+ * Copyright (C) 2017 Delta Networks, Inc.
  * Masan Xu <masan.xu@deltaww.com>
  *
  * This module supports cpld that read and write.
  *
  * Based on:
  *  i2c_x86-64-agc7648-cpld.c from Aaron Chang <aaron.mh.chang@deltaww.com>
- * Copyright (C) 2017 Delta network Technology Corporation.
+ * Copyright (C) 2017 Delta Networks, Inc.
  * 
  * Based on:
  *  pca954x.c from Kumar Gala <galak@kernel.crashing.org>

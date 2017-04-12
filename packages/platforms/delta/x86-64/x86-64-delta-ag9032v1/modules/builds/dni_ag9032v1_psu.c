@@ -2,9 +2,9 @@
  * An hwmon driver for delta AG9032v1 PSU
  * dps_800ab_16_d.c - Support for DPS-800AB-16 D Power Supply Module
  *
- * Copyright (C) 2016 Delta Network Technology Corporation
+ * Copyright (C) 2017 Delta Networks, Inc.
  *
- * DNI <DNIsales@delta.com.tw>
+ * Aries Lin <aries.lin@deltaww.com>
  *
  * Based on ym2651y.c
  * Based on ad7414.c
