@@ -1,0 +1,96 @@
+diff --git a/drivers/net/ethernet/intel/igb/e1000_82575.c b/drivers/net/ethernet/intel/igb/e1000_82575.c
+index d65a0b1..e070d26 100644
+--- a/drivers/net/ethernet/intel/igb/e1000_82575.c
++++ b/drivers/net/ethernet/intel/igb/e1000_82575.c
+@@ -104,6 +104,7 @@ static void e1000_raise_i2c_clk(struct e1000_hw *hw, u32 *i2cctl);
+ static void e1000_lower_i2c_clk(struct e1000_hw *hw, u32 *i2cctl);
+ static s32 e1000_set_i2c_data(struct e1000_hw *hw, u32 *i2cctl, bool data);
+ static bool e1000_get_i2c_data(u32 *i2cctl);
++static s32 e1000_set_phy_mode_external_50210(struct e1000_hw *hw, struct e1000_phy_info *phy, u32 ctrl_ext);
+ 
+ static const u16 e1000_82580_rxpbs_table[] = {
+ 	36, 72, 144, 1, 2, 4, 8, 16, 35, 70, 140 };
+@@ -215,6 +216,11 @@ static s32 e1000_init_phy_params_82575(struct e1000_hw *hw)
+ 	/* Set phy->phy_addr and phy->id. */
+ 	ret_val = e1000_get_phy_id_82575(hw);
+ 
++    if(phy->id == NULL)
++    {
++        ret_val = e1000_set_phy_mode_external_50210(hw, phy, ctrl_ext);
++    }
++    
+ 	/* Verify phy id and set remaining function pointers */
+ 	switch (phy->id) {
+ 	case M88E1543_E_PHY_ID:
+@@ -312,6 +318,8 @@ static s32 e1000_init_phy_params_82575(struct e1000_hw *hw)
+ 	case BCM54616_E_PHY_ID:
+ 		phy->type = e1000_phy_bcm54616;
+ 		break;
++    case BCM50210S_E_PHY_ID:
++        break;
+ 	default:
+ 		ret_val = -E1000_ERR_PHY;
+ 		goto out;
+@@ -3934,3 +3942,47 @@ s32 e1000_init_thermal_sensor_thresh_generic(struct e1000_hw *hw)
+ 	}
+ 	return E1000_SUCCESS;
+ }
++
++static s32 e1000_set_phy_mode_external_50210(struct e1000_hw *hw, struct e1000_phy_info *phy, u32 ctrl_ext)
++{
++    u32 u32Data = 0;
++    s32 ret_val = E1000_SUCCESS;
++    
++    u32Data = E1000_READ_REG(hw, E1000_MDICNFG);
++    u32Data |= 0x80000000;
++    E1000_WRITE_REG(hw, E1000_MDICNFG, u32Data);
++    
++    E1000_WRITE_REG(hw, E1000_CTRL_EXT, ctrl_ext);
++    e1000_reset_mdicnfg_82580(hw);
++    
++    if (e1000_sgmii_active_82575(hw) && !e1000_sgmii_uses_mdio_82575(hw)) 
++    {
++        phy->ops.read_reg = e1000_read_phy_reg_sgmii_82575;
++        phy->ops.write_reg = e1000_write_phy_reg_sgmii_82575;
++    } 
++    else 
++    {
++        switch (hw->mac.type) 
++        {
++            case e1000_82580:
++            case e1000_i350:
++            case e1000_i354:
++                phy->ops.read_reg = e1000_read_phy_reg_82580;
++                phy->ops.write_reg = e1000_write_phy_reg_82580;
++                break;
++            case e1000_i210:
++            case e1000_i211:
++                phy->ops.read_reg = e1000_read_phy_reg_gs40g;
++                phy->ops.write_reg = e1000_write_phy_reg_gs40g;
++                break;
++            default:
++                phy->ops.read_reg = e1000_read_phy_reg_igp;
++                phy->ops.write_reg = e1000_write_phy_reg_igp;
++        }
++    }
++    
++    /* Set phy->phy_addr and phy->id. */
++    ret_val = e1000_get_phy_id_82575(hw);
++    
++    return ret_val;
++}
+\ No newline at end of file
+diff --git a/drivers/net/ethernet/intel/igb/e1000_defines.h b/drivers/net/ethernet/intel/igb/e1000_defines.h
+index c21f0be..29d8933 100644
+--- a/drivers/net/ethernet/intel/igb/e1000_defines.h
++++ b/drivers/net/ethernet/intel/igb/e1000_defines.h
+@@ -1186,7 +1186,8 @@
+ #define IGP04E1000_E_PHY_ID	0x02A80391
+ #define BCM54616_E_PHY_ID   0x3625D10
+ #define BCM5461S_PHY_ID     0x002060C0
+-#define M88_VENDOR		0x0141
++#define M88_VENDOR          0x0141
++#define BCM50210S_E_PHY_ID  0x600d8590
+ 
+ /* M88E1000 Specific Registers */
+ #define M88E1000_PHY_SPEC_CTRL		0x10  /* PHY Specific Control Reg */

@@ -57,7 +57,7 @@ typedef struct fan_path_S
 
 #define _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) \
     { #prj"fan"#id"_fault", #prj"fan"#id"_front_speed_rpm", \
-      #prj"fan"#id"_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
+      #prj"fan_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
 
 #define MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id)
 
@@ -173,6 +173,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
     if (atoi(r_data) > 0) {
         info->status |= ONLP_FAN_STATUS_FAILED;
+        return ONLP_STATUS_OK;
     }
 
     /* get fan direction (both : the same) 

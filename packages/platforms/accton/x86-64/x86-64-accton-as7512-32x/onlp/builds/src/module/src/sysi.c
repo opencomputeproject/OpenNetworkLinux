@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <onlplib/file.h>
 #include <onlp/platformi/sysi.h>
 #include <onlp/platformi/ledi.h>
 #include <onlp/platformi/thermali.h>
@@ -34,13 +35,22 @@
 
 #include "x86_64_accton_as7512_32x_int.h"
 #include "x86_64_accton_as7512_32x_log.h"
-#include "platform_lib.h"
-#include <onlplib/file.h>
 
-#define NUM_OF_THERMAL_ON_MAIN_BROAD  5
-#define NUM_OF_FAN_ON_MAIN_BROAD      6
+#include "platform_lib.h"
+
+#define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
+#define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
 #define NUM_OF_PSU_ON_MAIN_BROAD      2
 #define NUM_OF_LED_ON_MAIN_BROAD      5
+
+#define PREFIX_PATH_ON_CPLD_DEV       "/sys/bus/i2c/devices/"
+#define NUM_OF_CPLD                   3
+static char arr_cplddev_name[NUM_OF_CPLD][10] =
+{
+    "4-0060",
+    "5-0062",
+    "6-0064"
+};
 
 const char*
 onlp_sysi_platform_get(void)
@@ -58,10 +68,32 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
             return ONLP_STATUS_OK;
         }
     }
+
     aim_free(rdata);
     *size = 0;
     return ONLP_STATUS_E_INTERNAL;
 }
+
+int
+onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
+{
+    int   i, v[NUM_OF_CPLD]={0};
+    for (i=0; i < NUM_OF_CPLD; i++) {
+        v[i] = 0;
+        if(onlp_file_read_int(v+i, "%s%s/version", PREFIX_PATH_ON_CPLD_DEV, arr_cplddev_name[i]) < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+    pi->cpld_versions = aim_fstrdup("%d.%d.%d", v[0], v[1], v[2]);
+    return 0;
+}
+
+void
+onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
+{
+    aim_free(pi->cpld_versions);
+}
+
 
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
