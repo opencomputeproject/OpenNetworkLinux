@@ -1,0 +1,17 @@
+--- a/drivers/usb/host/ohci-hcd.c
++++ b/drivers/usb/host/ohci-hcd.c
+@@ -1116,6 +1116,12 @@ MODULE_LICENSE ("GPL");
+ #define PLATFORM_DRIVER		ohci_xls_driver
+ #endif
+ 
++#ifdef CONFIG_USB_OHCI_BCM
++#include "../../bcmdrivers/usb2h/ohci-bcm.c"
++#define PLATFORM_DRIVER		ohci_bcm_driver
++#endif
++
++
+ #if	!defined(PCI_DRIVER) &&		\
+ 	!defined(PLATFORM_DRIVER) &&	\
+ 	!defined(OMAP1_PLATFORM_DRIVER) &&	\
+diff --git a/drivers/usb/misc/emi26.c b/drivers/usb/misc/emi26.c
+index a6521c9..9da3f48 100644

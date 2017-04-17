@@ -1,0 +1,87 @@
+--- a/drivers/hwmon/Kconfig
++++ b/drivers/hwmon/Kconfig
+@@ -293,6 +293,26 @@ config SENSORS_ATXP1
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called atxp1.
+ 
++config SENSORS_CY8CXX
++	tristate "Cypress Semiconductor CY8Cxx"
++	depends on I2C
++	help
++	  If you say yes here you get support for Cypress Semiconductor
++	  CY8C series sensor chips.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called cy8cxx.
++
++config SENSORS_CY8C3245R1
++	tristate "Cypress Semiconductor CY8C3245R1"
++	depends on I2C
++	help
++	  If you say yes here you get support for Cypress Semiconductor
++	  CY8C3245 first revision sensor chips.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called cy8c3245r1.
++
+ config SENSORS_DS620
+ 	tristate "Dallas Semiconductor DS620"
+ 	depends on I2C
+@@ -474,8 +494,8 @@ config SENSORS_IT87
+ 	select HWMON_VID
+ 	help
+ 	  If you say yes here you get support for ITE IT8705F, IT8712F,
+-	  IT8716F, IT8718F, IT8720F, IT8721F, IT8726F and IT8758E sensor
+-	  chips, and the SiS960 clone.
++	  IT8716F, IT8718F, IT8720F, IT8721F, IT8726F, IT8728F and IT8758E
++	  sensor chips, and the SiS960 clone.
+ 
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called it87.
+@@ -812,6 +832,27 @@ config SENSORS_MAX6650
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called max6650.
+ 
++config SENSORS_MAX6620
++	tristate "Maxim MAX6620 sensor chip"
++	depends on I2C && EXPERIMENTAL
++	help
++	  If you say yes here you get support for the MAX6620
++	  sensor chips.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called max6620.
++
++config SENSORS_MAX6697
++        tristate "Maxim MAX6697 and compatibles"
++        depends on I2C
++        help
++          If you say yes here you get support for MAX6581, MAX6602, MAX6622,
++          MAX6636, MAX6689, MAX6693, MAX6694, MAX6697, MAX6698, and MAX6699
++          temperature sensor chips.
++
++          This driver can also be built as a module.  If so, the module
++          will be called max6697.
++
+ config SENSORS_NTC_THERMISTOR
+ 	tristate "NTC thermistor support"
+ 	depends on EXPERIMENTAL
+@@ -964,6 +1005,16 @@ config SENSORS_EMC2103
+ 	  This driver can also be built as a module.  If so, the module
+ 	  will be called emc2103.
+ 
++config SENSORS_EMC2305
++	tristate "SMSC EMC2305"
++	depends on I2C
++	help
++	  If you say yes here you get support for the SMSC EMC2305/EMC2303
++	  fan controller chips.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called emc2305.
++
+ config SENSORS_EMC6W201
+ 	tristate "SMSC EMC6W201"
+ 	depends on I2C
+diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
+index 8251ce8..ff3a18e 100644

@@ -325,13 +325,14 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
 }
 
 static void
-make_printable__(char* string)
+make_printable__(char* string, int size)
 {
     char* p;
-    for(p = string; p && *p; p++) {
+    for(p = string; p && *p && size; p++) {
         if(!isprint(*p)) {
             *p = '?';
         }
+        size --;
     }
 }
 
@@ -407,21 +408,21 @@ sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
     const char *empty = "                ";
     if (*vendor) {
         aim_strlcpy(se->info.vendor, (char*)vendor, sizeof(se->info.vendor));
-        make_printable__(se->info.vendor);
+        make_printable__(se->info.vendor, sizeof(se->info.vendor));
     }
     else {
         aim_strlcpy(se->info.vendor, empty, 17);
     }
     if (*model) {
         aim_strlcpy(se->info.model, (char*)model, sizeof(se->info.model));
-        make_printable__(se->info.model);
+        make_printable__(se->info.model, sizeof(se->info.model));
     }
     else {
         aim_strlcpy(se->info.model, empty, 17);
     }
     if (*serial) {
         aim_strlcpy(se->info.serial, (char*)serial, sizeof(se->info.serial));
-        make_printable__(se->info.serial);
+        make_printable__(se->info.serial, sizeof(se->info.serial));
     }
     else {
         aim_strlcpy(se->info.serial, empty, 17);

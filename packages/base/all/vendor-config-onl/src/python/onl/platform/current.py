@@ -17,7 +17,7 @@
 import os
 import importlib
 
-def import_subsystem_platform_class(subsystem='onl', klass='OnlPlatform'):
+def platform_name_get():
     # Determine the current platform name.
     platform = None
     if os.path.exists("/etc/onl/platform"):
@@ -32,13 +32,14 @@ def import_subsystem_platform_class(subsystem='onl', klass='OnlPlatform'):
     if platform is None:
         raise RuntimeError("cannot find a platform declaration")
 
+    return platform
+
+def import_subsystem_platform_class(subsystem='onl', klass='OnlPlatform'):
+    platform = platform_name_get()
     platform_module = platform.replace('-', '_').replace('.', '_')
-
-    # Import the platform module
     m = importlib.import_module('%s.platform.%s' % (subsystem, platform_module))
-
     return getattr(m, '%s_%s' % (klass, platform_module))
 
 
+OnlPlatformName = platform_name_get()
 OnlPlatform = import_subsystem_platform_class()
-

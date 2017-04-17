@@ -1,0 +1,14 @@
+--- a/drivers/i2c/muxes/pca9541.c
++++ b/drivers/i2c/muxes/pca9541.c
+@@ -353,7 +353,8 @@ static int pca9541_probe(struct i2c_client *client,
+ 	force = 0;
+ 	if (pdata)
+ 		force = pdata->modes[0].adap_id;
+-	data->mux_adap = i2c_add_mux_adapter(adap, client, force, 0,
++	data->mux_adap = i2c_add_mux_adapter(adap, &client->dev, client,
++					     force, 0,
+ 					     pca9541_select_chan,
+ 					     pca9541_release_chan);
+ 
+diff --git a/drivers/i2c/muxes/pca954x.c b/drivers/i2c/muxes/pca954x.c
+index 6f89536..c9db544 100644

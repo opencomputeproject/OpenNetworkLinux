@@ -1,0 +1,33 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/localtimer.c
+@@ -0,0 +1,27 @@
++/*
++ *  linux/arch/arm/mach-iproc/localtimer.c
++ *
++ *  Copyright (C) 2002 ARM Ltd.
++ *  All Rights Reserved
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++#include <linux/init.h>
++#include <linux/smp.h>
++#include <linux/clockchips.h>
++
++#include <asm/smp_twd.h>
++#include <asm/localtimer.h>
++#include <mach/irqs.h>
++
++/*
++ * Setup the local clock events for a CPU.
++ */
++int __cpuinit local_timer_setup(struct clock_event_device *evt)
++{
++   evt->irq = IRQ_LOCALTIMER;
++   twd_timer_setup(evt);
++   return 0;
++}
+diff --git a/arch/arm/mach-iproc/northstar.c b/arch/arm/mach-iproc/northstar.c
+new file mode 100644
+index 0000000..dc23a34

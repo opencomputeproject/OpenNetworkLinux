@@ -106,7 +106,10 @@ class SubprocessMixin:
                     sys.stderr.write(fd.read())
                 os.unlink(v2Out)
         else:
-            return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
+            try:
+                return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
+            except subprocess.CalledProcessError:
+                return ''
 
     def rmdir(self, path):
         self.log.debug("+ /bin/rmdir %s", path)

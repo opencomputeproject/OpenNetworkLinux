@@ -1,0 +1,60 @@
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -500,6 +500,55 @@ config USB_SWITCH_FSA9480
+ 	  stereo and mono audio, video, microphone and UART data to use
+ 	  a common connector port.
+ 
++config EARLY_DMA_ALLOC
++	bool "Early DMA Memory Allocator"
++	depends on HAS_DMA
++
++	---help---
++	  This driver locks down a region of DMA accessible memory
++          early in the boot process.  This memory can be used by other
++          drivers that might rmmod/insmod, insuring the memory region
++          does not become fragmented.
++
++config EDA_DEF_SIZE
++	hex "EDA Default Region Size"
++	depends on EARLY_DMA_ALLOC
++	default 0x04000000
++	help
++	  Default size of the reserved memory pool, if not altered by the
++	  open firmware interface or kernel boot parameter. This memory
++	  will not be accessable to the rest of the system. Default is
++	  64MB.
++
++config EDA_DEF_ALIGN
++	hex "EDA Default Alignment"
++	depends on EARLY_DMA_ALLOC
++	default 0x00100000
++	help
++	  Default alignment of the memory region. Default is 1MB.
++
++config RETIMER_CLASS
++	tristate "Retimer Class support"
++	depends on SYSFS
++	depends on OF
++	default y
++	help
++	  Creates a hardware class in sysfs called "retimer_dev",
++	  providing a common place to register RETIMER devices.
++
++	  This support can also be built as a module.  If so, the module
++	  will be called retimer_class.
++
++config DS100DF410
++	tristate "DS100DF410 Low Power 10GbE Quad Channel Retimer"
++	depends on I2C && SYSFS
++	help
++	  If you say yes here you get support for the DS100DF410
++	  Low Power 10GbE Quad Channel Retimer.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called ds100df410.
++
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+ source "drivers/misc/cb710/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index b26495a..ad70876 100644

@@ -1,0 +1,38 @@
+--- a/drivers/misc/eeprom/Kconfig
++++ b/drivers/misc/eeprom/Kconfig
+@@ -1,5 +1,16 @@
+ menu "EEPROM support"
+ 
++config EEPROM_CLASS
++	tristate "EEPROM Hardware Class support"
++	depends on SYSFS
++	default y
++	help
++	  Creates a hardware class in sysfs called "eeprom_dev",
++	  providing a common place to register EEPROM devices.
++
++	  This support can also be built as a module.  If so, the module
++	  will be called eeprom_class.
++
+ config EEPROM_AT24
+ 	tristate "I2C EEPROMs from most vendors"
+ 	depends on I2C && SYSFS
+@@ -95,4 +106,16 @@ config EEPROM_DIGSY_MTC_CFG
+ 
+ 	  If unsure, say N.
+ 
++config EEPROM_SFF_8436
++	tristate "SFF-8436 QSFP EEPROMs support"
++	depends on I2C && SYSFS
++	help
++	  If you say yes here you get read-only support for the  EEPROM of
++	  the QSFPs which are implemented as per SFF-8436.
++
++	  All other features of this chip should be accessed via i2c-dev.
++
++	  This driver can also be built as a module.  If so, the module
++	  will be called sff_8436.
++
+ endmenu
+diff --git a/drivers/misc/eeprom/Makefile b/drivers/misc/eeprom/Makefile
+index fc1e81d..9edd559 100644

@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/usb2h/.gitignore
+@@ -0,0 +1,8 @@
++/.built-in.o.cmd
++/built-in.o
++/modules.builtin
++/modules.order
++/.bcm-iproc.o.cmd
++/.iproc_usb2h.o.cmd
++/bcm-iproc.o
++/iproc_usb2h.o
+diff --git a/drivers/bcmdrivers/usb2h/Kconfig b/drivers/bcmdrivers/usb2h/Kconfig
+new file mode 100644
+index 0000000..0a3b2be

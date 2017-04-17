@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/mdio/Kconfig
+@@ -0,0 +1,8 @@
++config IPROC_MDIO
++	tristate "MDIO support"
++	depends on ARCH_IPROC
++	default n
++	help
++	  MDIO support
++
++	  If unsure, say N.
+diff --git a/drivers/bcmdrivers/mdio/Makefile b/drivers/bcmdrivers/mdio/Makefile
+new file mode 100644
+index 0000000..03746c7

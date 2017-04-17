@@ -1,0 +1,9 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/mdio/Makefile
+@@ -0,0 +1,3 @@
++
++obj-$(CONFIG_IPROC_MDIO) += iproc_mii.o
++iproc_mii-objs := iproc_mdio.o
+diff --git a/drivers/bcmdrivers/mdio/iproc_mdio.c b/drivers/bcmdrivers/mdio/iproc_mdio.c
+new file mode 100755
+index 0000000..5ecb92e

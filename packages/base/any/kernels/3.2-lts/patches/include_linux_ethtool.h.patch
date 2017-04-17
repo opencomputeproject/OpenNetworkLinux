@@ -1,0 +1,61 @@
+--- a/include/linux/ethtool.h
++++ b/include/linux/ethtool.h
+@@ -118,6 +118,24 @@ struct ethtool_eeprom {
+ };
+ 
+ /**
++ * struct ethtool_modinfo - plugin module eeprom information
++ * @cmd: %ETHTOOL_GMODULEINFO
++ * @type: Standard the module information conforms to %ETH_MODULE_SFF_xxxx
++ * @eeprom_len: Length of the eeprom
++ *
++ * This structure is used to return the information to
++ * properly size memory for a subsequent call to %ETHTOOL_GMODULEEEPROM.
++ * The type code indicates the eeprom data format
++ */
++struct ethtool_modinfo {
++	__u32   cmd;
++	__u32   type;
++	__u32   eeprom_len;
++	__u32   eeprom_nums;
++	__u32   reserved[7];
++};
++
++/**
+  * struct ethtool_coalesce - coalescing parameters for IRQs and stats updates
+  * @cmd: ETHTOOL_{G,S}COALESCE
+  * @rx_coalesce_usecs: How many usecs to delay an RX interrupt after
+@@ -930,6 +948,8 @@ struct ethtool_ops {
+ 	int	(*set_phys_id)(struct net_device *, enum ethtool_phys_id_state);
+ 	void	(*get_ethtool_stats)(struct net_device *,
+ 				     struct ethtool_stats *, u64 *);
++	void	(*get_ethtool_stats_clear)(struct net_device *,
++					   struct ethtool_stats *, u64 *);
+ 	int	(*begin)(struct net_device *);
+ 	void	(*complete)(struct net_device *);
+ 	u32	(*get_ufo)(struct net_device *);
+@@ -956,6 +976,10 @@ struct ethtool_ops {
+ 	int	(*get_dump_data)(struct net_device *,
+ 				 struct ethtool_dump *, void *);
+ 	int	(*set_dump)(struct net_device *, struct ethtool_dump *);
++	int     (*get_module_info)(struct net_device *,
++				   struct ethtool_modinfo *);
++	int     (*get_module_eeprom)(struct net_device *,
++				     struct ethtool_eeprom *, u8 *);
+ 
+ };
+ #endif /* __KERNEL__ */
+@@ -1030,6 +1054,10 @@ struct ethtool_ops {
+ #define ETHTOOL_SET_DUMP	0x0000003e /* Set dump settings */
+ #define ETHTOOL_GET_DUMP_FLAG	0x0000003f /* Get dump settings */
+ #define ETHTOOL_GET_DUMP_DATA	0x00000040 /* Get dump data */
++#define ETHTOOL_GMODULEINFO	0x00000042 /* Get plug-in module information */
++#define ETHTOOL_GMODULEEEPROM	0x00000043 /* Get plug-in module eeprom */
++
++#define ETHTOOL_GSTATS_CLEAR	0x1000001d /* get NIC-specific statistics and clear */
+ 
+ /* compatibility with older code */
+ #define SPARC_ETH_GSET		ETHTOOL_GSET
+diff --git a/include/linux/fmd/Kbuild b/include/linux/fmd/Kbuild
+new file mode 100644
+index 0000000..56a2040

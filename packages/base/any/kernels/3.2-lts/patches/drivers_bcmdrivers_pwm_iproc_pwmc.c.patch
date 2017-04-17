@@ -1,0 +1,417 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pwm/iproc_pwmc.c
+@@ -0,0 +1,411 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++#include <linux/version.h>
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 5)
++#include "iproc_pwmc_3x.c"
++#else
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/slab.h>
++#include <linux/err.h>
++#include <linux/io.h>
++#include <linux/delay.h>
++
++#include <linux/platform_device.h>
++#include <linux/pwm/pwm.h>
++#include <mach/iproc_regs.h>
++
++
++#define IPROC_PWM_CHANNEL_CNT   4
++#define PWM_PRESCALER_MAX    63 /* 6 bits field */
++
++
++#define PWM_CTL_ENABLE_SHIFT        (0)
++#define PWM_CTL_POLARITY_SHIFT      (8)
++
++#define PWM_PRESCALE_PWM3_PRESCALE_SHIFT         (0)
++#define PWM_PRESCALE_PWM3_PRESCALE_MASK          (0x0000003F)
++#define PWM_PRESCALE_PWM2_PRESCALE_SHIFT         (6)
++#define PWM_PRESCALE_PWM2_PRESCALE_MASK          (0x00000FC0)
++#define PWM_PRESCALE_PWM1_PRESCALE_SHIFT         (12)
++#define PWM_PRESCALE_PWM1_PRESCALE_MASK          (0x0003F000)
++#define PWM_PRESCALE_PWM0_PRESCALE_SHIFT         (18)
++#define PWM_PRESCALE_PWM0_PRESCALE_MASK          (0x00FC0000)
++
++#define PWM_DUTY_HI_CNT0_SHIFT      (0)
++#define PWM_DUTY_HI_CNT0_MASK       (0xFFFF)
++#define PWM_DUTY_HI_CNT1_SHIFT      (0)
++#define PWM_DUTY_HI_CNT1_MASK       (0xFFFF)
++#define PWM_DUTY_HI_CNT2_SHIFT      (0)
++#define PWM_DUTY_HI_CNT2_MASK       (0xFFFF)
++#define PWM_DUTY_HI_CNT3_SHIFT      (0)
++#define PWM_DUTY_HI_CNT3_MASK       (0xFFFF)
++
++#define PWM_PERIOD_CNT0_SHIFT      (0)
++#define PWM_PERIOD_CNT0_MASK       (0xFFFF)
++#define PWM_PERIOD_CNT1_SHIFT      (0)
++#define PWM_PERIOD_CNT1_MASK       (0xFFFF)
++#define PWM_PERIOD_CNT2_SHIFT      (0)
++#define PWM_PERIOD_CNT2_MASK       (0xFFFF)
++#define PWM_PERIOD_CNT3_SHIFT      (0)
++#define PWM_PERIOD_CNT3_MASK       (0xFFFF)
++
++
++struct pwm_reg_def {
++    u32 mask ;
++    u32 shift ;
++    u32 offset ;
++} ;
++
++#define PWM_REG_DEF(c, m, s, a) \
++    [c] = { 	\
++        .mask 		= 	m,  \
++        .shift 		= 	s, \
++        .offset 	= 	a \
++    }
++
++static const
++struct pwm_reg_def pwm_chan_pre_scaler_info[IPROC_PWM_CHANNEL_CNT] = {
++    PWM_REG_DEF(0, PWM_PRESCALE_PWM0_PRESCALE_MASK,
++        PWM_PRESCALE_PWM0_PRESCALE_SHIFT, CCB_PWM_PRESCALE_BASE),
++    PWM_REG_DEF(1, PWM_PRESCALE_PWM1_PRESCALE_MASK,
++        PWM_PRESCALE_PWM1_PRESCALE_SHIFT, CCB_PWM_PRESCALE_BASE),
++    PWM_REG_DEF(2, PWM_PRESCALE_PWM2_PRESCALE_MASK,
++        PWM_PRESCALE_PWM2_PRESCALE_SHIFT, CCB_PWM_PRESCALE_BASE),
++    PWM_REG_DEF(3, PWM_PRESCALE_PWM3_PRESCALE_MASK,
++        PWM_PRESCALE_PWM3_PRESCALE_SHIFT, CCB_PWM_PRESCALE_BASE),
++} ;
++
++static const
++struct pwm_reg_def pwm_chan_period_cnt_info[IPROC_PWM_CHANNEL_CNT] = {
++    PWM_REG_DEF(0, PWM_PERIOD_CNT0_MASK,
++        PWM_PERIOD_CNT0_SHIFT, CCB_PWM_PERIOD_COUNT0_BASE),
++    PWM_REG_DEF(1, PWM_PERIOD_CNT1_MASK,
++        PWM_PERIOD_CNT1_SHIFT, CCB_PWM_PERIOD_COUNT1_BASE),
++    PWM_REG_DEF(2, PWM_PERIOD_CNT2_MASK,
++        PWM_PERIOD_CNT2_SHIFT, CCB_PWM_PERIOD_COUNT2_BASE),
++    PWM_REG_DEF(3, PWM_PERIOD_CNT3_MASK,
++        PWM_PERIOD_CNT3_SHIFT, CCB_PWM_PERIOD_COUNT3_BASE),
++} ;
++
++static const
++struct pwm_reg_def pwm_chan_duty_cycle_info[IPROC_PWM_CHANNEL_CNT] = {
++    PWM_REG_DEF(0, PWM_DUTY_HI_CNT0_MASK,
++        PWM_DUTY_HI_CNT0_SHIFT, CCB_PWM_DUTY_HI_COUNT0_BASE),
++    PWM_REG_DEF(1, PWM_DUTY_HI_CNT1_MASK,
++        PWM_DUTY_HI_CNT1_SHIFT, CCB_PWM_DUTY_HI_COUNT1_BASE),
++    PWM_REG_DEF(2, PWM_DUTY_HI_CNT2_MASK,
++        PWM_DUTY_HI_CNT2_SHIFT, CCB_PWM_DUTY_HI_COUNT2_BASE),
++    PWM_REG_DEF(3, PWM_DUTY_HI_CNT3_MASK,
++        PWM_DUTY_HI_CNT3_SHIFT, CCB_PWM_DUTY_HI_COUNT3_BASE),
++} ;
++
++
++struct iproc_pwmc {
++    struct pwm_device *p[IPROC_PWM_CHANNEL_CNT];
++    struct pwm_device_ops ops;
++    void __iomem *iobase;
++    struct clk *clk;
++};
++
++
++static int iproc_get_chan(const struct iproc_pwmc *ap, const struct pwm_device *p)
++{
++    int chan;
++    for (chan = 0; chan < IPROC_PWM_CHANNEL_CNT; chan++)
++        if (p == ap->p[chan])
++            return chan;
++    BUG();
++    return 0;
++}
++
++static void iproc_pwmc_clear_set_bit(const struct iproc_pwmc *ap, unsigned int offset,
++    unsigned int shift, unsigned char en_dis)
++{
++    unsigned long val = readl(ap->iobase + offset ) ;
++
++    // Clear bit.
++    clear_bit(shift,&val) ;
++    if ( en_dis == 1 )
++        set_bit(shift,&val);
++
++    writel(val, (ap->iobase + offset ));
++}
++
++
++static void iproc_pwmc_set_field(const struct iproc_pwmc *ap, unsigned int offset,
++    unsigned int mask, unsigned int shift, unsigned int wval)
++{
++    unsigned int val = readl(ap->iobase + offset ) ;
++
++    val = (val & ~mask) | ( wval << shift ) ;
++    writel(val, (ap->iobase + offset ));
++}
++
++static void iproc_pwmc_get_field(const struct iproc_pwmc *ap, unsigned int offset,
++    unsigned int mask, unsigned int shift, unsigned int *val)
++{
++    *val = readl(ap->iobase + offset ) ;
++    *val = ( *val & mask ) >> shift ;
++}
++
++
++static void iproc_pwmc_start(const struct iproc_pwmc *ap, int chan)
++{
++
++    iproc_pwmc_clear_set_bit(ap, CCB_PWM_CTL_BASE,
++        (PWM_CTL_ENABLE_SHIFT + chan), 1) ;
++}
++
++static void iproc_pwmc_stop(const struct iproc_pwmc *ap, int chan)
++{
++
++    iproc_pwmc_clear_set_bit(ap, CCB_PWM_CTL_BASE,
++        (PWM_CTL_ENABLE_SHIFT + chan), 0) ;
++
++
++}
++static void iproc_pwmc_config_polarity(struct iproc_pwmc *ap, int chan,
++					 struct pwm_config *c)
++{
++    struct pwm_device *p = ap->p[chan];
++
++    if ( c->polarity ){
++        iproc_pwmc_clear_set_bit(ap, CCB_PWM_CTL_BASE,
++            (PWM_CTL_POLARITY_SHIFT + chan), 1) ;
++    }else{
++        iproc_pwmc_clear_set_bit(ap, CCB_PWM_CTL_BASE,
++            (PWM_CTL_POLARITY_SHIFT + chan), 0) ;
++    }
++    p->polarity = c->polarity ? 1 : 0;
++
++    if (BIT(chan) & (readl(ap->iobase + CCB_PWM_CTL_BASE)&0xf)) {
++        /* disable channel */
++        iproc_pwmc_stop(ap, chan) ;
++        udelay(1);
++        /* enable channel. */
++        iproc_pwmc_start(ap, chan) ;
++    }
++
++}
++
++
++static void iproc_pwmc_config_duty_ticks(struct iproc_pwmc *ap, int chan,
++					   struct pwm_config *c)
++{
++    struct pwm_device *p = ap->p[chan];
++    unsigned int pre_scaler = 0 ;
++    unsigned int duty_cnt = 0 ;
++
++    iproc_pwmc_get_field(ap, pwm_chan_pre_scaler_info[chan].offset,
++        pwm_chan_pre_scaler_info[chan].mask, pwm_chan_pre_scaler_info[chan].shift,
++        &pre_scaler) ;
++
++    /* Read prescaler value from register. */
++    duty_cnt = c->duty_ticks / (pre_scaler + 1) ;
++
++    /* program duty cycle. */
++    iproc_pwmc_set_field(ap, pwm_chan_duty_cycle_info[chan].offset,
++                    pwm_chan_duty_cycle_info[chan].mask,
++                    pwm_chan_duty_cycle_info[chan].shift, duty_cnt) ;
++
++    if (BIT(chan) & (readl(ap->iobase + CCB_PWM_CTL_BASE)&0xf)) {
++        /* disable channel */
++        iproc_pwmc_stop(ap, chan) ;
++        udelay(1);
++        /* enable channel. */
++        iproc_pwmc_start(ap, chan) ;
++    }
++    p->duty_ticks = c->duty_ticks;
++
++}
++
++static int iproc_pwmc_config_period_ticks(struct iproc_pwmc *ap, int chan,
++					    struct pwm_config *c)
++{
++    unsigned int pcnt ;
++    unsigned char pre_scaler = 0 ;
++    struct pwm_device *p = ap->p[chan];
++
++    pre_scaler = c->period_ticks / 0xFFFF ;
++	if ( pre_scaler > PWM_PRESCALER_MAX )
++        pre_scaler = PWM_PRESCALER_MAX ;
++
++    pcnt = c->period_ticks / (pre_scaler + 1) ;
++
++    /* programe prescaler */
++    iproc_pwmc_set_field(ap, pwm_chan_pre_scaler_info[chan].offset,
++                        pwm_chan_pre_scaler_info[chan].mask,
++                        pwm_chan_pre_scaler_info[chan].shift, pre_scaler) ;
++
++    /* program period count. */
++    iproc_pwmc_set_field(ap, pwm_chan_period_cnt_info[chan].offset,
++                       pwm_chan_period_cnt_info[chan].mask,
++                       pwm_chan_period_cnt_info[chan].shift, pcnt) ;
++    if (BIT(chan) & (readl(ap->iobase + CCB_PWM_CTL_BASE)&0xf)) {
++        /* disable channel */
++        iproc_pwmc_stop(ap, chan) ;
++        udelay(1);
++        /* enable channel. */
++        iproc_pwmc_start(ap, chan) ;
++    }
++
++    p->period_ticks = c->period_ticks;
++
++    return 0;
++}
++
++static int iproc_pwmc_request(struct pwm_device *p)
++{
++    struct iproc_pwmc *ap = pwm_get_drvdata(p);
++    int chan = iproc_get_chan(ap, p);
++
++    /* 1M */
++    p->tick_hz = 1000000UL;
++    iproc_pwmc_stop(ap,chan);
++
++    return 0;
++}
++
++static int iproc_pwmc_config(struct pwm_device *p, struct pwm_config *c)
++{
++    struct iproc_pwmc *ap = pwm_get_drvdata(p);
++    int chan = iproc_get_chan(ap, p);
++    int ret;
++
++    if (test_bit(PWM_CONFIG_PERIOD_TICKS, &c->config_mask)) {
++        ret = iproc_pwmc_config_period_ticks(ap, chan, c);
++        if (ret)
++            return ret;
++        if (!test_bit(PWM_CONFIG_DUTY_TICKS, &c->config_mask)) {
++            struct pwm_config d = {
++                .config_mask = PWM_CONFIG_DUTY_TICKS,
++                .duty_ticks = p->duty_ticks,
++            };
++            iproc_pwmc_config_duty_ticks(ap, chan, &d);
++        }
++    }
++
++    if (test_bit(PWM_CONFIG_DUTY_TICKS, &c->config_mask))
++        iproc_pwmc_config_duty_ticks(ap, chan, c);
++
++    if (test_bit(PWM_CONFIG_POLARITY, &c->config_mask))
++        iproc_pwmc_config_polarity(ap, chan, c);
++
++    if (test_bit(PWM_CONFIG_START, &c->config_mask))
++        iproc_pwmc_start(ap, chan);
++
++    if (test_bit(PWM_CONFIG_STOP, &c->config_mask))
++        iproc_pwmc_stop(ap, chan);
++
++    return 0;
++}
++
++
++static const struct pwm_device_ops iproc_pwm_ops = {
++    .request = iproc_pwmc_request,
++    .config = iproc_pwmc_config,
++    .owner = THIS_MODULE,
++};
++
++
++static int __devinit iproc_pwmc_probe(struct platform_device *pdev)
++{
++    struct iproc_pwmc *ap;
++    struct resource *r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++    int chan;
++    int ret = 0;
++
++    ap = kzalloc(sizeof(*ap), GFP_KERNEL);
++    if (!ap) {
++        ret = -ENOMEM;
++        goto err_iproc_pwmc_alloc;
++    }
++
++    platform_set_drvdata(pdev, ap);
++
++    ap->iobase = ioremap_nocache(r->start, resource_size(r));
++    if (!ap->iobase) {
++        ret = -ENODEV;
++        goto err_ioremap;
++    }
++    printk(KERN_INFO "iproc_pwmc_probe iobase %p phys:%x\n",
++        ap->iobase,r->start);
++    for (chan = 0; chan < IPROC_PWM_CHANNEL_CNT; chan++) {
++        ap->p[chan] = pwm_register(&iproc_pwm_ops, &pdev->dev, "%s:%d",
++        dev_name(&pdev->dev), chan);
++        if (IS_ERR_OR_NULL(ap->p[chan]))
++            goto err_pwm_register;
++        pwm_set_drvdata(ap->p[chan], ap);
++    }
++
++    return 0;
++
++err_pwm_register:
++    while (--chan > 0)
++        pwm_unregister(ap->p[chan]);
++
++    iounmap(ap->iobase);
++err_ioremap:
++    platform_set_drvdata(pdev, NULL);
++    kfree(ap);
++err_iproc_pwmc_alloc:
++    printk(KERN_ERR "%s: error, returning %d\n", __func__, ret);
++return ret;
++}
++
++static int __devexit iproc_pwmc_remove(struct platform_device *pdev)
++{
++    struct iproc_pwmc *ap = platform_get_drvdata(pdev);
++    int chan;
++
++    for (chan = 0; chan < IPROC_PWM_CHANNEL_CNT; chan++)
++        pwm_unregister(ap->p[chan]);
++
++    iounmap(ap->iobase);
++
++    kfree(ap);
++    return 0;
++}
++
++static struct platform_driver iproc_pwmc_driver = {
++    .driver = {
++        .name = "iproc_pwmc",
++        .owner = THIS_MODULE,
++    },
++    .probe = iproc_pwmc_probe,
++    .remove = __devexit_p(iproc_pwmc_remove),
++};
++
++static int __init iproc_pwmc_init(void)
++{
++        return platform_driver_register(&iproc_pwmc_driver);
++}
++
++static void __exit iproc_pwmc_exit(void)
++{
++    platform_driver_unregister(&iproc_pwmc_driver);
++}
++module_init(iproc_pwmc_init);
++module_exit(iproc_pwmc_exit);
++
++MODULE_AUTHOR("Broadcom Corporation");
++MODULE_DESCRIPTION("Driver for iProc PWMC");
++MODULE_LICENSE("GPL");
++
++#endif
+diff --git a/drivers/bcmdrivers/pwm/iproc_pwmc_3x.c b/drivers/bcmdrivers/pwm/iproc_pwmc_3x.c
+new file mode 100644
+index 0000000..c410014

@@ -1,0 +1,87 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/include/mach/socregs_ns_open.h
+@@ -0,0 +1,81 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++
++
++#ifndef __SOCREGS_NS_OPEN_H
++#define __SOCREGS_NS_OPEN_H
++
++
++#define  CCA_CHIPID											0x18000000
++#define  CCA_CHIPID_BASE                                    0x000
++#define  CCB_GP_DATA_IN										0x18001000
++#define  USB30_BASE											0x18023000
++#define  SDIO_EMMC_SDXC_SYSADDR								0x18020000
++#define  CCB_PWM_CTL										0x18002000
++#define  CCB_TIM0_TIM_TMR1_LOAD								0x18005000
++#define  CCB_TIM1_TIM_TMR1_LOAD								0x18006000
++#define  CCB_SMBUS_START									0x18009000
++#define  CCB_GP_AUX_SEL_BASE								0x028
++#define  QSPI_MSPI_SPCR0_LSB								0x18029200
++#define  QSPI_MSPI_DISABLE_FLUSH_GEN						0x18029384
++#define  QSPI_BSPI_REGS_REV_ID								0x18029000
++#define  QSPI_BSPI_REGS_BSPI_PIO_DATA						0x1802904c
++#define  QSPI_RAF_START_ADDR								0x18029100
++#define  QSPI_RAF_CURR_ADDR									0x18029120
++#define  QSPI_RAF_INTERRUPT_LR_FULLNESS_REACHED				0x180293a0
++#define  QSPI_MSPI_INTERRUPT_MSPI_HALT_SET_TRANSACTION_DONE	0x180293b8
++#define  GMAC0_DEVCTL										0x18024000
++#define  GMAC1_DEVCTL										0x18025000
++#define  GMAC2_DEVCTL										0x18026000
++#define  GMAC3_DEVCTL										0x18027000
++#define  CCA_GPIO_EVT_BASE									0x078
++#define  CCA_GPIO_INPUT										0x18000060
++#define  CCA_GPIO_INPUT_BASE								0x060
++#define  CCB_GP_INT_CLR_BASE								0x024
++#define  CCA_GPIO_EVTINT_MASK_BASE							0x07c
++#define  CCB_GP_INT_MSK_BASE								0x018
++#define  CCA_GPIOINT_MASK_BASE								0x074
++#define  CCA_GPIO_EVT_INT_POLARITY_BASE						0x084
++#define  CCA_GPIO_INT_POLARITY_BASE							0x070
++#define  CCA_INT_MASK_BASE									0x024
++#define  CCB_GP_INT_TYPE_BASE								0x00c
++#define  CCB_GP_INT_DE_BASE									0x010
++#define  CCB_GP_INT_EDGE_BASE								0x014
++#define  CCA_INT_STS_BASE									0x020
++#define  CCB_GP_INT_MSTAT_BASE								0x020
++#define  CCB_GP_PAD_RES_BASE								0x034
++#define  CCB_GP_RES_EN_BASE									0x038
++#define  CCB_MII_MGMT_CTL									0x18003000
++#define  CCB_MII_MGMT_DATA									0x18003004
++#define  NAND_NAND_FLASH_REV								0x18028000
++#define ChipcommonB_MII_Management_Control					CCB_MII_MGMT_CTL
++#define ChipcommonB_MII_Management_Command_Data				CCB_MII_MGMT_DATA
++#define  NAND_DIRECT_READ_RD_MISS							0x18028f00
++#define  CCB_PWM_PRESCALE_BASE								0x024
++#define  CCB_PWM_PERIOD_COUNT0_BASE							0x004
++#define  CCB_PWM_PERIOD_COUNT1_BASE							0x00c
++#define  CCB_PWM_DUTY_HI_COUNT2_BASE						0x018
++#define  CCB_PWM_PERIOD_COUNT3_BASE							0x01c
++#define  CCB_PWM_DUTY_HI_COUNT0_BASE						0x008
++#define  CCB_PWM_DUTY_HI_COUNT1_BASE						0x010
++#define  CCB_PWM_DUTY_HI_COUNT2_BASE						0x018
++#define  CCB_PWM_DUTY_HI_COUNT3_BASE						0x020
++#define  CCB_PWM_CTL_BASE									0x000
++#define  CCB_PWM_PERIOD_COUNT2_BASE							0x014
++#define  CCB_RNG_CTRL										0x18004000
++
++
++#endif /* __SOCREGS_NS_OPEN_H */
+diff --git a/arch/arm/mach-iproc/include/mach/socregs_nsp_open.h b/arch/arm/mach-iproc/include/mach/socregs_nsp_open.h
+new file mode 100644
+index 0000000..e98c003

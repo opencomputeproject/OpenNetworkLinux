@@ -1,0 +1,267 @@
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -62,6 +62,8 @@
+ 
+ #define PMBUS_MAX_INPUT_LABELS		4	/* vin, vcap, iin, pin */
+ 
++#define PMBUS_MFR_INFO_COUNT            6       /* Manufacturer info fields */
++
+ /*
+  * status, status_vout, status_iout, status_fans, status_fan34, and status_temp
+  * are paged. status_input is unpaged.
+@@ -103,6 +105,11 @@ struct pmbus_label {
+ 	char label[PMBUS_NAME_SIZE];	/* label */
+ };
+ 
++struct pmbus_mfr {
++	char name[PMBUS_NAME_SIZE];	/* sysfs mfr name */
++	struct sensor_device_attribute attribute;
++};
++
+ struct pmbus_data {
+ 	struct device *hwmon_dev;
+ 
+@@ -138,6 +145,13 @@ struct pmbus_data {
+ 	int num_labels;
+ 	struct pmbus_label *labels;
+ 
++	/*
++	 * Manufacturer Info
++	 */
++	int max_mfrs;
++	int num_mfrs;
++	struct pmbus_mfr *mfrs;
++
+ 	struct mutex update_lock;
+ 	bool valid;
+ 	unsigned long last_updated;	/* in jiffies */
+@@ -445,6 +459,10 @@ static long pmbus_reg2data_linear(struct pmbus_data *data,
+ 	if (sensor->class == PSC_VOLTAGE_OUT) {	/* LINEAR16 */
+ 		exponent = data->exponent;
+ 		mantissa = (u16) sensor->data;
++	} else if (sensor->class == PSC_PWM) {
++		/* PWM has a duty cycle value from 0 to 100 */
++		mantissa = (u16) sensor->data;
++		exponent = 0;
+ 	} else {				/* LINEAR11 */
+ 		exponent = ((s16)sensor->data) >> 11;
+ 		mantissa = ((s16)((sensor->data & 0x7ff) << 5)) >> 5;
+@@ -452,6 +470,13 @@ static long pmbus_reg2data_linear(struct pmbus_data *data,
+ 
+ 	val = mantissa;
+ 
++	/* Map duty cycle 0 -> 100 to PWM range 0 -> 255 */
++	if (sensor->class == PSC_PWM) {
++		val = (val * 255)/100;
++		val = SENSORS_LIMIT(val, 0, 255);
++		return val;
++	}
++
+ 	/* scale result to milli-units for all sensors except fans */
+ 	if (sensor->class != PSC_FAN)
+ 		val = val * 1000L;
+@@ -558,6 +583,13 @@ static u16 pmbus_data2reg_linear(struct pmbus_data *data,
+ 	if (val == 0)
+ 		return 0;
+ 
++	/* Map PWM range 0 -> 255 to duty cycle 0 -> 100 */
++	if (class == PSC_PWM) {
++		val = (val * 100)/255;
++		SENSORS_LIMIT(val, 0, 100);
++		return val;
++	}
++
+ 	if (class == PSC_VOLTAGE_OUT) {
+ 		/* LINEAR16 does not support negative voltages */
+ 		if (val < 0)
+@@ -769,6 +801,31 @@ static ssize_t pmbus_show_sensor(struct device *dev,
+ 	return snprintf(buf, PAGE_SIZE, "%ld\n", pmbus_reg2data(data, sensor));
+ }
+ 
++static ssize_t pmbus_show_mfr(struct device *dev,
++				   struct device_attribute *da,
++				   char *buf) {
++	struct i2c_client *client = to_i2c_client(dev);
++	int cmd = to_sensor_dev_attr(da)->index;
++	u8 b_buf[I2C_SMBUS_BLOCK_MAX + 1];
++	int ret;
++
++	if (i2c_check_functionality(client->adapter,
++				    I2C_FUNC_SMBUS_READ_BLOCK_DATA))
++		ret = i2c_smbus_read_block_data(client, cmd, b_buf);
++	else if (i2c_check_functionality(client->adapter,
++				    I2C_FUNC_SMBUS_READ_I2C_BLOCK))
++		ret = i2c_smbus_read_i2c_block_data(client, cmd,
++				    I2C_SMBUS_BLOCK_MAX, b_buf);
++	else
++		ret = -EIO;
++
++	if (ret < 0)
++		return ret;
++
++	b_buf[ret] = '\0';
++	return sprintf(buf, "%s\n", b_buf);
++};
++
+ static ssize_t pmbus_set_sensor(struct device *dev,
+ 				struct device_attribute *devattr,
+ 				const char *buf, size_t count)
+@@ -846,6 +903,20 @@ static void pmbus_add_boolean(struct pmbus_data *data,
+ 	data->num_booleans++;
+ }
+ 
++static void pmbus_add_mfr(struct pmbus_data *data, const char *name,
++			  int idx)
++{
++	struct pmbus_mfr *mfr;
++
++	BUG_ON(data->num_mfrs >= data->max_mfrs);
++
++	mfr = &data->mfrs[data->num_mfrs];
++
++	snprintf(mfr->name, sizeof(mfr->name), "%s", name);
++	PMBUS_ADD_GET_ATTR(data, mfr->name, mfr, idx);
++	data->num_mfrs++;
++}
++
+ static void pmbus_add_boolean_reg(struct pmbus_data *data,
+ 				  const char *name, const char *type,
+ 				  int seq, int reg, int bit)
+@@ -871,8 +942,12 @@ static void pmbus_add_sensor(struct pmbus_data *data,
+ 	BUG_ON(data->num_sensors >= data->max_sensors);
+ 
+ 	sensor = &data->sensors[data->num_sensors];
+-	snprintf(sensor->name, sizeof(sensor->name), "%s%d_%s",
+-		 name, seq, type);
++	if (!(strcmp("pwm", name)))
++		snprintf(sensor->name, sizeof(sensor->name), "%s%d",
++			 name, seq);
++	else
++		snprintf(sensor->name, sizeof(sensor->name), "%s%d_%s",
++			 name, seq, type);
+ 	sensor->page = page;
+ 	sensor->reg = reg;
+ 	sensor->class = class;
+@@ -914,11 +989,12 @@ static void pmbus_find_max_attr(struct i2c_client *client,
+ 				struct pmbus_data *data)
+ {
+ 	const struct pmbus_driver_info *info = data->info;
+-	int page, max_sensors, max_booleans, max_labels;
++	int page, max_sensors, max_booleans, max_labels, max_mfrs;
+ 
+ 	max_sensors = PMBUS_MAX_INPUT_SENSORS;
+ 	max_booleans = PMBUS_MAX_INPUT_BOOLEANS;
+ 	max_labels = PMBUS_MAX_INPUT_LABELS;
++	max_mfrs = 0;
+ 
+ 	for (page = 0; page < info->pages; page++) {
+ 		if (info->func[page] & PMBUS_HAVE_VOUT) {
+@@ -957,10 +1033,15 @@ static void pmbus_find_max_attr(struct i2c_client *client,
+ 			max_booleans += PMBUS_MAX_BOOLEANS_PER_TEMP;
+ 		}
+ 	}
++	if (info->func[0] & PMBUS_HAVE_MFR_INFO)
++		max_mfrs = PMBUS_MFR_INFO_COUNT;
++
+ 	data->max_sensors = max_sensors;
+ 	data->max_booleans = max_booleans;
+ 	data->max_labels = max_labels;
+-	data->max_attributes = max_sensors + max_booleans + max_labels;
++	data->max_mfrs = max_mfrs;
++	data->max_attributes = max_sensors + max_booleans + \
++		max_labels + max_mfrs;
+ }
+ 
+ /*
+@@ -1512,6 +1593,13 @@ static const int pmbus_fan_config_registers[] = {
+ 	PMBUS_FAN_CONFIG_34
+ };
+ 
++static const int pmbus_fan_cmd_registers[] = {
++	PMBUS_FAN_COMMAND_1,
++	PMBUS_FAN_COMMAND_2,
++	PMBUS_FAN_COMMAND_3,
++	PMBUS_FAN_COMMAND_4,
++};
++
+ static const int pmbus_fan_status_registers[] = {
+ 	PMBUS_STATUS_FAN_12,
+ 	PMBUS_STATUS_FAN_12,
+@@ -1568,6 +1656,9 @@ static void pmbus_add_fan_attributes(struct i2c_client *client,
+ 			pmbus_add_sensor(data, "fan", "input", index, page,
+ 					 pmbus_fan_registers[f], PSC_FAN, true,
+ 					 true);
++			pmbus_add_sensor(data, "pwm", "", index, page,
++					 pmbus_fan_cmd_registers[f], PSC_PWM,
++					 true, false);
+ 
+ 			/*
+ 			 * Each fan status register covers multiple fans,
+@@ -1594,6 +1685,23 @@ static void pmbus_add_fan_attributes(struct i2c_client *client,
+ 	}
+ }
+ 
++/* Manufacturer Info */
++static void pmbus_add_mfr_attributes(struct i2c_client *client,
++				     struct pmbus_data *data)
++{
++	const struct pmbus_driver_info *info = data->info;
++
++	/* Only Read Page 0 mfr info */
++	if (info->func[0] & PMBUS_HAVE_MFR_INFO) {
++		pmbus_add_mfr(data, "mfr_id", PMBUS_MFR_ID);
++		pmbus_add_mfr(data, "mfr_model", PMBUS_MFR_MODEL);
++		pmbus_add_mfr(data, "mfr_revision", PMBUS_MFR_REVISION);
++		pmbus_add_mfr(data, "mfr_location", PMBUS_MFR_LOCATION);
++		pmbus_add_mfr(data, "mfr_date", PMBUS_MFR_DATE);
++		pmbus_add_mfr(data, "mfr_serial", PMBUS_MFR_SERIAL);
++	}
++}
++
+ static void pmbus_find_attributes(struct i2c_client *client,
+ 				  struct pmbus_data *data)
+ {
+@@ -1615,6 +1723,9 @@ static void pmbus_find_attributes(struct i2c_client *client,
+ 
+ 	/* Fans */
+ 	pmbus_add_fan_attributes(client, data);
++
++	/* Manufacturer Info */
++	pmbus_add_mfr_attributes(client, data);
+ }
+ 
+ /*
+@@ -1741,6 +1852,13 @@ int pmbus_do_probe(struct i2c_client *client, const struct i2c_device_id *id,
+ 		goto out_booleans;
+ 	}
+ 
++	data->mfrs = kzalloc(sizeof(struct pmbus_mfr) * data->max_mfrs,
++			       GFP_KERNEL);
++	if (!data->mfrs) {
++		dev_err(&client->dev, "No memory to allocate mfr data\n");
++		goto out_mfrs;
++	}
++
+ 	data->attributes = kzalloc(sizeof(struct attribute *)
+ 				   * data->max_attributes, GFP_KERNEL);
+ 	if (!data->attributes) {
+@@ -1779,6 +1897,8 @@ out_hwmon_device_register:
+ 	sysfs_remove_group(&client->dev.kobj, &data->group);
+ out_attributes:
+ 	kfree(data->attributes);
++out_mfrs:
++	kfree(data->mfrs);
+ out_labels:
+ 	kfree(data->labels);
+ out_booleans:
+@@ -1797,6 +1917,7 @@ void pmbus_do_remove(struct i2c_client *client)
+ 	hwmon_device_unregister(data->hwmon_dev);
+ 	sysfs_remove_group(&client->dev.kobj, &data->group);
+ 	kfree(data->attributes);
++	kfree(data->mfrs);
+ 	kfree(data->labels);
+ 	kfree(data->booleans);
+ 	kfree(data->sensors);
+diff --git a/drivers/hwmon/pmbus/ps2471.c b/drivers/hwmon/pmbus/ps2471.c
+new file mode 100644
+index 0000000..a1ce238

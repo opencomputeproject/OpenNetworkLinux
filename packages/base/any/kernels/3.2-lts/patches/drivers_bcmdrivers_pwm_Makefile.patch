@@ -1,0 +1,9 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pwm/Makefile
+@@ -0,0 +1,3 @@
++
++obj-$(CONFIG_IPROC_PWM) += iproc_pwm.o
++iproc_pwm-objs := iproc_pwmc.o
+diff --git a/drivers/bcmdrivers/pwm/iproc_pwmc.c b/drivers/bcmdrivers/pwm/iproc_pwmc.c
+new file mode 100644
+index 0000000..4ea9255

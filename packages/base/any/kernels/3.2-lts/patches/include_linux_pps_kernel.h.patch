@@ -1,0 +1,20 @@
+--- a/include/linux/pps_kernel.h
++++ b/include/linux/pps_kernel.h
+@@ -69,11 +69,14 @@ struct pps_device {
+ 	wait_queue_head_t queue;		/* PPS event queue */
+ 
+ 	unsigned int id;			/* PPS source unique ID */
+-	void const *lookup_cookie;		/* pps_lookup_dev only */
+ 	struct cdev cdev;
+ 	struct device *dev;
+ 	struct fasync_struct *async_queue;	/* fasync method */
+ 	spinlock_t lock;
++
++#ifndef __GENKSYMS__
++	void const *lookup_cookie;		/* pps_lookup_dev only */
++#endif
+ };
+ 
+ /*
+diff --git a/include/linux/ptrace.h b/include/linux/ptrace.h
+index e49240b..ecbd207 100644

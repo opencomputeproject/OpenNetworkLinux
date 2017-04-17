@@ -1,0 +1,13 @@
+--- a/include/linux/of_mdio.h
++++ b/include/linux/of_mdio.h
+@@ -21,5 +21,8 @@ extern struct phy_device *of_phy_connect(struct net_device *dev,
+ extern struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
+ 					 void (*hndlr)(struct net_device *),
+ 					 phy_interface_t iface);
++extern struct phy_device *of_phy_attach(struct net_device *dev,
++				struct device_node *phy_np, u32 flags,
++				phy_interface_t iface);
+ 
+ #endif /* __LINUX_OF_MDIO_H */
+diff --git a/include/linux/pci.h b/include/linux/pci.h
+index fe76a74..cea9ae5 100644

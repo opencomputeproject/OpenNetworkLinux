@@ -85,9 +85,10 @@ case "${NETAUTO}" in
         if [ "${NETIP}" ] && [ "${NETMASK}" ] && [ "${NETIP#*/}" = "${NETIP}" ]; then
             NETIP=${NETIP}/$(ipcalc -p -s ${NETIP} ${NETMASK} | sed -n 's/PREFIX=//p')
         fi
-        ip link set ${NETDEV} down
         echo 0 >/proc/sys/net/ipv6/conf/${NETDEV}/autoconf
-        ip addr flush dev ${NETDEV}
+        ip addr  flush dev ${NETDEV}
+        ip route flush dev ${NETDEV}
+
         if [ "${NETIP}" ]; then
             ip addr add ${NETIP} dev ${NETDEV}
         fi

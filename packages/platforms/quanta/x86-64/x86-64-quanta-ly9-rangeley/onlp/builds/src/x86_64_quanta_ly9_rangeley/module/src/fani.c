@@ -30,7 +30,7 @@
 #include "x86_64_quanta_ly9_rangeley_log.h"
 
 #include <onlplib/file.h>
-#include <quanta_lib/gpio.h>
+#include <onlplib/gpio.h>
 
 int
 onlp_fani_init(void)
@@ -45,13 +45,13 @@ struct fan_gpio_s {
 
 static struct fan_gpio_s fan_gpio[] = {
 	{}, /* Not used */
-	{ .present = FAN_PRSNT_N_1, .fan_dir_detect = FAN_BF_DET1 },
-	{ .present = FAN_PRSNT_N_2, .fan_dir_detect = FAN_BF_DET2 },
-	{ .present = FAN_PRSNT_N_3, .fan_dir_detect = FAN_BF_DET3 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_1, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET1 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_2, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET2 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_3, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET3 },
 	{}, /* Not used */
-	{ .present = FAN_PRSNT_N_1, .fan_dir_detect = FAN_BF_DET1 },
-	{ .present = FAN_PRSNT_N_2, .fan_dir_detect = FAN_BF_DET2 },
-	{ .present = FAN_PRSNT_N_3, .fan_dir_detect = FAN_BF_DET3 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_1, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET1 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_2, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET2 },
+	{ .present = QUANTA_LY9_FAN_PRSNT_N_3, .fan_dir_detect = QUANTA_LY9_FAN_BF_DET3 },
 	{}, /* Not used */
 };
 
@@ -61,11 +61,11 @@ sys_fan_info_get__(onlp_fan_info_t* info, int id)
     int value = 0;
     int rv;
 
-	if(pca953x_gpio_value_get(fan_gpio[id].present, &value) == ONLP_STATUS_OK
-			&& value == GPIO_LOW) {
+	if(onlp_gpio_get(fan_gpio[id].present, &value) == ONLP_STATUS_OK
+			&& value == 0) {
 		info->status = ONLP_FAN_STATUS_PRESENT;
-		if(pca953x_gpio_value_get(fan_gpio[id].fan_dir_detect, &value) == ONLP_STATUS_OK
-				&& value == GPIO_LOW) {
+		if(onlp_gpio_get(fan_gpio[id].fan_dir_detect, &value) == ONLP_STATUS_OK
+				&& value == 0) {
 			info->status |= ONLP_FAN_STATUS_F2B;
 			info->caps |= ONLP_FAN_CAPS_F2B;
 		}

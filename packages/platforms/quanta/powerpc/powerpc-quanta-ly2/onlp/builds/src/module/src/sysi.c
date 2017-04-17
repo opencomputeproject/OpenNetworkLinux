@@ -24,7 +24,7 @@ onlp_sysi_init(void)
 }
 
 #define QUANTA_SYS_EEPROM_PATH \
-"/sys/devices/soc.0/ffe03000.i2c/i2c-0/i2c-2/2-0054/eeprom"
+"/sys/bus/i2c/devices/2-0054/eeprom"
 
 int
 onlp_sysi_onie_info_get(onlp_onie_info_t* onie)

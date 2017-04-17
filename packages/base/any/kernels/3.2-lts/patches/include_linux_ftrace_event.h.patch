@@ -1,0 +1,23 @@
+--- a/include/linux/ftrace_event.h
++++ b/include/linux/ftrace_event.h
+@@ -71,8 +71,6 @@ struct trace_iterator {
+ 	/* trace_seq for __print_flags() and __print_symbolic() etc. */
+ 	struct trace_seq	tmp_seq;
+ 
+-	cpumask_var_t		started;
+-
+ 	/* The below is zeroed out in pipe_read */
+ 	struct trace_seq	seq;
+ 	struct trace_entry	*ent;
+@@ -85,7 +83,7 @@ struct trace_iterator {
+ 	loff_t			pos;
+ 	long			idx;
+ 
+-	/* All new field here will be zeroed out in pipe_read */
++	cpumask_var_t		started;
+ };
+ 
+ 
+diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
+new file mode 100644
+index 0000000..227c624

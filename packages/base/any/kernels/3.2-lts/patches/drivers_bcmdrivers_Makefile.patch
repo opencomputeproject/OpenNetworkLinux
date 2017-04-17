@@ -1,0 +1,27 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/Makefile
+@@ -0,0 +1,21 @@
++# File: bcmdrivers/Makefile
++#
++# Makefile for the Linux kernel modules.
++#
++
++# The following must have config defined for each driver
++
++obj-y += timer/
++obj-y += mdio/
++obj-y += dma/
++obj-y += qspi/
++obj-$(CONFIG_IPROC_MTD_NAND) += nand/
++obj-y += pwm/
++obj-y += gpio/
++obj-y += wdt/
++obj-y += usb2h/
++obj-$(CONFIG_ET) += gmac/et/
++obj-y += gmac/hnd/
++obj-y += smbus/
++
++obj-y += pmu/
+diff --git a/drivers/bcmdrivers/dma/.gitignore b/drivers/bcmdrivers/dma/.gitignore
+new file mode 100644
+index 0000000..d741861

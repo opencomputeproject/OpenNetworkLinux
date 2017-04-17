@@ -1,0 +1,28 @@
+--- a/include/linux/pci_ids.h
++++ b/include/linux/pci_ids.h
+@@ -721,6 +721,7 @@
+ #define PCI_DEVICE_ID_SI_7018		0x7018
+ 
+ #define PCI_VENDOR_ID_HP		0x103c
++#define PCI_VENDOR_ID_HP_3PAR		0x1590
+ #define PCI_DEVICE_ID_HP_VISUALIZE_EG	0x1005
+ #define PCI_DEVICE_ID_HP_VISUALIZE_FX6	0x1006
+ #define PCI_DEVICE_ID_HP_VISUALIZE_FX4	0x1008
+@@ -753,6 +754,7 @@
+ #define PCI_DEVICE_ID_HP_CISSE		0x323a
+ #define PCI_DEVICE_ID_HP_CISSF		0x323b
+ #define PCI_DEVICE_ID_HP_CISSH		0x323c
++#define PCI_DEVICE_ID_HP_CISSI		0x3239
+ #define PCI_DEVICE_ID_HP_ZX2_IOC	0x4031
+ 
+ #define PCI_VENDOR_ID_PCTECH		0x1042
+@@ -2484,6 +2486,7 @@
+ #define PCI_DEVICE_ID_INTEL_MRST_SD2	0x084F
+ #define PCI_DEVICE_ID_INTEL_I960	0x0960
+ #define PCI_DEVICE_ID_INTEL_I960RM	0x0962
++#define PCI_DEVICE_ID_INTEL_CENTERTON_ILB	0x0c60
+ #define PCI_DEVICE_ID_INTEL_8257X_SOL	0x1062
+ #define PCI_DEVICE_ID_INTEL_82573E_SOL	0x1085
+ #define PCI_DEVICE_ID_INTEL_82573L_SOL	0x108F
+diff --git a/include/linux/pci_regs.h b/include/linux/pci_regs.h
+index 411c412..7451a34 100644

@@ -1,0 +1,19 @@
+--- a/include/linux/regulator/consumer.h
++++ b/include/linux/regulator/consumer.h
+@@ -258,6 +258,13 @@ static inline int regulator_get_voltage(struct regulator *regulator)
+ 	return 0;
+ }
+ 
++static inline int regulator_is_supported_voltage(struct regulator *regulator,
++               int min_uV, int max_uV)
++{
++   return 0;
++}
++
++
+ static inline int regulator_set_current_limit(struct regulator *regulator,
+ 					     int min_uA, int max_uA)
+ {
+diff --git a/include/linux/retimer_class.h b/include/linux/retimer_class.h
+new file mode 100644
+index 0000000..6f37318

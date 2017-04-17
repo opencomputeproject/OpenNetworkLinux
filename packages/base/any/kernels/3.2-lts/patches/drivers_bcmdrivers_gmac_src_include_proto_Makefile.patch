@@ -1,0 +1,15 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gmac/src/include/proto/Makefile
+@@ -0,0 +1,9 @@
++#
++# include/proto/Makefile
++#
++# Copyright 2006, Broadcom, Inc.
++#
++# $Id: Makefile 241182 2011-02-17 21:50:03Z $
++#
++
++# build etags
+diff --git a/drivers/bcmdrivers/gmac/src/include/proto/bcmeth.h b/drivers/bcmdrivers/gmac/src/include/proto/bcmeth.h
+new file mode 100755
+index 0000000..f3aede9

@@ -11,7 +11,7 @@ powerpc-quanta-lb9-r0:
   flat_image_tree:
 
     kernel:
-      <<: *e500v-kernel
+      <<: *e500v-3-16
     dtb:
       =: powerpc-quanta-lb9-r0.dtb
       package: onl-platform-build-powerpc-quanta-lb9-r0:powerpc

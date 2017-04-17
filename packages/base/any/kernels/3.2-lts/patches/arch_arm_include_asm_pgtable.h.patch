@@ -1,0 +1,39 @@
+--- a/arch/arm/include/asm/pgtable.h
++++ b/arch/arm/include/asm/pgtable.h
+@@ -21,7 +21,6 @@
+ #else
+ 
+ #include <asm/memory.h>
+-#include <mach/vmalloc.h>
+ #include <asm/pgtable-hwdef.h>
+ 
+ #include <asm/pgtable-2level.h>
+@@ -33,14 +32,13 @@
+  * any out-of-bounds memory accesses will hopefully be caught.
+  * The vmalloc() routines leaves a hole of 4kB between each vmalloced
+  * area for the same reason. ;)
+- *
+- * Note that platforms may override VMALLOC_START, but they must provide
+- * VMALLOC_END.  VMALLOC_END defines the (exclusive) limit of this space,
+- * which may not overlap IO space.
+  */
+-#ifndef VMALLOC_START
+ #define VMALLOC_OFFSET		(8*1024*1024)
+ #define VMALLOC_START		(((unsigned long)high_memory + VMALLOC_OFFSET) & ~(VMALLOC_OFFSET-1))
++#ifdef __ASSEMBLY__
++#define VMALLOC_END             0xff000000
++#else
++#define VMALLOC_END             0xff000000UL
+ #endif
+ 
+ #define LIBRARY_TEXT_START	0x0c000000
+@@ -338,6 +336,7 @@ static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
+  * We provide our own arch_get_unmapped_area to cope with VIPT caches.
+  */
+ #define HAVE_ARCH_UNMAPPED_AREA
++#define HAVE_ARCH_UNMAPPED_AREA_TOPDOWN
+ 
+ /*
+  * remap a physical page `pfn' of size `size' with page protection `prot'
+diff --git a/arch/arm/include/asm/processor.h b/arch/arm/include/asm/processor.h
+index 3352451..da9f0d9 100644

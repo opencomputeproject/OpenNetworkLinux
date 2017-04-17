@@ -1,0 +1,51 @@
+--- a/include/linux/usb.h
++++ b/include/linux/usb.h
+@@ -796,6 +796,27 @@ static inline int usb_make_path(struct usb_device *dev, char *buf, size_t size)
+ 	.bInterfaceSubClass = (sc), \
+ 	.bInterfaceProtocol = (pr)
+ 
++/**
++ * USB_VENDOR_AND_INTERFACE_INFO - describe a specific usb vendor with a class of usb interfaces
++ * @vend: the 16 bit USB Vendor ID
++ * @cl: bInterfaceClass value
++ * @sc: bInterfaceSubClass value
++ * @pr: bInterfaceProtocol value
++ *
++ * This macro is used to create a struct usb_device_id that matches a
++ * specific vendor with a specific class of interfaces.
++ *
++ * This is especially useful when explicitly matching devices that have
++ * vendor specific bDeviceClass values, but standards-compliant interfaces.
++ */
++#define USB_VENDOR_AND_INTERFACE_INFO(vend, cl, sc, pr) \
++	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO \
++		| USB_DEVICE_ID_MATCH_VENDOR, \
++	.idVendor = (vend), \
++	.bInterfaceClass = (cl), \
++	.bInterfaceSubClass = (sc), \
++	.bInterfaceProtocol = (pr)
++
+ /* ----------------------------------------------------------------------- */
+ 
+ /* Stuff for dynamic usb ids */
+@@ -974,6 +995,18 @@ extern int usb_register_driver(struct usb_driver *, struct module *,
+ 
+ extern void usb_deregister(struct usb_driver *);
+ 
++/**
++ * module_usb_driver() - Helper macro for registering a USB driver
++ * @__usb_driver: usb_driver struct
++ *
++ * Helper macro for USB drivers which do not do anything special in module
++ * init/exit. This eliminates a lot of boilerplate. Each module may only
++ * use this macro once, and calling it replaces module_init() and module_exit()
++ */
++#define module_usb_driver(__usb_driver) \
++	module_driver(__usb_driver, usb_register, \
++		       usb_deregister)
++
+ extern int usb_register_device_driver(struct usb_device_driver *,
+ 			struct module *);
+ extern void usb_deregister_device_driver(struct usb_device_driver *);
+diff --git a/include/linux/usb/ehci_def.h b/include/linux/usb/ehci_def.h
+index 7cc95ee..2ca3076 100644

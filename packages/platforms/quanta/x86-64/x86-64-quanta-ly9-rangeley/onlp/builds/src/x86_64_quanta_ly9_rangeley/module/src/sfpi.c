@@ -26,12 +26,11 @@
 #include <x86_64_quanta_ly9_rangeley/x86_64_quanta_ly9_rangeley_gpio_table.h>
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/sfp.h>
+#include <onlplib/gpio.h>
 #include "x86_64_quanta_ly9_rangeley_log.h"
 
 #include <unistd.h>
 #include <fcntl.h>
-
-#include <quanta_lib/gpio.h>
 
 /**
  * This table maps the presence gpio, reset gpio, and eeprom file
@@ -63,25 +62,38 @@ typedef struct qsfpmap_s {
 
 static qsfpmap_t qsfpmap__[] =
     {
-        { 53, QSFP_QDB_GPIO_PRSNT_53_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-48/48-0050/eeprom", NULL },
-        { 54, QSFP_QDB_GPIO_PRSNT_54_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-49/49-0050/eeprom", NULL },
+        { 53, QUANTA_LY9_QSFP_QDB_GPIO_PRSNT_53_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-48/48-0050/eeprom", NULL },
+        { 54, QUANTA_LY9_QSFP_QDB_GPIO_PRSNT_54_N, NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-49/49-0050/eeprom", NULL },
   };
+
+#define SFP_GET(_port) (sfpmap__ + _port - 49)
+#define QSFP_GET(_port) (qsfpmap__ + _port - 53)
 
 int
 onlp_sfpi_init(void)
 {
-    int value = -1, ret;
-    ret = pca953x_gpio_value_get(QSFP_EN_GPIO_P3V3_PW_EN, &value);
-    if(ret == ONLP_STATUS_OK && value != GPIO_LOW) {
-        ret = pca953x_gpio_value_set(QSFP_EN_GPIO_P3V3_PW_EN, GPIO_LOW);
+    int value = -1, ret, i;
+    qsfpmap_t* qsfp;
+
+    onlp_gpio_export(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_IN);
+    ret = onlp_gpio_get(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, &value);
+    if(ret == ONLP_STATUS_OK && value != 0) {
+        onlp_gpio_export(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+        ret = onlp_gpio_set(QUANTA_LY9_QSFP_EN_GPIO_P3V3_PW_EN, 0);
     }
     if(ret == ONLP_STATUS_OK) {
-        ret = pca953x_gpio_value_get(QSFP_QDB_GPIO_MOD_EN_N, &value);
-        if(ret == ONLP_STATUS_OK && value != GPIO_LOW) {
-            ret = pca953x_gpio_value_set(QSFP_QDB_GPIO_MOD_EN_N, GPIO_LOW);
+        onlp_gpio_export(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, ONLP_GPIO_DIRECTION_IN);
+        ret = onlp_gpio_get(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, &value);
+        if(ret == ONLP_STATUS_OK && value != 0) {
+            onlp_gpio_export(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, ONLP_GPIO_DIRECTION_OUT);
+            ret = onlp_gpio_set(QUANTA_LY9_QSFP_QDB_GPIO_MOD_EN_N, 0);
         }
     }
 
+    for(i = 53; i < 55; i++) {
+        qsfp = QSFP_GET(i);
+        onlp_gpio_export(qsfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
+    }
 
     return ret;
 }
@@ -98,9 +110,6 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
     return ONLP_STATUS_OK;
 }
 
-#define SFP_GET(_port) (sfpmap__ + _port - 49)
-#define QSFP_GET(_port) (qsfpmap__ + _port - 53)
-
 int
 onlp_sfpi_is_present(int port)
 {
@@ -110,8 +119,8 @@ onlp_sfpi_is_present(int port)
         qsfpmap_t* qsfp = QSFP_GET(port);
 
         if(qsfp->present_gpio > 0) {
-            if(pca953x_gpio_value_get(qsfp->present_gpio, &value) == ONLP_STATUS_OK)
-                return (value == GPIO_LOW);
+            if(onlp_gpio_get(qsfp->present_gpio, &value) == ONLP_STATUS_OK)
+                return (value == 0);
             else
                 return ONLP_STATUS_E_MISSING;
         }
