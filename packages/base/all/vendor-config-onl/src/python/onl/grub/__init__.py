@@ -22,6 +22,10 @@ def _makedirs(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
+def onie_fwpkg_exists():
+    with OnlOnieBootContext() as ob:
+        return os.path.exists(os.path.join(ob.directory, "onie/tools/bin/onie-fwpkg"))
+
 def onie_fwpkg(arguments):
     with OnlOnieBootContext() as ob:
         # This is necessary if we've upgraded ONIE but haven't booted into it yet...
@@ -35,9 +39,3 @@ def boot_entry_set(index):
 
 def boot_onie():
     return boot_entry_set(1)
-
-
-
-
-
-
