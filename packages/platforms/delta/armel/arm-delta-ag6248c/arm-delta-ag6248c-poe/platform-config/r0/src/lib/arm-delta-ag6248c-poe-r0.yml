@@ -1,0 +1,43 @@
+---
+
+######################################################################
+#
+# platform-config for AG6248C-POE
+#
+######################################################################
+
+arm-delta-ag6248c-poe-r0:
+  flat_image_tree:
+    kernel:
+      <<: *arm-iproc-kernel
+    dtb:
+      =: delta_ag6248c_poe.dtb
+      <<: *arm-iproc-kernel-package
+    itb:
+      <<: *arm-itb
+
+  loader:
+    device: /dev/mtdblock4
+    ##partition: /dev/sda1
+    loadaddr: 0x70000000
+    nos_bootcmds: *flash_bootcmds
+
+    environment:
+    - device: /dev/mtd2
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00010000
+    
+  installer:
+  - ONL-BOOT:
+      =: 128MiB
+      format: ubifs
+  - ONL-CONFIG:
+      =: 128MiB
+      format: ubifs
+  - ONL-IMAGES:
+      =: 1024MiB
+      format: ubifs
+  - ONL-DATA:
+      =: 2048MiB
+      format: ubifs

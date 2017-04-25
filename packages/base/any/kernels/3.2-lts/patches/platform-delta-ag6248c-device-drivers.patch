@@ -1,0 +1,181 @@
+diff --git a/arch/arm/boot/dts/delta_ag6248c_poe.dts b/arch/arm/boot/dts/delta_ag6248c_poe.dts
+new file mode 100755
+index 0000000..f86c35b
+--- /dev/null
++++ b/arch/arm/boot/dts/delta_ag6248c_poe.dts
+@@ -0,0 +1,78 @@
++/*
++ * Delta Networks, Inc. AG6248C Device Tree Source
++ *
++ * Copyright 2015, Cumulus Networks, Inc.
++ *
++ * This program is free software; you can redistribute  it and/or modify it
++ * under  the terms of  the GNU General  Public License as published by the
++ * Free Software Foundation;  either version 2 of the  License, or (at your
++ * option) any later version.
++ *
++ */
++/dts-v1/;
++/include/ "helix4.dtsi"
++
++/ {
++    model = "delta,ag6248c_poe";
++    compatible = "delta,ag6248c_poe";
++
++    aliases {
++        serial0 = &uart0;
++		i2c-controller0 = &i2c0;
++        i2c-controller1 = &i2c1;
++    };
++
++    memory {
++        reg = <0x61000000 0x7f000000>;
++    };
++
++    cpus {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        cpu@0 {
++            device_type = "cpu";
++            compatible = "arm,cortex-a9";
++            next-level-cache = <&L2>;
++            reg = <0x00>;
++        };
++        cpu@1 {
++            device_type = "cpu";
++            compatible = "arm,cortex-a9";
++            next-level-cache = <&L2>;
++            reg = <0x01>;
++        };
++    };
++
++    localbus@1e000000{
++        address-cells = <0x2>;
++        #size-cells = <0x1>;
++        compatible = "simple-bus";
++        ranges = <0x0 0x0 0x1e000000 0x02000000>;
++       
++    };
++
++    i2c0: i2c@18038000 {
++        compatible = "iproc-smb";
++        reg = <0x18038000 0x1000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        interrupts = < 127 >;
++        clock-frequency = <400000>;
++        rtc@68 {
++            compatible = "m41st85";
++            reg = <0x68>;
++        };
++	};
++
++
++    i2c1: i2c@1803b000 {
++        compatible = "iproc-smb";
++        reg = <0x1803b000 0x1000>;
++        #address-cells = <1>;
++        #size-cells = <0>;
++        interrupts = < 128 >;
++        clock-frequency = <100000>;
++        
++	};
++};
+diff --git a/arch/arm/mach-iproc/Kconfig b/arch/arm/mach-iproc/Kconfig
+index c77208d..c6a87fc 100644
+--- a/arch/arm/mach-iproc/Kconfig
++++ b/arch/arm/mach-iproc/Kconfig
+@@ -49,6 +49,12 @@ config MACH_ACCTON_AS4610_54
+ 	help
+ 	  Support for Accton AS4610-54 POE and non -POE board.
+ 
++config MACH_DELTA_AG6248C
++    select ARM_L1_CACHE_SHIFT_6
++    bool "Support Delta AG6248C POE and non-POE board"
++    help
++        Support for Delta AG6248C POE and non-POE board.
++
+ config MACH_IPROC_P7
+ 	bool "Support iProc Profile 7 architecture"
+ 	depends on MACH_GH
+diff --git a/arch/arm/mach-iproc/board_bu.c b/arch/arm/mach-iproc/board_bu.c
+index 7e07ed1..5479020 100644
+--- a/arch/arm/mach-iproc/board_bu.c
++++ b/arch/arm/mach-iproc/board_bu.c
+@@ -1083,6 +1083,7 @@ MACHINE_END
+ static const char * helix4_dt_board_compat[] = {
+     "dni,dni_3448p",
+     "accton,as4610_54",
++    "delta,ag6248c_poe",
+     NULL
+ };
+ 
+diff --git a/arch/arm/mach-iproc/common.c b/arch/arm/mach-iproc/common.c
+index b116ffc..e911a2b 100644
+--- a/arch/arm/mach-iproc/common.c
++++ b/arch/arm/mach-iproc/common.c
+@@ -187,7 +187,8 @@ static struct platform_device wdt_device =
+ enum {
+ 	HX4_NONE = 0,
+ 	HX4_DNI_3448P,
+-	HX4_ACCTON_AS4610_54
++	HX4_ACCTON_AS4610_54,
++    HX4_DELTA_AG6248C_POE,
+ };
+ 
+ /*
+@@ -212,6 +213,8 @@ int brcm_get_hx4_model(void)
+ 		return HX4_DNI_3448P;
+ 	else if (!strcmp(model, "accton,as4610_54"))
+ 		return HX4_ACCTON_AS4610_54;
++    else if (!strcmp(model, "delta,ag6248c_poe"))
++        return HX4_DELTA_AG6248C_POE;
+ 
+ 	printk( KERN_ERR "Unknown Model %s\n", model );
+ 	return HX4_NONE;
+diff --git a/arch/arm/mach-iproc/include/mach/iproc_regs.h b/arch/arm/mach-iproc/include/mach/iproc_regs.h
+index 460c436..50ea557 100644
+--- a/arch/arm/mach-iproc/include/mach/iproc_regs.h
++++ b/arch/arm/mach-iproc/include/mach/iproc_regs.h
+@@ -364,7 +364,11 @@
+ #define IPROC_GMAC3_INT				182
+ #elif (defined(CONFIG_MACH_HX4) || defined(CONFIG_MACH_KT2) || defined(CONFIG_MACH_DNI_3448P) || \
+ 			defined(CONFIG_MACH_ACCTON_AS4610_54))
++#if defined(CONFIG_MACH_DELTA_AG6248C)
++#define IPROC_NUM_GMACS				1
++#else
+ #define IPROC_NUM_GMACS				2
++#endif
+ #define IPROC_GMAC0_REG_BASE		  (GMAC0_DEVCONTROL) //(0x18022000)
+ #define IPROC_GMAC1_REG_BASE		  (GMAC1_DEVCONTROL) //(0x18023000)
+ #define IPROC_GMAC2_REG_BASE		  (0) // n/a
+diff --git a/drivers/bcmdrivers/gmac/src/shared/nvramstubs.c b/drivers/bcmdrivers/gmac/src/shared/nvramstubs.c
+index d5b400d..a823697 100644
+--- a/drivers/bcmdrivers/gmac/src/shared/nvramstubs.c
++++ b/drivers/bcmdrivers/gmac/src/shared/nvramstubs.c
+@@ -143,7 +143,8 @@ __setup("envaddr=", envaddr_setup);
+ enum {
+ 	HX4_NONE = 0,
+ 	HX4_DNI_3448P,
+-	HX4_ACCTON_AS4610_54
++	HX4_ACCTON_AS4610_54,
++    HX4_DELTA_AG6248C_POE
+ };
+ 
+ static void
+@@ -158,7 +159,10 @@ setup_uboot_vars(void) {
+ 	} else if (modelnum == HX4_ACCTON_AS4610_54) {
+ 		env_offset = 0x000f0000;
+ 		uboot_vars_start = CONFIG_SPI_BASE + env_offset;
+-	}
++	}else if (modelnum == HX4_DELTA_AG6248C_POE) {
++        env_offset = 0x00300000;
++        uboot_vars_start = CONFIG_NAND_BASE + env_offset;
++    }
+ }
+ 
+ /*
+-- 
+2.1.4
+
