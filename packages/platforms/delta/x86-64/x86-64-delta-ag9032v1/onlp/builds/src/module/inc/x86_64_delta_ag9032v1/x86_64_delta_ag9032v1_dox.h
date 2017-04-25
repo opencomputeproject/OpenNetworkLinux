@@ -3,8 +3,8 @@
  * x86_64_delta_ag9032v1 Doxygen Header
  *
  *****************************************************************************/
-#ifndef __x86_64_delta_ag9032v1_DOX_H__
-#define __x86_64_delta_ag9032v1_DOX_H__
+#ifndef __X86_64_DELTA_AG9032V1_DOX_H__
+#define __X86_64_DELTA_AG9032V1_DOX_H__
 
 /**
  * @defgroup x86_64_delta_ag9032v1 x86_64_delta_ag9032v1 - x86_64_delta_ag9032v1 Description
@@ -23,4 +23,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __x86_64_delta_ag9032v1_DOX_H__ */
+#endif /* __X86_64_DELTA_AG9032V1_DOX_H__ */

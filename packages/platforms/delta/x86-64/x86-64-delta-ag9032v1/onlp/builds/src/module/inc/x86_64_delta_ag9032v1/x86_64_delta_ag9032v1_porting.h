@@ -7,8 +7,8 @@
  * @{
  *
  *****************************************************************************/
-#ifndef __x86_64_delta_ag9032v1_PORTING_H__
-#define __x86_64_delta_ag9032v1_PORTING_H__
+#ifndef __X86_64_DELTA_AG9032V1_PORTING_H__
+#define __X86_64_DELTA_AG9032V1_PORTING_H__
 
 
 /* <auto.start.portingmacro(ALL).define> */
@@ -103,5 +103,5 @@
 /* <auto.end.portingmacro(ALL).define> */
 
 
-#endif /* __x86_64_delta_ag9032v1_PORTING_H__ */
+#endif /* _X86_64_DELTA_AG9032V1_PORTING_H__ */
 /* @} */

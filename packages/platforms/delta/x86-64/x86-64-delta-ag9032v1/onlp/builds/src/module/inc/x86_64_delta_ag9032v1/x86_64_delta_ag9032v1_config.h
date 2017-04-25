@@ -13,7 +13,7 @@
 #ifdef GLOBAL_INCLUDE_CUSTOM_CONFIG
 #include <global_custom_config.h>
 #endif
-#ifdef x86_64_delta_ag9032V1_INCLUDE_CUSTOM_CONFIG
+#ifdef X86_64_DELTA_AG9032V1_INCLUDE_CUSTOM_CONFIG
 #include <x86_64_delta_ag9032v1_custom_config.h>
 #endif
 

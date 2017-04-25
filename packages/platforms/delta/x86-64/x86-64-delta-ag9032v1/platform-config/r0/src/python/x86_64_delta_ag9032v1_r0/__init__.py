@@ -5,7 +5,7 @@ class OnlPlatform_x86_64_delta_ag9032v1_r0(OnlPlatformDelta,
                                               OnlPlatformPortConfig_32x100):
     PLATFORM='x86-64-delta-ag9032v1-r0'
     MODEL="AG9032V1"
-    SYS_OBJECT_ID=".9032"
+    SYS_OBJECT_ID=".9032.1"
 
 
     def baseconfig(self):

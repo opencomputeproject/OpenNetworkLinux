@@ -142,6 +142,13 @@ onlp_sysi_platform_manage_fans(void)
         onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), &thermal[6]) != ONLP_STATUS_OK ||
         onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), &thermal[7]) != ONLP_STATUS_OK )
     {
+	/* Setting all fans speed to maximum */
+	new_duty_percentage = SPEED_100_PERCENTAGE;
+	for(i = 1 ; i <= 12; i++)
+	{
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), new_duty_percentage);
+	}
+
         AIM_LOG_ERROR("Unable to read thermal status");
         return ONLP_STATUS_E_INTERNAL;
     }
