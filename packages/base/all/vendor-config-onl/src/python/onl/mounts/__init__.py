@@ -63,7 +63,12 @@ class MountManager(object):
             self.logger.debug("%s not mounted @ %s. It will be mounted %s" % (device, directory, mode))
 
         try:
-            cmd = "mount -o %s %s %s" % (','.join(mountargs), device, directory)
+            p = device.find('ubi')
+            if p < 0:
+                cmd = "mount -o %s %s %s" % (','.join(mountargs), device, directory)
+            else:
+                cmd = "mount -o %s -t %s  %s %s" % (','.join(mountargs), 'ubifs', device, directory)
+
             self.logger.debug("+ %s" % cmd)
             subprocess.check_call(cmd, shell=True)
         except subprocess.CalledProcessError, e:
@@ -147,7 +152,39 @@ class OnlMountManager(object):
             t = timeout
             while t >= 0:
                 try:
-                    v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
+                    useUbiDev = False
+                    try:
+                        v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
+                    except subprocess.CalledProcessError:
+                        useUbiDev = True
+                    if useUbiDev == False: break
+                    output  = subprocess.check_output("ubinfo -d 0 -N %s" % k, shell=True).splitlines()
+                    volumeId = None
+                    device = None
+                    for line in output:
+                        line = line.strip()
+                        p = line.find(':')
+                        if p < 0:
+                            self.logger.debug("Invaild ubinfo output %s" % line)
+
+                        name, value = line[:p], line[p+1:].strip()
+                        if 'Volume ID' in name:
+                            p = value.find('(')
+                            if p < 0:
+                                self.logger.debug("Invalid Volume ID %s" % value)
+
+                            volumeId = value[:p].strip()
+                            
+                            p = value.find('on')
+                            if p < 0:
+                                self.logger.debug("Invalid ubi devicde %s" % value)
+
+                            device = value[p+2:-1].strip()
+
+                        if 'Name' in name:
+                            v['device'] = "/dev/" + device + "_" + volumeId
+
+                        
                     break
                 except subprocess.CalledProcessError:
                         self.logger.debug("Block label %s does not yet exist..." % k)
