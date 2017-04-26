@@ -4,3 +4,4 @@ add-kernel-patches-for-nxp-arm64-ls2080ardb-based-on.patch
 add-nxp-arm64-ls2088ardb-device-tree.patch
 add-fsl-dpaa2-and-fsl-mc-support-based-on-3.18.25.patch
 backport-some-kernel-patches-based-on-3.18.25.patch
+ls2_mc_console.patch
