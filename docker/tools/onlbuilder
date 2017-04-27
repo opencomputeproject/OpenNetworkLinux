@@ -18,7 +18,7 @@ g_current_uid  = os.getuid()
 g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
 
 g_builder7_image_name="opennetworklinux/builder7:1.2"
-g_builder8_image_name="opennetworklinux/builder8:1.5"
+g_builder8_image_name="opennetworklinux/builder8:1.6"
 
 g_default_image_name=g_builder8_image_name
 g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
