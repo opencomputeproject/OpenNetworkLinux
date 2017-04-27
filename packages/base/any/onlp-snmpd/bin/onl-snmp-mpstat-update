@@ -1,0 +1,17 @@
+#!/bin/sh
+
+PROG=`basename $0`
+TMPFILE=/tmp/$PROG.tmp
+
+if [ $# -ne 2 ]; then
+    echo "usage: $PROG <filename> <interval>"
+    exit 1
+fi
+
+# filename to which update should be written
+LASTSTAT=$1
+# time interval over which to collect stats, in seconds
+INTERVAL=$2
+
+mpstat $INTERVAL 1 > $TMPFILE
+mv $TMPFILE $LASTSTAT

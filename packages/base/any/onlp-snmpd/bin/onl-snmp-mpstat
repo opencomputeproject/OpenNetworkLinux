@@ -3,6 +3,13 @@
 # call mpstat and generate json output containing stats for all cpus
 
 """
+sample output from "mpstat":
+# mpstat
+Linux 3.8.13-OpenNetworkLinux-e500mc-1.5 (as6700-3) 02/09/2017 _ppc_(4 CPU)
+
+01:57:43 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+01:57:43 PM  all    4.63    0.00    1.91    0.00    0.00    0.11    0.00    0.00    0.00   93.35
+
 sample output from "mpstat 1 1":
 # mpstat 1 1
 Linux 3.8.13-OpenNetworkLinux-e500mc-1.5 (as6700-3) 2016-12-15 _ppc_(4 CPU)
@@ -14,21 +21,41 @@ Average:     all    5.17    0.00    2.07    0.00    0.00    0.00    0.00    0.00
 
 import subprocess
 import json
+import sys
+
+if len(sys.argv) != 2:
+    print 'usage: %s <interval>' % sys.argv[0]
+    sys.exit(1)
+
+laststat = '/tmp/mpstat.last'
+
+# time interval over which to collect stats, in seconds
+interval = sys.argv[1]
 
 stats = {}
 
-# 1 second interval, 1 count
-out = subprocess.check_output(['mpstat','1','1'])
+# read last updated stats
+try:
+    with open(laststat, 'r') as f:
+        out = [ line.strip('\n') for line in f ]
+except IOError:
+    # use mpstats from beginning of time
+    out = subprocess.check_output('mpstat').split('\n')
 
-for line in out.split('\n'):
+for line in out:
     if "%idle" in line:
-        # extract keys from header line, skipping over time and AM/PM if present
+        # extract keys from header line,
+        # skipping over time and AM/PM if present
         tokens = line.split()
-        keys = tokens[tokens.index('CPU'):]
+        token_start = tokens.index('CPU')
+        keys = tokens[token_start:]
 
-    if "Average" in line:
-        vals = line.split()[1:]
+    if ("all" in line) and ("Average" not in line):
+        vals = line.split()[token_start:]
         stats[vals[0]] = { k:int(round(100*float(v))) \
                                for (k,v) in zip(keys[1:],vals[1:]) }
 
 print json.dumps(stats)
+
+# start up next update in the background
+subprocess.Popen(['/usr/bin/onl-snmp-mpstat-update', laststat, interval])

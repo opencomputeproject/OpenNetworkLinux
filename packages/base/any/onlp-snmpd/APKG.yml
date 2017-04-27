@@ -17,6 +17,7 @@ packages:
       builds/$BUILD_DIR/${TOOLCHAIN}/bin/onlp-snmpd: /usr/bin/onlp-snmpd
       ${ONL}/packages/base/any/onlp-snmpd/bin/onl-snmpwalk : /usr/bin/onl-snmpwalk
       ${ONL}/packages/base/any/onlp-snmpd/bin/onl-snmp-mpstat : /usr/bin/onl-snmp-mpstat
+      ${ONL}/packages/base/any/onlp-snmpd/bin/onl-snmp-mpstat-update : /usr/bin/onl-snmp-mpstat-update
 
     init: ${ONL}/packages/base/any/onlp-snmpd/onlp-snmpd.init
 
