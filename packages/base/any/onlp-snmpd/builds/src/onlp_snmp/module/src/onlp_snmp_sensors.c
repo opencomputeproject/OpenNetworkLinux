@@ -1,7 +1,7 @@
 /************************************************************
  * <bsn.cl fy=2015 v=onl>
  *
- *           Copyright 2015-2016 Big Switch Networks, Inc.
+ *           Copyright 2015-2017 Big Switch Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -29,7 +29,11 @@
 #include <net-snmp/net-snmp-includes.h>
 #include <net-snmp/agent/net-snmp-agent-includes.h>
 
-#include <OS/os_time.h>
+#include <AIM/aim_sem.h>
+#include <AIM/aim_time.h>
+
+#include <pthread.h>
+#include <unistd.h>
 
 #include <onlp/thermal.h>
 #include <onlp/fan.h>
@@ -38,8 +42,24 @@
 #include "onlp_snmp_log.h"
 
 
+typedef struct sensor_info_s {
+    bool valid;  /* for snmp table maintenance */
+    union {
+        onlp_thermal_info_t ti;
+        onlp_fan_info_t     fi;
+        onlp_psu_info_t     pi;
+    } data;
+} sensor_info_t;
+
+/* for front-back buffers */
+#define NUM_SENSOR_INFO (2)
+
 /**
  * Individual Sensor Control structure.
+ * The valid field in the sensor_info_t structure above
+ * is used snmp table maintenance:
+ * - A table row is added when previously invalid sensor is now valid.
+ * - A table row is deleted when previously valid sensor is now invalid
  */
 typedef struct onlp_snmp_sensor_s {
     list_links_t links;  /* for tracking sensors of the same type */
@@ -48,18 +68,41 @@ typedef struct onlp_snmp_sensor_s {
     char desc[ONLP_SNMP_CONFIG_MAX_DESC_LENGTH];
     onlp_snmp_sensor_type_t sensor_type;
     uint32_t index;      /* snmp table column */
-    union sensor_info {
-        onlp_thermal_info_t ti;
-        onlp_fan_info_t     fi;
-        onlp_psu_info_t     pi;
-    } sensor_info;
-    /* for snmp table maintenance:
-     * table row is added when previously invalid sensor is now valid,
-     * table row is deleted when previously valid sensor is now invalid */
-    bool previously_valid;
-    bool now_valid;
+    sensor_info_t sensor_info[NUM_SENSOR_INFO];
 } onlp_snmp_sensor_t;
 
+static int curr_info;
+static int
+next_info(void)
+{
+    return (curr_info+1) % NUM_SENSOR_INFO;
+}
+static sensor_info_t *
+get_curr_info(onlp_snmp_sensor_t *ss)
+{
+    return &ss->sensor_info[curr_info];
+}
+static sensor_info_t *
+get_next_info(onlp_snmp_sensor_t *ss)
+{
+    return &ss->sensor_info[next_info()];
+}
+static void
+swap_curr_next_info(void)
+{
+    curr_info = next_info();
+}
+
+/* timestamp used to trigger sensor update */
+static uint64_t last_sensor_update_time;
+
+/* true if table restructuring is to happen;
+ * set after all tables updated;
+ * cleared after all tables restructured */
+static bool restructure_trigger;
+
+/* updates happen in this pthread */
+static pthread_t update_thread_handle;
 
 /**
  * NET SNMP handler
@@ -71,12 +114,6 @@ typedef void (*onlp_snmp_handler_fn)(netsnmp_request_info *req,
  * Update handler
  */
 typedef int (*update_handler_fn)(onlp_snmp_sensor_t *ss);
-
-
-/*
- * Sensor Value Update period
- */
-static uint32_t update_period__ = ONLP_SNMP_CONFIG_UPDATE_PERIOD;
 
 
 /*
@@ -238,7 +275,7 @@ register_table__(char table_name[], oid table_oid[], size_t table_oid_len,
 static int
 temp_update_handler__(onlp_snmp_sensor_t *ss)
 {
-    onlp_thermal_info_t *ti = &ss->sensor_info.ti;
+    onlp_thermal_info_t *ti = &get_next_info(ss)->data.ti;
     onlp_oid_t oid = (onlp_oid_t) ss->sensor_id;
 
     return onlp_thermal_info_get(oid, ti);
@@ -276,9 +313,10 @@ temp_status_handler__(netsnmp_request_info *req,
                       onlp_snmp_sensor_t *ss)
 {
     int value;
-    onlp_thermal_info_t *ti = &ss->sensor_info.ti;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_thermal_info_t *ti = &si->data.ti;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -301,9 +339,10 @@ temp_value_handler__(netsnmp_request_info *req,
                      onlp_snmp_sensor_t *ss)
 {
     int value;
-    onlp_thermal_info_t *ti = &ss->sensor_info.ti;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_thermal_info_t *ti = &si->data.ti;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -340,7 +379,7 @@ temp_table_handler__(netsnmp_mib_handler *handler,
 static int
 fan_update_handler__(onlp_snmp_sensor_t *ss)
 {
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    onlp_fan_info_t *fi = &get_next_info(ss)->data.fi;
     onlp_oid_t oid = (onlp_oid_t) ss->sensor_id;
 
     return onlp_fan_info_get(oid, fi);
@@ -378,9 +417,10 @@ fan_status_handler__(netsnmp_request_info *req,
                      onlp_snmp_sensor_t *ss)
 {
     int value;
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -403,9 +443,10 @@ fan_flow_type_handler__(netsnmp_request_info *req,
                         onlp_snmp_sensor_t *ss)
 {
     int name_index;
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -433,9 +474,10 @@ fan_rpm_handler__(netsnmp_request_info *req,
                   onlp_snmp_sensor_t *ss)
 {
     int value;
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -453,9 +495,10 @@ fan_pct_handler__(netsnmp_request_info *req,
                   onlp_snmp_sensor_t *ss)
 {
     int value;
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -472,9 +515,10 @@ fan_model_handler__(netsnmp_request_info *req,
                     uint32_t index,
                     onlp_snmp_sensor_t *ss)
 {
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -491,9 +535,10 @@ fan_serial_handler__(netsnmp_request_info *req,
                      uint32_t index,
                      onlp_snmp_sensor_t *ss)
 {
-    onlp_fan_info_t *fi = &ss->sensor_info.fi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_fan_info_t *fi = &si->data.fi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -534,7 +579,7 @@ fan_table_handler__(netsnmp_mib_handler *handler,
 static int
 psu_update_handler__(onlp_snmp_sensor_t *ss)
 {
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    onlp_psu_info_t *pi = &get_next_info(ss)->data.pi;
     onlp_oid_t oid = (onlp_oid_t) ss->sensor_id;
 
     return onlp_psu_info_get(oid, pi);
@@ -571,9 +616,10 @@ psu_status_handler__(netsnmp_request_info *req,
                      onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -604,9 +650,10 @@ psu_current_type_handler__(netsnmp_request_info *req,
                            onlp_snmp_sensor_t *ss )
 {
     int name_index;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -633,10 +680,10 @@ psu_model_handler__(netsnmp_request_info *req,
                     uint32_t index,
                     onlp_snmp_sensor_t *ss)
 {
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
-
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -653,10 +700,10 @@ psu_serial_handler__(netsnmp_request_info *req,
                      uint32_t index,
                      onlp_snmp_sensor_t *ss)
 {
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
-
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -674,9 +721,10 @@ psu_vin_handler__(netsnmp_request_info *req,
                   onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -694,9 +742,10 @@ psu_vout_handler__(netsnmp_request_info *req,
                    onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -714,9 +763,10 @@ psu_iin_handler__(netsnmp_request_info *req,
                   onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -734,9 +784,10 @@ psu_iout_handler__(netsnmp_request_info *req,
                    onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -754,9 +805,10 @@ psu_pin_handler__(netsnmp_request_info *req,
                   onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -774,9 +826,10 @@ psu_pout_handler__(netsnmp_request_info *req,
                    onlp_snmp_sensor_t *ss )
 {
     int value;
-    onlp_psu_info_t *pi = &ss->sensor_info.pi;
+    sensor_info_t *si = get_curr_info(ss);
+    onlp_psu_info_t *pi = &si->data.pi;
 
-    if (!ss->now_valid) {
+    if (!si->valid) {
         return;
     }
 
@@ -829,6 +882,7 @@ static update_handler_fn all_update_handler_fns__[] = {
 
 /*
  * Add a sensor to the appropriate type-specific control structure.
+ * Updates next sensor info, not current sensor info.
  */
 static void
 add_sensor__(int sensor_type, onlp_snmp_sensor_t *new_sensor)
@@ -848,7 +902,7 @@ add_sensor__(int sensor_type, onlp_snmp_sensor_t *new_sensor)
         if (new_sensor->sensor_id == ss->sensor_id) {
             /* no need to add sensor */
             AIM_LOG_TRACE("skipping existing sensor %08x", ss->sensor_id);
-            ss->now_valid = true;
+            get_next_info(ss)->valid = true;
             return;
         }
     }
@@ -857,7 +911,7 @@ add_sensor__(int sensor_type, onlp_snmp_sensor_t *new_sensor)
     AIM_TRUE_OR_DIE(ss);
     AIM_MEMCPY(ss, new_sensor, sizeof(*new_sensor));
     ss->sensor_type = sensor_type;
-    ss->now_valid = true;
+    get_next_info(ss)->valid = true;
 
     /* finally add sensor */
     list_push(&ctrl->sensors, &ss->links);
@@ -918,59 +972,115 @@ collect_sensors__(onlp_oid_t oid, void* cookie)
 }
 
 
-static int
-update_all_tables__(void)
+/*
+ * sensor table is updated in two parts:
+ * 1. sensor update, performed in separate thread by calling update_tables__.
+ *    once update is complete, front-back buffers will be switched
+ *    and flag set to indicate table restructuring can occur
+ * 2. sensor table restructuring, performed in snmp callback
+ *    by calling restructure_tables__.
+ */
+
+static void
+update_tables__(void)
 {
     int i;
     onlp_snmp_sensor_ctrl_t *ctrl;
     list_links_t *curr;
-    list_links_t *next;
     onlp_snmp_sensor_t *ss;
 
-    /* for each table: save old state */
+    uint64_t now = aim_time_monotonic();
+    if (now - last_sensor_update_time <
+        (ONLP_SNMP_CONFIG_UPDATE_PERIOD * 1000 * 1000)) {
+        return;
+    }
+
+    if (restructure_trigger) {
+        AIM_LOG_INFO("restructure has not happened, skip sensor update");
+        return;
+    }
+
+    last_sensor_update_time = now;
+    AIM_LOG_INFO("update sensor objects");
+
+    /* for each table: mark next_info invalid */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {
         ctrl = get_sensor_ctrl__(i);
         LIST_FOREACH(&ctrl->sensors, curr) {
             ss = container_of(curr, links, onlp_snmp_sensor_t);
-            ss->previously_valid = ss->now_valid;
-            ss->now_valid = false;
+            get_next_info(ss)->valid = false;
         }
     }
 
-    /* discover new sensors for all tables */
+    /* discover new sensors for all tables,
+     * writing validity into next_info for all sensors */
     onlp_oid_iterate(ONLP_OID_SYS, 0, collect_sensors__, NULL);
+    AIM_LOG_INFO("iteration complete");
 
     /* for each table: update all sensor info */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {
         ctrl = get_sensor_ctrl__(i);
         LIST_FOREACH(&ctrl->sensors, curr) {
             ss = container_of(curr, links, onlp_snmp_sensor_t);
-            if (ss->now_valid) {
-                AIM_LOG_TRACE("update sensor %s%s", ss->name, ss->desc);
+            if (get_next_info(ss)->valid) {
+                AIM_LOG_INFO("update sensor %s%s", ss->name, ss->desc);
                 /* invoke update handler */
                 if ((*all_update_handler_fns__[i])(ss) != ONLP_STATUS_OK) {
                     AIM_LOG_ERROR("failed to update %s%s", ss->name, ss->desc);
-                    ss->now_valid = false;
+                    get_next_info(ss)->valid = false;
                 }
             }
         }
     }
+
+    /* swap front and back buffers */
+    swap_curr_next_info();
+
+    /* trigger table restructuring */
+    AIM_LOG_INFO("trigger restructure");
+    restructure_trigger = true;
+}
+
+/*
+ * adds or removes rows from sensor table.
+ * registered with snmp_alarm_register.
+ * table restructuring then happens within alarm handler,
+ * thus avoiding crashes when table is changed while handling snmp requests.
+ */
+static void
+restructure_tables__(unsigned int reg, void *clientarg)
+{
+    int i;
+    onlp_snmp_sensor_ctrl_t *ctrl;
+    list_links_t *curr;
+    list_links_t *next;
+    onlp_snmp_sensor_t *ss;
+    bool previously_valid;
+    bool now_valid;
+
+    if (!restructure_trigger) {
+        return;
+    }
+
+    AIM_LOG_INFO("restructuring tables");
 
     /* for each table: add or delete rows as necessary */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {
         ctrl = get_sensor_ctrl__(i);
         LIST_FOREACH_SAFE(&ctrl->sensors, curr, next) {
             ss = container_of(curr, links, onlp_snmp_sensor_t);
-            if (!ss->previously_valid && ss->now_valid) {
+            previously_valid = get_next_info(ss)->valid;
+            now_valid = get_curr_info(ss)->valid;
+            if (!previously_valid && now_valid) {
                 snmp_log(LOG_INFO, "Adding %s%s, id=%08x",
                          ss->name, ss->desc, ss->sensor_id);
-                AIM_LOG_VERBOSE("add row %d to %s for %s%s",
+                AIM_LOG_INFO("add row %d to %s for %s%s",
                                 ss->index, ctrl->name, ss->name, ss->desc);
                 add_table_row__(sensor_table__[i], ss);
-            } else if (ss->previously_valid && !ss->now_valid) {
+            } else if (previously_valid && !now_valid) {
                 snmp_log(LOG_INFO, "Deleting %s%s, id=%08x",
                          ss->name, ss->desc, ss->sensor_id);
-                AIM_LOG_VERBOSE("delete row %d from %s for %s%s",
+                AIM_LOG_INFO("delete row %d from %s for %s%s",
                                 ss->index, ctrl->name, ss->name, ss->desc);
                 delete_table_row__(sensor_table__[i], ss->index);
                 list_remove(curr);
@@ -979,7 +1089,9 @@ update_all_tables__(void)
         }
     }
 
-    return 0;
+    AIM_LOG_INFO("restructuring complete");
+
+    restructure_trigger = false;
 }
 
 
@@ -1040,23 +1152,15 @@ init_all_tables__(void)
 }
 
 
-/* helper function to be registered with snmp_alarm_register;
- * table updates happen within alarm handler, thus avoiding crashes
- * when table is changed while handling snmp requests */
-static void
-periodic_update__(unsigned int reg, void *clientarg)
-{
-    update_all_tables__();
-}
-
 /* populates initial stats and sets up periodic timer */
 static void
 setup_alarm__(void)
 {
-    /* initial stats population */
-    update_all_tables__();
-    /* registration of periodic timer */
-    snmp_alarm_register(update_period__, SA_REPEAT, periodic_update__, NULL);
+    /* initial stats population: update and restructure */
+    update_tables__();
+    restructure_tables__(0, NULL);
+    /* registration of periodic timer for table restructuring */
+    snmp_alarm_register(1, SA_REPEAT, restructure_tables__, NULL);
 }
 
 
@@ -1065,5 +1169,42 @@ onlp_snmp_sensors_init(void)
 {
     init_all_tables__();
     setup_alarm__();
+    return 0;
+}
+
+#define MIN(a,b) ((a)<(b)? (a): (b))
+static unsigned int
+us_to_next_update(void)
+{
+    uint64_t deltat = aim_time_monotonic() - last_sensor_update_time;
+    uint64_t period = ONLP_SNMP_CONFIG_UPDATE_PERIOD * 1000 * 1000;
+    return MIN(period - deltat, period);
+}
+
+static void *
+do_update(void *arg)
+{
+    for (;;) {
+        update_tables__();
+        usleep(us_to_next_update());
+    }
+
+    return NULL;
+}
+
+int
+onlp_snmp_sensor_update_start(void)
+{
+    if (pthread_create(&update_thread_handle, NULL, do_update, NULL) < 0) {
+        AIM_LOG_ERROR("update thread creation failed");
+        return -1;
+    }
+    return 0;
+}
+
+int
+onlp_snmp_sensor_update_stop(void)
+{
+    pthread_join(update_thread_handle, NULL);
     return 0;
 }

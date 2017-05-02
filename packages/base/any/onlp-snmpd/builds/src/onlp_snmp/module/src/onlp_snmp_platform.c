@@ -1,7 +1,7 @@
 /************************************************************
  * <bsn.cl fy=2015 v=onl>
  *
- *           Copyright 2015 Big Switch Networks, Inc.
+ *           Copyright 2015-2017 Big Switch Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -32,6 +32,9 @@
 #include <net-snmp/net-snmp-includes.h>
 #include <net-snmp/agent/net-snmp-agent-includes.h>
 #include <onlp/sys.h>
+
+#include <pthread.h>
+#include <unistd.h>
 
 static void
 platform_string_register(int index, const char* desc, char* value)
@@ -88,6 +91,8 @@ resource_int_register(int index, const char* desc,
     }
 }
 
+/* updates happen in this pthread */
+static pthread_t update_thread_handle;
 
 /* resource objects */
 typedef struct {
@@ -95,15 +100,38 @@ typedef struct {
     uint32_t idle_percent;
 } resources_t;
 
-static resources_t resources;
-static uint64_t resource_update_time;
+#define NUM_RESOURCE_BUFFERS (2)
+static resources_t resources[NUM_RESOURCE_BUFFERS];
+static uint64_t last_resource_update_time;
+static int curr_resource;
+static int
+next_resource(void)
+{
+    return (curr_resource+1) % NUM_RESOURCE_BUFFERS;
+}
+static resources_t *
+get_curr_resources(void)
+{
+    return &resources[curr_resource];
+}
+static resources_t *
+get_next_resources(void)
+{
+    return &resources[next_resource()];
+}
+static void
+swap_curr_next_resources(void)
+{
+    curr_resource = next_resource();
+}
 
-void resource_update(void)
+static void
+resource_update(void)
 {
     uint64_t now = aim_time_monotonic();
-    if (now - resource_update_time >
+    if (now - last_resource_update_time >
         (ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS * 1000 * 1000)) {
-        resource_update_time = now;
+        last_resource_update_time = now;
         AIM_LOG_INFO("update resource objects");
 
         /* invoke mpstat collection script for json output */
@@ -120,9 +148,12 @@ void resource_update(void)
             int result;
             int rv = cjson_util_lookup_int(root, &result, "all.%%idle");
             if (rv == 0) {
+                resources_t *next = get_next_resources();
                 /* save it */
-                resources.idle_percent = result;
-                resources.utilization_percent = 100*100 - result;
+                next->idle_percent = result;
+                next->utilization_percent = 100*100 - result;
+                /* swap buffers */
+                swap_curr_next_resources();
             }
             cJSON_Delete(root);
         }
@@ -138,10 +169,10 @@ utilization_handler(netsnmp_mib_handler *handler,
              netsnmp_request_info *requests)
 {
     if (MODE_GET == reqinfo->mode) {
-        resource_update();
+        resources_t *curr = get_curr_resources();
         snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
-                                 (u_char *) &resources.utilization_percent,
-                                 sizeof(resources.utilization_percent));
+                                 (u_char *) &curr->utilization_percent,
+                                 sizeof(curr->utilization_percent));
     } else {
         netsnmp_assert("bad mode in RO handler");
     }
@@ -160,10 +191,10 @@ idle_handler(netsnmp_mib_handler *handler,
              netsnmp_request_info *requests)
 {
     if (MODE_GET == reqinfo->mode) {
-        resource_update();
+        resources_t *curr = get_curr_resources();
         snmp_set_var_typed_value(requests->requestvb, ASN_GAUGE,
-                                 (u_char *) &resources.idle_percent,
-                                 sizeof(resources.idle_percent));
+                                 (u_char *) &curr->idle_percent,
+                                 sizeof(curr->idle_percent));
     } else {
         netsnmp_assert("bad mode in RO handler");
     }
@@ -220,3 +251,39 @@ onlp_snmp_platform_init(void)
     resource_int_register(2, "CpuAllPercentIdle", idle_handler);
 }
 
+#define MIN(a,b) ((a)<(b)? (a): (b))
+static unsigned int
+us_to_next_update(void)
+{
+    uint64_t deltat = aim_time_monotonic() - last_resource_update_time;
+    uint64_t period = ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS * 1000 * 1000;
+    return MIN(period - deltat, period);
+}
+
+static void *
+do_update(void *arg)
+{
+    for (;;) {
+        resource_update();
+        usleep(us_to_next_update());
+    }
+
+    return NULL;
+}
+
+int
+onlp_snmp_platform_update_start(void)
+{
+    if (pthread_create(&update_thread_handle, NULL, do_update, NULL) < 0) {
+        AIM_LOG_ERROR("update thread creation failed");
+        return -1;
+    }
+    return 0;
+}
+
+int
+onlp_snmp_platform_update_stop(void)
+{
+    pthread_join(update_thread_handle, NULL);
+    return 0;
+}
