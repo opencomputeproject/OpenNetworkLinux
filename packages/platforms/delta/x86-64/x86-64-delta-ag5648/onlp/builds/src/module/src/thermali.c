@@ -38,17 +38,6 @@
         }                                       \
     } while(0)
 
-#define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, r_data, nbytes)) <= 0){ \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
-
 static char* last_path[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
