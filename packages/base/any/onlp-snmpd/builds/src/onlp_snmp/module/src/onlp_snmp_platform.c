@@ -132,7 +132,6 @@ resource_update(void)
     if (now - last_resource_update_time >
         (ONLP_SNMP_CONFIG_RESOURCE_UPDATE_SECONDS * 1000 * 1000)) {
         last_resource_update_time = now;
-        AIM_LOG_INFO("update resource objects");
 
         /* invoke mpstat collection script for json output */
         FILE *fp = popen("/usr/bin/onl-snmp-mpstat", "r");

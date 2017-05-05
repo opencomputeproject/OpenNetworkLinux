@@ -1001,7 +1001,7 @@ update_tables__(void)
     }
 
     last_sensor_update_time = now;
-    AIM_LOG_INFO("update sensor objects");
+    AIM_LOG_TRACE("update sensor objects");
 
     /* for each table: mark next_info invalid */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {
@@ -1015,7 +1015,6 @@ update_tables__(void)
     /* discover new sensors for all tables,
      * writing validity into next_info for all sensors */
     onlp_oid_iterate(ONLP_OID_SYS, 0, collect_sensors__, NULL);
-    AIM_LOG_INFO("iteration complete");
 
     /* for each table: update all sensor info */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {
@@ -1037,7 +1036,7 @@ update_tables__(void)
     swap_curr_next_info();
 
     /* trigger table restructuring */
-    AIM_LOG_INFO("trigger restructure");
+    AIM_LOG_TRACE("trigger restructure");
     restructure_trigger = true;
 }
 
