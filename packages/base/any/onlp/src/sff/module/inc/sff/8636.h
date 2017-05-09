@@ -133,6 +133,8 @@
 #define SFF8636_CC192_100GE_PSM4         0x07
 #define SFF8636_CC192_100GE_ACC          0x08
 #define SFF8636_CC192_100GE_CR4          0x0B
+#define SFF8636_CC192_25GE_CR_S          0x0C
+#define SFF8636_CC192_25GE_CR_N          0x0D
 
 #define SFF8636_MEDIA_100GE_AOC(idprom)                  \
   (idprom[192] == SFF8636_CC192_100GE_AOC)
@@ -144,6 +146,10 @@
   (idprom[192] == SFF8636_CC192_100GE_CWDM4)
 #define SFF8636_MEDIA_100GE_CR4(idprom)                  \
   (idprom[192] == SFF8636_CC192_100GE_CR4)
+#define SFF8636_MEDIA_25GE_CR_S(idprom)                  \
+  (idprom[192] == SFF8636_CC192_25GE_CR_S)
+#define SFF8636_MEDIA_25GE_CR_N(idprom)                  \
+  (idprom[192] == SFF8636_CC192_25GE_CR_N)
 
 #define SFF8636_RX_PWR_TYPE_MASK            0x08
 #define SFF8636_DOM_GET_RXPWR_TYPE(idprom)               \
