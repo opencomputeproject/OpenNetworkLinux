@@ -66,7 +66,9 @@ sff_module_type_get(const uint8_t* eeprom)
 
     if (SFF8636_MODULE_QSFP28(eeprom)
         && SFF8636_MEDIA_EXTENDED(eeprom)
-        && SFF8636_MEDIA_100GE_CR4(eeprom))
+        && (SFF8636_MEDIA_100GE_CR4(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_S(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_N(eeprom)))
         return SFF_MODULE_TYPE_100G_BASE_CR4;
 
     if (SFF8636_MODULE_QSFP28(eeprom)
