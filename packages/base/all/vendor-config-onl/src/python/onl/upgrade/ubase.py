@@ -391,6 +391,10 @@ class BaseOnieUpgrade(BaseUpgrade):
                 dst = os.path.join(self.ONIE_UPDATER_PATH, f)
                 self.copyfile(src, dst)
 
+    def onie_fwpkg_exists(self):
+        import onl.grub
+        return onl.grub.onie_fwpkg_exists()
+
     def onie_fwpkg_add(self, pkg):
         import onl.grub
         onl.grub.onie_fwpkg("-f purge")

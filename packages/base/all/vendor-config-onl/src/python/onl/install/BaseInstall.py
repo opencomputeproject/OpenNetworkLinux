@@ -513,12 +513,12 @@ menuentry %(boot_menu_entry)s {
 
 # Menu entry to chainload ONIE
 menuentry ONIE {
-  search --no-floppy --label --set=root ONIE-BOOT
-  # Always return to entry 0 by default.
-  set saved_entry="0"
-  save_env saved_entry
+  %(set_root_para)s
+  search --no-floppy %(set_search_para2)s --set=root %(onie_boot)s
+  %(set_save_entry_para)s
+  %(set_save_env_para)s
   echo 'Loading ONIE ...'
-  chainloader +1
+  chainloader %(set_chainloader_para)s
 }
 """
 
@@ -530,6 +530,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def __init__(self, *args, **kwargs):
         Base.__init__(self, *args, **kwargs)
+        self.isUEFI = False
 
     def findGpt(self):
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
@@ -568,8 +569,9 @@ class GrubInstaller(SubprocessMixin, Base):
             self.log.error("cannot find an install device")
             return 1
 
-        code = self.assertUnmounted()
-        if code: return code
+        if not self.isUEFI:
+            code = self.assertUnmounted()
+            if code: return code
 
         # optionally back up a config partition
         # if it's on the boot device
@@ -658,6 +660,22 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_menu_entry'] = sysconfig.installer.menu_name
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
+        if self.isUEFI:
+            ctx['set_root_para'] = "set root='(hd0,gpt1)'"
+            ctx['set_search_para2'] = "--fs-uuid"
+            ctx['set_save_entry_para'] = ""
+            ctx['set_save_env_para'] = ""
+            dev_UEFI = self.blkidParts['EFI System']
+            ctx['onie_boot'] = dev_UEFI.uuid
+            ctx['set_chainloader_para'] = "/EFI/onie/grubx64.efi"
+        else:
+            ctx['set_root_para'] = ""
+            ctx['set_search_para2'] = "--label"
+            ctx['set_save_entry_para'] = "set saved_entry=\"0\""
+            ctx['set_save_env_para'] = "save_env saved_entry"
+            ctx['onie_boot'] = "ONIE-BOOT"
+            ctx['set_chainloader_para'] = "+1"
+
         cf = GRUB_TPL % ctx
 
         with MountContext(dev.device, log=self.log) as ctx:
@@ -672,7 +690,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installGrub(self):
         self.log.info("Installing GRUB to %s", self.partedDevice.path)
-        self.im.grubEnv.install(self.partedDevice.path)
+        self.im.grubEnv.install(self.partedDevice.path, self.isUEFI)
         return 0
 
     def installGpt(self):
@@ -759,6 +777,9 @@ class GrubInstaller(SubprocessMixin, Base):
         if label != 'gpt':
             self.log.error("invalid GRUB label in platform config: %s", label)
             return 1
+        if os.path.isdir('/sys/firmware/efi/efivars'):
+            self.isUEFI = True
+
         return self.installGpt()
 
     def upgradeBootLoader(self):
