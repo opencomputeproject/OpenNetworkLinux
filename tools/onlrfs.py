@@ -308,6 +308,9 @@ class OnlRfsBuilder(object):
         if self.arch == 'arm64':
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM64, os.path.join(dir_, 'usr/bin')))
 
+        onlu.execute('sudo cp %s %s' % (os.path.join(os.getenv('ONL'), 'tools', 'scripts', 'base-files.postinst'),
+                                        os.path.join(dir_, 'var', 'lib', 'dpkg', 'info', 'base-files.postinst')));
+
         script = os.path.join(dir_, "tmp/configure.sh")
         with open(script, "w") as f:
             os.chmod(script, 0700)

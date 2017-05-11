@@ -203,6 +203,7 @@ class ProxyGrubEnv:
 
     INSTALL = "grub-install"
     EDITENV = "grub-editenv"
+    EFIBOOTMGR = "efibootmgr"
     # system defaults
 
     ENV_PATH = "/grub/grubenv"
@@ -302,7 +303,7 @@ class ProxyGrubEnv:
                 fd.write(cmd)
                 fd.write("\n")
 
-    def install(self, device):
+    def install(self, device, isUEFI=False):
         self.log.warn("deferring commands to %s...", self.installerConf.installer_postinst)
         cmds = []
         if self.bootDir and self.chroot:
@@ -315,7 +316,15 @@ class ProxyGrubEnv:
         elif self.bootPart:
             cmds.append("mpt=$(mktemp -t -d)")
             cmds.append("mount %s $mpt" % self.bootPart)
-            cmds.append(("sts=0; %s --boot-directory=\"$mpt\" %s || sts=$?"
+            if isUEFI:
+                cmds.append("[ -n \"$(efibootmgr -v | grep 'Open Network Linux')\" ] && (efibootmgr -b $(efibootmgr | grep \"Open Network Linux\" | sed 's/^.*Boot//g'| sed 's/** Open.*$//g') -B)")
+                cmds.append(("sts=0; %s --target=x86_64-efi --no-nvram --bootloader-id=ONL --efi-directory=/boot/efi --boot-directory=\"$mpt\" --recheck %s || sts=$?"
+                             % (self.INSTALL, device,)))
+                cmds.append("test $sts -eq 0")
+                cmds.append(("sts=0; %s --quiet --create --label \"Open Network Linux\" --disk %s --part 1 --loader /EFI/ONL/grubx64.efi || sts=$?"
+                             % (self.EFIBOOTMGR , device,)))
+            else:
+                cmds.append(("sts=0; %s --boot-directory=\"$mpt\" %s || sts=$?"
                          % (self.INSTALL, device,)))
             cmds.append("umount $mpt")
             cmds.append("rmdir $mpt")
