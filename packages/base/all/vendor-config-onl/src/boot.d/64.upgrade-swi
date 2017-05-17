@@ -1,0 +1,73 @@
+#!/usr/bin/python
+
+"""63.upgrade-swi
+
+SWI upgrade hook
+
+This is currently a place-holder, we don't actually have a mechanism
+to upgrade the SWI, only a means to detect if a SWI upgrade is indicated.
+
+"""
+
+import os
+import re
+from onl.upgrade import ubase
+from onl.sysconfig import sysconfig
+
+class Swi_Upgrade(ubase.BaseUpgrade):
+    name="swi"
+    Name="SWI"
+    title="SWI Upgrade Check"
+    atype="A SWI"
+
+    current_version_key="Current SWI Version"
+    next_version_key="Next SWI Version"
+
+    def init_versions(self):
+        """Scrape out the SWI versions.
+
+        Use recorded version manifest, or a bare version file.
+        XXX probably can also scrape it from the SWI filename,
+        but FNAME variants are not 1:1 translatible.
+        """
+
+        self.current_version = self.next_version = None
+
+        data = self.load_json("/etc/onl/rootfs/manifest.json", default={}).get('version', {})
+        vstr = data.get('RELEASE_ID', None)
+        if self.next_version is None and vstr is not None:
+            self.next_version = vstr
+
+        if self.next_version is None and os.path.exists("/etc/onl/rootfs/version"):
+            with open("/etc/onl/rootfs/version") as fd:
+                self.next_version = fd.read().strip()
+
+        data = self.load_json("/etc/onl/upgrade/swi/manifest.json", default={}).get('version', {})
+        vstr = data.get('RELEASE_ID', None)
+        if self.current_version is None and vstr is not None:
+            self.current_version = vstr
+
+        if self.current_version is None and os.path.exists("/etc/onl/upgrade/swi/version"):
+            with open("/etc/onl/upgrade/swi/version") as fd:
+                self.next_version = fd.read().strip()
+
+    def summarize(self):
+        self.logger.info("Current SWI Version: %s" % self.current_version)
+        self.logger.info("   Next SWI Version: %s" % self.next_version)
+        self.logger.info("")
+
+    def upgrade_notes(self):
+        return """
+    * A single reboot will be required to complete this upgrade.
+"""
+
+    def do_upgrade(self, forced=False):
+        """Execute the upgradee.
+
+        SWI upgrade depends on a new SWI being available (DUH).
+        """
+        self.logger.info("THIS STEP INTENTIONALLY LEFT BLANK")
+
+if __name__ == '__main__':
+    if sysconfig.upgrade.swi.auto != 'disabled':
+        Swi_Upgrade().main()

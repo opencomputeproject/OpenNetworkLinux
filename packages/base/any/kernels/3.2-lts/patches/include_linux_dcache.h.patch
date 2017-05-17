@@ -1,0 +1,36 @@
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -133,15 +133,31 @@ struct dentry {
+ 	void *d_fsdata;			/* fs-specific data */
+ 
+ 	struct list_head d_lru;		/* LRU list */
++#ifdef __GENKSYMS__
++	/*
++	 * bwh: The union changes here don't move anything other than
++	 * d_rcu (which modules definitely should not touch).  This is
++	 * checked by dcache_abi_check().
++	 */
++	union {
++#endif
+ 	struct list_head d_child;	/* child of parent list */
++#ifdef __GENKSYMS__
++		struct rcu_head d_rcu;
++	} d_u;
++#endif
+ 	struct list_head d_subdirs;	/* our children */
+ 	/*
+ 	 * d_alias and d_rcu can share memory
+ 	 */
++#ifndef __GENKSYMS__
+ 	union {
++#endif
+ 		struct list_head d_alias;	/* inode alias list */
++#ifndef __GENKSYMS__
+ 	 	struct rcu_head d_rcu;
+ 	} d_u;
++#endif
+ };
+ 
+ /*
+diff --git a/include/linux/device-mapper.h b/include/linux/device-mapper.h
+index 6712ab6..fe51b99 100644

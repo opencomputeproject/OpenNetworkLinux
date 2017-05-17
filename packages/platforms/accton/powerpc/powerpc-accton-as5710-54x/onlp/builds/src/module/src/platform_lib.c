@@ -121,26 +121,28 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 }
 
 #define I2C_PSU_MODEL_NAME_LEN 13
+#define I2C_PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
     char *node = NULL;
     char model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
+    char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
 
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_model_name) : PSU2_AC_HWMON_NODE(psu_model_name);
 
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "CPR-4011-4M11", strlen("CPR-4011-4M11")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+            if (modelname) {
+                strncpy(modelname, model_name, 13);
+            }
             return PSU_TYPE_AC_F2B;
         }
         else if (strncmp(model_name, "CPR-4011-4M21", strlen("CPR-4011-4M21")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+            if (modelname) {
+                strncpy(modelname, model_name, 13);
+            }
             return PSU_TYPE_AC_B2F;
         }
     }
@@ -151,16 +153,39 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "um400d01G", strlen("um400d01G")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+            if (modelname) {
+            strncpy(modelname, model_name, 9);
+            }
             return PSU_TYPE_DC_48V_B2F;
         }
         else if (strncmp(model_name, "um400d01-01G", strlen("um400d01-01G")) == 0) {
-		    if (modelname) {
-            strncpy(modelname, model_name, modelname_len-1);
-			}
+            if (modelname) {
+            strncpy(modelname, model_name, 12);
+            }
             return PSU_TYPE_DC_48V_F2B;
+        }
+
+        if (strncmp(model_name, "PSU-12V-650", 11) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, 11);
+            }
+
+            node = (id == PSU1_ID) ? PSU1_DC_HWMON_NODE(psu_fan_dir) : PSU2_DC_HWMON_NODE(psu_fan_dir);
+            if (deviceNodeReadString(node, fan_dir, sizeof(fan_dir), 0) != 0) {
+                return PSU_TYPE_UNKNOWN;
+            }
+
+            if (strncmp(fan_dir, "F2B", 3) == 0) {
+                return PSU_TYPE_DC_12V_F2B;
+            }
+
+            if (strncmp(fan_dir, "B2F", 3) == 0) {
+                return PSU_TYPE_DC_12V_B2F;
+            }
+
+            if (strncmp(fan_dir, "NON", 3) == 0) {
+                return PSU_TYPE_DC_12V_FANLESS;
+            }
         }
     }
 

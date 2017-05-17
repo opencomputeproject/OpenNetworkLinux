@@ -1,6 +1,10 @@
 #!/bin/sh
 
 . /lib/lsb/init-functions
+
+# Apply the existing sysctl settings prior to first mount.
+sysctl --quiet --system
+
 log_action_begin_msg "Mounting filesystems..."
-initmounts -q
+onl-mounts -q mount all
 log_action_end_msg 0

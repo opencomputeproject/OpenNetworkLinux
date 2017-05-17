@@ -7,6 +7,7 @@ import subprocess
 import json
 import pprint
 import yaml
+import time
 
 class OnlVersionsGenerator(object):
     def __init__(self, ops):
@@ -20,8 +21,12 @@ class OnlVersionsGenerator(object):
             raise ValueError("The import file %s does not contain a class named %s" % (ops.import_file, ops.class_name))
 
         self.ops = ops
-        self.build_sha1 = subprocess.check_output("git rev-list HEAD -1", shell=True).strip()
-        self.build_timestamp =subprocess.check_output("date +%Y-%m-%d.%H:%M", shell=True).strip()
+
+        cmd = ('git', 'rev-list', 'HEAD', '-1',)
+        self.build_sha1 = subprocess.check_output(cmd).strip()
+
+        fmt = "%Y-%m-%d.%H:%M"
+        self.build_timestamp = time.strftime(fmt, time.localtime())
 
     def generate_all(self):
         for product in self.implementation.PRODUCTS:

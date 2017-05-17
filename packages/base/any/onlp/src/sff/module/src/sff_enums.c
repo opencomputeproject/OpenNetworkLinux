@@ -66,6 +66,7 @@ aim_map_si_t sff_module_caps_map[] =
     { "F_100", SFF_MODULE_CAPS_F_100 },
     { "F_1G", SFF_MODULE_CAPS_F_1G },
     { "F_10G", SFF_MODULE_CAPS_F_10G },
+    { "F_25G", SFF_MODULE_CAPS_F_25G },
     { "F_40G", SFF_MODULE_CAPS_F_40G },
     { "F_100G", SFF_MODULE_CAPS_F_100G },
     { NULL, 0 }
@@ -76,6 +77,7 @@ aim_map_si_t sff_module_caps_desc_map[] =
     { "None", SFF_MODULE_CAPS_F_100 },
     { "None", SFF_MODULE_CAPS_F_1G },
     { "None", SFF_MODULE_CAPS_F_10G },
+    { "None", SFF_MODULE_CAPS_F_25G },
     { "None", SFF_MODULE_CAPS_F_40G },
     { "None", SFF_MODULE_CAPS_F_100G },
     { NULL, 0 }
@@ -141,6 +143,8 @@ aim_map_si_t sff_module_type_map[] =
     { "40G_BASE_ACTIVE", SFF_MODULE_TYPE_40G_BASE_ACTIVE },
     { "40G_BASE_CR", SFF_MODULE_TYPE_40G_BASE_CR },
     { "40G_BASE_SR2", SFF_MODULE_TYPE_40G_BASE_SR2 },
+    { "40G_BASE_SM4", SFF_MODULE_TYPE_40G_BASE_SM4 },
+    { "25G_BASE_CR", SFF_MODULE_TYPE_25G_BASE_CR },
     { "10G_BASE_SR", SFF_MODULE_TYPE_10G_BASE_SR },
     { "10G_BASE_LR", SFF_MODULE_TYPE_10G_BASE_LR },
     { "10G_BASE_LRM", SFF_MODULE_TYPE_10G_BASE_LRM },
@@ -173,6 +177,8 @@ aim_map_si_t sff_module_type_desc_map[] =
     { "40GBASE-ACTIVE", SFF_MODULE_TYPE_40G_BASE_ACTIVE },
     { "40GBASE-CR", SFF_MODULE_TYPE_40G_BASE_CR },
     { "40GBASE-SR2", SFF_MODULE_TYPE_40G_BASE_SR2 },
+    { "40GBASE-SM4", SFF_MODULE_TYPE_40G_BASE_SM4 },
+    { "25GBASE-CR", SFF_MODULE_TYPE_25G_BASE_CR },
     { "10GBASE-SR", SFF_MODULE_TYPE_10G_BASE_SR },
     { "10GBASE-LR", SFF_MODULE_TYPE_10G_BASE_LR },
     { "10GBASE-LRM", SFF_MODULE_TYPE_10G_BASE_LRM },

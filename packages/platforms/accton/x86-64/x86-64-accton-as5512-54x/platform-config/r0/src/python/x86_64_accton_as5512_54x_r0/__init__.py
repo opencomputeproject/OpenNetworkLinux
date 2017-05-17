@@ -1,22 +1,18 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
-class OnlPlatform_x86_64_accton_as5512_54x_r0(OnlPlatformAccton):
-
-
-    def model(self):
-        return "AS5512-54X"
-
-    def platform(self):
-        return "x86-64-accton-as5512-54x-r0"
-
-    def sys_init(self):
-        pass
-
-    def sys_oid_platform(self):
-        return ".5512.54.1"
+class OnlPlatform_x86_64_accton_as5512_54x_r0(OnlPlatformAccton,
+                                              OnlPlatformPortConfig_48x10_6x40):
+    PLATFORM='x86-64-accton-as5512-54x-r0'
+    MODEL="AS5512-54X"
+    SYS_OBJECT_ID=".5512.54.1"
 
     def baseconfig(self):
+
+        self.insmod('cpr_4011_4mxx')
+        self.insmod('accton_i2c_cpld')
+        self.insmod_platform()
+
         ########### initialize I2C bus 0 ###########
 
         # initialize multiplexer (PCA9548)

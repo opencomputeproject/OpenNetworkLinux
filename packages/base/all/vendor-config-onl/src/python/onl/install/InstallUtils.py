@@ -10,6 +10,8 @@ import tempfile
 import string
 import shutil
 
+import Fit, Legacy
+
 class SubprocessMixin:
 
     V1 = "V1"
@@ -104,7 +106,10 @@ class SubprocessMixin:
                     sys.stderr.write(fd.read())
                 os.unlink(v2Out)
         else:
-            return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
+            try:
+                return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
+            except subprocess.CalledProcessError:
+                return ''
 
     def rmdir(self, path):
         self.log.debug("+ /bin/rmdir %s", path)
@@ -177,6 +182,25 @@ class SubprocessMixin:
         # don't believe it
         self.check_call(cmd, vmode=self.V1)
 
+    def cpR(self, srcRoot, dstRoot):
+        srcRoot = os.path.abspath(srcRoot)
+        dstRoot = os.path.abspath(dstRoot)
+        dstRoot = os.path.join(dstRoot, os.path.split(srcRoot)[1])
+        for r, dl, fl in os.walk(srcRoot):
+
+            for de in dl:
+                src = os.path.join(r, de)
+                subdir = src[len(srcRoot)+1:]
+                dst = os.path.join(dstRoot, subdir)
+                if not os.path.exists(dst):
+                    self.makedirs(dst)
+
+            for fe in fl:
+                src = os.path.join(r, fe)
+                subdir = src[len(srcRoot)+1:]
+                dst = os.path.join(dstRoot, subdir)
+                self.copy2(src, dst)
+
 class TempdirContext(SubprocessMixin):
 
     def __init__(self, prefix=None, suffix=None, chroot=None, log=None):
@@ -210,8 +234,8 @@ class MountContext(SubprocessMixin):
         self.label = label
         self.fsType = fsType
         self.dir = None
-        self.hostDir = None
-        self.mounted = False
+        self.hostDir = self.__hostDir = None
+        self.mounted = self.__mounted = False
         self.log = log or logging.getLogger("mount")
 
         if self.device and self.label:
@@ -245,7 +269,7 @@ class MountContext(SubprocessMixin):
         self.mounted = True
         return self
 
-    def __exit__(self, type, value, tb):
+    def shutdown(self):
 
         mounted = False
         if self.mounted:
@@ -260,8 +284,20 @@ class MountContext(SubprocessMixin):
             cmd = ('umount', self.hostDir,)
             self.check_call(cmd, vmode=self.V1)
 
-        self.rmdir(self.hostDir)
+        if self.hostDir is not None:
+            self.rmdir(self.hostDir)
+
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
+
+    def detach(self):
+        self.__mounted, self.mounted = self.mounted, False
+        self.__hostDir, self.hostDir = self.hostDir, None
+
+    def attach(self):
+        self.mounted = self.__mounted
+        self.hostDir = self.__hostDir
 
 class BlkidEntry:
 
@@ -663,6 +699,10 @@ class InitrdContext(SubprocessMixin):
         self.ilog.setLevel(logging.INFO)
         self.log = self.hlog
 
+        self.__initrd = None
+        self.__dir = None
+        self._hasDevTmpfs = False
+
     def _unpack(self):
         self.dir = self.mkdtemp(prefix="chroot-",
                                 suffix=".d")
@@ -722,27 +762,28 @@ class InitrdContext(SubprocessMixin):
             else:
                 self.unlink(dst)
 
-        for e in os.listdir("/dev"):
-            src = os.path.join("/dev", e)
-            dst = os.path.join(dev2, e)
-            if os.path.islink(src):
-                self.symlink(os.readlink(src), dst)
-            elif os.path.isdir(src):
-                self.mkdir(dst)
-            elif os.path.isfile(src):
-                self.copy2(src, dst)
-            else:
-                st = os.stat(src)
-                if stat.S_ISBLK(st.st_mode):
-                    maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
-                    self.log.debug("+ mknod %s b %d %d", dst, maj, min)
-                    os.mknod(dst, st.st_mode, st.st_rdev)
-                elif stat.S_ISCHR(st.st_mode):
-                    maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
-                    self.log.debug("+ mknod %s c %d %d", dst, maj, min)
-                    os.mknod(dst, st.st_mode, st.st_rdev)
+        if not self._hasDevTmpfs:
+            for e in os.listdir("/dev"):
+                src = os.path.join("/dev", e)
+                dst = os.path.join(dev2, e)
+                if os.path.islink(src):
+                    self.symlink(os.readlink(src), dst)
+                elif os.path.isdir(src):
+                    self.mkdir(dst)
+                elif os.path.isfile(src):
+                    self.copy2(src, dst)
                 else:
-                    self.log.debug("skipping device %s", src)
+                    st = os.stat(src)
+                    if stat.S_ISBLK(st.st_mode):
+                        maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
+                        self.log.debug("+ mknod %s b %d %d", dst, maj, min)
+                        os.mknod(dst, st.st_mode, st.st_rdev)
+                    elif stat.S_ISCHR(st.st_mode):
+                        maj, min = os.major(st.st_rdev), os.minor(st.st_rdev)
+                        self.log.debug("+ mknod %s c %d %d", dst, maj, min)
+                        os.mknod(dst, st.st_mode, st.st_rdev)
+                    else:
+                        self.log.debug("skipping device %s", src)
 
         dst = os.path.join(self.dir, "dev/pts")
         if not os.path.exists(dst):
@@ -754,6 +795,11 @@ class InitrdContext(SubprocessMixin):
                 self.makedirs(dst)
 
     def __enter__(self):
+
+        with open("/proc/filesystems") as fd:
+            buf = fd.read()
+        if "devtmpfs" in buf:
+            self._hasDevTmpfs = True
 
         if self.initrd is not None:
 
@@ -775,42 +821,155 @@ class InitrdContext(SubprocessMixin):
         cmd = ('mount', '-t', 'sysfs', 'sysfs', dst,)
         self.check_call(cmd, vmode=self.V1)
 
+        # maybe mount devtmpfs
+        if self._hasDevTmpfs:
+            dst = os.path.join(self.dir, "dev")
+            cmd = ('mount', '-t', 'devtmpfs', 'devtmpfs', dst,)
+            self.check_call(cmd, vmode=self.V1)
+
+            dst = os.path.join(self.dir, "dev/pts")
+            if not os.path.exists(dst):
+                self.mkdir(dst)
+
         dst = os.path.join(self.dir, "dev/pts")
         cmd = ('mount', '-t', 'devpts', 'devpts', dst,)
         self.check_call(cmd, vmode=self.V1)
 
         return self
 
-    def __exit__(self, type, value, tb):
+    def unmount(self):
 
         p = ProcMountsParser()
-        dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
+        if self.dir is not None:
+            dirs = [e.dir for e in p.mounts if e.dir.startswith(self.dir)]
+        else:
+            dirs = []
 
         # XXX probabaly also kill files here
 
         # umount any nested mounts
-        self.log.debug("un-mounting mounts points in chroot %s", self.dir)
-        dirs.sort(reverse=True)
-        for p in dirs:
-            cmd = ('umount', p,)
-            self.check_call(cmd, vmode=self.V1)
+        if dirs:
+            self.log.debug("un-mounting mounts points in chroot %s", self.dir)
+            dirs.sort(reverse=True)
+            for p in dirs:
+                cmd = ('umount', p,)
+                self.check_call(cmd, vmode=self.V1)
 
-        if self.initrd is not None:
+    def shutdown(self):
+
+        self.unmount()
+
+        if self.initrd and self.dir:
             self.log.debug("cleaning up chroot in %s", self.dir)
             self.rmtree(self.dir)
-        else:
+        elif self.dir:
             self.log.debug("saving chroot in %s", self.dir)
 
+    def __exit__(self, type, value, tb):
+        self.shutdown()
         return False
 
+    def detach(self):
+        self.__initrd, self.initrd = self.initrd, None
+        self.__dir, self.dir = self.dir, None
+
+    def attach(self):
+        self.initrd = self.__initrd
+        self.dir = self.__dir
+
     @classmethod
-    def mkChroot(self, initrd, log=None):
-        with InitrdContext(initrd=initrd, log=log) as ctx:
+    def mkChroot(cls, initrd, log=None):
+        with cls(initrd=initrd, log=log) as ctx:
             initrdDir = ctx.dir
-            ctx.initrd = None
+            ctx.detach()
             # save the unpacked directory, do not clean it up
             # (it's inside this chroot anyway)
         return initrdDir
+
+class UbootInitrdContext(SubprocessMixin):
+
+    def __init__(self, path, log=None):
+        self.path = path
+        self.log = log or logging.getLogger(self.__class__.__name__)
+        self.initrd = self.__initrd = None
+
+    def _extractFit(self):
+        self.log.debug("parsing FIT image in %s", self.path)
+        p = Fit.Parser(path=self.path, log=self.log)
+        node = p.getInitrdNode()
+        if node is None:
+            raise ValueError("cannot find initrd node in FDT")
+        prop = node.properties.get('data', None)
+        if prop is None:
+            raise ValueError("cannot find initrd data property in FDT")
+
+        with open(self.path) as fd:
+            self.log.debug("reading initrd at [%x:%x]",
+                           prop.offset, prop.offset+prop.sz)
+            fd.seek(prop.offset, 0)
+            buf = fd.read(prop.sz)
+
+        fno, self.initrd = tempfile.mkstemp(prefix="initrd-",
+                                            suffix=".img")
+        self.log.debug("+ cat > %s", self.initrd)
+        with os.fdopen(fno, "w") as fd:
+            fd.write(buf)
+
+    def _extractLegacy(self):
+        self.log.debug("parsing legacy U-Boot image in %s", self.path)
+        p = Legacy.Parser(path=self.path, log=self.log)
+
+        if p.ih_type != Legacy.Parser.IH_TYPE_MULTI:
+            raise ValueError("not a multi-file image")
+
+        if p.ih_os != Legacy.Parser.IH_OS_LINUX:
+            raise ValueError("invalid OS code")
+
+        sz, off = p.images[1]
+        # assume the initrd is the second of three images
+
+        with open(self.path) as fd:
+            self.log.debug("reading initrd at [%x:%x]",
+                           off, off+sz)
+            fd.seek(off, 0)
+            buf = fd.read(sz)
+
+        fno, self.initrd = tempfile.mkstemp(prefix="initrd-",
+                                            suffix=".img")
+        self.log.debug("+ cat > %s", self.initrd)
+        with os.fdopen(fno, "w") as fd:
+            fd.write(buf)
+
+    def __enter__(self):
+
+        with open(self.path) as fd:
+            isFit = Fit.Parser.isFit(stream=fd)
+            isLegacy = Legacy.Parser.isLegacy(stream=fd)
+
+        if isFit:
+            self._extractFit()
+            return self
+
+        if isLegacy:
+            self._extractLegacy()
+            return self
+
+        raise ValueError("invalid U-Boot image %s" % self.path)
+
+    def shutdown(self):
+        initrd, self.initrd = self.initrd, None
+        if initrd and os.path.exists(initrd):
+            self.unlink(initrd)
+
+    def __exit__(self, eType, eValue, eTrace):
+        self.shutdown()
+        return False
+
+    def detach(self):
+        self.__initrd, self.initrd = self.initrd, None
+
+    def attach(self):
+        self.initrd = self.__initrd
 
 class ChrootSubprocessMixin:
 

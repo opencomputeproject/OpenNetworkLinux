@@ -1,0 +1,9 @@
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -132,3 +132,4 @@ obj-$(CONFIG_VIRT_DRIVERS)	+= virt/
+ obj-$(CONFIG_HYPERV)		+= hv/
+ 
+ obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
++obj-y				+= bcmdrivers/
+diff --git a/drivers/acpi/pci_irq.c b/drivers/acpi/pci_irq.c
+index 7f9eba9..0eefa12 100644

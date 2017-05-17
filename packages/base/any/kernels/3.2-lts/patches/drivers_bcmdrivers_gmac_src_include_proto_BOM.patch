@@ -1,0 +1,10 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gmac/src/include/proto/BOM
+@@ -0,0 +1,4 @@
++# Created by mkbom
++# $Id: BOM,v 9.0 1998-07-30 23:19:02 $
++
++File  1.46     vip.h
+diff --git a/drivers/bcmdrivers/gmac/src/include/proto/Makefile b/drivers/bcmdrivers/gmac/src/include/proto/Makefile
+new file mode 100755
+index 0000000..533b7c4

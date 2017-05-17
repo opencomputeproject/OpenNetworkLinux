@@ -1,22 +1,18 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
-class OnlPlatform_x86_64_accton_as5812_54x_r0(OnlPlatformAccton):
+class OnlPlatform_x86_64_accton_as5812_54x_r0(OnlPlatformAccton,
+                                              OnlPlatformPortConfig_48x10_6x40):
 
-
-    def model(self):
-        return "AS5812-54X"
-
-    def platform(self):
-        return "x86-64-accton-as5812-54x-r0"
-
-    def sys_init(self):
-        pass
-
-    def sys_oid_platform(self):
-        return ".5812.54.1"
+    PLATFORM='x86-64-accton-as5812-54x-r0'
+    MODEL="AS5812-54X"
+    SYS_OBJECT_ID=".5812.54.1"
 
     def baseconfig(self):
+        self.insmod('cpr_4011_4mxx')
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
+            self.insmod("x86-64-accton-as5812-54x-%s.ko" % m)
+
         ########### initialize I2C bus 0 ###########
 
         # initialize CPLDs

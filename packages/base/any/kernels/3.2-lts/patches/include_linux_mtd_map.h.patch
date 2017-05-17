@@ -1,0 +1,15 @@
+--- a/include/linux/mtd/map.h
++++ b/include/linux/mtd/map.h
+@@ -219,6 +219,10 @@ struct map_info {
+ 		      in bytes, before you are talking to the first chip again.
+ 		      */
+ 
++#ifdef CONFIG_MTD_CFI_OF_BYTE_SWAP
++	int byteswap;   /* get byte swap configuration from device tree */
++#endif
++
+ #ifdef CONFIG_MTD_COMPLEX_MAPPINGS
+ 	map_word (*read)(struct map_info *, unsigned long);
+ 	void (*copy_from)(struct map_info *, void *, unsigned long, ssize_t);
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index ffc0213..ef35a31 100644

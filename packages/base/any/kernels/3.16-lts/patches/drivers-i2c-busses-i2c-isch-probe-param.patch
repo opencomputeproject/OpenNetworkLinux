@@ -1,0 +1,25 @@
+--- a/drivers/i2c/busses/i2c-isch.c	2016-11-20 01:17:41.000000000 +0000
++++ b/drivers/i2c/busses/i2c-isch.c	2016-12-22 23:34:15.908744426 +0000
+@@ -62,6 +62,10 @@ static int backbone_speed = 33000; /* ba
+ module_param(backbone_speed, int, S_IRUSR | S_IWUSR);
+ MODULE_PARM_DESC(backbone_speed, "Backbone speed in kHz, (default = 33000)");
+ 
++static int probe = 1;
++module_param(probe, int, S_IRUSR | S_IWUSR);
++MODULE_PARM_DESC(probe, "Enable or disable i2c adapter probing. Default = 1");
++
+ /*
+  * Start the i2c transaction -- the i2c_access will prepare the transaction
+  * and this function will execute it.
+@@ -291,6 +295,11 @@ static int smbus_sch_probe(struct platfo
+ 	snprintf(sch_adapter.name, sizeof(sch_adapter.name),
+ 		"SMBus SCH adapter at %04x", sch_smba);
+ 
++	if(!probe) {
++	  sch_adapter.class = 0;
++	  dev_warn(&dev->dev, "bus probing disabled by module parameter.\n");
++	}
++
+ 	retval = i2c_add_adapter(&sch_adapter);
+ 	if (retval) {
+ 		dev_err(&dev->dev, "Couldn't register adapter!\n");

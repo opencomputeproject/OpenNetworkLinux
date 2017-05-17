@@ -1,0 +1,48 @@
+-- ----------------------------------------------------------------------
+-- Open Network Linux Resource MIB
+-- ----------------------------------------------------------------------
+
+OCP-ONL-RESOURCE-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    OBJECT-TYPE, MODULE-IDENTITY, Integer32, enterprises, Gauge32 FROM SNMPv2-SMI
+    DisplayString                                         FROM SNMPv2-TC
+    ocp                                                   FROM OCP-MIB
+    OpenNetworkLinux                                      FROM OCP-ONL-MIB;
+
+onlResource MODULE-IDENTITY
+     LAST-UPDATED "201612120000Z"
+     ORGANIZATION "Open Compute Project"
+     CONTACT-INFO "http://www.opencompute.org"
+     DESCRIPTION
+        "This MIB describes objects for host resources used in Open Network Linux."
+     REVISION "201612120000Z"
+     DESCRIPTION "Initial revision"
+     ::= { OpenNetworkLinux 3 }
+
+
+--
+-- Basic Resource Objects
+--
+-- These are simplified and useful version of common resource measurements.
+--
+
+Basic OBJECT IDENTIFIER ::= { onlResource 1 }
+
+CpuAllPercentUtilization OBJECT-TYPE
+    SYNTAX     Gauge32
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The average CPU utilization in percent, multiplied by 100 and rounded to the nearest integer.  Provided by mpstat."
+    ::= { Basic 1 }
+
+CpuAllPercentIdle OBJECT-TYPE
+    SYNTAX     Gauge32
+    MAX-ACCESS read-only
+    STATUS     current
+    DESCRIPTION
+        "The average CPU idle time in percent, multiplied by 100 and rounded to the nearest integer. Provided by mpstat."
+    ::= { Basic 2 }
+
+END

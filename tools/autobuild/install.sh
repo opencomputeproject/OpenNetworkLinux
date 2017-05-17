@@ -48,7 +48,7 @@ done
 
 
 if [ -z "$REMOTE_SERVER" ]; then
-    echo "Remote instlallation requires a server (-s)"
+    echo "Remote installation requires a server (-s)"
     exit 1
 fi
 
@@ -91,3 +91,4 @@ _rsync() {
 sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER mkdir -p $REMOTE_DIR
 _rsync $ONL/RELEASE $REMOTE_SERVER:$REMOTE_DIR
 _rsync $ONL/REPO $REMOTE_SERVER:$REMOTE_DIR
+sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER "$REMOTE_BASE_DIR/.tools/update-latest.py" --dir "$REMOTE_BASE_DIR/$BUILD_BRANCH" || true

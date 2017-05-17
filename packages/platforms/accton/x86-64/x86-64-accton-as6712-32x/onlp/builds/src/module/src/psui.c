@@ -93,6 +93,25 @@ psu_cpr_4011_pmbus_info_get(int id, char *node, int *value)
 }
 
 int
+psu_um400d_info_get(onlp_psu_info_t* info)
+{
+    int index = ONLP_OID_ID_GET(info->hdr.id);
+
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_DC48;
+
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Set the associated oid_table */
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
+
+    return ONLP_STATUS_OK;
+}
+
+int
 onlp_psui_init(void)
 {
     return ONLP_STATUS_OK;
@@ -208,6 +227,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         case PSU_TYPE_AC_B2F:
             ret = psu_cpr_4011_info_get(info);
             break;
+        case PSU_TYPE_DC_48V_F2B:
+        case PSU_TYPE_DC_48V_B2F:
+            ret = psu_um400d_info_get(info);
+            break;			
         default:
             ret = ONLP_STATUS_E_UNSUPPORTED;
             break;

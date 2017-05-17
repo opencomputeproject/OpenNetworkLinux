@@ -32,31 +32,22 @@
 #include <sys/ioctl.h>
 
 #include "platform_lib.h"
+#include <onlplib/file.h>
 
 #define MAX_SFP_PATH 64
 static char sfp_node_path[MAX_SFP_PATH] = {0};
 #define FRONT_PORT_TO_CPLD_MUX_INDEX(port) (port+2)
 
-static int 
+static int
 as6812_32x_sfp_node_read_int(char *node_path, int *value, int data_len)
 {
-    int ret = 0;
-    char buf[8];    
-    *value = 0;
-
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), data_len);
-
-    if (ret == 0) {
-        *value = atoi(buf);
-    }
-
-    return ret;
+    return onlp_file_read_int(value, node_path);
 }
 
-static char* 
+static char*
 as6812_32x_sfp_get_port_path(int port, char *node_name)
 {
-    sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-0050/%s", 
+    sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-0050/%s",
                            FRONT_PORT_TO_CPLD_MUX_INDEX(port),
                            node_name);
 
@@ -71,7 +62,7 @@ as6812_32x_sfp_get_port_path(int port, char *node_name)
 int
 onlp_sfpi_init(void)
 {
-    /* Called at initialization time */    
+    /* Called at initialization time */
     return ONLP_STATUS_OK;
 }
 
@@ -82,9 +73,8 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
      * Ports {0, 32}
      */
     int p;
-    AIM_BITMAP_INIT(bmap, 64);
     AIM_BITMAP_CLR_ALL(bmap);
-    
+
     for(p = 0; p < 32; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
@@ -107,7 +97,6 @@ onlp_sfpi_is_present(int port)
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
-    
     return present;
 }
 
@@ -120,7 +109,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     path = as6812_32x_sfp_get_port_path(0, "sfp_is_present_all");
     fp = fopen(path, "r");
-    
+
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open the sfp_is_present_all device file.");
         return ONLP_STATUS_E_INTERNAL;
@@ -173,7 +162,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return OK if eeprom is read
      */
     memset(data, 0, 256);
-    
+
     if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
@@ -187,4 +176,3 @@ onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-

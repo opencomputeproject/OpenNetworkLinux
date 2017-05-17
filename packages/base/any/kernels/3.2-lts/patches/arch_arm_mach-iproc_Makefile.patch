@@ -1,0 +1,21 @@
+--- /dev/null
++++ b/arch/arm/mach-iproc/Makefile
+@@ -0,0 +1,15 @@
++ifdef CONFIG_MACH_CYGNUS
++obj-y := io_map.o northstar.o common.o northstar_dmu.o board_bu.o localtimer.o
++else
++obj-y := io_map.o northstar.o common.o northstar_dmu.o board_bu.o idm.o localtimer.o
++endif
++
++ifdef CONFIG_BCM_CTF2
++EXTRA_CFLAGS += -I$(srctree)/../../bcmdrivers/gmac/src/include/
++endif
++
++obj-$(CONFIG_PM) += pm.o
++
++#obj-$(CONFIG_MACH_NS) += board_bu.o
++
++obj-$(CONFIG_MTD) += flash.o
+diff --git a/arch/arm/mach-iproc/Makefile.boot b/arch/arm/mach-iproc/Makefile.boot
+new file mode 100644
+index 0000000..2de985c

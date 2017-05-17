@@ -16,7 +16,6 @@
 /bin/help				f	755	0	0	-	-	-	-	-
 /bin/ifget				f	755	0	0	-	-	-	-	-
 /bin/ifup				f	755	0	0	-	-	-	-	-
-/bin/initnetdev				f	755	0	0	-	-	-	-	-
 /bin/login				f	755	0	0	-	-	-	-	-
 /bin/netconf				f	755	0	0	-	-	-	-	-
 /bin/swiinfo				f	755	0	0	-	-	-	-	-

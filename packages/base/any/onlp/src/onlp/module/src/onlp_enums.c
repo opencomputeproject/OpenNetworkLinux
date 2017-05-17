@@ -864,22 +864,26 @@ onlp_sfp_control_flag_valid(onlp_sfp_control_flag_t e)
 aim_map_si_t onlp_status_map[] =
 {
     { "OK", ONLP_STATUS_OK },
+    { "E_GENERIC", ONLP_STATUS_E_GENERIC },
     { "E_UNSUPPORTED", ONLP_STATUS_E_UNSUPPORTED },
     { "E_MISSING", ONLP_STATUS_E_MISSING },
     { "E_INVALID", ONLP_STATUS_E_INVALID },
     { "E_INTERNAL", ONLP_STATUS_E_INTERNAL },
     { "E_PARAM", ONLP_STATUS_E_PARAM },
+    { "E_I2C", ONLP_STATUS_E_I2C },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_status_desc_map[] =
 {
     { "None", ONLP_STATUS_OK },
+    { "None", ONLP_STATUS_E_GENERIC },
     { "None", ONLP_STATUS_E_UNSUPPORTED },
     { "None", ONLP_STATUS_E_MISSING },
     { "None", ONLP_STATUS_E_INVALID },
     { "None", ONLP_STATUS_E_INTERNAL },
     { "None", ONLP_STATUS_E_PARAM },
+    { "None", ONLP_STATUS_E_I2C },
     { NULL, 0 }
 };
 

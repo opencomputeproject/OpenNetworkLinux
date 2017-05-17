@@ -1,0 +1,89 @@
+--- /dev/null
++++ b/drivers/hwmon/pmbus/cpr4011.c
+@@ -0,0 +1,83 @@
++/*
++ * Hardware monitoring driver for Compuware CPR-4011-4M11/21
++ *
++ * Copyright (C) 2015 Cumulus Networks, LLC
++ * Author: Puneet Shenoy <puneet@cumulusnetworks.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/err.h>
++#include <linux/slab.h>
++#include <linux/i2c.h>
++#include <linux/i2c/pmbus.h>
++#include "pmbus.h"
++
++enum chips { cpr4011 };
++
++static int cpr4011_probe(struct i2c_client *client,
++			  const struct i2c_device_id *id)
++{
++	struct pmbus_driver_info *info;
++	int ret;
++
++	if (!i2c_check_functionality(client->adapter,
++				     I2C_FUNC_SMBUS_BYTE_DATA |
++				     I2C_FUNC_SMBUS_WORD_DATA)) {
++		pr_err("i2c check functionality failed\n");
++		return -ENODEV;
++	}
++	info = kzalloc(sizeof(struct pmbus_driver_info), GFP_KERNEL);
++	if (!info)
++		return -ENOMEM;
++
++	info->pages = 1;
++	info->func[0] = PMBUS_HAVE_FAN12 | PMBUS_HAVE_STATUS_FAN12 |
++		PMBUS_HAVE_TEMP | PMBUS_HAVE_TEMP2 | PMBUS_HAVE_STATUS_TEMP;
++	info->format[PSC_PWM] = linear;
++
++	ret = pmbus_do_probe(client, id, info);
++	if (ret < 0)
++		kfree(info);
++	return ret;
++}
++
++static int cpr4011_remove(struct i2c_client *client)
++{
++	pmbus_do_remove(client);
++	return 0;
++}
++
++static const struct i2c_device_id cpr4011_id[] = {
++	{"cpr4011", cpr4011},
++	{}
++};
++MODULE_DEVICE_TABLE(i2c, cpr4011_id);
++
++static struct i2c_driver cpr4011_driver = {
++	.driver = { .name = "cpr4011",},
++	.probe = cpr4011_probe,
++	.remove = cpr4011_remove,
++	.id_table = cpr4011_id,
++};
++
++module_i2c_driver(cpr4011_driver);
++
++MODULE_AUTHOR("Puneet Shenoy");
++MODULE_DESCRIPTION("PMBus driver for Compuware CPR4011 4M11/21 Power Supply");
++MODULE_LICENSE("GPL");
+diff --git a/drivers/hwmon/pmbus/dps460.c b/drivers/hwmon/pmbus/dps460.c
+new file mode 100644
+index 0000000..47a8ee6

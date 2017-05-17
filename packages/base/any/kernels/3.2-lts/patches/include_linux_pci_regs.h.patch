@@ -1,0 +1,27 @@
+--- a/include/linux/pci_regs.h
++++ b/include/linux/pci_regs.h
+@@ -441,6 +441,8 @@
+ #define  PCI_EXP_LNKCAP_PN	0xff000000 /* Port Number */
+ #define PCI_EXP_LNKCTL		16	/* Link Control */
+ #define  PCI_EXP_LNKCTL_ASPMC	0x0003	/* ASPM Control */
++#define  PCI_EXP_LNKCTL_ASPM_L0S  0x01	/* L0s Enable */
++#define  PCI_EXP_LNKCTL_ASPM_L1   0x02	/* L1 Enable */
+ #define  PCI_EXP_LNKCTL_RCB	0x0008	/* Read Completion Boundary */
+ #define  PCI_EXP_LNKCTL_LD	0x0010	/* Link Disable */
+ #define  PCI_EXP_LNKCTL_RL	0x0020	/* Retrain Link */
+@@ -520,7 +522,13 @@
+ #define  PCI_EXP_OBFF_MSGA_EN	0x2000	/* OBFF enable with Message type A */
+ #define  PCI_EXP_OBFF_MSGB_EN	0x4000	/* OBFF enable with Message type B */
+ #define  PCI_EXP_OBFF_WAKE_EN	0x6000	/* OBFF using WAKE# signaling */
++#define PCI_EXP_LNKCAP2		44	/* Link Capability 2 */
++#define  PCI_EXP_LNKCAP2_SLS_2_5GB 0x01	/* Current Link Speed 2.5GT/s */
++#define  PCI_EXP_LNKCAP2_SLS_5_0GB 0x02	/* Current Link Speed 5.0GT/s */
++#define  PCI_EXP_LNKCAP2_SLS_8_0GB 0x04	/* Current Link Speed 8.0GT/s */
++#define  PCI_EXP_LNKCAP2_CROSSLINK 0x100 /* Crosslink supported */
+ #define PCI_EXP_LNKCTL2		48	/* Link Control 2 */
++#define PCI_EXP_LNKSTA2		50	/* Link Status 2 */
+ #define PCI_EXP_SLTCTL2		56	/* Slot Control 2 */
+ 
+ /* Extended Capabilities (PCI-X 2.0 and Express) */
+diff --git a/include/linux/percpu.h b/include/linux/percpu.h
+index 9ca008f..c925813 100644

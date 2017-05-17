@@ -235,6 +235,12 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
 int
 onlp_ledi_init(void)
 {
+    int ret;
+
+    if ((ret = onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF)) != ONLP_STATUS_OK)
+    {
+        return ret;
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -252,7 +258,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     /* get fullpath */
     sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
 		
-	/* Set the onlp_oid_hdr_t and capabilities */
+    /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Set LED mode */
@@ -308,7 +314,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 	
     local_id = ONLP_OID_ID_GET(id);
     sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);	
-    
+
     if (deviceNodeWriteInt(fullpath, onlp_to_driver_led_mode(local_id, mode), 0) != 0)
     {
         return ONLP_STATUS_E_INTERNAL;

@@ -1,0 +1,12 @@
+diff -urpN a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
+--- a/drivers/mmc/host/sdhci-of-esdhc.c	2016-11-20 01:17:41.000000000 +0000
++++ b/drivers/mmc/host/sdhci-of-esdhc.c	2017-01-05 17:29:20.798516943 +0000
+@@ -343,7 +343,7 @@ static const struct sdhci_pltfm_data sdh
+ 	 * eSDHC cannot support End Attribute in NOP ADMA descriptor
+ 	 */
+ 	.quirks = ESDHC_DEFAULT_QUIRKS | SDHCI_QUIRK_BROKEN_CARD_DETECTION
+-		| SDHCI_QUIRK_NO_CARD_NO_RESET
++		| SDHCI_QUIRK_NO_CARD_NO_RESET | SDHCI_QUIRK_BROKEN_TIMEOUT_VAL
+ 		| SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC,
+ 	.ops = &sdhci_esdhc_ops,
+ };

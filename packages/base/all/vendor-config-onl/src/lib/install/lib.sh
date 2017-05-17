@@ -5,7 +5,7 @@
 # helper functions for install
 #
 ######################################################################
-  
+
 installer_reboot() {
   local dummy sts timeout trapsts
   if test $# -gt 0; then
@@ -62,17 +62,26 @@ installer_mkchroot() {
   local rootdir
   rootdir=$1
 
+  local hasDevTmpfs
+  if grep -q devtmpfs /proc/filesystems; then
+    hasDevTmpfs=1
+  fi
+
   # special handling for /dev, which usually already has nested mounts
   installer_say "Setting up /dev"
   rm -fr "${rootdir}/dev"/*
-  for dev in /dev/*; do
-    if test -d "$dev"; then
-      mkdir "${rootdir}${dev}"
-    else
-      cp -a "$dev" "${rootdir}${dev}"
-    fi
-  done
-  mkdir -p "${rootdir}/dev/pts"
+  if test "$hasDevTmpfs"; then
+    :
+  else
+    for dev in /dev/*; do
+      if test -d "$dev"; then
+        mkdir "${rootdir}${dev}"
+      else
+        cp -a "$dev" "${rootdir}${dev}"
+      fi
+    done
+    mkdir -p "${rootdir}/dev/pts"
+  fi
 
   installer_say "Setting up /run"
   rm -fr "${rootdir}/run"/*
@@ -99,6 +108,10 @@ installer_mkchroot() {
   installer_say "Setting up mounts"
   mount -t proc proc "${rootdir}/proc"
   mount -t sysfs sysfs "${rootdir}/sys"
+  if test "$hasDevTmpfs"; then
+    mount -t devtmpfs devtmpfs "${rootdir}/dev"
+    mkdir -p ${rootdir}/dev/pts
+  fi
   mount -t devpts devpts "${rootdir}/dev/pts"
 
   if test ${TMPDIR+set}; then
@@ -121,6 +134,56 @@ installer_mkchroot() {
   if test -r /etc/fw_env.config; then
     cp /etc/fw_env.config "${rootdir}/etc/fw_env.config"
   fi
+}
+
+visit_blkid()
+{
+  local fn rest
+  fn=$1; shift
+  rest="$@"
+
+  local ifs
+  ifs=$IFS; IFS=$CR
+  for line in $(blkid); do
+    IFS=$ifs
+
+    local dev
+    dev=${line%%:*}
+    line=${line#*:}
+
+    local TYPE LABEL PARTLABEL UUID PARTUUID
+    while test "$line"; do
+      local key
+      key=${line%%=*}
+      line=${line#*=}
+      case "$line" in
+        '"'*)
+          line=${line#\"}
+          val=${line%%\"*}
+          line=${line#*\"}
+          line=${line## }
+        ;;
+        *)
+          val=${line%% *}
+          line=${line#* }
+        ;;
+      esac
+      eval "$key=\"$val\""
+    done
+
+    local sts
+    if eval $fn \"$dev\" \"$LABEL\" \"$UUID\" \"$PARTLABEL\" \"$PARTUUID\" $rest; then
+      sts=0
+    else
+      sts=$?
+    fi
+    if test $sts -eq 2; then break; fi
+    if test $sts -ne 0; then return $sts; fi
+
+  done
+  IFS=$ifs
+
+  return 0
 }
 
 # Local variables

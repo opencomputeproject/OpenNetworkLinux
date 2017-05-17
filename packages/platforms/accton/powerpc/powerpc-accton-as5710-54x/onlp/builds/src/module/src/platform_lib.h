@@ -27,6 +27,7 @@
 #define __PLATFORM_LIB_H__
 
 #include "powerpc_accton_as5710_54x_log.h"
+#include "powerpc_accton_as5710_54x_int.h"
 
 #define PSU1_ID 1
 #define PSU2_ID 2
@@ -51,6 +52,7 @@
 #define SFP_HWMON_NODE(node)     SFP_HWMON_PREFIX#node
 #define SFP_HWMON_DOM_PREFIX "/sys/bus/i2c/devices/3-0051/"
 #define SFP_HWMON_DOM_NODE(node)     SFP_HWMON_DOM_PREFIX#node
+#define SFP_BUS           3
 
 int deviceNodeWriteInt(char *filename, int value, int data_len);
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
@@ -61,16 +63,13 @@ typedef enum psu_type {
     PSU_TYPE_AC_F2B,
     PSU_TYPE_AC_B2F,
     PSU_TYPE_DC_48V_F2B,
-    PSU_TYPE_DC_48V_B2F
+    PSU_TYPE_DC_48V_B2F,
+    PSU_TYPE_DC_12V_F2B,
+    PSU_TYPE_DC_12V_B2F,
+    PSU_TYPE_DC_12V_FANLESS
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-
-typedef enum platform_id_e {
-    PLATFORM_ID_UNKNOWN,
-    PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_R0,
-    PLATFORM_ID_POWERPC_ACCTON_AS5710_54X_RX,
-} platform_id_t;
 
 extern platform_id_t platform_id;
 

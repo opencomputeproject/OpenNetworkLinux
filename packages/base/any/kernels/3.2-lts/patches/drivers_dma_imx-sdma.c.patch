@@ -1,0 +1,16 @@
+--- a/drivers/dma/imx-sdma.c
++++ b/drivers/dma/imx-sdma.c
+@@ -1152,10 +1152,8 @@ static void sdma_load_firmware(const struct firmware *fw, void *context)
+ 	const struct sdma_script_start_addrs *addr;
+ 	unsigned short *ram_code;
+ 
+-	if (!fw) {
+-		dev_err(sdma->dev, "firmware not found\n");
++	if (!fw)
+ 		return;
+-	}
+ 
+ 	if (fw->size < sizeof(*header))
+ 		goto err_firmware;
+diff --git a/drivers/firmware/dmi_scan.c b/drivers/firmware/dmi_scan.c
+index 20f7daa..335c173 100644

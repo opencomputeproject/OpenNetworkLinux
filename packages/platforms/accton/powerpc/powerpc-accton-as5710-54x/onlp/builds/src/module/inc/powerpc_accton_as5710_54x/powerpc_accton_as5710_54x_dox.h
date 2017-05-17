@@ -3,8 +3,8 @@
  * powerpc_accton_as5710_54x Doxygen Header
  *
  *****************************************************************************/
-#ifndef __POWERPC_ACCTON_AS5710_54X_R0_DOX_H__
-#define __POWERPC_ACCTON_AS5710_54X_R0_DOX_H__
+#ifndef __POWERPC_ACCTON_AS5710_54X_DOX_H__
+#define __POWERPC_ACCTON_AS5710_54X_DOX_H__
 
 /**
  * @defgroup powerpc_accton_as5710_54x powerpc_accton_as5710_54x - powerpc_accton_as5710_54x Description
@@ -23,4 +23,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __POWERPC_ACCTON_AS5710_54X_R0_DOX_H__ */
+#endif /* __POWERPC_ACCTON_AS5710_54X_DOX_H__ */

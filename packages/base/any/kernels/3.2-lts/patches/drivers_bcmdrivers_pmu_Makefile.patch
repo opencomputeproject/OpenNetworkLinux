@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pmu/Makefile
+@@ -0,0 +1,8 @@
++# iproc TDM support
++
++EXTRA_CFLAGS	+= -I$(BCMDRIVERS_DIR)/gmac/src/include
++KBUILD_CFLAGS += -DBCMDRIVER -Dlinux
++
++iproc_pmu-objs := iproc-pmu.o
++
++obj-$(CONFIG_IPROC_PMU) += iproc_pmu.o
+diff --git a/drivers/bcmdrivers/pmu/iproc-pmu.c b/drivers/bcmdrivers/pmu/iproc-pmu.c
+new file mode 100644
+index 0000000..83e1aec

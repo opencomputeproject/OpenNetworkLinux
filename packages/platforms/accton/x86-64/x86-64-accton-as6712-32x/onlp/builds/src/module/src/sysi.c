@@ -38,11 +38,6 @@
 
 #include "platform_lib.h"
 
-#define NUM_OF_THERMAL_ON_MAIN_BROAD  5
-#define NUM_OF_FAN_ON_MAIN_BROAD      5
-#define NUM_OF_PSU_ON_MAIN_BROAD      2
-#define NUM_OF_LED_ON_MAIN_BROAD      10
-
 #define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
     DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
     if ((fd = open(fullpath, O_RDONLY)) == -1)  \
@@ -124,26 +119,26 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
 
-    /* 4 Thermal sensors on the chassis */
-    for (i = 1; i <= NUM_OF_THERMAL_ON_MAIN_BROAD; i++)
+    /* 5 Thermal sensors on the chassis */
+    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++)
     {
         *e++ = ONLP_THERMAL_ID_CREATE(i);
     }
 
-    /* 9 LEDs on the chassis */
-    for (i = 1; i <= NUM_OF_LED_ON_MAIN_BROAD; i++)
+    /* 10 LEDs on the chassis */
+    for (i = 1; i <= CHASSIS_LED_COUNT; i++)
     {
         *e++ = ONLP_LED_ID_CREATE(i);
     }
 
-    /* 4 Fans on the chassis */
-    for (i = 1; i <= NUM_OF_FAN_ON_MAIN_BROAD; i++)
+    /* 5 Fans on the chassis */
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
     {
         *e++ = ONLP_FAN_ID_CREATE(i);
     }
 
     /* 2 PSUs on the chassis */
-    for (i = 1; i <= NUM_OF_PSU_ON_MAIN_BROAD; i++)
+    for (i = 1; i <= CHASSIS_PSU_COUNT; i++)
     {
         *e++ = ONLP_PSU_ID_CREATE(i);
     }
@@ -218,7 +213,7 @@ onlp_sysi_platform_manage_fans(void)
 
     /* Get each fan status
      */
-    for (i = 1; i <= NUM_OF_FAN_ON_MAIN_BROAD; i++)
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
     {
         onlp_fan_info_t fan_info;
 

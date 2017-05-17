@@ -55,16 +55,16 @@ onlp_i2c_open(int bus, uint8_t addr, uint32_t flags)
 
     /* Set 10 or 7 bit mode */
     rv = ioctl(fd, I2C_TENBIT, (flags & ONLP_I2C_F_TENBIT) ? 1 : 0);
-    if(rv != 0) {
-        AIM_LOG_ERROR("i2c-%d: failed to set %d bit mode",
+    if(rv == -1) {
+        AIM_LOG_ERROR("i2c-%d: failed to set %d bit mode", bus,
                       (flags & ONLP_I2C_F_TENBIT) ? 10 : 7);
         goto error;
     }
 
     /* Enable/Disable PEC */
     rv = ioctl(fd, I2C_PEC, (flags & ONLP_I2C_F_PEC) ? 1 : 0);
-    if(rv != 0) {
-        AIM_LOG_ERROR("i2c-%d: failed to set PEC mode %d",
+    if(rv == -1) {
+        AIM_LOG_ERROR("i2c-%d: failed to set PEC mode %d", bus,
                       (flags & ONLP_I2C_F_PEC) ? 1 : 0);
         goto error;
     }
@@ -74,10 +74,11 @@ onlp_i2c_open(int bus, uint8_t addr, uint32_t flags)
                (flags & ONLP_I2C_F_FORCE) ? I2C_SLAVE_FORCE : I2C_SLAVE,
                addr);
 
-    if(rv != 0) {
+    if(rv == -1) {
         AIM_LOG_ERROR("i2c-%d: %s slave address 0x%x failed: %{errno}",
                       bus,
                       (flags & ONLP_I2C_F_FORCE) ? "forcing" : "setting",
+                      addr,
                       errno);
         goto error;
     }
@@ -86,7 +87,7 @@ onlp_i2c_open(int bus, uint8_t addr, uint32_t flags)
 
  error:
     close(fd);
-    return -1;
+    return ONLP_STATUS_E_I2C;
 }
 
 int
@@ -104,11 +105,17 @@ onlp_i2c_block_read(int bus, uint8_t addr, uint8_t offset, int size,
     int count = size;
     uint8_t* p = rdata;
     while(count > 0) {
+        int rv;
         int rsize = (count >= ONLPLIB_CONFIG_I2C_BLOCK_SIZE) ? ONLPLIB_CONFIG_I2C_BLOCK_SIZE : count;
-        int rv = i2c_smbus_read_i2c_block_data(fd,
-                                               p - rdata,
+        if(flags & ONLP_I2C_F_USE_SMBUS_BLOCK_READ) {
+            rv = i2c_smbus_read_block_data(fd, offset, p);
+        } else {
+            rv = i2c_smbus_read_i2c_block_data(fd,
+                                               offset,
                                                rsize,
                                                p);
+            offset += rsize;
+        }
 
         if(rv != rsize) {
             AIM_LOG_ERROR("i2c-%d: reading address 0x%x, offset %d, size=%d failed: %{errno}",
@@ -125,7 +132,7 @@ onlp_i2c_block_read(int bus, uint8_t addr, uint8_t offset, int size,
 
  error:
     close(fd);
-    return -1;
+    return ONLP_STATUS_E_I2C;
 }
 
 int
@@ -142,7 +149,8 @@ onlp_i2c_read(int bus, uint8_t addr, uint8_t offset, int size,
     }
 
     for(i = 0; i < size; i++) {
-        uint32_t rv = i2c_smbus_read_byte_data(fd, offset+i);
+        int rv = i2c_smbus_read_byte_data(fd, offset+i);
+
         if(rv < 0) {
             AIM_LOG_ERROR("i2c-%d: reading address 0x%x, offset %d failed: %{errno}",
                           bus, addr, offset+i, errno);
@@ -157,7 +165,7 @@ onlp_i2c_read(int bus, uint8_t addr, uint8_t offset, int size,
 
  error:
     close(fd);
-    return -1;
+    return ONLP_STATUS_E_I2C;
 }
 
 
@@ -175,7 +183,7 @@ onlp_i2c_write(int bus, uint8_t addr, uint8_t offset, int size,
     }
 
     for(i = 0; i < size; i++) {
-        uint32_t rv = i2c_smbus_write_byte_data(fd, offset+i, data[i]);
+        int rv = i2c_smbus_write_byte_data(fd, offset+i, data[i]);
         if(rv < 0) {
             AIM_LOG_ERROR("i2c-%d: writing address 0x%x, offset %d failed: %{errno}",
                           bus, addr, offset+i, errno);
@@ -187,7 +195,7 @@ onlp_i2c_write(int bus, uint8_t addr, uint8_t offset, int size,
 
  error:
     close(fd);
-    return -1;
+    return ONLP_STATUS_E_I2C;
 }
 
 int
@@ -391,7 +399,14 @@ onlp_i2c_dev_read(onlp_i2c_dev_t* dev, uint8_t offset, int size,
         return error;
     }
 
-    if( (rv = onlp_i2c_read(dev->bus, dev->addr, offset, size, rdata, flags)) < 0) {
+    if(flags & ONLP_I2C_F_USE_BLOCK_READ) {
+        rv = onlp_i2c_block_read(dev->bus, dev->addr, offset, size, rdata, flags);
+    }
+    else {
+        rv = onlp_i2c_read(dev->bus, dev->addr, offset, size, rdata, flags);
+    }
+
+    if( rv < 0 ) {
         AIM_LOG_ERROR("Device %s: read() failed: %d",
                       dev->name, rv);
         return rv;

@@ -395,38 +395,135 @@ onlp_onie_show(onlp_onie_info_t* info, aim_pvs_t* pvs)
     }
 }
 
+#include <cjson/cJSON.h>
+#include <cjson_util/cjson_util.h>
+
 void
 onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
 {
-    aim_printf(pvs, "{\n");
+    cJSON* cj = cJSON_CreateObject();
 
-#define STROUT(_name, _member)                                   \
-    do {                                                         \
-        aim_printf(pvs, "    \"%s\" : ", #_name);                 \
-        if(info-> _member) {                                     \
-            aim_printf(pvs, "\"%s\",\n", info->_member);         \
-        }                                                        \
-        else {                                                   \
-            aim_printf(pvs, "null,\n");                          \
-        }                                                        \
+#define _S(_name, _member)                                              \
+    do {                                                                \
+        if(info-> _member) {                                            \
+            cJSON_AddStringToObject(cj, #_name, info-> _member);        \
+        } else {                                                        \
+            cJSON_AddNullToObject(cj, #_name);                          \
+        }                                                               \
     } while(0)
 
-    STROUT(Product Name, product_name);
-    STROUT(Part Number, part_number);
-    STROUT(Serial Number, serial_number);
-    aim_printf(pvs, "    \"MAC\": \"%{mac}\", ", info->mac);
-    aim_printf(pvs, "    \"MAC Range\": %d,\n", info->mac_range);
-    STROUT(Manufacture Date,manufacture_date);
-    STROUT(Vendor,vendor);
-    STROUT(Platform Name,platform_name);
-    aim_printf(pvs, "    \"Device Version\": %u,\n", info->device_version);
-    STROUT(Label Revision,label_revision);
-    STROUT(Country Code,country_code);
-    STROUT(Diag Version,diag_version);
-    STROUT(Service Tag,service_tag);
-    STROUT(ONIE Version,onie_version);
-    aim_printf(pvs, "    \"CRC\": \"0x%x\"\n", info->crc);
-    aim_printf(pvs, "}\n");
+#define _N(_name, _member)                                      \
+    do {                                                        \
+        cJSON_AddNumberToObject(cj, #_name, info-> _member);    \
+    } while(0)
+
+    _S(Product Name, product_name);
+    _S(Part Number, part_number);
+    _S(Serial Number, serial_number);
+    {
+        char* mac = aim_dfstrdup("%{mac}", info->mac);
+        cJSON_AddStringToObject(cj, "MAC", mac);
+        aim_free(mac);
+    }
+    _S(Manufacture Date,manufacture_date);
+    _S(Vendor,vendor);
+    _S(Platform Name,platform_name);
+    _S(Label Revision,label_revision);
+    _S(Country Code,country_code);
+    _S(Diag Version,diag_version);
+    _S(Service Tag,service_tag);
+    _S(ONIE Version,onie_version);
+    _N(Device Version, device_version);
+    {
+        char* crc = aim_fstrdup("0x%x", info->crc);
+        cJSON_AddStringToObject(cj, "CRC", crc);
+        aim_free(crc);
+    }
+    char* out = cJSON_Print(cj);
+    aim_printf(pvs, "%s\n", out);
+    free(out);
+    cJSON_Delete(cj);
 }
+
+static char*
+lookup_entry__(cJSON* cj, const char* name, int code)
+{
+    char* str = NULL;
+    int rv = cjson_util_lookup_string(cj, &str, "0x%x", code);
+    if(rv < 0) {
+        rv = cjson_util_lookup_string(cj, &str, name);
+    }
+    if(rv < 0) {
+        return NULL;
+    }
+    else {
+        return aim_strdup(str);
+    }
+}
+
+int
+onlp_onie_read_json(onlp_onie_info_t* info, const char* fname)
+{
+    cJSON* cj;
+
+    memset(info, 0, sizeof(*info));
+
+    list_init(&info->vx_list);
+
+    int rv = cjson_util_parse_file(fname, &cj);
+    if(rv < 0) {
+        AIM_LOG_ERROR("Could not parse ONIE JSON file '%s' rv=%{aim_error}",
+                      fname, rv);
+        return rv;
+    }
+
+#define ONIE_TLV_ENTRY_str(_member, _name, _code)                   \
+    do {                                                            \
+        info->_member = lookup_entry__(cj, #_name, _code);          \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_mac(_member, _name, _code)             \
+    do {                                                      \
+        char* str = lookup_entry__(cj, #_name, _code);        \
+        int mac[6] = {0};                                     \
+        if(str) {                                             \
+            int i;                                            \
+            sscanf(str, "%x:%x:%x:%x:%x:%x",                  \
+                   mac+0, mac+1, mac+2, mac+3, mac+4, mac+5); \
+            for(i = 0; i < 6; i++) info->mac[i] = mac[i];     \
+            aim_free(str);                                    \
+        }                                                     \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_byte(_member, _name, _code)      \
+    do {                                                \
+        char* v = lookup_entry__(cj, #_name, _code);    \
+        if(v) {                                         \
+            info->_member = atoi(v);                    \
+            aim_free(v);                                \
+        }                                               \
+    } while(0)
+
+#define ONIE_TLV_ENTRY_int16(_member, _name, _code)     \
+    do {                                                \
+        char* v = lookup_entry__(cj, #_name, _code);    \
+        if(v) {                                         \
+            info->_member = atoi(v);                    \
+            aim_free(v);                                \
+        }                                               \
+    } while(0)
+
+#define ONIE_TLV_ENTRY(_member, _name, _code, _type)    \
+    ONIE_TLV_ENTRY_##_type(_member, _name, _code);
+
+    #include <onlplib/onlplib.x>
+
+
+    cJSON_Delete(cj);
+    return 0;
+}
+
+
+
 
 

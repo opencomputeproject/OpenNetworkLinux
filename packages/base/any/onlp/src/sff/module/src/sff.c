@@ -66,7 +66,9 @@ sff_module_type_get(const uint8_t* eeprom)
 
     if (SFF8636_MODULE_QSFP28(eeprom)
         && SFF8636_MEDIA_EXTENDED(eeprom)
-        && SFF8636_MEDIA_100GE_CR4(eeprom))
+        && (SFF8636_MEDIA_100GE_CR4(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_S(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_N(eeprom)))
         return SFF_MODULE_TYPE_100G_BASE_CR4;
 
     if (SFF8636_MODULE_QSFP28(eeprom)
@@ -125,6 +127,11 @@ sff_module_type_get(const uint8_t* eeprom)
         return SFF_MODULE_TYPE_40G_BASE_LM4;
     }
 
+    if (SFF8436_MODULE_QSFP_PLUS_V2(eeprom)
+        && _sff8436_qsfp_40g_sm4(eeprom)) {
+        return SFF_MODULE_TYPE_40G_BASE_SM4;
+    }
+
     if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_XGE_SR(eeprom)
         && !_sff8472_media_gbe_sx_fc_hack(eeprom))
@@ -163,6 +170,11 @@ sff_module_type_get(const uint8_t* eeprom)
             return SFF_MODULE_TYPE_10G_BASE_SR;
         else
             return SFF_MODULE_TYPE_10G_BASE_CR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_cr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_CR;
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
@@ -214,6 +226,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_100G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR4:
         case SFF_MODULE_TYPE_40G_BASE_CR:
+        case SFF_MODULE_TYPE_25G_BASE_CR:
         case SFF_MODULE_TYPE_10G_BASE_CR:
         case SFF_MODULE_TYPE_1G_BASE_CX:
         case SFF_MODULE_TYPE_1G_BASE_T:
@@ -228,6 +241,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_40G_BASE_LM4:
         case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
         case SFF_MODULE_TYPE_40G_BASE_SR2:
+        case SFF_MODULE_TYPE_40G_BASE_SM4:
         case SFF_MODULE_TYPE_10G_BASE_SR:
         case SFF_MODULE_TYPE_10G_BASE_LR:
         case SFF_MODULE_TYPE_10G_BASE_LRM:
@@ -275,7 +289,12 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
         case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
         case SFF_MODULE_TYPE_40G_BASE_CR:
         case SFF_MODULE_TYPE_40G_BASE_SR2:
+        case SFF_MODULE_TYPE_40G_BASE_SM4:
             *caps |= SFF_MODULE_CAPS_F_40G;
+            return 0;
+
+        case SFF_MODULE_TYPE_25G_BASE_CR:
+            *caps |= SFF_MODULE_CAPS_F_25G;
             return 0;
 
         case SFF_MODULE_TYPE_10G_BASE_SR:
@@ -308,13 +327,14 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
 }
 
 static void
-make_printable__(char* string)
+make_printable__(char* string, int size)
 {
     char* p;
-    for(p = string; p && *p; p++) {
+    for(p = string; p && *p && size; p++) {
         if(!isprint(*p)) {
             *p = '?';
         }
+        size --;
     }
 }
 
@@ -390,21 +410,21 @@ sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
     const char *empty = "                ";
     if (*vendor) {
         aim_strlcpy(se->info.vendor, (char*)vendor, sizeof(se->info.vendor));
-        make_printable__(se->info.vendor);
+        make_printable__(se->info.vendor, sizeof(se->info.vendor));
     }
     else {
         aim_strlcpy(se->info.vendor, empty, 17);
     }
     if (*model) {
         aim_strlcpy(se->info.model, (char*)model, sizeof(se->info.model));
-        make_printable__(se->info.model);
+        make_printable__(se->info.model, sizeof(se->info.model));
     }
     else {
         aim_strlcpy(se->info.model, empty, 17);
     }
     if (*serial) {
         aim_strlcpy(se->info.serial, (char*)serial, sizeof(se->info.serial));
-        make_printable__(se->info.serial);
+        make_printable__(se->info.serial, sizeof(se->info.serial));
     }
     else {
         aim_strlcpy(se->info.serial, empty, 17);

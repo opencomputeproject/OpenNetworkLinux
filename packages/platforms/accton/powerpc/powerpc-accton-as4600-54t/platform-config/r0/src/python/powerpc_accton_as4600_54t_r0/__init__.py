@@ -1,20 +1,11 @@
 #!/usr/bin/python
-############################################################
-#
-#
-#
-############################################################
+
 from onl.platform.base import *
 from onl.platform.accton import *
 
-class OnlPlatform_powerpc_accton_as4600_54t_r0(OnlPlatformAccton):
-
-    def model(self):
-        return 'AS4600-54T'
-
-    def platform(self):
-        return 'powerpc-accton-as4600-54t-r0'
-
-    def sys_oid_platform(self):
-        return ".4600.54"
+class OnlPlatform_powerpc_accton_as4600_54t_r0(OnlPlatformAccton,
+                                               OnlPlatformPortConfig_48x1_4x10):
+    PLATFORM='powerpc-accton-as4600-54t-r0'
+    MODEL='AS4600-54T'
+    SYS_OBJECT_ID='.4600.54'
 

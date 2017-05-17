@@ -1,0 +1,85 @@
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -30,6 +30,7 @@ config ARM
+ 	select HAVE_SPARSE_IRQ
+ 	select GENERIC_IRQ_SHOW
+ 	select CPU_PM if (SUSPEND || CPU_IDLE)
++	select HAVE_BPF_JIT
+ 	help
+ 	  The ARM series is a line of low-power-consumption RISC chip designs
+ 	  licensed by ARM Ltd and targeted at embedded applications and
+@@ -161,6 +162,13 @@ config ARCH_HAS_CPUFREQ
+ config ARCH_HAS_CPU_IDLE_WAIT
+        def_bool y
+ 
++-config ARCH_SUPPORTS_BIG_ENDIAN
++	bool
++	default y if ARCH_IXP4XX
++	help
++	 Internal node to specify the architecture can run in Big Endian
++	 mode.
++
+ config GENERIC_HWEIGHT
+ 	bool
+ 	default y
+@@ -978,6 +986,30 @@ config ARCH_ZYNQ
+ 	select USE_OF
+ 	help
+ 	  Support for Xilinx Zynq ARM Cortex A9 Platform
++
++config ARCH_IPROC
++	bool "Broadcom ARMv7 iProc boards"
++	depends on MMU
++	select CPU_V7
++	select HAVE_CLK
++	select HAVE_SMP
++	select HAVE_MACH_CLKDEV
++	select COMMON_CLKDEV
++	select CLKDEV_LOOKUP
++	select ARM_GIC
++	select HAVE_ARM_SCU
++	select GENERIC_CLOCKEVENTS_BUILD
++	select GENERIC_CLOCKEVENTS
++	select PCI
++	select GENERIC_GPIO
++	select ARCH_REQUIRE_GPIOLIB
++	select CACHE_L2X0
++	select ARM_AMBA
++	select ARCH_HAS_CPUFREQ
++	select MULTI_IRQ_HANDLER
++	help
++	 This is a common family of Broadcom Cortex A9 based boards
++
+ endchoice
+ 
+ #
+@@ -1013,6 +1045,8 @@ source "arch/arm/mach-iop33x/Kconfig"
+ 
+ source "arch/arm/mach-iop13xx/Kconfig"
+ 
++source "arch/arm/plat-iproc/Kconfig"
++
+ source "arch/arm/mach-ixp4xx/Kconfig"
+ 
+ source "arch/arm/mach-ixp2000/Kconfig"
+@@ -1023,6 +1057,8 @@ source "arch/arm/mach-kirkwood/Kconfig"
+ 
+ source "arch/arm/mach-ks8695/Kconfig"
+ 
++source "arch/arm/mach-iproc/Kconfig"
++
+ source "arch/arm/mach-lpc32xx/Kconfig"
+ 
+ source "arch/arm/mach-msm/Kconfig"
+@@ -1452,7 +1488,8 @@ config SMP
+ 	depends on REALVIEW_EB_ARM11MP || REALVIEW_EB_A9MP || \
+ 		 MACH_REALVIEW_PB11MP || MACH_REALVIEW_PBX || ARCH_OMAP4 || \
+ 		 ARCH_EXYNOS4 || ARCH_TEGRA || ARCH_U8500 || ARCH_VEXPRESS_CA9X4 || \
+-		 ARCH_MSM_SCORPIONMP || ARCH_SHMOBILE || ARCH_HIGHBANK || SOC_IMX6Q
++		 ARCH_MSM_SCORPIONMP || ARCH_SHMOBILE || ARCH_HIGHBANK || SOC_IMX6Q || \
++		 ARCH_IPROC
+ 	depends on MMU
+ 	select USE_GENERIC_SMP_HELPERS
+ 	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP
+diff --git a/arch/arm/Makefile b/arch/arm/Makefile
+index 362c7ca..e11f8ee 100644

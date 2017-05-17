@@ -64,9 +64,9 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
 int deviceNodeWriteInt(char *filename, int value, int data_len)
 {
     char buf[8] = {0};
-    sprintf(buf, "%d", value);
 
-    return deviceNodeWrite(filename, buf, sizeof(buf)-1, data_len);
+    sprintf(buf, "%d", value);
+    return deviceNodeWrite(filename, buf, (int)strlen(buf), data_len);
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
@@ -140,5 +140,24 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         }
     }
 
+    /* Check DC model name */
+    memset(model_name, 0, sizeof(model_name));
+    node = (id == PSU1_ID) ? PSU1_DC_HWMON_NODE(psu_model_name) : PSU2_DC_HWMON_NODE(psu_model_name);
+
+    if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
+        if (strncmp(model_name, "um400d01G", strlen("um400d01G")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, modelname_len-1);
+            }
+            return PSU_TYPE_DC_48V_B2F;
+        }
+        else if (strncmp(model_name, "um400d01-01G", strlen("um400d01-01G")) == 0) {
+            if (modelname) {
+                strncpy(modelname, model_name, modelname_len-1);
+            }
+            return PSU_TYPE_DC_48V_F2B;
+        }
+    }	
+	
     return PSU_TYPE_UNKNOWN;
 }

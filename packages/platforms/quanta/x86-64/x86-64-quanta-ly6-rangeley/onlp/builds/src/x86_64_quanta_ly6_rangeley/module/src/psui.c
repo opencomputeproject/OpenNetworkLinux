@@ -11,15 +11,15 @@
 #include <onlp/platformi/psui.h>
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
-#include <quanta_lib/i2c.h>
-#include <quanta_lib/gpio.h>
+#include <onlplib/gpio.h>
 #include "x86_64_quanta_ly6_rangeley_int.h"
 #include "x86_64_quanta_ly6_rangeley_log.h"
+#include <AIM/aim_string.h>
 
 struct psu_info_s psu_info[] = {
 	{}, /* Not used */
-	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-24/24-0058", .present = PSU_GPIO_PSU1_PRSNT_N, .busno = 24, .addr = 0x58},
-	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-25/25-0059", .present = PSU_GPIO_PSU2_PRSNT_N, .busno = 25, .addr = 0x59},
+	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-24/24-0058", .present = QUANTA_LY6_PSU_GPIO_PSU1_PRSNT_N, .busno = 24, .addr = 0x58},
+	{ .path = "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-25/25-0059", .present = QUANTA_LY6_PSU_GPIO_PSU2_PRSNT_N, .busno = 25, .addr = 0x59},
 };
 
 int
@@ -55,7 +55,7 @@ static onlp_psu_info_t psus__[] = {
 #define PMBUS_MFR_MODEL			0x9A
 #define PMBUS_MFR_SERIAL		0x9E
 #define PMBUS_MFR_MODEL_LEN		20
-#define PMBUS_MFR_SERIAL_LEN	7
+#define PMBUS_MFR_SERIAL_LEN	19
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -67,16 +67,16 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     uint8_t buffer[ONLP_CONFIG_INFO_STR_MAX];
 	int value = -1;
 
-	rv = pca953x_gpio_value_get(psu_info[pid].present, &value);
+	rv = onlp_gpio_get(psu_info[pid].present, &value);
 	if(rv < 0) {
         return rv;
     }
-	else if(value == GPIO_HIGH) {
+	else if(value == 1) {
         info->status &= ~1;
         return 0;
 	}
 
-    if(onlp_file_read_int(&info->mvin, "%s/in1_input", dir) == 0 && info->mvin >= 0) {
+    if(onlp_file_read_int(&info->mvin, "%s*in1_input", dir) == 0 && info->mvin >= 0) {
         info->caps |= ONLP_PSU_CAPS_VIN;
     }
 
@@ -84,38 +84,42 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     info->status |= 1;
 
     memset(buffer, 0, sizeof(buffer));
-    rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
-    if(rv >= 0)
-        strncpy(info->model, (char *) (buffer+1), buffer[0]);
-    else
+    rv = onlp_i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_MODEL, PMBUS_MFR_MODEL_LEN, buffer, ONLP_I2C_F_FORCE);
+    if(rv >= 0){
+        aim_strlcpy(info->model, (char *) (buffer+1), (buffer[0] + 1));
+    }
+    else{
         strcpy(info->model, "Missing");
+    }
 
     memset(buffer, 0, sizeof(buffer));
-    rv = i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
-    if(rv >= 0)
-        strncpy(info->serial, (char *) (buffer+1), buffer[0]);
-    else
+    rv = onlp_i2c_block_read(psu_info[pid].busno, psu_info[pid].addr, PMBUS_MFR_SERIAL, PMBUS_MFR_SERIAL_LEN, buffer, ONLP_I2C_F_FORCE);
+    if(rv >= 0){
+        aim_strlcpy(info->serial, (char *) (buffer+1), (buffer[0] + 1));
+    }
+    else{
         strcpy(info->serial, "Missing");
+    }
 
     info->caps |= ONLP_PSU_CAPS_AC;
 
-    if(onlp_file_read_int(&info->miin, "%s/curr1_input", dir) == 0 && info->miin >= 0) {
+    if(onlp_file_read_int(&info->miin, "%s*curr1_input", dir) == 0 && info->miin >= 0) {
         info->caps |= ONLP_PSU_CAPS_IIN;
     }
-    if(onlp_file_read_int(&info->miout, "%s/curr2_input", dir) == 0 && info->miout >= 0) {
+    if(onlp_file_read_int(&info->miout, "%s*curr2_input", dir) == 0 && info->miout >= 0) {
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
-    if(onlp_file_read_int(&info->mvout, "%s/in2_input", dir) == 0 && info->mvout >= 0) {
+    if(onlp_file_read_int(&info->mvout, "%s*in2_input", dir) == 0 && info->mvout >= 0) {
         info->caps |= ONLP_PSU_CAPS_VOUT;
         /* Empirical */
         info->mvout /= 500;
     }
-    if(onlp_file_read_int(&info->mpin, "%s/power1_input", dir) == 0 && info->mpin >= 0) {
+    if(onlp_file_read_int(&info->mpin, "%s*power1_input", dir) == 0 && info->mpin >= 0) {
         info->caps |= ONLP_PSU_CAPS_PIN;
         /* The pmbus driver reports power in micro-units */
         info->mpin /= 1000;
     }
-    if(onlp_file_read_int(&info->mpout, "%s/power2_input", dir) == 0 && info->mpout >= 0) {
+    if(onlp_file_read_int(&info->mpout, "%s*power2_input", dir) == 0 && info->mpout >= 0) {
         info->caps |= ONLP_PSU_CAPS_POUT;
         /* the pmbus driver reports power in micro-units */
         info->mpout /= 1000;

@@ -13,8 +13,11 @@ import shutil
 import json
 import string
 import argparse
+import yaml
 from time import sleep
-from onl.platform.current import OnlPlatform
+
+from onl.platform.current import OnlPlatform, OnlPlatformName
+from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 
 class BaseUpgrade(object):
 
@@ -34,34 +37,17 @@ class BaseUpgrade(object):
         self.init_argparser()
         self.load_config()
         self.arch = pp.machine()
-        self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel')[self.arch]
+        self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel', aarch64='arm64')[self.arch]
         self.platform = OnlPlatform()
+        self.init()
 
-    #
-    # TODO.
-    #
-    # DEFAULT_CONFIG = {
-    #     "auto-upgrade" : "advisory",
-    #     }
-    #
-    # CONFIG_FILES = [
-    #     "/etc/boot.d/upgrade/.upgrade-config.json",
-    #     "/mnt/flash/override-upgrade-config.json"
-    #     ]
-    #
-    # def load_config(self):
-    #     self.config = self.DEFAULT_CONFIG
-    #     for f in self.CONFIG_FILES:
-    #         if os.path.exists(f):
-    #             self.config.update(json.load(file(f)))
-    #
-    #     self.logger.debug("Loaded Configuration:\n%s\n" % (json.dumps(self.config, indent=2)))
-    #
-    #     if self.name in self.config:
-    #         self.config = self.config['name']
-    #
-    #     self.logger.debug("Final Configuration:\n%s\n" % (json.dumps(self.config, indent=2)))
-    #
+        self.current_version = None
+        self.next_version = None
+        self.init_versions()
+
+    def init(self):
+        pass
+
     def load_config(self):
         pass
 
@@ -78,13 +64,17 @@ class BaseUpgrade(object):
         if os.getenv("DEBUG"):
             self.logger.setLevel(logging.DEBUG)
 
+
+    def auto_upgrade_default(self):
+        return "advisory"
+
     def init_argparser(self):
         self.ap = argparse.ArgumentParser("%s-upgrade" % self.name)
         self.ap.add_argument("--enable", action='store_true', help="Enable updates.")
         self.ap.add_argument("--force", action='store_true', help="Force update.")
         self.ap.add_argument("--no-reboot", action='store_true', help="Don't reboot.")
         self.ap.add_argument("--check", action='store_true', help="Check only.")
-        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default='advisory')
+        self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default=self.auto_upgrade_default())
         self.ap.add_argument("--summarize", action='store_true', help="Summarize only, no upgrades.")
 
     def banner(self):
@@ -173,17 +163,22 @@ class BaseUpgrade(object):
             return default
 
 
-    UPGRADE_STATUS_JSON = "/lib/platform-config/current/upgrade.json"
+    UPGRADE_STATUS_JSON = "/lib/platform-config/%s/onl/upgrade.json" % (OnlPlatformName)
+
+    @staticmethod
+    def upgrade_status_get():
+        data = {}
+        if os.path.exists(BaseUpgrade.UPGRADE_STATUS_JSON):
+            with open(BaseUpgrade.UPGRADE_STATUS_JSON) as f:
+                data = json.load(f)
+        return data
 
     def update_upgrade_status(self, key, value):
-        data = {}
-        if os.path.exists(self.UPGRADE_STATUS_JSON):
-            with open(self.UPGRADE_STATUS_JSON) as f:
-                data = json.load(f)
+        data = self.upgrade_status_get()
         data[key] = value
-        with open(self.UPGRADE_STATUS_JSON, "w") as f:
-            json.dump(data, f)
-
+        if os.path.exists(os.path.dirname(BaseUpgrade.UPGRADE_STATUS_JSON)):
+            with open(self.UPGRADE_STATUS_JSON, "w") as f:
+                json.dump(data, f)
 
     #
     # Initialize self.current_version, self.next_Version
@@ -192,6 +187,8 @@ class BaseUpgrade(object):
     def init_versions(self):
         raise Exception("init_versions() must be provided by the deriving class.")
 
+    def prepare_upgrade(self):
+        raise Exception("prepare_versions() must be provided by the deriving class.")
 
     #
     # Perform actual upgrade. Provided by derived class.
@@ -207,9 +204,7 @@ class BaseUpgrade(object):
 
 
     def init_upgrade(self):
-        self.current_version = None
-        self.next_version = None
-        self.init_versions()
+        self.prepare_upgrade()
         self.update_upgrade_status(self.current_version_key, self.current_version)
         self.update_upgrade_status(self.next_version_key, self.next_version)
 
@@ -382,46 +377,71 @@ If you choose not to perform this upgrade booting cannot continue.""" % self.aty
 
 class BaseOnieUpgrade(BaseUpgrade):
 
-    ONIE_UPDATER_PATH = "/mnt/flash2/onie-updater"
+    ONIE_UPDATER_CONTEXT = "ONL-IMAGES"
+    ONIE_UPDATER_PATH    = "/mnt/onl/images"
 
     def install_onie_updater(self, src_dir, updater):
-        if type(updater) is list:
-            # Copy all files in the list to /mnt/flash2
+        with OnlMountContextReadWrite(self.ONIE_UPDATER_CONTEXT, logger=None):
+            if type(updater) is not list:
+                updater = [ updater ]
+
+            # Copy all files in the list to ONIE_UPDATER_PATH
             for f in updater:
                 src = os.path.join(src_dir, f)
-                dst = os.path.join("/mnt/flash2", f)
+                dst = os.path.join(self.ONIE_UPDATER_PATH, f)
                 self.copyfile(src, dst)
-        else:
-            # Copy single updater to /mnt/flash2/onie-updater
-            src = os.path.join(src_dir, updater)
-            self.copyfile(src, self.ONIE_UPDATER_PATH)
 
+    def onie_fwpkg_exists(self):
+        import onl.grub
+        return onl.grub.onie_fwpkg_exists()
+
+    def onie_fwpkg_add(self, pkg):
+        import onl.grub
+        onl.grub.onie_fwpkg("-f purge")
+        onl.grub.onie_fwpkg("add %s" % pkg)
+        onl.grub.onie_fwpkg("show")
 
     def initiate_onie_update(self):
         self.logger.info("Initiating %s Update." % self.Name)
+
         if self.arch == 'ppc':
             # Initiate update
             self.fw_setenv('onie_boot_reason', 'update')
             self.reboot()
 
         elif self.arch == 'x86_64':
-            OB = "/mnt/onie-boot"
-            self.mount(OB, label="ONIE-BOOT")
-            if os.system("/mnt/onie-boot/onie/tools/bin/onie-boot-mode -o update") != 0:
-                self.abort("Could not set ONIE Boot Mode to Update. Upgrade cannot continue.")
-            self.umount(OB)
-
-            SL = "/mnt/sl-boot"
-            self.mount(SL, label="SL-BOOT")
-            with open("/mnt/sl-boot/grub/grub.cfg", "a") as f:
-                f.write("set default=ONIE\n")
-            self.umount(SL)
+            import onl.grub
+            onl.grub.onie_boot_mode_set("update")
+            onl.grub.boot_onie()
             self.reboot()
 
         else:
             self.abort("Architecture %s unhandled." % self.arch)
 
     def clean_onie_updater(self):
-        if os.path.exists(self.ONIE_UPDATER_PATH):
-            self.logger.info("Removing previous onie-updater.")
-            os.remove(self.ONIE_UPDATER_PATH)
+        with OnlMountContextReadWrite(self.ONIE_UPDATER_CONTEXT, logger=None):
+            updater = os.path.join(self.ONIE_UPDATER_PATH, "onie-updater")
+            if os.path.exists(updater):
+                self.logger.info("Removing previous onie-updater.")
+                os.remove(updater)
+
+    def prepare_upgrade(self):
+        if self.manifest is None:
+            self.finish("No %s updater available for the current platform." % self.Name)
+
+        if self.next_version is None:
+            self.finish("No %s version in the upgrade manifest." % self.Name)
+
+        if 'updater' not in self.manifest:
+            self.finish("No %s updater in the upgrade manifest." % self.Name)
+
+    def load_manifest(self, path, required=True):
+        self.manifest = self.load_json(path)
+        self.next_version = None
+        if self.manifest:
+            self.next_version = self.manifest.get('version', None)
+
+    def summarize(self):
+        self.logger.info("Current %s Version: %s" % (self.Name, self.current_version))
+        self.logger.info("   Next %s Version: %s" % (self.Name, self.manifest.get('version')))
+        self.logger.info("")

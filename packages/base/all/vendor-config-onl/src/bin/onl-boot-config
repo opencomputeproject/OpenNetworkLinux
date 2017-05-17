@@ -1,0 +1,4 @@
+#!/usr/bin/python
+############################################################
+from onl.bootconfig import OnlBootConfigNet
+OnlBootConfigNet().main("onl-boot-config")

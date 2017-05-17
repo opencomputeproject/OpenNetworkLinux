@@ -29,7 +29,9 @@
 #include "x86_64_accton_as6712_32x_log.h"
 
 #define CHASSIS_FAN_COUNT     5
-#define CHASSIS_THERMAL_COUNT 4
+#define CHASSIS_THERMAL_COUNT 5 
+#define CHASSIS_LED_COUNT     10 
+#define CHASSIS_PSU_COUNT     2 
 
 #define PSU1_ID 1
 #define PSU2_ID 2
@@ -46,6 +48,11 @@
 #define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
 
+#define PSU1_DC_HWMON_PREFIX "/sys/bus/i2c/devices/35-0050/"
+#define PSU2_DC_HWMON_PREFIX "/sys/bus/i2c/devices/36-0053/"
+#define PSU1_DC_HWMON_NODE(node) PSU1_DC_HWMON_PREFIX#node
+#define PSU2_DC_HWMON_NODE(node) PSU2_DC_HWMON_PREFIX#node
+
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0057/eeprom"
 
 int deviceNodeWriteInt(char *filename, int value, int data_len);
@@ -55,7 +62,9 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
+    PSU_TYPE_AC_B2F,
+    PSU_TYPE_DC_48V_F2B,
+    PSU_TYPE_DC_48V_B2F	
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);

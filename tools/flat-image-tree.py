@@ -43,7 +43,7 @@ class Image(object):
             raise ValueError("invalid image specifier: %s" % repr(data))
 
         if pkg is not None:
-            pm.require(pkg, force=False, build_missing=False)
+            pm.require(pkg, force=False, build_missing=True)
             self.data = pm.opr.get_file(pkg, fname)
         else:
             self.data = data
@@ -98,7 +98,9 @@ class KernelImage(Image):
         elif arch == 'armel':
             self.load = "<0x61008000>"
             self.entry = "<0x61008000>"
-
+        elif arch == 'arm64':
+            self.load = "<0x80080000>"
+            self.entry = "<0x80080000>"
 
     def write(self, f):
         self.start_image(f)
@@ -116,6 +118,9 @@ class InitrdImage(Image):
             self.load = "<0x1000000>"
             self.entry ="<0x1000000>"
         elif arch == 'armel':
+            self.load = "<0x0000000>"
+            self.entry ="<0x0000000>"
+        elif arch == 'arm64':
             self.load = "<0x0000000>"
             self.entry ="<0x0000000>"
 
@@ -208,10 +213,10 @@ class FlatImageTree(object):
         platform = package.replace(":%s" % ops.arch, "").replace("onl-platform-config-", "")
 
         vpkg = "onl-vendor-config-onl:all"
-        pm.require(vpkg, force=False, build_missing=False)
+        pm.require(vpkg, force=False, build_missing=True)
         y1 = pm.opr.get_file(vpkg, "platform-config-defaults-uboot.yml")
 
-        pm.require(package, force=False, build_missing=False)
+        pm.require(package, force=False, build_missing=True)
         y2 = pm.opr.get_file(package, platform + '.yml')
 
         self.add_yaml(platform, y2, defaults=y1)
@@ -298,7 +303,7 @@ if __name__ == '__main__':
     ap.add_argument("--desc", nargs=1, help="Flat Image Tree description", default="ONL Flat Image Tree.")
     ap.add_argument("--itb", metavar='itb-file', help="Compile result to an image tree blob file.")
     ap.add_argument("--its", metavar='its-file', help="Write result to an image tree source file.")
-    ap.add_argument("--arch", choices=['powerpc', 'armel'], required=True)
+    ap.add_argument("--arch", choices=['powerpc', 'armel', 'arm64'], required=True)
     ops=ap.parse_args()
 
     fit = FlatImageTree(ops.desc)
@@ -333,7 +338,7 @@ if __name__ == '__main__':
         # Add support for the platforms listed in the initrd's platform manifest
         (package,f) = initrd.split(':')
         pkg = package + ':' + ops.arch
-        pm.require(pkg, force=False, build_missing=False)
+        pm.require(pkg, force=False, build_missing=True)
         mfile = pm.opr.get_file(pkg, "manifest.json")
         manifest = json.load(open(mfile))
         ops.add_platform = [[ "%s" % p for p in manifest['platforms'] ]]

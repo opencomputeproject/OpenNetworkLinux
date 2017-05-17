@@ -69,8 +69,11 @@ if [ ! -f /etc/onl/abort ]; then
     # Initialize net devices
     ( cd /sys/class/net; for d in *; do initnetdev $d add; done )
 
-    # Initialize platform mounts
-    initmounts -q
+    # FS Checks
+    onl-mounts fsck all
+
+    # Mounts
+    onl-mounts -q mount all
 
     # Initialize U-Boot environment
     if [ -s /proc/device-tree/model ]; then
@@ -87,21 +90,17 @@ if [ ! -f /etc/onl/abort ]; then
     elif [ -f /etc/onl/boot-config-default ]; then
         # Use default boot-config.
         cp /etc/onl/boot-config-default /etc/onl/boot-config
+        cp /etc/onl/boot-config-default /mnt/onl/boot/boot-config
     fi
-
-    #
-    # Initialize the /mnt/flash/boot area.
-    #
-    #mkdir -p /mnt/data/boot
-    #rm -rf /mnt/flash/boot/*
 fi
 
 
 #
 # Initialize PKI
 #
-if [ -f /sbin/pki ]; then
-    /sbin/pki --init
+ONL_PKI=/usr/bin/onl-pki
+if [ -f "$ONL_PKI" ]; then
+    "$ONL_PKI" --init
 fi
 
 

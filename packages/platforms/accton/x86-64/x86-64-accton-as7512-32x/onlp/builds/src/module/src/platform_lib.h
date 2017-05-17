@@ -46,6 +46,8 @@
 #define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
 
+#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0057/eeprom"
+
 int deviceNodeWriteInt(char *filename, int value, int data_len);
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
 int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
@@ -63,7 +65,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 #if (DEBUG_MODE == 1)
     #define DEBUG_PRINT(format, ...)   printf(format, __VA_ARGS__)
 #else
-    #define DEBUG_PRINT(format, ...)  
+    #define DEBUG_PRINT(format, ...)
 #endif
 
 #endif  /* __PLATFORM_LIB_H__ */

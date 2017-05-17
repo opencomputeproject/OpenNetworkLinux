@@ -1,0 +1,18 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/gpio/.gitignore
+@@ -0,0 +1,12 @@
++/.built-in.o.cmd
++/.gpio_cfg.o.cmd
++/.gpio.o.cmd
++/.gpiolib.o.cmd
++/.iproc_gpio.o.cmd
++/built-in.o
++/gpio_cfg.o
++/gpio.o
++/gpiolib.o
++/iproc_gpio.o
++/modules.builtin
++/modules.order
+diff --git a/drivers/bcmdrivers/gpio/Kconfig b/drivers/bcmdrivers/gpio/Kconfig
+new file mode 100644
+index 0000000..0bcd76f

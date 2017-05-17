@@ -1,1 +1,1 @@
-include $(ONL)/make/pkg.mk
+include $(ONL)/make/arch-build.mk

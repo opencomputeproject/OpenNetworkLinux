@@ -49,21 +49,23 @@
 
 typedef struct fan_path_S
 {
+    char present[LEN_FILE_NAME];
     char status[LEN_FILE_NAME];
     char speed[LEN_FILE_NAME];
+	char direction[LEN_FILE_NAME];
     char ctrl_speed[LEN_FILE_NAME];
     char r_speed[LEN_FILE_NAME];
 }fan_path_T;
 
 #define _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) \
-    { #prj"fan"#id"_fault", #prj"fan"#id"_front_speed_rpm", \
-      #prj"fan_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
+    { #prj"fan"#id"_present", #prj"fan"#id"_fault", #prj"fan"#id"_front_speed_rpm", \
+      #prj"fan"#id"_direction", #prj"fan_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
 
 #define MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id)
 
 #define MAKE_FAN_PATH_ON_PSU(folder) \
-    {#folder"/psu_fan1_fault",  #folder"/psu_fan1_speed_rpm", \
-     #folder"/psu_fan1_duty_cycle_percentage", ""  }
+    {"", #folder"/psu_fan1_fault",  #folder"/psu_fan1_speed_rpm", \
+     "", #folder"/psu_fan1_duty_cycle_percentage", ""  }
 
 static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
 {
@@ -129,12 +131,8 @@ onlp_fan_info_t linfo[] = {
     if (close(fd) == -1)                        \
         return ONLP_STATUS_E_INTERNAL
 
-/* There is no CPLD register for reading fan direction on this platform,
- * to read fan direction, we need to read from PSU-fan,
- * the direction of PSU-fan and chassis-fan are the same.
- */
 static uint32_t
-_onlp_fani_info_get_fan_direction(void)
+_onlp_fani_info_get_psu_fan_direction(void)
 {
     /* Try to read direction from PSU1.
      * If PSU1 is not valid, read from PSU2
@@ -149,12 +147,18 @@ _onlp_fani_info_get_fan_direction(void)
             continue;
         }
 
-        if (PSU_TYPE_AC_F2B == psu_type) {
-            return ONLP_FAN_STATUS_F2B;
-        }
-        else {
-            return ONLP_FAN_STATUS_B2F;
-        }
+		switch (psu_type) {
+			case PSU_TYPE_AC_F2B:
+			case PSU_TYPE_DC_48V_F2B:
+			case PSU_TYPE_DC_12V_F2B:
+				return ONLP_FAN_STATUS_F2B;
+			case PSU_TYPE_AC_B2F:
+			case PSU_TYPE_DC_48V_B2F:
+			case PSU_TYPE_DC_12V_B2F:
+				return ONLP_FAN_STATUS_B2F;
+			default:
+				return 0;
+		};
     }
 
     return 0;
@@ -167,17 +171,33 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     char  r_data[10]   = {0};
     char  fullpath[65] = {0};
 
+    /* check if fan is present
+     */
+    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].present);
+    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+    if (atoi(r_data) == 0) {
+        return ONLP_STATUS_OK;
+    }
+    info->status |= ONLP_FAN_STATUS_PRESENT;
+
     /* get fan fault status (turn on when any one fails)
      */
     sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].status);
     OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
     if (atoi(r_data) > 0) {
         info->status |= ONLP_FAN_STATUS_FAILED;
+        return ONLP_STATUS_OK;
     }
 
-    /* get fan direction (both : the same)
+    /* get fan/fanr direction (both : the same) 
      */
-    info->status |= _onlp_fani_info_get_fan_direction();
+    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].direction);	
+    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);    
+   
+    if (atoi(r_data) == 0) /*B2F*/
+        info->status |= ONLP_FAN_STATUS_B2F;
+    else 
+        info->status |= ONLP_FAN_STATUS_F2B;
 
     /* get fan speed (take the min from two speeds)
      */
@@ -194,11 +214,6 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     /* get speed percentage from rpm */
     info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
 
-    /* check present */
-    if (info->rpm > 0) {
-        info->status |= ONLP_FAN_STATUS_PRESENT;
-    }
-
     return ONLP_STATUS_OK;
 }
 
@@ -211,7 +226,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
     /* get fan direction
      */
-    info->status |= _onlp_fani_info_get_fan_direction();
+    info->status |= _onlp_fani_info_get_psu_fan_direction();
 
     /* get fan fault status
      */

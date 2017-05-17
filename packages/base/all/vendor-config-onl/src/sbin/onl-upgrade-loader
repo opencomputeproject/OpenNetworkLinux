@@ -1,0 +1,3 @@
+#!/usr/bin/python
+from onl.upgrade.loader import LoaderUpgrade
+LoaderUpgrade().main()

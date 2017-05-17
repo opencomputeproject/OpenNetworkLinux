@@ -115,6 +115,19 @@ int onlp_thermal_init(void);
  */
 int onlp_thermal_info_get(onlp_oid_t id, onlp_thermal_info_t* rv);
 
+/**
+ * @brief Retrieve the thermal's operational status.
+ * @param id The thermal oid.
+ * @param rv [out] Receives the operational status.
+ */
+int onlp_thermal_status_get(onlp_oid_t id, uint32_t* rv);
+
+/**
+ * @brief Retrieve the thermal's oid header.
+ * @param id The thermal oid.
+ * @param rv [out] Receives the header.
+ */
+int onlp_thermal_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Thermal driver ioctl.

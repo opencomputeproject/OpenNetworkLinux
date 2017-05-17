@@ -1,0 +1,27 @@
+--- a/drivers/usb/misc/emi62.c
++++ b/drivers/usb/misc/emi62.c
+@@ -105,19 +105,16 @@ static int emi62_load_firmware (struct usb_device *dev)
+ 
+ 	err = request_ihex_firmware(&loader_fw, "emi62/loader.fw", &dev->dev);
+ 	if (err)
+-		goto nofw;
++		goto wraperr;
+ 
+ 	err = request_ihex_firmware(&bitstream_fw, "emi62/bitstream.fw",
+ 				    &dev->dev);
+ 	if (err)
+-		goto nofw;
++		goto wraperr;
+ 
+ 	err = request_ihex_firmware(&firmware_fw, FIRMWARE_FW, &dev->dev);
+-	if (err) {
+-	nofw:
+-		err( "%s - request_firmware() failed", __func__);
++	if (err)
+ 		goto wraperr;
+-	}
+ 
+ 	/* Assert reset (stop the CPU in the EMI) */
+ 	err = emi62_set_reset(dev,1);
+diff --git a/drivers/usb/misc/isight_firmware.c b/drivers/usb/misc/isight_firmware.c
+index 8f725f6..334744f 100644

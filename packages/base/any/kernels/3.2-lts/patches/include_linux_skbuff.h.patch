@@ -1,0 +1,31 @@
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -446,8 +446,8 @@ struct sk_buff {
+ 
+ 	/* 0/13 bit hole */
+ 
+-#ifdef CONFIG_NET_DMA
+-	dma_cookie_t		dma_cookie;
++#ifdef CONFIG_NET_DMA_DUMMY
++	dma_cookie_t		dma_cookie; /* now unused */
+ #endif
+ #ifdef CONFIG_NETWORK_SECMARK
+ 	__u32			secmark;
+@@ -455,9 +455,15 @@ struct sk_buff {
+ 	union {
+ 		__u32		mark;
+ 		__u32		dropcount;
++		/* For use by TCP only */
++#ifdef __GENKSYMS__
++		__u32		avail_size;
++#else
+ 		__u32		reserved_tailroom;
++#endif
+ 	};
+ 
++	__be16			vlan_proto;
+ 	__u16			vlan_tci;
+ 
+ 	sk_buff_data_t		transport_header;
+diff --git a/include/linux/slab_def.h b/include/linux/slab_def.h
+index d00e0ba..fbd1117 100644

@@ -1,0 +1,48 @@
+--- a/drivers/of/of_mdio.c
++++ b/drivers/of/of_mdio.c
+@@ -45,6 +45,8 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
+ 		for (i=0; i<PHY_MAX_ADDR; i++)
+ 			mdio->irq[i] = PHY_POLL;
+ 
++	mdio->dev.of_node = np;
++
+ 	/* Register the MDIO bus */
+ 	rc = mdiobus_register(mdio);
+ 	if (rc)
+@@ -77,12 +79,16 @@ int of_mdiobus_register(struct mii_bus *mdio, struct device_node *np)
+ 				mdio->irq[addr] = PHY_POLL;
+ 		}
+ 
++		mdio->is_c45 = of_device_is_compatible(child,
++					"ethernet-phy-ieee802.3-c45");
++
+ 		phy = get_phy_device(mdio, addr);
+ 		if (!phy || IS_ERR(phy)) {
+ 			dev_err(&mdio->dev, "error probing PHY at address %i\n",
+ 				addr);
+ 			continue;
+ 		}
++		phy_scan_fixups(phy);
+ 
+ 		/* Associate the OF node with the device structure so it
+ 		 * can be looked up later */
+@@ -188,3 +194,17 @@ struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
+ 	return IS_ERR(phy) ? NULL : phy;
+ }
+ EXPORT_SYMBOL(of_phy_connect_fixed_link);
++
++/* XXX add comment */
++struct phy_device *of_phy_attach(struct net_device *dev,
++				struct device_node *phy_np, u32 flags,
++				phy_interface_t iface)
++{
++	struct phy_device *phy = of_phy_find_device(phy_np);
++
++	if (!phy)
++		return NULL;
++
++	return phy_attach_direct(dev, phy, flags, iface) ? NULL : phy;
++}
++EXPORT_SYMBOL(of_phy_attach);
+diff --git a/drivers/of/platform.c b/drivers/of/platform.c
+index 63b3ec4..fb3762c 100644

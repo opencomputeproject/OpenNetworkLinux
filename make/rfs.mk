@@ -28,10 +28,14 @@ ifdef RFS_SQUASH
 RFS_COMMAND += --squash $(RFS_SQUASH)
 endif
 
+ifndef RFS_MANIFEST
+RFS_MANIFEST := etc/onl/rootfs/manifest.json
+endif
+
 RFS:
 	$(ONL_V_at) rm -rf manifest.json
 	$(ONL_V_at) $(RFS_COMMAND)
-	$(ONL_V_at) [ -f $(RFS_DIR)/etc/onl/rootfs/manifest.json ] && cp $(RFS_DIR)/etc/onl/rootfs/manifest.json .
+	$(ONL_V_at) [ -f $(RFS_DIR)/$(RFS_MANIFEST) ] && cp $(RFS_DIR)/$(RFS_MANIFEST) .
 
 clean:
 	$(ONL_V_at) sudo rm -rf $(RFS_DIR)

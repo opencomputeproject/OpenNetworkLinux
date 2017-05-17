@@ -13,9 +13,10 @@ import pprint
 import json
 import os
 import re
-
 import yaml
 import onl.YamlUtils
+import subprocess
+import platform
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -43,9 +44,12 @@ class OnlInfoObject(object):
         """String representation of the information container."""
         return OnlInfoObject.string(self._data, indent)
 
+    def update(self, d):
+        self._data.update(d)
+
     @staticmethod
     def string(d, indent=DEFAULT_INDENT):
-        return "\n".join( sorted("%s%s: %s" % (indent,k,v) for k,v in d.iteritems() if not k.startswith('_') and d[k] is not None) )
+        return "\n".join( sorted("%s%s: %s" % (indent,k,v) for k,v in d.iteritems() if not k.startswith('_') and d[k] is not None and k != 'CRC'))
 
 
 ############################################################
@@ -90,6 +94,10 @@ class OnieInfo(object):
         }
 
 
+class PlatformInfo(object):
+    CPLD_VERSIONS='CPLD Versions'
+
+
 ############################################################
 #
 # ONL Platform Base
@@ -107,8 +115,13 @@ class OnlPlatformBase(object):
     def __init__(self):
         self.add_info_json("onie_info", "%s/onie-info.json" % self.basedir_onl(), OnieInfo,
                            required=False)
-        self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(),
+        self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
                            required=False)
+
+        if hasattr(self, "platform_info"):
+            self.platform_info.update(self.dmi_versions())
+        else:
+            self.add_info_dict("platform_info", self.dmi_versions())
 
         # Find the base platform config
         if self.platform().startswith('x86-64'):
@@ -145,8 +158,12 @@ class OnlPlatformBase(object):
 
     def add_info_json(self, name, f, klass=None, required=True):
         if os.path.exists(f):
-            d = json.load(file(f))
-            self.add_info_dict(name, d, klass)
+            try:
+                d = json.load(file(f))
+                self.add_info_dict(name, d, klass)
+            except ValueError, e:
+                if required:
+                    raise e
         elif required:
             raise RuntimeError("A required system file (%s) is missing." % f)
 
@@ -173,14 +190,124 @@ class OnlPlatformBase(object):
     def baseconfig(self):
         return True
 
-    def manufacturer(self):
-        raise Exception("Manufacturer is not set.")
+    def insmod(self, module, required=True, params={}):
+        #
+        # Search for modules in this order:
+        #
+        # 1. Fully qualified platform name
+        #    /lib/modules/<kernel>/onl/<vendor>/<platform-name>
+        # 2. Basename
+        #    /lib/modules/<kernel>/onl/<vendor>/<basename>
+        # 3. Vendor common
+        #    /lib/modules/<kernel>/onl/<vendor>/common
+        # 4. ONL common
+        #    /lib/modules/<kernel>/onl/onl/common
+        # 5. ONL Top-Level
+        #    /lib/modules/<kernel>/onl
+        # 5. Kernel Top-level
+        #    /lib/modules/<kernel>
+        #
 
-    def model(self):
-        raise Exception("Model is not set.")
+        kdir = "/lib/modules/%s" % os.uname()[2]
+        basename = "-".join(self.PLATFORM.split('-')[:-1])
+        odir = "%s/onl" % kdir
+        vdir = "%s/%s" % (odir, self.MANUFACTURER.lower())
+        bdir = "%s/%s" % (vdir, basename)
+        pdir = "%s/%s" % (vdir, self.PLATFORM)
+
+        searchdirs = [ os.path.join(vdir, self.PLATFORM),
+                       os.path.join(vdir, basename),
+                       os.path.join(vdir, "common"),
+                       os.path.join(odir, "onl", "common"),
+                       odir,
+                       kdir,
+                       ]
+
+        for d in searchdirs:
+            for e in [ ".ko", "" ]:
+                path = os.path.join(d, "%s%s" % (module, e))
+                if os.path.exists(path):
+                    cmd = "insmod %s %s" % (path, " ".join([ "%s=%s" % (k,v) for (k,v) in params.iteritems() ]))
+                    subprocess.check_call(cmd, shell=True);
+                    return True
+
+        if required:
+            raise RuntimeError("kernel module %s could not be found." % (module))
+        else:
+            return False
+
+    def insmod_platform(self):
+        kv = os.uname()[2]
+        # Insert all modules in the platform module directories
+        directories = [ self.PLATFORM,
+                        '-'.join(self.PLATFORM.split('-')[:-1]) ]
+
+        for subdir in directories:
+            d = "/lib/modules/%s/onl/%s/%s" % (kv,
+                                               self.MANUFACTURER.lower(),
+                                               subdir)
+            if os.path.isdir(d):
+                for f in os.listdir(d):
+                    if f.endswith(".ko"):
+                        self.insmod(f)
+
+    def onie_machine_get(self):
+        mc = self.basedir_onl("etc/onie/machine.json")
+        if not os.path.exists(mc):
+            data = {}
+            mcconf = subprocess.check_output("""onie-shell -c "cat /etc/machine.conf" """, shell=True)
+            for entry in mcconf.split():
+                (k,e,v) = entry.partition('=')
+                if e:
+                    data[k] = v
+
+            if not os.path.exists(os.path.dirname(mc)):
+                os.makedirs(os.path.dirname(mc))
+
+            with open(mc, "w") as f:
+                f.write(json.dumps(data, indent=2))
+        else:
+            data = json.load(open(mc))
+
+        return data
+
+    ONIE_EEPROM_JSON='etc/onie/eeprom.json'
+
+    def onie_syseeprom_get(self):
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
+        if not os.path.exists(se):
+            data = {}
+            extensions = []
+            syseeprom = subprocess.check_output("""onie-shell -c onie-syseeprom""", shell=True)
+            e = re.compile(r'(.*?) (0x[0-9a-fA-F][0-9a-fA-F])[ ]+(\d+) (.*)')
+            for line in syseeprom.split('\n'):
+                m = e.match(line)
+                if m:
+                    value = m.groups(0)[3]
+                    code = m.groups(0)[1].lower()
+                    if code == '0xfd':
+                        extensions.append(value)
+                    else:
+                        data[code] = value
+            if len(extensions):
+                data['0xfd'] = extensions
+
+            self.onie_syseeprom_set(data)
+        else:
+            data = json.load(open(se))
+        return data
+
+    def onie_syseeprom_set(self, data):
+        se = self.basedir_onl(self.ONIE_EEPROM_JSON)
+        if not os.path.exists(os.path.dirname(se)):
+            os.makedirs(os.path.dirname(se))
+
+        with open(se, "w") as f:
+            f.write(json.dumps(data, indent=2))
+
 
     def platform(self):
-        raise Exception("Platform is not set.")
+        return self.PLATFORM
 
     def baseplatform(self):
         p = self.platform()
@@ -188,8 +315,7 @@ class OnlPlatformBase(object):
         return p
 
     def description(self):
-        return "%s %s (%s)" % (self.manufacturer(), self.model(),
-                               self.platform())
+        return "%s %s" % (self.MANUFACTURER, self.MODEL)
 
     def serialnumber(self):
         return self.onie_info.SERIAL_NUMBER
@@ -200,34 +326,65 @@ class OnlPlatformBase(object):
 
 
     # ONL Platform Information Tree
-    def opit_oid(self):
-        return "1.3.6.1.4.1.37538.2.1000"
+    def platform_info_oid(self):
+        return "1.3.6.1.4.1.42623.1.1"
 
     # ONL Platform Information General Tree
-    def opitg_oid(self):
-        return self.opit_oid() + ".1"
+    def platform_info_general_oid(self):
+        return self.platform_info_oid() + ".1"
 
     # ONL Platform Information General Sys Tree
-    def opitg_sys_oid(self):
-        return self.opitg_oid() + ".1"
+    def platform_info_general_sys_oid(self):
+        return self.platform_info_general_oid() + ".1"
 
     # ONL Platform Information Vendor Tree
-    def opitv_oid(self):
-        return self.opit_oid() + ".2"
-
-    def sys_oid_vendor(self):
-        return ".37538"
+    def platform_info_vendor_oid(self):
+        return self.platform_info_oid() + ".2"
 
     def sys_oid_platform(self):
         raise Exception("sys_oid_platform() is not set.")
 
     def sys_object_id(self):
-        return ( self.opitv_oid() +
-                 self.sys_oid_vendor() +
-                 self.sys_oid_platform());
+        return "%s.%s%s" % (self.platform_info_vendor_oid(), self.PRIVATE_ENTERPRISE_NUMBER, self.SYS_OBJECT_ID)
 
     def onie_version(self):
         return self.onie_info.ONIE_VERSION
+
+    def firmware_version(self):
+        return self.platform_info.CPLD_VERSIONS
+
+    def dmi_versions(self):
+        # Note - the dmidecode module returns empty lists for powerpc systems.
+        if platform.machine() != "x86_64":
+            return {}
+
+        try:
+            import dmidecode
+        except ImportError:
+            return {}
+
+        fields = [
+            {
+                'name': 'DMI BIOS Version',
+                'subsystem': dmidecode.bios,
+                'dmi_type' : 0,
+                'key' : 'Version',
+                },
+
+            {
+                'name': 'DMI System Version',
+                'subsystem': dmidecode.system,
+                'dmi_type' : 1,
+                'key' : 'Version',
+                },
+            ]
+        rv = {}
+        for field in fields:
+                for v in field['subsystem']().values():
+                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
+                                rv[field['name']] = v['data'][field['key']]
+
+        return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
         if override_dir:
@@ -269,20 +426,36 @@ class OnlPlatformBase(object):
         # is ma1 and lo
         return 2
 
+    def environment(self, fmt='user'):
+        if fmt not in [ 'user', 'yaml', 'dict', 'json' ]:
+            raise ValueError("Unsupported format '%s'" % fmt)
+
+        if fmt == 'user':
+            return subprocess.check_output(['/bin/onlpd', '-r'])
+        else:
+            yamlstr = subprocess.check_output(['/bin/onlpd', '-r', '-y'])
+            if fmt == 'yaml':
+                return yamlstr
+            else:
+                data = yaml.load(yamlstr)
+                if fmt == 'json':
+                    return json.dumps(data, indent=2)
+                else:
+                    return data
+
     def __str__(self):
-        s = """Manufacturer: %s
-Model: %s
-Platform: %s
-Description: %s
+        s = """Model: %s
+Manufacturer: %s
+Ports: %s (%s)
 System Object Id: %s
 System Information:
 %s
 %s
 """ % (
-            self.manufacturer(),
-            self.model(),
-            self.platform(),
-            self.description(),
+            self.MODEL,
+            self.MANUFACTURER,
+            self.PORT_COUNT,
+            self.PORT_CONFIG,
             self.sys_object_id(),
             str(self.onie_info),
             str(self.platform_info),
@@ -298,7 +471,42 @@ Warning: %s
         return s
 
 
+class OnlPlatformPortConfig_48x1_4x10(object):
+    PORT_COUNT=52
+    PORT_CONFIG="48x1 + 4x10"
 
+class OnlPlatformPortConfig_48x10_4x40(object):
+    PORT_COUNT=52
+    PORT_CONFIG="48x10 + 4x40"
 
+class OnlPlatformPortConfig_48x10_6x40(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x10 + 6x40"
 
+class OnlPlatformPortConfig_48x25_6x100(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x25 + 6x100"
 
+class OnlPlatformPortConfig_32x40(object):
+    PORT_COUNT=32
+    PORT_CONFIG="32x40"
+
+class OnlPlatformPortConfig_64x40(object):
+    PORT_COUNT=64
+    PORT_CONFIG="64x40"
+
+class OnlPlatformPortConfig_32x100(object):
+    PORT_COUNT=32
+    PORT_CONFIG="32x100"
+
+class OnlPlatformPortConfig_24x1_4x10(object):
+    PORT_COUNT=28
+    PORT_CONFIG="24x1 + 4x10"
+
+class OnlPlatformPortConfig_8x1_8x10(object):
+    PORT_COUNT=16
+    PORT_CONFIG="8x1 + 8x10"
+
+class OnlPlatformPortConfig_48x10_6x100(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x10 + 6x100"

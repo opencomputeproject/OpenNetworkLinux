@@ -1,0 +1,14 @@
+#!/usr/bin/python
+import os
+import sys
+from onl.sysconfig import sysconfig
+import yaml
+
+if len(sys.argv) == 2:
+    try:
+        print yaml.dump((eval("sysconfig.%s" % sys.argv[1])), default_flow_style=False)
+    except AttributeError, e:
+        print "Path %s is not in the config." % sys.argv[1]
+else:
+    print sysconfig['OnlSystemConfig'].dump()
+

@@ -225,6 +225,81 @@ struct psu_info_s {
 	int addr;
 };
 
+/** led_id */
+typedef enum led_id_e {
+    LED_ID_SYSTEM = 1,
+    LED_ID_FAN = 2,
+    LED_ID_PSU_1 = 3,
+    LED_ID_PSU_2 = 4,
+    LED_ID_FAN_FAIL_1 = 5,
+    LED_ID_FAN_FAIL_2 = 6,
+    LED_ID_FAN_FAIL_3 = 7,
+} led_id_t;
+
+/** Enum names. */
+const char* led_id_name(led_id_t e);
+
+/** Enum values. */
+int led_id_value(const char* str, led_id_t* e, int substr);
+
+/** Enum descriptions. */
+const char* led_id_desc(led_id_t e);
+
+/** Enum validator. */
+int led_id_valid(led_id_t e);
+
+/** validator */
+#define LED_ID_VALID(_e) \
+    (led_id_valid((_e)))
+
+/** led_id_map table. */
+extern aim_map_si_t led_id_map[];
+/** led_id_desc_map table. */
+extern aim_map_si_t led_id_desc_map[];
+
+/** led_oid */
+typedef enum led_oid_e {
+    LED_OID_SYSTEM     = ONLP_LED_ID_CREATE(LED_ID_SYSTEM),
+    LED_OID_FAN        = ONLP_LED_ID_CREATE(LED_ID_FAN),
+    LED_OID_PSU_1      = ONLP_LED_ID_CREATE(LED_ID_PSU_1),
+    LED_OID_PSU_2      = ONLP_LED_ID_CREATE(LED_ID_PSU_2),
+    LED_OID_FAN_FAIL_1 = ONLP_LED_ID_CREATE(LED_ID_FAN_FAIL_1),
+    LED_OID_FAN_FAIL_2 = ONLP_LED_ID_CREATE(LED_ID_FAN_FAIL_2),
+    LED_OID_FAN_FAIL_3 = ONLP_LED_ID_CREATE(LED_ID_FAN_FAIL_3),
+} led_oid_t;
+
+/** Enum names. */
+const char* led_oid_name(led_oid_t e);
+
+/** Enum values. */
+int led_oid_value(const char* str, led_oid_t* e, int substr);
+
+/** Enum descriptions. */
+const char* led_oid_desc(led_oid_t e);
+
+/** Enum validator. */
+int led_oid_valid(led_oid_t e);
+
+/** validator */
+#define LED_OID_VALID(_e) \
+    (led_oid_valid((_e)))
+
+/** led_oid_map table. */
+extern aim_map_si_t led_oid_map[];
+/** led_oid_desc_map table. */
+extern aim_map_si_t led_oid_desc_map[];
+/* <auto.end.enum(ALL).header> */
+
+struct led_control_s{
+    int PMCnt;
+    int psu_status_changed;
+    int fan_status_changed;
+    int fan_alert;
+    int psu1_present;
+    int psu2_present;
+    int psu1_power_good;
+    int psu2_power_good;
+};
 
 #define SYS_HWMON_PREFIX "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-004e"
 

@@ -1,0 +1,89 @@
+mlnx patch for UCD9200
+
+From: Vadim Pasternak <vadimp@mellanox.com>
+
+Patch replaces in device probing routine (ucd9000_probe) call
+i2c_smbus_read_block_data with i2c_smbus_read_i2c_block_data.
+
+The first call executes the SMBus "block read" protocol.
+Using this function requires that the client's adapter support
+the I2C_FUNC_SMBUS_READ_BLOCK_DATA functionality. Not all adapter
+drivers support this. In particular Mellanox i2c controller doesn't
+support it. API i2c_smbus_read_i2c_block_data is supposed to be
+more generic and be supported by all i2c client adapters.
+---
+ drivers/hwmon/pmbus/ucd9200.c | 26 +++++++++++++++++++++-----
+ 1 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/ucd9200.c b/drivers/hwmon/pmbus/ucd9200.c
+index 033d6ac..119130c 100644
+--- a/drivers/hwmon/pmbus/ucd9200.c
++++ b/drivers/hwmon/pmbus/ucd9200.c
+@@ -25,6 +25,7 @@
+ #include <linux/slab.h>
+ #include <linux/i2c.h>
+ #include <linux/i2c/pmbus.h>
++#include <linux/ctype.h>
+ #include "pmbus.h"
+ 
+ #define UCD9200_PHASE_INFO	0xd2
+@@ -52,14 +53,15 @@ static int ucd9200_probe(struct i2c_client *client,
+ 	u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1];
+ 	struct pmbus_driver_info *info;
+ 	const struct i2c_device_id *mid;
+-	int i, j, ret;
++	int i, j, ret, n, len;
++	u8* buff;
+ 
+ 	if (!i2c_check_functionality(client->adapter,
+ 				     I2C_FUNC_SMBUS_BYTE_DATA |
+ 				     I2C_FUNC_SMBUS_BLOCK_DATA))
+ 		return -ENODEV;
+ 
+-	ret = i2c_smbus_read_block_data(client, UCD9200_DEVICE_ID,
++	ret = i2c_smbus_read_i2c_block_data(client, UCD9200_DEVICE_ID, 8,
+ 					block_buffer);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "Failed to read device ID\n");
+@@ -68,8 +70,22 @@ static int ucd9200_probe(struct i2c_client *client,
+ 	block_buffer[ret] = '\0';
+ 	dev_info(&client->dev, "Device ID %s\n", block_buffer);
+ 
++	len = strlen(block_buffer);
++	for (n=0; n < len; n++) {
++		if (isalnum(block_buffer[n]))
++			break;
++	}
++	if (n >= len) {
++		dev_err(&client->dev, "Incorrect device name\n");
++		return -ENODEV;
++	}
++	buff = &block_buffer[n];
++	len = strlen(buff);
++
+ 	for (mid = ucd9200_id; mid->name[0]; mid++) {
+-		if (!strncasecmp(mid->name, block_buffer, strlen(mid->name)))
++		if (len != strlen(mid->name))
++			continue;
++		if (!strncasecmp(mid->name, buff, strlen(mid->name)))
+ 			break;
+ 	}
+ 	if (!mid->name[0]) {
+@@ -86,7 +102,7 @@ static int ucd9200_probe(struct i2c_client *client,
+ 	if (!info)
+ 		return -ENOMEM;
+ 
+-	ret = i2c_smbus_read_block_data(client, UCD9200_PHASE_INFO,
++	ret = i2c_smbus_read_i2c_block_data(client, UCD9200_PHASE_INFO, 4,
+ 					block_buffer);
+ 	if (ret < 0) {
+ 		dev_err(&client->dev, "Failed to read phase information\n");
+@@ -100,7 +116,7 @@ static int ucd9200_probe(struct i2c_client *client,
+ 	 * the first unconfigured rail.
+ 	 */
+ 	info->pages = 0;
+-	for (i = 0; i < ret; i++) {
++	for (i = 1; i < ret; i++) {
+ 		if (!block_buffer[i])
+ 			break;
+ 		info->pages++;

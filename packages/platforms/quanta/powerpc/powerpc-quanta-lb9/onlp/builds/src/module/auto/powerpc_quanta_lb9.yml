@@ -31,7 +31,7 @@ cdefs: &cdefs
     default: 100
 - POWERPC_QUANTA_LB9_R0_CONFIG_SYSFAN_RPM_F2B_MAX:
     doc: "Maximum system fan speed in front-to-back mode."
-    default: 14500
+    default: 16000
 - POWERPC_QUANTA_LB9_R0_CONFIG_SYSFAN_RPM_B2F_MAX:
     doc: "Maximum system fan speed in back-to-front mode."
     default: 24000

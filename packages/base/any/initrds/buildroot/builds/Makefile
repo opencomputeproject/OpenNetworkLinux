@@ -16,7 +16,7 @@ include $(ONL)/make/config.mk
 #
 # We build for these architectures
 #
-ARCHS := powerpc x86_64 arm
+ARCHS := powerpc x86_64 arm arm64
 BUILDROOT_ARCHDIRS := $(foreach a,$(ARCHS),buildroot-$(a))
 BUILDROOT_SOURCE := buildroot-mirror
 
@@ -31,6 +31,9 @@ clean:
 setup: setup-pyroute2 setup-dnspython setup-libyaml setup-pyyaml setup-jq setup-pyparted
 	cp $(wildcard patches/busybox*.patch) $(BUILDROOT_SOURCE)/package/busybox/
 	cp $(wildcard patches/kexec*.patch) $(BUILDROOT_SOURCE)/package/kexec/
+	cp $(wildcard patches/openssl*.patch) $(BUILDROOT_SOURCE)/package/openssl/
+	rm -f $(BUILDROOT_SOURCE)/package/openssl/openssl-do-not-build-docs.patch
+	cp $(wildcard patches/uboot*.patch) $(BUILDROOT_SOURCE)/package/uboot-tools/
 	sed -i 's%^DOSFSTOOLS_SITE =.*%DOSFSTOOLS_SITE = http://downloads.openwrt.org/sources%' $(BUILDROOT_SOURCE)/package/dosfstools/dosfstools.mk
 	sed -i 's%^UEMACS_SITE =.*%UEMACS_SITE = http://www.kernel.org/pub/linux/kernel/uemacs%;s%^UEMACS_SOURCE =.*%UEMACS_SOURCE = em-$$(UEMACS_VERSION).tar.gz%' $(BUILDROOT_SOURCE)/package/uemacs/uemacs.mk
 	mkdir -p $(BUILDROOT_ARCHDIRS)
@@ -63,6 +66,7 @@ setup-pyyaml:
 	cp patches/python-yaml.Config.in $(BUILDROOT_SOURCE)/package/python-yaml/Config.in
 	sed -i '/[/]python-yaml[/]/d' $(BUILDROOT_SOURCE)/package/Config.in
 	sed -i '/[/]python-setuptools[/]/a\source "package/python-yaml/Config.in"' $(BUILDROOT_SOURCE)/package/Config.in
+	sed -i 's/pyyaml\//pyyaml/g' $(BUILDROOT_SOURCE)/package/python-yaml/python-yaml.mk
 
 setup-libyaml:
 	sed -i.bak -e '/LIBYAML_INSTALL_TARGET/d' $(BUILDROOT_SOURCE)/package/libyaml/libyaml.mk

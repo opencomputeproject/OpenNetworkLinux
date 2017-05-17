@@ -31,11 +31,13 @@
 /** onlp_status */
 typedef enum onlp_status_e {
     ONLP_STATUS_OK = 0,
-    ONLP_STATUS_E_UNSUPPORTED = -1,
-    ONLP_STATUS_E_MISSING = -2,
-    ONLP_STATUS_E_INVALID = -3,
-    ONLP_STATUS_E_INTERNAL = -4,
-    ONLP_STATUS_E_PARAM = -5,
+    ONLP_STATUS_E_GENERIC = -1,
+    ONLP_STATUS_E_UNSUPPORTED = -10,
+    ONLP_STATUS_E_MISSING = -11,
+    ONLP_STATUS_E_INVALID = -12,
+    ONLP_STATUS_E_INTERNAL = -13,
+    ONLP_STATUS_E_PARAM = -14,
+    ONLP_STATUS_E_I2C = -15,
 } onlp_status_t;
 /* <auto.end.enum(tag:onlp).define> */
 
@@ -47,6 +49,10 @@ typedef enum onlp_status_e {
         }                                       \
     } while(0)
 
+#define ONLP_FAILURE(_rv) ((_rv) < 0)
+#define ONLP_SUCCESS(_rv) (!(ONLP_FAILURE(_rv)))
+#define ONLP_UNSUPPORTED(_rv) \
+    ((_rv) == ONLP_STATUS_E_UNSUPPORTED)
 
 /**
  * @brief Initialize all subsystems.

@@ -1,33 +1,23 @@
+prerequisites:
+  packages: [ 'onl-bootd:all' ]
+
 packages:
   - name: onl-vendor-config-onl
-    depends: [ python-yaml, onl-bootd ]
+    depends: [ python-yaml, onl-bootd, python-dmidecode ]
     version: 1.0.0
     arch: all
     copyright: Copyright 2013, 2014, 2015 Big Switch Networks
     maintainer: support@bigswitch.com
+    support: opennetworklinux@googlegroups.com
     summary: ONL Base Configuration Package
 
     files:
-      src/python/onl : $PY_INSTALL/onl
-      src/boot.d : /etc/boot.d
-      src/bin : /usr/bin
-      src/lib : /lib/vendor-config/onl
-
-    changelog: Changes
-
-
-  - name: onl-vendor-config-onl-loader
-    version: 1.0.0
-    arch: all
-    copyright: Copyright 2013, 2014, 2015 Big Switch Networks
-    maintainer: support@bigswitch.com
-    summary: ONL Base Configuration Package (Loader)
-
-    files:
-      src/python/onl : $PY_INSTALL/onl
-      src/bin/initmounts : /bin/initmounts
-      src/bin/initubootenv : /bin/initubootenv
-      src/bin/initnetdev : /bin/initnetdev
-      src/bin/pki        : /sbin/pki
+      - src/python/onl : $PY_INSTALL/onl
+      - $ONL/tools/onlyaml.py : $PY_INSTALL/onl/onlyaml/__init__.py
+      - src/etc : /etc
+      - src/boot.d : /etc/boot.d
+      - src/bin : /usr/bin
+      - src/lib : /lib/vendor-config/onl
+      - src/sbin : /sbin
 
     changelog: Changes

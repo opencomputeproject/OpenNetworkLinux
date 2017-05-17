@@ -1,0 +1,84 @@
+--- /dev/null
++++ b/include/linux/port.h
+@@ -0,0 +1,79 @@
++/*
++ *  port.h - defines for generic netlink port handler
++ *  Copyright (C) 2013 Cumulus Networks
++ */
++
++#ifndef _LINUX_PORT_H
++#define _LINUX_PORT_H
++
++#ifdef __KERNEL__
++#include <linux/compat.h>
++#endif
++#include <linux/types.h>
++
++enum {
++	PORT_ATTR_UNSPEC,
++	PORT_ATTR_STATUS,
++	PORT_ATTR_IFINDEX,
++	PORT_ATTR_FLAGS,
++	PORT_ATTR_CARRIER,
++	PORT_ATTR_PHYS_ID_STATE,
++	PORT_ATTR_SETTINGS,
++	PORT_ATTR_PAUSE,
++	PORT_ATTR_MODINFO,
++	PORT_ATTR_EEPROM,
++	PORT_ATTR_EEPROM_DATA,
++	PORT_ATTR_STATS,
++	PORT_ATTR_STAT,
++	PORT_ATTR_STRINGS,
++	PORT_ATTR_STRING,
++	PORT_ATTR_SSET,
++	PORT_ATTR_SSET_COUNT,
++	__PORT_ATTR_MAX,
++};
++#define PORT_ATTR_MAX (__PORT_ATTR_MAX - 1)
++
++enum {
++	PORT_CMD_UNSPEC,
++	PORT_CMD_REPLY,
++	PORT_CMD_GET_SETTINGS,
++	PORT_CMD_SET_SETTINGS,
++	PORT_CMD_GET_PAUSE,
++	PORT_CMD_SET_PAUSE,
++	PORT_CMD_GET_MODULE_INFO,
++	PORT_CMD_GET_MODULE_EEPROM,
++	PORT_CMD_SET_STATS,
++	PORT_CMD_GET_STRINGS,
++	PORT_CMD_GET_SSET_COUNT,
++	PORT_CMD_SET_CARRIER,
++	PORT_CMD_SET_PHYS_ID_STATE,
++	PORT_CMD_GET_CACHED_SETTINGS,
++	__PORT_CMD_MAX,
++};
++
++#ifdef __KERNEL__
++
++#define PORT_ATTR_FLAG_STAT_RESTART (1 << 0)
++
++void port_init_ethtool_stats(struct net_device *dev);
++void port_uninit_ethtool_stats(struct net_device *dev);
++int port_get_settings(struct net_device *dev, struct ethtool_cmd *cmd);
++int port_set_settings(struct net_device *dev, struct ethtool_cmd *cmd);
++void port_get_pauseparam(struct net_device *dev,
++			 struct ethtool_pauseparam *pause);
++int port_set_pauseparam(struct net_device *dev,
++			struct ethtool_pauseparam * pause);
++void port_get_ethtool_stats(struct net_device *dev,
++			    struct ethtool_stats *stats, u64 *data);
++void port_get_ethtool_stats_clear(struct net_device *dev,
++				  struct ethtool_stats *stats, u64 *data);
++void port_get_strings(struct net_device *dev, u32 stringset, u8 *data);
++int port_get_sset_count(struct net_device *dev, int sset);
++int port_set_phys_id(struct net_device *dev, enum ethtool_phys_id_state state);
++int port_get_module_info(struct net_device *dev, struct ethtool_modinfo *info);
++int port_get_module_eeprom(struct net_device *dev,
++			   struct ethtool_eeprom *eeprom, u8 *data);
++
++#endif /* __KERNEL__ */
++
++#endif /* _LINUX_PORT_H */
+diff --git a/include/linux/pps_kernel.h b/include/linux/pps_kernel.h
+index ce2ab3d..d189738 100644

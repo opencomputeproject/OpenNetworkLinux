@@ -17,12 +17,14 @@ x86-64-accton-as7716-32x-r0:
       --parity=no
       --stop=1
 
-    kernel: 
-      <<: *kernel-3-2
+    kernel:
+      <<: *kernel-3-16
 
     args: >-
       nopat
       console=ttyS0,115200n8
+      tg3.short_preamble=1
+      tg3.bcm5718s_reset=1
 
   ##network:
   ##  interfaces:

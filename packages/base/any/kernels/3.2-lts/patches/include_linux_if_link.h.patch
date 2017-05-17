@@ -1,0 +1,210 @@
+--- a/include/linux/if_link.h
++++ b/include/linux/if_link.h
+@@ -137,7 +137,20 @@ enum {
+ 	IFLA_AF_SPEC,
+ 	IFLA_GROUP,		/* Group the device belongs to */
+ 	IFLA_NET_NS_FD,
++#ifndef __GENKSYMS__
+ 	IFLA_EXT_MASK,		/* Extended info mask, VFs, etc */
++#endif
++	IFLA_PROMISCUITY,     /* not supported */
++#define IFLA_PROMISCUITY IFLA_PROMISCUITY
++	IFLA_NUM_TX_QUEUES,   /* not supported */
++	IFLA_NUM_RX_QUEUES,   /* not supported */
++	IFLA_CARRIER,         /* not supported */
++	IFLA_PHYS_PORT_ID,    /* not supported */
++	IFLA_CARRIER_CHANGES,
++	IFLA_PHYS_SWITCH_ID,  /* not supported */
++	IFLA_LINK_NETNSID,    /* not supported */
++	IFLA_PHYS_PORT_NAME,  /* not supported */
++	IFLA_PROTO_DOWN,
+ 	__IFLA_MAX
+ };
+ 
+@@ -201,6 +214,44 @@ enum {
+ 
+ #define IFLA_INET6_MAX	(__IFLA_INET6_MAX - 1)
+ 
++/* Bridge section */
++/* CL note: ageing_time, stp_state and priority are not supported */
++enum {
++	IFLA_BR_UNSPEC,
++	IFLA_BR_FORWARD_DELAY,
++	IFLA_BR_HELLO_TIME,
++	IFLA_BR_MAX_AGE,
++	IFLA_BR_AGEING_TIME,
++	IFLA_BR_STP_STATE,
++	IFLA_BR_PRIORITY,
++	IFLA_BR_VLAN_FILTERING,
++	__IFLA_BR_MAX,
++};
++
++#define IFLA_BR_MAX	(__IFLA_BR_MAX - 1)
++
++enum {
++	BRIDGE_MODE_UNSPEC,
++	BRIDGE_MODE_HAIRPIN,
++};
++
++enum {
++	IFLA_BRPORT_UNSPEC,
++	IFLA_BRPORT_STATE,      /* Spanning tree state     */
++	IFLA_BRPORT_PRIORITY,   /* "             priority  */
++	IFLA_BRPORT_COST,       /* "             cost      */
++	IFLA_BRPORT_MODE,       /* mode (hairpin)          */
++	IFLA_BRPORT_GUARD,      /* bpdu guard              */
++	IFLA_BRPORT_PROTECT,    /* root port protection    */
++	IFLA_BRPORT_FAST_LEAVE, /* multicast fast leave    */
++	IFLA_BRPORT_LEARNING,   /* mac learning */
++	IFLA_BRPORT_UNICAST_FLOOD, /* flood unicast traffic */
++	IFLA_BRPORT_PEER_LINK = 253, /* MLAG peer link */
++	IFLA_BRPORT_DUAL_LINK,  /* MLAG Dual Connected link */
++	__IFLA_BRPORT_MAX
++};
++#define IFLA_BRPORT_MAX (__IFLA_BRPORT_MAX - 1)
++
+ struct ifla_cacheinfo {
+ 	__u32	max_reasm_len;
+ 	__u32	tstamp;		/* ipv6InterfaceTable updated timestamp */
+@@ -213,6 +264,8 @@ enum {
+ 	IFLA_INFO_KIND,
+ 	IFLA_INFO_DATA,
+ 	IFLA_INFO_XSTATS,
++	IFLA_INFO_SLAVE_KIND,
++	IFLA_INFO_SLAVE_DATA,
+ 	__IFLA_INFO_MAX,
+ };
+ 
+@@ -226,6 +279,7 @@ enum {
+ 	IFLA_VLAN_FLAGS,
+ 	IFLA_VLAN_EGRESS_QOS,
+ 	IFLA_VLAN_INGRESS_QOS,
++	IFLA_VLAN_PROTOCOL,
+ 	__IFLA_VLAN_MAX,
+ };
+ 
+@@ -265,6 +319,122 @@ enum macvlan_mode {
+ 	MACVLAN_MODE_PASSTHRU = 8,/* take over the underlying device */
+ };
+ 
++/* VXLAN section */
++enum {
++	IFLA_VXLAN_UNSPEC,
++	IFLA_VXLAN_ID,
++	IFLA_VXLAN_GROUP,
++	IFLA_VXLAN_LINK,
++	IFLA_VXLAN_LOCAL,
++	IFLA_VXLAN_TTL,
++	IFLA_VXLAN_TOS,
++	IFLA_VXLAN_LEARNING,
++	IFLA_VXLAN_AGEING,
++	IFLA_VXLAN_LIMIT,
++	IFLA_VXLAN_PORT_RANGE,
++	IFLA_VXLAN_PROXY,
++	IFLA_VXLAN_RSC,
++	IFLA_VXLAN_L2MISS,
++	IFLA_VXLAN_L3MISS,
++	IFLA_VXLAN_PORT,        /* destination port */
++	IFLA_VXLAN_GROUP6,
++	IFLA_VXLAN_LOCAL6,
++	IFLA_VXLAN_UDP_CSUM,
++	IFLA_VXLAN_UDP_ZERO_CSUM6_TX,
++	IFLA_VXLAN_UDP_ZERO_CSUM6_RX,
++	IFLA_VXLAN_REMCSUM_TX,
++	IFLA_VXLAN_REMCSUM_RX,
++	IFLA_VXLAN_GBP,
++	IFLA_VXLAN_REMCSUM_NOPARTIAL,
++	IFLA_VXLAN_REPLICATION_NODE = 253,
++	IFLA_VXLAN_REPLICATION_TYPE,
++	__IFLA_VXLAN_MAX
++};
++#define IFLA_VXLAN_MAX	(__IFLA_VXLAN_MAX - 1)
++
++struct ifla_vxlan_port_range {
++        __be16  low;
++        __be16  high;
++};
++
++#define MAX_VXLAN_REPLICATION_NODE_ADDRS 64
++struct ifla_vxlan_repl_node_addrs {
++        __u32   addrs[MAX_VXLAN_REPLICATION_NODE_ADDRS];
++};
++
++enum {
++       VXLAN_REPLICATION_NONE = 0,
++       VXLAN_REPLICATION_SERVICE_NODE, /* service node based replication */
++       VXLAN_REPLICATION_SELF,         /* self or head-end replication */
++};
++
++/* Bonding section */
++
++enum {
++	IFLA_BOND_UNSPEC,
++	IFLA_BOND_MODE,
++	IFLA_BOND_ACTIVE_SLAVE,
++	IFLA_BOND_MIIMON,
++	IFLA_BOND_UPDELAY,
++	IFLA_BOND_DOWNDELAY,
++	IFLA_BOND_USE_CARRIER,
++	IFLA_BOND_ARP_INTERVAL,
++	IFLA_BOND_ARP_IP_TARGET,
++	IFLA_BOND_ARP_VALIDATE,
++	IFLA_BOND_ARP_ALL_TARGETS,
++	IFLA_BOND_PRIMARY,
++	IFLA_BOND_PRIMARY_RESELECT,
++	IFLA_BOND_FAIL_OVER_MAC,
++	IFLA_BOND_XMIT_HASH_POLICY,
++	IFLA_BOND_RESEND_IGMP,
++	IFLA_BOND_NUM_PEER_NOTIF,
++	IFLA_BOND_ALL_SLAVES_ACTIVE,
++	IFLA_BOND_MIN_LINKS,
++	IFLA_BOND_LP_INTERVAL,
++	IFLA_BOND_PACKETS_PER_SLAVE,
++	IFLA_BOND_AD_LACP_RATE,
++	IFLA_BOND_AD_SELECT,
++	IFLA_BOND_AD_INFO,
++
++	IFLA_BOND_CL_START = 100,
++	IFLA_BOND_CL_LACP_BYPASS_ALLOW = IFLA_BOND_CL_START,
++	IFLA_BOND_CL_LACP_BYPASS_ACTIVE,
++	IFLA_BOND_CL_LACP_BYPASS_PERIOD,
++	IFLA_BOND_CL_CLAG_ENABLE,
++	IFLA_BOND_CL_LACP_BYPASS_ALL_ACTIVE,
++	__IFLA_BOND_MAX,
++};
++
++#define IFLA_BOND_MAX	(__IFLA_BOND_MAX - 1)
++
++enum {
++	IFLA_BOND_AD_INFO_UNSPEC,
++	IFLA_BOND_AD_INFO_AGGREGATOR,
++	IFLA_BOND_AD_INFO_NUM_PORTS,
++	IFLA_BOND_AD_INFO_ACTOR_KEY,
++	IFLA_BOND_AD_INFO_PARTNER_KEY,
++	IFLA_BOND_AD_INFO_PARTNER_MAC,
++	__IFLA_BOND_AD_INFO_MAX,
++};
++
++#define IFLA_BOND_AD_INFO_MAX	(__IFLA_BOND_AD_INFO_MAX - 1)
++
++enum {
++	IFLA_BOND_SLAVE_UNSPEC,
++	IFLA_BOND_SLAVE_STATE,
++	IFLA_BOND_SLAVE_MII_STATUS,
++	IFLA_BOND_SLAVE_LINK_FAILURE_COUNT,
++	IFLA_BOND_SLAVE_PERM_HWADDR,
++	IFLA_BOND_SLAVE_QUEUE_ID,
++	IFLA_BOND_SLAVE_AD_AGGREGATOR_ID,
++
++	IFLA_BOND_SLAVE_CL_START = 50,
++	IFLA_BOND_SLAVE_CL_LACP_BYPASS_PRIO = IFLA_BOND_SLAVE_CL_START,
++	__IFLA_BOND_SLAVE_MAX,
++};
++
++#define IFLA_BOND_SLAVE_MAX	(__IFLA_BOND_SLAVE_MAX - 1)
++
+ /* SR-IOV virtual function management section */
+ 
+ enum {
+diff --git a/include/linux/if_tun.h b/include/linux/if_tun.h
+index 06b1829..6dd06d3 100644

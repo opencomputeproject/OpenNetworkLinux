@@ -83,16 +83,21 @@ cdefs: &cdefs
     default: 64
 - ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS:
     doc: "Include thermal threshold reporting."
-    default: 1
+    default: 0
+- ONLP_CONFIG_INCLUDE_API_PROFILING:
+    doc: "Include API timing profiles."
+    default: 0
 
 # Error codes
 onlp_status: &onlp_status
 - OK : 0
-- E_UNSUPPORTED : -1
-- E_MISSING : -2
-- E_INVALID : -3
-- E_INTERNAL : -4
-- E_PARAM : -5
+- E_GENERIC     : -1
+- E_UNSUPPORTED : -10
+- E_MISSING     : -11
+- E_INVALID     : -12
+- E_INTERNAL    : -13
+- E_PARAM       : -14
+- E_I2C         : -15
 
 # OID Types
 oid_types: &oid_types

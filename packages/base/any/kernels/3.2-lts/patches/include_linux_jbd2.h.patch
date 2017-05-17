@@ -1,0 +1,14 @@
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -470,7 +470,9 @@ struct transaction_s
+ 		T_COMMIT,
+ 		T_COMMIT_DFLUSH,
+ 		T_COMMIT_JFLUSH,
++#ifndef __GENKSYMS__
+ 		T_COMMIT_CALLBACK,
++#endif
+ 		T_FINISHED
+ 	}			t_state;
+ 
+diff --git a/include/linux/jiffies.h b/include/linux/jiffies.h
+index f4e8578..333dea6 100644

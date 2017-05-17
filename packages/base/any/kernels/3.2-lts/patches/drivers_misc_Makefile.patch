@@ -1,0 +1,12 @@
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -48,3 +48,6 @@ obj-y				+= lis3lv02d/
+ obj-y				+= carma/
+ obj-$(CONFIG_USB_SWITCH_FSA9480) += fsa9480.o
+ obj-$(CONFIG_ALTERA_STAPL)	+=altera-stapl/
++obj-$(CONFIG_EARLY_DMA_ALLOC)	+= early_dma_alloc.o
++obj-$(CONFIG_RETIMER_CLASS)	+= retimer_class.o
++obj-$(CONFIG_DS100DF410)        += ds100df410.o
+diff --git a/drivers/misc/ds100df410.c b/drivers/misc/ds100df410.c
+new file mode 100644
+index 0000000..d46d107

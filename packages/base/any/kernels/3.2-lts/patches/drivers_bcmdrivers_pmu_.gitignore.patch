@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/pmu/.gitignore
+@@ -0,0 +1,8 @@
++/.built-in.o.cmd
++/.iproc_pmu.o.cmd
++/.iproc-pmu.o.cmd
++/built-in.o
++/iproc_pmu.o
++/iproc-pmu.o
++/modules.builtin
++/modules.order
+diff --git a/drivers/bcmdrivers/pmu/Kconfig b/drivers/bcmdrivers/pmu/Kconfig
+new file mode 100644
+index 0000000..8b09c0c

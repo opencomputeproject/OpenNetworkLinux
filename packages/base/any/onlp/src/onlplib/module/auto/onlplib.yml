@@ -71,3 +71,22 @@ definitions:
         - snprintf
         - strlen
         - atoi
+
+  xmacro:
+    ONIE_TLV_ENTRY:
+      members:
+        - product_name,     Product Name,     0x21, str
+        - part_number,      Part Number,      0x22, str
+        - serial_number,    Serial Number,    0x23, str
+        - mac,              MAC,              0x24, mac
+        - manufacture_date, Manufacture Date, 0x25, str
+        - device_version,   Device Version,   0x26, byte
+        - label_revision,   Label Revision,   0x27, str
+        - platform_name,    Platform Name,    0x28, str
+        - onie_version,     ONIE Version,     0x29, str
+        - mac_range,        MAC Range,        0x2A, int16
+        - manufacturer,     Manufacturer,     0x2B, str
+        - country_code,     Country Code,     0x2C, str
+        - vendor,           Vendor,           0x2D, str
+        - diag_version,     Diag Version,     0x2E, str
+        - service_tag,      Service Tag,      0x2F, str

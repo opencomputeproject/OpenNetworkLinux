@@ -41,17 +41,17 @@ If you would like to build by hand you can do the following:
 
     #> git clone https://github.com/opencomputeproject/OpenNetworkLinux
     #> cd OpenNetworkLinux
-    #> docker/tools/onlbuilder (-8)                                        # enter the docker workspace
+    #> docker/tools/onlbuilder (-8)             # enter the docker workspace
     #> apt-cacher-ng
-    #> source setup.env				# pull in necessary environment variables
+    #> source setup.env                         # pull in necessary environment variables
     #> make amd64 ppc                           # make onl for $platform (currently amd64 or powerpc)
 
 The resulting ONIE installers are in
-$ONL/RELEASE/$SUITE/$ARCH/ONL-2.*INSTALLER, i.e. 
-RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64_INSTALLER
+`$ONL/RELEASE/$SUITE/$ARCH/ONL-2.*INSTALLER`, i.e. 
+`RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64_INSTALLER`
 and the SWI files (if you want them) are in
-$ONL/RELEASE/$SUITE/$ARCH/ONL*.swi. i.e.
-RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64.swi
+`$ONL/RELEASE/$SUITE/$ARCH/ONL*.swi`. i.e.
+`RELEASE/jessie/amd64/ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_AMD64.swi`
 
 
 
@@ -69,13 +69,13 @@ Common docker related issues:
 - Beware that `apt-get install docker` installs a dock application not docker :-)  You want the lxc-docker package instead.
 - Some versions of docker are unhappy if you use a local DNS caching resolver:
 	- e.g., you have 127.0.0.1 in your /etc/resolv.conf
-        - if you have this, specify DNS="--dns 8.8.8.8" when you enter the docker environment
+        - if you have this, specify `DNS="--dns 8.8.8.8"` when you enter the docker environment
  	- e.g., `make DNS="--dns 8.8.8.8" docker`
 
 Consider enabling builds for non-privileged users with:
 
 - `sudo usermod -aG docker $USER`
-- If you run as non-root without this, you will get errors like "..: dial unix /var/run/docker.sock: permission denied"	
+- If you run as non-root without this, you will get errors like `..: dial unix /var/run/docker.sock: permission denied`
 - Building as root is fine as well (it immediately jumps into a root build shell), so this optional
     
 #Additional Build Details
@@ -105,72 +105,57 @@ Adding/Removing packages from a SWI:
 
 The list of packages for a given SWI are in
 
-    $ONL/packages/base/any/rootfs/common/$ARCH-packages.yml # for $ARCH specific packages
-    $ONL/packages/base/any/rootfs/common/common-packages.yml	# for $ARCH-independent packages
+    $ONL/builds/any/rootfs/jessie/common/*.yml
 
-Build a software image (SWI) for all powerpc platforms:
-------------------------------------------------------------
-    #> cd $ONL/builds/powerpc/swi
-    #> make
-    #> cd builds
-    #> ls *.swi
-    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC.swi
-    #>
+The "all-base-packages.yml" file is for all architectures and the rest are architecture specific package lists.
 
-Build an ONIE-compatible installer for all powerpc platforms.
-This will incorporate the SWI you just built or build it dynamically if not.
-
-This installer image can be served to ONIE on Quanta or Accton platforms:
-------------------------------------------------------------
-    #> cd $ONL/builds/powerpc/installer/legacy
-    #> make
-    #> cd builds
-    #> ls *INSTALLER
-    ONL-2.0.0_ONL-OS_2015-12-12.0252-ffce159_PPC_INSTALLER
-    #>
 
 Example setup on new Debian 8.2 installation
 ------------------------------------------------------------
 Install sudo and add yourself to the sudoers: 
 
 As root:
-
+```
 apt-get install sudo
-
 vi /etc/sudoers.d/username
+```
 
 Add the line:
-
+```
 username    ALL=(ALL:ALL) ALL
+```
 
 Add the docker key:
-
+```
 sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
 
 gpg: key 2C52609D: public key "Docker Release Tool (releasedocker) <docker@docker.com>" imported
 gpg: Total number processed: 1
 gpg:               imported: 1  (RSA: 1)
+```
 
 Install necessary items, make, binfmt-support and apt-transport-https (for docker):
-
+```
 sudo apt-get install apt-transport-https make binfmt-support
+```
 
 Add the docker repository to your system:
-
+```
 sudo vi /etc/apt/sources.list.d/docker.list
-
+```
 Add the following line to the file:
-
+```
 deb https://apt.dockerproject.org/repo debian-jessie main
+```
 
 Install Docker:
-
+```
 sudo apt-get update
-
 sudo apt-get install docker-engine
+```
 
 Test Docker:
-
+```
 sudo docker run hello-world
 
 Unable to find image 'hello-world:latest' locally
@@ -182,21 +167,24 @@ Status: Downloaded newer image for hello-world:latest
 
 Hello from Docker.
 This message shows that your installation appears to be working correctly.
+```
 
 Add yourself to the docker group:
+```
+sudo gpasswd -a user1 docker
 
-sudo gpasswd -a snoble docker
-
-Adding user snoble to group docker
+Adding user user1 to group docker
+```
 
 logout and log back in for the group to take effect:
 
 Clone the OpenNetworkLinux repository:
-
+```
 git clone https://github.com/opencomputeproject/OpenNetworkLinux.git
 
 Cloning into 'OpenNetworkLinux'...
 Checking connectivity... done.
+```
 
 Build OpenNetworkLinux:
 

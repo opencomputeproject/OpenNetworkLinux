@@ -31,6 +31,7 @@
 #include <sff/sff_db.h>
 #include <AIM/aim_log_handler.h>
 #include <syslog.h>
+#include <onlp/platformi/sysi.h>
 
 static void platform_manager_daemon__(const char* pidfile, char** argv);
 
@@ -52,8 +53,8 @@ show_inventory__(aim_pvs_t* pvs, int database)
     }
     else {
         if(!database) {
-        aim_printf(pvs, "Port  Type            Media   Status  Len    Vendor            Model             S/N             \n");
-        aim_printf(pvs, "----  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
+            aim_printf(pvs, "Port  Type            Media   Status  Len    Vendor            Model             S/N             \n");
+            aim_printf(pvs, "----  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
         }
 
         AIM_BITMAP_ITER(&bitmap, port) {
@@ -64,7 +65,7 @@ show_inventory__(aim_pvs_t* pvs, int database)
 
             if(rv == 0) {
                 if(!database) {
-                aim_printf(pvs, "%4d  NONE\n", port);
+                    aim_printf(pvs, "%4d  NONE\n", port);
                 }
                 continue;
             }
@@ -183,16 +184,22 @@ onlpdump_main(int argc, char* argv[])
     char* pidfile = NULL;
     const char* O = NULL;
     const char* t = NULL;
+    const char* J = NULL;
 
     /**
      * debug trap
      */
-    if(argc > 1 && !strcmp(argv[1], "debug")) {
-        onlp_init();
-        return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+    if(argc > 1 && (!strcmp(argv[1], "debug") || !strcmp(argv[1], "debugi"))) {
+        if(!strcmp(argv[1], "debug")) {
+            onlp_init();
+            return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
+        }
+        else {
+            return onlp_sysi_debug(&aim_pvs_stdout, argc-2, argv+2);
+        }
     }
 
-    while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:b")) != -1) {
+    while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:bJ:")) != -1) {
         switch(c)
             {
             case 's': show=1; break;
@@ -212,6 +219,7 @@ onlpdump_main(int argc, char* argv[])
             case 'S': S=1; break;
             case 'l': l=1; break;
             case 'b': b=1; break;
+            case 'J': J = optarg; break;
             case 'y': show=1; showflags |= ONLP_OID_SHOW_F_YAML; break;
             default: help=1; rv = 1; break;
             }
@@ -236,9 +244,24 @@ onlpdump_main(int argc, char* argv[])
         printf("  -S   Decode SFP Inventory\n");
         printf("  -b   Decode SFP Inventory into SFF database entries.\n");
         printf("  -l   API Lock test.\n");
+        printf("  -J   Decode ONIE JSON data.\n");
         return rv;
     }
 
+    if(J) {
+        int rv;
+        onlp_onie_info_t onie;
+        rv = onlp_onie_read_json(&onie, J);
+        if(rv < 0) {
+            fprintf(stderr, "onie read json failed: %d\n", rv);
+            return 1;
+        }
+        else {
+            onlp_onie_show(&onie, &aim_pvs_stdout);
+            onlp_onie_info_free(&onie);
+            return 0;
+        }
+    }
 
     if(t) {
         int rv;

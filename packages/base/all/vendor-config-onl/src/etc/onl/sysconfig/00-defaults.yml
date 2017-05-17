@@ -1,0 +1,63 @@
+############################################################
+#
+# ONL Default System Configuration.
+#
+# These provide the base default values for all sysconfig keys.
+#
+############################################################
+installer:
+  menu_name: "\"Open Network Linux\""
+  os_name: Open Network Linux
+  grub:
+    - $PLATFORM.cpio.gz
+    - onl-loader-initrd-$PARCH.cpio.gz
+
+  fit:
+    - $PLATFORM.itb
+    - onl-loader-fit.itb
+
+upgrade:
+  onie:
+    auto: advisory
+    package:
+      dir: /lib/platform-config/current/onl/upgrade/onie
+
+  system:
+    auto: force
+
+  firmware:
+    auto: advisory
+    package:
+      dir: /lib/platform-config/current/onl/upgrade/firmware
+
+  loader:
+    auto: force
+    versions: /etc/onl/loader/versions.json
+    package:
+      dir: /etc/onl/upgrade/$PARCH
+      grub:
+        - $PLATFORM.cpio.gz
+        - onl-loader-initrd-$PARCH.cpio.gz
+      fit:
+        - $PLATFORM.itb
+        - onl-loader-fit.itb
+  swi:
+    auto: disabled
+
+
+pki:
+  key:
+    name: key.pem
+    len:  2048
+  cert:
+    name: certificate
+    csr:
+      fields:
+        C: US
+        ST: CA
+        O: Open Compute Project
+        localityName: Santa Clara
+        commonName: Networking
+        organizationalUnitName: Open Network Linux
+        emailAddress: support@bigswitch.com
+      cdays: 3600

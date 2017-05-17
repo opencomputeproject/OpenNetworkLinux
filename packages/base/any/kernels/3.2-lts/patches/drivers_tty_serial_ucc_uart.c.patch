@@ -1,0 +1,16 @@
+--- a/drivers/tty/serial/ucc_uart.c
++++ b/drivers/tty/serial/ucc_uart.c
+@@ -1173,10 +1173,8 @@ static void uart_firmware_cont(const struct firmware *fw, void *context)
+ 	struct device *dev = context;
+ 	int ret;
+ 
+-	if (!fw) {
+-		dev_err(dev, "firmware not found\n");
++	if (!fw)
+ 		return;
+-	}
+ 
+ 	firmware = (struct qe_firmware *) fw->data;
+ 
+diff --git a/drivers/usb/atm/cxacru.c b/drivers/usb/atm/cxacru.c
+index 9497171..07458c0 100644

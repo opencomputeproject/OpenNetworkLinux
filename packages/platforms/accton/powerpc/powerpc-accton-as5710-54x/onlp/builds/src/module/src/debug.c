@@ -1,6 +1,6 @@
 #include "powerpc_accton_as5710_54x_int.h"
 
-#if POWERPC_ACCTON_AS5710_54X_R0_CONFIG_INCLUDE_DEBUG == 1
+#if POWERPC_ACCTON_AS5710_54X_CONFIG_INCLUDE_DEBUG == 1
 
 #include <unistd.h>
 
