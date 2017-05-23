@@ -756,7 +756,7 @@ class OnlPackageRepo(object):
                         logger.debug("Existing extract for %s matches the package file." % pkg)
                     else:
                         # Existing extract must be removed.
-                        logger.warn("Existing extract for %s does not match." % pkg)
+                        logger.info("Existing extract for %s does not match." % pkg)
                         force=True
                 else:
                     # Status unknown. Really shouldn't happen.
