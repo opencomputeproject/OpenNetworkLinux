@@ -297,9 +297,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         return ONLP_STATUS_E_INVALID;
     }
 
-   printf("[ROY]%s#%d, fid:%d, duty:%d\n", __func__, __LINE__,fid, p);
-
-
     switch (fid)
 	{
         case FAN_1_ON_PSU_1:

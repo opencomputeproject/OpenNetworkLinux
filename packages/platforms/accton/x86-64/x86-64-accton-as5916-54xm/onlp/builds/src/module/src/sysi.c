@@ -121,9 +121,9 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
-#define FAN_DUTY_MAX  (32)//(100/3)
-#define FAN_DUTY_MID  (19) //(69)
-#define FAN_DUTY_MIN  (13)//(38)
+#define FAN_DUTY_MAX  (100)
+#define FAN_DUTY_MID  (69)
+#define FAN_DUTY_MIN  (38)
 
 #define FANCTRL_DIR_FACTOR               (ONLP_FAN_STATUS_B2F)
 #define FANCTRL_DIR_FACTOR_DUTY_ADDON    (6)
@@ -185,12 +185,9 @@ sysi_fanctrl_fan_unknown_speed_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
 
     if (onlp_file_read_int(&fanduty, FAN_NODE(fan_duty_cycle_percentage)) < 0) {
         *adjusted = 1;
-       printf("[ROY]%s#%d, fanduty:%d \n", __func__, __LINE__,fanduty);
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
     }    
 
-
-       printf("[ROY]%s#%d, fanduty:%d \n", __func__, __LINE__,fanduty);
     /* Bring fan speed to max if current speed is not expected
      */
     if (fanduty != fanduty_min && fanduty != fanduty_mid && fanduty != FAN_DUTY_MAX) {
@@ -215,7 +212,7 @@ sysi_fanctrl_single_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
         if (ti[i-1].mcelsius < 50000) {
             continue;
         }
-        printf("[ROY]%s#%d, i:%d, t:%d\n", __func__, __LINE__, i, ti[i-1].mcelsius);
+
         *adjusted = 1;
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
     }
@@ -257,22 +254,6 @@ sysi_fanctrl_overall_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT]
 
     temp_avg /= num_of_sensor;
 
-   printf("[ROY]%s#%d, num:%d, temp_avg:%d\n", __func__, __LINE__,num_of_sensor, temp_avg);
-
-    if (temp_avg >= 36000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
-    }
-    else if (temp_avg >= 35000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_mid);
-    }
-    else if (temp_avg < 34000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_min);
-    }
-
-/*
     if (temp_avg >= 45000) {
         *adjusted = 1;
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
@@ -284,7 +265,7 @@ sysi_fanctrl_overall_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT]
     else if (temp_avg < 35000) {
         *adjusted = 1;
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_min);
-    }*/
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -344,7 +325,6 @@ onlp_sysi_platform_manage_fans(void)
             continue;
         }
 
-       printf("[ROY]%s#%d, fan_control_policies:%d \n", __func__, __LINE__,i );
         return rc;
     }
 
