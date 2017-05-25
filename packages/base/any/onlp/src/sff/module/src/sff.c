@@ -254,6 +254,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_1G_BASE_LX:
         case SFF_MODULE_TYPE_100_BASE_LX:
         case SFF_MODULE_TYPE_100_BASE_FX:
+        case SFF_MODULE_TYPE_4X_MUX:
             return SFF_MEDIA_TYPE_FIBER;
 
         case SFF_MODULE_TYPE_COUNT:
@@ -346,9 +347,8 @@ make_printable__(char* string, int size)
  * @note if eeprom is NULL it is assumed the rv->eeprom buffer
  * has already been initialized.
  */
-
-int
-sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
+static int
+sff_eeprom_parse_standard__(sff_eeprom_t* se, uint8_t* eeprom)
 {
     if(se == NULL) {
         return -1;
@@ -432,7 +432,6 @@ sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
 
     se->info.module_type = sff_module_type_get(se->eeprom);
     if(se->info.module_type == SFF_MODULE_TYPE_INVALID) {
-        AIM_LOG_ERROR("sff_info_init() failed: invalid module type");
         return -1;
     }
 
@@ -614,4 +613,47 @@ sff_eeprom_validate(sff_eeprom_t *se, int verbose)
     }
 
     return 1;
+}
+
+static int
+sff_eeprom_parse_nonstandard__(sff_eeprom_t* se, uint8_t* eeprom)
+{
+    if(se == NULL) {
+        return -1;
+    }
+    se->identified = 0;
+
+    if(eeprom) {
+        SFF_MEMCPY(se->eeprom, eeprom, 256);
+    }
+
+    if (strncmp(se->info.vendor, "Amphenol", 8) == 0 &&
+        strncmp(se->info.model, "625960001", 9) == 0 &&
+        (se->eeprom[240] == 0x0f) &&
+        (se->eeprom[241] == 0x10) &&
+        ((se->eeprom[243] & 0xF0) == 0xE0)) {
+
+        /* 4X_MUX */
+        se->identified  = 1;
+        se->info.module_type = SFF_MODULE_TYPE_4X_MUX;
+        se->info.module_type_name = sff_module_type_desc(se->info.module_type);
+        se->info.media_type = SFF_MEDIA_TYPE_COPPER;
+        se->info.media_type_name = sff_media_type_desc(se->info.media_type);
+        se->info.caps = SFF_MODULE_CAPS_F_1G;
+        se->info.length = se->eeprom[146];
+        SFF_SNPRINTF(se->info.length_desc, sizeof(se->info.length_desc), "%dm",
+                     se->info.length);
+        return 0;
+    }
+    return -1;
+}
+
+int
+sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
+{
+    int rv = sff_eeprom_parse_standard__(se, eeprom);
+    if(!se->identified) {
+        rv = sff_eeprom_parse_nonstandard__(se, eeprom);
+    }
+    return rv;
 }
