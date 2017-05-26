@@ -136,6 +136,16 @@
 #endif
 
 /**
+ * ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT
+ *
+ * The number of I2C read retry attempts (if enabled). */
+
+
+#ifndef ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT
+#define ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT 16
+#endif
+
+/**
  * ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER
  *
  * Include the custom i2c header (include/linux/i2c-devices.h) to avoid conflicts with the kernel and i2c-dev packages. */

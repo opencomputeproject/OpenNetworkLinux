@@ -105,16 +105,22 @@ onlp_i2c_block_read(int bus, uint8_t addr, uint8_t offset, int size,
     int count = size;
     uint8_t* p = rdata;
     while(count > 0) {
-        int rv;
         int rsize = (count >= ONLPLIB_CONFIG_I2C_BLOCK_SIZE) ? ONLPLIB_CONFIG_I2C_BLOCK_SIZE : count;
-        if(flags & ONLP_I2C_F_USE_SMBUS_BLOCK_READ) {
-            rv = i2c_smbus_read_block_data(fd, offset, p);
-        } else {
-            rv = i2c_smbus_read_i2c_block_data(fd,
-                                               offset,
-                                               rsize,
-                                               p);
-            offset += rsize;
+        int retries = (flags & ONLP_I2C_F_DISABLE_READ_RETRIES) ? 1 : ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT;
+
+        int rv = -1;
+        while(retries-- && rv < 0) {
+            if(flags & ONLP_I2C_F_USE_SMBUS_BLOCK_READ) {
+                rv = i2c_smbus_read_block_data(fd, offset, p);
+            } else {
+                rv = i2c_smbus_read_i2c_block_data(fd,
+                                                   offset,
+                                                   rsize,
+                                                   p);
+            }
+            if(rv >= 0) {
+                offset += rsize;
+            }
         }
 
         if(rv != rsize) {
@@ -150,7 +156,7 @@ onlp_i2c_read(int bus, uint8_t addr, uint8_t offset, int size,
 
     for(i = 0; i < size; i++) {
         int rv = -1;
-        int retries = 3;
+        int retries = (flags & ONLP_I2C_F_DISABLE_READ_RETRIES) ? 1: ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT;
 
         while(retries-- && rv < 0) {
             rv = i2c_smbus_read_byte_data(fd, offset+i);
