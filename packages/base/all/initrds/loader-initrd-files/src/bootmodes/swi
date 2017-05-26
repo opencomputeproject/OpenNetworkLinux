@@ -19,7 +19,7 @@ fi
 #
 for url in $SWI; do
     msg_info "Trying ${url}..."
-    timeout -t 60 boot "${url}" && exit 0
+    timeout -t 180 boot "${url}" && exit 0
 done
 
 exit 1
