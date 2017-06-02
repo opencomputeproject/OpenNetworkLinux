@@ -44,6 +44,22 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
+#define MIN_LIMIT_FRONT_FAN_RPM 21000
+#define MIN_LIMIT_REAR_FAN_RPM  21000
+
+/* LED related data
+ */
+enum onlp_led_id
+{
+    LED_RESERVED = 0,
+    LED_SYSTEM,
+    LED_FAN1,
+    LED_FAN2,
+    LED_FAN3,
+    LED_FAN4,
+    LED_PSU,
+};
+
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
