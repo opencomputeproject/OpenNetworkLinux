@@ -506,3 +506,4 @@ scripts_package_Makefile.patch
 tools_include_tools_be_byteshift.h.patch
 tools_include_tools_le_byteshift.h.patch
 platform-accton-as4610-device-drivers.patch
+platform-delta-ag6248c-device-drivers.patch

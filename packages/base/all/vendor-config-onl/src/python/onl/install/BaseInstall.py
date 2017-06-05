@@ -17,7 +17,7 @@ import imp
 import fnmatch, glob
 
 from InstallUtils import SubprocessMixin
-from InstallUtils import MountContext, BlkidParser, PartedParser
+from InstallUtils import MountContext, BlkidParser, PartedParser, UbinfoParser
 from InstallUtils import ProcMountsParser
 from Plugin import Plugin
 
@@ -79,6 +79,7 @@ class Base:
         # keep track of next partition/next block
 
         self.blkidParts = []
+        self.ubiParts = []
         # current scan of partitions and labels
 
         self.partedDevice = None
@@ -172,6 +173,7 @@ class Base:
         base = swis[0]
 
         self.log.info("Installing ONL Software Image (%s)...", base)
+            
         dev = self.blkidParts['ONL-IMAGES']
         with MountContext(dev.device, log=self.log) as ctx:
             dst = os.path.join(ctx.dir, base)
@@ -814,7 +816,11 @@ class UbootInstaller(SubprocessMixin, Base):
             cmds.append("setenv onl_itb %s" % itb)
             for item in self.platformConf['loader']['setenv']:
                 k, v = list(item.items())[0]
-                cmds.append("setenv %s %s" % (k, v,))
+                device = self.getDevice()
+                if "mtdblock" in device:
+                    cmds.append("setenv %s %s ${platformargs} ubi.mtd=%s root=/dev/ram ethaddr=$ethaddr" % (k, v, device[-1],))
+                else:
+                    cmds.append("setenv %s %s" % (k, v,))
             cmds.extend(self.platformConf['loader']['nos_bootcmds'])
             return "; ".join(cmds)
 
@@ -827,9 +833,58 @@ class UbootInstaller(SubprocessMixin, Base):
         # set to a partition device for raw loader install,
         # default to None for FS-based install
 
+    def maybeCreateUBIfs(self):
+        """Set up an UBI file system."""
+
+        self.partedDevice = parted.getDevice(self.device)
+        
+        UNITS = {
+            'GiB' : 1024 * 1024 * 1024,
+            'G' : 1000 * 1000 * 1000,
+            'MiB' : 1024 * 1024,
+            'M' : 1000 * 1000,
+            'KiB' : 1024,
+            'K' : 1000,
+        }
+        try:
+
+            code = 0
+            if not code:
+                mtd_num = self.device[-1]
+                cmd = ('ubiformat', '/dev/mtd' + mtd_num)
+                self.check_call(cmd, vmode=self.V2)
+                cmd = ('ubiattach', '-m', mtd_num, '-d', '0', '/dev/ubi_ctrl',)
+                self.check_call(cmd, vmode=self.V2)
+                
+                for part in self.im.platformConf['installer']:
+                    label, partData = list(part.items())[0]
+                    if type(partData) == dict: 
+                        sz, fmt = partData['='], partData.get('format', 'ubifs')
+                    else:
+                       sz, fmt = partData, 'ubifs'
+                    cnt = None
+                    for ul, ub in UNITS.items():
+                        if sz.endswith(ul):
+                            cnt = int(sz[:-len(ul)], 10) * ub
+                            break
+                    if cnt is None:
+                        self.log.error("invalid size (no units) for %s: %s",
+                               part, sz)
+                        return 1
+                    label = label.strip()
+                    cmd = ('ubimkvol', '/dev/ubi0', '-N', label, '-s', bytes(cnt),)
+                    self.check_call(cmd, vmode=self.V2)
+
+
+        except Exception:
+            self.log.exception("cannot create UBI file systemfrom %s",
+                               self.device)
+
+        return 0
     def maybeCreateLabel(self):
         """Set up an msdos label."""
 
+            
         self.partedDevice = parted.getDevice(self.device)
         try:
             self.partedDisk = parted.newDisk(self.partedDevice)
@@ -954,6 +1009,110 @@ class UbootInstaller(SubprocessMixin, Base):
 
         code = self.assertUnmounted()
         if code: return code
+
+        #check the install device is flash device or not
+        if "mtdblock" in self.device:
+            code = self.maybeCreateUBIfs()
+            if code: return code
+
+            self.ubiParts = UbinfoParser(log=self.log.getChild("ubinfo -a"))
+
+            files = os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()
+            swis = [x for x in files if x.endswith('.swi')]
+            if not swis:
+                self.log.info("No ONL Software Image available for installation.")
+                self.log.info("Post-install ZTN installation will be required.")
+                return 1
+            if len(swis) > 1:
+                self.log.warn("Multiple SWIs found in installer: %s", " ".join(swis))
+                return 1
+            base = swis[0]
+            self.log.info("Installing ONL Software Image (%s)...", base)
+            dstDir = "/tmp/ubifs"
+            cmd = ("/bin/mkdir", dstDir, )
+            self.check_call(cmd, vmode=self.V2)
+            dev = self.ubiParts['ONL-IMAGES']
+            device = "/dev/" + dev['device'] + "_" + dev['Volume ID']
+            cmd = ('mount', '-t', dev['fsType'], device, dstDir,)
+            self.check_call(cmd, vmode=self.V2)
+            dst = os.path.join(dstDir, base)
+            self.installerCopy(base, dst)
+            
+            loaderBasename = None
+            for c in sysconfig.installer.fit:
+                if self.installerExists(c):
+                    loaderBasename = c
+                    break
+
+            if not loaderBasename:
+                self.log.error("The platform loader file is missing.")
+                return 1
+
+            self.log.info("Installing the ONL loader from %s...", loaderBasename)
+            
+
+            dstDir = "/tmp/ubiloader"
+            cmd = ("/bin/mkdir", dstDir, )
+            self.check_call(cmd, vmode=self.V2)
+            dev = self.ubiParts['ONL-BOOT']
+            device = "/dev/" + dev['device'] + "_" + dev['Volume ID']
+            cmd = ('mount', '-t', dev['fsType'], device, dstDir,)
+            self.check_call(cmd, vmode=self.V2)
+            self.log.info("Installing ONL loader %s --> %s:%s...",
+                                  loaderBasename, device, loaderBasename)
+
+            dst = os.path.join(dstDir, "%s.itb" % self.im.installerConf.installer_platform)
+
+            self.installerCopy(loaderBasename, dst)
+
+            self.log.info("Installing boot-config to %s", device)
+            basename = 'boot-config'
+            dst = os.path.join(dstDir, basename)
+            if not self.installerCopy(basename, dst, True):
+                return 1
+
+            with open(dst) as fd:
+                buf = fd.read()
+
+            ecf = buf.encode('base64', 'strict').strip()
+            if self.im.grub and self.im.grubEnv is not None:
+                setattr(self.im.grubEnv, 'boot_config_default', ecf)
+            if self.im.uboot and self.im.ubootEnv is not None:
+                setattr(self.im.ubootEnv, 'boot-config-default', ecf)
+
+        
+            
+            dstDir = "/tmp/ubiconfig"
+            cmd = ("/bin/mkdir", dstDir, )
+            self.check_call(cmd, vmode=self.V2)
+            dev = self.ubiParts['ONL-CONFIG']
+            device = "/dev/" + dev['device'] + "_" + dev['Volume ID']
+            cmd = ('mount', '-t', dev['fsType'], device, dstDir,)
+            self.check_call(cmd, vmode=self.V2)
+
+            for f in self.zf.namelist():
+                d = 'config/'
+                if f.startswith(d) and f != d:
+                    dst = os.path.join(dstDir, os.path.basename(f))
+                    if not os.path.exists(dst):
+                        self.installerCopy(f, dst)
+
+
+            self.log.info("syncing block devices")
+            self.check_call(('sync',))
+
+
+            code = self.installUbootEnv()
+            if code: return code
+            
+            code = self.runPlugins(Plugin.PLUGIN_POSTINSTALL)
+            if code: return code
+            return 0
+
+
+            cmd = ('umount', dstDir)
+            self.check_call(cmd, vmode=self.V2)
+            return 0
 
         code = self.maybeCreateLabel()
         if code: return code
