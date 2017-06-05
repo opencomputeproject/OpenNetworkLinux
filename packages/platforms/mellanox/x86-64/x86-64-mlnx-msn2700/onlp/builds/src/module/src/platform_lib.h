@@ -44,9 +44,6 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
-#define MIN_LIMIT_FRONT_FAN_RPM 21000
-#define MIN_LIMIT_REAR_FAN_RPM  21000
-
 /* LED related data
  */
 enum onlp_led_id

@@ -50,6 +50,9 @@
         }                                       \
     } while(0)
 
+/* LED related data
+ */
+
 typedef struct led_light_mode_map {
     enum onlp_led_id id;
     char* driver_led_mode;

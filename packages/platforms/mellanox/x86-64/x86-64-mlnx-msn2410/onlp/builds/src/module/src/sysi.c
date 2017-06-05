@@ -138,6 +138,7 @@ onlp_sysi_platform_manage_leds(void)
 {
 	int fan_number;
 	onlp_led_mode_t mode;
+	int min_fan_speed;
 	enum onlp_led_id fan_led_id[4] = { LED_FAN1, LED_FAN2, LED_FAN3, LED_FAN4 };
 
 	/* after reboot, status LED should blink green, SW set to solid green */
@@ -168,7 +169,8 @@ onlp_sysi_platform_manage_leds(void)
 		}
 		else
 		{
-			if( fi.rpm <  MIN_LIMIT_FRONT_FAN_RPM )
+			min_fan_speed = onlp_fani_get_min_rpm(fan_number);
+			if( fi.rpm < min_fan_speed)
 			{
 				mode = ONLP_LED_MODE_RED;
 			}
@@ -186,7 +188,8 @@ onlp_sysi_platform_manage_leds(void)
 		}
 		else
 		{
-			if( fi.rpm <  MIN_LIMIT_REAR_FAN_RPM )
+			min_fan_speed = onlp_fani_get_min_rpm(fan_number+1);
+			if( fi.rpm < min_fan_speed)
 			{
 				mode = ONLP_LED_MODE_RED;
 			}

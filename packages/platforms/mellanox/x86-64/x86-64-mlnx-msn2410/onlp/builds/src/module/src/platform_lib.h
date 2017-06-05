@@ -42,9 +42,6 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
-#define MIN_LIMIT_FRONT_FAN_RPM 21000
-#define MIN_LIMIT_REAR_FAN_RPM  21000
-
 /* LED related data
  */
 enum onlp_led_id
@@ -68,5 +65,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 
 int psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info,
                      onlp_fan_info_t* fan_info);
+
+int onlp_fani_get_min_rpm(int id);
 
 #endif  /* __PLATFORM_LIB_H__ */
