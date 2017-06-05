@@ -25,3 +25,4 @@ platform-powerpc-85xx-Makefile.patch
 platform-powerpc-dni-7448-r0.patch
 platform-powerpc-quanta-lb9-r0.patch
 driver-support-intel-igb-bcm50210-phy.patch
+driver-hid-cp2112-mods.patch
