@@ -1,0 +1,5 @@
+#!/usr/bin/python
+
+from onl.support.OnlSupport import OnlSupport
+
+OnlSupport().main()
