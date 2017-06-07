@@ -29,8 +29,6 @@
 #include <onlp/psu.h>
 #include "x86_64_mlnx_msn2700_log.h"
 
-// ./sm/infra/modules/AIM/module/inc/AIM/aim_log.h
-
 #define CHASSIS_PSU_COUNT           2
 #define CHASSIS_TOTAL_FAN_COUNT     10
 #define CHASSIS_TOTAL_THERMAL_COUNT 8
@@ -67,5 +65,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 
 int psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info,
                      onlp_fan_info_t* fan_info);
+
+int onlp_fani_get_min_rpm(int id);
 
 #endif  /* __PLATFORM_LIB_H__ */

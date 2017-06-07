@@ -152,7 +152,7 @@ onlp_sysi_platform_manage_leds(void)
 	 *     Off   - No power
 	 *
 	 */
-	for( fan_number = 1; fan_number<= 8; fan_number+=2)
+	for( fan_number = 1; fan_number <= CHASSIS_FAN_COUNT; fan_number+=2)
 	{
 		/* each 2 fans had same led_fan */
 		onlp_fan_info_t fi;

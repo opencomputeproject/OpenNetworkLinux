@@ -52,15 +52,6 @@
 
 /* LED related data
  */
-enum onlp_led_id
-{
-    LED_RESERVED = 0,
-    LED_SYSTEM,
-    LED_FAN,
-    LED_PSU1,
-	LED_PSU2,
-	LED_UID
-};
 
 typedef struct led_light_mode_map {
     enum onlp_led_id id;
