@@ -52,15 +52,6 @@
 
 /* LED related data
  */
-enum onlp_led_id
-{
-    LED_RESERVED = 0,
-    LED_SYSTEM,
-    LED_FAN,
-    LED_PSU1,
-	LED_PSU2,
-	LED_UID
-};
 
 typedef struct led_light_mode_map {
     enum onlp_led_id id;
@@ -153,8 +144,11 @@ static onlp_led_info_t linfo[] =
 
 static int driver_to_onlp_led_mode(enum onlp_led_id id, char* driver_led_mode)
 {
+    char *pos;
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
 
+    if ((pos=strchr(driver_led_mode, '\n')) != NULL)
+        *pos = '\0';
     for (i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id &&
