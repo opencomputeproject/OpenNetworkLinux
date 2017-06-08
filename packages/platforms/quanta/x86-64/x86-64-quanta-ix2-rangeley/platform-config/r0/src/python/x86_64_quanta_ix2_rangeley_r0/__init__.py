@@ -13,7 +13,7 @@ class OnlPlatform_x86_64_quanta_ix2_rangeley_r0(OnlPlatformQuanta,
         os.system("i2cset -y 0 0x8 0x1 0x5")
 
         self.insmod("qci_pmbus")
-        self.insmod("qci_cpld")
+        self.insmod("qci_cpld_sfp28")
         self.insmod("quanta_hwmon_ix_series")
         self.insmod("quanta_platform_ix2")
 

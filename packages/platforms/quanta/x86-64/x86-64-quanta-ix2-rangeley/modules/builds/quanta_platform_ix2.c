@@ -63,7 +63,7 @@ char *i2c_type_names[] = {
 	"pca9554",
 	"pca9555",
 	"pca9698",
-	"CPLD-QSFP28",
+	"CPLD-SFP28",
 	"24c02",
 	"qci_pmbus_ix2",
 	"quanta_ix2_hwmon",
