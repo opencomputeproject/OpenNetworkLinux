@@ -149,8 +149,11 @@ esac
 
 if test "${mode_install}${mode_overlay}"; then
   for arch in $ARCH_LIST; do
-    unzip -pq "$swipath" "rootfs-${arch}.sqsh" > "$workdir/rootfs.sqsh"
-    if test -s "$workdir/rootfs.sqsh"; then break; fi
+    unzip -q "$swipath" "rootfs-${arch}.sqsh" -d "$workdir"
+    if test -s "$workdir/rootfs-${arch}.sqsh"; then
+      mv "$workdir/rootfs-${arch}.sqsh" "$workdir/rootfs.sqsh"
+      break;
+    fi
   done
   if test ! -s "$workdir/rootfs.sqsh"; then
     echo "*** cannot find a valid rootfs" 1>&2
