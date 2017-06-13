@@ -18,26 +18,24 @@
 #
 # </bsn.cl>
 ############################################################
-
+#
+# Default 3.2 LTS Configuration for X86_64
+#
+############################################################
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(ONL)/make/config.mk
 
+export ARCH := x86_64
 ifndef K_TARGET_DIR
 K_TARGET_DIR := $(THIS_DIR)
 endif
 
-K_PATCH_DIR := $(THIS_DIR)/patches
-
 include ../../kconfig.mk
-K_CONFIG := arm-iproc-all.config
-K_BUILD_TARGET := Image
-K_COPY_SRC := arch/arm/boot/Image
-K_COPY_GZIP := 1
+K_CONFIG := x86_64-all.config
+K_BUILD_TARGET := bzImage
+K_COPY_SRC := arch/x86/boot/bzImage
 ifndef K_COPY_DST
-K_COPY_DST := kernel-3.2-lts-arm-iproc-all.bin.gz
+K_COPY_DST := kernel-3.2-lts-x86_64-all
 endif
-
-export ARCH=arm
-DTS_LIST := accton_as4610_54
 
 include $(ONL)/make/kbuild.mk
