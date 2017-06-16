@@ -32,15 +32,23 @@
 #include <linux/sysfs.h>
 #include <linux/slab.h>
 
+
+#define PSU_STATUS_I2C_ADDR			0x60
+#define PSU_STATUS_I2C_REG_OFFSET	0x2
+
+#define IS_POWER_GOOD(id, value)	(!!(value & BIT(id*4 + 1)))
+#define IS_PRESENT(id, value)		(!(value & BIT(id*4)))
+
 static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
 static int as5812_54x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
 extern int as5812_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
+static int as5812_54x_psu_model_name_get(struct device *dev);
 
 /* Addresses scanned
  */
-static const unsigned short normal_i2c[] = { 0x38, 0x3b, 0x50, 0x53, I2C_CLIENT_END };
+static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 
 /* Each client has this additional data
  */
@@ -94,11 +102,15 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     struct as5812_54x_psu_data *data = as5812_54x_psu_update_device(dev);
     u8 status = 0;
 
+    if (!data->valid) {
+        return sprintf(buf, "0\n");
+    }
+
     if (attr->index == PSU_PRESENT) {
-        status = !(data->status >> ((data->index - 1) * 4) & 0x1);
+        status = IS_PRESENT(data->index, data->status);
     }
     else { /* PSU_POWER_GOOD */
-        status = data->status >> ((data->index - 1) * 4 + 1) & 0x1;
+        status = IS_POWER_GOOD(data->index, data->status);
     }
 
     return sprintf(buf, "%d\n", status);
@@ -109,7 +121,19 @@ static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
 {
     struct as5812_54x_psu_data *data = as5812_54x_psu_update_device(dev);
 
-    return sprintf(buf, "%s", data->model_name);
+    if (!data->valid) {
+        return 0;
+    }
+
+    if (!IS_PRESENT(data->index, data->status)) {
+        return 0;
+    }
+
+    if (as5812_54x_psu_model_name_get(dev) < 0) {
+        return -ENXIO;
+    }
+
+    return sprintf(buf, "%s\n", data->model_name);
 }
 
 static const struct attribute_group as5812_54x_psu_group = {
@@ -135,6 +159,7 @@ static int as5812_54x_psu_probe(struct i2c_client *client,
 
     i2c_set_clientdata(client, data);
     data->valid = 0;
+    data->index = dev_id->driver_data;
     mutex_init(&data->update_lock);
 
     dev_info(&client->dev, "chip found\n");
@@ -149,14 +174,6 @@ static int as5812_54x_psu_probe(struct i2c_client *client,
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
-    }
-
-    /* Update PSU index */
-    if (client->addr == 0x38 || client->addr == 0x50) {
-        data->index = 1;
-    }
-    else if (client->addr == 0x3b || client->addr == 0x53) {
-        data->index = 2;
     }
 
     dev_info(&client->dev, "%s: psu '%s'\n",
@@ -184,8 +201,15 @@ static int as5812_54x_psu_remove(struct i2c_client *client)
     return 0;
 }
 
+enum psu_index 
+{ 
+    as5812_54x_psu1, 
+    as5812_54x_psu2
+};
+
 static const struct i2c_device_id as5812_54x_psu_id[] = {
-    { "as5812_54x_psu", 0 },
+    { "as5812_54x_psu1", as5812_54x_psu1 },
+    { "as5812_54x_psu2", as5812_54x_psu2 },
     {}
 };
 MODULE_DEVICE_TABLE(i2c, as5812_54x_psu_id);
@@ -219,6 +243,76 @@ abort:
     return result;
 }
 
+enum psu_type {
+    PSU_YM_2401_JCR,    /* AC110V - F2B */
+    PSU_YM_2401_JDR,    /* AC110V - B2F */
+    PSU_CPR_4011_4M11,  /* AC110V - F2B */
+    PSU_CPR_4011_4M21,  /* AC110V - B2F */
+    PSU_CPR_6011_2M11,  /* AC110V - F2B */
+    PSU_CPR_6011_2M21,  /* AC110V - B2F */
+    PSU_UM400D_01G,     /* DC48V  - F2B */
+    PSU_UM400D01_01G    /* DC48V  - B2F */
+};
+
+struct model_name_info {
+    enum psu_type type;
+    u8 offset;
+    u8 length;
+    char* model_name;
+};
+
+struct model_name_info models[] = {
+{PSU_YM_2401_JCR,   0x20, 11, "YM-2401JCR"},
+{PSU_YM_2401_JDR,   0x20, 11, "YM-2401JDR"},
+{PSU_CPR_4011_4M11, 0x26, 13, "CPR-4011-4M11"},
+{PSU_CPR_4011_4M21, 0x26, 13, "CPR-4011-4M21"},
+{PSU_CPR_6011_2M11, 0x26, 13, "CPR-6011-2M11"},
+{PSU_CPR_6011_2M21, 0x26, 13, "CPR-6011-2M21"},
+{PSU_UM400D_01G,    0x50,  9, "um400d01G"},
+{PSU_UM400D01_01G,  0x50, 12, "um400d01-01G"},
+};
+
+static int as5812_54x_psu_model_name_get(struct device *dev)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5812_54x_psu_data *data = i2c_get_clientdata(client);
+    int i, status;
+
+    for (i = 0; i < ARRAY_SIZE(models); i++) {
+        memset(data->model_name, 0, sizeof(data->model_name));
+
+        status = as5812_54x_psu_read_block(client, models[i].offset,
+                                           data->model_name, models[i].length);
+        if (status < 0) {
+            data->model_name[0] = '\0';
+            dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x%x)\n", 
+                                  client->addr, models[i].offset);
+            return status;
+        }
+        else {
+            data->model_name[models[i].length] = '\0';
+        }
+
+        if (i == PSU_YM_2401_JCR || i == PSU_YM_2401_JDR) {
+            /* Skip the meaningless data byte 8*/
+            data->model_name[8] = data->model_name[9];
+            data->model_name[9] = data->model_name[10];
+            data->model_name[10] = '\0';
+        }
+
+        /* Determine if the model name is known, if not, read next index
+         */
+        if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
+            return 0;
+        }
+        else {
+            data->model_name[0] = '\0';
+        }
+    }
+
+    return -ENODATA;
+}
+
 static struct as5812_54x_psu_data *as5812_54x_psu_update_device(struct device *dev)
 {
     struct i2c_client *client = to_i2c_client(dev);
@@ -231,32 +325,15 @@ static struct as5812_54x_psu_data *as5812_54x_psu_update_device(struct device *d
         int status = -1;
 
         dev_dbg(&client->dev, "Starting as5812_54x update\n");
+        data->valid = 0;
 
-        /* Read model name */
-        if (client->addr == 0x38 || client->addr == 0x3b) {
-            /* AC power */
-            status = as5812_54x_psu_read_block(client, 0x26, data->model_name,
-                                               ARRAY_SIZE(data->model_name)-1);
-        }
-        else {
-            /* DC power */
-            status = as5812_54x_psu_read_block(client, 0x50, data->model_name,
-                                               ARRAY_SIZE(data->model_name)-1);
-        }
-
-        if (status < 0) {
-            data->model_name[0] = '\0';
-            dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
-        }
-        else {
-            data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
-        }
 
         /* Read psu status */
-        status = as5812_54x_i2c_cpld_read(0x60, 0x2);
+        status = as5812_54x_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
 
         if (status < 0) {
-            dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
+            dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
+            goto exit;
         }
         else {
             data->status = status;
@@ -266,6 +343,7 @@ static struct as5812_54x_psu_data *as5812_54x_psu_update_device(struct device *d
         data->valid = 1;
     }
 
+exit:
     mutex_unlock(&data->update_lock);
 
     return data;
