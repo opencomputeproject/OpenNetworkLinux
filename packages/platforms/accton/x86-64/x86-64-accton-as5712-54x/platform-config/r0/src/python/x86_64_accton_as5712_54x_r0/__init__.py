@@ -10,6 +10,7 @@ class OnlPlatform_x86_64_accton_as5712_54x_r0(OnlPlatformAccton,
 
     def baseconfig(self):
         self.insmod('cpr_4011_4mxx')
+        self.insmod("ym2651y")
         for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
             self.insmod("x86-64-accton-as5712-54x-%s.ko" % m)
 
@@ -42,19 +43,16 @@ class OnlPlatform_x86_64_accton_as5712_54x_r0(OnlPlatformAccton,
                 ('pca9548', 0x70, 1),
 
                 # initiate PSU-1 AC Power
-                ('as5712_54x_psu', 0x38, 57),
+                ('as5712_54x_psu1', 0x38, 57),
                 ('cpr_4011_4mxx',  0x3c, 57),
+                ('as5712_54x_psu1', 0x50, 57),
+                ('ym2401',  0x58, 57),
 
                 # initiate PSU-2 AC Power
-                ('as5712_54x_psu', 0x3b, 58),
+                ('as5712_54x_psu2', 0x3b, 58),
                 ('cpr_4011_4mxx',  0x3f, 58),
-
-                # initiate PSU-1 DC Power
-                ('as5712_54x_psu', 0x50, 57),
-
-                # initiate PSU-2 DC Power
-                ('as5712_54x_psu', 0x53, 58),
-
+                ('as5712_54x_psu2', 0x53, 58),
+                ('ym2401',  0x5b, 58),
 
                 # initiate lm75
                 ('lm75', 0x48, 61),
