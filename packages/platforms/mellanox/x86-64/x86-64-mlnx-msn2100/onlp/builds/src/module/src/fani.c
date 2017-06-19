@@ -353,9 +353,8 @@ onlp_fani_get_min_rpm(int id)
 {
     int   len = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[65] = {0};
 
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[id].min);
-    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    if (onlp_file_read((uint8_t*)r_data, nbytes, &len, "%s%s", PREFIX_PATH, fan_path[id].min) < 0)
+        return ONLP_STATUS_E_INTERNAL;
     return atoi(r_data);
 }
