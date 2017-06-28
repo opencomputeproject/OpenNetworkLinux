@@ -332,7 +332,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     else
         sprintf(sfp_name, "QSFP%d", port);
     for(i=0;i<8;i++){
-        if (i2c_devname_read_block(sfp_name, (32*i), (char*)(data+32*i), 32) < 0)
+        if (i2c_devname_read_block(sfp_name, (32*i), (uint8_t*)(data+32*i), 32) < 0)
         {
             AIM_LOG_ERROR("Unable to read the port %d eeprom\r\n", port);
             return ONLP_STATUS_E_INTERNAL;

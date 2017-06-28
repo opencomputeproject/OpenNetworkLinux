@@ -41,17 +41,6 @@
         }                                       \
     } while(0)
 
-#define OPEN_READ_FILE(fd,fullpath,data,nbytes,len) \
-    DEBUG_PRINT("[Debug][%s][%d][openfile: %s]\n", __FUNCTION__, __LINE__, fullpath); \
-    if ((fd = open(fullpath, O_RDONLY)) == -1)  \
-       return ONLP_STATUS_E_INTERNAL;           \
-    if ((len = read(fd, r_data, nbytes)) <= 0){ \
-        close(fd);                              \
-        return ONLP_STATUS_E_INTERNAL;}         \
-    DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
-    if (close(fd) == -1)                        \
-        return ONLP_STATUS_E_INTERNAL
-
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
@@ -125,8 +114,8 @@ onlp_thermali_init(void)
 int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
-    int   fd, len, nbytes = 10, temp_base=1, local_id;
-    char  r_data[10]   = {0};
+    int   len, nbytes = 10, temp_base=1, local_id;
+    uint8_t r_data[10]={0};
     char  fullpath[50] = {0};
     VALIDATE(id);
 
@@ -139,9 +128,10 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     /* get fullpath */
     sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);
 
-    OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    //OPEN_READ_FILE(fd, fullpath, r_data, nbytes, len);
+    onlp_file_read(r_data,nbytes,&len, fullpath);
     
-    info->mcelsius = atoi(r_data) / temp_base;
+    info->mcelsius =ONLPLIB_ATOI((char*)r_data) / temp_base;
     
     DEBUG_PRINT("\n[Debug][%s][%d][save data: %d]\n", __FUNCTION__, __LINE__, info->mcelsius);
 

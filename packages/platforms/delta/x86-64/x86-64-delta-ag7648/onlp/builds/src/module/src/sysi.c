@@ -78,15 +78,16 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
-  
+	int i,re_cnt;
     uint8_t* rdata = aim_zmalloc(256);
-
-    int i,re_cnt;
-
+    if(!rdata){
+		AIM_LOG_ERROR("Unable to malloc memory \r\n");
+		return ONLP_STATUS_E_INTERNAL;
+	}
 	for(i=0;i<8;i++){
 		re_cnt=3;
 		while(re_cnt){
-			if (i2c_devname_read_block("ID_EEPROM", i * 32, (char *)(rdata + i * 32), 32) < 0)
+			if (i2c_devname_read_block("ID_EEPROM", i * 32, (rdata + i * 32), 32) < 0)
 			{
                 re_cnt--;
 				continue;
@@ -95,11 +96,11 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
 		}
 		if(re_cnt==0){
 			AIM_LOG_ERROR("Unable to read the %d reg \r\n",i);
-			return ONLP_STATUS_E_INTERNAL;
+			break;
 		}
 			
 	}
-    
+   
     *data = rdata;
 
     return ONLP_STATUS_OK;
@@ -144,6 +145,16 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
 
     return 0;
 }
+int
+onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
+{   
+    if(onie){
+        onie->platform_name = aim_strdup(ONIE_PLATFORM_NAME);
+    }
+    return ONLP_STATUS_OK;
+}
+
+
 
 int
 onlp_sysi_platform_manage_fans(void)

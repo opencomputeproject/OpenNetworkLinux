@@ -33,8 +33,7 @@
 #include <pthread.h>
 #include "x86_64_delta_ag7648_log.h"
 #include "x86_64_delta_i2c.h"
-#include "x86_64_delta_i2c_dev.h"
-
+#include <onlplib/i2c.h>
 struct i2c_device_info i2c_device_list[]={
 	{"RTC",0X0,0X69},
 	{"TMP1_CLOSE_TO_CPU",0X2,0X4d},
@@ -119,6 +118,7 @@ struct i2c_device_info i2c_device_list[]={
 #define I2C_DATA_C	3
 #define I2C_DATA_QUICK  4
 
+uint32_t i2c_flag=ONLP_I2C_F_FORCE;
 
 static pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -130,153 +130,6 @@ void I2C_PROTECT (void)
 void I2C_UNPROTECT (void)
 {
 	pthread_mutex_unlock (&i2c_mutex);
-}
-
-static int open_i2cbus_dev(int i2cbus, char *filename,  int quiet)
-{
-	int file;
-
-	sprintf(filename, "/dev/i2c-%d", i2cbus);
-	file = open(filename, O_RDWR);
-
-	if (file < 0 && !quiet) {
-		if (errno == ENOENT) {
-			fprintf(stderr, "Error: Could not open file "
-				"`/dev/i2c-%d: %s'\n",i2cbus, strerror(ENOENT));
-		} else {
-			fprintf(stderr, "Error: Could not open file "
-				"`%s': %s\n", filename, strerror(errno));
-			if (errno == EACCES)
-				fprintf(stderr, "Run as root?\n");
-		}
-	}
-
-	return file;
-}
-
-static int set_slave_addr(int file, int address, int force)
-{
-	/* hack */
-	force = 1; /* force always, it will break th i2c driver's behave */
-
-
-	/* With force, let the user read from/write to the registers
-	   even when a driver is also running */
-	if (ioctl(file, force ? I2C_SLAVE_FORCE : I2C_SLAVE, address) < 0) {
-		if (errno != EBUSY) {
-		fprintf(stderr,
-			"Error: Could not set address to 0x%02x: %s\n",
-			address, strerror(errno));
-		return -errno;
-		}
-	}
-
-	return 0;
-}
-
-static int i2c_dev_read (int i2cbus, int dev, int reg, int mode)
-{
-	int file;
-	char filename[20];
-	int force = 0;
-	int res = 0;
-
-	file = open_i2cbus_dev(i2cbus, filename, 0);
-	if (file < 0) return -1;
-
-	if (set_slave_addr(file, dev, force))return -1;
-	
-	switch (mode) {
-	case I2C_DATA_W:
-		res = i2c_smbus_read_word_data(file, reg);
-		break;
-	case I2C_DATA_C:
-		if (reg >= 0) {
-			res = i2c_smbus_write_byte(file, reg);
-			if (res < 0) break;
-		}
-		res = i2c_smbus_read_byte(file);
-		break;
-    default:
-        res = i2c_smbus_read_byte_data(file, reg);
-        break;
-	}
-	close(file);
-	
-	return res;
-}
-
-static int i2c_dev_write (int i2cbus, int dev, int reg, int value, int mode)
-{
-	int file;
-	char filename[20];
-	int force = 0;
-	int res = 0;
-
-	file = open_i2cbus_dev(i2cbus, filename, 0);
-	if (file < 0) return -1;
-
-	if (set_slave_addr(file, dev, force)) return -1;
-	
-	switch (mode) {
-	case I2C_DATA_W:
-		res = i2c_smbus_write_word_data(file, reg, value);
-		break;
-	case I2C_DATA_C:
-		res = i2c_smbus_write_byte (file, reg);
-		break;
-    case I2C_DATA_QUICK:
-        res = i2c_smbus_write_quick(file, I2C_SMBUS_WRITE);
-        break;
-	default:
-		res = i2c_smbus_write_byte_data(file, reg, value);
-		break;
-	
-	}
-	close(file);
-	usleep (5000);
-
-	return res;
-}
-
-static int i2c_block_read (int i2cbus, int dev, int reg, char *buff, int buff_len)
-{
-	int file;
-	char filename[20];
-	int force = 0;
-	int res = 0;
-	
-	file = open_i2cbus_dev(i2cbus, filename, 0);
-	
-	if (file < 0) return -1;
-	
-	if (set_slave_addr(file, dev, force)) return -1;
-	
-	res = i2c_smbus_read_i2c_block_data (file, reg, buff_len, (__u8 *)buff);
-	
-	close(file);
-
-	return res;
-}
-
-static int i2c_block_write (int i2cbus, int dev, int reg, char *buff, int buff_len)
-{
-	int file;
-	char filename[20];
-	int force = 0;
-	int res = 0;
-
-	file = open_i2cbus_dev(i2cbus, filename, 0);
-	
-	if (file < 0) return -1;
-
-	if (set_slave_addr(file, dev, force)) return -1;
-
-	res = i2c_smbus_write_i2c_block_data (file, reg, buff_len, (__u8 *)buff);
-	
-	close(file);
-
-	return res;
 }
 
 i2c_device_info_t *i2c_dev_find_by_name (char *name)
@@ -304,7 +157,7 @@ int i2c_devname_read_byte  (char *name, int reg)
 
 	I2C_PROTECT();
 	
-	ret=i2c_dev_read (i2c_dev->i2cbus, i2c_dev->addr, reg,  I2C_DATA_B);	
+	ret=onlp_i2c_readb(i2c_dev->i2cbus, i2c_dev->addr, reg, i2c_flag);	
 
 	I2C_UNPROTECT();
 
@@ -320,7 +173,7 @@ int i2c_devname_write_byte (char *name, int reg, int value)
 
 	I2C_PROTECT();
 	
-	ret=i2c_dev_write (i2c_dev->i2cbus, i2c_dev->addr, reg, value, I2C_DATA_B);
+	ret=onlp_i2c_writeb (i2c_dev->i2cbus, i2c_dev->addr, reg, value, i2c_flag);
 
 	I2C_UNPROTECT();
 
@@ -336,7 +189,7 @@ int i2c_devname_read_word  (char *name, int reg)
 
 	I2C_PROTECT();
 	
-	ret=i2c_dev_read (i2c_dev->i2cbus, i2c_dev->addr, reg,  I2C_DATA_W);	
+	ret=onlp_i2c_readw(i2c_dev->i2cbus, i2c_dev->addr, reg, i2c_flag);	
 
 	I2C_UNPROTECT();
 
@@ -352,14 +205,14 @@ int i2c_devname_write_word (char *name, int reg, int value)
 
 	I2C_PROTECT();
 	
-	ret=i2c_dev_write (i2c_dev->i2cbus, i2c_dev->addr, reg, value, I2C_DATA_W);
+	ret=onlp_i2c_writew (i2c_dev->i2cbus, i2c_dev->addr, reg, value, i2c_flag);
 
 	I2C_UNPROTECT();
 
 	return ret;
 }
 
-int i2c_devname_read_block (char *name, int reg, char *buff, int buff_size)
+int i2c_devname_read_block (char *name, int reg, uint8_t*buff, int buff_size)
 {	
 	int ret = -1;
 	
@@ -369,7 +222,7 @@ int i2c_devname_read_block (char *name, int reg, char *buff, int buff_size)
 	
 	I2C_PROTECT();
 	
-	ret = i2c_block_read (i2c_dev->i2cbus, i2c_dev->addr, reg, buff, buff_size);
+	ret =onlp_i2c_block_read (i2c_dev->i2cbus, i2c_dev->addr, reg, buff_size, buff, i2c_flag);
 
 	I2C_UNPROTECT();
 
@@ -377,20 +230,3 @@ int i2c_devname_read_block (char *name, int reg, char *buff, int buff_size)
 
 }
 
-int i2c_devname_write_block (char *name, int reg, char *buff, int buff_size)
-{	
-	int ret = -1;
-	
-	i2c_device_info_t *i2c_dev = i2c_dev_find_by_name (name);
-		
-	if(i2c_dev==NULL) return -1;
-	
-	I2C_PROTECT();
-
-	ret = i2c_block_write (i2c_dev->i2cbus, i2c_dev->addr, reg, buff, buff_size);
-	
-	I2C_UNPROTECT();
-
-	return ret;
-
-}

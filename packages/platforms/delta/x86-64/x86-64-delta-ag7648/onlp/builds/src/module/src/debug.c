@@ -1,4 +1,3 @@
-#include "x86_64_delta_ag7648_int.h"
 
 #if X86_64_DELTA_AG7648_CONFIG_INCLUDE_DEBUG == 1
 

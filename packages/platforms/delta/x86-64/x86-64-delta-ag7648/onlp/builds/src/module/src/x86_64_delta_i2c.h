@@ -49,7 +49,7 @@ extern int i2c_devname_read_word(char *name, int reg);
 extern int i2c_devname_write_word(char *name, int reg, int value);
 
 
-extern int i2c_devname_read_block (char *name, int reg, char *buff, int buff_size);
-extern int i2c_devname_write_block(char *name, int reg, char *buff, int buff_size);
+extern int i2c_devname_read_block (char *name, int reg, uint8_t*buff, int buff_size);
+//extern int i2c_devname_write_block(char *name, int reg, char *buff, int buff_size);
 
 #endif 
