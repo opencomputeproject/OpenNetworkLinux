@@ -24,14 +24,15 @@
  *
  ***********************************************************/
 #include <onlp/platformi/fani.h>
-#include <onlplib/mmap.h>
+#include <unistd.h>
+#include <onlplib/file.h>
 #include <fcntl.h>
 #include "platform_lib.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD   "/sys/devices/platform/as6812_32x_fan/"
 #define PREFIX_PATH_ON_PSU          "/sys/bus/i2c/devices/"
 
-#define MAX_FAN_SPEED     25500
+#define MAX_FAN_SPEED     18000  /* use the smaller max_speed of the 2 fans in a fantray */
 #define MAX_PSU_FAN_SPEED 19328
 
 #define PROJECT_NAME
@@ -92,7 +93,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        0, \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -127,6 +128,22 @@ onlp_fan_info_t linfo[] = {
     DEBUG_PRINT("[Debug][%s][%d][read data: %s]\n", __FUNCTION__, __LINE__, r_data); \
     if (close(fd) == -1)                        \
         return ONLP_STATUS_E_INTERNAL
+
+/* PSU relative marco */
+#define SET_PSU_TYPE_AC_F2B_FAN(info) \
+    info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B); \
+    info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE
+
+#define SET_PSU_TYPE_AC_B2F_FAN(info) \
+    info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F); \
+    info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE
+    
+#define SET_PSU_TYPE_UM400D_F2B_FAN(info) \
+    info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B)
+
+#define SET_PSU_TYPE_UM400D_B2F_FAN(info) \
+    info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F)
+
 
 static int
 _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
@@ -179,6 +196,22 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 }
 
 static int
+_onlp_fani_info_get_fan_on_psu_ym2401(int pid, onlp_fan_info_t* info)
+{
+    int val = 0;
+
+    /* get fan status
+     */
+    if (psu_ym2401_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
+        info->status |= (val > 0) ? 0 : ONLP_FAN_STATUS_FAILED;
+        info->rpm = val;
+        info->percentage = (info->rpm * 100) / 21600;	    
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+static int
 _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
     int   psu_id;
@@ -197,32 +230,48 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
 
     switch (psu_type) {
-        case PSU_TYPE_AC_F2B:
-            info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B);
+        case PSU_TYPE_AC_COMPUWARE_F2B:
+        case PSU_TYPE_AC_3YPOWER_F2B:
+            SET_PSU_TYPE_AC_F2B_FAN(info);
             break;
-        case PSU_TYPE_AC_B2F:
-            info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F);
+        case PSU_TYPE_AC_COMPUWARE_B2F:
+        case PSU_TYPE_AC_3YPOWER_B2F:
+            SET_PSU_TYPE_AC_B2F_FAN(info);
+            break;
+        case PSU_TYPE_DC_48V_F2B:
+            SET_PSU_TYPE_UM400D_F2B_FAN(info);
+            break;
+        case PSU_TYPE_DC_48V_B2F:
+            SET_PSU_TYPE_UM400D_B2F_FAN(info);
             break;
         default:
             DEBUG_PRINT("[Debug][%s][%d][psu_type=%d]\n", __FUNCTION__, __LINE__, psu_type);
             break;
     }
-    /* get fan fault status
-     */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
-    if (atoi(r_data) > 0)
-        info->status |= ONLP_FAN_STATUS_FAILED;
+    if (psu_type == PSU_TYPE_AC_COMPUWARE_F2B ||
+        psu_type == PSU_TYPE_AC_COMPUWARE_B2F  )
+    {
+        /* get fan fault status 
+         */
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);	
+        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+        if (atoi(r_data) > 0)
+            info->status |= ONLP_FAN_STATUS_FAILED;
+     
+        /* get fan speed
+         */
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);	
+        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);    
+        info->rpm = atoi(r_data); 
 
-    /* get fan speed
-     */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
-    info->rpm = atoi(r_data);
-
-    /* get speed percentage from rpm */
-    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
-    info->status |= ONLP_FAN_STATUS_PRESENT;
+        /* get speed percentage from rpm */
+        info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
+    }
+    else if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
+            psu_type == PSU_TYPE_AC_3YPOWER_B2F  )
+    {
+        return _onlp_fani_info_get_fan_on_psu_ym2401(psu_id, info);
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -310,8 +359,21 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 	{
         case FAN_1_ON_PSU1:
         case FAN_1_ON_PSU2:
-            sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].ctrl_speed);
+        {
+            int psu_id;
+            psu_type_t psu_type;
+
+            psu_id   = local_id - FAN_1_ON_PSU1 + 1;
+            psu_type = get_psu_type(psu_id, NULL, 0);
+
+            if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
+                psu_type == PSU_TYPE_AC_3YPOWER_B2F  ) {
+                return psu_ym2401_pmbus_info_set(psu_id, "psu_fan1_duty_cycle_percentage", p);
+            }
+
+            sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].ctrl_speed);		
             break;
+        }
         case FAN_1_ON_MAIN_BOARD:
         case FAN_2_ON_MAIN_BOARD:
         case FAN_3_ON_MAIN_BOARD:

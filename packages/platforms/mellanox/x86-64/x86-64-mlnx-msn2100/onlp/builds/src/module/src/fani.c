@@ -348,7 +348,7 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-int 
+int
 onlp_fani_get_min_rpm(int id)
 {
     int   len = 0, nbytes = 10;
@@ -356,5 +356,6 @@ onlp_fani_get_min_rpm(int id)
 
     if (onlp_file_read((uint8_t*)r_data, nbytes, &len, "%s%s", PREFIX_PATH, fan_path[id].min) < 0)
         return ONLP_STATUS_E_INTERNAL;
+  
     return atoi(r_data);
 }
