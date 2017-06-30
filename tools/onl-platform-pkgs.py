@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 ############################################################
 #
 # This script expects a yaml file containing the list
