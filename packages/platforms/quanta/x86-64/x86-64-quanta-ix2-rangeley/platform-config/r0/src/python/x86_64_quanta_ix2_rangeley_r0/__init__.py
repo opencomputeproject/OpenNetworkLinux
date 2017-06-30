@@ -1,10 +1,10 @@
 from onl.platform.base import *
 from onl.platform.quanta import *
 
-class OnlPlatform_x86_64_quanta_ix1_rangeley_r0(OnlPlatformQuanta,
-                                                OnlPlatformPortConfig_32x100):
-    PLATFORM='x86-64-quanta-ix1-rangeley-r0'
-    MODEL="IX1"
+class OnlPlatform_x86_64_quanta_ix2_rangeley_r0(OnlPlatformQuanta,
+                                                OnlPlatformPortConfig_48x25_8x100):
+    PLATFORM='x86-64-quanta-ix2-rangeley-r0'
+    MODEL="IX2"
     """ Define Quanta SYS_OBJECT_ID rule.
 
     SYS_OBJECT_ID = .xxxx.ABCC
@@ -13,12 +13,16 @@ class OnlPlatform_x86_64_quanta_ix1_rangeley_r0(OnlPlatformQuanta,
     "B" define QCT switch series number 1: For example, LB9->9, LY2->2
     "CC" define QCT switch series number 2: For example, LY2->00, LY4R->18(R is 18th english letter)
     """
-    SYS_OBJECT_ID=".7032.3100"
+    SYS_OBJECT_ID=".4048.3200"
 
     def baseconfig(self):
+        # Expose PSOC that behind PCA9641
+        os.system("i2cset -y 0 0x8 0x5 0xfb")
+        os.system("i2cset -y 0 0x8 0x1 0x5")
+
         self.insmod("qci_pmbus")
-        self.insmod("qci_cpld")
+        self.insmod("qci_cpld_sfp28")
         self.insmod("quanta_hwmon_ix_series")
-        self.insmod("quanta_platform_ix1")
+        self.insmod("quanta_platform_ix2")
 
         return True
