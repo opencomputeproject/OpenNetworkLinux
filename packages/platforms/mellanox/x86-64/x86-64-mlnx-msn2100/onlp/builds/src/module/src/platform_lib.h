@@ -41,6 +41,18 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
+/* LED related data
+ */
+enum onlp_led_id
+{
+    LED_RESERVED = 0,
+    LED_SYSTEM,
+    LED_FAN,
+    LED_PSU1,
+    LED_PSU2,
+    LED_UID
+};
+
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
@@ -48,5 +60,7 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+
+int onlp_fani_get_min_rpm(int id);
 
 #endif  /* __PLATFORM_LIB_H__ */
