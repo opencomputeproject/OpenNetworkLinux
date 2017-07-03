@@ -113,24 +113,7 @@ struct i2c_device_info i2c_device_list[]={
     {NULL,  -1,-1},
 };
 
-#define I2C_DATA_B	1
-#define I2C_DATA_W	2
-#define I2C_DATA_C	3
-#define I2C_DATA_QUICK  4
-
 uint32_t i2c_flag=ONLP_I2C_F_FORCE;
-
-static pthread_mutex_t i2c_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void I2C_PROTECT (void)
-{
-	pthread_mutex_lock (&i2c_mutex);
-}
-
-void I2C_UNPROTECT (void)
-{
-	pthread_mutex_unlock (&i2c_mutex);
-}
 
 i2c_device_info_t *i2c_dev_find_by_name (char *name)
 {
@@ -155,11 +138,9 @@ int i2c_devname_read_byte  (char *name, int reg)
     
 	if(i2c_dev==NULL) return -1;
 
-	I2C_PROTECT();
 	
 	ret=onlp_i2c_readb(i2c_dev->i2cbus, i2c_dev->addr, reg, i2c_flag);	
 
-	I2C_UNPROTECT();
 
 	return ret;
 }
@@ -171,11 +152,9 @@ int i2c_devname_write_byte (char *name, int reg, int value)
 	
 	 if(i2c_dev==NULL) return -1;
 
-	I2C_PROTECT();
 	
 	ret=onlp_i2c_writeb (i2c_dev->i2cbus, i2c_dev->addr, reg, value, i2c_flag);
 
-	I2C_UNPROTECT();
 
 	return ret;
 }
@@ -186,12 +165,9 @@ int i2c_devname_read_word  (char *name, int reg)
 	i2c_device_info_t *i2c_dev = i2c_dev_find_by_name (name);
 
 	if(i2c_dev==NULL) return -1;
-
-	I2C_PROTECT();
 	
 	ret=onlp_i2c_readw(i2c_dev->i2cbus, i2c_dev->addr, reg, i2c_flag);	
 
-	I2C_UNPROTECT();
 
 	return ret;
 }
@@ -203,11 +179,9 @@ int i2c_devname_write_word (char *name, int reg, int value)
 	
 	if(i2c_dev==NULL) return -1;
 
-	I2C_PROTECT();
 	
 	ret=onlp_i2c_writew (i2c_dev->i2cbus, i2c_dev->addr, reg, value, i2c_flag);
 
-	I2C_UNPROTECT();
 
 	return ret;
 }
@@ -220,11 +194,9 @@ int i2c_devname_read_block (char *name, int reg, uint8_t*buff, int buff_size)
 		
 	if(i2c_dev==NULL) return -1;
 	
-	I2C_PROTECT();
 	
 	ret =onlp_i2c_block_read (i2c_dev->i2cbus, i2c_dev->addr, reg, buff_size, buff, i2c_flag);
 
-	I2C_UNPROTECT();
 
 	return ret;
 

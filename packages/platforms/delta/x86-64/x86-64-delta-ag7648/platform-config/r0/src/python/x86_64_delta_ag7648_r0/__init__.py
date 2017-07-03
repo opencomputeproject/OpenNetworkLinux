@@ -1,13 +1,11 @@
 from onl.platform.base import *
 from onl.platform.delta import *
 
-class OnlPlatform_x86_64_delta_ag7648_r0(OnlPlatformDelta):
+class OnlPlatform_x86_64_delta_ag7648_r0(OnlPlatformDelta,OnlPlatformPortConfig_48x10_6x40):
 
     PLATFORM='x86-64-delta-ag7648-r0'
     MODEL="AG7648"
     SYS_OBJECT_ID=".7648.1"
-    PORT_COUNT=54
-    PORT_CONFIG="48x10 + 6x40"
 
     def baseconfig(self):
         self.new_i2c_device('pca9547', 0x70, 1);
