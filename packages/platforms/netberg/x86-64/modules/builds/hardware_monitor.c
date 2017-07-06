@@ -26,7 +26,7 @@ enum platform_type {
 #define W83795ADG_CHIP_ID              0x79
 
 #define W83795ADG_TEMP_COUNT     2
-#define W83795ADG_FAN_COUNT     10
+#define W83795ADG_FAN_COUNT     8
 #define W83795ADG_FAN_SPEED_FACTOR     1350000 /* 1.35 * 10^6 */
 #define W83795ADG_FAN_POLES_NUMBER     4
 #define W83795ADG_VSEN_COUNT     7
@@ -293,7 +293,7 @@ SFP_PORT_DATA_t sfpPortData_78F[] = {
      SFP_PORT_DATA_PORT_NCIIX_37, SFP_PORT_DATA_PORT_NCIIX_38, SFP_PORT_DATA_PORT_NCIIX_39, SFP_PORT_DATA_PORT_NCIIX_40,
      SFP_PORT_DATA_PORT_NCIIX_41, SFP_PORT_DATA_PORT_NCIIX_42, SFP_PORT_DATA_PORT_NCIIX_43, SFP_PORT_DATA_PORT_NCIIX_44,
      SFP_PORT_DATA_PORT_NCIIX_45, SFP_PORT_DATA_PORT_NCIIX_46, SFP_PORT_DATA_PORT_NCIIX_47, SFP_PORT_DATA_PORT_NCIIX_48,
-     QSFP_PORT_DATA_PORT_NCIIX_1, QSFP_PORT_DATA_PORT_NCIIX_2, QSFP_PORT_DATA_PORT_NCIIX_3, 
+     QSFP_PORT_DATA_PORT_NCIIX_1, QSFP_PORT_DATA_PORT_NCIIX_2, QSFP_PORT_DATA_PORT_NCIIX_3,
      QSFP_PORT_DATA_PORT_NCIIX_4, QSFP_PORT_DATA_PORT_NCIIX_5, QSFP_PORT_DATA_PORT_NCIIX_6
 };
 
@@ -601,13 +601,6 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
             fanErr = 0;
             for (i=0; i<W83795ADG_FAN_COUNT; i++)
             {
-                /* only ASTERION support 10 FAN */
-                if ((i>=8)&&(data->modelId!=ASTERION_WITH_BMC)&&(data->modelId!=ASTERION_WITHOUT_BMC))
-                {
-                    FanErr[i] = 0;
-                    continue;
-                }
-
                 fanSpeed = 0;
                 /* Choose W83795ADG bank 0 */
                 i2c_smbus_write_byte_data(client, W83795ADG_REG_BANK, 0x00);
@@ -1225,9 +1218,6 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         data->fanDir[0] = (value&0x8888);
                         FanDir = data->fanDir[0];
 
-/*
-                        printk(KERN_INFO "Step %d, value = 0x%04x, fanAbs[0] = 0x%04x, fanDir[0] = 0x%04x\n", step, value, data->fanAbs[0], data->fanDir[0]);
-*/
                         step = 0;
                         break;
 
@@ -1860,6 +1850,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         data->fanDir[0] = (value&0x8888);
                         FanDir = data->fanDir[0];
 
+
                         i2c_smbus_write_byte_data(client, 0, 0x00);
                         step = 4;
                         break;
@@ -2380,7 +2371,7 @@ static SENSOR_DEVICE_ATTR(vsen4, S_IRUGO, show_voltage_sen, NULL, 3);
 static SENSOR_DEVICE_ATTR(vsen5, S_IRUGO, show_voltage_sen, NULL, 4);
 static SENSOR_DEVICE_ATTR(vsen7, S_IRUGO, show_voltage_sen, NULL, 6);
 
- static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
+static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
     &dev_attr_mac_temp.attr,
     &dev_attr_chip_info.attr,
     &dev_attr_board_build_rev.attr,
@@ -2426,8 +2417,55 @@ static SENSOR_DEVICE_ATTR(vsen7, S_IRUGO, show_voltage_sen, NULL, 6);
 
     NULL
 };
- 
- static struct attribute *i2c_bus0_hardware_monitor_attr_asterion[] = {
+
+static struct attribute *i2c_bus0_hardware_monitor_attr_nc2x[] = {
+    &dev_attr_mac_temp.attr,
+    &dev_attr_chip_info.attr,
+    &dev_attr_board_build_rev.attr,
+    &dev_attr_board_hardware_rev.attr,
+    &dev_attr_board_model_id.attr,
+    &dev_attr_cpld_info.attr,
+    &dev_attr_wd_refresh.attr,
+    &dev_attr_wd_refresh_control.attr,
+    &dev_attr_wd_refresh_time.attr,
+    &dev_attr_wd_timeout_occurrence.attr,
+    &dev_attr_rov.attr,
+
+    &sensor_dev_attr_psu1_pg.dev_attr.attr,
+    &sensor_dev_attr_psu2_pg.dev_attr.attr,
+    &sensor_dev_attr_psu1_abs.dev_attr.attr,
+    &sensor_dev_attr_psu2_abs.dev_attr.attr,
+
+    &sensor_dev_attr_fan1_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan2_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan3_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan4_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan5_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan6_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan7_rpm.dev_attr.attr,
+    &sensor_dev_attr_fan8_rpm.dev_attr.attr,
+
+    &sensor_dev_attr_fan1_duty.dev_attr.attr,
+    &sensor_dev_attr_fan2_duty.dev_attr.attr,
+    &sensor_dev_attr_fan3_duty.dev_attr.attr,
+    &sensor_dev_attr_fan4_duty.dev_attr.attr,
+    &sensor_dev_attr_fan5_duty.dev_attr.attr,
+    &sensor_dev_attr_fan6_duty.dev_attr.attr,
+    &sensor_dev_attr_fan7_duty.dev_attr.attr,
+    &sensor_dev_attr_fan8_duty.dev_attr.attr,
+
+    &sensor_dev_attr_remote_temp1.dev_attr.attr,
+    &sensor_dev_attr_remote_temp2.dev_attr.attr,
+
+    &sensor_dev_attr_vsen1.dev_attr.attr,
+    &sensor_dev_attr_vsen4.dev_attr.attr,
+    &sensor_dev_attr_vsen5.dev_attr.attr,
+    &sensor_dev_attr_vsen7.dev_attr.attr,
+
+    NULL
+};
+
+static struct attribute *i2c_bus0_hardware_monitor_attr_asterion[] = {
     &dev_attr_mac_temp.attr,
     &dev_attr_chip_info.attr,
     &dev_attr_board_build_rev.attr,
@@ -2478,52 +2516,6 @@ static SENSOR_DEVICE_ATTR(vsen7, S_IRUGO, show_voltage_sen, NULL, 6);
     NULL
 };
 
- static struct attribute *i2c_bus0_hardware_monitor_attr_nc2x[] = {
-    &dev_attr_mac_temp.attr,
-    &dev_attr_chip_info.attr,
-    &dev_attr_board_build_rev.attr,
-    &dev_attr_board_hardware_rev.attr,
-    &dev_attr_board_model_id.attr,
-    &dev_attr_cpld_info.attr,
-    &dev_attr_wd_refresh.attr,
-    &dev_attr_wd_refresh_control.attr,
-    &dev_attr_wd_refresh_time.attr,
-    &dev_attr_wd_timeout_occurrence.attr,
-    &dev_attr_rov.attr,
-
-    &sensor_dev_attr_psu1_pg.dev_attr.attr,
-    &sensor_dev_attr_psu2_pg.dev_attr.attr,
-    &sensor_dev_attr_psu1_abs.dev_attr.attr,
-    &sensor_dev_attr_psu2_abs.dev_attr.attr,
-
-    &sensor_dev_attr_fan1_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan2_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan3_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan4_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan5_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan6_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan7_rpm.dev_attr.attr,
-    &sensor_dev_attr_fan8_rpm.dev_attr.attr,
-
-    &sensor_dev_attr_fan1_duty.dev_attr.attr,
-    &sensor_dev_attr_fan2_duty.dev_attr.attr,
-    &sensor_dev_attr_fan3_duty.dev_attr.attr,
-    &sensor_dev_attr_fan4_duty.dev_attr.attr,
-    &sensor_dev_attr_fan5_duty.dev_attr.attr,
-    &sensor_dev_attr_fan6_duty.dev_attr.attr,
-    &sensor_dev_attr_fan7_duty.dev_attr.attr,
-    &sensor_dev_attr_fan8_duty.dev_attr.attr,
-
-    &sensor_dev_attr_remote_temp1.dev_attr.attr,
-    &sensor_dev_attr_remote_temp2.dev_attr.attr,
-
-    &sensor_dev_attr_vsen1.dev_attr.attr,
-    &sensor_dev_attr_vsen4.dev_attr.attr,
-    &sensor_dev_attr_vsen5.dev_attr.attr,
-    &sensor_dev_attr_vsen7.dev_attr.attr,
-
-    NULL
-};
 
 static ssize_t show_port_abs(struct device *dev, struct device_attribute *devattr, char *buf)
 {
@@ -2603,24 +2595,10 @@ static ssize_t show_port_data_a0(struct device *dev, struct device_attribute *de
     mutex_lock(&data->lock);
     memcpy(qsfpPortData, &(data->qsfpPortDataA0[attr->index][0]), QSFP_DATA_SIZE);
     mutex_unlock(&data->lock);
-#if 0
-{
-    unsigned int index;
-    char str[8];
 
-    count = 0;
-    for (index=0; index<QSFP_DATA_SIZE; index++)
-    {
-        count += sprintf(str, "%02x", qsfpPortData[index]);
-        strcat(buf, str);
-    }
-    count += sprintf(str, "\n");
-    strcat(buf, str);
-}
-#else
     count = QSFP_DATA_SIZE;
     memcpy(buf, (char *)qsfpPortData, QSFP_DATA_SIZE);
-#endif
+
     return count;
 }
 
@@ -2636,24 +2614,10 @@ static ssize_t show_port_data_a2(struct device *dev, struct device_attribute *de
     mutex_lock(&data->lock);
     memcpy(qsfpPortData, &(data->qsfpPortDataA2[attr->index][0]), QSFP_DATA_SIZE);
     mutex_unlock(&data->lock);
-#if 0
-{
-    unsigned int index;
-    char str[8];
 
-    count = 0;
-    for (index=0; index<QSFP_DATA_SIZE; index++)
-    {
-        count += sprintf(str, "%02x", qsfpPortData[index]);
-        strcat(buf, str);
-    }
-    count += sprintf(str, "\n");
-    strcat(buf, str);
-}
-#else
     count = QSFP_DATA_SIZE;
     memcpy(buf, (char *)qsfpPortData, QSFP_DATA_SIZE);
-#endif
+
     return count;
 }
 
@@ -2665,20 +2629,19 @@ static ssize_t show_fan_abs(struct device *dev, struct device_attribute *devattr
     unsigned int value = 0;
     unsigned int index = 0;
 
+    mutex_lock(&data->lock);
     if (attr->index<4)
     {
-        mutex_lock(&data->lock);
         value = (unsigned int)data->fanAbs[0];
-        mutex_unlock(&data->lock);
         index = attr->index;
     }
     else
     {
-        mutex_lock(&data->lock);
         value = (unsigned int)data->fanAbs[1];
-        mutex_unlock(&data->lock);
         index = (attr->index-3);
     }
+    mutex_unlock(&data->lock);
+
     value &= (0x0004<<(index*4));
     return sprintf(buf, "%d\n", value?0:1);
 }
@@ -2691,21 +2654,20 @@ static ssize_t show_fan_dir(struct device *dev, struct device_attribute *devattr
     unsigned int value = 0;
     unsigned int index = 0;
 
+    mutex_lock(&data->lock);
     if (attr->index<4)
     {
-        mutex_lock(&data->lock);
         value = (unsigned int)data->fanDir[0];
-        mutex_unlock(&data->lock);
         index = attr->index;
     }
     else
     {
-        mutex_lock(&data->lock);
         value = (unsigned int)data->fanDir[1];
-        mutex_unlock(&data->lock);
         index = (attr->index-3);
     }
-    value &= (0x0004<<(index*4));
+    mutex_unlock(&data->lock);
+
+    value &= (0x0008<<(index*4));
     return sprintf(buf, "%d\n", value?0:1);
 }
 
@@ -2713,8 +2675,6 @@ static ssize_t show_eeprom(struct device *dev, struct device_attribute *devattr,
 {
     unsigned char eepromData[EEPROM_DATA_SIZE];
     ssize_t count = 0;
-    unsigned int index;
-    char str[8];
     int ret = 0;
 
     memset(eepromData, 0, EEPROM_DATA_SIZE);
@@ -2807,19 +2767,10 @@ static ssize_t show_eeprom(struct device *dev, struct device_attribute *devattr,
     }
     if (ret < 0)
         memset(eepromData, 0, EEPROM_DATA_SIZE);
-#if 1
-    count = 0;
-    for (index=0; index<EEPROM_DATA_SIZE; index++)
-    {
-        count += sprintf(str, "%02x", eepromData[index]);
-        strcat(buf, str);
-    }
-    count += sprintf(str, "\n");
-    strcat(buf, str);
-#else
+
     count = EEPROM_DATA_SIZE;
     memcpy(buf, (char *)eepromData, EEPROM_DATA_SIZE);
-#endif
+
     return count;
 }
 
@@ -2830,7 +2781,6 @@ static ssize_t show_psu_eeprom(struct device *dev, struct device_attribute *deva
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned char eepromData[EEPROM_DATA_SIZE];
     ssize_t count = 0;
-    char str[8];
     int ret = 0;
     unsigned short index=0;
     unsigned int psu_present = 0;
@@ -2915,19 +2865,10 @@ static ssize_t show_psu_eeprom(struct device *dev, struct device_attribute *deva
         if (ret < 0)
             memset(eepromData, 0, EEPROM_DATA_SIZE);
     }
-#if 1
-    count = 0;
-    for (index=0; index<EEPROM_DATA_SIZE; index++)
-    {
-        count += sprintf(str, "%02x", eepromData[index]);
-        strcat(buf, str);
-    }
-    count += sprintf(str, "\n");
-    strcat(buf, str);
-#else
+
     count = EEPROM_DATA_SIZE;
     memcpy(buf, (char *)eepromData, EEPROM_DATA_SIZE);
-#endif
+
     return count;
 }
 
@@ -6303,8 +6244,10 @@ static int w83795adg_hardware_monitor_remove(struct i2c_client *client)
 
         /* turn off all LEDs of front port */
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x34, 0x00);
+#if 0 /* It's for Huracan Beta only,  remove it. */
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x40, 0x00);
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x44, 0x00);
+#endif
 
         hwmon_device_unregister(data->hwmon_dev);
         sysfs_remove_group(&client->dev.kobj, &data->hwmon_group);
@@ -6336,8 +6279,10 @@ static void w83795adg_hardware_monitor_shutdown(struct i2c_client *client)
 
         /* turn off all LEDs of front port */
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x34, 0x00);
+#if 0 /* It's for Huracan Beta only,  remove it. */
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x40, 0x00);
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x44, 0x00);
+#endif
         /* reset MAC */
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6e);
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6f);
@@ -6357,6 +6302,6 @@ static void w83795adg_hardware_monitor_shutdown(struct i2c_client *client)
 
 module_i2c_driver(w83795adg_hardware_monitor_driver);
 
-MODULE_AUTHOR("Raymond Huey <raymond.yc.huey@foxconn.com>");
-MODULE_DESCRIPTION("Foxconn W83795ADG Hardware Monitor driver");
+MODULE_AUTHOR("Raymond Huey <raymond.huey@gmail.com>");
+MODULE_DESCRIPTION("W83795ADG Hardware Monitor driver");
 MODULE_LICENSE("GPL");

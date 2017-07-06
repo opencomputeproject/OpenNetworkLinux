@@ -11,19 +11,6 @@
 #include "x86_64_netberg_aurora_620_rangeley_int.h"
 #include "x86_64_netberg_aurora_620_rangeley_log.h"
 
-int toHexValue(char ch)
-{
-    if ((ch >= '0')&&(ch <= '9'))
-    {
-        return (ch-0x30);
-    }
-    else if (((ch >= 'a')&&(ch <= 'f'))||((ch >= 'A')&&(ch <= 'F')))
-    {
-        return (ch-0x57);
-    }
-    return 0;
-}
-
 /*
  * This is the first function called by the ONLP framework.
  *
@@ -40,25 +27,6 @@ const char*
 onlp_sysi_platform_get(void)
 {
     return "x86-64-netberg-aurora-620-rangeley-r0";
-}
-
-/*
- * This function will be called if onlp_sysi_platform_get()
- * returns a platform name that is not equal to the current platform.
- *
- * If you are compatible with the given platform then return ONLP_STATUS_OK.
- * If you can are not compatible return ONLP_STATUS_E_UNSUPPORTED.
- * - This is fatal and will abort platform initialization.
- */
-
-int
-onlp_sysi_platform_set(const char* name)
-{
-    /*
-     * For the purposes of this example we
-     * accept all platforms.
-     */
-    return ONLP_STATUS_OK;
 }
 
 /*
@@ -79,23 +47,14 @@ int
 onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
 {
     int rv;
-    uint8_t buffer[512];
     uint8_t data[256];
     int len;
-    int i, j;
 
-    memset(buffer, 0, sizeof(buffer));
     memset(data, 0, sizeof(data));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/eeprom");
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/eeprom");
     if (rv == ONLP_STATUS_OK)
     {
-        j = 0;
-        for (i=0; i<256; i++)
-        {
-            data[i] = (toHexValue(buffer[j])<<4) + toHexValue(buffer[j+1]);
-            j += 2;
-        }
-        rv = onlp_onie_decode(onie, (uint8_t*)data, 256);
+        rv = onlp_onie_decode(onie, (uint8_t*)data, sizeof(data));
         if(rv >= 0)
         {
             onie->platform_name = aim_strdup("x86-64-netberg-aurora-620-rangeley-r0");

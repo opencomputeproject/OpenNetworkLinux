@@ -12,8 +12,6 @@
 #include "x86_64_netberg_aurora_620_rangeley_int.h"
 #include "x86_64_netberg_aurora_620_rangeley_log.h"
 
-extern int toHexValue(char ch);
-
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_PSU(_id)) {             \
@@ -59,12 +57,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
     int rv;
     int pid;
-    uint8_t buffer[512];
     uint8_t data[256];
     int value = -1;
     int len;
     double dvalue;
-    int i, j;
+    int i;
 
     VALIDATE(id);
 
@@ -84,17 +81,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* PSU is present. */
     info->status = ONLP_PSU_STATUS_PRESENT;
 
-    memset(buffer, 0, sizeof(buffer));
     memset(data, 0, sizeof(data));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/psu%d_eeprom", pid);
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/psu%d_eeprom", pid);
     if (rv == ONLP_STATUS_OK)
     {
-        j = 0;
-        for (i=0; i<256; i++)
-        {
-            data[i] = (toHexValue(buffer[j])<<4) + toHexValue(buffer[j+1]);
-            j += 2;
-        }
         i = 11;
 
         /* Manufacturer Name */
@@ -143,11 +133,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 #endif
 
-    memset(buffer, 0, sizeof(buffer));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/psu%d_iout", pid);
+    memset(data, 0, sizeof(data));
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/psu%d_iout", pid);
     if (rv == ONLP_STATUS_OK)
     {
-        dvalue = atof((const char *)buffer);
+        dvalue = atof((const char *)data);
         if (dvalue > 0.0)
         {
             info->caps |= ONLP_PSU_CAPS_IOUT;
@@ -155,11 +145,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         }
     }
 
-    memset(buffer, 0, sizeof(buffer));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/psu%d_vout", pid);
+    memset(data, 0, sizeof(data));
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/psu%d_vout", pid);
     if (rv == ONLP_STATUS_OK)
     {
-        dvalue = atof((const char *)buffer);
+        dvalue = atof((const char *)data);
         if (dvalue > 0.0)
         {
             info->caps |= ONLP_PSU_CAPS_VOUT;
@@ -167,11 +157,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         }
     }
 
-    memset(buffer, 0, sizeof(buffer));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/psu%d_pin", pid);
+    memset(data, 0, sizeof(data));
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/psu%d_pin", pid);
     if (rv == ONLP_STATUS_OK)
     {
-        dvalue = atof((const char *)buffer);
+        dvalue = atof((const char *)data);
         if (dvalue > 0.0)
         {
             info->caps |= ONLP_PSU_CAPS_PIN;
@@ -179,11 +169,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         }
     }
 
-    memset(buffer, 0, sizeof(buffer));
-    rv = onlp_file_read(buffer, sizeof(buffer), &len, SYS_HWMON2_PREFIX "/psu%d_pout", pid);
+    memset(data, 0, sizeof(data));
+    rv = onlp_file_read(data, sizeof(data), &len, SYS_HWMON2_PREFIX "/psu%d_pout", pid);
     if (rv == ONLP_STATUS_OK)
     {
-        dvalue = atof((const char *)buffer);
+        dvalue = atof((const char *)data);
         if (dvalue > 0.0)
         {
             info->caps |= ONLP_PSU_CAPS_POUT;

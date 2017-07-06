@@ -25,5 +25,4 @@ platform-powerpc-85xx-Makefile.patch
 platform-powerpc-dni-7448-r0.patch
 platform-powerpc-quanta-lb9-r0.patch
 driver-support-intel-igb-bcm50210-phy.patch
-driver-i2c-bus-intel-ismt-netberg-aurora.patch
 driver-igb-netberg-aurora.patch

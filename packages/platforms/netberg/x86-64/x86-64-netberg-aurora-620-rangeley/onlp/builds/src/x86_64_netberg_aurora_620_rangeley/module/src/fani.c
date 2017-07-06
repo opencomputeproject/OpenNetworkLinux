@@ -60,7 +60,7 @@ sys_fan_info_get__(onlp_fan_info_t* info, int id)
         if (rv != ONLP_STATUS_OK)
             return rv;
 
-        if (value == 0)
+        if (value == 1)
         {
             info->status |= ONLP_FAN_STATUS_B2F;
             info->caps |= ONLP_FAN_CAPS_B2F;
