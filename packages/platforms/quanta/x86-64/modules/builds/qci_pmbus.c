@@ -28,7 +28,7 @@
 #include <../drivers/hwmon/pmbus/pmbus.h>
 #include <linux/delay.h>
 
-enum projects { ly8, ix1, ix2, ix1a };
+enum projects { ly8, ix1, ix2, ix1b };
 
 #define DELAY_TIME		1000	/* uS	*/
 
@@ -196,6 +196,7 @@ static const struct i2c_device_id qci_pmbus_id[] = {
     {"qci_pmbus_ly8", ly8},
     {"qci_pmbus_ix1", ix1},
     {"qci_pmbus_ix2", ix2},
+    {"qci_pmbus_ix1b", ix1b},
     {}
 };
 MODULE_DEVICE_TABLE(i2c, qci_pmbus_id);
@@ -414,6 +415,7 @@ static int qci_pmbus_probe(struct i2c_client *client,
 		break;
 	case ix1:
 	case ix2:
+	case ix1b:
 		info->pages = 1;
 		info->func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_IIN
 		  | PMBUS_HAVE_PIN | PMBUS_HAVE_STATUS_INPUT
