@@ -24,7 +24,6 @@
  *
  ***********************************************************/
 #include <onlp/platformi/psui.h>
-#include <onlplib/mmap.h>
 #include <stdio.h>
 #include <string.h>
 #include "platform_lib.h"
@@ -52,10 +51,10 @@ psu_status_info_get(int id, int is_ac, char *node, int *value)
     *value = 0;
 
     if (PSU1_ID == id) {
-        sprintf(node_path, "%s%s", is_ac ? PSU1_AC_HWMON_PREFIX : PSU1_DC_HWMON_PREFIX, node);
+        sprintf(node_path, "%s%s", is_ac ? PSU1_AC_EEPROM_PREFIX : PSU1_DC_EEPROM_PREFIX, node);
     }
     else if (PSU2_ID == id) {
-        sprintf(node_path, "%s%s", is_ac ? PSU2_AC_HWMON_PREFIX : PSU2_DC_HWMON_PREFIX, node);
+        sprintf(node_path, "%s%s", is_ac ? PSU2_AC_EEPROM_PREFIX : PSU2_DC_EEPROM_PREFIX, node);
     }
 
     ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
@@ -169,6 +168,43 @@ psu_um400d_info_get(onlp_psu_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+static int
+psu_ym2401_info_get(onlp_psu_info_t* info)
+{
+    int val   = 0;
+    int index = ONLP_OID_ID_GET(info->hdr.id);
+    
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_AC;
+    
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Set the associated oid_table */
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
+
+    /* Read voltage, current and power */
+    if (psu_ym2401_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+        info->mvout = val;
+        info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    if (psu_ym2401_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+        info->miout = val;
+        info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    if (psu_ym2401_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+        info->mpout = val;
+        info->caps |= ONLP_PSU_CAPS_POUT;
+    } 
+
+    return ONLP_STATUS_OK;
+}
+
 /*
  * Get all information about the given PSU oid.
  */
@@ -215,6 +251,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     if (val != PSU_STATUS_POWER_GOOD) {
         info->status |=  ONLP_PSU_STATUS_FAILED;
+        return 0;
     }
 
 
@@ -223,9 +260,13 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     psu_type = get_psu_type(index, info->model, sizeof(info->model));
 
     switch (psu_type) {
-        case PSU_TYPE_AC_F2B:
-        case PSU_TYPE_AC_B2F:
+        case PSU_TYPE_AC_COMPUWARE_F2B:
+        case PSU_TYPE_AC_COMPUWARE_B2F:
             ret = psu_cpr_4011_info_get(info);
+            break;
+        case PSU_TYPE_AC_3YPOWER_F2B:
+        case PSU_TYPE_AC_3YPOWER_B2F:
+            ret = psu_ym2401_info_get(info);
             break;
         case PSU_TYPE_DC_48V_F2B:
         case PSU_TYPE_DC_48V_B2F:

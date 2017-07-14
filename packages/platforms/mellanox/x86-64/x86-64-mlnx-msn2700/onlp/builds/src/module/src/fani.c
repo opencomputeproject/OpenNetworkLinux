@@ -533,3 +533,14 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
+int 
+onlp_fani_get_min_rpm(int id)
+{
+    int   len = 0, nbytes = 10;
+    char  r_data[10]   = {0};
+    char  fullpath[65] = {0};
+
+    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[id].min);
+    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    return atoi(r_data);
+}
