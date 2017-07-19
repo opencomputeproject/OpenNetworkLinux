@@ -22,19 +22,10 @@
  *
  *
  ***********************************************************/
-#include <x86_64_quanta_ly4r/x86_64_quanta_ly4r_config.h>
-#include <x86_64_quanta_ly4r/x86_64_quanta_ly4r_gpio_table.h>
 #include <onlp/platformi/fani.h>
-
-#include "x86_64_quanta_ly4r_int.h"
-#include "x86_64_quanta_ly4r_log.h"
-
-#include <onlplib/file.h>
-#include <onlplib/gpio.h>
 
 int
 onlp_fani_init(void)
 {
-    AIM_LOG_MSG("ONLP is not supported for FAN");
     return ONLP_STATUS_E_UNSUPPORTED;
 }

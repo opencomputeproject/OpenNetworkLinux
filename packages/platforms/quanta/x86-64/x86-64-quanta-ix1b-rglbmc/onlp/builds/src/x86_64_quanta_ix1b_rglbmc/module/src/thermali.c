@@ -23,11 +23,9 @@
  *
  ***********************************************************/
 #include <onlp/platformi/thermali.h>
-#include "x86_64_quanta_ix1b_rglbmc_log.h"
 
 int
 onlp_thermali_init(void)
 {
-    AIM_LOG_MSG("ONLP is not supported for THERMAL");
     return ONLP_STATUS_E_UNSUPPORTED;
 }
