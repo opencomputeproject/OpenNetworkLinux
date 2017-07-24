@@ -1,0 +1,53 @@
+"""
+Test case 4: Set percentage to 70
+"""
+user_percent = 70
+
+
+from libFan import fan
+from libFan import get_fans
+from time import sleep
+
+fanobj = get_fans() #Get all the fans and their statuses
+count = len(fanobj) # Count the number of fans
+print "The count is: ",count
+count = count - 1
+
+y = 0
+while(y <= count):
+    fan.set_normal_percent(fanobj[y])
+    y = y + 1
+sleep(10)
+
+x = 0
+percentlist = []
+while(x <= count):
+    percentNew = fan.set_percent(fanobj[x],user_percent)
+    if(percentNew != None):
+        percentlist.append(percentNew)
+    x = x + 1
+
+print "After setting credentials"
+print percentlist
+
+# Pass percentage = 5 %
+user_percent_lower = user_percent - 5
+user_percent_higher = user_percent + 5
+
+fail = 0
+pass1 = 0
+
+for i in range(len(percentlist)):
+    if user_percent_lower <= percentlist[i] <= user_percent_higher:
+        pass1 = pass1 + 1
+    else:
+        fail = fail + 1
+
+if fail != 0:
+    final = "fail"
+    print "test case failed"
+elif (len(percentlist) == 0):
+    print "None of the fans have SET_PERCENT capability "
+else:
+    final = "pass"
+    print "Test case passed"
