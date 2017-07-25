@@ -1,9 +1,11 @@
 
 Steps to execute:
+	
 	1.Configure management interface on switch.
 	2.ssh login to the device and make a directory (e.g. onlpd-test)
-	3.scp copy the scripts(fan_tc1.py ,fan_tc2.py,…. and libFan.py) to onlpd-test . 
-	4.Execution command: python fan_tc1.py
+	3.Execute the command "killall onlpd"
+	4.scp copy the scripts(fan_tc1.py ,fan_tc2.py,…. and libFan.py) to onlpd-test . 
+	5.Execution command: python fan_tc1.py
 
 Functions in libFan.py:
 	1.get_fans() : returns the list of fans 

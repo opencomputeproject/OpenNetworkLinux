@@ -1,7 +1,7 @@
 import ctypes
 from time import sleep
 
-testlib = ctypes.CDLL('/lib/x86_64-linux-gnu/libonlp.so')
+fanlib = ctypes.CDLL('/lib/x86_64-linux-gnu/libonlp.so')
 
 class onlp_fan_caps_t(ctypes.Structure):
     ONLP_FAN_CAPS_B2F = (1 << 0)
@@ -60,12 +60,12 @@ Parameter 1(id): The fan OID
 Parameter 2(rv): Recieves fan information
 """
 
-testlib.onlp_fan_info_get.argtypes = [ctypes.c_uint, ctypes.POINTER(onlp_fan_info_t)]
-testlib.onlp_fan_info_get.restype = ctypes.c_int
+fanlib.onlp_fan_info_get.argtypes = [ctypes.c_uint, ctypes.POINTER(onlp_fan_info_t)]
+fanlib.onlp_fan_info_get.restype = ctypes.c_int
 
 #Initialize the fan subsystem
-testlib.onlp_fan_init()
-testlib.onlp_fan_init.restype = ctypes.c_int
+fanlib.onlp_fan_init()
+fanlib.onlp_fan_init.restype = ctypes.c_int
 
 
 """
@@ -74,8 +74,8 @@ Parameter 1(id):The fan OID
 Parameter 2(rpm): The new rpm
 Note: Only valid if the fan has the SET_RPM capability
 """
-testlib.onlp_fan_rpm_set.argtypes = [ctypes.c_uint,ctypes.c_int]
-testlib.onlp_fan_rpm_set.restype = ctypes.c_int
+fanlib.onlp_fan_rpm_set.argtypes = [ctypes.c_uint,ctypes.c_int]
+fanlib.onlp_fan_rpm_set.restype = ctypes.c_int
 
 """
 Set the fan speed in percentage.
@@ -83,16 +83,16 @@ Parameter 1: The fan OID.
 Parameter 2: The percentage.
 Note: Only valid if the fan has the SET_PERCENTAGE capability.
 """
-testlib.onlp_fan_percentage_set.argtypes = [ctypes.c_uint,ctypes.c_int]
-testlib.onlp_fan_percentage_set.restype = ctypes.c_int
+fanlib.onlp_fan_percentage_set.argtypes = [ctypes.c_uint,ctypes.c_int]
+fanlib.onlp_fan_percentage_set.restype = ctypes.c_int
 
 """
 Set the fan by mode
 Parameter 1: The fan id
 Parameter 2: The fan mode value
 """
-testlib.onlp_fan_mode_set.argtypes = [ctypes.c_uint,ctypes.c_uint]
-testlib.onlp_fan_mode_set.restype = ctypes.c_int
+fanlib.onlp_fan_mode_set.argtypes = [ctypes.c_uint,ctypes.c_uint]
+fanlib.onlp_fan_mode_set.restype = ctypes.c_int
 
 """
 Set the fan direction
@@ -101,8 +101,8 @@ Parameter 2: The fan direction (B2F or F2B)
 Note: Only called if both capabilities are set
 """
 
-testlib.onlp_fan_dir_set.argtypes = [ctypes.c_uint,ctypes.c_int]
-testlib.onlp_fan_dir_set.restype = ctypes.c_int
+fanlib.onlp_fan_dir_set.argtypes = [ctypes.c_uint,ctypes.c_int]
+fanlib.onlp_fan_dir_set.restype = ctypes.c_int
 
 """
 Fan OID debug dump
@@ -111,8 +111,8 @@ Parameter 2: The output pvs
 Parameter 3: The output flags
 """
 
-testlib.onlp_fan_dump.argtypes = [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint),ctypes.c_uint]
-testlib.onlp_fan_dump.restype = ctypes.c_void_p
+fanlib.onlp_fan_dump.argtypes = [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint),ctypes.c_uint]
+fanlib.onlp_fan_dump.restype = ctypes.c_void_p
 
 """
 Show the given Fan OID
@@ -120,16 +120,16 @@ Parameter 1: The fan OID
 Parameter 2: The output pvs
 Parameter 3: The output flags
 """
-testlib.onlp_fan_show.argtypes = [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint),ctypes.c_uint]
-testlib.onlp_fan_show.restype = ctypes.c_void_p
+fanlib.onlp_fan_show.argtypes = [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint),ctypes.c_uint]
+fanlib.onlp_fan_show.restype = ctypes.c_void_p
 
 fanlist = []
-testlib.onlp_fan_init()
+fanlib.onlp_fan_init()
 
 class fan:
     def __init__(self,id):
         onlp_fan = onlp_fan_info_t()
-        testlib.onlp_fan_info_get(fan_oid, ctypes.byref(onlp_fan))
+        fanlib.onlp_fan_info_get(fan_oid, ctypes.byref(onlp_fan))
         self.fan_oid = id
         self.hdr = onlp_fan.hdr
         self.status = onlp_fan.status
@@ -152,18 +152,18 @@ class fan:
         del index
 
     def set_normal_speed(self):
-        testlib.onlp_fan_rpm_set(self.fan_oid,8000)
+        fanlib.onlp_fan_rpm_set(self.fan_oid,8000)
 
     def set_normal_percent(self):
-        testlib.onlp_fan_percentage_set(self.fan_oid,47)
+        fanlib.onlp_fan_percentage_set(self.fan_oid,47)
 
     def set_rpm(self,user_rpm):
         if(self.caps & (1<<2)):
-            testlib.onlp_fan_rpm_set(self.fan_oid,user_rpm)
+            fanlib.onlp_fan_rpm_set(self.fan_oid,user_rpm)
             print "Setting rpm of",self.hdr.description,self.fan_oid," to ",user_rpm
             sleep(10)
             onlp_fan = onlp_fan_info_t()
-            testlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+            fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
             print "RPM of",self.hdr.description,"(after setting):",onlp_fan.rpm,"\n"
             return onlp_fan.rpm
         else:
@@ -173,17 +173,17 @@ class fan:
     def get_rpm(self):
         if(self.caps & (1<<4)):
             onlp_fan = onlp_fan_info_t()
-            testlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+            fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
             print "RPM:",onlp_fan.rpm
             return onlp_fan.rpm
 
     def set_percent(self,user_percent):
         if(self.caps & (1 << 3)):
             print "Setting Percentage of ",self.hdr.description,"to ",user_percent
-            testlib.onlp_fan_percentage_set(self.fan_oid,user_percent)
+            fanlib.onlp_fan_percentage_set(self.fan_oid,user_percent)
             sleep(10)
             onlp_fan = onlp_fan_info_t()
-            testlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+            fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
             print "Current Percentage(after setting):",onlp_fan.percentage
             print "\n"
             return onlp_fan.percentage
@@ -195,20 +195,20 @@ class fan:
     def get_percent(self):
         if(self.caps & (1<<3)):
             onlp_fan = onlp_fan_info_t()
-            testlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+            fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
 
     def set_mode(self,user_mode):
-        return testlib.onlp_fan_mode_set(self.fan_oid,user_mode)
+        return fanlib.onlp_fan_mode_set(self.fan_oid,user_mode)
 
     def set_direction(self,user_direction):
         if((self.caps & (1<<0)) | (self.caps & (1<<1))):
-            return testlib.onlp_fan_dir_set(self.fan_oid,user_direction)
+            return fanlib.onlp_fan_dir_set(self.fan_oid,user_direction)
         else:
             print "SET_DIRECTION is not enabled"
 
     def print_all(self):
         onlp_fan = onlp_fan_info_t()
-        testlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+        fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
         print "Fan OID: ",self.fan_oid
         print "Description: ",onlp_fan.hdr.description
         print "RPM: ",onlp_fan.rpm
