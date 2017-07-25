@@ -67,7 +67,7 @@ def get_thermals():
     global thermal_oid
     thermal_oid = 0x2000001
 
-    while(True):  #testing only for a few thermals
+    while(True):
         sleep(1)
         thermal1 = thermal(thermal_oid)
         print "Thermal:",thermal1.hdr.description
@@ -78,7 +78,7 @@ def get_thermals():
         print "Thresholds error:",thermal1.error
         print "Thresholds shutdown:",thermal1.shutdown
         print "\n"
-        if(thermal1.status == 1):                #onlp_thermal_status.ONLP_FAN_STATUS_PRESENT & thermall.status
+        if(thermal1.status == 1):                
             Thermallist.append(thermal1)
         else:
             break

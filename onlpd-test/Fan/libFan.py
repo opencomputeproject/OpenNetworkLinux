@@ -248,7 +248,7 @@ class fan:
     def get_mode(self):
         onlp_fan = onlp_fan_info_t()
         fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
-    return onlp_fan.mode
+        return onlp_fan.mode
 
     """
     Set the direction of fan
