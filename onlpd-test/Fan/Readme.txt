@@ -43,7 +43,7 @@ Functions in libFan.py:
 		Member function of class fan
 		Sets speed in percentage
 		Parameter 1: Fan object
-	  Parameter 2: Speed in percentage
+		Parameter 2: Speed in percentage
 		Function call e.g.: fan.set_percent(fanobj[0],user_percent)
 	  Return value: Current speed in percentage
 
