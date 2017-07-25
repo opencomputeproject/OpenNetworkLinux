@@ -1,8 +1,8 @@
 """
-Test case 4: Set percentage to 50
+Test case 4: Set percentage  to 50
 """
 user_percent = 50
-
+DEBUG = True #Static constant used for debugging
 
 from libFan import fan
 from libFan import get_fans
@@ -13,18 +13,15 @@ count = len(fanobj) # Count the number of fans
 print "The count is: ",count
 
 for y in range(count):
-    fan.set_normal_percent(fanobj[y])
-    y = y + 1
+    fan.set_normal_percent(fanobj[y]) #Set percentage to 47
 sleep(10)
 
-percentlist = []
+percentlist = [] #List to store fans' speed in percentage
 for x in range(count):
     percentNew = fan.set_percent(fanobj[x],user_percent)
     if(percentNew != None):
         percentlist.append(percentNew)
-    x = x + 1
 
-DEBUG = True
 if DEBUG:
     print "After setting credentials"
     print percentlist

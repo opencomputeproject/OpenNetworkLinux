@@ -1,6 +1,8 @@
 """
 Test case 1: Set rpm to 5000
 """
+DEBUG = True #Static constant used for debugging
+user_rpm = 5000 
 
 from libFan import fan
 from libFan import get_fans
@@ -11,22 +13,17 @@ count = len(fanobj) # Count the number of fans
 print "The count is: ",count
 
 for y in range(count):
-    fan.set_normal_speed(fanobj[y])
-    y = y + 1
+    fan.set_normal_speed(fanobj[y]) #Set speed to 8000 rpm
 sleep(5)
-#Set rpm
-user_rpm = 5000
 
-rpmlist = []
+
+rpmlist = [] #list to store all the fans' rpm
 for x in range(count):
-    rpmold = fan.get_rpm(fanobj[x])
+    rpmold = fan.get_rpm(fanobj[x]) #rpm before setting to user_rpm
     rpmNew = fan.set_rpm(fanobj[x],user_rpm)
     if(rpmNew != None):
-        sleep(1)
         rpmlist.append(rpmNew)
-    x = x + 1
 
-DEBUG = True
 if DEBUG:
     print "After setting credentials"
     print rpmlist

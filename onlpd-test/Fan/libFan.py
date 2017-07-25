@@ -3,6 +3,7 @@ from time import sleep
 
 fanlib = ctypes.CDLL('/lib/x86_64-linux-gnu/libonlp.so')
 
+# onlp_fan_caps
 class onlp_fan_caps_t(ctypes.Structure):
     ONLP_FAN_CAPS_B2F = (1 << 0)
     ONLP_FAN_CAPS_F2B = (1 << 1)
@@ -11,15 +12,14 @@ class onlp_fan_caps_t(ctypes.Structure):
     ONLP_FAN_CAPS_GET_RPM = (1 << 4)
     ONLP_FAN_CAPS_GET_PERCENTAGE = (1 << 5)
 
-
+#onlp_fan_status
 class onlp_fan_status_t(ctypes.Structure):
     ONLP_FAN_STATUS_PRESENT = (1 << 0)
     ONLP_FAN_STATUS_FAILED = (1 << 1)
     ONLP_FAN_STATUS_B2F = (1 << 2)
     ONLP_FAN_STATUS_F2B = (1 << 3)
 
-onlp_fan_status = onlp_fan_status_t()
-
+#onlp_fan_dir
 class onlp_fan_dir_t(ctypes.Structure):
     ONLP_FAN_DIR_B2F = 1
     ONLP_FAN_DIR_F2B = 2
@@ -27,6 +27,7 @@ class onlp_fan_dir_t(ctypes.Structure):
     ONLP_FAN_DIR_COUNT = 3
     ONLP_FAN_DIR_INVALID = -1
 
+#onlp_fan_mode
 class onlp_fan_mode_t:
         ONLP_FAN_MODE_OFF = 1,
         ONLP_FAN_MODE_SLOW = 2,
@@ -43,6 +44,7 @@ class onlp_oid_hdr_t(ctypes.Structure):
                ("poid", ctypes.c_uint),
                ("coids", ctypes.c_uint * 32)]
 
+#Fan information structure
 class onlp_fan_info_t(ctypes.Structure):
     _fields_ = [("hdr", onlp_oid_hdr_t),
                ("status", ctypes.c_uint),
@@ -53,11 +55,10 @@ class onlp_fan_info_t(ctypes.Structure):
                ("model", ctypes.c_char * 64),
                ("serial",ctypes.c_char * 64)]
 
-
 """
 Retrieve fan information
-Parameter 1(id): The fan OID
-Parameter 2(rv): Recieves fan information
+Parameter 1: The fan OID
+Parameter 2: Recieves fan information
 """
 
 fanlib.onlp_fan_info_get.argtypes = [ctypes.c_uint, ctypes.POINTER(onlp_fan_info_t)]
@@ -118,12 +119,12 @@ fanlib.onlp_fan_dump.restype = ctypes.c_void_p
 Show the given Fan OID
 Parameter 1: The fan OID
 Parameter 2: The output pvs
-Parameter 3: The output flags
+Parameter 3: The output flagss
 """
 fanlib.onlp_fan_show.argtypes = [ctypes.c_uint,ctypes.POINTER(ctypes.c_uint),ctypes.c_uint]
 fanlib.onlp_fan_show.restype = ctypes.c_void_p
 
-fanlist = []
+fanlist = [] #list to store all the fan objects
 fanlib.onlp_fan_init()
 
 class fan:
@@ -139,6 +140,11 @@ class fan:
         self.mode = onlp_fan.mode
         self.model = onlp_fan.model
 
+    """
+    Get capabilities of a fan
+    Parameter:Object of the class fan.For e.g. fanobj[0]
+    Return value: list of capabilities
+    """
     def get_caps(self):
         index = []
         x = int(bin(self.caps)[2:])
@@ -151,12 +157,26 @@ class fan:
         print "\n"
         del index
 
+    """
+    Set rpm to 8000
+    Parameter:Object of the class fan.For e.g. fanobj[0]
+    """
     def set_normal_speed(self):
         fanlib.onlp_fan_rpm_set(self.fan_oid,8000)
 
+    """
+    Set rpm percentage to 47
+    Parameter:Object of the class fan.For e.g. fanobj[0]
+    """
     def set_normal_percent(self):
         fanlib.onlp_fan_percentage_set(self.fan_oid,47)
 
+    """
+    Set speed in RPM
+    Parameter 1: Fan object
+    parameter 2: Speed in RPM
+    Return value: Current rpm of the fan
+    """
     def set_rpm(self,user_rpm):
         if(self.caps & (1<<2)):
             fanlib.onlp_fan_rpm_set(self.fan_oid,user_rpm)
@@ -169,7 +189,11 @@ class fan:
         else:
             print "SET_RPM is not enabled for ",self.hdr.description
             print "\n"
-
+    """
+    Get the current rpm
+    Parameter:Object of the class fan.For e.g. fanobj[0]
+    Return value: Fan rpm
+    """
     def get_rpm(self):
         if(self.caps & (1<<4)):
             onlp_fan = onlp_fan_info_t()
@@ -177,6 +201,12 @@ class fan:
             print "RPM:",onlp_fan.rpm
             return onlp_fan.rpm
 
+    """
+    Set the fan speed as a percentage
+    Parameter 1: Fan object
+    Parameter 2: Speed in percentage
+    Return value: Current speed in percentage
+    """
     def set_percent(self,user_percent):
         if(self.caps & (1 << 3)):
             print "Setting Percentage of ",self.hdr.description,"to ",user_percent
@@ -191,21 +221,50 @@ class fan:
             print "SET_PERCENTAGE is not enabled for",self.hdr.description
             print "\n"
 
-
+    """
+    Get the fan speed in percentage
+    Parameter:Object of the class fan.For e.g. fanobj[0]
+    Return value:Current speed in percentage
+    """
     def get_percent(self):
         if(self.caps & (1<<3)):
             onlp_fan = onlp_fan_info_t()
             fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+        return onlp_fan.percentage
 
+    """
+    Set the fan's speed by mode
+    Parameter 1: Object of the class fan.For e.g. fanobj[0]
+    Parameter 2: Mode
+    """
     def set_mode(self,user_mode):
-        return fanlib.onlp_fan_mode_set(self.fan_oid,user_mode)
+        fanlib.onlp_fan_mode_set(self.fan_oid,user_mode)
 
+    """
+    Get the fan's speed by mode
+    Parameter: Object of the class fan.For e.g. fanobj[0]
+    Return value: Current mode of the fan
+    """
+    def get_mode(self):
+        onlp_fan = onlp_fan_info_t()
+        fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
+    return onlp_fan.mode
+
+    """
+    Set the direction of fan
+    Parameter 1: Object of the class fan
+    Parameter 2: User direction
+    """
     def set_direction(self,user_direction):
         if((self.caps & (1<<0)) | (self.caps & (1<<1))):
             return fanlib.onlp_fan_dir_set(self.fan_oid,user_direction)
         else:
             print "SET_DIRECTION is not enabled"
 
+    """
+    Print all the attributes of a fan
+    Parameter: Object of the class fan
+    """
     def print_all(self):
         onlp_fan = onlp_fan_info_t()
         fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
@@ -218,6 +277,9 @@ class fan:
         print "Mode: ",onlp_fan.mode
         print "Model: ",onlp_fan.model
 
+"""
+Returns the list of fans
+"""
 def get_fans():
     global fan_oid
     fan_oid = 0x3000001
