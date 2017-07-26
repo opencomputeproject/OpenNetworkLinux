@@ -105,7 +105,7 @@ class led:
             ledlib.onlp_led_mode_set(self.led_oid,user_mode)
             print "Setting mode to ",user_mode
         else:
-            print "LED not capable of setting mode to ",user_color,". Check for capabilities using get_caps() function"
+            print "LED not capable of setting mode to ",user_mode,". Check for capabilities using get_caps() function"
 
     """
     Set the state(ON/OFF) of LED
