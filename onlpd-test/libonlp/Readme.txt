@@ -140,7 +140,7 @@ Functions in ledLib.py
 
     Parameter 1: LED object
     Parameter 2: user_mode(corresponding integer value from the above table)
-    Note: Any LED can only be set according to their corresponding capabiity only. Use get_caps() to obtain capability of any LED
+    Note: LED can only be set according to their corresponding capabiity. Use get_caps() to obtain capability of any LED
 
   4.set_state()
     Member function of class led
