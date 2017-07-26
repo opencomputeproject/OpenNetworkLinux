@@ -1,7 +1,7 @@
 DEBUG = True
 
-from libThermal import thermal
-from libThermal import get_thermals
+from libonlp import thermal
+from libonlp import get_thermals
 from time import sleep
 
 Thermalobj = get_thermals()

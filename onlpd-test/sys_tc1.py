@@ -1,11 +1,11 @@
 DEBUG = True
 
-from PSULib import psu
-from PSULib import get_psus
+from libonlp import sys
+from libonlp import get_sys
 from time import sleep
 
-psuobj = get_psus()
-count = len(psuobj)
+sysobj = get_sys()
+count = len(sysobj)
 print "The count is ",count
 
 if DEBUG:

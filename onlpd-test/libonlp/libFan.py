@@ -268,14 +268,14 @@ class fan:
     def print_all(self):
         onlp_fan = onlp_fan_info_t()
         fanlib.onlp_fan_info_get(self.fan_oid, ctypes.byref(onlp_fan))
-        print "Fan OID: ",self.fan_oid
-        print "Description: ",onlp_fan.hdr.description
-        print "RPM: ",onlp_fan.rpm
-        print "Status: ",onlp_fan.status
-        print "CAPS: ",onlp_fan.percentage
-        print "Percentage: ",onlp_fan.percentage
-        print "Mode: ",onlp_fan.mode
-        print "Model: ",onlp_fan.model
+        print "fan_oid: ",self.fan_oid
+        print "description: ",onlp_fan.hdr.description
+        print "rpm: ",onlp_fan.rpm
+        print "status: ",onlp_fan.status
+        print "caps: ",onlp_fan.caps
+        print "percentage: ",onlp_fan.percentage
+        print "mode: ",onlp_fan.mode
+        print "model: ",onlp_fan.model
 
 """
 Returns the list of fans

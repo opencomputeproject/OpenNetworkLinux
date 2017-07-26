@@ -70,15 +70,15 @@ def get_thermals():
     while(True):
         sleep(1)
         thermal1 = thermal(thermal_oid)
-        print "Thermal:",thermal1.hdr.description
-        print "Status:",thermal1.status
-        print "Caps",thermal1.caps
-        print "Temperature(in millicelcius):",thermal1.mcelcius
-        print "Thresholds Warning:",thermal1.warning
-        print "Thresholds error:",thermal1.error
-        print "Thresholds shutdown:",thermal1.shutdown
-        print "\n"
-        if(thermal1.status == 1):                
+        if(thermal1.status == 1):
+            print "Thermal:",thermal1.hdr.description
+            print "Status:",thermal1.status
+            print "Caps",thermal1.caps
+            print "Temperature(in millicelcius):",thermal1.mcelcius
+            print "Thresholds Warning:",thermal1.warning
+            print "Thresholds error:",thermal1.error
+            print "Thresholds shutdown:",thermal1.shutdown
+            print "\n"
             Thermallist.append(thermal1)
         else:
             break

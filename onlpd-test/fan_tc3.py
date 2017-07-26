@@ -4,8 +4,8 @@ Test case 1: Set rpm to 15000
 DEBUG = True #Static constant used for debugging
 user_rpm = 15000
 
-from libFan import fan
-from libFan import get_fans
+from libonlp import fan
+from libonlp import get_fans
 from time import sleep
 
 fanobj = get_fans() #Get all the fans and their statuses
@@ -29,8 +29,8 @@ if DEBUG:
     print rpmlist
 
     # Pass percentage
-    user_rpm_lower = user_rpm - 300
-    user_rpm_higher = user_rpm + 300
+    user_rpm_lower = user_rpm - 500
+    user_rpm_higher = user_rpm + 500
 
     fail = 0
     pass1 = 0

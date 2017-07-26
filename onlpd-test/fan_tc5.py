@@ -4,8 +4,8 @@ Test case 4: Set percentage  to 50
 user_percent = 50
 DEBUG = True #Static constant used for debugging
 
-from libFan import fan
-from libFan import get_fans
+from libonlp import fan
+from libonlp import get_fans
 from time import sleep
 
 fanobj = get_fans() #Get all the fans and their statuses
