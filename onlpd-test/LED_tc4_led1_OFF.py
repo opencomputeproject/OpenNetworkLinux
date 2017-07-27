@@ -1,5 +1,5 @@
 """
-Test case 7: Turn led[2] to state 0(OFF)
+Test case 4: Turn led[1] to state 0(OFF)
 """
 user_state = 0
 DEBUG = True
@@ -15,9 +15,13 @@ print "The count is : ",count
 for x in range(count):
     led.set_normal(ledobj[x])
 
-led.set_state(ledobj[2],user_state)
-sleep(3)
-currentState = led.get_state(ledobj[2])
+valid = led.set_state(ledobj[1],user_state)
+if valid:
+    sleep(3)
+    currentState = led.get_mode(ledobj[1])
+else:
+    DEBUG = False
+    print "Test case passed"
 
 if DEBUG:
     if currentState == user_state:

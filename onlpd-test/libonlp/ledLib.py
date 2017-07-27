@@ -104,8 +104,10 @@ class led:
             ledlib.onlp_led_set(self.led_oid,1)
             ledlib.onlp_led_mode_set(self.led_oid,user_mode)
             print "Setting mode to ",user_mode
+            return True
         else:
             print "LED not capable of setting mode to ",user_mode,". Check for capabilities using get_caps() function"
+            return False
 
     """
     Set the state(ON/OFF) of LED
@@ -116,8 +118,10 @@ class led:
         if(self.caps & (1<<0)):
             print "Setting state for LED",self.hdr.description,self.led_oid," to ",user_state
             ledlib.onlp_led_set(self.led_oid,user_state)
+            return True
         else:
             print "This LED is not capable of turning ON and OFF.Check capabilities using get_caps() function"
+            return False
 
     """
     Set the char of LED

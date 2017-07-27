@@ -1,8 +1,8 @@
 """
-Test case 1: Set rpm to 15000
+Test case 1: Set rpm to 5000
 """
 DEBUG = True #Static constant used for debugging
-user_rpm = 15000
+user_rpm = 5000
 
 from libonlp import fan
 from libonlp import get_fans
@@ -47,3 +47,6 @@ if DEBUG:
     else:
         final = "pass"
         print "Test case passed"
+
+for x in range(count):
+    fan.set_normal_speed(fanobj[x])

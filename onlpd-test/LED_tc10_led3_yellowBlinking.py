@@ -15,9 +15,13 @@ print "The count is : ",count
 for x in range(count):
     led.set_normal(ledobj[x])
 
-led.set_mode(ledobj[3],user_mode)
-sleep(3)
-currentState = led.get_mode(ledobj[3])
+valid = led.set_mode(ledobj[3],user_mode)
+if valid:
+    sleep(3)
+    currentState = led.get_mode(ledobj[3])
+else:
+    DEBUG = False
+    print "Test case passed"
 
 if DEBUG:
     if currentState == user_mode:

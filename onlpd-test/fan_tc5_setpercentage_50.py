@@ -1,7 +1,7 @@
 """
-Test case 4: Set percentage  to 70
+Test case 4: Set percentage  to 50
 """
-user_percent = 70
+user_percent = 50
 DEBUG = True #Static constant used for debugging
 
 from libonlp import fan
@@ -47,3 +47,6 @@ if DEBUG:
     else:
         final = "pass"
         print "Test case passed"
+
+for x in range(count):
+    fan.set_normal_percent(fanobj[x])

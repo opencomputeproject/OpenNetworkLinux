@@ -140,13 +140,15 @@ Functions in ledLib.py
 
     Parameter 1: LED object
     Parameter 2: user_mode(corresponding integer value from the above table)
-    Note: LED can only be set according to their corresponding capabiity. Use get_caps() to obtain capability of any LED
+    Note: LED can only be set according to their corresponding capability. Use get_caps() to obtain capability of any LED
+		Return value: Boolean(True/false)
 
   4.set_state()
     Member function of class led
     Sets the state(ON/OFF) of LED
     Parameter 1: LED object
     Parameter 2: user_state(0 for OFF/1 for ON)
+		Return value: Boolean(True/false)
 
   5. set_char()
     Member function of class LED
@@ -200,7 +202,7 @@ Functions in PSULib.py
   Returns a list of PSU object in the system.
   Prints the PSU attributes
   PSU object has the following attributes and can be accessed using their corresponding names
-  
+
   description:  PSU-1  #Use object.hdr.description
   model: 00014
   serial: 26

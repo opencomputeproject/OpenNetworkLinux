@@ -1,7 +1,7 @@
 """
-Test case 3: Turn led[2] to Mode 17(GREEN_BLINKING)
+Test case 6: Turn led[1] to Mode 15(Yellow_Blinking)
 """
-user_mode = 17
+user_mode = 15
 DEBUG = True
 
 from libonlp import led
@@ -15,9 +15,14 @@ print "The count is : ",count
 for x in range(count):
     led.set_normal(ledobj[x])
 
-led.set_mode(ledobj[2],user_mode)
-sleep(3)
-currentState = led.get_mode(ledobj[2])
+valid = led.set_mode(ledobj[1],user_mode)
+if valid:
+    sleep(3)
+    currentState = led.get_mode(ledobj[1])
+else:
+    DEBUG = False
+    print "Test case passed"
+
 if DEBUG:
     if currentState == user_mode:
         print "Test case passed"
