@@ -189,7 +189,8 @@ else
     set dummy $(df -k -P "$workmnt" | tail -1)
     tmpavail=$5
 
-    # estimate the squashfs size
+    # estimate the squashfs size based on the largest one here
+    # (there may be more than one arch in the SWI file)
     squashsz=0
     ifs=$IFS; IFS=$CR
     for line in $(unzip -ql "$swipath"); do
@@ -197,7 +198,9 @@ else
         set dummy $line
         case "$5" in
             *.sqsh)
-                squashsz=$(( $squashsz + $2 ))
+                if [ "$2" -gt $squashsz ]; then
+                    squashsz=$2
+                fi
                 ;;
         esac
     done
