@@ -85,10 +85,42 @@ shift
 
 [ ! "${testonly}" ] || set -x
 
+# set up some tempfs for our download
+
+swi_kmin=1048576
+
+workdir=$(mktemp -d -t boot-tmpfs-XXXXXX)
+
+export TMPDIR=$workdir
+# export this tempfs as temporary space for swiprep below
+
+echo "creating ${swi_kmin}k of tmpfs in $workdir"
+mount -v -t tmpfs -o size=${swi_kmin}k tmpfs $workdir
+workmnt=$workdir
+
+do_cleanup() {
+    cd /tmp
+    if [ "$workmnt" ]; then
+        if grep -q "$workmnt" /proc/mounts; then
+            umount -v "$workmnt" || :
+        fi
+    fi
+    rm -fr "$workdir"
+}
+trap "do_cleanup" 0 1
+
 unset swipath host bhost port dir file dev user password scope
 case "${SWI}" in
     nfs://*/|dir:*)
         echo "Mounting ${SWI}"
+
+        # do not use the ephemeral temporary directory for
+        # locally-mounted directories
+        if test "$workmnt"; then
+            umount "$workmnt" || :
+        fi
+        unset TMPDIR
+
         swipath=$(swimount $SWI)
         if [ "$rootfs" ]; then
             [ -d "${swipath}/${rootfs}" ] || { echo "${SWI}${rootfs} must be an unpacked rootfs"; exit 1; }
@@ -131,6 +163,10 @@ fi
 if [ "$testonly" ]; then
     echo "swipath=$swipath rootfs=$rootfs"
     echo "Stop here"
+
+    trap "" 0 1
+    # leave temporary directory and mounts
+
     exit 0
 fi
 
@@ -140,6 +176,42 @@ if [ -d "${swipath}" ]; then
     umount -l /newroot 2>/dev/null || :
     mount --bind "${swipath}/${rootfs}" /newroot
 else
+
+    ##############################
+    #
+    # swiprep will (1) unpack the squashfs image to a file,
+    # and (2) extract the filesystem to /newroot.
+    #
+    # We need to make sure there is enough disk space for this...
+    #
+    ##############################
+    
+    set dummy $(df -k -P "$workmnt" | tail -1)
+    tmpavail=$5
+
+    # estimate the squashfs size
+    squashsz=0
+    ifs=$IFS; IFS=$CR
+    for line in $(unzip -ql "$swipath"); do
+        IFS=$ifs
+        set dummy $line
+        case "$5" in
+            *.sqsh)
+                squashsz=$(( $squashsz + $2 ))
+                ;;
+        esac
+    done
+    IFS=$ifs
+
+    # pad by a little to account for inodes and such
+    squashsz=$(( $squashsz * 105 / 100 ))
+
+    if [ $squashsz -gt $tmpavail ]; then
+        tmpsz=$(( $swi_kmin + $squashsz - $tmpavail ))
+        echo "Resizing tmpfs to ${tmpsz}k"
+        mount -o remount,size=${tmpsz}k $workmnt
+    fi
+
     swiprep --overlay "${swipath}${rootfs}" --unmount --swiref "$swistamp" /newroot
     swiprep --record "${swipath}${rootfs}" --swiref "$swistamp" /newroot
 fi
@@ -152,6 +224,10 @@ if [ -f /lib/boot-custom ]; then
     . /lib/boot-custom
 fi
 
+# done with the temporary dirs and mounts
+trap "" 0 1
+do_cleanup || :
+
 echo "Switching rootfs" # limit 16 chars since serial buffer is not flushed
 kill -QUIT 1 # exec /bin/switchroot as PID 1
 sleep 30
@@ -162,4 +238,5 @@ exit 1
 # Local variables:
 # mode: sh
 # sh-basic-offset: 4
+# sh-indentation: 4
 # End:
