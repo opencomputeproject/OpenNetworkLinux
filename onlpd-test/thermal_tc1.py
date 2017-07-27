@@ -4,7 +4,7 @@ from libonlp import thermal
 from libonlp import get_thermals
 from time import sleep
 
-Thermalobj = get_thermals()
+Thermalobj = get_thermals() #List of thermals
 count = len(Thermalobj)
 print "The count is ",count
 

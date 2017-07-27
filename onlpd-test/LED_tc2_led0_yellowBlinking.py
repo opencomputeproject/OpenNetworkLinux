@@ -9,14 +9,13 @@ from libonlp import led
 from libonlp import get_leds
 from time import sleep
 
-ledobj = get_leds() #Gets the list of LEDs
+ledobj = get_leds() #List of LEDs
 count = len(ledobj) #Total number of LEDs
 print "The count is : ",count
 
-for x in range(count):
-    led.set_normal(ledobj[x]) #Set LED to ON state and Mode 16(Green)
+led.set_normal(ledobj[0]) #Set state to 1 and mode to GREEN
 
-valid = led.set_mode(ledobj[0],user_mode)
+valid = led.set_mode(ledobj[0],user_mode)#Set the LED to user mode
 
 if valid:
     sleep(3)

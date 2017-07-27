@@ -8,7 +8,7 @@ from libonlp import fan
 from libonlp import get_fans
 from time import sleep
 
-fanobj = get_fans() #Get all the fans and their statuses
+fanobj = get_fans() #List of fans and their statuses
 count = len(fanobj) # Count the number of fans
 print "The count is: ",count
 

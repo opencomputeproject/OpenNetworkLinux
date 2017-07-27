@@ -4,7 +4,7 @@ from libonlp import sys
 from libonlp import get_sys
 from time import sleep
 
-sysobj = get_sys()
+sysobj = get_sys() #System object
 count = len(sysobj)
 print "The count is ",count
 

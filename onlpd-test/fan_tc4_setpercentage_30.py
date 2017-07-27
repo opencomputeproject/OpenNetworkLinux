@@ -8,7 +8,7 @@ from libonlp import fan
 from libonlp import get_fans
 from time import sleep
 
-fanobj = get_fans() #Get all the fans and their statuses
+fanobj = get_fans() #List of fans and their statuses
 count = len(fanobj) # Count the number of fans
 print "The count is: ",count
 
@@ -17,6 +17,7 @@ for y in range(count):
 sleep(10)
 
 percentlist = [] #List to store fans' speed in percentage
+
 for x in range(count):
     percentNew = fan.set_percent(fanobj[x],user_percent)
     if(percentNew != None):
