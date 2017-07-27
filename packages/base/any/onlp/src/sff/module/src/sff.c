@@ -66,7 +66,9 @@ sff_module_type_get(const uint8_t* eeprom)
 
     if (SFF8636_MODULE_QSFP28(eeprom)
         && SFF8636_MEDIA_EXTENDED(eeprom)
-        && SFF8636_MEDIA_100GE_CR4(eeprom))
+        && (SFF8636_MEDIA_100GE_CR4(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_S(eeprom) ||
+            SFF8636_MEDIA_25GE_CR_N(eeprom)))
         return SFF_MODULE_TYPE_100G_BASE_CR4;
 
     if (SFF8636_MODULE_QSFP28(eeprom)
@@ -252,6 +254,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_1G_BASE_LX:
         case SFF_MODULE_TYPE_100_BASE_LX:
         case SFF_MODULE_TYPE_100_BASE_FX:
+        case SFF_MODULE_TYPE_4X_MUX:
             return SFF_MEDIA_TYPE_FIBER;
 
         case SFF_MODULE_TYPE_COUNT:
@@ -344,9 +347,8 @@ make_printable__(char* string, int size)
  * @note if eeprom is NULL it is assumed the rv->eeprom buffer
  * has already been initialized.
  */
-
-int
-sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
+static int
+sff_eeprom_parse_standard__(sff_eeprom_t* se, uint8_t* eeprom)
 {
     if(se == NULL) {
         return -1;
@@ -430,12 +432,10 @@ sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
 
     se->info.module_type = sff_module_type_get(se->eeprom);
     if(se->info.module_type == SFF_MODULE_TYPE_INVALID) {
-        AIM_LOG_ERROR("sff_info_init() failed: invalid module type");
         return -1;
     }
 
-    if(sff_info_from_module_type(&se->info, se->info.sfp_type,
-                                 se->info.module_type) < 0) {
+    if(sff_info_init(&se->info, se->info.module_type, NULL, NULL, NULL, 0) < 0) {
         return -1;
     }
 
@@ -613,3 +613,179 @@ sff_eeprom_validate(sff_eeprom_t *se, int verbose)
 
     return 1;
 }
+
+static int
+sff_eeprom_parse_nonstandard__(sff_eeprom_t* se, uint8_t* eeprom)
+{
+    if(se == NULL) {
+        return -1;
+    }
+    se->identified = 0;
+
+    if(eeprom) {
+        SFF_MEMCPY(se->eeprom, eeprom, 256);
+    }
+
+    if (strncmp(se->info.vendor, "Amphenol", 8) == 0 &&
+        strncmp(se->info.model, "625960001", 9) == 0 &&
+        (se->eeprom[240] == 0x0f) &&
+        (se->eeprom[241] == 0x10) &&
+        ((se->eeprom[243] & 0xF0) == 0xE0)) {
+
+        /* 4X_MUX */
+        se->identified  = 1;
+        se->info.module_type = SFF_MODULE_TYPE_4X_MUX;
+        se->info.module_type_name = sff_module_type_desc(se->info.module_type);
+        se->info.media_type = SFF_MEDIA_TYPE_COPPER;
+        se->info.media_type_name = sff_media_type_desc(se->info.media_type);
+        se->info.caps = SFF_MODULE_CAPS_F_1G;
+        se->info.length = se->eeprom[146];
+        SFF_SNPRINTF(se->info.length_desc, sizeof(se->info.length_desc), "%dm",
+                     se->info.length);
+        return 0;
+    }
+    return -1;
+}
+
+int
+sff_eeprom_parse(sff_eeprom_t* se, uint8_t* eeprom)
+{
+    int rv = sff_eeprom_parse_standard__(se, eeprom);
+    if(!se->identified) {
+        rv = sff_eeprom_parse_nonstandard__(se, eeprom);
+    }
+    return rv;
+}
+
+int
+sff_info_init(sff_info_t* info, sff_module_type_t mt,
+              const char* vendor, const char* model, const char* serial,
+              int length)
+{
+    info->module_type = mt;
+
+    switch(mt)
+        {
+        case SFF_MODULE_TYPE_100G_AOC:
+        case SFF_MODULE_TYPE_100G_BASE_SR4:
+        case SFF_MODULE_TYPE_100G_BASE_LR4:
+        case SFF_MODULE_TYPE_100G_CWDM4:
+            info->sfp_type = SFF_SFP_TYPE_QSFP28;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_100G;
+            break;
+
+        case SFF_MODULE_TYPE_100G_BASE_CR4:
+            info->sfp_type = SFF_SFP_TYPE_QSFP28;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
+            info->caps = SFF_MODULE_CAPS_F_100G;
+            break;
+
+        case SFF_MODULE_TYPE_40G_BASE_SR4:
+        case SFF_MODULE_TYPE_40G_BASE_LR4:
+        case SFF_MODULE_TYPE_40G_BASE_LM4:
+        case SFF_MODULE_TYPE_40G_BASE_ACTIVE:
+        case SFF_MODULE_TYPE_40G_BASE_SR2:
+        case SFF_MODULE_TYPE_40G_BASE_SM4:
+        case SFF_MODULE_TYPE_4X_MUX:
+            info->sfp_type = SFF_SFP_TYPE_QSFP_PLUS;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_40G;
+            break;
+
+        case SFF_MODULE_TYPE_40G_BASE_CR4:
+        case SFF_MODULE_TYPE_40G_BASE_CR:
+            info->sfp_type = SFF_SFP_TYPE_QSFP_PLUS;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
+            info->caps = SFF_MODULE_CAPS_F_40G;
+            break;
+
+        case SFF_MODULE_TYPE_25G_BASE_CR:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
+            info->caps = SFF_MODULE_CAPS_F_25G;
+            break;
+
+        case SFF_MODULE_TYPE_10G_BASE_CR:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
+            info->caps = SFF_MODULE_CAPS_F_10G;
+            break;
+
+        case SFF_MODULE_TYPE_10G_BASE_SR:
+        case SFF_MODULE_TYPE_10G_BASE_LR:
+        case SFF_MODULE_TYPE_10G_BASE_LRM:
+        case SFF_MODULE_TYPE_10G_BASE_ER:
+        case SFF_MODULE_TYPE_10G_BASE_SX:
+        case SFF_MODULE_TYPE_10G_BASE_LX:
+        case SFF_MODULE_TYPE_10G_BASE_ZR:
+        case SFF_MODULE_TYPE_10G_BASE_SRL:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_10G;
+            break;
+
+        case SFF_MODULE_TYPE_1G_BASE_SX:
+        case SFF_MODULE_TYPE_1G_BASE_LX:
+        case SFF_MODULE_TYPE_1G_BASE_CX:
+        case SFF_MODULE_TYPE_1G_BASE_T:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_1G;
+            break;
+
+        case SFF_MODULE_TYPE_100_BASE_LX:
+        case SFF_MODULE_TYPE_100_BASE_FX:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_100;
+            break;
+
+        case SFF_MODULE_TYPE_COUNT:
+        case SFF_MODULE_TYPE_INVALID:
+            return -1;
+        }
+
+    info->sfp_type_name = sff_sfp_type_desc(info->sfp_type);
+    info->module_type_name = sff_module_type_desc(info->module_type);
+    info->media_type_name = sff_media_type_desc(info->media_type);
+
+    if(vendor) {
+        aim_strlcpy(info->vendor, vendor, sizeof(info->vendor));
+    }
+    if(model) {
+        aim_strlcpy(info->model, model, sizeof(info->model));
+    }
+    if(serial) {
+        aim_strlcpy(info->serial, serial, sizeof(info->serial));
+    }
+
+    info->length = length;
+    SFF_SNPRINTF(info->length_desc, sizeof(info->length_desc), "%dm", length);
+    return 0;
+}
+
+#ifdef DEPENDMODULE_INCLUDE_CJSON_UTIL
+
+#include <cjson_util/cjson_util_format.h>
+
+cJSON*
+sff_info_json(cJSON* rv, sff_info_t* info)
+{
+    if(rv == NULL) {
+        rv = cJSON_CreateObject();
+    }
+
+    cjson_util_add_string_to_object(rv, "vendor", "%-16.16s", info->vendor);
+    cjson_util_add_string_to_object(rv, "model", "%-16.16s", info->model);
+    cjson_util_add_string_to_object(rv, "serial", "%-16.16s", info->serial);
+    cJSON_AddStringToObject(rv, "sfp-type", info->sfp_type_name);
+    cJSON_AddStringToObject(rv, "module-type", info->module_type_name);
+    cJSON_AddStringToObject(rv, "media-type", info->media_type_name);
+    cjson_util_add_string_to_object(rv, "caps", "%{sff_module_caps}", info->caps);
+    cjson_util_add_string_to_object(rv, "length", info->length_desc);
+
+    return rv;
+}
+
+#endif /* DEPENDMODULE_CJSON_UTIL */

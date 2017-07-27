@@ -160,6 +160,7 @@ aim_map_si_t sff_module_type_map[] =
     { "1G_BASE_T", SFF_MODULE_TYPE_1G_BASE_T },
     { "100_BASE_LX", SFF_MODULE_TYPE_100_BASE_LX },
     { "100_BASE_FX", SFF_MODULE_TYPE_100_BASE_FX },
+    { "4X_MUX", SFF_MODULE_TYPE_4X_MUX },
     { NULL, 0 }
 };
 
@@ -194,6 +195,7 @@ aim_map_si_t sff_module_type_desc_map[] =
     { "1GBASE-T", SFF_MODULE_TYPE_1G_BASE_T },
     { "100BASE-LX", SFF_MODULE_TYPE_100_BASE_LX },
     { "100BASE-FX", SFF_MODULE_TYPE_100_BASE_FX },
+    { "4X-MUX", SFF_MODULE_TYPE_4X_MUX },
     { NULL, 0 }
 };
 

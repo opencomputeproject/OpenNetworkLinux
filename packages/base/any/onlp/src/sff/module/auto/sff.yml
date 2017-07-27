@@ -101,6 +101,8 @@ sff_module_types: &sff_module_types
     desc: "100BASE-LX"
 - 100_BASE_FX:
     desc: "100BASE-FX"
+- 4X_MUX:
+    desc: "4X-MUX"
 
 sff_module_caps: &sff_module_caps
 - F_100  : 0x1
@@ -147,5 +149,15 @@ definitions:
       members: *sff_media_types
 
   xenum:
-      SFF_ENUMERATION_ENTRY:
-        members: *enums
+    SFF_ENUMERATION_ENTRY:
+      members: *enums
+
+  xmacro:
+    SFF_SFP_TYPE_ENTRY:
+      members: *sff_sfp_types
+    SFF_MODULE_TYPE_ENTRY:
+      members: *sff_module_types
+    SFF_MODULE_CAP_ENTRY:
+      members: *sff_module_caps
+    SFF_MEDIA_TYPE_ENTRY:
+      members: *sff_module_types

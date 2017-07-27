@@ -51,6 +51,10 @@ cdefs: &cdefs
 - ONLPLIB_CONFIG_I2C_BLOCK_SIZE:
     doc: "Maximum read and write block size."
     default: 32
+- ONLPLIB_CONFIG_I2C_READ_RETRY_COUNT:
+    doc: "The number of I2C read retry attempts (if enabled)."
+    default: 16
+
 - ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER:
     doc: "Include the custom i2c header (include/linux/i2c-devices.h) to avoid conflicts with the kernel and i2c-dev packages."
     default: 1

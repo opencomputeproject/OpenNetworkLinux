@@ -83,15 +83,11 @@ static sfpmap_t sfpmap__[] =
 int
 onlp_sfpi_init(void)
 {
-    int value = -1, ret;
+    int ret;
 
-    onlp_gpio_export(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_IN);
-    ret = onlp_gpio_get(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, &value);
-    if(ret == ONLP_STATUS_OK && value != 1) {
-        onlp_gpio_export(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
-        ret = onlp_gpio_set(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
-        sleep(1);
-    }
+    onlp_gpio_export(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+    ret = onlp_gpio_set(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
+    sleep(1);
 
     return ret;
 }

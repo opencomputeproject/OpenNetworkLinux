@@ -24,10 +24,9 @@
  *
  ***********************************************************/
 #include <unistd.h>
-#include <onlplib/mmap.h>
 #include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
-#include <fcntl.h>
+#include "platform_lib.h"
 
 
 #define VALIDATE(_id)                           \
@@ -123,6 +122,9 @@ int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int local_id;
+    int psu_id;
+    psu_type_t psu_type;
+
     VALIDATE(id);
 
     local_id = ONLP_OID_ID_GET(id);
@@ -132,6 +134,14 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 
     if(local_id == THERMAL_CPU_CORE) {
         int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
+        return rv;
+    }
+
+    psu_id   = local_id - THERMAL_1_ON_PSU1 + 1;
+    psu_type = get_psu_type(psu_id, NULL, 0);
+
+    if (psu_type == PSU_TYPE_AC_3YPOWER_F2B || psu_type == PSU_TYPE_AC_3YPOWER_B2F  ) {
+        int rv = psu_ym2401_pmbus_info_get(psu_id, "psu_temp1_input", &info->mcelsius);
         return rv;
     }
 

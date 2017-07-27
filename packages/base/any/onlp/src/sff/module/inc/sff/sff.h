@@ -28,6 +28,7 @@
 #include <sff/sff_config.h>
 #include <AIM/aim_pvs.h>
 
+#include <dependmodules.x>
 
 /* <auto.start.enum(ALL).header> */
 /** sff_media_type */
@@ -125,7 +126,8 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_1G_BASE_T,
     SFF_MODULE_TYPE_100_BASE_LX,
     SFF_MODULE_TYPE_100_BASE_FX,
-    SFF_MODULE_TYPE_LAST = SFF_MODULE_TYPE_100_BASE_FX,
+    SFF_MODULE_TYPE_4X_MUX,
+    SFF_MODULE_TYPE_LAST = SFF_MODULE_TYPE_4X_MUX,
     SFF_MODULE_TYPE_COUNT,
     SFF_MODULE_TYPE_INVALID = -1,
 } sff_module_type_t;
@@ -162,6 +164,7 @@ typedef enum sff_module_type_e {
     "1G_BASE_T", \
     "100_BASE_LX", \
     "100_BASE_FX", \
+    "4X_MUX", \
 }
 /** Enum names. */
 const char* sff_module_type_name(sff_module_type_t e);
@@ -174,7 +177,7 @@ const char* sff_module_type_desc(sff_module_type_t e);
 
 /** validator */
 #define SFF_MODULE_TYPE_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= SFF_MODULE_TYPE_100_BASE_FX))
+    ( (0 <= (_e)) && ((_e) <= SFF_MODULE_TYPE_4X_MUX))
 
 /** sff_module_type_map table. */
 extern aim_map_si_t sff_module_type_map[];
@@ -236,7 +239,6 @@ sff_module_type_t sff_module_type_get(const uint8_t* idprom);
  * @param idprom The SFF idprom.
  */
 sff_media_type_t sff_media_type_get(sff_module_type_t mt);
-
 
 /**
  * @brief Determine the SFF module capabilities (from the idprom data).
@@ -344,12 +346,25 @@ int sff_eeprom_validate(sff_eeprom_t *info, int verbose);
 void sff_info_show(sff_info_t* info, aim_pvs_t* pvs);
 
 /**
- * @brief Populate an SFF info structure from a module type.
+ * @brief Initialize an info structure based on module type.
  */
-int sff_info_from_module_type(sff_info_t* info,
-                               sff_sfp_type_t st,
-                               sff_module_type_t mt);
+int sff_info_init(sff_info_t* pinfo, sff_module_type_t type,
+                  const char* vendor, const char* model, const char* serial,
+                  int length);
 
 
+
+#ifdef DEPENDMODULE_INCLUDE_CJSON_UTIL
+
+#include <cjson_util/cjson_util.h>
+
+/**
+ * @brief Return a JSON representation of the sff_info_t structure.
+ * @param cj Add keys this object. If NULL a new object is created.
+ * @param info The info structure.
+ */
+cJSON* sff_info_json(cJSON* cj, sff_info_t* info);
+
+#endif /* DEPENDMODULE_CJSON_UTIL */
 
 #endif /* __SFF_SFF_H__ */

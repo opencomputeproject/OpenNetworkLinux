@@ -1,0 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for AG7648
+#
+######################################################################
+
+x86-64-delta-ag7648-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-3-16
+
+    args: >-
+      nopat
+      acpi=off
+      console=ttyS0,115200n8
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

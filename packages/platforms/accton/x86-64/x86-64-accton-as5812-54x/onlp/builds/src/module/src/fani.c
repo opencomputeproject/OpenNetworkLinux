@@ -24,7 +24,8 @@
  *
  ***********************************************************/
 #include <onlp/platformi/fani.h>
-#include <onlplib/mmap.h>
+#include <unistd.h>
+#include <onlplib/file.h>
 #include <fcntl.h>
 #include "platform_lib.h"
 
@@ -135,11 +136,11 @@ onlp_fan_info_t linfo[] = {
         
 
 /* PSU relative marco */
-#define SET_PSU_TYPE_CPR_4011_F2B_FAN(info) \
+#define SET_PSU_TYPE_AC_F2B_FAN(info) \
     info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B); \
     info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE
 
-#define SET_PSU_TYPE_CPR_4011_B2F_FAN(info) \
+#define SET_PSU_TYPE_AC_B2F_FAN(info) \
     info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F); \
     info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE
     
@@ -200,9 +201,25 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 }
 
 static int
+_onlp_fani_info_get_fan_on_psu_ym2401(int pid, onlp_fan_info_t* info)
+{
+    int val = 0;
+
+    /* get fan status
+     */
+    if (psu_ym2401_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
+        info->status |= (val > 0) ? 0 : ONLP_FAN_STATUS_FAILED;
+        info->rpm = val;
+        info->percentage = (info->rpm * 100) / 21600;	    
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+static int
 _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
-    int   psu_id, is_ac=0;
+    int   psu_id;
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
     char  fullpath[50] = {0};
@@ -211,24 +228,19 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     /* get fan other cap status according to psu type 
      */
     psu_id    = (local_id-FAN_1_ON_PSU1) + 1;
-    
-    if (LOCAL_DEBUG)
-        printf("[Debug][%s][%d][psu_id: %d]\n", __FUNCTION__, __LINE__, psu_id); 
+    DEBUG_PRINT("[psu_id: %d]", psu_id); 
     
     psu_type  = get_psu_type(psu_id, NULL, 0); /* psu_id = 1 , present PSU1. pus_id =2 , present PSU2 */
-
-    if (LOCAL_DEBUG)
-        printf("[Debug][%s][%d][psu_type: %d]\n", __FUNCTION__, __LINE__, psu_type); 
-
+    DEBUG_PRINT("[psu_type: %d]", psu_type); 
 
     switch (psu_type) {
-        case PSU_TYPE_AC_F2B:
-            SET_PSU_TYPE_CPR_4011_F2B_FAN(info);
-            is_ac = 1;
+        case PSU_TYPE_AC_COMPUWARE_F2B:
+        case PSU_TYPE_AC_3YPOWER_F2B:
+            SET_PSU_TYPE_AC_F2B_FAN(info);
             break;
-        case PSU_TYPE_AC_B2F:
-            SET_PSU_TYPE_CPR_4011_B2F_FAN(info);
-            is_ac = 1;
+        case PSU_TYPE_AC_COMPUWARE_B2F:
+        case PSU_TYPE_AC_3YPOWER_B2F:
+            SET_PSU_TYPE_AC_B2F_FAN(info);
             break;
         case PSU_TYPE_DC_48V_F2B:
             SET_PSU_TYPE_UM400D_F2B_FAN(info);
@@ -243,7 +255,8 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
             break;
     }
     
-    if (1 == is_ac)
+    if (psu_type == PSU_TYPE_AC_COMPUWARE_F2B ||
+        psu_type == PSU_TYPE_AC_COMPUWARE_B2F  )
     {
         /* get fan fault status 
          */
@@ -259,8 +272,12 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
         info->rpm = atoi(r_data); 
 
         /* get speed percentage from rpm */
-        info->percentage = (info->rpm * 100)/19328;        
-
+        info->percentage = (info->rpm * 100)/19328;
+    }
+    else if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
+            psu_type == PSU_TYPE_AC_3YPOWER_B2F  )
+    {
+        return _onlp_fani_info_get_fan_on_psu_ym2401(psu_id, info);
     }
      		
     return ONLP_STATUS_OK;
@@ -351,8 +368,22 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 	{
         case FAN_1_ON_PSU1:
         case FAN_1_ON_PSU2:
+        {
+            int psu_id;
+            psu_type_t psu_type;
+
+            psu_id   = local_id - FAN_1_ON_PSU1 + 1;
+            psu_type = get_psu_type(psu_id, NULL, 0);
+
+            if (psu_type == PSU_TYPE_AC_3YPOWER_F2B ||
+                psu_type == PSU_TYPE_AC_3YPOWER_B2F  ) {
+                return psu_ym2401_pmbus_info_set(psu_id, "psu_fan1_duty_cycle_percentage", p);
+            }
+
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, last_path[local_id].ctrl_speed);		
             break;
+        }
+
         default:
             sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, last_path[local_id].ctrl_speed);
             break;

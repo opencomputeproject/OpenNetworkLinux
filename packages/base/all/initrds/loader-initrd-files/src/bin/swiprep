@@ -141,21 +141,24 @@ case $(uname -m) in
     ARCH_LIST="armel"
     ;;
   aarch64)
-   ARCH_LIST="arm64"
-   ;;
+    ARCH_LIST="arm64"
+    ;;
   *)
     ;;
 esac
 
 if test "${mode_install}${mode_overlay}"; then
   for arch in $ARCH_LIST; do
-    if unzip -pq "$swipath" "rootfs-${arch}.sqsh" > "$workdir/rootfs.sqsh"; then
+    if unzip -q "$swipath" "rootfs-${arch}.sqsh" -d "$workdir"; then
       :
     else
-      echo "*** unzip of rootfs.sqsh failed" 1>&2
-      rm -f "$workdir/rootfs.sqsh"
+      echo "*** unzip of root squashfs failed" 1>&2
+      rm -f "$workdir/rootfs-${arch}.sqsh"
     fi
-    if test -s "$workdir/rootfs.sqsh"; then break; fi
+    if test -s "$workdir/rootfs-${arch}.sqsh"; then
+      mv "$workdir/rootfs-${arch}.sqsh" "$workdir/rootfs.sqsh"
+      break;
+    fi
   done
   if test ! -s "$workdir/rootfs.sqsh"; then
     echo "*** cannot find a valid rootfs" 1>&2

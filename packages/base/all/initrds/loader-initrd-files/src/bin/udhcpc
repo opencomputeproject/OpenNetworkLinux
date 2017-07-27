@@ -26,4 +26,4 @@
 . /lib/customize.sh
 
 kill $(cat /tmp/udhcpc.pid 2>/dev/null) 2>/dev/null
-exec busybox udhcpc -V $ONL_UDHCPC_VENDOR -p /tmp/udhcpc.pid -s /lib/udhcpc-script "$@"
+exec busybox udhcpc -O url -V $ONL_UDHCPC_VENDOR -p /tmp/udhcpc.pid -s /lib/udhcpc-script "$@"
