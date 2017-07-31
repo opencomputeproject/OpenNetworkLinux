@@ -58,27 +58,27 @@ decide_percentage(int *percentage, int temper)
 {
     int level;
 
-    if(temper <= 25)
+    if(temper < 65)
     {
-        *percentage = 40;
+        *percentage = 50;
         level = 0;
     }
-    else if(temper > 25 && temper <= 40)
+    else if(temper >= 65 && temper <= 70)
     {
         *percentage = 60;
         level = 1;
     }
-    else if(temper > 40 && temper <= 55)
+    else if(temper > 70 && temper <= 75)
     {
-        *percentage = 80;
+        *percentage = 70;
         level = 2;
     }
-    else if(temper > 55 && temper <= 75)
+    else if(temper > 75 && temper <= 80)
     {
-        *percentage = 90;
+        *percentage = 85;
         level = 3;
     }
-    else if(temper > 75)
+    else if(temper > 80)
     {
         *percentage = 100;
         level = 4;
