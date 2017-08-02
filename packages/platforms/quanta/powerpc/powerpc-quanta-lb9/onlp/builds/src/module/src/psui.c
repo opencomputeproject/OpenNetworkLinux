@@ -62,7 +62,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
      * For this first version we'll approximate the status using
      * the input voltage sensor.
      */
-    rv = onlp_file_read_int(&info->mvin, "%s/in1_input", dir);
+    rv = onlp_file_read_int(&info->mvin, "%s*in1_input", dir);
     if(rv == ONLP_STATUS_E_MISSING || info->mvin == 0) {
         info->status &= ~1;
         return 0;
@@ -79,27 +79,26 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     strcpy(info->model, "PSU-LB9");
     info->caps |= ONLP_PSU_CAPS_AC;
 
-    if(onlp_file_read_int(&info->miin, "%s/curr1_input", dir) == 0) {
+    if(onlp_file_read_int(&info->miin, "%s*curr1_input", dir) == 0) {
         info->caps |= ONLP_PSU_CAPS_IIN;
     }
-    if(onlp_file_read_int(&info->miout, "%s/curr2_input", dir) == 0) {
+    if(onlp_file_read_int(&info->miout, "%s*curr2_input", dir) == 0) {
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
-    if(onlp_file_read_int(&info->mvout, "%s/in2_input", dir) == 0) {
+    if(onlp_file_read_int(&info->mvout, "%s*in2_input", dir) == 0) {
         info->caps |= ONLP_PSU_CAPS_VOUT;
         /* Empirical */
         info->mvout /= 500;
     }
-    if(onlp_file_read_int(&info->mpin, "%s/power1_input", dir) == 0) {
+    if(onlp_file_read_int(&info->mpin, "%s*power1_input", dir) == 0) {
         info->caps |= ONLP_PSU_CAPS_PIN;
         /* The pmbus driver reports power in micro-units */
         info->mpin /= 1000;
     }
-    if(onlp_file_read_int(&info->mpout, "%s/power2_input", dir) == 0) {
+    if(onlp_file_read_int(&info->mpout, "%s*power2_input", dir) == 0) {
         info->caps |= ONLP_PSU_CAPS_POUT;
         /* the pmbus driver reports power in micro-units */
         info->mpout /= 1000;
     }
     return ONLP_STATUS_OK;
 }
-

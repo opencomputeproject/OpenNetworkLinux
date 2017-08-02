@@ -49,7 +49,7 @@ sys_fan_info_get__(onlp_fan_info_t* info, int id)
     }
 
     rv = onlp_file_read_int(&info->rpm,
-                            "%s/fan%d_input", controller, id);
+                            "%s*fan%d_input", controller, id);
 
     if(rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
@@ -90,7 +90,7 @@ psu_fan_info_get__(onlp_fan_info_t* info, int id)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    return onlp_file_read_int(&info->rpm, "%s/fan1_input", dir);
+    return onlp_file_read_int(&info->rpm, "%s*fan1_input", dir);
 }
 
 
