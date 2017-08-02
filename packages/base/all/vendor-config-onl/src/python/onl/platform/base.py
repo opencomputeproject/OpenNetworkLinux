@@ -354,36 +354,34 @@ class OnlPlatformBase(object):
         return self.platform_info.CPLD_VERSIONS
 
     def dmi_versions(self):
-        # Note - the dmidecode module returns empty lists for powerpc systems.
-        if platform.machine() != "x86_64":
-            return {}
-
-        try:
-            import dmidecode
-        except ImportError:
-            return {}
-
-        fields = [
-            {
-                'name': 'DMI BIOS Version',
-                'subsystem': dmidecode.bios,
-                'dmi_type' : 0,
-                'key' : 'Version',
-                },
-
-            {
-                'name': 'DMI System Version',
-                'subsystem': dmidecode.system,
-                'dmi_type' : 1,
-                'key' : 'Version',
-                },
-            ]
         rv = {}
-        for field in fields:
-                for v in field['subsystem']().values():
-                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
-                                rv[field['name']] = v['data'][field['key']]
+        arches = [ 'x86_64' ]
+        if platform.machine() in arches:
+            try:
+                import dmidecode
+                fields = [
+                    {
+                        'name': 'DMI BIOS Version',
+                        'subsystem': dmidecode.bios,
+                        'dmi_type' : 0,
+                        'key' : 'Version',
+                    },
 
+                    {
+                        'name': 'DMI System Version',
+                        'subsystem': dmidecode.system,
+                        'dmi_type' : 1,
+                        'key' : 'Version',
+                    },
+                ]
+                # Todo -- disable dmidecode library warnings to stderr
+                # or figure out how to clear the warning log in the decode module.
+                for field in fields:
+                    for v in field['subsystem']().values():
+                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
+                            rv[field['name']] = v['data'][field['key']]
+            except:
+                pass
         return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
