@@ -1,20 +1,17 @@
 diff -uNr a/drivers/soc/fsl/Kconfig.arm b/drivers/soc/fsl/Kconfig.arm
---- a/drivers/soc/fsl/Kconfig.arm	2017-04-14 17:32:33.398146919 +0530
-+++ b/drivers/soc/fsl/Kconfig.arm	2017-04-17 12:35:12.618118118 +0530
-@@ -20,6 +20,10 @@
- 	The Soc Drivers provides the device driver that is a specific block
- 	or feature on Layerscape platform.
- 
-+if LS_SOC_DRIVERS
-+        source "drivers/soc/fsl/ls2-console/Kconfig"
-+endif
-+
+--- a/drivers/soc/fsl/Kconfig.arm	2017-06-05 17:37:14.530348991 +0530
++++ b/drivers/soc/fsl/Kconfig.arm	2017-06-05 17:32:18.630348990 +0530
+@@ -23,3 +23,7 @@
  if LS1_SOC_DRIVERS
  	source "drivers/soc/fsl/ls1/Kconfig"
  endif
++
++if LS_SOC_DRIVERS
++        source "drivers/soc/fsl/ls2-console/Kconfig"
++endif
 diff -uNr a/drivers/soc/fsl/ls2-console/Kconfig b/drivers/soc/fsl/ls2-console/Kconfig
 --- a/drivers/soc/fsl/ls2-console/Kconfig	1970-01-01 05:30:00.000000000 +0530
-+++ b/drivers/soc/fsl/ls2-console/Kconfig	2017-04-17 12:28:35.718118166 +0530
++++ b/drivers/soc/fsl/ls2-console/Kconfig	2017-06-05 17:32:52.582348990 +0530
 @@ -0,0 +1,4 @@
 +config FSL_LS2_CONSOLE
 +        tristate "Layerscape MC and AIOP console support"
@@ -22,9 +19,9 @@ diff -uNr a/drivers/soc/fsl/ls2-console/Kconfig b/drivers/soc/fsl/ls2-console/Kc
 +        default y
 diff -uNr a/drivers/soc/fsl/ls2-console/ls2-console.c b/drivers/soc/fsl/ls2-console/ls2-console.c
 --- a/drivers/soc/fsl/ls2-console/ls2-console.c	1970-01-01 05:30:00.000000000 +0530
-+++ b/drivers/soc/fsl/ls2-console/ls2-console.c	2017-04-17 12:28:35.682118166 +0530
-@@ -0,0 +1,272 @@
-+/* Copyright 2015 Freescale Semiconductor Inc.
++++ b/drivers/soc/fsl/ls2-console/ls2-console.c	2017-06-05 17:50:42.494348990 +0530
+@@ -0,0 +1,291 @@
++/* Copyright 2015-2016 Freescale Semiconductor Inc.
 + *
 + * Redistribution and use in source and binary forms, with or without
 + * modification, are permitted provided that the following conditions are met:
@@ -64,9 +61,17 @@ diff -uNr a/drivers/soc/fsl/ls2-console/ls2-console.c b/drivers/soc/fsl/ls2-cons
 +#include <linux/slab.h>
 +#include <linux/io.h>
 +
-+/* MC and IOP character device to read from RAM */
++/* SoC address for the MC firmware base low/high registers */
++#define SOC_CCSR_MC_FW_BASE_ADDR_REGS 0x8340020
++#define SOC_CCSR_MC_FW_BASE_ADDR_REGS_SIZE 2
++/* MC firmware base low/high registers indexes */
++#define MCFBALR_OFFSET 0
++#define MCFBAHR_OFFSET 1
 +
-+#define MC_BASE_ADDR 0x83c0000000
++/* Bit mask used to obtain the most significant part of the MC base address */
++#define MC_FW_HIGH_ADDR_MASK 0x1FFFF
++/* Bit mask used to obtain the least significant part of the MC base address */
++#define MC_FW_LOW_ADDR_MASK 0xE0000000
 +
 +#define MC_BUFFER_OFFSET 0x01000000
 +#define MC_BUFFER_SIZE (1024*1024*16)
@@ -117,6 +122,17 @@ diff -uNr a/drivers/soc/fsl/ls2-console/ls2-console.c b/drivers/soc/fsl/ls2-cons
 +	__adjust_end(cd);
 +}
 +
++static inline uint64_t get_mc_fw_base_address(void) {
++	uint32_t* mcfbaregs = (uint32_t*) ioremap(SOC_CCSR_MC_FW_BASE_ADDR_REGS,
++						SOC_CCSR_MC_FW_BASE_ADDR_REGS_SIZE);
++	uint64_t mcfwbase = 0ULL;
++	mcfwbase  = readl(mcfbaregs + MCFBAHR_OFFSET) & MC_FW_HIGH_ADDR_MASK;
++	mcfwbase <<= 32;
++	mcfwbase |= readl(mcfbaregs + MCFBALR_OFFSET) & MC_FW_LOW_ADDR_MASK;
++	iounmap(mcfbaregs);
++	pr_info("fsl-ls2-console: MC base address at 0x%016llx\n", mcfwbase);
++	return mcfwbase;
++}
 +
 +static int fsl_ls2_generic_console_open(struct inode *node, struct file *fp,
 +				u64 offset, u64 size,
@@ -131,7 +147,7 @@ diff -uNr a/drivers/soc/fsl/ls2-console/ls2-console.c b/drivers/soc/fsl/ls2-cons
 +	if (cd == NULL)
 +		return -ENOMEM;
 +	fp->private_data = cd;
-+	cd->map_addr = ioremap(MC_BASE_ADDR + offset, size);
++	cd->map_addr = ioremap(get_mc_fw_base_address() + offset, size);
 +
 +	cd->hdr = (struct log_header *) cd->map_addr;
 +	invalidate(cd->hdr);
@@ -298,12 +314,12 @@ diff -uNr a/drivers/soc/fsl/ls2-console/ls2-console.c b/drivers/soc/fsl/ls2-cons
 +MODULE_DESCRIPTION("Freescale LS2 console driver");
 diff -uNr a/drivers/soc/fsl/ls2-console/Makefile b/drivers/soc/fsl/ls2-console/Makefile
 --- a/drivers/soc/fsl/ls2-console/Makefile	1970-01-01 05:30:00.000000000 +0530
-+++ b/drivers/soc/fsl/ls2-console/Makefile	2017-04-17 12:28:35.706118166 +0530
++++ b/drivers/soc/fsl/ls2-console/Makefile	2017-06-05 17:32:52.582348990 +0530
 @@ -0,0 +1 @@
 +obj-$(CONFIG_FSL_LS2_CONSOLE) += ls2-console.o
 diff -uNr a/drivers/soc/fsl/Makefile b/drivers/soc/fsl/Makefile
---- a/drivers/soc/fsl/Makefile	2017-04-14 17:32:33.398146919 +0530
-+++ b/drivers/soc/fsl/Makefile	2017-04-17 12:30:18.578118153 +0530
+--- a/drivers/soc/fsl/Makefile	2017-06-05 17:37:14.530348991 +0530
++++ b/drivers/soc/fsl/Makefile	2017-06-05 17:33:54.022348991 +0530
 @@ -4,3 +4,4 @@
  
  obj-$(CONFIG_LS1_SOC_DRIVERS) += ls1/
