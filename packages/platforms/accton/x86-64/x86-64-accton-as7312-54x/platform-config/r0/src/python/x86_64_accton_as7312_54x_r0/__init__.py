@@ -9,7 +9,7 @@ class OnlPlatform_x86_64_accton_as7312_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7312.54"
 
     def baseconfig(self):
-        self.insmod('cpr_4011_4mxx')
+        self.insmod('ym2651y')
         for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
             self.insmod("x86-64-accton-as7312-54x-%s.ko" % m)
 
