@@ -17,3 +17,11 @@ mounts:
     mount: ro
     dir: /mnt/onl/boot
     fsck: false
+
+  # ESP (EFI system partition)
+  EFI-BOOT:
+    mount: ro
+    dir: /mnt/onl/efi-boot
+    fsck: false
+    label: EFI System
+    optional: true
