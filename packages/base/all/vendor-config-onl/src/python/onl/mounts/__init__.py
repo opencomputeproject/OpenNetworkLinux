@@ -138,35 +138,53 @@ class OnlMountManager(object):
 
     def init(self, timeout=5):
 
-        for(k, v) in self.mdata['mounts'].iteritems():
-            #
-            # Get the partition device for the given label.
-            # The timeout logic is here to handle waiting for the
-            # block devices to arrive at boot.
-            #
-            t = timeout
-            while t >= 0:
-                try:
-                    v['device'] = subprocess.check_output("blkid -L %s" % k, shell=True).strip()
-                    break
-                except subprocess.CalledProcessError:
-                        self.logger.debug("Block label %s does not yet exist..." % k)
-                        time.sleep(1)
-                        t -= 1
+        now = time.time()
+        future = now + timeout
 
-            if 'device' not in v:
-                self.logger.error("Timeout waiting for block label %s after %d seconds." % (k, timeout))
-                self.missing = k
+        md = self.mdata['mounts']
+        optional = set(x for x in md if md.get('optional', False))
+        pending = set(x for x in md if not md.get('optional', False))
+
+        def _discover(k):
+            v = md[k]
+            lbl = v.get('label', k)
+
+            try:
+                v['device'] = subprocess.check_output(('blkid', '-L', lbl,)).strip()
+            except subprocess.CalledProcessError:
                 return False
 
-            #
-            # Make the mount point for future use.
-            #
             if not os.path.isdir(v['dir']):
-                self.logger.debug("Make directory '%s'..." % v['dir'])
+                self.logger.debug("Make directory '%s'...", v['dir'])
                 os.makedirs(v['dir'])
 
-            self.logger.debug("%s @ %s" % (k, v['device']))
+            self.logger.debug("%s @ %s", k, v['dir'])
+            return True
+
+        while True:
+
+            now = time.time()
+            if now > future:
+                break
+
+            pending_ = pending
+            pending = [k for k in pending_ if not _discover(k)]
+            optional_ = optional
+            optional = [k for k in optional_ if not _discover(k)]
+
+            if not pending: break
+            if pending != pending_: continue
+            if optional != optional_: continue
+
+            self.logger.debug("Still waiting for block devices: %s",
+                              " ".join(pending+optional))
+            time.sleep(0.25)
+
+        if pending:
+            for k in pending+optional:
+                self.logger.error("Timeout waiting for block label %s after %d seconds.", k, timeout)
+
+        # ignore the any optional labels that were not found
 
     def __fsck(self, label, device):
         self.logger.info("Running fsck on %s [ %s ]..." % (label, device))
