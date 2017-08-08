@@ -821,6 +821,11 @@ class InitrdContext(SubprocessMixin):
         cmd = ('mount', '-t', 'sysfs', 'sysfs', dst,)
         self.check_call(cmd, vmode=self.V1)
 
+        dst = os.path.join(self.dir, "sys/firmware/efi/efivars")
+        if os.path.exists(dst):
+            cmd = ('mount', '-t', 'efivarfs', 'efivarfs', dst,)
+            self.check_call(cmd, vmode=self.V1)
+
         # maybe mount devtmpfs
         if self._hasDevTmpfs:
             dst = os.path.join(self.dir, "dev")

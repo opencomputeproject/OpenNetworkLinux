@@ -113,6 +113,9 @@ installer_mkchroot() {
     mkdir -p ${rootdir}/dev/pts
   fi
   mount -t devpts devpts "${rootdir}/dev/pts"
+  if test -d "${rootdir}/sys/firmware/efi/efivars"; then
+    mount -t efivarfs efivarfs "${rootdir}/sys/firmware/efi/efivars"
+  fi
 
   if test ${TMPDIR+set}; then
     # make the tempdir available to the chroot
