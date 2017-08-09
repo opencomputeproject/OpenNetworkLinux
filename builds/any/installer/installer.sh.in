@@ -548,6 +548,9 @@ if test -f preinstall.sh; then
   ./preinstall.sh $rootdir
 fi
 
+# make sure any GPT data is valid and clean
+installer_fixup_gpt || :
+
 chroot "${rootdir}" $installer_shell
 
 if test -f "$postinst"; then

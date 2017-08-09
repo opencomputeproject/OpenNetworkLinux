@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-modules.yml VENDOR=delta BASENAME=x86-64-delta-ag7648 ARCH=amd64 KERNELS="onl-kernel-3.16-lts-x86-64-all:amd64"

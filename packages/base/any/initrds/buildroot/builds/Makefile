@@ -26,7 +26,7 @@ all: setup $(BUILDROOT_ARCHDIRS)
 
 clean:
 	rm -rf $(BUILDROOT_ARCHDIRS)
-
+	rm -rf .setup.done
 
 setup: setup-pyroute2 setup-dnspython setup-libyaml setup-pyyaml setup-jq setup-pyparted
 	cp $(wildcard patches/busybox*.patch) $(BUILDROOT_SOURCE)/package/busybox/
