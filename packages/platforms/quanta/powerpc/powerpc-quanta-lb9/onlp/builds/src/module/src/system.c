@@ -21,12 +21,12 @@ powerpc_quanta_lb9_system_airflow_get(void)
 
     for(i = 1; i < 5; i++) {
         int rpm = 0;
-        onlp_file_read_int(&rpm, SYS_CONTROLLER_PREFIX_F2B "/fan%d_input", i);
+        onlp_file_read_int(&rpm, SYS_CONTROLLER_PREFIX_F2B "*fan%d_input", i);
         f2b += rpm;
     }
     for(i = 1; i < 5; i++) {
         int rpm = 0;
-        onlp_file_read_int(&rpm, SYS_CONTROLLER_PREFIX_B2F "/fan%d_input", i);
+        onlp_file_read_int(&rpm, SYS_CONTROLLER_PREFIX_B2F "*fan%d_input", i);
         b2f += rpm;
     }
 
