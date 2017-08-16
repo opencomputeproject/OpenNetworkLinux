@@ -201,10 +201,9 @@ static ssize_t for_vout_data(struct device *dev, struct device_attribute \
 		
 	exponent = two_complement_to_int(data->vout_mode, 5, 0x1f);
 	mantissa = data->v_out;
-	
-	return (exponent > 0) ? sprintf(buf, "%d\n", \
-		(mantissa << exponent) * multiplier) : \
-		sprintf(buf, "%d\n", (mantissa << exponent) / (1 << -exponent));
+    return (exponent > 0) ? sprintf(buf, "%d\n", \
+        mantissa * (1 << exponent)) : \
+        sprintf(buf, "%d\n", mantissa / (1 << -exponent) * multiplier); 
 
 }
 
