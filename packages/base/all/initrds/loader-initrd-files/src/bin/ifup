@@ -141,4 +141,7 @@ wait_link_up()
     return 1
 }
 
-wait_link_up $NETDEV 100
+if [ -n "${NETAUTO}" ]; then
+    wait_link_up $NETDEV 100
+fi
+return 0
