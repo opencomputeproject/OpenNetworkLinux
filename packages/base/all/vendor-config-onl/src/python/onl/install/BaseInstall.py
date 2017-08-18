@@ -509,14 +509,33 @@ menuentry %(boot_menu_entry)s {
   initrd /%(platform)s.cpio.gz
 }
 
+set onie_boot_label="ONIE-BOOT"
+set onie_boot_uuid="%(onie_boot_uuid)s"
+# filesystem UUID, *not* partition UUID
+# (tee hee, GPT GRUB cannot grok partition UUIDs)
+
+function onie_boot_uefi {
+  set root='(hd0,gpt1)'
+  search --no-floppy --fs-uuid --set=root "${onie_boot_uuid}"
+  echo 'Loading ONIE ...'
+  chainloader /EFI/onie/grubx64.efi
+}
+
+function onie_boot_dos {
+  search --no-floppy --label --set=root "${onie_boot_label}"
+  set saved_entry="0"
+  save_env saved_entry
+  echo 'Loading ONIE ...'
+  chainloader +1
+}
+
 # Menu entry to chainload ONIE
 menuentry ONIE {
-  %(set_root_para)s
-  search --no-floppy %(set_search_para2)s --set=root %(onie_boot)s
-  %(set_save_entry_para)s
-  %(set_save_env_para)s
-  echo 'Loading ONIE ...'
-  chainloader %(set_chainloader_para)s
+  if [ -n "${onie_boot_uuid}" ]; then
+    onie_boot_uefi
+  else
+    onie_boot_dos
+  fi
 }
 """
 
@@ -528,7 +547,10 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def __init__(self, *args, **kwargs):
         Base.__init__(self, *args, **kwargs)
-        self.isUEFI = False
+
+    @property
+    def isUEFI(self):
+        return os.path.isdir('/sys/firmware/efi/efivars')
 
     def findGpt(self):
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
@@ -659,20 +681,10 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
         if self.isUEFI:
-            ctx['set_root_para'] = "set root='(hd0,gpt1)'"
-            ctx['set_search_para2'] = "--fs-uuid"
-            ctx['set_save_entry_para'] = ""
-            ctx['set_save_env_para'] = ""
             dev_UEFI = self.blkidParts['EFI System']
-            ctx['onie_boot'] = dev_UEFI.uuid
-            ctx['set_chainloader_para'] = "/EFI/onie/grubx64.efi"
+            ctx['onie_boot_uuid'] = dev_UEFI.uuid
         else:
-            ctx['set_root_para'] = ""
-            ctx['set_search_para2'] = "--label"
-            ctx['set_save_entry_para'] = "set saved_entry=\"0\""
-            ctx['set_save_env_para'] = "save_env saved_entry"
-            ctx['onie_boot'] = "ONIE-BOOT"
-            ctx['set_chainloader_para'] = "+1"
+            ctx['onie_boot_uuid'] = ""
 
         cf = GRUB_TPL % ctx
 
@@ -775,8 +787,6 @@ class GrubInstaller(SubprocessMixin, Base):
         if label != 'gpt':
             self.log.error("invalid GRUB label in platform config: %s", label)
             return 1
-        if os.path.isdir('/sys/firmware/efi/efivars'):
-            self.isUEFI = True
 
         return self.installGpt()
 
