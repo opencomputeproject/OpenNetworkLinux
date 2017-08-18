@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import string
 import shutil
+import re
 
 import Fit, Legacy
 
@@ -609,6 +610,158 @@ class PartedParser(SubprocessMixin):
                 if ent.part in parts:
                     raise ValueError("duplicate partition")
                 parts[ent.part] = ent
+
+        self.parts = []
+        for partno in sorted(parts.keys()):
+            self.parts.append(parts[partno])
+
+        if self.disk is None:
+            raise ValueError("no partition table found")
+
+    def __len__(self):
+        return len(self.parts)
+
+class GdiskDiskEntry:
+
+    DEVICE_RE = re.compile("Disk ([^:]*): .*")
+    BLOCKS_RE = re.compile("Disk [^:]*: ([0-9][0-9]*) sectors")
+    LBSZ_RE = re.compile("Logical sector size: ([0-9][0-9]*) bytes")
+    GUID_RE = re.compile("Disk identifier [(]GUID[)]: ([0-9a-fA-F-][0-9a-fA-F-]*)")
+
+    def __init__(self, device, blocks, lbsz, guid):
+        self.device = device
+
+        self.blocks = blocks
+        self.lbsz = lbsz
+        self.guid = guid
+
+    @classmethod
+    def fromOutput(cls, buf):
+
+        m = cls.BLOCKS_RE.search(buf)
+        if m:
+            blocks = int(m.group(1))
+        else:
+            raise ValueError("cannot get block count")
+
+        m = cls.DEVICE_RE.search(buf)
+        if m:
+            device = m.group(1)
+        else:
+            raise ValueError("cannot get block count")
+
+        m = cls.LBSZ_RE.search(buf)
+        if m:
+            lbsz = int(m.group(1))
+        else:
+            raise ValueError("cannot get block size")
+
+        m = cls.GUID_RE.search(buf)
+        if m:
+            guid = m.group(1)
+        else:
+            raise ValueError("cannot get block size")
+
+        return cls(device, blocks, lbsz, guid)
+
+class GdiskPartEntry:
+
+    PGUID_RE = re.compile("Partition GUID code: ([0-9a-fA-F-][0-9a-fA-F-]*) [(]([^)]*)[)]")
+    PGUID2_RE = re.compile("Partition GUID code: ([0-9a-fA-F-][0-9a-fA-F-]*)")
+    GUID_RE = re.compile("Partition unique GUID: ([0-9a-fA-F-][0-9a-fA-F-]*)")
+    START_RE = re.compile("First sector: ([0-9][0-9]*)")
+    END_RE = re.compile("Last sector: ([0-9][0-9]*)")
+    SIZE_RE = re.compile("Partition size: ([0-9][0-9]*) sectors")
+    NAME_RE = re.compile("Partition name: [']([^']+)[']")
+
+    ESP_PGUUID="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+
+    def __init__(self, pguid, guid, start, end, sz, pguidName=None, name=None):
+        self.pguid = pguid
+        self.pguidName = pguidName
+        self.guid = guid
+        self.name = name
+        self.start = start
+        self.end = end
+        self.sz = sz
+
+    @classmethod
+    def fromOutput(cls, buf):
+
+        m = cls.PGUID_RE.search(buf)
+        if m:
+            pguid = m.group(1).lower()
+            pguidName = m.group(2)
+        else:
+            m = cls.PGUID2_RE.search(buf)
+            if m:
+                pguid = m.group(1).lower()
+                pguidName = None
+            else:
+                raise ValueError("cannot get partition GUID")
+
+        m = cls.GUID_RE.search(buf)
+        if m:
+            guid = m.group(1).lower()
+        else:
+            raise ValueError("cannot get partition unique GUID")
+
+        m = cls.START_RE.search(buf)
+        if m:
+            start = int(m.group(1))
+        else:
+            raise ValueError("cannot get partition start")
+
+        m = cls.END_RE.search(buf)
+        if m:
+            end = int(m.group(1))
+        else:
+            raise ValueError("cannot get partition end")
+
+        m = cls.SIZE_RE.search(buf)
+        if m:
+            sz = int(m.group(1))
+        else:
+            raise ValueError("cannot get partition size")
+
+        m = cls.NAME_RE.search(buf)
+        if m:
+            name = m.group(1)
+        else:
+            name = None
+
+        return cls(pguid, guid, start, end, sz,
+                   pguidName=pguidName,
+                   name=name)
+
+class GdiskParser(SubprocessMixin):
+
+    def __init__(self, device, log=None):
+        self.device = device
+        self.log = log or logging.getLogger("parted")
+        self.parse()
+
+    def parse(self):
+
+        onieCmd = ('sgdisk', '-p', self.device,)
+        cmd = ('onie-shell', '-c', " ".join(onieCmd),)
+        buf = self.check_output(cmd)
+        self.disk = GdiskDiskEntry.fromOutput(buf)
+
+        parts = {}
+        for line in buf.splitlines():
+
+            line = line.strip()
+            if not line: continue
+            if not line[0] in string.digits: continue
+
+            partno = int(line.split()[0])
+            onieCmd = ('sgdisk', '-i', str(partno), self.device,)
+            cmd = ('onie-shell', '-c', " ".join(onieCmd),)
+            buf = self.check_output(cmd)
+
+            ent = GdiskPartEntry.fromOutput(buf)
+            parts[partno] = ent
 
         self.parts = []
         for partno in sorted(parts.keys()):
