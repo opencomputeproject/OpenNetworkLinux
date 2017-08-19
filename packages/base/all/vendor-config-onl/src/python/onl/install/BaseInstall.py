@@ -19,6 +19,7 @@ import fnmatch, glob
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
+from InstallUtils import GdiskParser
 from Plugin import Plugin
 
 import onl.YamlUtils
@@ -511,8 +512,8 @@ menuentry %(boot_menu_entry)s {
 
 set onie_boot_label="ONIE-BOOT"
 set onie_boot_uuid="%(onie_boot_uuid)s"
-# filesystem UUID, *not* partition UUID
-# (tee hee, GPT GRUB cannot grok partition UUIDs)
+# filesystem UUID, *not* GPT partition GUID, *not* GPT partition unique GUID
+# (tee hee, GPT GRUB cannot grok partition attributes)
 
 function onie_boot_uefi {
   set root='(hd0,gpt1)'
@@ -681,8 +682,24 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
         if self.isUEFI:
-            dev_UEFI = self.blkidParts['EFI System']
-            ctx['onie_boot_uuid'] = dev_UEFI.uuid
+            # XXX assume boot (ESP) partition is on the same device as GRUB
+            self.log.info("extracting partition UUIDs for %s", self.device)
+            gp = GdiskParser(self.device, log=self.log)
+
+            espParts = [x for x in gp.parts if x.isEsp]
+            if not espParts:
+                self.log.error("cannot find ESP partition on %s", self.device)
+                return 1
+            espDevice = espParts[0].device
+            self.log.info("found ESP partition %s", espDevice)
+
+            espParts = [x for x in self.blkidParts if x.device==espDevice]
+            if not espParts:
+                self.log.error("cannot find blkid entry for ESP partition on %s", espDevice)
+                return 1
+            self.log.info("found ESP filesystem UUID %s", espParts[0].uuid)
+
+            ctx['onie_boot_uuid'] = espParts[0].uuid
         else:
             ctx['onie_boot_uuid'] = ""
 
