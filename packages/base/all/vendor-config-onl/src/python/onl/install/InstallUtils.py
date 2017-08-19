@@ -674,9 +674,12 @@ class GdiskPartEntry:
     SIZE_RE = re.compile("Partition size: ([0-9][0-9]*) sectors")
     NAME_RE = re.compile("Partition name: [']([^']+)[']")
 
-    ESP_PGUUID="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+    ESP_PGUID = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+    GRUB_PGUID = "21686148-6449-6e6f-744e-656564454649"
+    ONIE_PGUID = "7412f7d5-a156-4b13-81dc-867174929325"
 
-    def __init__(self, pguid, guid, start, end, sz, pguidName=None, name=None):
+    def __init__(self, device, pguid, guid, start, end, sz, pguidName=None, name=None):
+        self.device = device
         self.pguid = pguid
         self.pguidName = pguidName
         self.guid = guid
@@ -685,8 +688,20 @@ class GdiskPartEntry:
         self.end = end
         self.sz = sz
 
+    @property
+    def isEsp(self):
+        return self.pguid == self.ESP_PGUID
+
+    @property
+    def isGrub(self):
+        return self.pguid == self.GRUB_PGUID
+
+    @property
+    def isOnie(self):
+        return self.pguid == self.ONIE_PGUID
+
     @classmethod
-    def fromOutput(cls, buf):
+    def fromOutput(cls, partDevice, buf):
 
         m = cls.PGUID_RE.search(buf)
         if m:
@@ -730,7 +745,8 @@ class GdiskPartEntry:
         else:
             name = None
 
-        return cls(pguid, guid, start, end, sz,
+        return cls(partDevice,
+                   pguid, guid, start, end, sz,
                    pguidName=pguidName,
                    name=name)
 
@@ -749,6 +765,7 @@ class GdiskParser(SubprocessMixin):
         self.disk = GdiskDiskEntry.fromOutput(buf)
 
         parts = {}
+        pidx = 1
         for line in buf.splitlines():
 
             line = line.strip()
@@ -756,11 +773,23 @@ class GdiskParser(SubprocessMixin):
             if not line[0] in string.digits: continue
 
             partno = int(line.split()[0])
+
+            partDevice = "%s%d" % (self.device, pidx,)
+            pidx += 1
+            # linux partitions may be numbered differently,
+            # if there are holes in the GPT partition table
+
             onieCmd = ('sgdisk', '-i', str(partno), self.device,)
             cmd = ('onie-shell', '-c', " ".join(onieCmd),)
-            buf = self.check_output(cmd)
+            try:
+                buf = self.check_output(cmd)
+            except subprocess.CalledProcessError as ex:
+                sys.stdout.write(ex.output)
+                self.log.warn("sgdisk failed with code %s", ex.returncode)
+                continue
+                # skip this partition, but otherwise do not give up
 
-            ent = GdiskPartEntry.fromOutput(buf)
+            ent = GdiskPartEntry.fromOutput(partDevice, buf)
             parts[partno] = ent
 
         self.parts = []
