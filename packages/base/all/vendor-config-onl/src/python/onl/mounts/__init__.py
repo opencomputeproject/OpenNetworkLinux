@@ -142,8 +142,8 @@ class OnlMountManager(object):
         future = now + timeout
 
         md = self.mdata['mounts']
-        optional = set(x for x in md if md.get('optional', False))
-        pending = set(x for x in md if not md.get('optional', False))
+        optional = set(x for x in md if md[x].get('optional', False))
+        pending = set(x for x in md if not md[x].get('optional', False))
 
         def _discover(k):
             v = md[k]
@@ -220,7 +220,20 @@ class OnlMountManager(object):
             raise ValueError("invalid labels argument.")
 
         if 'all' in labels:
-            labels = filter(lambda l: l != 'all', labels) + self.mdata['mounts'].keys()
+            labels = list(labels)
+            labels.remove('all')
+            labels = labels + self.mdata['mounts'].keys()
+
+        def _f(label):
+            mpt = self.mdata['mounts'][label]
+            dev = mpt.get('device', None)
+            opt = mpt.get('optional', False)
+            if dev: return True
+            if not opt: return True
+            return False
+
+        labels = [x for x in labels if _f(x)]
+        # skip labels that do not resolve to a block device (ideally, optional ones)
 
         rv = []
         for l in list(set(labels)):
