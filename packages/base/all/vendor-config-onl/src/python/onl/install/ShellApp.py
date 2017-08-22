@@ -88,7 +88,7 @@ class AppBase(SubprocessMixin, object):
         sys.exit(code)
 
 class OnieBootContext:
-    """Find the ONIE initrd and umpack/mount it."""
+    """Find the ONIE initrd and unpack/mount it."""
 
     def __init__(self, log=None):
         self.log = log or logging.getLogger(self.__class__.__name__)
@@ -128,6 +128,7 @@ class OnieBootContext:
                 initrd = _g(parts[0].dir)
                 if initrd is None:
                     raise ValueError("cannot find ONIE initrd on %s" % parts[0].dir)
+                self.onieDir = parts[0].dir
                 self.log.debug("found ONIE initrd at %s", initrd)
                 with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
                     self.initrd = initrd
