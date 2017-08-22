@@ -7,7 +7,11 @@ import os
 import logging
 import subprocess
 from InstallUtils import SubprocessMixin, ChrootSubprocessMixin, MountContext
+from InstallUtils import OnieSubprocess
 from cStringIO import StringIO
+import re
+
+from onl.sysconfig import sysconfig
 
 class ConfBase:
 
@@ -90,13 +94,16 @@ class GrubEnv(SubprocessMixin):
 
     INSTALL = "grub-install"
     EDITENV = "grub-editenv"
+    EFIBOOTMGR = "efibootmgr"
     # system default
 
     ENV_PATH = "/grub/grubenv"
     # override me
 
+    EFI_BOOT_RE = re.compile("Boot([0-9a-fA-F]*)[*] (.*)")
+
     def __init__(self,
-                 bootDir=None, bootPart=None,
+                 bootDir=None, bootPart=None, espPart=None,
                  path=None,
                  log=None):
 
@@ -108,13 +115,16 @@ class GrubEnv(SubprocessMixin):
         self.__dict__['bootPart'] = bootPart
         # location of GRUB boot files (mounted directory or unmounted partition)
 
+        self.__dict__['espPart'] = espPart
+        # location of EFI System Partition
+
         self.__dict__['path'] = path or self.ENV_PATH
         # path to grubenv, relative to above
 
         self.__dict__['log'] = log or logging.getLogger("grub")
 
-    def mountCtx(self, device):
-        return MountContext(device, fsType='ext4', log=self.log)
+    def mountCtx(self, device, fsType='ext4'):
+        return MountContext(device, fsType=fsType, log=self.log)
 
     def asDict(self):
         if self.bootPart:
@@ -164,36 +174,83 @@ class GrubEnv(SubprocessMixin):
             cmd = (self.EDITENV, p, 'unset', attr,)
             self.check_call(cmd)
 
+    @property
+    def isUEFI(self):
+        return os.path.isdir('/sys/firmware/efi/efivars')
+
     def install(self, device):
-        if self.bootDir is not None:
-            self.check_call((self.INSTALL, '--boot-directory=' + self.bootDir, device,))
-        elif self.bootPart is not None:
-            with self.mountCtx(self.bootPart) as ctx:
-                self.check_call((self.INSTALL, '--boot-directory=' + ctx.dir, device,))
+
+        uidx = None
+        if self.isUEFI:
+            buf = self.check_output((self.EFIBOOTMGR,))
+            for line in buf.splitlines(False):
+                m = self.EFI_BOOT_RE.match(line)
+                if m:
+                    if m.group(2) == sysconfig.installer.os_name:
+                        uidx = m.group(1)
+                        break
+        if uidx is not None:
+            self.check_output((self.EFIBOOTMGR, '-b', uidx, '-B',))
+
+        grubOpts = []
+        if self.isUEFI:
+            grubOpts.append('--target=x86_64-efi')
+            grubOpts.append('--no-nvram')
+            grubOpts.append('--recheck')
+
+            grubOpts.append('--bootloader-id=ONL')
+            # All ONL-derived distros should be able to use
+            # the same profile
+
+        def _install():
+            if self.bootDir is not None:
+                self.check_call([self.INSTALL, '--boot-directory=' + self.bootDir,]
+                                + grubOpts
+                                + [device,])
+            elif self.bootPart is not None:
+                with self.mountCtx(self.bootPart) as ctx:
+                    self.check_call([self.INSTALL, '--boot-directory=' + ctx.dir,]
+                                    + grubOpts
+                                    + [device,])
+            else:
+                self.check_call([self.INSTALL,] + grubOpts + [device,])
+
+        if self.espPart is not None:
+            with self.mountCtx(self.espPart, fsType=None) as ctx:
+                grubOpts.append('--efi-directory=' + ctx.dir)
+                _install()
         else:
-            self.check_call((self.INSTALL, device,))
+            _install()
+
+        if self.isUEFI:
+            self.check_call((self.EFIBOOTMGR,
+                             '--create',
+                             '--label', sysconfig.installer.os_name,
+                             '--disk', device,
+                             '--part', '1',
+                             '--loader', '/EFI/ONL/grubx64.efi',))
 
 class ChrootGrubEnv(ChrootSubprocessMixin, GrubEnv):
 
     def __init__(self,
                  chrootDir,
                  mounted=False,
-                 bootDir=None, bootPart=None,
+                 bootDir=None, bootPart=None, espPart=None,
                  path=None,
                  log=None):
         self.__dict__['chrootDir'] = chrootDir
         self.__dict__['mounted'] = mounted
         GrubEnv.__init__(self,
-                         bootDir=bootDir, bootPart=bootPart,
+                         bootDir=bootDir, bootPart=bootPart, espPart=espPart,
                          path=path,
                          log=log)
 
-    def mountCtx(self, device):
+    def mountCtx(self, device, fsType='ext4'):
         return MountContext(device,
-                            chroot=self.chrootDir, fsType='ext4',
+                            chroot=self.chrootDir, fsType=fsType,
                             log=self.log)
 
-class ProxyGrubEnv:
+class ProxyGrubEnv(SubprocessMixin):
     """Pretend to manipulate the GRUB environment.
 
     Instead, write a trace of shell commands to a log
@@ -211,7 +268,7 @@ class ProxyGrubEnv:
 
     def __init__(self,
                  installerConf,
-                 bootDir=None, chroot=True, bootPart=None,
+                 bootDir=None, chroot=True, bootPart=None, espPart=None,
                  path=None,
                  log=None):
 
@@ -225,6 +282,9 @@ class ProxyGrubEnv:
         self.__dict__['bootDir'] = bootDir
         self.__dict__['bootPart'] = bootPart
         # location of GRUB boot files (mounted directory or unmounted partition)
+
+        self.__dict__['espPart'] = espPart
+        # location of EFI System Partition
 
         self.__dict__['chroot'] = chroot
         # True of the bootDir is inside the chroot,
@@ -261,7 +321,8 @@ class ProxyGrubEnv:
                  % (self.path.lstrip('/'),))
             cmds.append("mpt=$(mktemp -t -d)")
             cmds.append("mount %s $mpt" % self.bootPart)
-            cmds.append(("sts=0; %s %s set %s=\"%s\" || sts=$?"
+            cmds.append("sts=0")
+            cmds.append(("%s %s set %s=\"%s\" || sts=$?"
                          % (self.EDITENV, p, attr, val,)))
             cmds.append("umount $mpt")
             cmds.append("rmdir $mpt")
@@ -291,7 +352,8 @@ class ProxyGrubEnv:
                  % (self.path.lstrip('/'),))
             cmds.append("mpt=$(mktemp -t -d)")
             cmds.append("mount %s $mpt" % self.bootPart)
-            cmds.append(("sts=0; %s %s unset %s || sts=$?"
+            cmds.append("sts=0")
+            cmds.append(("%s %s unset %s || sts=$?"
                          % (self.EDITENV, p, attr,)))
             cmds.append("umount $mpt")
             cmds.append("rmdir $mpt")
@@ -303,35 +365,83 @@ class ProxyGrubEnv:
                 fd.write(cmd)
                 fd.write("\n")
 
-    def install(self, device, isUEFI=False):
+    @property
+    def isUEFI(self):
+        return os.path.isdir('/sys/firmware/efi/efivars')
+
+    def install(self, device):
         self.log.warn("deferring commands to %s...", self.installerConf.installer_postinst)
+
+        cmds.append("os_name=\"%s\"" % sysconfig.installer.os_name)
+
+        if self.isUEFI:
+            sub = OnieSubprocess(log=self.log.getChild("onie"))
+            cmd = (self.EFIBOOTMGR,)
+            buf = sub.check_output(cmd)
+            bidx = None
+            for line in buf.splitlines(False):
+                m = self.EFI_BOOT_RE.match(line)
+                if m:
+                    if m.group(2) == sysconfig.installer.os_name:
+                        uidx = m.group(1)
+                        break
+
+        if uidx is not None:
+            cmds.append("%s -b %s -B || sts=$?" % (self.EFIBOOTMGR, bidx,))
+
+        grubOpts = []
+        if self.isUEFI:
+            grubOpts.append('--target=x86_64-efi')
+            grubOpts.append('--no-nvram')
+            grubOpts.append('--bootloader-id=ONL')
+            grubOpts.append('--efi-directory=/boot/efi')
+            grubOpts.append('--recheck')
+
         cmds = []
+
+        if self.bootPart and not self.bootDir:
+            cmds.append("bootMpt=$(mktemp -t -d)")
+            cmds.append("mount %s $bootMpt" % self.bootPart)
+
+        if self.espPart is not None:
+            cmds.append("espMpt=$(mktemp -t -d)")
+            cmds.append("mount %s $espMpt" % self.espPart)
+
+        cmds.append("sts=0")
+
         if self.bootDir and self.chroot:
             p = os.pat.join(self.installerConf.installer_chroot,
                             self.bootDir.lstrip('/'))
-            cmds.append(("%s --boot-directory=\"%s\" %s" % (self.INSTALL, p, device,)))
+            cmd = ([self.INSTALL, '--boot-directory=' + p,]
+                   + grubOpts
+                   + [device,])
+            cmds.append(" ".join(cmd) + " || sts=$?")
         elif self.bootDir:
             p = self.bootDir
-            cmds.append(("%s --boot-directory=\"%s\" %s" % (self.INSTALL, p, device,)))
+            cmd = ([self.INSTALL, '--boot-directory=' + p,]
+                   + grubOpts
+                   + [device,])
+            cmds.append(" ".join(cmd) + " || sts=$?")
         elif self.bootPart:
-            cmds.append("mpt=$(mktemp -t -d)")
-            cmds.append("mount %s $mpt" % self.bootPart)
-            if isUEFI:
-                cmds.append("[ -n \"$(efibootmgr -v | grep 'Open Network Linux')\" ] && (efibootmgr -b $(efibootmgr | grep \"Open Network Linux\" | sed 's/^.*Boot//g'| sed 's/** Open.*$//g') -B)")
-                cmds.append(("sts=0; %s --target=x86_64-efi --no-nvram --bootloader-id=ONL --efi-directory=/boot/efi --boot-directory=\"$mpt\" --recheck %s || sts=$?"
-                             % (self.INSTALL, device,)))
-                cmds.append("test $sts -eq 0")
-                cmds.append(("sts=0; %s --quiet --create --label \"Open Network Linux\" --disk %s --part 1 --loader /EFI/ONL/grubx64.efi || sts=$?"
-                             % (self.EFIBOOTMGR , device,)))
-            else:
-                cmds.append(("sts=0; %s --boot-directory=\"$mpt\" %s || sts=$?"
-                         % (self.INSTALL, device,)))
-            cmds.append("umount $mpt")
-            cmds.append("rmdir $mpt")
-            cmds.append("test $sts -eq 0")
+            cmd = ([self.INSTALL, '--boot-directory=\"$bootMpt\"',]
+                   + grubOpts
+                   + [device,])
+            cmds.append(" ".join(cmd) + " || sts=$?")
         else:
-            cmds.append(("%s %s"
-                         % (self.INSTALL, device,)))
+            cmd = ([self.INSTALL,]
+                   + grubOpts
+                   + [device,])
+            cmds.append(" ".join(cmd) + " || sts=$?")
+
+        if self.bootPart and not self.bootDir:
+            cmds.append("umount $bootMpt")
+            cmds.append("rmdir $bootMpt")
+
+        if self.espPart is not None:
+            cmds.append("umount $espMpt")
+            cmds.append("rmdir $espMpt")
+
+        cmds.append("test $sts -eq 0")
 
         with open(self.installerConf.installer_postinst, "a") as fd:
             for cmd in cmds:
