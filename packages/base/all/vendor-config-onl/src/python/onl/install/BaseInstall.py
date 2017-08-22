@@ -20,7 +20,10 @@ from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
 from InstallUtils import GdiskParser
+from InstallUtils import OnieSubprocess
 from Plugin import Plugin
+
+import onl.install.ConfUtils
 
 import onl.YamlUtils
 from onl.sysconfig import sysconfig
@@ -549,6 +552,10 @@ class GrubInstaller(SubprocessMixin, Base):
     def __init__(self, *args, **kwargs):
         Base.__init__(self, *args, **kwargs)
 
+        self.espDevice = None
+        self.espFsUuid = None
+        # optionally fill in ESP partition information
+
     @property
     def isUEFI(self):
         return os.path.isdir('/sys/firmware/efi/efivars')
@@ -635,6 +642,42 @@ class GrubInstaller(SubprocessMixin, Base):
 
         return 0
 
+    def findEsp(self):
+        """Find the block device holding the EFI System Partition.
+
+        XXX assume boot (ESP) partition is on the same device as GRUB
+        """
+
+        self.log.info("extracting partition UUIDs for %s", self.device)
+
+        if isinstance(self.im.grubEnv, onl.install.ConfUtils.GrubEnv):
+            # direct (or chroot) access
+            gp = GdiskParser(self.device,
+                             subprocessContext=self.im.grubEnv,
+                             log=self.log)
+        else:
+            # indirect access using onie-shell
+            ctx = OnieSubprocess(log=self.log.getChild("onie"))
+            gp = GdiskParser(self.device,
+                             subprocessContext=ctx,
+                             log=self.log)
+
+        espParts = [x for x in gp.parts if x.isEsp]
+        if not espParts:
+            self.log.error("cannot find ESP partition on %s", self.device)
+            return 1
+        self.espDevice = espParts[0].device
+        self.log.info("found ESP partition %s", self.espDevice)
+
+        espParts = [x for x in self.blkidParts if x.device==self.espDevice]
+        if not espParts:
+            self.log.error("cannot find blkid entry for ESP partition on %s", self.espDevice)
+            return 1
+        self.espFsUuid = espParts[0].uuid
+        self.log.info("found ESP filesystem UUID %s", self.espFsUuid)
+
+        return 0
+
     def installLoader(self):
 
         kernels = []
@@ -682,24 +725,7 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
         if self.isUEFI:
-            # XXX assume boot (ESP) partition is on the same device as GRUB
-            self.log.info("extracting partition UUIDs for %s", self.device)
-            gp = GdiskParser(self.device, log=self.log)
-
-            espParts = [x for x in gp.parts if x.isEsp]
-            if not espParts:
-                self.log.error("cannot find ESP partition on %s", self.device)
-                return 1
-            espDevice = espParts[0].device
-            self.log.info("found ESP partition %s", espDevice)
-
-            espParts = [x for x in self.blkidParts if x.device==espDevice]
-            if not espParts:
-                self.log.error("cannot find blkid entry for ESP partition on %s", espDevice)
-                return 1
-            self.log.info("found ESP filesystem UUID %s", espParts[0].uuid)
-
-            ctx['onie_boot_uuid'] = espParts[0].uuid
+            ctx['onie_boot_uuid'] = self.espFsUuid
         else:
             ctx['onie_boot_uuid'] = ""
 
@@ -717,7 +743,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def installGrub(self):
         self.log.info("Installing GRUB to %s", self.partedDevice.path)
-        self.im.grubEnv.install(self.partedDevice.path, self.isUEFI)
+        self.im.grubEnv.install(self.partedDevice.path)
         return 0
 
     def installGpt(self):
@@ -735,6 +761,13 @@ class GrubInstaller(SubprocessMixin, Base):
 
         code = self.findGpt()
         if code: return code
+
+        if self.isUEFI:
+            code = self.findEsp()
+            if code: return code
+            self.im.grubEnv.__dict__['espPart'] = self.espDevice
+        else:
+            self.im.grubEnv.__dict__['espPart'] = None
 
         self.log.info("Installing to %s starting at partition %d",
                       self.device, self.minpart)
