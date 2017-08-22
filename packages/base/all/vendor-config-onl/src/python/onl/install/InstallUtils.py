@@ -752,16 +752,16 @@ class GdiskPartEntry:
 
 class GdiskParser(SubprocessMixin):
 
-    def __init__(self, device, log=None):
+    def __init__(self, device, subprocessContext=subprocess, log=None):
         self.device = device
         self.log = log or logging.getLogger("parted")
+        self.subprocessContext = subprocessContext
         self.parse()
 
     def parse(self):
 
-        onieCmd = ('sgdisk', '-p', self.device,)
-        cmd = ('onie-shell', '-c', " ".join(onieCmd),)
-        buf = self.check_output(cmd)
+        cmd = ('sgdisk', '-p', self.device,)
+        buf = self.subprocessContext.check_output(cmd)
         self.disk = GdiskDiskEntry.fromOutput(buf)
 
         parts = {}
@@ -779,10 +779,9 @@ class GdiskParser(SubprocessMixin):
             # linux partitions may be numbered differently,
             # if there are holes in the GPT partition table
 
-            onieCmd = ('sgdisk', '-i', str(partno), self.device,)
-            cmd = ('onie-shell', '-c', " ".join(onieCmd),)
+            cmd = ('sgdisk', '-i', str(partno), self.device,)
             try:
-                buf = self.check_output(cmd)
+                buf = self.subprocessContext.check_output(cmd)
             except subprocess.CalledProcessError as ex:
                 sys.stdout.write(ex.output)
                 self.log.warn("sgdisk failed with code %s", ex.returncode)
@@ -1209,9 +1208,55 @@ class ChrootSubprocessMixin:
             cmd = ['chroot', self.chrootDir,] + list(cmd)
 
         if not self.mounted:
-            with InitrdContext(self.chrootDir, log=self.log) as ctx:
+            with InitrdContext(dir=self.chrootDir, log=self.log) as ctx:
                 self.log.debug("+ " + " ".join(cmd))
                 return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
         else:
             self.log.debug("+ " + " ".join(cmd))
             return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
+
+class OnieSubprocess:
+    """Simple subprocess mixin that defers to onie-shell."""
+
+    def __init__(self, log=None):
+        self.log = log or logging.getLogger("onie")
+
+    def check_call(self, *args, **kwargs):
+        args = list(args)
+        kwargs = dict(kwargs)
+
+        cwd = kwargs.pop('cwd', None)
+        if cwd is not None:
+            raise ValueError("cwd not supported")
+
+        if args:
+            cmd = args.pop(0)
+        else:
+            cmd = kwargs.pop('cmd')
+        if isinstance(cmd, basestring):
+            cmd = ('onie-shell', '-c', 'IFS=;' + cmd,)
+        else:
+            cmd = ['onie-shell', '-c',] + " ".join(cmd)
+
+        self.log.debug("+ " + " ".join(cmd))
+        subprocess.check_call(cmd, *args, cwd=cwd, **kwargs)
+
+    def check_output(self, *args, **kwargs):
+        args = list(args)
+        kwargs = dict(kwargs)
+
+        cwd = kwargs.pop('cwd', None)
+        if cwd is not None:
+            raise ValueError("cwd not supported")
+
+        if args:
+            cmd = args.pop(0)
+        else:
+            cmd = kwargs.pop('cmd')
+        if isinstance(cmd, basestring):
+            cmd = ('onie-shell', '-c', 'IFS=;' + cmd,)
+        else:
+            cmd = ['onie-shell', '-c',] + " ".join(list(cmd))
+
+        self.log.debug("+ " + " ".join(cmd))
+        return subprocess.check_output(cmd, *args, cwd=cwd, **kwargs)
