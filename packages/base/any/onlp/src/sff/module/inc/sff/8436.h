@@ -115,7 +115,7 @@
   ((idprom[131] & SFF8436_CC131_40GE_ACTIVE) != 0)
 
 #define SFF8436_MEDIA_NONE(idprom)              \
-    (idprom[131] == 0)
+    ((idprom[131] & 0x7F) == 0)
 
 #define SFF8436_CC132_40G_OTN            0x08
 #define SFF8436_CC132_OC48_LONG          SFF8472_CC4_OC48_LONG
@@ -286,6 +286,23 @@ _sff8436_qsfp_40g_sm4(const uint8_t* idprom)
     if (idprom[147] & 0xF0) return 0;
     /* length is 200m(OM3) or 250m(OM4) */
     if ((idprom[143] != 100) && (idprom[146] != 125)) {
+        return 0;
+    }
+    return 1;
+}
+
+static inline int
+_sff8436_qsfp_40g_er4(const uint8_t* idprom)
+{
+    if(!SFF8436_MODULE_QSFP_PLUS_V2(idprom)) {
+        return 0;
+    }
+
+    if (idprom[130] != SFF8436_CONN_LC) return 0;
+    if (!SFF8436_MEDIA_NONE(idprom)) return 0;
+
+    /* 40 kilometer SMF */
+    if (idprom[142] != 40) {
         return 0;
     }
     return 1;
