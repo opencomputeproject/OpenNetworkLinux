@@ -69,6 +69,8 @@ sff_module_types: &sff_module_types
     desc: "40GBASE-SR2"
 - 40G_BASE_SM4:
     desc: "40GBASE-SM4"
+- 40G_BASE_ER4:
+    desc: "40GBASE-ER4"
 - 25G_BASE_CR:
     desc: "25GBASE-CR"
 - 10G_BASE_SR:
