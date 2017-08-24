@@ -74,6 +74,28 @@ struct pmbus_data {
 	u8 currpage;
 };
 
+static int qci_pmbus_read_block(struct i2c_client *client, u8 command, int data_len, u8 *data)
+{
+    int result = 0;
+    int retry_count = 3;
+
+    while (retry_count) {
+        retry_count--;
+
+        result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
+
+        if (result < 0) {
+            msleep(10);
+            continue;
+        }
+
+        result = 0;
+        break;
+    }
+
+    return result;
+}
+
 static ssize_t qci_pmbus_show_mfr_id(struct device *dev,
                 struct device_attribute *da, char *buf)
 {
@@ -81,8 +103,7 @@ static ssize_t qci_pmbus_show_mfr_id(struct device *dev,
     u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1], *str;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
-
-    ret = i2c_smbus_read_i2c_block_data(client, PMBUS_MFR_ID, I2C_SMBUS_BLOCK_MAX, block_buffer);
+    ret = qci_pmbus_read_block(client, PMBUS_MFR_ID, I2C_SMBUS_BLOCK_MAX, block_buffer);
     if (ret < 0) {
         dev_err(&client->dev, "Failed to read Manufacturer ID\n");
         return ret;
@@ -101,7 +122,7 @@ static ssize_t qci_pmbus_show_mfr_model(struct device *dev,
     u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1], *str;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
-    ret = i2c_smbus_read_i2c_block_data(client, PMBUS_MFR_MODEL, I2C_SMBUS_BLOCK_MAX, block_buffer);
+    ret = qci_pmbus_read_block(client, PMBUS_MFR_MODEL, I2C_SMBUS_BLOCK_MAX, block_buffer);
     if (ret < 0) {
         dev_err(&client->dev, "Failed to read Manufacturer Model\n");
         return ret;
@@ -120,7 +141,7 @@ static ssize_t qci_pmbus_show_mfr_revision(struct device *dev,
     u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1], *str;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
-    ret = i2c_smbus_read_i2c_block_data(client, PMBUS_MFR_REVISION, I2C_SMBUS_BLOCK_MAX, block_buffer);
+    ret = qci_pmbus_read_block(client, PMBUS_MFR_REVISION, I2C_SMBUS_BLOCK_MAX, block_buffer);
     if (ret < 0) {
         dev_err(&client->dev, "Failed to read Manufacturer Revision\n");
         return ret;
@@ -139,7 +160,7 @@ static ssize_t qci_pmbus_show_mfr_location(struct device *dev,
     u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1], *str;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
-    ret = i2c_smbus_read_i2c_block_data(client, PMBUS_MFR_LOCATION, I2C_SMBUS_BLOCK_MAX, block_buffer);
+    ret = qci_pmbus_read_block(client, PMBUS_MFR_LOCATION, I2C_SMBUS_BLOCK_MAX, block_buffer);
     if (ret < 0) {
         dev_err(&client->dev, "Failed to read Manufacture Location\n");
         return ret;
@@ -158,7 +179,7 @@ static ssize_t qci_pmbus_show_mfr_serial(struct device *dev,
     u8 block_buffer[I2C_SMBUS_BLOCK_MAX + 1], *str;
     struct i2c_client *client = container_of(dev, struct i2c_client, dev);
 
-    ret = i2c_smbus_read_i2c_block_data(client, PMBUS_MFR_SERIAL, I2C_SMBUS_BLOCK_MAX, block_buffer);
+    ret = qci_pmbus_read_block(client, PMBUS_MFR_SERIAL, I2C_SMBUS_BLOCK_MAX, block_buffer);
     if (ret < 0) {
         dev_err(&client->dev, "Failed to read Manufacturer Serial\n");
         return ret;
