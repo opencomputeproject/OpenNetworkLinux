@@ -1,4 +1,4 @@
-VERSION=1.0-beta
+VERSION=1.0
 USER=opennetworklinux
 REPO=builder9
 
