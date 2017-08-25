@@ -225,6 +225,7 @@ class OnlMountManager(object):
             labels = labels + self.mdata['mounts'].keys()
 
         def _f(label):
+            """skip labels that do not resolve to a block device (ideally, optional ones)"""
             mpt = self.mdata['mounts'][label]
             dev = mpt.get('device', None)
             opt = mpt.get('optional', False)
@@ -232,21 +233,24 @@ class OnlMountManager(object):
             if not opt: return True
             return False
 
-        labels = [x for x in labels if _f(x)]
-        # skip labels that do not resolve to a block device (ideally, optional ones)
-
         rv = []
         for l in list(set(labels)):
-            if self.__label_entry("ONL-%s" % l.upper(), False):
-                rv.append("ONL-%s" % l.upper())
-            elif self.__label_entry(l.upper(), False):
-                rv.append(l.upper())
-            elif self.__label_entry(l):
-                rv.append(l)
-            else:
-                pass
 
-        return rv;
+            lbl = "ONL-%s" % l.upper()
+            if self.__label_entry(lbl, False) and _f(lbl):
+                rv.append("ONL-%s" % l.upper())
+                continue
+
+            lbl = l.upper()
+            if self.__label_entry(lbl, False) and _f(lbl):
+                rv.append(l.upper())
+                continue
+
+            lbl = l
+            if self.__label_entry(lbl) and _f(lbl):
+                rv.append(l)
+
+        return rv
 
     def fsck(self, labels, force=False):
         labels = self.validate_labels(labels)
