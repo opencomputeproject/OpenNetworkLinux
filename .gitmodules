@@ -18,4 +18,4 @@
 	url = git@github.com:opennetworklinux/platforms-closed
 [submodule "sm/build-artifacts"]
 	path = sm/build-artifacts
-	url = git@github.com:opennetworklinux/build-artifacts
+        url = git://github.com/opennetworklinux/build-artifacts
