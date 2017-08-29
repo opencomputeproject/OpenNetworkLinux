@@ -528,7 +528,7 @@ installer_force_umount() {
   dev=$1; shift
   mpt=$1; shift
   case "$mpt" in
-    /mnt/*)
+    /mnt/*|/boot/*)
       installer_say "Unmounting $mpt (--force)"
       umount "$mpt"
       ;;
