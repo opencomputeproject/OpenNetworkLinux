@@ -458,7 +458,7 @@ int getCtrlOfBus(void)
 	return getCtrlOfBus_9541();
 }
 
-static const struct fan_cpld_reg fan_cpld_reg[FAN_NUM] = {
+const struct fan_cpld_reg fan_cpld_reg[FAN_NUM] = {
 	{0x180, 0x181},
 	{0x182, 0x183},
 	{0x184, 0x185},
@@ -1952,5 +1952,3 @@ int fanSpeedSet(int id, unsigned short speed)
 	}
 	return ret;
 }
-
-
