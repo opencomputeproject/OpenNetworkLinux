@@ -144,6 +144,8 @@
   (idprom[192] == SFF8636_CC192_100GE_LR4)
 #define SFF8636_MEDIA_100GE_CWDM4(idprom)                \
   (idprom[192] == SFF8636_CC192_100GE_CWDM4)
+#define SFF8636_MEDIA_100GE_PSM4(idprom)                \
+  (idprom[192] == SFF8636_CC192_100GE_PSM4)
 #define SFF8636_MEDIA_100GE_CR4(idprom)                  \
   (idprom[192] == SFF8636_CC192_100GE_CR4)
 #define SFF8636_MEDIA_25GE_CR_S(idprom)                  \
