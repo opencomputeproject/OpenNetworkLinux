@@ -78,6 +78,12 @@ onlp_api_lock_init(void)
 }
 
 void
+onlp_api_lock_denit(void)
+{
+    /* TODO */
+}
+
+void
 onlp_api_lock(const char* api)
 {
     onlp_shlock_global_take();
