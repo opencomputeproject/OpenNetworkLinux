@@ -27,6 +27,8 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
+#define LED_FORMAT "/sys/class/leds/accton_as5912_54xk_led::%s/brightness"
+
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_LED(_id)) {             \
@@ -34,31 +36,39 @@
         }                                       \
     } while(0)
 
-#define LED_FORMAT "/sys/class/leds/accton_as5912_54xk_led::%s/brightness"
-
 /* LED related data
  */
-enum led_light_mode { /*must be the same with the definition @ kernel driver */
-    LED_MODE_OFF = 0,
-    LED_MODE_GREEN,
-    LED_MODE_GREEN_BLINK,
-    LED_MODE_AMBER,
-    LED_MODE_AMBER_BLINK,
-    LED_MODE_RED,
-    LED_MODE_RED_BLINK,
-    LED_MODE_BLUE,
-    LED_MODE_BLUE_BLINK,
-    LED_MODE_AUTO,
-    LED_MODE_UNKNOWN
-};
-
 enum onlp_led_id
 {
-	LED_LOC = 1,
+	LED_RESERVED = 0,
+	LED_LOC,
 	LED_DIAG,
     LED_PSU1,
     LED_PSU2,
     LED_FAN,
+};
+        
+enum led_light_mode {
+    LED_MODE_OFF,
+    LED_MODE_RED 				= 10,
+    LED_MODE_RED_BLINKING 		= 11,
+    LED_MODE_ORANGE 			= 12,
+    LED_MODE_ORANGE_BLINKING 	= 13,
+    LED_MODE_YELLOW 			= 14,
+    LED_MODE_YELLOW_BLINKING 	= 15,
+    LED_MODE_GREEN 				= 16,
+    LED_MODE_GREEN_BLINKING 	= 17,
+    LED_MODE_BLUE 				= 18,
+    LED_MODE_BLUE_BLINKING 		= 19,
+    LED_MODE_PURPLE 			= 20,
+    LED_MODE_PURPLE_BLINKING 	= 21,
+    LED_MODE_AUTO 				= 22,
+    LED_MODE_AUTO_BLINKING 		= 23,
+    LED_MODE_WHITE 				= 24,
+    LED_MODE_WHITE_BLINKING 	= 25,
+    LED_MODE_CYAN 				= 26,
+    LED_MODE_CYAN_BLINKING 		= 27,
+    LED_MODE_UNKNOWN			= 99
 };
 
 typedef struct led_light_mode_map {
@@ -68,14 +78,14 @@ typedef struct led_light_mode_map {
 } led_light_mode_map_t;
 
 led_light_mode_map_t led_map[] = {
-{LED_LOC,  LED_MODE_OFF,   ONLP_LED_MODE_OFF},
-{LED_LOC,  LED_MODE_AMBER, ONLP_LED_MODE_ORANGE},
-{LED_DIAG, LED_MODE_OFF,   ONLP_LED_MODE_OFF},
-{LED_DIAG, LED_MODE_GREEN, ONLP_LED_MODE_GREEN},
-{LED_DIAG, LED_MODE_AMBER, ONLP_LED_MODE_ORANGE},
-{LED_FAN,  LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
-{LED_PSU1, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
-{LED_PSU2, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO}
+{LED_LOC,  LED_MODE_OFF,    ONLP_LED_MODE_OFF},
+{LED_LOC,  LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
+{LED_DIAG, LED_MODE_OFF,    ONLP_LED_MODE_OFF},
+{LED_DIAG, LED_MODE_GREEN,  ONLP_LED_MODE_GREEN},
+{LED_DIAG, LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
+{LED_FAN,  LED_MODE_AUTO,   ONLP_LED_MODE_AUTO},
+{LED_PSU1, LED_MODE_AUTO,   ONLP_LED_MODE_AUTO},
+{LED_PSU2, LED_MODE_AUTO,   ONLP_LED_MODE_AUTO}
 };
 
 static char *leds[] =  /* must map with onlp_led_id */
@@ -160,8 +170,8 @@ onlp_ledi_init(void)
     /*
      * Turn off the LOCATION and DIAG LEDs at startup
      */
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
 
     return ONLP_STATUS_OK;
 }
@@ -170,16 +180,17 @@ int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  lid, value;
+		
     VALIDATE(id);
 	
     lid = ONLP_OID_ID_GET(id);
 
-	/* Set the onlp_oid_hdr_t and capabilities */
+    /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Get LED mode */
     if (onlp_file_read_int(&value, LED_FORMAT, leds[lid]) < 0) {
-        DEBUG_PRINT("Unable to read status from file (%s)", leds[lid]);
+        DEBUG_PRINT("Unable to read status from file "LED_FORMAT, leds[lid]);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -223,15 +234,11 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    int  lid;
-    char path[64] = {0};		
-
+    int  lid;	
     VALIDATE(id);
-	
-    lid = ONLP_OID_ID_GET(id);
-    sprintf(path, LED_FORMAT, leds[lid]);
 
-    if (onlp_file_write_integer(path, onlp_to_driver_led_mode(lid , mode)) < 0) {
+    lid = ONLP_OID_ID_GET(id);
+    if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_FORMAT, leds[lid]) < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 

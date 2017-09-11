@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2016 Accton Technology Corporation.
+ *           Copyright 2017 Accton Technology Corporation.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -30,23 +30,11 @@
 #include "x86_64_accton_as5912_54xk_log.h"
 
 #define NUM_OF_SFP_PORT 54
-#define MAX_SFP_PATH 	64
-static char sfp_node_path[MAX_SFP_PATH] = {0};
-#define FRONT_PORT_BUS_INDEX(port) (port+26)
+#define MAX_PORT_PATH 	64
 
-static char*
-sfp_get_port_path_addr(int port, int addr, char *node_name)
-{
-    sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-00%d/%s",
-                           FRONT_PORT_BUS_INDEX(port), addr, node_name);
-    return sfp_node_path;
-}
-
-static char*
-sfp_get_port_path(int port, char *node_name)
-{
-    return sfp_get_port_path_addr(port, 50, node_name);
-}
+#define SFP_PORT_FORMAT	 		"/sys/bus/i2c/devices/%d-0050/%s"
+#define SFP_PORT_DOM_FORMAT	 	"/sys/bus/i2c/devices/%d-0051/%s"
+#define SFP_BUS_INDEX(port) 	(port+26)
 
 /************************************************************
  *
@@ -86,9 +74,7 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-    char *path = sfp_get_port_path(port, "sfp_is_present");
-
-    if (onlp_file_read_int(&present, path) < 0) {
+    if (onlp_file_read_int(&present, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_is_present") < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -100,12 +86,10 @@ int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     uint32_t bytes[7];
-    char* path;
+    char  path[MAX_PORT_PATH] = {0};
     FILE* fp;
 
-    AIM_BITMAP_CLR_ALL(dst);
-
-    path = sfp_get_port_path(0, "sfp_is_present_all");
+    sprintf(path, SFP_PORT_FORMAT, SFP_BUS_INDEX(0), "sfp_is_present_all");
     fp = fopen(path, "r");
 
     if(fp == NULL) {
@@ -149,13 +133,39 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
+onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+{
+	int size = 0;
+    if(onlp_file_read(data, 256, &size, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_eeprom") == ONLP_STATUS_OK) {
+        if(size == 256) {
+            return ONLP_STATUS_OK;
+        }
+    }
+
+	return ONLP_STATUS_E_INTERNAL;
+}
+
+int
+onlp_sfpi_dom_read(int port, uint8_t data[256])
+{
+	int size = 0;
+    if(onlp_file_read(data, 256, &size, SFP_PORT_DOM_FORMAT, SFP_BUS_INDEX(port), "sfp_eeprom") == ONLP_STATUS_OK) {
+        if(size == 256) {
+            return ONLP_STATUS_OK;
+        }
+    }
+
+	return ONLP_STATUS_E_INTERNAL;
+}
+
+int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     uint32_t bytes[6];
-    char* path;
+    char  path[MAX_PORT_PATH] = {0};
     FILE* fp;
 
-    path = sfp_get_port_path(0, "sfp_rx_los_all");
+    sprintf(path, SFP_PORT_FORMAT, SFP_BUS_INDEX(0), "sfp_rx_los_all");
     fp = fopen(path, "r");
 
     if(fp == NULL) {
@@ -194,41 +204,6 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
-{
-    char* path = sfp_get_port_path(port, "sfp_eeprom");
-
-    /*
-     * Read the SFP eeprom into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
-    memset(data, 0, 256);
-    
-    if (onlp_file_read_binary(path, (char*)data, 256, 256) != 0) {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
-{
-    char* path = sfp_get_port_path_addr(port, 51, "sfp_eeprom");
-    memset(data, 0, 256);
-
-    if (onlp_file_read_binary(path, (char*)data, 256, 256) != 0) {
-        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return ONLP_STATUS_OK;
-}
-
-int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int rv;
@@ -237,9 +212,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         {
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
-                char* path = sfp_get_port_path(port, "sfp_tx_disable");
-
-                if (onlp_file_write_integer(path, value) != 0) {
+                if (onlp_file_write_int(value, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_tx_disable") != 0) {
                     AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -261,15 +234,12 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int rv;
-    char* path = NULL;
 
     switch(control)
         {
         case ONLP_SFP_CONTROL_RX_LOS:
             {
-                path = sfp_get_port_path(port, "sfp_rx_los");
-
-                if (onlp_file_read_int(value, path) < 0) {
+                if (onlp_file_read_int(value, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_rx_los") < 0) {
                     AIM_LOG_ERROR("Unable to read rx_los status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -281,9 +251,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         case ONLP_SFP_CONTROL_TX_FAULT:
             {
-                path = sfp_get_port_path(port, "sfp_tx_fault");
-
-                if (onlp_file_read_int(value, path) < 0) {
+                if (onlp_file_read_int(value, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_tx_fault") < 0) {
                     AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -295,9 +263,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
-                path = sfp_get_port_path(port, "sfp_tx_disable");
-
-                if (onlp_file_read_int(value, path) < 0) {
+                if (onlp_file_read_int(value, SFP_PORT_FORMAT, SFP_BUS_INDEX(port), "sfp_tx_disable") < 0) {
                     AIM_LOG_ERROR("Unable to read tx_disabled status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -320,6 +286,4 @@ onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-
-
 

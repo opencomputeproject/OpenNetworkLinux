@@ -23,14 +23,12 @@
  *
  *
  ***********************************************************/
-#include <onlplib/file.h>
 #include <onlp/platformi/psui.h>
+#include <onlplib/file.h>
 #include "platform_lib.h"
 
-#define PSU_STATUS_PRESENT    1
-#define PSU_STATUS_POWER_GOOD 1
-
-#define PSU_NODE_MAX_INT_LEN  8
+#define PSU_STATUS_PRESENT     1
+#define PSU_STATUS_POWER_GOOD  1
 #define PSU_NODE_MAX_PATH_LEN 64
 
 #define VALIDATE(_id)                           \
@@ -43,24 +41,17 @@
 static int 
 psu_status_info_get(int id, char *node, int *value)
 {
-    int ret = 0;
-    char path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+	char *prefix = NULL;
+
     *value = 0;
 
-    if (PSU1_ID == id) {
-        ret = onlp_file_read_int(value, "%s%s", PSU1_AC_HWMON_PREFIX, node);
-    }
-    else if (PSU2_ID == id) {
-        ret = onlp_file_read_int(value, "%s%s", PSU2_AC_HWMON_PREFIX, node);
-    }
-
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
+	prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
+    if (onlp_file_read_int(value, "%s%s", prefix, node) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s%s)\r\n", prefix, node);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    return ret;
+    return 0;
 }
 
 int

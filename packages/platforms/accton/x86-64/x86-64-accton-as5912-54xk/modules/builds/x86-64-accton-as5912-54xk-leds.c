@@ -57,12 +57,12 @@ static struct accton_as5912_54xk_led_data  *ledctl = NULL;
 
 #define LED_TYPE_DIAG_REG_MASK	 	(0x0C)
 #define LED_MODE_DIAG_GREEN_VALUE  	(0x04)
-#define LED_MODE_DIAG_AMBER_VALUE  	(0x08)
+#define LED_MODE_DIAG_ORANGE_VALUE  (0x08)
 #define LED_MODE_DIAG_OFF_VALUE		(0x0C)
 
 
 #define LED_TYPE_LOC_REG_MASK	 	(0x10)
-#define LED_MODE_LOC_AMBER_VALUE	(0x00)
+#define LED_MODE_LOC_ORANGE_VALUE	(0x00)
 #define LED_MODE_LOC_OFF_VALUE		(0x10)
 
 static const u8 led_reg[] = {
@@ -80,17 +80,26 @@ enum led_type {
 
 /* FAN/PSU/DIAG/RELEASE led mode */
 enum led_light_mode {
-	LED_MODE_OFF = 0,
-	LED_MODE_GREEN,
-	LED_MODE_GREEN_BLINK,
-	LED_MODE_AMBER,
-	LED_MODE_AMBER_BLINK,
-	LED_MODE_RED,
-	LED_MODE_RED_BLINK,
-	LED_MODE_BLUE,
-	LED_MODE_BLUE_BLINK,
-	LED_MODE_AUTO,
-	LED_MODE_UNKNOWN
+    LED_MODE_OFF,
+    LED_MODE_RED 				= 10,
+    LED_MODE_RED_BLINKING 		= 11,
+    LED_MODE_ORANGE 			= 12,
+    LED_MODE_ORANGE_BLINKING 	= 13,
+    LED_MODE_YELLOW 			= 14,
+    LED_MODE_YELLOW_BLINKING 	= 15,
+    LED_MODE_GREEN 				= 16,
+    LED_MODE_GREEN_BLINKING 	= 17,
+    LED_MODE_BLUE 				= 18,
+    LED_MODE_BLUE_BLINKING 		= 19,
+    LED_MODE_PURPLE 			= 20,
+    LED_MODE_PURPLE_BLINKING 	= 21,
+    LED_MODE_AUTO 				= 22,
+    LED_MODE_AUTO_BLINKING 		= 23,
+    LED_MODE_WHITE 				= 24,
+    LED_MODE_WHITE_BLINKING 	= 25,
+    LED_MODE_CYAN 				= 26,
+    LED_MODE_CYAN_BLINKING 		= 27,
+    LED_MODE_UNKNOWN			= 99
 };
 
 struct led_type_mode {
@@ -101,11 +110,11 @@ struct led_type_mode {
 };
 
 static struct led_type_mode led_type_mode_data[] = {
-{LED_TYPE_LOC,  LED_MODE_OFF,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_OFF_VALUE},
-{LED_TYPE_LOC,  LED_MODE_AMBER,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_AMBER_VALUE},
-{LED_TYPE_DIAG, LED_MODE_OFF,   LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_OFF_VALUE},
-{LED_TYPE_DIAG, LED_MODE_GREEN, LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_GREEN_VALUE},
-{LED_TYPE_DIAG, LED_MODE_AMBER, LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_AMBER_VALUE},
+{LED_TYPE_LOC,  LED_MODE_OFF,	 LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_OFF_VALUE},
+{LED_TYPE_LOC,  LED_MODE_ORANGE, LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_ORANGE_VALUE},
+{LED_TYPE_DIAG, LED_MODE_OFF,	 LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_OFF_VALUE},
+{LED_TYPE_DIAG, LED_MODE_GREEN,	 LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_GREEN_VALUE},
+{LED_TYPE_DIAG, LED_MODE_ORANGE, LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_ORANGE_VALUE},
 };
 
 static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {
@@ -250,14 +259,14 @@ static struct led_classdev accton_as5912_54xk_leds[] = {
 		.default_trigger = "unused",
 		.brightness_set	 = accton_as5912_54xk_led_loc_set,
 		.brightness_get  = accton_as5912_54xk_led_loc_get,
-		.max_brightness  = LED_MODE_AMBER,
+		.max_brightness  = LED_MODE_ORANGE,
 	},
 	[LED_TYPE_DIAG] = {
 		.name			 = "accton_as5912_54xk_led::diag",
 		.default_trigger = "unused",
 		.brightness_set	 = accton_as5912_54xk_led_diag_set,
 		.brightness_get  = accton_as5912_54xk_led_diag_get,
-		.max_brightness  = LED_MODE_AMBER,
+		.max_brightness  = LED_MODE_GREEN,
 	},
 	[LED_TYPE_PSU1] = {
 		.name			 = "accton_as5912_54xk_led::psu1",

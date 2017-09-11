@@ -27,8 +27,6 @@
 #include <onlp/platformi/fani.h>
 #include "platform_lib.h"
 
-#define PSU_PREFIX_PATH  "/sys/bus/i2c/devices/"
-
 enum fan_id {
 	FAN_1_ON_FAN_BOARD = 1,
 	FAN_2_ON_FAN_BOARD,
@@ -87,18 +85,17 @@ static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
 	int   value, ret;
-	char  path[64] = {0};
 
 	/* get fan present status
 	 */
-	ret = onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid);
+    ret = onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
 	if (value == 0) {
-		return ONLP_STATUS_OK;
+		return ONLP_STATUS_OK; /* fan is not present */
 	}
 	info->status |= ONLP_FAN_STATUS_PRESENT;
 
@@ -107,7 +104,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
      */
     ret = onlp_file_read_int(&value, "%s""fan%d_fault", FAN_BOARD_PATH, fid);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -120,7 +117,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
      */
     ret = onlp_file_read_int(&value, "%s""fan%d_direction", FAN_BOARD_PATH, fid);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -131,16 +128,16 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
      */
     ret = onlp_file_read_int(&value, "%s""fan%d_front_speed_rpm", FAN_BOARD_PATH, fid);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 	info->rpm = value;
 
 	/* get rear fan speed
 	 */
-	ret = onlp_file_read_int(&value, "%s""fan%d_rear_speed_rpm", FAN_BOARD_PATH, fid);
+    ret = onlp_file_read_int(&value, "%s""fan%d_rear_speed_rpm", FAN_BOARD_PATH, fid);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -152,9 +149,9 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get speed percentage from rpm 
 	 */
-	ret = onlp_file_read_int(&value, "%s""fan_max_speed_rpm", FAN_BOARD_PATH);
+    ret = onlp_file_read_int(&value, "%s""fan_max_speed_rpm", FAN_BOARD_PATH);
     if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 	
@@ -201,17 +198,12 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
      */
     info->status |= _onlp_get_fan_direction_on_psu();
 
-    /* get fan fault status
-     */
-    if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_fault", &val) == ONLP_STATUS_OK) {
-        info->status |= (val > 0) ? ONLP_FAN_STATUS_FAILED : 0;
-    }
-
     /* get fan speed
      */
     if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
         info->rpm = val;
-	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;	    
+	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;	
+		info->status |= (val == 0) ? ONLP_FAN_STATUS_FAILED : 0;
     }
 
     return ONLP_STATUS_OK;
@@ -315,7 +307,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
             return ONLP_STATUS_E_INVALID;
     }
 
-    if (onlp_file_write_integer(path, p) < 0) {
+    if (onlp_file_write_int(p, path) < 0) {
         AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -359,5 +351,4 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
 
