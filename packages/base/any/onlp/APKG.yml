@@ -26,6 +26,11 @@ packages:
       builds/onlp-platform/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform.so : $libdir/
       builds/onlp-platform-defaults/$BUILD_DIR/${TOOLCHAIN}/bin/libonlp-platform-defaults.so : $libdir/
       builds/onlpd/$BUILD_DIR/${TOOLCHAIN}/bin/onlpd : $bindir/
+      ${ONL}/packages/base/any/onlp/src/onlpdump.py: $bindir/
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/*.py: ${PY_INSTALL}/onlp/
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/onlp/*.py: ${PY_INSTALL}/onlp/onlp/
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/test/*.py: ${PY_INSTALL}/onlp/test/
+      ${ONL}/packages/base/any/onlp/src/onlplib/module/python/onlp/onlplib/*.py: ${PY_INSTALL}/onlp/onlplib/
 
     init: $ONL/packages/base/any/onlp/src/onlpd.init
 
