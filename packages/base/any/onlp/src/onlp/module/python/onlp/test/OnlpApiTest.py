@@ -175,7 +175,12 @@ class SysTest(OnlpTestMixin,
     def auditOidHdr(self, hdr):
 
         self.assertEqual(0, hdr.poid)
-        self.assertEqual(0, hdr._id)
+        if hdr._id == onlp.onlp.ONLP_OID_SYS:
+            pass
+        elif hdr._id == 0:
+            self.log.warn("invalid system OID 0")
+        else:
+            raise AssertionError("invalid system OID")
         # root OID
 
         coids = [x for x in hdr.children()]
@@ -225,11 +230,121 @@ class SysTest(OnlpTestMixin,
         """Test the sys_hdr data that is in the sys_info."""
         self.auditOidHdr(self.sys_info.hdr)
 
-        # test the iteration of the oid table
-
     def testSysHeader(self):
         """Test the sys_hdr data available via sys_hdr_get."""
-        pass
+
+        hdr = onlp.onlp.onlp_oid_hdr()
+        libonlp.onlp_sys_hdr_get(ctypes.byref(hdr))
+        self.auditOidHdr(hdr)
+
+    def testOidIter(self):
+        """Test the oid iteration functions."""
+
+        class OidIterator(object):
+
+            def __init__(self, log):
+                self.log = log or logging.getLogger("visit")
+
+            def visit(self, oid, cookie):
+                return 0
+
+            def cvisit(self):
+                def _v(oid, cookie):
+                    try:
+                        return self.visit(oid, cookie)
+                    except:
+                        self.log.exception("visitor failed")
+                        return -1
+                return onlp.onlp.onlp_oid_iterate_f(_v)
+
+        class V1(OidIterator):
+
+            def __init__(self, cookie, log):
+                super(V1, self).__init__(log)
+                self.cookie = cookie
+                self.oids = []
+
+            def visit(self, oid, cookie):
+                if cookie != self.cookie:
+                    raise AssertionError("invalid cookie")
+                self.log.info("found oid %d", oid)
+                self.oids.append(oid)
+                return 0
+
+        oidType = 0
+        cookie = 0xdeadbeef
+
+        # gather all OIDs
+
+        v1 = V1(cookie, log=self.log.getChild("v1"))
+        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v1.cvisit(), cookie)
+        self.assert_(v1.oids)
+        oids = list(v1.oids)
+
+        # validate error recovery
+
+        v2 = V1(cookie+1, log=self.log.getChild("v2"))
+        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v2.cvisit(), cookie)
+        self.assertEqual([], v2.oids)
+
+        # validate early exit
+
+        class V3(OidIterator):
+
+            def __init__(self, log):
+                super(V3, self).__init__(log)
+                self.oids = []
+
+            def visit(self, oid, cookie):
+                if oid == cookie:
+                    return -1
+                self.log.info("found oid %d", oid)
+                self.oids.append(oid)
+                return 0
+
+        v3 = V3(log=self.log.getChild("v3"))
+        cookie = oids[4]
+        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v3.cvisit(), cookie)
+        self.assertEqual(4, len(v3.oids))
+
+    def testOidDump(self):
+        oid = self.sys_info.hdr.coids[0]
+        flags = 0
+        libonlp.onlp_oid_dump(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertIn("Description:", buf.string_at())
+
+    def testOidTableDump(self):
+        tbl = self.sys_info.hdr.coids
+        flags = 0
+        libonlp.onlp_oid_table_dump(tbl, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        lines = buf.string_at().splitlines(False)
+        lines = [x for x in lines if 'Description' in x]
+        self.assert_(len(lines) > 1)
+
+    def testOidShow(self):
+        oid = self.sys_info.hdr.coids[0]
+        flags = 0
+        libonlp.onlp_oid_show(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertIn("Description:", buf.string_at())
+
+    def testOidTableShow(self):
+        tbl = self.sys_info.hdr.coids
+        flags = 0
+        libonlp.onlp_oid_table_show(tbl, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        lines = buf.string_at().splitlines(False)
+        lines = [x for x in lines if 'Description' in x]
+        self.assert_(len(lines) > 1)
+
+    def testSystemOid(self):
+        """Get the system oid."""
+
+        hdr = onlp.onlp.onlp_oid_hdr()
+        libonlp.onlp_oid_hdr_get(onlp.onlp.ONLP_OID_SYS, ctypes.byref(hdr))
+        self.auditOidHdr(hdr)
 
 if __name__ == "__main__":
     logging.basicConfig()
