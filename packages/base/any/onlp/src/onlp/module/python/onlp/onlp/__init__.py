@@ -113,6 +113,17 @@ def aim_pvs_init_prototypes():
 
 onlp_oid = ctypes.c_uint
 
+ONLP_OID_TYPE_SYS = 1
+ONLP_OID_TYPE_THERMAL = 2
+ONLP_OID_TYPE_FAN = 3
+ONLP_OID_TYPE_PSU = 4
+ONLP_OID_TYPE_LED = 5
+ONLP_OID_TYPE_MODULE = 6
+ONLP_OID_TYPE_RTC = 7
+# XXX roth waiting for enum generator
+
+ONLP_OID_SYS = (ONLP_OID_TYPE_SYS<<24) | 1
+
 ONLP_OID_DESC_SIZE = 128
 ONLP_OID_TABLE_SIZE = 32
 
@@ -142,15 +153,6 @@ class OidTableIterator(object):
         oidHdr = onlp_oid_hdr()
         libonlp.onlp_oid_hdr_get(oid, ctypes.byref(oidHdr))
         return oidHdr
-
-ONLP_OID_TYPE_SYS = 1
-ONLP_OID_TYPE_THERMAL = 2
-ONLP_OID_TYPE_FAN = 3
-ONLP_OID_TYPE_PSU = 4
-ONLP_OID_TYPE_LED = 5
-ONLP_OID_TYPE_MODULE = 6
-ONLP_OID_TYPE_RTC = 7
-# XXX roth waiting for enum generator
 
 class onlp_oid_hdr(ctypes.Structure):
 
@@ -184,10 +186,17 @@ onlp_oid_iterate_f = ctypes.CFUNCTYPE(ctypes.c_int, onlp_oid, ctypes.c_void_p)
 
 def onlp_oid_init_prototypes():
 
-    #onlp_oid_dump
-    #onlp_oid_table_dump
-    #onlp_oid_show
-    #onlp_oid_table_show
+    libonlp.onlp_oid_dump.restype = None
+    libonlp.onlp_oid_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+    libonlp.onlp_oid_table_dump.restype = None
+    libonlp.onlp_oid_table_dump.argtypes = (ctypes.POINTER(onlp_oid), ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+    libonlp.onlp_oid_show.restype = None
+    libonlp.onlp_oid_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+    libonlp.onlp_oid_table_show.restype = None
+    libonlp.onlp_oid_table_show.argtypes = (ctypes.POINTER(onlp_oid), ctypes.POINTER(aim_pvs), ctypes.c_uint,)
 
     libonlp.onlp_oid_iterate.restype = ctypes.c_int
     libonlp.onlp_oid_iterate.argtypes = (onlp_oid, ctypes.c_int,
