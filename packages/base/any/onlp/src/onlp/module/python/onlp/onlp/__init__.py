@@ -262,6 +262,10 @@ def onlp_sys_init_prototypes():
 
 # onlp/onlp.h
 
+ONLP_STATUS_OK = 0
+ONLP_STATUS_E_UNSUPPORTED = -10
+# XXX roth
+
 def onlp_init():
     libonlp.onlp_init()
     aim_memory_init_prototypes()
