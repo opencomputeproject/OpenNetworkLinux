@@ -33,6 +33,7 @@
  * @brief Initialize the ONLP API lock infrastructure.
  */
 void onlp_api_lock_init();
+void onlp_api_lock_denit();
 
 /**
  * @brief Take the ONLP API lock.
