@@ -7,6 +7,7 @@ import ctypes
 import unittest
 import logging
 import re
+import time
 
 import onlp.onlp
 onlp.onlp.onlp_init()
@@ -54,6 +55,10 @@ class InitTest(OnlpTestMixin,
         libonlp.aim_printf(self.aim_pvs_buffer_p, "world\n")
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         self.assertEqual("hello\nworld\n", buf.string_at())
+
+        libonlp.aim_printf(self.aim_pvs_buffer_p, "%d\n", 42)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertEqual("hello\nworld\n42\n", buf.string_at())
 
         libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
@@ -129,48 +134,7 @@ class OnlpTest(OnlpTestMixin,
         self.assertIn("PSU 1", bufStr)
         self.assertIn("PSU-1 Fan", bufStr)
 
-class SysTest(OnlpTestMixin,
-              unittest.TestCase):
-    """Test interfaces in onlp/sys.h."""
-
-    def setUp(self):
-        OnlpTestMixin.setUp(self)
-
-        libonlp.onlp_sys_init()
-        self.sys_info = onlp.onlp.onlp_sys_info()
-
-        libonlp.onlp_sys_info_get(ctypes.byref(self.sys_info))
-        self.sys_info.initialized = True
-
-    def tearDown(self):
-        OnlpTestMixin.tearDown(self)
-
-    def testNoop(self):
-        pass
-
-    def testOnieInfo(self):
-        """Verify the ONIE fields."""
-
-        product_re = re.compile("(.*)-(.*)-(.*)")
-        m = product_re.match(self.sys_info.onie_info.product_name)
-        self.assertIsNotNone(m)
-
-        vendor_re = re.compile("[A-Z][a-z]*[a-zA-Z0-9_. -]")
-        m = vendor_re.match(self.sys_info.onie_info.vendor)
-        self.assertIsNotNone(m)
-
-        self.assertIn('.', self.sys_info.onie_info.onie_version)
-
-        # see if there are any vendor extensions
-        # if there are any, make sure the are well-formed
-        for vx in self.sys_info.onie_info.vx_list:
-            sz = vx.size
-            self.assert_(sz <= 256)
-
-    def testPlatformInfo(self):
-        """Verify the platform info fields."""
-        # XXX VM platforms have null for both
-        pass
+class SysHdrMixin(object):
 
     def auditOidHdr(self, hdr):
 
@@ -226,6 +190,50 @@ class SysTest(OnlpTestMixin,
                     else:
                         raise AssertionError("invalid parent OID")
 
+class SysTest(OnlpTestMixin,
+              SysHdrMixin,
+              unittest.TestCase):
+    """Test interfaces in onlp/sys.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+        libonlp.onlp_sys_init()
+        self.sys_info = onlp.onlp.onlp_sys_info()
+
+        libonlp.onlp_sys_info_get(ctypes.byref(self.sys_info))
+        self.sys_info.initialized = True
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+    def testNoop(self):
+        pass
+
+    def testOnieInfo(self):
+        """Verify the ONIE fields."""
+
+        product_re = re.compile("(.*)-(.*)-(.*)")
+        m = product_re.match(self.sys_info.onie_info.product_name)
+        self.assertIsNotNone(m)
+
+        vendor_re = re.compile("[A-Z][a-z]*[a-zA-Z0-9_. -]")
+        m = vendor_re.match(self.sys_info.onie_info.vendor)
+        self.assertIsNotNone(m)
+
+        self.assertIn('.', self.sys_info.onie_info.onie_version)
+
+        # see if there are any vendor extensions
+        # if there are any, make sure the are well-formed
+        for vx in self.sys_info.onie_info.vx_list:
+            sz = vx.size
+            self.assert_(sz <= 256)
+
+    def testPlatformInfo(self):
+        """Verify the platform info fields."""
+        # XXX VM platforms have null for both
+        pass
+
     def testSysHeaderOnie(self):
         """Test the sys_hdr data that is in the sys_info."""
         self.auditOidHdr(self.sys_info.hdr)
@@ -236,6 +244,90 @@ class SysTest(OnlpTestMixin,
         hdr = onlp.onlp.onlp_oid_hdr()
         libonlp.onlp_sys_hdr_get(ctypes.byref(hdr))
         self.auditOidHdr(hdr)
+
+    def testManage(self):
+        """Verify we can start/stop platform management."""
+
+        code = libonlp.onlp_sys_platform_manage_start(0)
+        self.assert_(code >= 0)
+
+        for i in range(10):
+            libonlp.onlp_sys_platform_manage_now()
+            time.sleep(0.25)
+
+        code = libonlp.onlp_sys_platform_manage_stop(0)
+        self.assert_(code >= 0)
+
+        time.sleep(2.0)
+
+        code = libonlp.onlp_sys_platform_manage_join(0)
+        self.assert_(code >= 0)
+
+    def testSysDump(self):
+        """Test the SYS OID debug dump."""
+
+        oid = onlp.onlp.ONLP_OID_SYS
+        flags = 0
+        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("System Information", bufStr)
+
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+
+        # this is not the system OID
+
+        oid = self.sys_info.hdr.coids[0]
+        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIsNone(bufStr)
+
+    def testSysShow(self):
+        """Test the OID status."""
+
+        oid = onlp.onlp.ONLP_OID_SYS
+        flags = 0
+        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("System Information", bufStr)
+
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+
+        # this is not the system OID
+
+        oid = self.sys_info.hdr.coids[0]
+        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIsNone(bufStr)
+
+    def testSysIoctl(self):
+        """Test the IOCTL interface."""
+
+        # no such ioctl
+
+        code = libonlp.onlp_sys_ioctl(9999)
+        self.assertEqual(onlp.onlp.ONLP_STATUS_E_UNSUPPORTED, code)
+
+class OidTest(OnlpTestMixin,
+              SysHdrMixin,
+              unittest.TestCase):
+    """Test interfaces in onlp/oids.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+        self.hdr = onlp.onlp.onlp_oid_hdr()
+        libonlp.onlp_oid_hdr_get(onlp.onlp.ONLP_OID_SYS, ctypes.byref(self.hdr))
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+    def testSystemOid(self):
+        """Audit the system oid."""
+        self.auditOidHdr(self.hdr)
 
     def testOidIter(self):
         """Test the oid iteration functions."""
@@ -277,14 +369,14 @@ class SysTest(OnlpTestMixin,
         # gather all OIDs
 
         v1 = V1(cookie, log=self.log.getChild("v1"))
-        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v1.cvisit(), cookie)
+        libonlp.onlp_oid_iterate(onlp.onlp.ONLP_OID_SYS, oidType, v1.cvisit(), cookie)
         self.assert_(v1.oids)
         oids = list(v1.oids)
 
         # validate error recovery
 
         v2 = V1(cookie+1, log=self.log.getChild("v2"))
-        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v2.cvisit(), cookie)
+        libonlp.onlp_oid_iterate(onlp.onlp.ONLP_OID_SYS, oidType, v2.cvisit(), cookie)
         self.assertEqual([], v2.oids)
 
         # validate early exit
@@ -304,18 +396,18 @@ class SysTest(OnlpTestMixin,
 
         v3 = V3(log=self.log.getChild("v3"))
         cookie = oids[4]
-        libonlp.onlp_oid_iterate(self.sys_info.hdr._id, oidType, v3.cvisit(), cookie)
+        libonlp.onlp_oid_iterate(onlp.onlp.ONLP_OID_SYS, oidType, v3.cvisit(), cookie)
         self.assertEqual(4, len(v3.oids))
 
     def testOidDump(self):
-        oid = self.sys_info.hdr.coids[0]
+        oid = self.hdr.coids[0]
         flags = 0
         libonlp.onlp_oid_dump(oid, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         self.assertIn("Description:", buf.string_at())
 
     def testOidTableDump(self):
-        tbl = self.sys_info.hdr.coids
+        tbl = self.hdr.coids
         flags = 0
         libonlp.onlp_oid_table_dump(tbl, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
@@ -324,27 +416,20 @@ class SysTest(OnlpTestMixin,
         self.assert_(len(lines) > 1)
 
     def testOidShow(self):
-        oid = self.sys_info.hdr.coids[0]
+        oid = self.hdr.coids[0]
         flags = 0
         libonlp.onlp_oid_show(oid, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         self.assertIn("Description:", buf.string_at())
 
     def testOidTableShow(self):
-        tbl = self.sys_info.hdr.coids
+        tbl = self.hdr.coids
         flags = 0
         libonlp.onlp_oid_table_show(tbl, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         lines = buf.string_at().splitlines(False)
         lines = [x for x in lines if 'Description' in x]
         self.assert_(len(lines) > 1)
-
-    def testSystemOid(self):
-        """Get the system oid."""
-
-        hdr = onlp.onlp.onlp_oid_hdr()
-        libonlp.onlp_oid_hdr_get(onlp.onlp.ONLP_OID_SYS, ctypes.byref(hdr))
-        self.auditOidHdr(hdr)
 
 if __name__ == "__main__":
     logging.basicConfig()
