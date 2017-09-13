@@ -109,6 +109,17 @@ oid_types: &oid_types
 - MODULE : 6
 - RTC : 7
 
+# OID dump options
+oid_dump: &oid_dump
+- RECURSE
+- EVEN_IF_ABSENT
+
+# OID show options
+oid_show: &oid_show
+- RECURSE
+- EXTENDED
+- YAML
+
 # SFP Control
 sfp_control: &sfp_control
 - RESET
@@ -255,6 +266,14 @@ definitions:
     onlp_oid_type:
       tag: oid
       members: *oid_types
+    onlp_oid_show:
+      tag: oid
+      members: *oid_show
+      flags: True
+    onlp_oid_dump:
+      tag: oid
+      members: *oid_dump
+      flags: True
     onlp_thermal_status:
       tag: thermal
       members: *thermal_status

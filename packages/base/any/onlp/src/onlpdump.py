@@ -30,7 +30,7 @@ pdb.set_trace()
 
 ##libonlp.onlp_onie_show(byref(si.onie_info), byref(libonlp.aim_pvs_stdout))
 libonlp.onlp_platform_dump(libonlp.aim_pvs_stdout,
-                           (onlp.onlp.ONLP_OID_DUMP_F_RECURSE
-                            | onlp.onlp.ONLP_OID_DUMP_F_EVEN_IF_ABSENT))
+                           (onlp.onlp.ONLP_OID_DUMP.RECURSE
+                            | onlp.onlp.ONLP_OID_DUMP.EVEN_IF_ABSENT))
 
 sys.exit(0)

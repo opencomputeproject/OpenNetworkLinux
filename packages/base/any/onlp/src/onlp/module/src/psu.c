@@ -143,7 +143,7 @@ onlp_psu_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
             iof_iprintf(&iof, "Iout:   %d", info.miout);
             iof_iprintf(&iof, "Pin:    %d", info.mpin);
             iof_iprintf(&iof, "Pout:   %d", info.mpout);
-            if(flags & ONLP_OID_DUMP_F_RECURSE) {
+            if(flags & ONLP_OID_DUMP_RECURSE) {
                 onlp_oid_table_dump(info.hdr.coids, &iof.inherit, flags);
             }
         }
@@ -165,7 +165,7 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
     rv = onlp_psu_info_get(id, &pi);
 
-    yaml = flags & ONLP_OID_SHOW_F_YAML;
+    yaml = flags & ONLP_OID_SHOW_YAML;
 
     if(yaml) {
         iof_push(&iof, "- ");
@@ -235,7 +235,7 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
                                 ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.mpout));
                 }
 
-                if(flags & ONLP_OID_SHOW_F_RECURSE) {
+                if(flags & ONLP_OID_SHOW_RECURSE) {
                     /*
                      * Display sub oids.
                      *
@@ -264,7 +264,7 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
                         iof_pop(&iof);
                     }
 
-                    if(flags & ONLP_OID_SHOW_F_EXTENDED) {
+                    if(flags & ONLP_OID_SHOW_EXTENDED) {
                         /* Include all other types as well. */
                         ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, LED) {
                             onlp_oid_show(*oidp, &iof.inherit, flags);

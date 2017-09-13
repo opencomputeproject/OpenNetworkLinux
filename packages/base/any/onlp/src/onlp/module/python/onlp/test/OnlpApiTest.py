@@ -96,14 +96,14 @@ class OnlpTest(OnlpTestMixin,
 
         libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
 
-        flags = onlp.onlp.ONLP_OID_DUMP_F_RECURSE
+        flags = onlp.onlp.ONLP_OID_DUMP.RECURSE
         libonlp.onlp_platform_dump(self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
         self.assertIn("psu @ 1", bufStr)
         self.assertIn("PSU-1 Fan", bufStr)
 
-        # hard to test onlp.onlp.ONLP_OID_DUMP_F_RECURSE,
+        # hard to test onlp.onlp.ONLP_OID_DUMP.RECURSE,
         # since it depends on whether a specific component is inserted
 
     def testPlatformShow(self):
@@ -127,7 +127,7 @@ class OnlpTest(OnlpTestMixin,
 
         libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
 
-        flags = onlp.onlp.ONLP_OID_SHOW_F_RECURSE
+        flags = onlp.onlp.ONLP_OID_SHOW.RECURSE
         libonlp.onlp_platform_show(self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
@@ -152,36 +152,22 @@ class SysHdrMixin(object):
         self.assert_(len(coids) < onlp.onlp.ONLP_OID_TABLE_SIZE)
 
         def _oidType(oid):
-            if oid.isSystem():
-                return "sys"
-            if oid.isThermal():
-                return "thm"
-            if oid.isFan():
-                return "fan"
-            if oid.isPsu():
-                return "psu"
-            if oid.isLed():
-                return "led"
-            if oid.isModule():
-                return "mod"
-            if oid.isRtc():
-                return "rtc"
-            return "unk"
+            return onlp.onlp.ONLP_OID_TYPE.name(oid._id>>24)
 
         for coid in coids:
             self.log.info("oid %d (%s): %s",
                           coid._id, _oidType(coid), coid.description)
-            if _oidType(coid) == "unk":
+            if _oidType(coid) is None:
                 raise AssertionError("invalid oid")
             self.assertEqual(hdr._id, coid.poid)
 
             # if it's a PSU, verify that it has fans
-            if _oidType(coid) == "psu":
+            if _oidType(coid) == "PSU":
                 foids = [x for x in coid.children()]
                 for foid in foids:
                     self.log.info("oid %d (%s): %s",
                                   foid._id, _oidType(foid), foid.description)
-                    self.assertEqual("fan", _oidType(foid))
+                    self.assertEqual("FAN", _oidType(foid))
                     # parent should the the PSU or the chassis
                     if coid._id == foid.poid:
                         pass
@@ -309,7 +295,7 @@ class SysTest(OnlpTestMixin,
         # no such ioctl
 
         code = libonlp.onlp_sys_ioctl(9999)
-        self.assertEqual(onlp.onlp.ONLP_STATUS_E_UNSUPPORTED, code)
+        self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, code)
 
 class OidTest(OnlpTestMixin,
               SysHdrMixin,
@@ -338,7 +324,7 @@ class OidTest(OnlpTestMixin,
                 self.log = log or logging.getLogger("visit")
 
             def visit(self, oid, cookie):
-                return 0
+                return onlp.onlp.ONLP_STATUS.E_OK
 
             def cvisit(self):
                 def _v(oid, cookie):
@@ -346,7 +332,7 @@ class OidTest(OnlpTestMixin,
                         return self.visit(oid, cookie)
                     except:
                         self.log.exception("visitor failed")
-                        return -1
+                        return onlp.onlp.ONLP_STATUS.E_GENERIC
                 return onlp.onlp.onlp_oid_iterate_f(_v)
 
         class V1(OidIterator):
@@ -361,7 +347,7 @@ class OidTest(OnlpTestMixin,
                     raise AssertionError("invalid cookie")
                 self.log.info("found oid %d", oid)
                 self.oids.append(oid)
-                return 0
+                return onlp.onlp.ONLP_STATUS.E_OK
 
         oidType = 0
         cookie = 0xdeadbeef
@@ -389,10 +375,10 @@ class OidTest(OnlpTestMixin,
 
             def visit(self, oid, cookie):
                 if oid == cookie:
-                    return -1
+                    return onlp.onlp.ONLP_STATUS.E_GENERIC
                 self.log.info("found oid %d", oid)
                 self.oids.append(oid)
-                return 0
+                return onlp.onlp.ONLP_STATUS.E_OK
 
         v3 = V3(log=self.log.getChild("v3"))
         cookie = oids[4]

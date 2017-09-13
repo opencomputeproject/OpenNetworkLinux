@@ -88,6 +88,17 @@ class ONLP_LED_STATUS(Enumeration):
     ON = (1 << 2)
 
 
+class ONLP_OID_DUMP(Enumeration):
+    RECURSE = (1 << 0)
+    EVEN_IF_ABSENT = (1 << 1)
+
+
+class ONLP_OID_SHOW(Enumeration):
+    RECURSE = (1 << 0)
+    EXTENDED = (1 << 1)
+    YAML = (1 << 2)
+
+
 class ONLP_OID_TYPE(Enumeration):
     SYS = 1
     THERMAL = 2

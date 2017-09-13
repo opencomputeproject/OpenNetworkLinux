@@ -281,7 +281,7 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
 
     rv = onlp_fan_info_get(oid, &fi);
 
-    yaml = flags & ONLP_OID_SHOW_F_YAML;
+    yaml = flags & ONLP_OID_SHOW_YAML;
 
     if(yaml) {
         iof_push(&iof, "- ");

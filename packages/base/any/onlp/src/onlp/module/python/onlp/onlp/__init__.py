@@ -12,6 +12,8 @@ libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
 
 import onlp.onlplib
 
+from onlp.onlp.enums import *
+
 # AIM/aim_memory.h
 
 class aim_void_p(ctypes.c_void_p):
@@ -113,26 +115,10 @@ def aim_pvs_init_prototypes():
 
 onlp_oid = ctypes.c_uint
 
-ONLP_OID_TYPE_SYS = 1
-ONLP_OID_TYPE_THERMAL = 2
-ONLP_OID_TYPE_FAN = 3
-ONLP_OID_TYPE_PSU = 4
-ONLP_OID_TYPE_LED = 5
-ONLP_OID_TYPE_MODULE = 6
-ONLP_OID_TYPE_RTC = 7
-# XXX roth waiting for enum generator
-
-ONLP_OID_SYS = (ONLP_OID_TYPE_SYS<<24) | 1
+ONLP_OID_SYS = (ONLP_OID_TYPE.SYS<<24) | 1
 
 ONLP_OID_DESC_SIZE = 128
 ONLP_OID_TABLE_SIZE = 32
-
-ONLP_OID_DUMP_F_RECURSE = 0x1
-ONLP_OID_DUMP_F_EVEN_IF_ABSENT = 0x2
-
-ONLP_OID_SHOW_F_RECURSE = 0x1
-ONLP_OID_SHOW_F_EXTENDED = 0x2
-ONLP_OID_SHOW_F_YAML = 0x4
 
 class OidTableIterator(object):
 
@@ -165,19 +151,19 @@ class onlp_oid_hdr(ctypes.Structure):
         return self._id >> 24
 
     def isSystem(self):
-        return self.getType() == ONLP_OID_TYPE_SYS
+        return self.getType() == ONLP_OID_TYPE.SYS
     def isThermal(self):
-        return self.getType() == ONLP_OID_TYPE_THERMAL
+        return self.getType() == ONLP_OID_TYPE.THERMAL
     def isFan(self):
-        return self.getType() == ONLP_OID_TYPE_FAN
+        return self.getType() == ONLP_OID_TYPE.FAN
     def isPsu(self):
-        return self.getType() == ONLP_OID_TYPE_PSU
+        return self.getType() == ONLP_OID_TYPE.PSU
     def isLed(self):
-        return self.getType() == ONLP_OID_TYPE_LED
+        return self.getType() == ONLP_OID_TYPE.LED
     def isModule(self):
-        return self.getType() == ONLP_OID_TYPE_MODULE
+        return self.getType() == ONLP_OID_TYPE.MODULE
     def isRtc(self):
-        return self.getType() == ONLP_OID_TYPE_RTC
+        return self.getType() == ONLP_OID_TYPE.RTC
 
     def children(self):
         return OidTableIterator(self)
@@ -201,11 +187,9 @@ def onlp_oid_init_prototypes():
     libonlp.onlp_oid_iterate.restype = ctypes.c_int
     libonlp.onlp_oid_iterate.argtypes = (onlp_oid, ctypes.c_int,
                                          onlp_oid_iterate_f, ctypes.c_void_p,)
-    # XXX enum
 
     libonlp.onlp_oid_hdr_get.restype = ctypes.c_int
     libonlp.onlp_oid_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr,))
-    # XXX enum
 
 # onlp/sys.h
 
@@ -261,10 +245,6 @@ def onlp_sys_init_prototypes():
                                        ctypes.POINTER(ctypes.POINTER(ctypes.c_char)),)
 
 # onlp/onlp.h
-
-ONLP_STATUS_OK = 0
-ONLP_STATUS_E_UNSUPPORTED = -10
-# XXX roth
 
 def onlp_init():
     libonlp.onlp_init()
