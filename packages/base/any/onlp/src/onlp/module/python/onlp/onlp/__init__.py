@@ -341,6 +341,18 @@ def onlp_led_init_prototypes():
     libonlp.onlp_led_show.restype = None
     libonlp.onlp_led_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
 
+# onlp/onlp_config.h
+
+# don't need the actual config structure, since we'll be using lookups
+
+def onlp_config_init_prototypes():
+
+    libonlp.onlp_config_lookup.restype = ctypes.c_char_p
+    libonlp.onlp_config_lookup.argtypes = (ctypes.c_char_p,)
+
+    libonlp.onlp_config_show.restype = ctypes.c_int
+    libonlp.onlp_config_show.argtypes = (ctypes.POINTER(aim_pvs),)
+
 # onlp/onlp.h
 
 def onlp_init():
@@ -351,3 +363,4 @@ def onlp_init():
     onlp_sys_init_prototypes()
     onlp_fan_init_prototypes()
     onlp_led_init_prototypes()
+    onlp_config_init_prototypes()
