@@ -1015,6 +1015,30 @@ class LedTest(OnlpTestMixin,
         finally:
             libonlp.onlp_led_mode_set(oid, saveMode)
 
+class ConfigTest(OnlpTestMixin,
+              unittest.TestCase):
+    """Test interfaces in onlp/onlp_config.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+    def testConfig(self):
+
+        s = libonlp.onlp_config_lookup("ONLP_CONFIG_INFO_STR_MAX")
+        self.assertEqual('64', s)
+
+        s = libonlp.onlp_config_lookup("foo")
+        self.assertIsNone(s)
+
+    def testConfigShow(self):
+
+        libonlp.onlp_config_show(self.aim_pvs_buffer_p)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertIn("ONLP_CONFIG_INFO_STR_MAX = 64\n", buf.string_at())
+
 if __name__ == "__main__":
     logging.basicConfig()
     unittest.main()
