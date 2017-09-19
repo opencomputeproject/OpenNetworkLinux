@@ -111,6 +111,11 @@ def aim_pvs_init_prototypes():
     libonlp.aim_pvs_buffer_reset.restype = None
     libonlp.aim_pvs_buffer_reset.argtypes = (ctypes.POINTER(aim_pvs),)
 
+# onlp.yml
+
+ONLP_CONFIG_INFO_STR_MAX = 64
+# XXX roth -- no cdefs support (yet)
+
 # onlp/oids.h
 
 onlp_oid = ctypes.c_uint
@@ -244,6 +249,98 @@ def onlp_sys_init_prototypes():
     libonlp.onlp_sys_debug.argtypes = (ctypes.POINTER(aim_pvs), ctypes.c_int,
                                        ctypes.POINTER(ctypes.POINTER(ctypes.c_char)),)
 
+# onlp/fan.h
+
+class onlp_fan_info(ctypes.Structure):
+    _fields_ = [("hdr", onlp_oid_hdr,),
+                ("status", ctypes.c_uint,),
+                ("caps", ctypes.c_uint,),
+                ("rpm", ctypes.c_int,),
+                ("percentage", ctypes.c_int,),
+                ("mode", ctypes.c_uint,),
+                ("model", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
+                ("serial", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),]
+
+    def isPresent(self):
+        return self.status & ONLP_FAN_STATUS.PRESENT
+
+    def isMissing(self):
+        return not self.PRESENT()
+
+    def isFailed(self):
+        return self.status & ONLP_FAN_STATUS.FAILED
+
+    def isNormal(self):
+        return self.isPresent() and not self.isFailed()
+
+def onlp_fan_init_prototypes():
+
+    libonlp.onlp_fan_init.restype = None
+
+    libonlp.onlp_fan_info_get.restype = ctypes.c_int
+    libonlp.onlp_fan_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_fan_info),)
+
+    libonlp.onlp_fan_status_get.restype = ctypes.c_int
+    libonlp.onlp_fan_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint),)
+
+    libonlp.onlp_fan_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_fan_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_fan_rpm_set.restype = ctypes.c_int
+    libonlp.onlp_fan_rpm_set.argtypes = (onlp_oid, ctypes.c_int,)
+
+    libonlp.onlp_fan_percentage_set.restype = ctypes.c_int
+    libonlp.onlp_fan_percentage_set.argtypes = (onlp_oid, ctypes.c_int,)
+
+    libonlp.onlp_fan_mode_set.restype = ctypes.c_int
+    libonlp.onlp_fan_mode_set.argtypes = (onlp_oid, ctypes.c_uint,)
+
+    libonlp.onlp_fan_dir_set.restype = ctypes.c_int
+    libonlp.onlp_fan_dir_set.argtypes = (onlp_oid, ctypes.c_uint,)
+
+    libonlp.onlp_fan_dump.restype = None
+    libonlp.onlp_fan_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+    libonlp.onlp_fan_show.restype = None
+    libonlp.onlp_fan_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+# onlp/led.h
+
+class onlp_led_info(ctypes.Structure):
+    _fields_ = [("hdr", onlp_oid_hdr,),
+                ("status", ctypes.c_uint,),
+                ("caps", ctypes.c_uint,),
+                ("mode", ctypes.c_uint,),
+                ("character", ctypes.c_char,),]
+
+def onlp_led_init_prototypes():
+
+    libonlp.onlp_led_init.restype = None
+
+    libonlp.onlp_led_info_get.restype = ctypes.c_int
+    libonlp.onlp_led_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_led_info),)
+
+    libonlp.onlp_led_status_get.restype = ctypes.c_int
+    libonlp.onlp_led_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint),)
+
+    libonlp.onlp_led_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_led_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_led_set.restype = ctypes.c_int
+    libonlp.onlp_led_set.argtypes = (onlp_oid, ctypes.c_int,)
+
+    libonlp.onlp_led_mode_set.restype = ctypes.c_int
+    libonlp.onlp_led_mode_set.argtypes = (onlp_oid, ctypes.c_uint,)
+
+    libonlp.onlp_led_char_set.restype = ctypes.c_int
+    libonlp.onlp_led_char_set.argtypes = (onlp_oid, ctypes.c_char,)
+
+    libonlp.onlp_led_dump.restype = None
+    libonlp.onlp_led_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
+    libonlp.onlp_led_show.restype = None
+    libonlp.onlp_led_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint,)
+
 # onlp/onlp.h
 
 def onlp_init():
@@ -252,3 +349,5 @@ def onlp_init():
     aim_pvs_init_prototypes()
     onlp_oid_init_prototypes()
     onlp_sys_init_prototypes()
+    onlp_fan_init_prototypes()
+    onlp_led_init_prototypes()
