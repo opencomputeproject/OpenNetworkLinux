@@ -277,7 +277,7 @@ class SysTest(OnlpTestMixin,
             code = libonlp.onlp_sys_platform_manage_join(0)
             self.assertGreaterEqual(code, 0)
 
-        except:
+        finally:
             subprocess.check_call(('service', 'onlpd', 'start',))
 
     def testSysDump(self):
@@ -795,23 +795,61 @@ class LedTest(OnlpTestMixin,
         libonlp.onlp_led_status_get(oid, ctypes.byref(sts))
         self.assert_(onlp.onlp.ONLP_LED_STATUS.PRESENT & sts.value)
 
-        if led.caps & onlp.onlp.ONLP_LED_CAPS.CHAR:
-            self.auditLedChar(oid)
-        if led.caps & onlp.onlp.ONLP_LED_CAPS.ON_OFF:
-            self.auditLedOnOff(oid)
-        self.auditLedColors(oid)
-        self.auditLedBlink(oid)
+        try:
+            subprocess.check_call(('service', 'onlpd', 'stop',))
+
+            if led.caps & onlp.onlp.ONLP_LED_CAPS.CHAR:
+                self.auditLedChar(oid)
+            if (led.caps & onlp.onlp.ONLP_LED_CAPS.ON_OFF
+                and not self.hasColors(led.caps)):
+                self.auditLedOnOff(oid)
+            self.auditLedColors(oid)
+            self.auditLedBlink(oid)
+
+        finally:
+            subprocess.check_call(('service', 'onlpd', 'start',))
+
 
         flags = 0
         libonlp.onlp_led_dump(oid, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
-        self.assertIn("LED", bufStr)
+        self.assertIn("led @", bufStr)
 
         libonlp.onlp_led_show(oid, self.aim_pvs_buffer_p, flags)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
-        self.assertIn("LED", bufStr)
+        self.assertIn("led @", bufStr)
+
+    def hasColors(self, caps):
+        """True if this a color LED."""
+
+        if caps & onlp.onlp.ONLP_LED_CAPS.RED:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.RED_BLINKING:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.ORANGE:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.ORANGE_BLINKING:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.YELLOW:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.YELLOW_BLINKING:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.GREEN:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.GREEN_BLINKING:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.BLUE:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.BLUE_BLINKING:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.PURPLE:
+            return True
+        if caps & onlp.onlp.ONLP_LED_CAPS.PURPLE_BLINKING:
+            return True
+
+        return False
 
     def auditLedChar(self, oid):
 
@@ -830,9 +868,8 @@ class LedTest(OnlpTestMixin,
 
                 libonlp.onlp_led_info_get(oid, ctypes.byref(led))
                 self.assertEqual(nchar, led.char)
-        except:
+        finally:
             libonlp.onlp_led_char_set(oid, saveChar)
-            raise
 
     def auditLedOnOff(self, oid):
 
@@ -868,12 +905,11 @@ class LedTest(OnlpTestMixin,
                 libonlp.onlp_led_info_get(oid, ctypes.byref(led))
                 self.assertEqual(onlp.onlp.ONLP_LED_MODE.OFF, led.mode)
 
-        except:
+        finally:
             if saveMode == onlp.onlp.ONLP_LED_MODE.OFF:
                 libonlp.onlp_led_set(oid, 0)
             else:
                 libonlp.onlp_led_set(oid, 1)
-            raise
 
     def auditLedColors(self, oid):
 
@@ -924,9 +960,8 @@ class LedTest(OnlpTestMixin,
                 libonlp.onlp_led_info_get(oid, ctypes.byref(led))
                 self.assertEqual(onlp.onlp.ONLP_LED_MODE.OFF, led.mode)
 
-        except:
+        finally:
             libonlp.onlp_led_mode_set(oid, saveMode)
-            raise
 
     def auditLedBlink(self, oid):
 
@@ -977,9 +1012,8 @@ class LedTest(OnlpTestMixin,
                 libonlp.onlp_led_info_get(oid, ctypes.byref(led))
                 self.assertEqual(onlp.onlp.ONLP_LED_MODE.OFF, led.mode)
 
-        except:
+        finally:
             libonlp.onlp_led_mode_set(oid, saveMode)
-            raise
 
 if __name__ == "__main__":
     logging.basicConfig()
