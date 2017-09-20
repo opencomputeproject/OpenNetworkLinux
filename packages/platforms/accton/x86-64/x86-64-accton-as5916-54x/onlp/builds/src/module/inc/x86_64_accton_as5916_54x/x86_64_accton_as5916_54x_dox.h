@@ -3,8 +3,8 @@
  * x86_64_accton_as5916_54x Doxygen Header
  *
  *****************************************************************************/
-#ifndef __x86_64_accton_as5916_54x_DOX_H__
-#define __x86_64_accton_as5916_54x_DOX_H__
+#ifndef __X86_64_ACCTON_AS5916_54X_DOX_H__
+#define __X86_64_ACCTON_AS5916_54X_DOX_H__
 
 /**
  * @defgroup x86_64_accton_as5916_54x x86_64_accton_as5916_54x - x86_64_accton_as5916_54x Description
@@ -23,4 +23,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __x86_64_accton_as5916_54x_DOX_H__ */
+#endif /* __X86_64_ACCTON_AS5916_54X_DOX_H__ */

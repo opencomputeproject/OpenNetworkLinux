@@ -245,12 +245,3 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     return ONLP_STATUS_OK;
 }
 
-/*
- * Generic LED ioctl interface.
- */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
