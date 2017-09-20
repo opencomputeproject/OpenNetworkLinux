@@ -508,7 +508,7 @@ class FanTest(OnlpTestMixin,
         else:
             self.log.warn("fan does not support PCT get")
 
-        if self.FAN_MODE_VALID:
+        if self.fan_mode:
             self.assertNotEqual(onlp.onlp.ONLP_FAN_MODE.OFF, fan.mode)
             # default, fan should be running
 
@@ -1016,7 +1016,7 @@ class LedTest(OnlpTestMixin,
             libonlp.onlp_led_mode_set(oid, saveMode)
 
 class ConfigTest(OnlpTestMixin,
-              unittest.TestCase):
+                 unittest.TestCase):
     """Test interfaces in onlp/onlp_config.h."""
 
     def setUp(self):
@@ -1038,6 +1038,86 @@ class ConfigTest(OnlpTestMixin,
         libonlp.onlp_config_show(self.aim_pvs_buffer_p)
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         self.assertIn("ONLP_CONFIG_INFO_STR_MAX = 64\n", buf.string_at())
+
+class ThermalTest(OnlpTestMixin,
+                  unittest.TestCase):
+    """Test interfaces in onlp/thermal.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+        libonlp.onlp_thermal_init()
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+    def testFindThermal(self):
+
+        class V(OidIterator):
+
+            def __init__(self, log):
+                super(V, self).__init__(log)
+                self.oids = []
+
+            def visit(self, oid, cookie):
+                self.log.info("found thermal oid %d", oid)
+                self.oids.append(oid)
+                return onlp.onlp.ONLP_STATUS.OK
+
+        v = V(log=self.log.getChild("thermal"))
+        libonlp.onlp_oid_iterate(onlp.onlp.ONLP_OID_SYS,
+                                 onlp.onlp.ONLP_OID_TYPE.THERMAL,
+                                 v.cvisit(), 0)
+        self.assert_(v.oids)
+
+        self.auditThermalOid(v.oids[0])
+
+    def auditThermalOid(self, oid):
+
+        hdr = onlp.onlp.onlp_oid_hdr()
+        libonlp.onlp_thermal_hdr_get(oid, ctypes.byref(hdr))
+        self.assertEqual(oid, hdr._id)
+
+        thm = onlp.onlp.onlp_thermal_info()
+        libonlp.onlp_thermal_info_get(oid, ctypes.byref(thm))
+
+        self.assertEqual(oid, thm.hdr._id)
+
+        self.assert_(thm.caps)
+        # should support some non-empty set of capabilities
+
+        self.assert_(thm.caps & onlp.onlp.ONLP_THERMAL_CAPS.GET_TEMPERATURE)
+        # sensor should at least report temperature
+
+        self.log.info("auditing thermal %d",
+                      oid & 0xFFFFFF)
+
+        self.assert_(thm.status & onlp.onlp.ONLP_THERMAL_STATUS.PRESENT)
+        # sensor should be present
+
+        self.assertGreater(thm.mcelcius, 20000)
+        self.assertLess(thm.mcelcius, 35000)
+        # temperature should be non-crazy
+
+        # retrieve thermal status separately
+        sts = ctypes.c_uint()
+        libonlp.onlp_thermal_status_get(oid, ctypes.byref(sts))
+        self.assert_(onlp.onlp.ONLP_THERMAL_STATUS.PRESENT & sts.value)
+
+        # test ioctl
+        code = libonlp.onlp_thermal_ioctl(9999)
+        self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, code)
+
+        flags = 0
+        libonlp.onlp_thermal_dump(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("thermal @", bufStr)
+
+        libonlp.onlp_thermal_show(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("thermal @", bufStr)
 
 if __name__ == "__main__":
     logging.basicConfig()
