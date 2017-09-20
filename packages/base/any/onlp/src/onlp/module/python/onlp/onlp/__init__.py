@@ -353,6 +353,38 @@ def onlp_config_init_prototypes():
     libonlp.onlp_config_show.restype = ctypes.c_int
     libonlp.onlp_config_show.argtypes = (ctypes.POINTER(aim_pvs),)
 
+# onlp/thermal.h
+
+class onlp_thermal_info_thresholds(ctypes.Structure):
+    _fields_ = [('warning', ctypes.c_int,),
+                ('error', ctypes.c_int,),
+                ('shutdown', ctypes.c_int,),]
+
+class onlp_thermal_info(ctypes.Structure):
+    _fields_ = [('hdr', onlp_oid_hdr,),
+                ('status', ctypes.c_uint,),
+                ('caps', ctypes.c_uint,),
+                ('mcelcius', ctypes.c_int,),
+                ('thresholds', onlp_thermal_info_thresholds,),]
+
+def onlp_thermal_init_prototypes():
+
+    libonlp.onlp_thermal_init.restype = ctypes.c_int
+
+    libonlp.onlp_thermal_info_get.restype = ctypes.c_int
+    libonlp.onlp_thermal_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_thermal_info),)
+
+    libonlp.onlp_thermal_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_thermal_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_thermal_ioctl.restype = ctypes.c_int
+
+    libonlp.onlp_thermal_dump.restype = None
+    libonlp.onlp_thermal_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+
+    libonlp.onlp_thermal_show.restype = None
+    libonlp.onlp_thermal_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+
 # onlp/onlp.h
 
 def onlp_init():
@@ -364,3 +396,4 @@ def onlp_init():
     onlp_fan_init_prototypes()
     onlp_led_init_prototypes()
     onlp_config_init_prototypes()
+    onlp_thermal_init_prototypes()
