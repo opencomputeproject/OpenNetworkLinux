@@ -2,6 +2,6 @@
 
 from onl.platform.base import *
 
-class OnlPlatformingrasys(OnlPlatformBase):
+class OnlPlatformIngrasys(OnlPlatformBase):
     MANUFACTURER='Ingrasys'
     PRIVATE_ENTERPRISE_NUMBER=2468

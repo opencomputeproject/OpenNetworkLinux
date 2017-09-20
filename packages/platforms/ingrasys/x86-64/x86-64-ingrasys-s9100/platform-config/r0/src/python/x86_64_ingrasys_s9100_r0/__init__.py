@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.ingrasys import *
 import os
 
-class OnlPlatform_x86_64_ingrasys_s9100_r0(OnlPlatformingrasys):
+class OnlPlatform_x86_64_ingrasys_s9100_r0(OnlPlatformIngrasys):
     PLATFORM='x86-64-ingrasys-s9100-r0'
     MODEL="s9100"
     SYS_OBJECT_ID=".8.1"
@@ -10,8 +10,8 @@ class OnlPlatform_x86_64_ingrasys_s9100_r0(OnlPlatformingrasys):
     def baseconfig(self):
                 
         self.insmod("eeprom_mb")
-        self.insmod("w83795")
-        self.insmod("eeprom")
+        os.system("modprobe w83795")
+        os.system("modprobe eeprom")
         
         ########### initialize I2C bus 1 ###########
         self.new_i2c_device('pca9548', 0x70, 1)
