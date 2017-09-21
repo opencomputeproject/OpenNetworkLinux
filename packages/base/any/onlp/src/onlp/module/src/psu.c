@@ -69,7 +69,7 @@ onlp_psu_status_get_locked__(onlp_oid_t id, uint32_t* status)
     }
     if(ONLP_UNSUPPORTED(rv)) {
         onlp_psu_info_t pi;
-        rv = onlp_psu_info_get(id, &pi);
+        rv = onlp_psui_info_get(id, &pi);
         *status = pi.status;
     }
     return rv;
