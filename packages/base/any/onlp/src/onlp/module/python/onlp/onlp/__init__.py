@@ -6,6 +6,7 @@ Module init for onlp.onlp
 import ctypes
 
 libonlp = ctypes.cdll.LoadLibrary("libonlp.so")
+libonlp.onlp_init()
 
 import ctypes.util
 libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
@@ -113,17 +114,20 @@ def aim_pvs_init_prototypes():
 
 # onlp.yml
 
+##ONLP_CONFIG_INFO_STR_MAX = int(libonlp.onlp_config_lookup("ONLP_CONFIG_INFO_STR_MAX"))
 ONLP_CONFIG_INFO_STR_MAX = 64
-# XXX roth -- no cdefs support (yet)
+# prototype for onlp_config_lookup is not defined yet, see below
 
 # onlp/oids.h
 
 onlp_oid = ctypes.c_uint
 
 ONLP_OID_SYS = (ONLP_OID_TYPE.SYS<<24) | 1
+# XXX not a config option
 
 ONLP_OID_DESC_SIZE = 128
 ONLP_OID_TABLE_SIZE = 32
+# XXX not a config option
 
 class OidTableIterator(object):
 
@@ -374,6 +378,9 @@ def onlp_thermal_init_prototypes():
     libonlp.onlp_thermal_info_get.restype = ctypes.c_int
     libonlp.onlp_thermal_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_thermal_info),)
 
+    libonlp.onlp_thermal_status_get.restype = ctypes.c_int
+    libonlp.onlp_thermal_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint),)
+
     libonlp.onlp_thermal_hdr_get.restype = ctypes.c_int
     libonlp.onlp_thermal_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
@@ -385,15 +392,58 @@ def onlp_thermal_init_prototypes():
     libonlp.onlp_thermal_show.restype = None
     libonlp.onlp_thermal_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
 
+# onlp/psu.h
+
+class onlp_psu_info(ctypes.Structure):
+    _fields_ = [("hdr", onlp_oid_hdr,),
+                ("model", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
+                ("serial", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
+                ("status", ctypes.c_uint,),
+                ("caps", ctypes.c_uint,),
+                ("mvin", ctypes.c_int,),
+                ("mvout", ctypes.c_int,),
+                ("miin", ctypes.c_int,),
+                ("miout", ctypes.c_int,),
+                ("mpin", ctypes.c_int,),
+                ("mpout", ctypes.c_int,),]
+
+def onlp_psu_init_prototypes():
+
+    libonlp.onlp_psu_init.restype = ctypes.c_int
+
+    libonlp.onlp_psu_info_get.restype = ctypes.c_int
+    libonlp.onlp_psu_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_psu_info),)
+
+    libonlp.onlp_psu_status_get.restype = ctypes.c_int
+    libonlp.onlp_psu_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint),)
+
+    libonlp.onlp_psu_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_psu_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_psu_ioctl.restype = ctypes.c_int
+
+    libonlp.onlp_psu_dump.restype = None
+    libonlp.onlp_psu_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+
+    libonlp.onlp_psu_show.restype = None
+    libonlp.onlp_psu_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+
 # onlp/onlp.h
 
-def onlp_init():
-    libonlp.onlp_init()
+def init_prototypes():
     aim_memory_init_prototypes()
     aim_pvs_init_prototypes()
     onlp_oid_init_prototypes()
     onlp_sys_init_prototypes()
     onlp_fan_init_prototypes()
     onlp_led_init_prototypes()
+
     onlp_config_init_prototypes()
+
+    if ONLP_CONFIG_INFO_STR_MAX != int(libonlp.onlp_config_lookup("ONLP_CONFIG_INFO_STR_MAX")):
+        raise AssertionError("ONLP_CONFIG_INFO_STR_MAX changed")
+
     onlp_thermal_init_prototypes()
+    onlp_psu_init_prototypes()
+
+init_prototypes()
