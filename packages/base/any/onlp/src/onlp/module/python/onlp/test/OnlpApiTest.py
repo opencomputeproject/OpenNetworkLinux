@@ -11,7 +11,6 @@ import time
 import subprocess
 
 import onlp.onlp
-onlp.onlp.onlp_init()
 
 libonlp = onlp.onlp.libonlp
 
@@ -508,7 +507,7 @@ class FanTest(OnlpTestMixin,
         else:
             self.log.warn("fan does not support PCT get")
 
-        if self.fan_mode:
+        if self.FAN_MODE_VALID:
             self.assertNotEqual(onlp.onlp.ONLP_FAN_MODE.OFF, fan.mode)
             # default, fan should be running
 
@@ -1118,6 +1117,99 @@ class ThermalTest(OnlpTestMixin,
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
         self.assertIn("thermal @", bufStr)
+
+class PsuTest(OnlpTestMixin,
+              unittest.TestCase):
+    """Test interfaces in onlp/psu.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+        libonlp.onlp_psu_init()
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+    def testFindPsu(self):
+
+        class V(OidIterator):
+
+            def __init__(self, log):
+                super(V, self).__init__(log)
+                self.oids = []
+
+            def visit(self, oid, cookie):
+                self.log.info("found psu oid %d", oid)
+                self.oids.append(oid)
+                return onlp.onlp.ONLP_STATUS.OK
+
+        v = V(log=self.log.getChild("psu"))
+        libonlp.onlp_oid_iterate(onlp.onlp.ONLP_OID_SYS,
+                                 onlp.onlp.ONLP_OID_TYPE.PSU,
+                                 v.cvisit(), 0)
+        self.assert_(v.oids)
+
+        self.auditPsuOid(v.oids[0])
+
+    def auditPsuOid(self, oid):
+
+        hdr = onlp.onlp.onlp_oid_hdr()
+        libonlp.onlp_psu_hdr_get(oid, ctypes.byref(hdr))
+        self.assertEqual(oid, hdr._id)
+
+        psu = onlp.onlp.onlp_psu_info()
+        libonlp.onlp_psu_info_get(oid, ctypes.byref(psu))
+
+        self.assertEqual(oid, psu.hdr._id)
+
+        self.assert_(psu.caps
+                     & (onlp.onlp.ONLP_PSU_CAPS.AC
+                        | onlp.onlp.ONLP_PSU_CAPS.DC12
+                        | onlp.onlp.ONLP_PSU_CAPS.DC48))
+        # should support some non-empty set of capabilities
+
+        self.log.info("auditing psu %d",
+                      oid & 0xFFFFFF)
+
+        self.assert_(psu.status & onlp.onlp.ONLP_PSU_STATUS.PRESENT)
+        # sensor should be present
+
+        if (psu.caps
+            & onlp.onlp.ONLP_PSU_CAPS.AC
+            & onlp.onlp.ONLP_PSU_CAPS.VOUT):
+            self.assertGreater(psu.mvout, 100000)
+            self.assertLess(psu.mvout, 125000)
+        if (psu.caps
+            & onlp.onlp.ONLP_PSU_CAPS.DC12
+            & onlp.onlp.ONLP_PSU_CAPS.VOUT):
+            self.assertGreater(psu.mvout, 11000)
+            self.assertLess(psu.mvout, 13000)
+        if (psu.caps
+            & onlp.onlp.ONLP_PSU_CAPS.DC48
+            & onlp.onlp.ONLP_PSU_CAPS.VOUT):
+            self.assertGreater(psu.mvout, 47000)
+            self.assertLess(psu.mvout, 49000)
+        # output voltage should be non-crazy
+
+        # retrieve psu status separately
+        sts = ctypes.c_uint()
+        libonlp.onlp_psu_status_get(oid, ctypes.byref(sts))
+        self.assert_(onlp.onlp.ONLP_PSU_STATUS.PRESENT & sts.value)
+
+        # test ioctl
+        code = libonlp.onlp_psu_ioctl(9999)
+        self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, code)
+
+        flags = 0
+        libonlp.onlp_psu_dump(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("psu @", bufStr)
+
+        libonlp.onlp_psu_show(oid, self.aim_pvs_buffer_p, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        bufStr = buf.string_at()
+        self.assertIn("psu @", bufStr)
 
 if __name__ == "__main__":
     logging.basicConfig()
