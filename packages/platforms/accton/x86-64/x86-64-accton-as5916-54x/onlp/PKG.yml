@@ -1,6 +1,5 @@
 variables:
   platformbase: x86-64-accton-as5916-54x
-  r0_install: /lib/platform-config/${platformbase}-r0/onl
   r1_install: /lib/platform-config/${platformbase}-r1/onl
 
 common:
@@ -12,13 +11,6 @@ common:
   changelog:  Change changes changes.,
 
 packages:
-  - name: onlp-${platformbase}-r0
-    summary: ONLP Package for the ${platformbase}-r0 platform.
-
-    files:
-      builds/lib/$BUILD_DIR/x86_64-linux-gnu/bin/libonlp-${platformbase}.so : ${r0_install}/lib/libonlp-${platformbase}.so
-      builds/onlpdump/$BUILD_DIR/x86_64-linux-gnu/bin/onlpdump : ${r0_install}/bin/
-
   - name: onlp-${platformbase}-r1
     summary: ONLP Package for the ${platformbase}-r1 platform.
 
