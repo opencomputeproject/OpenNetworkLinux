@@ -6,28 +6,4 @@
 # Assumes revision r0
 #
 ############################################################
-
-variables:
-  install: /lib/platform-config/${PLATFORM}-r0/onl
-
-common:
-  version: 1.0.0
-  arch: $ARCH
-  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
-  maintainer: support@bigswitch.com
-  support: opennetworklinux@googlegroups.com
-
-packages:
-  - name: onlp-${PLATFORM}-r0
-    summary: ONLP Package for the ${PLATFORM}-r0 platform.
-    platform-config: True
-
-    files:
-      builds/lib/$BUILD_DIR/$TOOLCHAIN/bin/libonlp-${PLATFORM}.so : ${install}/lib/
-      builds/onlpdump/$BUILD_DIR/$TOOLCHAIN/bin/onlpdump : ${install}/bin/
-
-    changelog:  Change changes changes.,
-
-
-
-
+!include $ONL/packages/base/any/templates/onlp-platform-revision.yml REVISION=r0
