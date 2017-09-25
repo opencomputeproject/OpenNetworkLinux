@@ -724,13 +724,13 @@ sff_info_init(sff_info_t* info, sff_module_type_t mt,
             break;
 
         case SFF_MODULE_TYPE_25G_BASE_CR:
-            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->sfp_type = SFF_SFP_TYPE_SFP28;
             info->media_type = SFF_MEDIA_TYPE_COPPER;
             info->caps = SFF_MODULE_CAPS_F_25G;
             break;
 
         case SFF_MODULE_TYPE_25G_BASE_SR:
-            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->sfp_type = SFF_SFP_TYPE_SFP28;
             info->media_type = SFF_MEDIA_TYPE_FIBER;
             info->caps = SFF_MODULE_CAPS_F_25G;
             break;

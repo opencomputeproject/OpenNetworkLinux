@@ -127,6 +127,8 @@ sff_sfp_types: &sff_sfp_types
     desc: "QSFP+"
 - QSFP28:
     desc: "QSFP28"
+- SFP28:
+    desc: "SFP28"
 
 definitions:
   cdefs:

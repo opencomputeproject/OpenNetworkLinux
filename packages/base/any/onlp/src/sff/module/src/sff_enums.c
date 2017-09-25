@@ -251,6 +251,7 @@ aim_map_si_t sff_sfp_type_map[] =
     { "QSFP", SFF_SFP_TYPE_QSFP },
     { "QSFP_PLUS", SFF_SFP_TYPE_QSFP_PLUS },
     { "QSFP28", SFF_SFP_TYPE_QSFP28 },
+    { "SFP28", SFF_SFP_TYPE_SFP28 },
     { NULL, 0 }
 };
 
@@ -260,6 +261,7 @@ aim_map_si_t sff_sfp_type_desc_map[] =
     { "QSFP", SFF_SFP_TYPE_QSFP },
     { "QSFP+", SFF_SFP_TYPE_QSFP_PLUS },
     { "QSFP28", SFF_SFP_TYPE_QSFP28 },
+    { "SFP28", SFF_SFP_TYPE_SFP28 },
     { NULL, 0 }
 };
 

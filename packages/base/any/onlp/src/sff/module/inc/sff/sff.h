@@ -196,7 +196,8 @@ typedef enum sff_sfp_type_e {
     SFF_SFP_TYPE_QSFP,
     SFF_SFP_TYPE_QSFP_PLUS,
     SFF_SFP_TYPE_QSFP28,
-    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_QSFP28,
+    SFF_SFP_TYPE_SFP28,
+    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_SFP28,
     SFF_SFP_TYPE_COUNT,
     SFF_SFP_TYPE_INVALID = -1,
 } sff_sfp_type_t;
@@ -208,6 +209,7 @@ typedef enum sff_sfp_type_e {
     "QSFP", \
     "QSFP_PLUS", \
     "QSFP28", \
+    "SFP28", \
 }
 /** Enum names. */
 const char* sff_sfp_type_name(sff_sfp_type_t e);
@@ -220,7 +222,7 @@ const char* sff_sfp_type_desc(sff_sfp_type_t e);
 
 /** validator */
 #define SFF_SFP_TYPE_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_QSFP28))
+    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_SFP28))
 
 /** sff_sfp_type_map table. */
 extern aim_map_si_t sff_sfp_type_map[];
