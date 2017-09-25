@@ -168,6 +168,8 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_lock_swpld_read_attribute(int addr);
 int dni_lock_swpld_write_attribute(int addr, int addr1);
+int dni_fan_speed_good();
+
 
 typedef enum
 {

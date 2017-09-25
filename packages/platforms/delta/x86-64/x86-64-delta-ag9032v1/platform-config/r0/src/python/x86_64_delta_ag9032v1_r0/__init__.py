@@ -41,8 +41,20 @@ class OnlPlatform_x86_64_delta_ag9032v1_r0(OnlPlatformDelta,
         self.new_i2c_device('tmp75', 0x4f, 3)
 
         #Insert sfp module
-	self.insmod('dni_ag9032v1_sfp')
-	self.new_i2c_device('dni_ag9032v1_sfp', 0x50, 5)
+        self.insmod('dni_ag9032v1_sfp')
+        self.new_i2c_device('dni_ag9032v1_sfp', 0x50, 5)
+
+        #set thermal Thigh & Tlow
+        os.system("echo 60000 > /sys/class/hwmon/hwmon4/temp1_max")
+        os.system("echo 65000 > /sys/class/hwmon/hwmon8/temp1_max")
+        os.system("echo 80000 > /sys/class/hwmon/hwmon5/temp1_max")
+        os.system("echo 75000 > /sys/class/hwmon/hwmon6/temp1_max")
+        os.system("echo 65000 > /sys/class/hwmon/hwmon7/temp1_max")
+        os.system("echo 55000 > /sys/class/hwmon/hwmon4/temp1_max_hyst")
+        os.system("echo 60000 > /sys/class/hwmon/hwmon8/temp1_max_hyst")
+        os.system("echo 75000 > /sys/class/hwmon/hwmon5/temp1_max_hyst")
+        os.system("echo 70000 > /sys/class/hwmon/hwmon6/temp1_max_hyst")
+        os.system("echo 60000 > /sys/class/hwmon/hwmon7/temp1_max_hyst")
 
         #set front panel sys light "GREEN"
         os.system("echo 0x1C > /sys/bus/i2c/devices/6-0031/addr")

@@ -38,6 +38,12 @@
         }                                       \
     } while(0)
 
+#define dni_onlp_thermal_threshold(WARNING_DEFAULT, ERROR_DEFAULT, SHUTDOWN_DEFAULT){ \
+    WARNING_DEFAULT,                                                                  \
+    ERROR_DEFAULT,                                                                    \
+    SHUTDOWN_DEFAULT,                                                                 \
+}
+
 static char* last_path[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
@@ -69,23 +75,23 @@ static onlp_thermal_info_t linfo[] = {
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD), "CPU below side thermal sensor (U57, Below of CPU)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(45000,55000,60000)
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD), "Wind thermal sensor (U334, Near FAN)", 0},
 	    ONLP_THERMAL_STATUS_PRESENT,
-	    ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+	    ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(50000,60000,65000)
 	},
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_SW_BOARD), "MAC up side thermal sersor (U38, up side of MAC)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(65000,75000,80000)
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_SW_BOARD), "MAC down side thermal sensor (U40, down side of MAC)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(60000,70000,75000)
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_SW_BOARD), "Surroundings thermal sensor (U240, Near front panel)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(50000,60000,65000)
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
             ONLP_THERMAL_STATUS_PRESENT,
