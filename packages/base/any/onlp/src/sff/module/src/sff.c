@@ -143,6 +143,16 @@ sff_module_type_get(const uint8_t* eeprom)
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_cr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_CR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_sr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_SR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_XGE_SR(eeprom)
         && !_sff8472_media_gbe_sx_fc_hack(eeprom))
         return SFF_MODULE_TYPE_10G_BASE_SR;
@@ -180,16 +190,6 @@ sff_module_type_get(const uint8_t* eeprom)
             return SFF_MODULE_TYPE_10G_BASE_SR;
         else
             return SFF_MODULE_TYPE_10G_BASE_CR;
-    }
-
-    if (SFF8472_MODULE_SFP(eeprom)
-        && _sff8472_media_sfp28_cr(eeprom)) {
-        return SFF_MODULE_TYPE_25G_BASE_CR;
-    }
-
-    if (SFF8472_MODULE_SFP(eeprom)
-        && _sff8472_media_sfp28_sr(eeprom)) {
-        return SFF_MODULE_TYPE_25G_BASE_SR;
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
