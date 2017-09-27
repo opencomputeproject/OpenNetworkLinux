@@ -9,8 +9,12 @@ import logging
 import re
 import time
 import subprocess
+import random
+import tempfile
+import os
 
 import onlp.onlp
+import onlp.sff
 
 libonlp = onlp.onlp.libonlp
 
@@ -1210,6 +1214,317 @@ class PsuTest(OnlpTestMixin,
         buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
         bufStr = buf.string_at()
         self.assertIn("psu @", bufStr)
+
+class Eeprom(ctypes.Structure):
+    _fields_ = [('eeprom', ctypes.c_ubyte * 256,),]
+
+class SfpTest(OnlpTestMixin,
+              unittest.TestCase):
+    """Test interfaces in onlp/psu.h."""
+
+    def setUp(self):
+        OnlpTestMixin.setUp(self)
+
+        libonlp.onlp_sfp_init()
+
+        self.bitmap = onlp.onlp.aim_bitmap256()
+
+    def tearDown(self):
+        OnlpTestMixin.tearDown(self)
+
+        libonlp.onlp_sfp_denit()
+
+    def bitmap2list(self, bitmap=None):
+        outBits = []
+        bitmap = bitmap or self.bitmap
+        for pos in range(256):
+            outBits.append(onlp.onlp.aim_bitmap_get(bitmap.hdr, pos))
+        return outBits
+
+    def testBitmap(self):
+        """Verify that our aim_bitmap implementation is sound."""
+
+        refBits = []
+        for pos in range(256):
+            val = random.randint(0, 1)
+            refBits.append(val)
+            onlp.onlp.aim_bitmap_mod(self.bitmap.hdr, pos, val)
+
+        for i in range(1000):
+            pos = random.randint(0, 255)
+            val = refBits[pos] ^ 1
+            refBits[pos] = val
+            onlp.onlp.aim_bitmap_mod(self.bitmap.hdr, pos, val)
+
+        self.assertEqual(refBits, self.bitmap2list())
+
+        refBits = [0] * 256
+        libonlp.onlp_sfp_bitmap_t_init(ctypes.byref(self.bitmap))
+        self.assertEqual(refBits, self.bitmap2list())
+
+    def testValid(self):
+        """Test for valid SFP ports."""
+
+        libonlp.onlp_sfp_bitmap_t_init(ctypes.byref(self.bitmap))
+        sts = libonlp.onlp_sfp_bitmap_get(ctypes.byref(self.bitmap))
+        self.assertStatusOK(sts)
+        refBits = [0] * 256
+
+        ports = [x[0] for x in enumerate(self.bitmap2list()) if x[1]]
+        self.log.info("found %d SFP ports", len(ports))
+        self.assert_(ports)
+
+        self.assertEqual(0, ports[0])
+        self.assertEqual(len(ports)-1, ports[-1])
+        # make sure the ports are contiguous, starting from 1
+
+        # make sure the per-port valid bits are correct
+        for i in range(256):
+            valid = libonlp.onlp_sfp_port_valid(i)
+            if i < len(ports):
+                self.assertEqual(1, valid)
+            else:
+                self.assertEqual(0, valid)
+
+        # see if any of them are present
+        # XXX this test requires at least one of the SFPs to be present.
+        bm = onlp.onlp.aim_bitmap256()
+        sts = libonlp.onlp_sfp_presence_bitmap_get(ctypes.byref(bm))
+        self.assertStatusOK(sts)
+        present = [x[0] for x in enumerate(self.bitmap2list(bm)) if x[1]]
+        self.log.info("found %d SFPs", len(present))
+        self.assert_(present)
+
+        presentSet = set(present)
+        portSet = set(ports)
+
+        for port in presentSet:
+            if port not in portSet:
+                raise AssertionError("invalid SFP %d not valid"
+                                     % (port,))
+
+        for i in range(256):
+            valid = libonlp.onlp_sfp_is_present(i)
+            if i in presentSet:
+                self.assertEqual(1, valid)
+            elif i in portSet:
+                self.assertEqual(0, valid)
+            else:
+                self.assertGreater(0, valid)
+
+        # test the rx_los bitmap
+        # (tough to be more detailed since it depends on connectivity)
+        sts = libonlp.onlp_sfp_rx_los_bitmap_get(ctypes.byref(bm))
+        if sts != onlp.onlp.ONLP_STATUS.E_UNSUPPORTED:
+            self.assertStatusOK(sts)
+            rxLos = [x[0] for x in enumerate(self.bitmap2list(bm)) if x[1]]
+
+            # any port exhibiting rx_los should actually be a port
+            for i in rxLos:
+                self.assertIn(i, portSet)
+
+            # any missing SFP should *NOT* be exhibiting rx_los
+            rxLosSet = set(rxLos)
+            for i in portSet:
+                if not i in presentSet:
+                    self.assertNotIn(i, rxLosSet)
+
+        port = ports[0]
+
+        self.auditIoctl(port)
+        self.auditControl(port)
+
+        eeprom = ctypes.POINTER(ctypes.c_ubyte)()
+        sts = libonlp.onlp_sfp_eeprom_read(port, ctypes.byref(eeprom))
+        self.assertStatusOK(sts)
+
+        try:
+
+            # try to read in the data manually
+            for i in range(128):
+                b = libonlp.onlp_sfp_dev_readb(port, 0x50, i)
+                if b != eeprom[i]:
+                    raise AssertionError("eeprom mismatch at 0x50.%d" % i)
+
+            monType = eeprom[92] & 0x40
+            # See e.g. https://www.optcore.net/wp-content/uploads/2017/04/SFF_8472.pdf
+
+            self.auditEeprom(eeprom)
+
+        finally:
+            ptr = onlp.onlp.aim_void_p(ctypes.cast(eeprom, ctypes.c_void_p).value)
+            del ptr
+
+        if monType:
+
+            domData = ctypes.POINTER(ctypes.c_ubyte)()
+            sts = libonlp.onlp_sfp_dom_read(port, ctypes.byref(domData))
+            self.assertStatusOK(sts)
+
+            try:
+                self.auditDom(domData)
+            finally:
+                ptr = onlp.onlp.aim_void_p(ctypes.cast(domData, ctypes.c_void_p).value)
+                del ptr
+
+    def auditEeprom(self, eeprom):
+        """Audit that the entries for this SFP are valid."""
+
+        sffEeprom = onlp.sff.sff_eeprom()
+        sts = libonlp.sff_eeprom_parse(ctypes.byref(sffEeprom), eeprom)
+        self.assertStatusOK(sts)
+
+        self.assertEqual(1, sffEeprom.identified)
+
+        # XXX info strings include space padding
+        vendor = sffEeprom.info.vendor.strip()
+        self.assert_(vendor)
+        model = sffEeprom.info.model.strip()
+        self.assert_(model)
+        serial = sffEeprom.info.serial.strip()
+        self.assert_(serial)
+
+        self.log.info("found SFP: %s %s (S/N %s)",
+                      vendor, model, serial)
+
+        self.log.info("%s (%s %s)",
+                      sffEeprom.info.module_type_name,
+                      sffEeprom.info.media_type_name,
+                      sffEeprom.info.sfp_type_name)
+
+        sffType = libonlp.sff_sfp_type_get(eeprom)
+        self.assertEqual(sffType, sffEeprom.info.sfp_type)
+
+        moduleType = libonlp.sff_module_type_get(eeprom)
+        self.assertEqual(moduleType, sffEeprom.info.module_type)
+
+        mediaType = libonlp.sff_media_type_get(sffEeprom.info.module_type)
+        self.assertEqual(mediaType, sffEeprom.info.media_type)
+
+        caps = ctypes.c_uint32()
+        sts = libonlp.sff_module_caps_get(sffEeprom.info.module_type, ctypes.byref(caps))
+        self.assertStatusOK(sts)
+        self.assert_(caps)
+        cl = []
+        for i in range(32):
+            fl = 1<<i
+            if caps.value & fl:
+               cl.append(onlp.sff.SFF_MODULE_CAPS.name(fl))
+        self.log.info("module caps %s", "+".join(cl))
+
+        libonlp.sff_info_show(ctypes.byref(sffEeprom.info), self.aim_pvs_buffer_p)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertIn("Vendor:", buf.string_at())
+
+        # cons up a new info structure
+        # XXX includes space padding
+
+        info = onlp.sff.sff_info()
+        sts = libonlp.sff_info_init(ctypes.byref(info),
+                                    sffEeprom.info.module_type,
+                                    sffEeprom.info.vendor,
+                                    sffEeprom.info.model,
+                                    sffEeprom.info.serial,
+                                    sffEeprom.info.length)
+        self.assertStatusOK(sts)
+
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.sff_info_show(ctypes.byref(info), self.aim_pvs_buffer_p)
+        buf2 = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertEqual(buf2.string_at(), buf.string_at())
+
+        # test parsing from a file
+
+        try:
+            fno, p = tempfile.mkstemp(prefix="sfp-", suffix=".data")
+            with os.fdopen(fno, "w") as fd:
+                for i in range(256):
+                    fd.write("%c" % sffEeprom.eeprom[i])
+
+            sffEeprom2 = onlp.sff.sff_eeprom()
+            sts = libonlp.sff_eeprom_parse_file(ctypes.byref(sffEeprom2), p);
+            self.assertStatusOK(sts)
+            self.assertEqual(1, sffEeprom2.identified)
+
+        finally:
+            os.unlink(p)
+
+        # test valid vs. invalid
+
+        sts = libonlp.sff_eeprom_validate(ctypes.byref(sffEeprom), 1)
+        self.assertGreater(sts, 0)
+
+        libonlp.sff_eeprom_invalidate(ctypes.byref(sffEeprom))
+
+        sts = libonlp.sff_eeprom_validate(ctypes.byref(sffEeprom), 1)
+        self.assertEqual(sts, 0)
+
+    def auditDom(self, domData):
+        unittest.skipn("not implemented")
+
+    def testDump(self):
+        unittest.skip("this is a really slow command")
+        return
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.onlp_sfp_dump(self.aim_pvs_buffer_p)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        self.assertIn("Presence Bitmap", buf.string_at())
+
+    def auditIoctl(self, port):
+
+        sts = libonlp.onlp_sfp_ioctl(port, 999)
+        self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, sts)
+
+        sts = libonlp.onlp_sfp_ioctl(127, 999)
+        self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, sts)
+
+    def auditControl(self, port):
+
+        flags = ctypes.c_uint32()
+        sts = libonlp.onlp_sfp_control_flags_get(port, ctypes.byref(flags))
+        self.assertStatusOK(sts)
+
+        for i in range(32):
+            fl = (1<<i)
+            name = onlp.onlp.ONLP_SFP_CONTROL_FLAG.name(fl)
+            if name is None: break
+
+            ctlEnum = getattr(onlp.onlp.ONLP_SFP_CONTROL, name)
+
+            ctl = ctypes.c_int()
+            sts = libonlp.onlp_sfp_control_get(port, ctlEnum, ctypes.byref(ctl))
+
+            if flags.value & fl:
+                self.log.info("found control flag %s", name)
+                self.assertEqual(1, ctl.value)
+            else:
+                self.assertEqual(0, ctl.value)
+
+        # let's try resetting
+
+        sts = libonlp.onlp_sfp_control_set(port, onlp.onlp.ONLP_SFP_CONTROL.RESET, 1)
+        if sts != onlp.onlp.ONLP_STATUS.E_UNSUPPORTED:
+            self.assertStatusOK(sts)
+
+            time.sleep(1)
+
+            ctl = ctypes.c_int()
+            sts = libonlp.onlp_sfp_control_get(port, onlp.onlp.ONLP_SFP_CONTROL.RESET_STATE, ctypes.byref(ctl))
+            self.assertStatusOK(sts)
+            self.assertEqual(1, ctl.value)
+
+            sts = libonlp.onlp_sfp_control_set(port, onlp.onlp.ONLP_SFP_CONTROL.RESET, 0)
+            self.assertStatusOK(sts)
+
+            time.sleep(1)
+
+            ctl = ctypes.c_int()
+            sts = libonlp.onlp_sfp_control_get(port, onlp.onlp.ONLP_SFP_CONTROL.RESET_STATE, ctypes.byref(ctl))
+            self.assertStatusOK(sts)
+            self.assertEqual(0, ctl.value)
+
+        else:
+            self.log.warn("RESET not supported by this SFP")
 
 if __name__ == "__main__":
     logging.basicConfig()
