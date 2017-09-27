@@ -231,6 +231,17 @@ psu_caps: &psu_caps
 - PIN  : (1 << 7)
 - POUT : (1 << 8)
 
+# SFP Controls
+sfp_controls: &sfp_controls
+- RESET
+- RESET_STATE
+- RX_LOS
+- TX_FAULT
+- TX_DISABLE
+- TX_DISABLE_CHANNEL
+- LP_MODE
+- POWER_OVERRIDE
+
 definitions:
   cdefs:
     ONLP_CONFIG_HEADER:
@@ -255,25 +266,13 @@ definitions:
       members: *thermal_threshold
     onlp_sfp_control:
       tag: sfp1
-      members:
-        - RESET
-        - RESET_STATE
-        - RX_LOS
-        - TX_FAULT
-        - TX_DISABLE
-        - TX_DISABLE_CHANNEL
-        - LP_MODE
-        - POWER_OVERRIDE
+      members: *sfp_controls
+
     onlp_sfp_control_flag:
       tag: sfp2
-      members:
-        - RESET :          (1 << ONLP_SFP_CONTROL_RESET)
-        - RESET_STATE :    ( 1 << ONLP_SFP_CONTROL_RESET_STATE )
-        - RX_LOS :         ( 1 << ONLP_SFP_CONTROL_RX_LOS )
-        - TX_FAULT :       ( 1 << ONLP_SFP_CONTROL_TX_FAULT )
-        - TX_DISABLE :     ( 1 << ONLP_SFP_CONTROL_TX_DISABLE )
-        - LP_MODE :        ( 1 << ONLP_SFP_CONTROL_LP_MODE )
-        - POWER_OVERRIDE : ( 1 << ONLP_SFP_CONTROL_POWER_OVERRIDE )
+      members: *sfp_controls
+      flags: True
+
     onlp_fan_mode:
       tag: fan
       members: *fan_modes
@@ -301,6 +300,8 @@ definitions:
     onlp_psu_caps:
       tag: psu
       members: *psu_caps
+
+  pyenum: *enums
 
   portingmacro:
     ONLP:

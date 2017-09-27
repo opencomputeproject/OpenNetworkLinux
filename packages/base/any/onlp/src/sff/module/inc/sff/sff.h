@@ -102,6 +102,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_100G_BASE_SR4,
     SFF_MODULE_TYPE_100G_BASE_LR4,
     SFF_MODULE_TYPE_100G_CWDM4,
+    SFF_MODULE_TYPE_100G_PSM4,
     SFF_MODULE_TYPE_40G_BASE_CR4,
     SFF_MODULE_TYPE_40G_BASE_SR4,
     SFF_MODULE_TYPE_40G_BASE_LR4,
@@ -110,7 +111,9 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_40G_BASE_CR,
     SFF_MODULE_TYPE_40G_BASE_SR2,
     SFF_MODULE_TYPE_40G_BASE_SM4,
+    SFF_MODULE_TYPE_40G_BASE_ER4,
     SFF_MODULE_TYPE_25G_BASE_CR,
+    SFF_MODULE_TYPE_25G_BASE_SR,
     SFF_MODULE_TYPE_10G_BASE_SR,
     SFF_MODULE_TYPE_10G_BASE_LR,
     SFF_MODULE_TYPE_10G_BASE_LRM,
@@ -140,6 +143,7 @@ typedef enum sff_module_type_e {
     "100G_BASE_SR4", \
     "100G_BASE_LR4", \
     "100G_CWDM4", \
+    "100G_PSM4", \
     "40G_BASE_CR4", \
     "40G_BASE_SR4", \
     "40G_BASE_LR4", \
@@ -148,7 +152,9 @@ typedef enum sff_module_type_e {
     "40G_BASE_CR", \
     "40G_BASE_SR2", \
     "40G_BASE_SM4", \
+    "40G_BASE_ER4", \
     "25G_BASE_CR", \
+    "25G_BASE_SR", \
     "10G_BASE_SR", \
     "10G_BASE_LR", \
     "10G_BASE_LRM", \
@@ -190,7 +196,8 @@ typedef enum sff_sfp_type_e {
     SFF_SFP_TYPE_QSFP,
     SFF_SFP_TYPE_QSFP_PLUS,
     SFF_SFP_TYPE_QSFP28,
-    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_QSFP28,
+    SFF_SFP_TYPE_SFP28,
+    SFF_SFP_TYPE_LAST = SFF_SFP_TYPE_SFP28,
     SFF_SFP_TYPE_COUNT,
     SFF_SFP_TYPE_INVALID = -1,
 } sff_sfp_type_t;
@@ -202,6 +209,7 @@ typedef enum sff_sfp_type_e {
     "QSFP", \
     "QSFP_PLUS", \
     "QSFP28", \
+    "SFP28", \
 }
 /** Enum names. */
 const char* sff_sfp_type_name(sff_sfp_type_t e);
@@ -214,7 +222,7 @@ const char* sff_sfp_type_desc(sff_sfp_type_t e);
 
 /** validator */
 #define SFF_SFP_TYPE_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_QSFP28))
+    ( (0 <= (_e)) && ((_e) <= SFF_SFP_TYPE_SFP28))
 
 /** sff_sfp_type_map table. */
 extern aim_map_si_t sff_sfp_type_map[];

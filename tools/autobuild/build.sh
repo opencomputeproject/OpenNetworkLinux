@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH=master
 
-while getopts ":b:s:d:u:p:vc78r:" opt; do
+while getopts ":b:s:d:u:p:vc789r:" opt; do
     case $opt in
         7)
             ONLB_OPTIONS=--7
@@ -21,6 +21,12 @@ while getopts ":b:s:d:u:p:vc78r:" opt; do
             ONLB_OPTIONS=--8
             if [ -z "$DOCKER_IMAGE" ]; then
                 echo "Selecting Debian 8 build..."
+            fi
+            ;;
+        9)
+            ONLB_OPTIONS=--9
+            if [ -z "$DOCKER_IMAGE" ]; then
+                echo "Selecting Debian 9 build..."
             fi
             ;;
         c)
@@ -41,9 +47,9 @@ while getopts ":b:s:d:u:p:vc78r:" opt; do
 done
 
 if [ -z "$ONLB_OPTIONS" ]; then
-    # Build both suites
-    $AUTOBUILD_SCRIPT --7 $@
+    # Build both 8 and 9
     $AUTOBUILD_SCRIPT --8 $@
+    $AUTOBUILD_SCRIPT --9 $@
     exit $?
 fi
 

@@ -53,6 +53,8 @@ sff_module_types: &sff_module_types
     desc: "100GBASE-LR4"
 - 100G_CWDM4:
     desc: "100G-CWDM4"
+- 100G_PSM4:
+    desc: "100G-PSM4"
 - 40G_BASE_CR4:
     desc: "40GBASE-CR4"
 - 40G_BASE_SR4:
@@ -69,8 +71,12 @@ sff_module_types: &sff_module_types
     desc: "40GBASE-SR2"
 - 40G_BASE_SM4:
     desc: "40GBASE-SM4"
+- 40G_BASE_ER4:
+    desc: "40GBASE-ER4"
 - 25G_BASE_CR:
     desc: "25GBASE-CR"
+- 25G_BASE_SR:
+    desc: "25GBASE-SR"
 - 10G_BASE_SR:
     desc: "10GBASE-SR"
 - 10G_BASE_LR:
@@ -121,6 +127,8 @@ sff_sfp_types: &sff_sfp_types
     desc: "QSFP+"
 - QSFP28:
     desc: "QSFP28"
+- SFP28:
+    desc: "SFP28"
 
 definitions:
   cdefs:

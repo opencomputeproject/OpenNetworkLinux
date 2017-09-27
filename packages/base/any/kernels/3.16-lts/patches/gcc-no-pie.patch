@@ -1,0 +1,16 @@
+diff -urpN a/Makefile b/Makefile
+--- a/Makefile	2017-08-22 17:42:57.037875653 +0000
++++ b/Makefile	2017-08-22 17:43:53.089875539 +0000
+@@ -616,6 +616,12 @@ include $(srctree)/arch/$(SRCARCH)/Makef
+ 
+ KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
+ 
++# Required for GCC-5/6
++KBUILD_CFLAGS += $(call cc-option, -fno-pie)
++KBUILD_CFLAGS += $(call cc-option, -no-pie)
++KBUILD_AFLAGS += $(call cc-option, -fno-pie)
++KBUILD_CPPFLAGS += $(call cc-option, -fno-pie)
++
+ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+ KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
+ else

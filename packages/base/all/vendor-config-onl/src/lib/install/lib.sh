@@ -113,6 +113,9 @@ installer_mkchroot() {
     mkdir -p ${rootdir}/dev/pts
   fi
   mount -t devpts devpts "${rootdir}/dev/pts"
+  if test -d "${rootdir}/sys/firmware/efi/efivars"; then
+    mount -t efivarfs efivarfs "${rootdir}/sys/firmware/efi/efivars"
+  fi
 
   if test ${TMPDIR+set}; then
     # make the tempdir available to the chroot
@@ -233,7 +236,7 @@ blkid_find_gpt_boot() {
 }
 
 installer_fixup_gpt() {
-  local buf dat sts dev
+  local buf dat sts dev do_recover
 
   buf=$(mktemp -u -t sgdisk-XXXXXX)
 
@@ -261,32 +264,79 @@ installer_fixup_gpt() {
   fi
   test -b "$dev" || return 0
 
-  # see if it's a clean GPT partition table
-  if sgdisk -p "$dev" > "$buf" 2>&1; then
-    sts=0
+  do_recover=
+
+  # simple validation using sgdisk
+  if test "$do_recover"; then
+    :
   else
-    sts=$?
-  fi
-  if test $sts -ne 0; then
-    cat "$buf" 1>&2
-    rm -f "$buf"
-    installer_say "Cannot reliably get GPT partition table"
-    return 1
-  fi
+    if sgdisk -p "$dev" > "$buf" 2>&1; then
+      sts=0
+    else
+      sts=$?
+    fi
+    if test $sts -ne 0; then
+      cat "$buf" 1>&2
+      rm -f "$buf"
+      installer_say "Cannot reliably get GPT partition table"
+      return 1
+    fi
 
-  case $(cat "$buf") in
-    *Caution*|*Warning*)
-      cat $buf 1>&2
-      installer_say "Found issues with the GPT partition table"
-      rm -f "$buf"
-    ;;
-    *)
-      installer_say "Found a clean GPT partition table"
-      rm -f "$buf"
-      return 0
+    case $(cat "$buf") in
+      *Caution*|*Warning*)
+        cat $buf 1>&2
+        installer_say "Found issues with the GPT partition table"
+        do_recover=1
+        rm -f "$buf"
       ;;
-  esac
+    esac
 
+  fi
+
+  # more thorough validation
+  if test "$do_recover"; then
+    :
+  else
+
+    local inp
+    inp=$(mktemp -u -t sgdisk-XXXXXX)
+    cat > "$inp" <<-END
+	x
+	r
+	v
+	q
+	END
+    if gdisk "$dev" < "$inp" > "$buf" 2>&1; then
+      sts=0
+    else
+      sts=$?
+    fi
+    rm -f "$inp"
+    if test $sts -ne 0; then
+      cat "$buf" 1>&2
+      rm -f "$buf"
+      installer_say "Cannot reliably verify GPT partition table"
+      return 1
+    fi
+
+    case $(cat "$buf") in
+      *Caution*|*Warning*|*Problem:*)
+        cat $buf 1>&2
+        installer_say "Found issues with the GPT partition table"
+        do_recover=1
+        rm -f "$buf"
+      ;;
+    esac
+
+  fi
+
+  if test "$do_recover"; then
+    :
+  else
+    installer_say "Found a clean GPT partition table"
+    rm -f "$buf"
+    return 0
+  fi
   installer_say "Attempting to correct the GPT partition table"
 
   # this is the simple method; gdisk/sfgdisk will correct
