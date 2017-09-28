@@ -1220,7 +1220,7 @@ class Eeprom(ctypes.Structure):
 
 class SfpTest(OnlpTestMixin,
               unittest.TestCase):
-    """Test interfaces in onlp/psu.h."""
+    """Test interfaces in onlp/sfp.h."""
 
     def setUp(self):
         OnlpTestMixin.setUp(self)
@@ -1460,7 +1460,7 @@ class SfpTest(OnlpTestMixin,
         self.assertEqual(sts, 0)
 
     def auditDom(self, domData):
-        unittest.skipn("not implemented")
+        unittest.skip("not implemented")
 
     def testDump(self):
         unittest.skip("this is a really slow command")
