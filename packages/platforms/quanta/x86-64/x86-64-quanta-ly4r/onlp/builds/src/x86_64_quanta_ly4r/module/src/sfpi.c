@@ -28,7 +28,7 @@
 #include <onlplib/sfp.h>
 #include <onlplib/gpio.h>
 #include "x86_64_quanta_ly4r_log.h"
-
+#include <onlplib/file.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -39,18 +39,20 @@
 typedef struct sfpmap_s {
     int port;
     int present_gpio;
-    const char* reset_gpio;
+    int tx_fault_gpio;
+    int tx_dis_gpio;
+    int rx_los_gpio;
     const char* eeprom;
     const char* dom;
 } sfpmap_t;
 
 static sfpmap_t sfpmap__[] =
     {
-        {  49, QUANTA_LY4R_PCA9698_GPIO_SFP_1_PRSNT_N, NULL, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-32/32-0050/eeprom", NULL },
-        {  50, QUANTA_LY4R_PCA9698_GPIO_SFP_2_PRSNT_N, NULL, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-33/33-0050/eeprom", NULL },
-        {  51, QUANTA_LY4R_PCA9698_GPIO_SFP_3_PRSNT_N, NULL, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-34/34-0050/eeprom", NULL },
-        {  52, QUANTA_LY4R_PCA9698_GPIO_SFP_4_PRSNT_N, NULL, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-35/35-0050/eeprom", NULL },
-        {  53, QUANTA_LY4R_PCA9698_GPIO_SFP_5_PRSNT_N, NULL, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-36/36-0050/eeprom", NULL },
+        {  49, QUANTA_LY4R_PCA9698_GPIO_SFP_1_PRSNT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_1_TX_FAULT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_1_TX_DIS_N, QUANTA_LY4R_PCA9698_GPIO_SFP_1_RX_LOS_N, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-32/32-0050/eeprom", NULL },
+        {  50, QUANTA_LY4R_PCA9698_GPIO_SFP_2_PRSNT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_2_TX_FAULT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_2_TX_DIS_N, QUANTA_LY4R_PCA9698_GPIO_SFP_2_RX_LOS_N, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-33/33-0050/eeprom", NULL },
+        {  51, QUANTA_LY4R_PCA9698_GPIO_SFP_3_PRSNT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_3_TX_FAULT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_3_TX_DIS_N, QUANTA_LY4R_PCA9698_GPIO_SFP_3_RX_LOS_N, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-34/34-0050/eeprom", NULL },
+        {  52, QUANTA_LY4R_PCA9698_GPIO_SFP_4_PRSNT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_4_TX_FAULT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_4_TX_DIS_N, QUANTA_LY4R_PCA9698_GPIO_SFP_4_RX_LOS_N, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-35/35-0050/eeprom", NULL },
+        {  53, QUANTA_LY4R_PCA9698_GPIO_SFP_5_PRSNT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_5_TX_FAULT_N, QUANTA_LY4R_PCA9698_GPIO_SFP_5_TX_DIS_N, QUANTA_LY4R_PCA9698_GPIO_SFP_5_RX_LOS_N, "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-36/36-0050/eeprom", NULL },
   };
 
 #define SFP_GET(_port) (sfpmap__ + _port - 49)
@@ -72,6 +74,10 @@ onlp_sfpi_init(void)
     for(i = 49; i < 54; i++) {
         sfp = SFP_GET(i);
         onlp_gpio_export(sfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
+        onlp_gpio_export(sfp->tx_fault_gpio, ONLP_GPIO_DIRECTION_IN);
+        onlp_gpio_export(sfp->tx_dis_gpio, ONLP_GPIO_DIRECTION_OUT);
+        onlp_gpio_set(sfp->tx_dis_gpio, 1);
+        onlp_gpio_export(sfp->rx_los_gpio, ONLP_GPIO_DIRECTION_IN);
     }
 
     return ret;
@@ -140,3 +146,84 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
     return onlplib_sfp_eeprom_read_file(sfp->dom, data);
 }
 
+int
+onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
+{
+    int rv;
+    sfpmap_t* sfp = SFP_GET(port);
+
+    switch(control){
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            {
+                if(onlp_gpio_set(sfp->tx_dis_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                break;
+            }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    return rv;
+}
+
+int
+onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
+{
+    int rv;
+    sfpmap_t* sfp = SFP_GET(port);
+
+    switch(control){
+        case ONLP_SFP_CONTROL_TX_FAULT:
+            {
+                if(onlp_gpio_get(sfp->tx_fault_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                break;
+            }
+
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            {
+                if(onlp_gpio_get(sfp->tx_dis_gpio, value) == ONLP_STATUS_OK){
+                    if(*value == 0){
+                        *value = 1;
+                    }
+                    else{
+                        *value = 0;
+                    }
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read tx_disable status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                break;
+            }
+
+        case ONLP_SFP_CONTROL_RX_LOS:
+            {
+                if(onlp_gpio_get(sfp->rx_los_gpio, value) == ONLP_STATUS_OK){
+                    rv = ONLP_STATUS_OK;
+                }
+                else{
+                    AIM_LOG_ERROR("Unable to read rx_los status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                break;
+            }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    return rv;
+}

@@ -19,15 +19,15 @@
  * </bsn.cl>
  ************************************************************
  *
- * SFPI Interface for the Quanta IX1
+ * SFPI Interface for the Quanta IX1B
  *
  ***********************************************************/
-#include <x86_64_quanta_ix1_rangeley/x86_64_quanta_ix1_rangeley_config.h>
-#include <x86_64_quanta_ix1_rangeley/x86_64_quanta_ix1_rangeley_gpio_table.h>
+#include <x86_64_quanta_ix1b_rglbmc/x86_64_quanta_ix1b_rglbmc_config.h>
+#include <x86_64_quanta_ix1b_rglbmc/x86_64_quanta_ix1b_rglbmc_gpio_table.h>
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/sfp.h>
 #include <onlplib/gpio.h>
-#include "x86_64_quanta_ix1_rangeley_log.h"
+#include "x86_64_quanta_ix1b_rglbmc_log.h"
 #include <onlplib/file.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -99,8 +99,8 @@ onlp_sfpi_init(void)
 {
     int ret;
 
-    onlp_gpio_export(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
-    ret = onlp_gpio_set(QUANTA_IX1_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
+    onlp_gpio_export(QUANTA_IX1B_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+    ret = onlp_gpio_set(QUANTA_IX1B_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
     sleep(1);
 
     return ret;
