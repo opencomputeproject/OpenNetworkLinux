@@ -59,7 +59,7 @@ typedef struct fan_path_S
 
 #define _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) \
     { #prj"fan"#id"_present", #prj"fan"#id"_fault", #prj"fan"#id"_front_speed_rpm", \
-      #prj"fan"#id"_direction", #prj"fan"#id"_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
+      #prj"fan"#id"_direction", #prj"fan_duty_cycle_percentage", #prj"fan"#id"_rear_speed_rpm" }
 
 #define MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id) _MAKE_FAN_PATH_ON_MAIN_BOARD(prj,id)
 
