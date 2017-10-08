@@ -24,5 +24,5 @@
 ############################################################
 
 onlp_AUTO_DEFS := module/auto/onlp.yml
-onlp_AUTO_DIRS := module/inc/onlp module/src module/py
+onlp_AUTO_DIRS := module/inc/onlp module/src module/python/onlp/onlp
 include $(BUILDER)/auto.mk

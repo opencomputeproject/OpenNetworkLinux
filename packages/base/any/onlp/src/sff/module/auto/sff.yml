@@ -156,6 +156,8 @@ definitions:
     sff_media_type:
       members: *sff_media_types
 
+  pyenum: *enums
+
   xenum:
     SFF_ENUMERATION_ENTRY:
       members: *enums
