@@ -13,15 +13,22 @@ libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
 
 import onlp.onlplib
 import onlp.sff
+from onlp.onlp import aim_weakref
 
 from onlp.onlp.enums import *
 
 # AIM/aim_memory.h
 
-class aim_void_p(ctypes.c_void_p):
+class _aim_void_p(ctypes.c_void_p):
     """Generic data allocated by AIM."""
     def __del__(self):
         libonlp.aim_free(self)
+
+class aim_void_p(aim_weakref.AimPointer):
+
+    @classmethod
+    def deletePointer(cls, aimPtr):
+        libonlp.aim_free(aimPtr)
 
 class aim_char_p(aim_void_p):
     """AIM data that is a printable string."""
