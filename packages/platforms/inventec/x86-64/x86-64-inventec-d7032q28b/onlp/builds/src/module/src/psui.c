@@ -58,7 +58,7 @@ psu_status_info_get(int id, char *node, int *value)
         sprintf(node_path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
     }
     
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read_string(node_path, buf, sizeof(buf), 0);
 
     if (ret == 0) {
         *value = atoi(buf);
@@ -83,7 +83,7 @@ psu_ym2651_pmbus_info_get(int id, char *node, int *value)
         sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
     }
 
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read_string(node_path, buf, sizeof(buf), 0);
 
     if (ret == 0) {
         *value = atoi(buf);

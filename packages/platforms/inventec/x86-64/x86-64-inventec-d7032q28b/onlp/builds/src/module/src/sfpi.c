@@ -48,13 +48,13 @@ static const int sfp_mux_index[NUM_OF_SFP_PORT] = {
 #define FRONT_PORT_TO_MUX_INDEX(port) (sfp_mux_index[port]+MUX_START_INDEX)
 
 static int
-as7512_32x_sfp_node_read_int(char *node_path, int *value, int data_len)
+sfp_node_read_int(char *node_path, int *value, int data_len)
 {
     int ret = 0;
     char buf[8];
     *value = 0;
 
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), data_len);
+    ret = onlp_file_read_string(node_path, buf, sizeof(buf), data_len);
 
     if (ret == 0) {
         *value = atoi(buf);
@@ -64,7 +64,7 @@ as7512_32x_sfp_node_read_int(char *node_path, int *value, int data_len)
 }
 
 static char*
-as7512_32x_sfp_get_port_path(int port, char *node_name)
+sfp_get_port_path(int port, char *node_name)
 {
     sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-0050/%s",
                            FRONT_PORT_TO_MUX_INDEX(port),
@@ -110,9 +110,9 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-    char* path = as7512_32x_sfp_get_port_path(port, "sfp_is_present");
+    char* path = sfp_get_port_path(port, "sfp_is_present");
 
-    if (as7512_32x_sfp_node_read_int(path, &present, 0) != 0) {
+    if (sfp_node_read_int(path, &present, 0) != 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -127,7 +127,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     char* path;
     FILE* fp;
 
-    path = as7512_32x_sfp_get_port_path(0, "sfp_is_present_all");
+    path = sfp_get_port_path(0, "sfp_is_present_all");
     fp = fopen(path, "r");
 
     if(fp == NULL) {
@@ -167,7 +167,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char* path = as7512_32x_sfp_get_port_path(port, "sfp_eeprom");
+    char* path = sfp_get_port_path(port, "sfp_eeprom");
 
     /*
      * Read the SFP eeprom into data[]
@@ -177,7 +177,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      */
     memset(data, 0, 256);
 
-    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
+    if (onlp_file_read_binary(path, (char*)data, 256, 256) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }

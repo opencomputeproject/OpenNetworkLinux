@@ -30,9 +30,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <AIM/aim.h>
+#include <onlplib/file.h>
+#include <onlp/onlp.h>
 #include "platform_lib.h"
 
-int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
+#define PSU_NODE_MAX_PATH_LEN 64
+
+int _onlp_file_write(char *filename, char *buffer, int buf_size, int data_len)
 {
     int fd;
     int len;
@@ -61,15 +65,15 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
     return 0;
 }
 
-int deviceNodeWriteInt(char *filename, int value, int data_len)
+int onlp_file_write_integer(char *filename, int value)
 {
     char buf[8] = {0};
     sprintf(buf, "%d", value);
 
-    return deviceNodeWrite(filename, buf, (int)strlen(buf), data_len);
+    return _onlp_file_write(filename, buf, (int)strlen(buf), 0);
 }
 
-int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
+int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len)
 {
     int fd;
     int len;
@@ -98,7 +102,7 @@ int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_le
     return 0;
 }
 
-int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len)
+int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len)
 {
     int ret;
 
@@ -106,7 +110,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 	    return -1;
 	}
 
-	ret = deviceNodeReadBinary(filename, buffer, buf_size-1, data_len);
+	ret = onlp_file_read_binary(filename, buffer, buf_size-1, data_len);
 
     if (ret == 0) {
         buffer[buf_size-1] = '\0';
@@ -127,7 +131,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_model_name) : PSU2_AC_HWMON_NODE(psu_model_name);
 
-    if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) != 0) {
+    if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
 
@@ -141,7 +145,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-	    if (deviceNodeReadString(node, fan_dir, sizeof(fan_dir), 0) != 0) {
+	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
 	        return PSU_TYPE_UNKNOWN;
 	    }
 
@@ -160,7 +164,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-	    if (deviceNodeReadString(node, fan_dir, sizeof(fan_dir), 0) != 0) {
+	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
 	        return PSU_TYPE_UNKNOWN;
 	    }
 
@@ -179,7 +183,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
-	    if (deviceNodeReadString(node, fan_dir, sizeof(fan_dir), 0) != 0) {
+	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
 	        return PSU_TYPE_UNKNOWN;
 	    }
 
@@ -197,4 +201,46 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	}
 
     return PSU_TYPE_UNKNOWN;
+}
+
+int psu_pmbus_info_get(int id, char *node, int *value)
+{
+    int  ret = 0;
+    *value = 0;
+
+    if (PSU1_ID == id) {
+        ret = onlp_file_read_int(value, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+    }
+    else {
+        ret = onlp_file_read_int(value, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+    }
+
+    if (ret < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ret;
+}
+
+int psu_pmbus_info_set(int id, char *node, int value)
+{
+    char path[PSU_NODE_MAX_PATH_LEN] = {0};
+
+        switch (id) {
+        case PSU1_ID:
+                sprintf(path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+                break;
+        case PSU2_ID:
+                sprintf(path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+                break;
+        default:
+                return ONLP_STATUS_E_UNSUPPORTED;
+        };
+
+    if (onlp_file_write_integer(path, value) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
 }

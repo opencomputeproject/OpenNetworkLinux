@@ -191,7 +191,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Set LED mode */
-    if (deviceNodeReadString(fullpath, data, sizeof(data), 0) != 0) {
+    if (onlp_file_read_string(fullpath, data, sizeof(data), 0) != 0) {
         DEBUG_PRINT("%s(%d)\r\n", __FUNCTION__, __LINE__);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -244,20 +244,10 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     local_id = ONLP_OID_ID_GET(id);
     sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);	
     
-    if (deviceNodeWriteInt(fullpath, onlp_to_driver_led_mode(local_id, mode), 0) != 0)
+    if (onlp_file_write_integer(fullpath, onlp_to_driver_led_mode(local_id, mode)) != 0)
     {
         return ONLP_STATUS_E_INTERNAL;
     }
 
     return ONLP_STATUS_OK;
 }
-
-/*
- * Generic LED ioctl interface.
- */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

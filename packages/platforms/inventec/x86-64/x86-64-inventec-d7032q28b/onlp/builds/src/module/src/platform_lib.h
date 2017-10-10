@@ -46,11 +46,17 @@
 #define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
 
+#define FAN_BOARD_PATH  "/sys/devices/platform/fan/"
+#define FAN_NODE(node)  FAN_BOARD_PATH#node
+
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0057/eeprom"
 
-int deviceNodeWriteInt(char *filename, int value, int data_len);
-int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
-int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
+int onlp_file_write_integer(char *filename, int value);
+int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);
+int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len);
+
+int psu_pmbus_info_get(int id, char *node, int *value);
+int psu_pmbus_info_set(int id, char *node, int value);
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
