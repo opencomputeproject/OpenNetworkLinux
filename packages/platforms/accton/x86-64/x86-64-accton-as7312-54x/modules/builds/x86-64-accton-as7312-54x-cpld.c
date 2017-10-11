@@ -60,14 +60,14 @@ static const unsigned short normal_i2c[] = { 0x31, 0x35, 0x60, 0x62, 0x64, I2C_C
 static void accton_i2c_cpld_add_client(struct i2c_client *client)
 {
 	struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node), GFP_KERNEL);
-	
+
 	if (!node) {
 		dev_dbg(&client->dev, "Can't allocate cpld_client_node (0x%x)\n", client->addr);
 		return;
 	}
-	
+
 	node->client = client;
-	
+
 	mutex_lock(&list_lock);
 	list_add(&node->list, &cpld_client_list);
 	mutex_unlock(&list_lock);
@@ -78,26 +78,40 @@ static void accton_i2c_cpld_remove_client(struct i2c_client *client)
 	struct list_head		*list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int found = 0;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
 	{
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
-		
+
 		if (cpld_node->client == client) {
 			found = 1;
 			break;
 		}
 	}
-	
+
 	if (found) {
 		list_del(list_node);
 		kfree(cpld_node);
 	}
-	
+
 	mutex_unlock(&list_lock);
 }
+
+static ssize_t show_cpld_version(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    u8 reg = 0x1;
+    struct i2c_client *client;
+    int len;
+
+    client = to_i2c_client(dev);
+    len = sprintf(buf, "%d", i2c_smbus_read_byte_data(client, reg));
+
+    return len;
+}
+
+static struct device_attribute ver = __ATTR(version, 0600, show_cpld_version, NULL);
 
 static int accton_i2c_cpld_probe(struct i2c_client *client,
 			const struct i2c_device_id *dev_id)
@@ -112,7 +126,8 @@ static int accton_i2c_cpld_probe(struct i2c_client *client,
 
 	dev_info(&client->dev, "chip found\n");
 	accton_i2c_cpld_add_client(client);
-	
+
+        sysfs_create_file(&client->dev.kobj, &ver.attr);
 	return 0;
 
 exit:
@@ -121,9 +136,10 @@ exit:
 
 static int accton_i2c_cpld_remove(struct i2c_client *client)
 {
-	accton_i2c_cpld_remove_client(client);
-	
-	return 0;
+    sysfs_remove_file(&client->dev.kobj, &ver.attr);
+    accton_i2c_cpld_remove_client(client);
+
+    return 0;
 }
 
 static const struct i2c_device_id accton_i2c_cpld_id[] = {
@@ -148,7 +164,7 @@ int as7312_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
 	struct list_head   *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int ret = -EPERM;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
@@ -160,7 +176,7 @@ int as7312_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
 			break;
 		}
 	}
-	
+
 	mutex_unlock(&list_lock);
 
 	return ret;
@@ -172,19 +188,19 @@ int as7312_54x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 	struct list_head   *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int ret = -EIO;
-	
+
 	mutex_lock(&list_lock);
 
 	list_for_each(list_node, &cpld_client_list)
 	{
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
-		
+
 		if (cpld_node->client->addr == cpld_addr) {
 			ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
 			break;
 		}
 	}
-	
+
 	mutex_unlock(&list_lock);
 
 	return ret;

@@ -147,6 +147,7 @@ aim_map_si_t sff_module_type_map[] =
     { "40G_BASE_SM4", SFF_MODULE_TYPE_40G_BASE_SM4 },
     { "40G_BASE_ER4", SFF_MODULE_TYPE_40G_BASE_ER4 },
     { "25G_BASE_CR", SFF_MODULE_TYPE_25G_BASE_CR },
+    { "25G_BASE_SR", SFF_MODULE_TYPE_25G_BASE_SR },
     { "10G_BASE_SR", SFF_MODULE_TYPE_10G_BASE_SR },
     { "10G_BASE_LR", SFF_MODULE_TYPE_10G_BASE_LR },
     { "10G_BASE_LRM", SFF_MODULE_TYPE_10G_BASE_LRM },
@@ -184,6 +185,7 @@ aim_map_si_t sff_module_type_desc_map[] =
     { "40GBASE-SM4", SFF_MODULE_TYPE_40G_BASE_SM4 },
     { "40GBASE-ER4", SFF_MODULE_TYPE_40G_BASE_ER4 },
     { "25GBASE-CR", SFF_MODULE_TYPE_25G_BASE_CR },
+    { "25GBASE-SR", SFF_MODULE_TYPE_25G_BASE_SR },
     { "10GBASE-SR", SFF_MODULE_TYPE_10G_BASE_SR },
     { "10GBASE-LR", SFF_MODULE_TYPE_10G_BASE_LR },
     { "10GBASE-LRM", SFF_MODULE_TYPE_10G_BASE_LRM },
@@ -249,6 +251,7 @@ aim_map_si_t sff_sfp_type_map[] =
     { "QSFP", SFF_SFP_TYPE_QSFP },
     { "QSFP_PLUS", SFF_SFP_TYPE_QSFP_PLUS },
     { "QSFP28", SFF_SFP_TYPE_QSFP28 },
+    { "SFP28", SFF_SFP_TYPE_SFP28 },
     { NULL, 0 }
 };
 
@@ -258,6 +261,7 @@ aim_map_si_t sff_sfp_type_desc_map[] =
     { "QSFP", SFF_SFP_TYPE_QSFP },
     { "QSFP+", SFF_SFP_TYPE_QSFP_PLUS },
     { "QSFP28", SFF_SFP_TYPE_QSFP28 },
+    { "SFP28", SFF_SFP_TYPE_SFP28 },
     { NULL, 0 }
 };
 

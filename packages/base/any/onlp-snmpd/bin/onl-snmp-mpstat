@@ -14,6 +14,11 @@ Average:     all    5.17    0.00    2.07    0.00    0.00    0.00    0.00    0.00
 
 import subprocess
 import json
+import argparse
+
+ap = argparse.ArgumentParser("onl-snmp-mpstat")
+ap.add_argument("-u", required=False, help="Output current utilization only.", action='store_true')
+ops = ap.parse_args()
 
 stats = {}
 
@@ -30,5 +35,13 @@ for line in out.split('\n'):
         vals = line.split()[1:]
         stats[vals[0]] = { k:int(round(100*float(v))) \
                                for (k,v) in zip(keys[1:],vals[1:]) }
-
-print json.dumps(stats)
+if ops.u:
+    u = 0;
+    try:
+        idle = stats['all']['%idle']
+        u = 10000 - idle
+    except:
+        pass
+    print u
+else:
+    print json.dumps(stats)

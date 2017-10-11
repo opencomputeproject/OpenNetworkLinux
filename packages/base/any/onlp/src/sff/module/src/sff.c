@@ -143,6 +143,16 @@ sff_module_type_get(const uint8_t* eeprom)
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_cr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_CR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_sr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_SR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_XGE_SR(eeprom)
         && !_sff8472_media_gbe_sx_fc_hack(eeprom))
         return SFF_MODULE_TYPE_10G_BASE_SR;
@@ -180,11 +190,6 @@ sff_module_type_get(const uint8_t* eeprom)
             return SFF_MODULE_TYPE_10G_BASE_SR;
         else
             return SFF_MODULE_TYPE_10G_BASE_CR;
-    }
-
-    if (SFF8472_MODULE_SFP(eeprom)
-        && _sff8472_media_sfp28_cr(eeprom)) {
-        return SFF_MODULE_TYPE_25G_BASE_CR;
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
@@ -254,6 +259,7 @@ sff_media_type_get(sff_module_type_t mt)
         case SFF_MODULE_TYPE_40G_BASE_SR2:
         case SFF_MODULE_TYPE_40G_BASE_SM4:
         case SFF_MODULE_TYPE_40G_BASE_ER4:
+        case SFF_MODULE_TYPE_25G_BASE_SR:
         case SFF_MODULE_TYPE_10G_BASE_SR:
         case SFF_MODULE_TYPE_10G_BASE_LR:
         case SFF_MODULE_TYPE_10G_BASE_LRM:
@@ -309,6 +315,7 @@ sff_module_caps_get(sff_module_type_t mt, uint32_t *caps)
             return 0;
 
         case SFF_MODULE_TYPE_25G_BASE_CR:
+        case SFF_MODULE_TYPE_25G_BASE_SR:
             *caps |= SFF_MODULE_CAPS_F_25G;
             return 0;
 
@@ -717,8 +724,14 @@ sff_info_init(sff_info_t* info, sff_module_type_t mt,
             break;
 
         case SFF_MODULE_TYPE_25G_BASE_CR:
-            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->sfp_type = SFF_SFP_TYPE_SFP28;
             info->media_type = SFF_MEDIA_TYPE_COPPER;
+            info->caps = SFF_MODULE_CAPS_F_25G;
+            break;
+
+        case SFF_MODULE_TYPE_25G_BASE_SR:
+            info->sfp_type = SFF_SFP_TYPE_SFP28;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
             info->caps = SFF_MODULE_CAPS_F_25G;
             break;
 

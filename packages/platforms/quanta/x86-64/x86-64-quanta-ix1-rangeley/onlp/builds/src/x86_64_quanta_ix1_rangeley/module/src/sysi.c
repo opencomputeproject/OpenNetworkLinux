@@ -79,6 +79,11 @@ onlp_sysi_init(void)
     onlp_gpio_export(QUANTA_IX1_FAN_PRSNT_N_2, ONLP_GPIO_DIRECTION_IN);
     onlp_gpio_export(QUANTA_IX1_FAN_PRSNT_N_3, ONLP_GPIO_DIRECTION_IN);
     onlp_gpio_export(QUANTA_IX1_FAN_PRSNT_N_4, ONLP_GPIO_DIRECTION_IN);
+    /* FAN Direction */
+    onlp_gpio_export(QUANTA_IX1_FAN_BF_DET1, ONLP_GPIO_DIRECTION_IN);
+    onlp_gpio_export(QUANTA_IX1_FAN_BF_DET2, ONLP_GPIO_DIRECTION_IN);
+    onlp_gpio_export(QUANTA_IX1_FAN_BF_DET3, ONLP_GPIO_DIRECTION_IN);
+    onlp_gpio_export(QUANTA_IX1_FAN_BF_DET4, ONLP_GPIO_DIRECTION_IN);
 
     /* Set LED to green */
     onlp_ledi_mode_set(LED_OID_SYSTEM, ONLP_LED_MODE_GREEN);

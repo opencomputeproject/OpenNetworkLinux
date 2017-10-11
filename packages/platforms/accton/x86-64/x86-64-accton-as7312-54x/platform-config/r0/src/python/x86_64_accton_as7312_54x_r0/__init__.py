@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.accton import *
 
 class OnlPlatform_x86_64_accton_as7312_54x_r0(OnlPlatformAccton,
-                                              OnlPlatformPortConfig_48x10_6x40):
+                                              OnlPlatformPortConfig_48x25_6x100):
 
     PLATFORM='x86-64-accton-as7312-54x-r0'
     MODEL="AS7312-54X"
@@ -48,7 +48,7 @@ class OnlPlatform_x86_64_accton_as7312_54x_r0(OnlPlatformAccton,
                 ('ym2651', 0x58, 10),
            ])
 
-       
+
 
         ########### initialize I2C bus 1 ###########
 
@@ -127,5 +127,3 @@ class OnlPlatform_x86_64_accton_as7312_54x_r0(OnlPlatformAccton,
         )
         self.new_i2c_device('24c02', 0x57, 1)
         return True
-
-

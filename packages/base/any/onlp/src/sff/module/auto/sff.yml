@@ -75,6 +75,8 @@ sff_module_types: &sff_module_types
     desc: "40GBASE-ER4"
 - 25G_BASE_CR:
     desc: "25GBASE-CR"
+- 25G_BASE_SR:
+    desc: "25GBASE-SR"
 - 10G_BASE_SR:
     desc: "10GBASE-SR"
 - 10G_BASE_LR:
@@ -125,6 +127,8 @@ sff_sfp_types: &sff_sfp_types
     desc: "QSFP+"
 - QSFP28:
     desc: "QSFP28"
+- SFP28:
+    desc: "SFP28"
 
 definitions:
   cdefs:
