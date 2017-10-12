@@ -195,7 +195,7 @@ class App(SubprocessMixin):
                              pdir,))
 
         for m in pm.mounts:
-            if m.dir.startswith('/mnt/onl'):
+            if m.dir.startswith('/mnt/onl') or m.dir.startswith('/boot'):
                 if not self.force:
                     self.log.error("directory %s is still mounted (try --force)", m.dir)
                     return 1
