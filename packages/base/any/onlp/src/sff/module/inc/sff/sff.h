@@ -361,6 +361,8 @@ int sff_info_init(sff_info_t* pinfo, sff_module_type_t type,
                   int length);
 
 
+int sff_info_from_module_type(sff_info_t* info, sff_sfp_type_t st,
+                              sff_module_type_t mt);
 
 #ifdef DEPENDMODULE_INCLUDE_CJSON_UTIL
 

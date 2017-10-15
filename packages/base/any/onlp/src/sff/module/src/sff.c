@@ -28,6 +28,7 @@
 #include <sff/8636.h>
 #include "sff_log.h"
 #include <ctype.h>
+#include "sff_int.h"
 
 sff_sfp_type_t
 sff_sfp_type_get(const uint8_t* eeprom)
@@ -665,6 +666,14 @@ sff_eeprom_parse_nonstandard__(sff_eeprom_t* se, uint8_t* eeprom)
                      se->info.length);
         return 0;
     }
+
+    if (sff_nonstandard_lookup(&se->info) == 0) {
+        se->identified = 1;
+        SFF_SNPRINTF(se->info.length_desc, sizeof(se->info.length_desc), "%dm",
+                     se->info.length);
+        return 0;
+    }
+
     return -1;
 }
 
