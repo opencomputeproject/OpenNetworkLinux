@@ -143,7 +143,8 @@ onlp_sys_info_get_locked__(onlp_sys_info_t* rv)
     }
     else {
         if(onlp_sysi_onie_info_get(&rv->onie_info) != 0) {
-            return ONLP_STATUS_E_INTERNAL;
+            memset(&rv->onie_info, 0, sizeof(rv->onie_info));
+            list_init(&rv->onie_info.vx_list);
         }
     }
 

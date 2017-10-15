@@ -164,6 +164,7 @@ class OnlPlatformBase(object):
             except ValueError, e:
                 if required:
                     raise e
+                self.add_info_dict(name, {}, klass)
         elif required:
             raise RuntimeError("A required system file (%s) is missing." % f)
 
