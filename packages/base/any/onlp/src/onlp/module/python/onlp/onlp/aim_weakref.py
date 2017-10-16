@@ -25,7 +25,6 @@ def _run_finalizer(ref):
     finalizer = ref.finalizer
     item = ref.item
     try:
-        getLogger().info("finalizing object at %s", item)
         finalizer(item)
     except Exception:
         getLogger().exception("finalizer failed")
@@ -39,7 +38,6 @@ def track_for_finalization(owner, item, finalizer):
     ``finalizer`` will be called with ``item`` as its only argument when
     ``owner`` is destroyed by the garbage collector.
     """
-    getLogger().info("tracking object at %s", item)
     ref = AimOwnerRef(owner, _run_finalizer)
     ref.item = item
     ref.finalizer = finalizer
