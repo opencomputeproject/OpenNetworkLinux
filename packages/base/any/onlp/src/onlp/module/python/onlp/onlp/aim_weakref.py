@@ -80,3 +80,17 @@ class AimPointer(ctypes.c_void_p):
         # XXX roth -- casting may be necessary
 
         track_for_finalization(self, aimPtr, self.deletePointer)
+
+class AimStruct(ctypes.Structure):
+    """Manage an AIM struct with internally-allocated data."""
+
+    @classmethod
+    def deleteStruct(cls, aimPtr):
+        """Override this with the proper delete semantics."""
+        raise NotImplementedError
+
+    def __init__(self):
+
+        super(ctypes.Structure, self).__init__()
+
+        track_for_finalization(self, self, self.deleteStruct)
