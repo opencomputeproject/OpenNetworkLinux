@@ -13,15 +13,17 @@ libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
 
 import onlp.onlplib
 import onlp.sff
+from onlp.onlp import aim_weakref
 
 from onlp.onlp.enums import *
 
 # AIM/aim_memory.h
 
-class aim_void_p(ctypes.c_void_p):
-    """Generic data allocated by AIM."""
-    def __del__(self):
-        libonlp.aim_free(self)
+class aim_void_p(aim_weakref.AimPointer):
+
+    @classmethod
+    def deletePointer(cls, aimPtr):
+        libonlp.aim_free(aimPtr)
 
 class aim_char_p(aim_void_p):
     """AIM data that is a printable string."""
@@ -155,13 +157,18 @@ class aim_bitmap_hdr(ctypes.Structure):
 class aim_bitmap(ctypes.Structure):
     _fields_ = [("hdr", aim_bitmap_hdr,),]
 
-    @classmethod
-    def fromAim(cls, bitcount):
-        """Return a pointer to a bitmap from aim_alloc().
+class aim_bitmap_ref(aim_weakref.AimReference):
+    """Dynamically allocated aim_bitmap."""
 
-        Pre-initialized; needs to be freed with aim_free().
-        """
-        return libonlp.aim_bitmap_alloc(None, bitcount)
+    _fields_ = aim_bitmap._fields_
+
+    def __init__(self, bitcount):
+        ptr = libonlp.aim_bitmap_alloc(None, bitcount)
+        super(aim_bitmap_ref, self).__init__(ptr)
+
+    @classmethod
+    def deleteReference(self, aimPtr):
+        libonlp.aim_free(aimPtr)
 
 class aim_bitmap256(aim_bitmap):
     """Statically-allocated AIM bitmap."""
@@ -299,16 +306,19 @@ def onlp_oid_init_prototypes():
 
 # onlp/sys.h
 
-class onlp_sys_info(ctypes.Structure):
-
-    initialized = False
+class onlp_sys_info(aim_weakref.AimStruct):
 
     _fields_ = [("hdr", onlp_oid_hdr,),
                 ("onie_info", onlp.onlplib.onlp_onie_info,),
                 ("platform_info", onlp.onlplib.onlp_platform_info,),]
 
-    def __del__(self):
-        if self.initialized:
+    def __init__(self):
+        self.initialized = False
+        super(onlp_sys_info, self).__init__()
+
+    def deleteStruct(self):
+        initialized, self.initialized = self.initialized, False
+        if initialized:
             libonlp.onlp_sys_info_free(ctypes.byref(self))
 
 def onlp_sys_init_prototypes():

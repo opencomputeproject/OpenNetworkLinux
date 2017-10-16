@@ -18,6 +18,8 @@ import onlp.sff
 
 libonlp = onlp.onlp.libonlp
 
+import onlp.onlp.aim_weakref
+
 def isVirtual():
     with open("/etc/onl/platform") as fd:
         buf = fd.read()
@@ -26,6 +28,20 @@ def isVirtual():
 def skipIfVirtual(reason="this test only works with a physical device"):
     return unittest.skipIf(isVirtual(), reason)
 
+class aim_pvs_buffer(onlp.onlp.aim_weakref.AimReference):
+
+    def __init__(self):
+        ptr = libonlp.aim_pvs_buffer_create()
+        super(aim_pvs_buffer, self).__init__(ptr)
+
+    @classmethod
+    def deleteReference(self, ptr):
+        libonlp.aim_pvs_destroy(ptr)
+
+    def string_at(self):
+        buf = libonlp.aim_pvs_buffer_get(self.ptr)
+        return buf.string_at()
+
 class OnlpTestMixin(object):
 
     def setUp(self):
@@ -33,12 +49,12 @@ class OnlpTestMixin(object):
         self.log = logging.getLogger("onlp")
         self.log.setLevel(logging.DEBUG)
 
-        self.aim_pvs_buffer_p = libonlp.aim_pvs_buffer_create()
-        self.aim_pvs_buffer = self.aim_pvs_buffer_p.contents
+        self.aim_pvs_buffer = aim_pvs_buffer()
+
+        onlp.onlp.aim_weakref.logger = self.log.getChild("weakref")
 
     def tearDown(self):
-
-        libonlp.aim_pvs_destroy(self.aim_pvs_buffer_p)
+        pass
 
     def assertStatusOK(self, sts):
         if sts == onlp.onlp.ONLP_STATUS.OK:
@@ -61,25 +77,19 @@ class InitTest(OnlpTestMixin,
     def testBuffer(self):
         """Verify that the AIM buffer type is usable."""
 
-        nullString = onlp.onlp.aim_char_p(None)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
-        self.assertEqual(nullString, buf)
+        self.assertIsNone(self.aim_pvs_buffer.string_at())
 
-        libonlp.aim_printf(self.aim_pvs_buffer_p, "hello\n")
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
-        self.assertEqual("hello\n", buf.string_at())
+        libonlp.aim_printf(self.aim_pvs_buffer.ptr, "hello\n")
+        self.assertEqual("hello\n", self.aim_pvs_buffer.string_at())
 
-        libonlp.aim_printf(self.aim_pvs_buffer_p, "world\n")
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
-        self.assertEqual("hello\nworld\n", buf.string_at())
+        libonlp.aim_printf(self.aim_pvs_buffer.ptr, "world\n")
+        self.assertEqual("hello\nworld\n", self.aim_pvs_buffer.string_at())
 
-        libonlp.aim_printf(self.aim_pvs_buffer_p, "%d\n", 42)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
-        self.assertEqual("hello\nworld\n42\n", buf.string_at())
+        libonlp.aim_printf(self.aim_pvs_buffer.ptr, "%d\n", 42)
+        self.assertEqual("hello\nworld\n42\n", self.aim_pvs_buffer.string_at())
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
-        self.assertEqual(nullString, buf)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
+        self.assertIsNone(self.aim_pvs_buffer.string_at())
 
 class OnlpTest(OnlpTestMixin,
                unittest.TestCase):
@@ -95,8 +105,8 @@ class OnlpTest(OnlpTestMixin,
         """Verify basic platform dump output."""
 
         flags = 0
-        libonlp.onlp_platform_dump(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_dump(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("System Information:", bufStr)
         self.assertIn("thermal @ 1", bufStr)
@@ -105,17 +115,17 @@ class OnlpTest(OnlpTestMixin,
         """Verify platform dump flags are honored."""
 
         flags = 0
-        libonlp.onlp_platform_dump(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_dump(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("psu @ 1", bufStr)
         self.assertNotIn("PSU-1 Fan", bufStr)
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
 
         flags = onlp.onlp.ONLP_OID_DUMP.RECURSE
-        libonlp.onlp_platform_dump(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_dump(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("psu @ 1", bufStr)
         self.assertIn("PSU-1 Fan", bufStr)
@@ -127,8 +137,8 @@ class OnlpTest(OnlpTestMixin,
         """Verify basic platform show output."""
 
         flags = 0
-        libonlp.onlp_platform_show(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_show(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("System Information:", bufStr)
 
@@ -136,17 +146,17 @@ class OnlpTest(OnlpTestMixin,
         """Verify that onlp_platform_show honors flags."""
 
         flags = 0
-        libonlp.onlp_platform_show(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_show(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertNotIn("PSU 1", bufStr)
         self.assertNotIn("PSU-1 Fan", bufStr)
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
 
         flags = onlp.onlp.ONLP_OID_SHOW.RECURSE
-        libonlp.onlp_platform_show(self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_platform_show(self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("PSU 1", bufStr)
         self.assertIn("PSU-1 Fan", bufStr)
@@ -288,18 +298,18 @@ class SysTest(OnlpTestMixin,
 
         oid = onlp.onlp.ONLP_OID_SYS
         flags = 0
-        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("System Information", bufStr)
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
 
         # this is not the system OID
 
         oid = self.sys_info.hdr.coids[0]
-        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_sys_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIsNone(bufStr)
 
@@ -308,18 +318,18 @@ class SysTest(OnlpTestMixin,
 
         oid = onlp.onlp.ONLP_OID_SYS
         flags = 0
-        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("System Information", bufStr)
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
 
         # this is not the system OID
 
         oid = self.sys_info.hdr.coids[0]
-        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_sys_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIsNone(bufStr)
 
@@ -431,15 +441,15 @@ class OidTest(OnlpTestMixin,
     def testOidDump(self):
         oid = self.hdr.coids[0]
         flags = 0
-        libonlp.onlp_oid_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_oid_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertIn("Description:", buf.string_at())
 
     def testOidTableDump(self):
         tbl = self.hdr.coids
         flags = 0
-        libonlp.onlp_oid_table_dump(tbl, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_oid_table_dump(tbl, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         lines = buf.string_at().splitlines(False)
         lines = [x for x in lines if 'Description' in x]
         self.assertGreater(len(lines), 1)
@@ -447,15 +457,15 @@ class OidTest(OnlpTestMixin,
     def testOidShow(self):
         oid = self.hdr.coids[0]
         flags = 0
-        libonlp.onlp_oid_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_oid_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertIn("Description:", buf.string_at())
 
     def testOidTableShow(self):
         tbl = self.hdr.coids
         flags = 0
-        libonlp.onlp_oid_table_show(tbl, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_oid_table_show(tbl, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         lines = buf.string_at().splitlines(False)
         lines = [x for x in lines if 'Description' in x]
         self.assertGreater(len(lines), 1)
@@ -544,13 +554,13 @@ class FanTest(OnlpTestMixin,
             self.auditFanDir(oid)
 
         flags = 0
-        libonlp.onlp_fan_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_fan_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("Fan", bufStr)
 
-        libonlp.onlp_fan_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_fan_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("Fan", bufStr)
 
@@ -814,13 +824,13 @@ class LedTest(OnlpTestMixin,
 
 
         flags = 0
-        libonlp.onlp_led_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_led_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("led @", bufStr)
 
-        libonlp.onlp_led_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_led_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("led @", bufStr)
 
@@ -1038,8 +1048,8 @@ class ConfigTest(OnlpTestMixin,
 
     def testConfigShow(self):
 
-        libonlp.onlp_config_show(self.aim_pvs_buffer_p)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_config_show(self.aim_pvs_buffer.ptr)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertIn("ONLP_CONFIG_INFO_STR_MAX = 64\n", buf.string_at())
 
 class ThermalTest(OnlpTestMixin,
@@ -1112,13 +1122,13 @@ class ThermalTest(OnlpTestMixin,
         self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, code)
 
         flags = 0
-        libonlp.onlp_thermal_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_thermal_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("thermal @", bufStr)
 
-        libonlp.onlp_thermal_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_thermal_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("thermal @", bufStr)
 
@@ -1205,13 +1215,13 @@ class PsuTest(OnlpTestMixin,
         self.assertEqual(onlp.onlp.ONLP_STATUS.E_UNSUPPORTED, code)
 
         flags = 0
-        libonlp.onlp_psu_dump(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_psu_dump(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("psu @", bufStr)
 
-        libonlp.onlp_psu_show(oid, self.aim_pvs_buffer_p, flags)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.onlp_psu_show(oid, self.aim_pvs_buffer.ptr, flags)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         bufStr = buf.string_at()
         self.assertIn("psu @", bufStr)
 
@@ -1412,8 +1422,8 @@ class SfpTest(OnlpTestMixin,
                cl.append(onlp.sff.SFF_MODULE_CAPS.name(fl))
         self.log.info("module caps %s", "+".join(cl))
 
-        libonlp.sff_info_show(ctypes.byref(sffEeprom.info), self.aim_pvs_buffer_p)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.sff_info_show(ctypes.byref(sffEeprom.info), self.aim_pvs_buffer.ptr)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertIn("Vendor:", buf.string_at())
 
         # cons up a new info structure
@@ -1428,9 +1438,9 @@ class SfpTest(OnlpTestMixin,
                                     sffEeprom.info.length)
         self.assertStatusOK(sts)
 
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
-        libonlp.sff_info_show(ctypes.byref(info), self.aim_pvs_buffer_p)
-        buf2 = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
+        libonlp.sff_info_show(ctypes.byref(info), self.aim_pvs_buffer.ptr)
+        buf2 = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertEqual(buf2.string_at(), buf.string_at())
 
         # test parsing from a file
@@ -1465,9 +1475,9 @@ class SfpTest(OnlpTestMixin,
     def testDump(self):
         unittest.skip("this is a really slow command")
         return
-        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer_p)
-        libonlp.onlp_sfp_dump(self.aim_pvs_buffer_p)
-        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer_p)
+        libonlp.aim_pvs_buffer_reset(self.aim_pvs_buffer.ptr)
+        libonlp.onlp_sfp_dump(self.aim_pvs_buffer.ptr)
+        buf = libonlp.aim_pvs_buffer_get(self.aim_pvs_buffer.ptr)
         self.assertIn("Presence Bitmap", buf.string_at())
 
     def auditIoctl(self, port):
