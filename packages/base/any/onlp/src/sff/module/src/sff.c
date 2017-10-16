@@ -765,10 +765,15 @@ sff_info_init(sff_info_t* info, sff_module_type_t mt,
 
         case SFF_MODULE_TYPE_1G_BASE_SX:
         case SFF_MODULE_TYPE_1G_BASE_LX:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_1G;
+            break;
+
         case SFF_MODULE_TYPE_1G_BASE_CX:
         case SFF_MODULE_TYPE_1G_BASE_T:
             info->sfp_type = SFF_SFP_TYPE_SFP;
-            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
             info->caps = SFF_MODULE_CAPS_F_1G;
             break;
 
