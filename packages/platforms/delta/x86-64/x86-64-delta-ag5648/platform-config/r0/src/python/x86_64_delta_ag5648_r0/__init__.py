@@ -48,6 +48,21 @@ class OnlPlatform_x86_64_delta_ag5648_r0(OnlPlatformDelta,
         os.system("echo 0x04 > /sys/bus/i2c/devices/2-0039/addr")
         os.system("echo 0x10 > /sys/bus/i2c/devices/2-0039/data")
 
+        #set thermal Thigh & Tlow
+        os.system("echo 80000 > /sys/class/hwmon/hwmon5/temp1_max")
+        os.system("echo 70000 > /sys/class/hwmon/hwmon6/temp1_max")
+        os.system("echo 60000 > /sys/class/hwmon/hwmon7/temp1_max")
+        os.system("echo 85000 > /sys/class/hwmon/hwmon8/temp1_max")
+        os.system("echo 65000 > /sys/class/hwmon/hwmon9/temp1_max")
+        os.system("echo 60000 > /sys/class/hwmon/hwmon10/temp1_max")
+ 
+        os.system("echo 75000 > /sys/class/hwmon/hwmon5/temp1_max_hyst")
+        os.system("echo 65000 > /sys/class/hwmon/hwmon6/temp1_max_hyst")
+        os.system("echo 55000 > /sys/class/hwmon/hwmon7/temp1_max_hyst")
+        os.system("echo 80000 > /sys/class/hwmon/hwmon8/temp1_max_hyst")
+        os.system("echo 60000 > /sys/class/hwmon/hwmon9/temp1_max_hyst")
+        os.system("echo 55000 > /sys/class/hwmon/hwmon10/temp1_max_hyst")
+
         return True
 
 

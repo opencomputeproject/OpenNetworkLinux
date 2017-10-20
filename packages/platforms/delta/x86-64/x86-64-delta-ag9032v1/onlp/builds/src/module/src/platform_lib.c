@@ -36,6 +36,33 @@
 #include <onlplib/mmap.h>
 #include <pthread.h>
 
+int dni_fan_speed_good()
+{
+    int rpm = 0, rpm1 = 0, speed_good = 0;
+
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN5_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN5_REAR);
+    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
+        speed_good++;
+    return speed_good;
+}
+
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len)
 {
     int fd;

@@ -32,6 +32,8 @@ static ssize_t show_pwm(struct device *dev, struct device_attribute *devattr,
                         char *buf);
 static ssize_t show_fan(struct device *dev, struct device_attribute *devattr,
                         char *buf);
+static ssize_t show_fan_percentage(struct device *dev, struct device_attribute *devattr, 
+                                   char *buf);
 static ssize_t set_fan(struct device *dev, struct device_attribute *devattr,
                        const char *buf, size_t count);
 static ssize_t set_fan_percentage(struct device *dev, struct device_attribute *devattr,
@@ -98,11 +100,11 @@ static SENSOR_DEVICE_ATTR(fan2_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 1);
 static SENSOR_DEVICE_ATTR(fan3_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 2);
 static SENSOR_DEVICE_ATTR(fan4_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 3);
 static SENSOR_DEVICE_ATTR(fan5_input, S_IWUSR | S_IRUGO, show_fan, set_fan, 4);
-static SENSOR_DEVICE_ATTR(fan1_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 0);
-static SENSOR_DEVICE_ATTR(fan2_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 1);
-static SENSOR_DEVICE_ATTR(fan3_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 2);
-static SENSOR_DEVICE_ATTR(fan4_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 3);
-static SENSOR_DEVICE_ATTR(fan5_input_percentage, S_IWUSR | S_IRUGO, show_fan, set_fan_percentage, 4);
+static SENSOR_DEVICE_ATTR(fan1_input_percentage, S_IWUSR | S_IRUGO, show_fan_percentage, set_fan_percentage, 0);
+static SENSOR_DEVICE_ATTR(fan2_input_percentage, S_IWUSR | S_IRUGO, show_fan_percentage, set_fan_percentage, 1);
+static SENSOR_DEVICE_ATTR(fan3_input_percentage, S_IWUSR | S_IRUGO, show_fan_percentage, set_fan_percentage, 2);
+static SENSOR_DEVICE_ATTR(fan4_input_percentage, S_IWUSR | S_IRUGO, show_fan_percentage, set_fan_percentage, 3);
+static SENSOR_DEVICE_ATTR(fan5_input_percentage, S_IWUSR | S_IRUGO, show_fan_percentage, set_fan_percentage, 4);
 static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 0);
 static SENSOR_DEVICE_ATTR(pwm2, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 1);
 static SENSOR_DEVICE_ATTR(pwm3, S_IWUSR | S_IRUGO, show_pwm, set_pwm, 2);
@@ -170,6 +172,29 @@ static ssize_t set_fan_percentage(struct device *dev, struct device_attribute *d
   i2c_smbus_write_byte_data(client, EMC2305_REG_FAN_REAR_L_RPM(attr->index), lsb);
   mutex_unlock(&data->lock);
   return count;
+}
+
+static ssize_t show_fan_percentage(struct device *dev, struct device_attribute *devattr,
+                                   char *buf)
+{
+  struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+  struct i2c_client *client = to_i2c_client(dev);
+  struct emc2305_data *data = i2c_get_clientdata(client);
+  int val;
+  int rpm;
+  int rpm_percentage;
+
+  MUX_SELECT;
+
+  mutex_lock(&data->lock);
+  val = i2c_smbus_read_word_swapped(client,
+                                    EMC2305_REG_FAN_TACH(attr->index));
+  mutex_unlock(&data->lock);
+   /* Left shift 3 bits for showing correct RPM */
+  val = val >> 3;
+  rpm = 3932160 * 2 / (val > 0 ? val : 1);
+  rpm_percentage = rpm / 230;
+  return sprintf(buf, "%d\n", rpm_percentage);
 }
 
 

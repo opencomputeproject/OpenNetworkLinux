@@ -30,7 +30,7 @@
 #include <onlplib/i2c.h>
 
 #define MAX_FAN_SPEED     23000
-#define MAX_PSU_FAN_SPEED 19328
+#define MAX_PSU_FAN_SPEED 18380
 
 typedef struct fan_path_S
 {
@@ -60,7 +60,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     { \
         { ONLP_FAN_ID_CREATE(FAN_##id##_ON_FAN_BOARD), "Chassis Fan "#id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_RPM | ONLP_FAN_CAPS_GET_RPM), \
+        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_PERCENTAGE |ONLP_FAN_CAPS_SET_RPM | ONLP_FAN_CAPS_GET_RPM), \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -70,7 +70,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        ( ONLP_FAN_CAPS_SET_PERCENTAGE |ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -316,7 +316,7 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
         case FAN_8_ON_FAN_BOARD:
         case FAN_9_ON_FAN_BOARD:
         case FAN_10_ON_FAN_BOARD:
-            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
+            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
             break;
         default:
             return ONLP_STATUS_E_INVALID;
