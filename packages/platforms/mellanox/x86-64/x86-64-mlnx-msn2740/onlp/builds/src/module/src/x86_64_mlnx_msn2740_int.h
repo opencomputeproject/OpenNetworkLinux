@@ -3,10 +3,10 @@
  * x86_64_mlnx_msn2740 Internal Header
  *
  *****************************************************************************/
-#ifndef __x86_64_mlnx_msn2740_INT_H__
-#define __x86_64_mlnx_msn2740_INT_H__
+#ifndef __X86_64_MLNX_MSN2740_INT_H__
+#define __X86_64_MLNX_MSN2740_INT_H__
 
 #include <x86_64_mlnx_msn2740/x86_64_mlnx_msn2740_config.h>
 
 
-#endif /* __x86_64_mlnx_msn2740_INT_H__ */
+#endif /* __X86_64_MLNX_MSN2740_INT_H__ */

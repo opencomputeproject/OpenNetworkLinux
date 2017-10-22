@@ -3,8 +3,8 @@
  * x86_64_mlnx_msn2740 Doxygen Header
  *
  *****************************************************************************/
-#ifndef __x86_64_mlnx_msn2740_DOX_H__
-#define __x86_64_mlnx_msn2740_DOX_H__
+#ifndef __X86_64_MLNX_MSN2740_DOX_H__
+#define __X86_64_MLNX_MSN2740_DOX_H__
 
 /**
  * @defgroup x86_64_mlnx_msn2740 x86_64_mlnx_msn2740 - x86_64_mlnx_msn2740 Description
@@ -23,4 +23,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __x86_64_mlnx_msn2740_DOX_H__ */
+#endif /* __X86_64_MLNX_MSN2740_DOX_H__ */

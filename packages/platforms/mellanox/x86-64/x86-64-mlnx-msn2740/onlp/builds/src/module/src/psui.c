@@ -192,9 +192,3 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     return ret;
 }
 
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

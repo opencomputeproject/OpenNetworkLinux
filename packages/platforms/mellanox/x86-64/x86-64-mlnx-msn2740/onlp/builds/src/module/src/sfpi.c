@@ -184,12 +184,6 @@ onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 }
 
 int
-onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
     char* path = sn2740_sfp_convert_i2c_path(port, devaddr);
@@ -215,30 +209,6 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 		return ONLP_STATUS_E_INTERNAL;
     }
     return data;
-}
-
-int
-onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
-onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
-onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
-onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int

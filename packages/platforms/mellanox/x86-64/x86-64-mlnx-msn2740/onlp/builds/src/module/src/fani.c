@@ -128,8 +128,8 @@ onlp_fan_info_t linfo[] = {
         }                                       \
     } while(0)
 
-#define OPEN_READ_FILE(fullpath, data, nbytes, len)			\
-	if (onlp_file_read((uint8_t*)data, nbytes, &len, fullpath) < 0)	\
+#define OPEN_READ_FILE(prefix_module, fan_path, data, nbytes, len)			\
+	if (onlp_file_read((uint8_t*)data, nbytes, &len, "%s%s", prefix_module, fan_path) < 0)	\
        return ONLP_STATUS_E_INTERNAL;           \
 	else													\
 		AIM_LOG_VERBOSE("read data: %s\n", r_data);			\
@@ -148,8 +148,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 
     /* get fan status
     */
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[local_id].status);
-    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(PREFIX_MODULE_PATH, fan_path[local_id].status, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
         return ONLP_STATUS_OK;
     }
@@ -157,8 +156,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 
      /* get fan speed
      */
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].r_speed_get);
-    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(PREFIX_PATH, fan_path[local_id].r_speed_get, r_data, nbytes, len);
     info->rpm = atoi(r_data);
 
     /* check failure */
@@ -170,14 +168,12 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     if (ONLP_FAN_CAPS_GET_PERCENTAGE & info->caps) {
         /* get fan min speed
          */
-        snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].min);
-        OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+        OPEN_READ_FILE(PREFIX_PATH, fan_path[local_id].min, r_data, nbytes, len);
         min_fan_speed[local_id] = atoi(r_data);
 
         /* get fan max speed
          */
-        snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].max);
-        OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+        OPEN_READ_FILE(PREFIX_PATH, fan_path[local_id].max, r_data, nbytes, len);
         max_fan_speed[local_id] = atoi(r_data);
 
         /* get speed percentage from rpm */
@@ -207,8 +203,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
 
     /* get fan status
     */
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[local_id].status);
-    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(PREFIX_MODULE_PATH, fan_path[local_id].status, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
         return ONLP_STATUS_OK;
     }
@@ -216,8 +211,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
 
     /* get fan speed
     */
-    snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_PATH, fan_path[local_id].r_speed_get);
-    OPEN_READ_FILE(fullpath, r_data, nbytes, len);
+    OPEN_READ_FILE(PREFIX_PATH, fan_path[local_id].r_speed_get, r_data, nbytes, len);
     info->rpm = atoi(r_data);
 
     /* check failure */
@@ -399,42 +393,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 	}
 
     return ONLP_STATUS_OK;
-}
-
-/*
- * This function sets the fan speed of the given OID as per
- * the predefined ONLP fan speed modes: off, slow, normal, fast, max.
- *
- * Interpretation of these modes is up to the platform.
- *
- */
-int
-onlp_fani_mode_set(onlp_oid_t id, onlp_fan_mode_t mode)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * This function sets the fan direction of the given OID.
- *
- * This function is only relevant if the fan OID supports both direction
- * capabilities.
- *
- * This function is optional unless the functionality is available.
- */
-int
-onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * Generic fan ioctl. Optional.
- */
-int
-onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int
