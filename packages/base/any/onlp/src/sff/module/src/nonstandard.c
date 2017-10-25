@@ -17,6 +17,7 @@ static sff_ns_entry_t nonstandard_modules__[] =
         { "CISCO-OEM       ", "QSFP-4SFP+-CU3M ", SFF_MODULE_TYPE_40G_BASE_CR4, 3 },
         { "CISCO-OEM       ", "QSFP-4SFP+-CU5M ", SFF_MODULE_TYPE_40G_BASE_CR4, 5 },
         { "Mellanox        ", "MC2206130-001   ", SFF_MODULE_TYPE_40G_BASE_CR4, 1 },
+        { "OEM             ", "F4M-QSSFP-C-2-30", SFF_MODULE_TYPE_40G_BASE_CR4, 2 },
         {},
     };
 
