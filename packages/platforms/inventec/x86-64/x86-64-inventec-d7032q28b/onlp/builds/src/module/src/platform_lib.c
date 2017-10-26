@@ -36,70 +36,13 @@
 
 #define PSU_NODE_MAX_PATH_LEN 64
 
-int _onlp_file_write(char *filename, char *buffer, int buf_size, int data_len)
-{
-    int fd;
-    int len;
-
-    if ((buffer == NULL) || (buf_size < 0)) {
-        return -1;
-    }
-
-    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {
-        return -1;
-    }
-
-    if ((len = write(fd, buffer, buf_size)) < 0) {
-        close(fd);
-        return -1;
-    }
-
-    if ((close(fd) == -1)) {
-        return -1;
-    }
-
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
-        return -1;
-    }
-
-    return 0;
-}
-
-int onlp_file_write_integer(char *filename, int value)
-{
-    char buf[8] = {0};
-    sprintf(buf, "%d", value);
-
-    return _onlp_file_write(filename, buf, (int)strlen(buf), 0);
-}
-
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len)
 {
-    int fd;
-    int len;
-
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
     }
 
-    if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;
-    }
-
-    if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);
-        return -1;
-    }
-
-    if ((close(fd) == -1)) {
-        return -1;
-    }
-
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
-        return -1;
-    }
-
-    return 0;
+    return onlp_file_read((uint8_t*)buffer, buf_size, &data_len, "%s", filename);
 }
 
 int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len)
@@ -237,7 +180,7 @@ int psu_pmbus_info_set(int id, char *node, int value)
                 return ONLP_STATUS_E_UNSUPPORTED;
         };
 
-    if (onlp_file_write_integer(path, value) < 0) {
+    if (onlp_file_write_int(value, path, NULL) != 0) {
         AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }

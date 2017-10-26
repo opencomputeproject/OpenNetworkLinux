@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <onlplib/i2c.h>
+#include <onlplib/file.h>
 #include "platform_lib.h"
 
 #define MAX_SFP_PATH 64
@@ -51,13 +52,13 @@ static int
 sfp_node_read_int(char *node_path, int *value, int data_len)
 {
     int ret = 0;
-    char buf[8];
     *value = 0;
 
-    ret = onlp_file_read_string(node_path, buf, sizeof(buf), data_len);
+    ret = onlp_file_read_int(value, node_path);
 
-    if (ret == 0) {
-        *value = atoi(buf);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     return ret;
@@ -168,6 +169,7 @@ int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     char* path = sfp_get_port_path(port, "sfp_eeprom");
+    int len = 0;
 
     /*
      * Read the SFP eeprom into data[]
@@ -177,7 +179,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      */
     memset(data, 0, 256);
 
-    if (onlp_file_read_binary(path, (char*)data, 256, 256) != 0) {
+    if (onlp_file_read((uint8_t*)data, 256, &len, path) < 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }

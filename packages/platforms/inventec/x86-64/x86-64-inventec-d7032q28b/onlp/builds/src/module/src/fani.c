@@ -320,7 +320,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
             return ONLP_STATUS_E_INVALID;
     }
 
-    if (onlp_file_write_integer(path, p) < 0) {
+    if (onlp_file_write_int(p, path, NULL) != 0) {
         AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }

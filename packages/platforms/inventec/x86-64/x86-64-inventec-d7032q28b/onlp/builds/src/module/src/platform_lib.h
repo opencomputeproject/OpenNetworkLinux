@@ -51,7 +51,6 @@
 
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0057/eeprom"
 
-int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);
 int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len);
 

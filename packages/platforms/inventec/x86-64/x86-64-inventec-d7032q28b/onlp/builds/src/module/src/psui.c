@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <onlp/platformi/psui.h>
 #include <onlplib/mmap.h>
+#include <onlplib/file.h>
 #include <stdio.h>
 #include <string.h>
 #include "platform_lib.h"
@@ -46,7 +47,6 @@ static int
 psu_status_info_get(int id, char *node, int *value)
 {
     int ret = 0;
-    char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
     
     *value = 0;
@@ -58,10 +58,11 @@ psu_status_info_get(int id, char *node, int *value)
         sprintf(node_path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
     }
     
-    ret = onlp_file_read_string(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read_int(value, node_path);
 
-    if (ret == 0) {
-        *value = atoi(buf);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     return ret;
@@ -71,7 +72,6 @@ static int
 psu_ym2651_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
-    char buf[PSU_NODE_MAX_INT_LEN + 1]    = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
     
     *value = 0;
@@ -83,10 +83,11 @@ psu_ym2651_pmbus_info_get(int id, char *node, int *value)
         sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
     }
 
-    ret = onlp_file_read_string(node_path, buf, sizeof(buf), 0);
+    ret = onlp_file_read_int(value, node_path);
 
-    if (ret == 0) {
-        *value = atoi(buf);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     return ret;
