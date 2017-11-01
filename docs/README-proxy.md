@@ -7,23 +7,24 @@ While everyone's setup is different, hopefully these directions help
 reduce that pain.
 
 
-1) Update the git modules to point to http: instead of git:
+* Update the git modules to point to http: instead of git:
 
-    sed -i -e 's/git:/http:/' $ONL/.gitmodules
 
-2) Make sure you have apt-cacher-ng installed in your host (non-docker)
+       sed -i -e 's/git:/http:/' $ONL/.gitmodules
+
+* Make sure you have apt-cacher-ng installed in your host (non-docker)
     environment and that docker starts it.  Next, configure it to use
     your proxy:
 
-     $ grep Proxy /etc/apt-cacher-ng/acng.conf
-     Proxy: http://myproxy.mycompany.com:8080
-     $ sudo /etc/init.d/apt-cacher-ng restart
+      $ grep Proxy /etc/apt-cacher-ng/acng.conf
+      Proxy: http://myproxy.mycompany.com:8080
+      $ sudo /etc/init.d/apt-cacher-ng restart
 
-3) Make sure your git config is configured correctly for 
+* Make sure your git config is configured correctly for 
     proxies:
 
-    $ cat ~/.gitconfig
-    [https]
-        proxy = myproxy.mycompany.com:8080
-    [https]
-        proxy = myproxy.mycompany.com:8080
+      $ cat ~/.gitconfig
+      [https]
+           proxy = myproxy.mycompany.com:8080
+      [https]
+           proxy = myproxy.mycompany.com:8080
