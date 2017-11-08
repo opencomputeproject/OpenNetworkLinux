@@ -144,7 +144,6 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     float range = 0;
     float temp  = 0;
     char  r_data[10]   = {0};
-    char  fullpath[65] = {0};
 
     /* get fan status
     */
@@ -197,7 +196,6 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
 {
     int   len = 0, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[80] = {0};
     float rpms_per_perc = 0.0;
     float temp = 0.0;
 
