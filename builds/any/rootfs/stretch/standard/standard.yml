@@ -1,0 +1,105 @@
+############################################################
+#
+# Standard ONL Debian 9 Root Filesystem Configuration.
+#
+# Requires:
+#     ARCH, PLATFORM_LIST
+#
+#
+############################################################
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
+Packages: &Packages
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/all-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-base-packages.yml
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/${ARCH}-onl-packages.yml
+  - !script  $ONL/tools/onl-platform-pkgs.py ${PLATFORM_LIST}
+
+Multistrap:
+  General:
+    arch: ${ARCH}
+    cleanup: true
+    noauth: true
+    explicitsuite: false
+    unpack: true
+    debootstrap: Debian-Local Local-All Local-Arch ONL
+    aptsources: Debian ONL
+
+  Debian:
+    packages: *Packages
+    source: http://${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  Debian-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  ONL:
+    packages: *Packages
+    source: http://apt.opennetlinux.org/debian
+    suite: unstable
+    omitdebsrc: true
+
+  Local-All:
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-all
+    omitdebsrc: true
+
+  Local-Arch:
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
+    omitdebsrc: true
+
+Configure:
+  overlays:
+    - ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/common/overlay
+
+  update-rc.d:
+    - 'faultd defaults'
+    - 'onlpd defaults'
+    - 'snmpd defaults'
+    - 'onlp-snmpd defaults'
+    - 'ssh defaults'
+    - 'openbsd-inetd remove'
+    - 'ntp remove'
+    - 'nfs-common remove'
+    - 'rpcbind remove'
+    - 'motd remove'
+    - 'mountall-bootclean.sh remove'
+    - 'mountall.sh remove'
+    - 'checkfs.sh remove'
+    - 'mtab.sh remove'
+    - 'checkroot-bootclean.sh remove'
+    - 'checkroot.sh remove'
+    - 'mountnfs-bootclean.sh remove'
+    - 'mountnfs.sh remove'
+    - 'lm-sensors remove'
+    - 'netplug defaults'
+    - 'watchdog defaults'
+    - 'wd_keepalive remove'
+
+  options:
+    clean: True
+    securetty: False
+    ttys: False
+    console: True
+    PermitRootLogin: 'yes'
+
+  users:
+    root:
+      password: onl
+
+  manifests:
+    '/etc/onl/rootfs/manifest.json' :
+      version : $ONL/make/versions/version-onl.json
+      platforms : $PLATFORM_LIST
+
+  issue: $VERSION_STRING
+
+  files:
+    remove:
+      - /etc/motd

@@ -59,6 +59,7 @@ typedef enum onlp_status_e {
  */
 int onlp_init(void);
 
+int onlp_denit(void);
 
 /**
  * @brief Dump the current platform data.

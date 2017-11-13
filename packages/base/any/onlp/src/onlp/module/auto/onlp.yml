@@ -109,6 +109,17 @@ oid_types: &oid_types
 - MODULE : 6
 - RTC : 7
 
+# OID dump options
+oid_dump: &oid_dump
+- RECURSE
+- EVEN_IF_ABSENT
+
+# OID show options
+oid_show: &oid_show
+- RECURSE
+- EXTENDED
+- YAML
+
 # SFP Control
 sfp_control: &sfp_control
 - RESET
@@ -231,6 +242,17 @@ psu_caps: &psu_caps
 - PIN  : (1 << 7)
 - POUT : (1 << 8)
 
+# SFP Controls
+sfp_controls: &sfp_controls
+- RESET
+- RESET_STATE
+- RX_LOS
+- TX_FAULT
+- TX_DISABLE
+- TX_DISABLE_CHANNEL
+- LP_MODE
+- POWER_OVERRIDE
+
 definitions:
   cdefs:
     ONLP_CONFIG_HEADER:
@@ -244,6 +266,14 @@ definitions:
     onlp_oid_type:
       tag: oid
       members: *oid_types
+    onlp_oid_show:
+      tag: oid
+      members: *oid_show
+      flags: True
+    onlp_oid_dump:
+      tag: oid
+      members: *oid_dump
+      flags: True
     onlp_thermal_status:
       tag: thermal
       members: *thermal_status
@@ -255,25 +285,13 @@ definitions:
       members: *thermal_threshold
     onlp_sfp_control:
       tag: sfp1
-      members:
-        - RESET
-        - RESET_STATE
-        - RX_LOS
-        - TX_FAULT
-        - TX_DISABLE
-        - TX_DISABLE_CHANNEL
-        - LP_MODE
-        - POWER_OVERRIDE
+      members: *sfp_controls
+
     onlp_sfp_control_flag:
       tag: sfp2
-      members:
-        - RESET :          (1 << ONLP_SFP_CONTROL_RESET)
-        - RESET_STATE :    ( 1 << ONLP_SFP_CONTROL_RESET_STATE )
-        - RX_LOS :         ( 1 << ONLP_SFP_CONTROL_RX_LOS )
-        - TX_FAULT :       ( 1 << ONLP_SFP_CONTROL_TX_FAULT )
-        - TX_DISABLE :     ( 1 << ONLP_SFP_CONTROL_TX_DISABLE )
-        - LP_MODE :        ( 1 << ONLP_SFP_CONTROL_LP_MODE )
-        - POWER_OVERRIDE : ( 1 << ONLP_SFP_CONTROL_POWER_OVERRIDE )
+      members: *sfp_controls
+      flags: True
+
     onlp_fan_mode:
       tag: fan
       members: *fan_modes
@@ -301,6 +319,8 @@ definitions:
     onlp_psu_caps:
       tag: psu
       members: *psu_caps
+
+  pyenum: *enums
 
   portingmacro:
     ONLP:

@@ -26,6 +26,8 @@ ifndef K_TARGET_DIR
 K_TARGET_DIR := $(THIS_DIR)
 endif
 
+K_PATCH_DIR := $(THIS_DIR)/patches
+
 include ../../kconfig.mk
 K_CONFIG := arm-iproc-all.config
 K_BUILD_TARGET := Image

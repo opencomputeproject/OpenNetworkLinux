@@ -47,6 +47,19 @@
 typedef uint32_t onlp_oid_t;
 
 /* <auto.start.enum(tag:oid).define> */
+/** onlp_oid_dump */
+typedef enum onlp_oid_dump_e {
+    ONLP_OID_DUMP_RECURSE = (1 << 0),
+    ONLP_OID_DUMP_EVEN_IF_ABSENT = (1 << 1),
+} onlp_oid_dump_t;
+
+/** onlp_oid_show */
+typedef enum onlp_oid_show_e {
+    ONLP_OID_SHOW_RECURSE = (1 << 0),
+    ONLP_OID_SHOW_EXTENDED = (1 << 1),
+    ONLP_OID_SHOW_YAML = (1 << 2),
+} onlp_oid_show_t;
+
 /** onlp_oid_type */
 typedef enum onlp_oid_type_e {
     ONLP_OID_TYPE_SYS = 1,
@@ -121,13 +134,6 @@ typedef struct onlp_oid_hdr_s {
 } onlp_oid_hdr_t;
 
 
-#define ONLP_OID_DUMP_F_RECURSE 0x1
-#define ONLP_OID_DUMP_F_EVEN_IF_ABSENT 0x2
-
-#define ONLP_OID_SHOW_F_RECURSE  0x1
-#define ONLP_OID_SHOW_F_EXTENDED 0x2
-#define ONLP_OID_SHOW_F_YAML     0x4
-
 void onlp_oid_dump(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags);
 void onlp_oid_table_dump(onlp_oid_table_t table, aim_pvs_t* pvs,
                          uint32_t flags);
@@ -199,6 +205,48 @@ int onlp_oid_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
  *
  *****************************************************************************/
 /* <auto.start.enum(tag:oid).supportheader> */
+/** Enum names. */
+const char* onlp_oid_dump_name(onlp_oid_dump_t e);
+
+/** Enum values. */
+int onlp_oid_dump_value(const char* str, onlp_oid_dump_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_oid_dump_desc(onlp_oid_dump_t e);
+
+/** Enum validator. */
+int onlp_oid_dump_valid(onlp_oid_dump_t e);
+
+/** validator */
+#define ONLP_OID_DUMP_VALID(_e) \
+    (onlp_oid_dump_valid((_e)))
+
+/** onlp_oid_dump_map table. */
+extern aim_map_si_t onlp_oid_dump_map[];
+/** onlp_oid_dump_desc_map table. */
+extern aim_map_si_t onlp_oid_dump_desc_map[];
+
+/** Enum names. */
+const char* onlp_oid_show_name(onlp_oid_show_t e);
+
+/** Enum values. */
+int onlp_oid_show_value(const char* str, onlp_oid_show_t* e, int substr);
+
+/** Enum descriptions. */
+const char* onlp_oid_show_desc(onlp_oid_show_t e);
+
+/** Enum validator. */
+int onlp_oid_show_valid(onlp_oid_show_t e);
+
+/** validator */
+#define ONLP_OID_SHOW_VALID(_e) \
+    (onlp_oid_show_valid((_e)))
+
+/** onlp_oid_show_map table. */
+extern aim_map_si_t onlp_oid_show_map[];
+/** onlp_oid_show_desc_map table. */
+extern aim_map_si_t onlp_oid_show_desc_map[];
+
 /** Enum names. */
 const char* onlp_oid_type_name(onlp_oid_type_t e);
 

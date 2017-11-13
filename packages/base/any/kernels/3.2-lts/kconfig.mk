@@ -24,4 +24,6 @@ K_MAJOR_VERSION := 3
 K_PATCH_LEVEL := 2
 K_SUB_LEVEL := 84
 K_SUFFIX :=
+ifndef K_PATCH_DIR
 K_PATCH_DIR := $(THIS_DIR)/patches
+endif

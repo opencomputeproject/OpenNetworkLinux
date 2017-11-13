@@ -42,7 +42,7 @@ sys_thermal_info_get__(onlp_thermal_info_t* info, int id)
     const char* controller = SYS_CONTROLLER_PREFIX_TEMPERATURE;
 
     rv = onlp_file_read_int(&info->mcelsius,
-                            "%s//temp%d_input", controller, id);
+                            "%s*temp%d_input", controller, id);
 
     if(rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
@@ -63,7 +63,7 @@ psu_thermal_info_get__(onlp_thermal_info_t* info, int pid, int id)
     /* THERMAL7 -> PSU2 */
     char* dir = powerpc_quanta_lb8_r9_system_psu_dir(pid);
     info->status |= 1;
-    return onlp_file_read_int(&info->mcelsius, "%s/temp%d_input", dir, id);
+    return onlp_file_read_int(&info->mcelsius, "%s*temp%d_input", dir, id);
 }
 
 int
@@ -124,4 +124,3 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv)
 
     return ONLP_STATUS_E_INVALID;
 }
-

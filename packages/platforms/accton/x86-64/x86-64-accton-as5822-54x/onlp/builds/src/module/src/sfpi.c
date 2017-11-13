@@ -56,7 +56,7 @@ sfp_get_port_path(int port, char *node_name)
 int
 onlp_sfpi_init(void)
 {
-    /* Called at initialization time */    
+    /* Called at initialization time */
     return ONLP_STATUS_OK;
 }
 
@@ -67,9 +67,7 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
      * Ports {0, 54}
      */
     int p;
-    AIM_BITMAP_INIT(bmap, 64);
-    AIM_BITMAP_CLR_ALL(bmap);
-    
+
     for(p = 0; p < NUM_OF_SFP_PORT; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
@@ -92,7 +90,7 @@ onlp_sfpi_is_present(int port)
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
-    
+
     return present;
 }
 
@@ -205,7 +203,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return OK if eeprom is read
      */
     memset(data, 0, 256);
-    
+
     if (onlp_file_read_binary(path, (char*)data, 256, 256) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
@@ -320,6 +318,3 @@ onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-
-
-

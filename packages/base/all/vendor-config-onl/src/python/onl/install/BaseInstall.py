@@ -19,7 +19,11 @@ import fnmatch, glob
 from InstallUtils import SubprocessMixin
 from InstallUtils import MountContext, BlkidParser, PartedParser
 from InstallUtils import ProcMountsParser
+from InstallUtils import GdiskParser
+from InstallUtils import OnieSubprocess
 from Plugin import Plugin
+
+import onl.install.ConfUtils
 
 import onl.YamlUtils
 from onl.sysconfig import sysconfig
@@ -509,14 +513,33 @@ menuentry %(boot_menu_entry)s {
   initrd /%(platform)s.cpio.gz
 }
 
-# Menu entry to chainload ONIE
-menuentry ONIE {
-  search --no-floppy --label --set=root ONIE-BOOT
-  # Always return to entry 0 by default.
+set onie_boot_label="ONIE-BOOT"
+set onie_boot_uuid="%(onie_boot_uuid)s"
+# filesystem UUID, *not* GPT partition GUID, *not* GPT partition unique GUID
+# (tee hee, GPT GRUB cannot grok partition attributes)
+
+function onie_boot_uefi {
+  set root='(hd0,gpt1)'
+  search --no-floppy --fs-uuid --set=root "${onie_boot_uuid}"
+  echo 'Loading ONIE ...'
+  chainloader /EFI/onie/grubx64.efi
+}
+
+function onie_boot_dos {
+  search --no-floppy --label --set=root "${onie_boot_label}"
   set saved_entry="0"
   save_env saved_entry
   echo 'Loading ONIE ...'
   chainloader +1
+}
+
+# Menu entry to chainload ONIE
+menuentry ONIE {
+  if [ -n "${onie_boot_uuid}" ]; then
+    onie_boot_uefi
+  else
+    onie_boot_dos
+  fi
 }
 """
 
@@ -528,6 +551,14 @@ class GrubInstaller(SubprocessMixin, Base):
 
     def __init__(self, *args, **kwargs):
         Base.__init__(self, *args, **kwargs)
+
+        self.espDevice = None
+        self.espFsUuid = None
+        # optionally fill in ESP partition information
+
+    @property
+    def isUEFI(self):
+        return os.path.isdir('/sys/firmware/efi/efivars')
 
     def findGpt(self):
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
@@ -566,8 +597,9 @@ class GrubInstaller(SubprocessMixin, Base):
             self.log.error("cannot find an install device")
             return 1
 
-        code = self.assertUnmounted()
-        if code: return code
+        if not self.isUEFI:
+            code = self.assertUnmounted()
+            if code: return code
 
         # optionally back up a config partition
         # if it's on the boot device
@@ -607,6 +639,42 @@ class GrubInstaller(SubprocessMixin, Base):
             self.log.error("cannot find an install partition")
             return 1
         self.minpart = minpart
+
+        return 0
+
+    def findEsp(self):
+        """Find the block device holding the EFI System Partition.
+
+        XXX assume boot (ESP) partition is on the same device as GRUB
+        """
+
+        self.log.info("extracting partition UUIDs for %s", self.device)
+
+        if isinstance(self.im.grubEnv, onl.install.ConfUtils.GrubEnv):
+            # direct (or chroot) access
+            gp = GdiskParser(self.device,
+                             subprocessContext=self.im.grubEnv,
+                             log=self.log)
+        else:
+            # indirect access using onie-shell
+            ctx = OnieSubprocess(log=self.log.getChild("onie"))
+            gp = GdiskParser(self.device,
+                             subprocessContext=ctx,
+                             log=self.log)
+
+        espParts = [x for x in gp.parts if x.isEsp]
+        if not espParts:
+            self.log.error("cannot find ESP partition on %s", self.device)
+            return 1
+        self.espDevice = espParts[0].device
+        self.log.info("found ESP partition %s", self.espDevice)
+
+        espParts = [x for x in self.blkidParts if x.device==self.espDevice]
+        if not espParts:
+            self.log.error("cannot find blkid entry for ESP partition on %s", self.espDevice)
+            return 1
+        self.espFsUuid = espParts[0].uuid
+        self.log.info("found ESP filesystem UUID %s", self.espFsUuid)
 
         return 0
 
@@ -656,6 +724,11 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_menu_entry'] = sysconfig.installer.menu_name
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
+        if self.isUEFI:
+            ctx['onie_boot_uuid'] = self.espFsUuid
+        else:
+            ctx['onie_boot_uuid'] = ""
+
         cf = GRUB_TPL % ctx
 
         with MountContext(dev.device, log=self.log) as ctx:
@@ -688,6 +761,13 @@ class GrubInstaller(SubprocessMixin, Base):
 
         code = self.findGpt()
         if code: return code
+
+        if self.isUEFI:
+            code = self.findEsp()
+            if code: return code
+            self.im.grubEnv.__dict__['espPart'] = self.espDevice
+        else:
+            self.im.grubEnv.__dict__['espPart'] = None
 
         self.log.info("Installing to %s starting at partition %d",
                       self.device, self.minpart)
@@ -757,6 +837,7 @@ class GrubInstaller(SubprocessMixin, Base):
         if label != 'gpt':
             self.log.error("invalid GRUB label in platform config: %s", label)
             return 1
+
         return self.installGpt()
 
     def upgradeBootLoader(self):

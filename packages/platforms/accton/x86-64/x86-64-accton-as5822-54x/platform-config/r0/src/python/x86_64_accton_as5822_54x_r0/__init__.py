@@ -17,7 +17,7 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 # initialize multiplexer (PCA9548)
-                ('pca9548', 0x70, 0),
+                ('pca9548', 0x72, 0),
 
                 # initialize CPLD
                 ('accton_i2c_cpld', 0x60, 6),
@@ -29,7 +29,7 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
                 # initiate PSU-2 AC Power
                 ('as5822_54x_psu2', 0x51, 4),
                 ('ym2401', 0x59, 4),
-                
+
                 # inititate LM75
                 ('lm75', 0x48, 7),
                 ('lm75', 0x49, 8),
@@ -47,7 +47,7 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
                 # initialize CPLD
                 ('accton_i2c_cpld', 0x61, 10),
                 ('accton_i2c_cpld', 0x62, 11),
-                
+
                 # initialize multiplexer (PCA9548)
                 ('pca9548', 0x71, 12),
                 ('pca9548', 0x72, 13),
@@ -55,7 +55,7 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
                 ('pca9548', 0x74, 15),
                 ('pca9548', 0x75, 16),
                 ('pca9548', 0x76, 17),
-                ('pca9548', 0x77, 17),
+                ('pca9548', 0x71, 17),
 
                 # initiate IDPROM
                 ('24c02', 0x57, 1),
@@ -72,4 +72,3 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
             self.new_i2c_device('as5822_54x_sfp%d' % port, 0x50, port+17)
 
         return True
-

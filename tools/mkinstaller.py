@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 ############################################################
 #
 # Build an ONL Installer

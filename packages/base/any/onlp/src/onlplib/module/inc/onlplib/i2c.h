@@ -72,6 +72,11 @@
 #define ONLP_I2C_F_USE_SMBUS_BLOCK_READ 0x40
 
 /**
+ * Do not retry reads on I2C transaction failures.
+ */
+#define ONLP_I2C_F_DISABLE_READ_RETRIES 0x80
+
+/**
  * @brief Open and prepare for reading or writing.
  * @param bus The i2c bus number.
  * @param addr The slave address.

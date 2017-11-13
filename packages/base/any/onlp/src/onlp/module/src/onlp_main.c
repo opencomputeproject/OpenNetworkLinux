@@ -203,8 +203,8 @@ onlpdump_main(int argc, char* argv[])
         switch(c)
             {
             case 's': show=1; break;
-            case 'r': show=1; showflags |= ONLP_OID_SHOW_F_RECURSE; break;
-            case 'e': show=1; showflags |= ONLP_OID_SHOW_F_EXTENDED; break;
+            case 'r': show=1; showflags |= ONLP_OID_SHOW_RECURSE; break;
+            case 'e': show=1; showflags |= ONLP_OID_SHOW_EXTENDED; break;
             case 'd': show=0; break;
             case 'h': help=1; rv = 0; break;
             case 'j': j=1; break;
@@ -220,7 +220,7 @@ onlpdump_main(int argc, char* argv[])
             case 'l': l=1; break;
             case 'b': b=1; break;
             case 'J': J = optarg; break;
-            case 'y': show=1; showflags |= ONLP_OID_SHOW_F_YAML; break;
+            case 'y': show=1; showflags |= ONLP_OID_SHOW_YAML; break;
             default: help=1; rv = 1; break;
             }
     }
@@ -305,8 +305,8 @@ onlpdump_main(int argc, char* argv[])
         int oid;
         if(sscanf(O, "0x%x", &oid) == 1) {
             onlp_oid_dump(oid, &aim_pvs_stdout,
-                          ONLP_OID_DUMP_F_RECURSE |
-                          ONLP_OID_DUMP_F_EVEN_IF_ABSENT);
+                          ONLP_OID_DUMP_RECURSE |
+                          ONLP_OID_DUMP_EVEN_IF_ABSENT);
         }
         return 0;
     }
@@ -349,7 +349,7 @@ onlpdump_main(int argc, char* argv[])
         if(show == 0) {
             /* Default to full dump */
             onlp_platform_dump(&aim_pvs_stdout,
-                               ONLP_OID_DUMP_F_RECURSE | ONLP_OID_DUMP_F_EVEN_IF_ABSENT);
+                               ONLP_OID_DUMP_RECURSE | ONLP_OID_DUMP_EVEN_IF_ABSENT);
         }
         else {
             onlp_platform_show(&aim_pvs_stdout,

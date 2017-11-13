@@ -528,7 +528,7 @@ installer_force_umount() {
   dev=$1; shift
   mpt=$1; shift
   case "$mpt" in
-    /mnt/*)
+    /mnt/*|/boot/*)
       installer_say "Unmounting $mpt (--force)"
       umount "$mpt"
       ;;
@@ -547,6 +547,9 @@ if test -f preinstall.sh; then
   chmod +x preinstall.sh
   ./preinstall.sh $rootdir
 fi
+
+# make sure any GPT data is valid and clean
+installer_fixup_gpt || :
 
 chroot "${rootdir}" $installer_shell
 

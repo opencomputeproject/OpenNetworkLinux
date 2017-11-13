@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import os
 import sys
@@ -18,7 +18,8 @@ g_current_uid  = os.getuid()
 g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
 
 g_builder7_image_name="opennetworklinux/builder7:1.2"
-g_builder8_image_name="opennetworklinux/builder8:1.5"
+g_builder8_image_name="opennetworklinux/builder8:1.7"
+g_builder9_image_name="opennetworklinux/builder9:1.0"
 
 g_default_image_name=g_builder8_image_name
 g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
@@ -26,6 +27,9 @@ g_default_user="%s:%s" % (g_current_user, g_current_uid)
 
 ap = argparse.ArgumentParser("ONL Docker Build")
 
+ap.add_argument('--9', '-9',
+                help="Run the Debian 9 version.",
+                action='store_true', dest='debian9')
 ap.add_argument('--8', '-8',
                 help="Run the Debian 8 version.",
                 action='store_true', dest='debian8')
@@ -117,6 +121,8 @@ if ops.debian7:
 if ops.debian8:
    ops.image = g_builder8_image_name
 
+if ops.debian9:
+   ops.image = g_builder9_image_name
 
 if ops.verbose or ops.dry:
    logger.setLevel(logging.DEBUG)

@@ -519,6 +519,128 @@ onlp_led_status_valid(onlp_led_status_t e)
 }
 
 
+aim_map_si_t onlp_oid_dump_map[] =
+{
+    { "RECURSE", ONLP_OID_DUMP_RECURSE },
+    { "EVEN_IF_ABSENT", ONLP_OID_DUMP_EVEN_IF_ABSENT },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_dump_desc_map[] =
+{
+    { "None", ONLP_OID_DUMP_RECURSE },
+    { "None", ONLP_OID_DUMP_EVEN_IF_ABSENT },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_dump_name(onlp_oid_dump_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_dump_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_dump'";
+    }
+}
+
+int
+onlp_oid_dump_value(const char* str, onlp_oid_dump_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_dump_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_dump_desc(onlp_oid_dump_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_dump_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_dump'";
+    }
+}
+
+int
+onlp_oid_dump_valid(onlp_oid_dump_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_dump_map, 0) ? 1 : 0;
+}
+
+
+aim_map_si_t onlp_oid_show_map[] =
+{
+    { "RECURSE", ONLP_OID_SHOW_RECURSE },
+    { "EXTENDED", ONLP_OID_SHOW_EXTENDED },
+    { "YAML", ONLP_OID_SHOW_YAML },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_show_desc_map[] =
+{
+    { "None", ONLP_OID_SHOW_RECURSE },
+    { "None", ONLP_OID_SHOW_EXTENDED },
+    { "None", ONLP_OID_SHOW_YAML },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_show_name(onlp_oid_show_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_show_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_show'";
+    }
+}
+
+int
+onlp_oid_show_value(const char* str, onlp_oid_show_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_show_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_show_desc(onlp_oid_show_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_show_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_show'";
+    }
+}
+
+int
+onlp_oid_show_valid(onlp_oid_show_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_show_map, 0) ? 1 : 0;
+}
+
+
 aim_map_si_t onlp_oid_type_map[] =
 {
     { "SYS", ONLP_OID_TYPE_SYS },
@@ -798,6 +920,7 @@ aim_map_si_t onlp_sfp_control_flag_map[] =
     { "RX_LOS", ONLP_SFP_CONTROL_FLAG_RX_LOS },
     { "TX_FAULT", ONLP_SFP_CONTROL_FLAG_TX_FAULT },
     { "TX_DISABLE", ONLP_SFP_CONTROL_FLAG_TX_DISABLE },
+    { "TX_DISABLE_CHANNEL", ONLP_SFP_CONTROL_FLAG_TX_DISABLE_CHANNEL },
     { "LP_MODE", ONLP_SFP_CONTROL_FLAG_LP_MODE },
     { "POWER_OVERRIDE", ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE },
     { NULL, 0 }
@@ -810,6 +933,7 @@ aim_map_si_t onlp_sfp_control_flag_desc_map[] =
     { "None", ONLP_SFP_CONTROL_FLAG_RX_LOS },
     { "None", ONLP_SFP_CONTROL_FLAG_TX_FAULT },
     { "None", ONLP_SFP_CONTROL_FLAG_TX_DISABLE },
+    { "None", ONLP_SFP_CONTROL_FLAG_TX_DISABLE_CHANNEL },
     { "None", ONLP_SFP_CONTROL_FLAG_LP_MODE },
     { "None", ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE },
     { NULL, 0 }
