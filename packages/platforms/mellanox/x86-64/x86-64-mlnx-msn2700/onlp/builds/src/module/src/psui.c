@@ -174,6 +174,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->status |= ONLP_PSU_STATUS_UNPLUGGED;
         return ONLP_STATUS_OK;
     }
+    else
+    	info->status |= ONLP_PSU_STATUS_PRESENT;
 
     /* Get the cable preset state */
     if (psu_module_info_get(index, "pwr_status", &val) != 0) {
@@ -184,8 +186,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->status |= ONLP_PSU_STATUS_UNPLUGGED;
         return ONLP_STATUS_OK;
     }
-
-    info->status |= ONLP_PSU_STATUS_PRESENT;
 
     ret = _psu_info_get(info);
 

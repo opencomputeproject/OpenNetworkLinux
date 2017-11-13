@@ -47,13 +47,23 @@ msn2100_sfp_node_read_int(char *node_path, int *value)
     int data_len = 0, ret = 0;
     char buf[SFP_SYSFS_VALUE_LEN] = {0};
     *value = -1;
+    char sfp_present_status[16];
+    char sfp_not_present_status[16];
+
+    if (onlp_get_kernel_ver() >= KERNEL_VERSION(4,9,30)) {
+        strcpy(sfp_present_status, "1");
+        strcpy(sfp_not_present_status, "0");
+    } else {
+        strcpy(sfp_present_status, "good");
+        strcpy(sfp_not_present_status, "not_connected");
+    }
 
     ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &data_len, node_path);
 
     if (ret == 0) {
-        if (!strncmp(buf, SFP_PRESENT_STATUS, strlen(SFP_PRESENT_STATUS))) {
+        if (!strncmp(buf, sfp_present_status, strlen(sfp_present_status))) {
             *value = 1;
-        } else if (!strncmp(buf, SFP_NOT_PRESENT_STATUS, strlen(SFP_NOT_PRESENT_STATUS))) {
+        } else if (!strncmp(buf, sfp_not_present_status, strlen(sfp_not_present_status))) {
             *value = 0;
         }
     }
@@ -64,7 +74,10 @@ msn2100_sfp_node_read_int(char *node_path, int *value)
 static char*
 msn2100_sfp_get_port_path(int port, char *node_name)
 {
+    if (node_name)
     sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d%s", port, node_name);
+    else
+        sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d", port);
     return sfp_node_path;
 }
 
@@ -136,7 +149,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char* path = msn2100_sfp_get_port_path(port, "");
+    char* path = msn2100_sfp_get_port_path(port, NULL);
 
     /*
      * Read the SFP eeprom into data[]
@@ -194,12 +207,14 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
     int fd;
     int nrd;
 
-    if (!path)
+    if (!path){
 		return ONLP_STATUS_E_MISSING;
+    }
 
     fd = open(path, O_RDONLY);
-    if (fd < 0)
+    if (fd < 0) {
 		return ONLP_STATUS_E_MISSING;
+    }
 
     lseek(fd, addr, SEEK_SET);
     nrd = read(fd, &data, 2);

@@ -43,6 +43,12 @@
 #define LED_MODE_BLUE_BLINK  "blue_blink"
 #define LED_MODE_AUTO        "cpld_control"
 
+#define LED_BLINK_PERIOD	"100"
+#define LED_ON			"1"
+#define LED_OFF			"0"
+#define LED_BLINK_PERIOD_LEN	3
+#define LED_MODE_LEN		1
+
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_LED(_id)) {             \
@@ -101,6 +107,21 @@ led_light_mode_map_t led_map[] = {
 {LED_PSU, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
 {LED_PSU, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
 {LED_PSU, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO}
+};
+
+typedef struct led_colors {
+    enum onlp_led_id id;
+    const char* color1;
+    const char* color2;
+} led_colors_t;
+
+static led_colors_t led_colors_map[] = {
+    {LED_SYSTEM, "green", "red"},
+    {LED_FAN1, "green", "red"},
+    {LED_FAN2, "green", "red"},
+    {LED_FAN3, "green", "red"},
+    {LED_FAN4, "green", "red"},
+    {LED_PSU, "green", "red"},
 };
 
 static char file_names[][10] =  /* must map with onlp_led_id */
@@ -192,6 +213,57 @@ static char* onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_l
     return LED_MODE_OFF;
 }
 
+static int led_set_mode(onlp_oid_t id, onlp_led_mode_t mode)
+{
+    int  local_id = ONLP_OID_ID_GET(id);
+    char color[10]={0};
+    int blinking = 0;
+
+    switch (mode) {
+    case ONLP_LED_MODE_RED_BLINKING:
+        strcpy(color, "red");
+        blinking = 1;
+        break;
+    case ONLP_LED_MODE_GREEN_BLINKING:
+        strcpy(color, "green");
+        blinking = 1;
+        break;
+    case ONLP_LED_MODE_BLUE_BLINKING:
+        strcpy(color, "blue");
+        blinking = 1;
+        break;
+    case ONLP_LED_MODE_YELLOW_BLINKING:
+        strcpy(color, "yellow");
+        blinking = 1;
+        break;
+    case ONLP_LED_MODE_RED:
+    	strcpy(color, "red");
+    	break;
+    case ONLP_LED_MODE_GREEN:
+    	strcpy(color, "green");
+    	break;
+    case ONLP_LED_MODE_BLUE:
+    	strcpy(color, "blue");
+    	break;
+    case ONLP_LED_MODE_YELLOW:
+    	strcpy(color, "yellow");
+        break;
+    default:
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (blinking) {
+    	onlp_file_write((uint8_t*)LED_BLINK_PERIOD, LED_BLINK_PERIOD_LEN,
+    			"%s%s_%s_delay_off", prefix_path, file_names[local_id], color);
+    	onlp_file_write((uint8_t*)LED_BLINK_PERIOD, LED_BLINK_PERIOD_LEN,
+    	    	"%s%s_%s_delay_on", prefix_path, file_names[local_id], color);
+    }
+    onlp_file_write((uint8_t*)LED_ON, LED_MODE_LEN,
+    		"%s%s_%s", prefix_path, file_names[local_id], color);
+
+    return ONLP_STATUS_OK;
+}
+
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */
@@ -199,7 +271,7 @@ int
 onlp_ledi_init(void)
 {
     /*
-     * TODO setting UI LED to off when it will be supported on SN2700
+     * ONLPD calls it too early before all BSP insfrastructure is set
      */
 
     return ONLP_STATUS_OK;
@@ -219,6 +291,15 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Get LED mode */
+    if (onlp_get_kernel_ver() >= KERNEL_VERSION(4,9,30)) {
+        char* cmd = aim_fstrdup("%s%s_state", prefix_path, file_names[local_id]);
+        if(system(cmd) != 0) {
+            aim_free(cmd);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        aim_free(cmd);
+    }
+
     if (onlp_file_read(data, sizeof(data), &len, "%s%s",
     		prefix_path, file_names[local_id]) != 0) {
         return ONLP_STATUS_E_INTERNAL;
@@ -249,7 +330,19 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
     VALIDATE(id);
 
     if (!on_or_off) {
+    	if (onlp_get_kernel_ver() < KERNEL_VERSION(4,9,30))
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
+    	else {
+    	    int i, nsize = sizeof(led_colors_map)/sizeof(led_colors_map[0]);
+    	    for (i = 0; i < nsize; i++)
+    	    {
+    	        if (id == led_colors_map[i].id)
+    	            break;
+    	    }
+    	    if (led_colors_map[i].color1)
+    		onlp_file_write((uint8_t*)LED_OFF, LED_MODE_LEN,
+    		    		"%s%s_%s", prefix_path, file_names[id], led_colors_map[i].color1);
+    	}
     }
 
     return ONLP_STATUS_E_UNSUPPORTED;
@@ -265,15 +358,23 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  local_id;
+    char* driver_led_mode;
+    int nbytes;
 
     VALIDATE(id);
 
+    if (onlp_get_kernel_ver() < KERNEL_VERSION(4,9,30)) {
     local_id = ONLP_OID_ID_GET(id);
-
-    if (onlp_file_write((uint8_t*)onlp_to_driver_led_mode(local_id, mode), driver_value_len,
-    		"%s%s", prefix_path, file_names[local_id]) != 0)
-    {
+    	driver_led_mode = onlp_to_driver_led_mode(local_id, mode);
+    	nbytes = strnlen(driver_led_mode, driver_value_len);
+        if (onlp_file_write((uint8_t*)driver_led_mode, nbytes,
+        		"%s%s", prefix_path, file_names[local_id]) != 0) {
         return ONLP_STATUS_E_INTERNAL;
+        }
+    } else {
+    	if (led_set_mode(id, mode) != 0) {
+    	    return ONLP_STATUS_E_INTERNAL;
+    	}
     }
 
     return ONLP_STATUS_OK;
