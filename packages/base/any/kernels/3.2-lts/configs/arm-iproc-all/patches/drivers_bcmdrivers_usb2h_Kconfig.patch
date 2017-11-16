@@ -1,0 +1,31 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/usb2h/Kconfig
+@@ -0,0 +1,25 @@
++config IPROC_USB2H
++	tristate "USB 2.0 Host support"
++	select USB_EHCI_BCM
++## this is for core/message.c:     err = utf16s_to_utf8s
++	depends on ARCH_IPROC
++	default n
++	help
++	  Add USB 2.0 Host support
++
++	  If unsure, say N.
++
++config USB_EHCI_BCM
++        bool "Support for Broadcom on-chip EHCI USB controller"
++        depends on USB_EHCI_HCD && ARCH_IPROC && IPROC_USB2H
++        select USB_EHCI_ROOT_HUB_TT
++        ---help---
++          Enables EHCI support for USB host controller on some Broadcom
++          SOCs.
++
++config USB_OHCI_BCM
++        bool "Support for Broadcom on-chip OHCI USB controller"
++        depends on USB_OHCI_HCD && ARCH_IPROC && IPROC_USB2H
++        ---help---
++          Enables OHCI support for USB host controller on some Broadcom
++          SOCs.
+diff --git a/drivers/bcmdrivers/usb2h/Makefile b/drivers/bcmdrivers/usb2h/Makefile
+new file mode 100644
+index 0000000..a3678ee

@@ -1,0 +1,12 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/timer/Kconfig
+@@ -0,0 +1,6 @@
++config IPROC_CCB_TIMER
++	tristate "ChipcommonB Timer support"
++	depends on ARCH_IPROC
++	help
++	  This selects a driver for the ChipcommonB SP804 Timer on Broadcom
++	  iProc chips.
+diff --git a/drivers/bcmdrivers/timer/Makefile b/drivers/bcmdrivers/timer/Makefile
+new file mode 100644
+index 0000000..630ff37

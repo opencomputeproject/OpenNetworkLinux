@@ -16,7 +16,7 @@ import argparse
 import yaml
 from time import sleep
 
-from onl.platform.current import OnlPlatform
+from onl.platform.current import OnlPlatform, OnlPlatformName
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 
 class BaseUpgrade(object):
@@ -163,7 +163,7 @@ class BaseUpgrade(object):
             return default
 
 
-    UPGRADE_STATUS_JSON = "/lib/platform-config/current/onl/upgrade.json"
+    UPGRADE_STATUS_JSON = "/lib/platform-config/%s/onl/upgrade.json" % (OnlPlatformName)
 
     @staticmethod
     def upgrade_status_get():
@@ -390,6 +390,10 @@ class BaseOnieUpgrade(BaseUpgrade):
                 src = os.path.join(src_dir, f)
                 dst = os.path.join(self.ONIE_UPDATER_PATH, f)
                 self.copyfile(src, dst)
+
+    def onie_fwpkg_exists(self):
+        import onl.grub
+        return onl.grub.onie_fwpkg_exists()
 
     def onie_fwpkg_add(self, pkg):
         import onl.grub

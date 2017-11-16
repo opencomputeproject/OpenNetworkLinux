@@ -1,0 +1,14 @@
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -56,7 +56,9 @@
+ #include <linux/mmu_notifier.h>
+ #include <linux/migrate.h>
+ #include <linux/hugetlb.h>
++#ifndef __GENKSYMS__
+ #include <linux/backing-dev.h>
++#endif
+ 
+ #include <asm/tlbflush.h>
+ 
+diff --git a/mm/slab.c b/mm/slab.c
+index aea5e42..7c11f1f 100644

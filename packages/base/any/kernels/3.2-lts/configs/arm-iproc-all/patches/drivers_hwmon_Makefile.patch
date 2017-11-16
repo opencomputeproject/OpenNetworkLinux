@@ -1,0 +1,28 @@
+--- a/drivers/hwmon/Makefile
++++ b/drivers/hwmon/Makefile
+@@ -42,11 +42,14 @@ obj-$(CONFIG_SENSORS_APPLESMC)	+= applesmc.o
+ obj-$(CONFIG_SENSORS_ASC7621)	+= asc7621.o
+ obj-$(CONFIG_SENSORS_ATXP1)	+= atxp1.o
+ obj-$(CONFIG_SENSORS_CORETEMP)	+= coretemp.o
++obj-$(CONFIG_SENSORS_CY8CXX)	+= cy8cxx.o
++obj-$(CONFIG_SENSORS_CY8C3245R1)	+= cy8c3245r1.o
+ obj-$(CONFIG_SENSORS_DME1737)	+= dme1737.o
+ obj-$(CONFIG_SENSORS_DS620)	+= ds620.o
+ obj-$(CONFIG_SENSORS_DS1621)	+= ds1621.o
+ obj-$(CONFIG_SENSORS_EMC1403)	+= emc1403.o
+ obj-$(CONFIG_SENSORS_EMC2103)	+= emc2103.o
++obj-$(CONFIG_SENSORS_EMC2305)	+= emc2305.o
+ obj-$(CONFIG_SENSORS_EMC6W201)	+= emc6w201.o
+ obj-$(CONFIG_SENSORS_EXYNOS4_TMU)	+= exynos4_tmu.o
+ obj-$(CONFIG_SENSORS_F71805F)	+= f71805f.o
+@@ -94,6 +97,8 @@ obj-$(CONFIG_SENSORS_MAX1668)	+= max1668.o
+ obj-$(CONFIG_SENSORS_MAX6639)	+= max6639.o
+ obj-$(CONFIG_SENSORS_MAX6642)	+= max6642.o
+ obj-$(CONFIG_SENSORS_MAX6650)	+= max6650.o
++obj-$(CONFIG_SENSORS_MAX6620)	+= max6620.o
++obj-$(CONFIG_SENSORS_MAX6697)	+= max6697.o
+ obj-$(CONFIG_SENSORS_MC13783_ADC)+= mc13783-adc.o
+ obj-$(CONFIG_SENSORS_NTC_THERMISTOR)	+= ntc_thermistor.o
+ obj-$(CONFIG_SENSORS_PC87360)	+= pc87360.o
+diff --git a/drivers/hwmon/adt7470.c b/drivers/hwmon/adt7470.c
+index 3a15fd6..e84af9c 100644

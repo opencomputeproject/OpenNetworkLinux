@@ -55,7 +55,12 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
+    PSU_TYPE_AC_B2F,
+    PSU_TYPE_DC_48V_F2B,
+    PSU_TYPE_DC_48V_B2F,
+    PSU_TYPE_DC_12V_FANLESS,
+    PSU_TYPE_DC_12V_F2B,
+    PSU_TYPE_DC_12V_B2F
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);

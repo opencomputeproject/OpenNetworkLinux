@@ -68,6 +68,13 @@ msn2100_sfp_get_port_path(int port, char *node_name)
     return sfp_node_path;
 }
 
+static char*
+msn2100_sfp_convert_i2c_path(int port, int devaddr)
+{
+    sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d", port);
+    return sfp_node_path;
+}
+
 /************************************************************
  *
  * SFPI Entry Points
@@ -150,7 +157,27 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    char* path = msn2100_sfp_convert_i2c_path(port, devaddr);
+    uint8_t data;
+    int fd;
+    int nrd;
+
+    if (!path)
+		return ONLP_STATUS_E_MISSING;
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0)
+		return ONLP_STATUS_E_MISSING;
+
+    lseek(fd, addr, SEEK_SET);
+    nrd = read(fd, &data, 1);
+    close(fd);
+
+    if (nrd != 1) {
+		AIM_LOG_INTERNAL("Failed to read EEPROM file '%s'", path);
+		return ONLP_STATUS_E_INTERNAL;
+    }
+    return data;
 }
 
 int
@@ -162,7 +189,27 @@ onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    char* path = msn2100_sfp_convert_i2c_path(port, devaddr);
+    uint16_t data;
+    int fd;
+    int nrd;
+
+    if (!path)
+		return ONLP_STATUS_E_MISSING;
+
+    fd = open(path, O_RDONLY);
+    if (fd < 0)
+		return ONLP_STATUS_E_MISSING;
+
+    lseek(fd, addr, SEEK_SET);
+    nrd = read(fd, &data, 2);
+    close(fd);
+
+    if (nrd != 2) {
+		AIM_LOG_INTERNAL("Failed to read EEPROM file '%s'", path);
+		return ONLP_STATUS_E_INTERNAL;
+    }
+    return data;
 }
 
 int

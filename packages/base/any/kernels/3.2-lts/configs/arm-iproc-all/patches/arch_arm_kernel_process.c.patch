@@ -1,0 +1,27 @@
+--- a/arch/arm/kernel/process.c
++++ b/arch/arm/kernel/process.c
+@@ -31,6 +31,7 @@
+ #include <linux/random.h>
+ #include <linux/hw_breakpoint.h>
+ #include <linux/cpuidle.h>
++#include <generated/package.h>
+ 
+ #include <asm/cacheflush.h>
+ #include <asm/leds.h>
+@@ -263,11 +264,12 @@ void __show_regs(struct pt_regs *regs)
+ 	unsigned long flags;
+ 	char buf[64];
+ 
+-	printk("CPU: %d    %s  (%s %.*s)\n",
++	printk("CPU: %d    %s  (%s %.*s%s)\n",
+ 		raw_smp_processor_id(), print_tainted(),
+ 		init_utsname()->release,
+ 		(int)strcspn(init_utsname()->version, " "),
+-		init_utsname()->version);
++		init_utsname()->version,
++		LINUX_PACKAGE_ID);
+ 	print_symbol("PC is at %s\n", instruction_pointer(regs));
+ 	print_symbol("LR is at %s\n", regs->ARM_lr);
+ 	printk("pc : [<%08lx>]    lr : [<%08lx>]    psr: %08lx\n"
+diff --git a/arch/arm/kernel/smp_scu.c b/arch/arm/kernel/smp_scu.c
+index 8f5dd79..1edbb3d 100644

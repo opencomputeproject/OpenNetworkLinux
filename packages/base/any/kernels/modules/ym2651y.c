@@ -31,8 +31,11 @@
 #include <linux/mutex.h>
 #include <linux/sysfs.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 
-#define MAX_FAN_DUTY_CYCLE 100
+#define MAX_FAN_DUTY_CYCLE 		100
+#define I2C_RW_RETRY_COUNT		10
+#define I2C_RW_RETRY_INTERVAL	60 /* ms */
 
 /* Addresses scanned
  */
@@ -41,6 +44,7 @@ static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 enum chips {
 	YM2651,
 	YM2401,
+	YM2851,
 };
 
 /* Each client has this additional data
@@ -67,6 +71,7 @@ struct ym2651y_data {
 	u8   mfr_id[10];	 /* Register value */
 	u8   mfr_model[16]; /* Register value */
 	u8   mfr_revsion[3]; /* Register value */
+	u8   mfr_serial[20]; /* Register value */
 	u16  mfr_vin_min;	/* Register value */
 	u16  mfr_vin_max;	/* Register value */
 	u16  mfr_iin_max;	/* Register value */
@@ -112,6 +117,7 @@ enum ym2651y_sysfs_attributes {
 	PSU_MFR_ID,
 	PSU_MFR_MODEL,
 	PSU_MFR_REVISION,
+	PSU_MFR_SERIAL,
 	PSU_MFR_VIN_MIN,
 	PSU_MFR_VIN_MAX,
 	PSU_MFR_VOUT_MIN,
@@ -140,6 +146,7 @@ static SENSOR_DEVICE_ATTR(psu_pmbus_revision,S_IRUGO, show_byte,   NULL, PSU_PMB
 static SENSOR_DEVICE_ATTR(psu_mfr_id,		S_IRUGO, show_ascii,  NULL, PSU_MFR_ID);
 static SENSOR_DEVICE_ATTR(psu_mfr_model,	S_IRUGO, show_ascii,  NULL, PSU_MFR_MODEL);
 static SENSOR_DEVICE_ATTR(psu_mfr_revision,	S_IRUGO, show_ascii, NULL, PSU_MFR_REVISION);
+static SENSOR_DEVICE_ATTR(psu_mfr_serial,	S_IRUGO, show_ascii, NULL, PSU_MFR_SERIAL);
 static SENSOR_DEVICE_ATTR(psu_mfr_vin_min,	S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MIN);
 static SENSOR_DEVICE_ATTR(psu_mfr_vin_max,	S_IRUGO, show_linear, NULL, PSU_MFR_VIN_MAX);
 static SENSOR_DEVICE_ATTR(psu_mfr_vout_min,	S_IRUGO, show_linear, NULL, PSU_MFR_VOUT_MIN);
@@ -166,6 +173,7 @@ static struct attribute *ym2651y_attributes[] = {
 	&sensor_dev_attr_psu_mfr_id.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_model.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_revision.dev_attr.attr,
+	&sensor_dev_attr_psu_mfr_serial.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_vin_min.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_vin_max.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_pout_max.dev_attr.attr,
@@ -370,6 +378,9 @@ static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
 	case PSU_MFR_REVISION: /* psu_mfr_revision */
 			ptr = data->mfr_revsion + 1; /* The first byte is the count byte of string. */
 		break;
+	case PSU_MFR_SERIAL: /* psu_mfr_serial */
+		ptr = data->mfr_serial + 1; /* The first byte is the count byte of string. */
+		break;
 	default:
 		return 0;
 	}
@@ -477,6 +488,7 @@ static int ym2651y_remove(struct i2c_client *client)
 static const struct i2c_device_id ym2651y_id[] = {
 	{ "ym2651", YM2651 },
 	{ "ym2401", YM2401 },
+	{ "ym2851", YM2851 },
 	{}
 };
 MODULE_DEVICE_TABLE(i2c, ym2651y_id);
@@ -494,35 +506,75 @@ static struct i2c_driver ym2651y_driver = {
 
 static int ym2651y_read_byte(struct i2c_client *client, u8 reg)
 {
-	return i2c_smbus_read_byte_data(client, reg);
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+	while (retry) {
+		status = i2c_smbus_read_byte_data(client, reg);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
+	}
+
+    return status;
 }
 
 static int ym2651y_read_word(struct i2c_client *client, u8 reg)
 {
-	return i2c_smbus_read_word_data(client, reg);
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+	while (retry) {
+		status = i2c_smbus_read_word_data(client, reg);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
+	}
+
+    return status;
 }
 
 static int ym2651y_write_word(struct i2c_client *client, u8 reg, u16 value)
 {
-	return i2c_smbus_write_word_data(client, reg, value);
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+	while (retry) {
+		status = i2c_smbus_write_word_data(client, reg, value);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
+	}
+
+    return status;
 }
 
 static int ym2651y_read_block(struct i2c_client *client, u8 command, u8 *data,
 			  int data_len)
 {
-	int result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
 
-	if (unlikely(result < 0))
-		goto abort;
-	if (unlikely(result != data_len)) {
-		result = -EIO;
-		goto abort;
+	while (retry) {
+		status = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
 	}
 
-	result = 0;
-
-abort:
-	return result;
+    return status;
 }
 
 struct reg_data_byte {
@@ -645,6 +697,17 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
 		status = ym2651y_read_block(client, command, data->mfr_revsion,
 										 ARRAY_SIZE(data->mfr_revsion)-1);
 		data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
+
+		if (status < 0) {
+			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+			goto exit;
+		}
+
+		/* Read mfr_serial */
+		command = 0x9e;
+		status = ym2651y_read_block(client, command, data->mfr_serial,
+										 ARRAY_SIZE(data->mfr_serial)-1);
+		data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
 
 		if (status < 0) {
 			dev_dbg(&client->dev, "reg %d, err %d\n", command, status);

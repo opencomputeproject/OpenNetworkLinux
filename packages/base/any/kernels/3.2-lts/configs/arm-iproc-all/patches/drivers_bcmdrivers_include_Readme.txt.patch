@@ -1,0 +1,7 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/include/Readme.txt
+@@ -0,0 +1 @@
++Only shared api's or exported api's common files
+diff --git a/drivers/bcmdrivers/mdio/.gitignore b/drivers/bcmdrivers/mdio/.gitignore
+new file mode 100644
+index 0000000..c1e8a25

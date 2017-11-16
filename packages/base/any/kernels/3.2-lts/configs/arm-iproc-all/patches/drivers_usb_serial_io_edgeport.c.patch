@@ -1,0 +1,17 @@
+--- a/drivers/usb/serial/io_edgeport.c
++++ b/drivers/usb/serial/io_edgeport.c
+@@ -308,11 +308,8 @@ static void update_edgeport_E2PROM(struct edgeport_serial *edge_serial)
+ 
+ 	response = request_ihex_firmware(&fw, fw_name,
+ 					 &edge_serial->serial->dev->dev);
+-	if (response) {
+-		printk(KERN_ERR "Failed to load image \"%s\" err %d\n",
+-		       fw_name, response);
++	if (response)
+ 		return;
+-	}
+ 
+ 	rec = (const struct ihex_binrec *)fw->data;
+ 	BootMajorVersion = rec->data[0];
+diff --git a/drivers/usb/serial/io_ti.c b/drivers/usb/serial/io_ti.c
+index 438138f..f05abe8 100644

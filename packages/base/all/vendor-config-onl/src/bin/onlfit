@@ -1,0 +1,32 @@
+#!/bin/sh
+############################################################
+if [ -z "$1" ]; then
+    echo "usage: $0 <itb url>"
+    exit 1
+fi
+
+ARCH=`uname -m`
+case $ARCH in
+    armv7l|ppc)
+    ;;
+    *)
+    echo "This script cannot be used on $ARCH platforms."
+    exit 1
+    ;;
+esac
+
+PLATFORM=$(cat /etc/onl/platform)
+
+dir=`mktemp -d`
+rc=
+
+if (cd $dir && wget $1); then
+    onlfs rw boot mv $dir/* /mnt/onl/boot/${PLATFORM}.itb
+    rc=0
+else
+    echo "Download failed."
+    rc=1
+fi
+
+rmdir $dir
+exit $rc

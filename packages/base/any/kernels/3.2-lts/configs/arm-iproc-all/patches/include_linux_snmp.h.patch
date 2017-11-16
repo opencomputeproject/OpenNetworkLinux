@@ -1,0 +1,23 @@
+--- a/include/linux/snmp.h
++++ b/include/linux/snmp.h
+@@ -210,6 +210,7 @@ enum
+ 	LINUX_MIB_TCPDSACKRECV,			/* TCPDSACKRecv */
+ 	LINUX_MIB_TCPDSACKOFORECV,		/* TCPDSACKOfoRecv */
+ 	LINUX_MIB_TCPABORTONDATA,		/* TCPAbortOnData */
++	LINUX_MIB_TCPABORTONSYN,		/* unused, binary compat */
+ 	LINUX_MIB_TCPABORTONCLOSE,		/* TCPAbortOnClose */
+ 	LINUX_MIB_TCPABORTONMEMORY,		/* TCPAbortOnMemory */
+ 	LINUX_MIB_TCPABORTONTIMEOUT,		/* TCPAbortOnTimeout */
+@@ -232,8 +233,10 @@ enum
+ 	LINUX_MIB_TCPTIMEWAITOVERFLOW,		/* TCPTimeWaitOverflow */
+ 	LINUX_MIB_TCPREQQFULLDOCOOKIES,		/* TCPReqQFullDoCookies */
+ 	LINUX_MIB_TCPREQQFULLDROP,		/* TCPReqQFullDrop */
++#ifndef __GENKSYMS__
+ 	LINUX_MIB_TCPCHALLENGEACK,		/* TCPChallengeACK */
+ 	LINUX_MIB_TCPSYNCHALLENGE,		/* TCPSYNChallenge */
++#endif
+ 	__LINUX_MIB_MAX
+ };
+ 
+diff --git a/include/linux/splice.h b/include/linux/splice.h
+index 09a545a..1ac5727 100644

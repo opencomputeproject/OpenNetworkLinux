@@ -1,0 +1,456 @@
+--- a/drivers/hwmon/max6639.c
++++ b/drivers/hwmon/max6639.c
+@@ -66,9 +66,62 @@ static unsigned short normal_i2c[] = { 0x2c, 0x2e, 0x2f, I2C_CLIENT_END };
+ #define MAX6639_GCONFIG_CH2_LOCAL		0x10
+ #define MAX6639_GCONFIG_PWM_FREQ_HI		0x08
+ 
+-#define MAX6639_FAN_CONFIG1_PWM			0x80
++#define MAX6639_GCONFIG_STANDBY_OFFSET		7
++#define MAX6639_GCONFIG_POR_OFFSET		6
++#define MAX6639_GCONFIG_DISABLE_TIMEOUT_OFFSET	5
++#define MAX6639_GCONFIG_CH2_LOCAL_OFFSET	4
++#define MAX6639_GCONFIG_PWM_FREQ_HI_OFFSET	3
++
++#define MAX6639_OUTMASK_CH1_ALERT_DISABLE       7
++#define MAX6639_OUTMASK_CH2_ALERT_DISABLE       6
++#define MAX6639_OUTMASK_CH1_OT_DISABLE          5
++#define MAX6639_OUTMASK_CH2_OT_DISABLE          4
++#define MAX6639_OUTMASK_CH1_THERM_DISABLE       3
++#define MAX6639_OUTMASK_CH2_THERM_DISABLE       2
++#define MAX6639_OUTMASK_FAN1_FAULT_ENABLE       1
++#define MAX6639_OUTMASK_FAN2_FAULT_ENABLE       0
++
++#define MAX6639_FAN_CONFIG1_PWM		        0x80
++#define MAX6639_FAN_CONFIG1_PWM_MODE		0x80
++#define MAX6639_FAN_CONFIG1_PWM_MODE_OFFSET	7
++#define MAX6639_FAN_CONFIG1_DUTY		0x70
++#define MAX6639_FAN_CONFIG1_DUTY_OFFSET	        4
++#define MAX6639_FAN_CONFIG1_TEMP_CH		0x0c
++#define MAX6639_FAN_CONFIG1_TEMP_CH_OFFSET      2
++#define MAX6639_FAN_CONFIG1_RPM_RANGE	        0x03
++#define MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET    0
++
++#define MAX6639_FAN_CONFIG2a_RPM_STEPA          0xf0
++#define MAX6639_FAN_CONFIG2a_RPM_STEPA_OFFSET   4
++#define MAX6639_FAN_CONFIG2a_TEMP_STEPA         0x0f
++#define MAX6639_FAN_CONFIG2a_TEMP_STEPA_OFFSET  0
++
++#define MAX6639_FAN_CONFIG2b_RPM_STEPB          0xf0
++#define MAX6639_FAN_CONFIG2b_RPM_STEPB_OFFSET   4
++#define MAX6639_FAN_CONFIG2b_START_STEPB         0x0f
++#define MAX6639_FAN_CONFIG2b_START_STEPB_OFFSET  0
++
++
++#define MAX6639_FAN_CONFIG3_SPINUP_DISABLE           0x80
++#define MAX6639_FAN_CONFIG3_SPINUP_DISABLE_OFFSET    7
++#define MAX6639_FAN_CONFIG3_THERM_FULL_SPEED	     0x40
++#define MAX6639_FAN_CONFIG3_THERM_FULL_SPEED_OFFSET  6
++#define MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE        0x20
++#define MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE_OFFSET 5
++#define MAX6639_FAN_CONFIG3_PWM_FREQ                 0x3
++#define MAX6639_FAN_CONFIG3_PWM_FREQ_OFFSET          0
++
++#define MAX6639_FAN_PPR_COUNT              0xc0
++#define MAX6639_FAN_PPR_COUNT_OFFSET       6
++#define MAX6639_FAN_PPR_TACH_MIN           0x3f
++#define MAX6639_FAN_PPR_TACH_MIN_OFFSET    0
++
++#define MAX6639_FAN_TARGET_CNT           0xff
++#define MAX6639_FAN_TARGET_CNT_OFFSET    0
++
++#define MAX6639_FAN_CNT           0xff
++#define MAX6639_FAN_CNT_OFFSET    0
+ 
+-#define MAX6639_FAN_CONFIG3_THERM_FULL_SPEED	0x40
+ 
+ static const int rpm_ranges[] = { 2000, 4000, 8000, 16000 };
+ 
+@@ -162,6 +215,299 @@ abort:
+ 	return ret;
+ }
+ 
++
++/* Puneet start */
++static ssize_t show_fan_target(struct device *dev,
++			       struct device_attribute *dev_attr, char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	int conf, tach_count, range;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
++
++	mutex_lock(&data->update_lock);
++	conf = i2c_smbus_read_byte_data(client, MAX6639_REG_FAN_CONFIG1(attr->index));
++	tach_count = i2c_smbus_read_byte_data(client, MAX6639_REG_TARGET_CNT(attr->index));
++	mutex_unlock(&data->update_lock);
++	if (conf < 0)
++		return conf;
++	if (tach_count < 0)
++		return tach_count;
++
++        range = (conf & MAX6639_FAN_CONFIG1_RPM_RANGE) >> MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET;
++	return sprintf(buf, "%d\n", FAN_FROM_REG(tach_count, range));
++}
++
++static ssize_t set_fan_target(struct device *dev,
++			    struct device_attribute *dev_attr,
++			    const char *buf, size_t count)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
++	int conf, range, tach_count, target_speed;
++	int res;
++
++	res = strict_strtoul(buf, 10, &target_speed);
++	if (res < 0)
++		return res;			 
++
++	mutex_lock(&data->update_lock);
++	conf = i2c_smbus_read_byte_data(client, MAX6639_REG_FAN_CONFIG1(attr->index));
++	mutex_unlock(&data->update_lock);
++	if (conf < 0)
++		return conf;
++
++        range = (conf & MAX6639_FAN_CONFIG1_RPM_RANGE) >> MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET;
++	tach_count = FAN_FROM_REG(target_speed, range);
++
++	mutex_lock(&data->update_lock);
++	res= i2c_smbus_write_byte_data(client,
++				       MAX6639_REG_TARGET_CNT(attr->index), tach_count);
++	mutex_unlock(&data->update_lock);
++	if (res < 0)
++		return res;			 
++	return count;
++}
++
++static ssize_t show_pwm_enable(struct device *dev,
++			       struct device_attribute *dev_attr, char *buf)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
++	int conf;
++	int pwm_mode;
++	int temp_ch;
++	int mode = 0;
++	/*Modes 0: Auto Control, 1: Manual PWM Control, 2: Manual RPM Control */
++
++	mutex_lock(&data->update_lock);
++	conf = i2c_smbus_read_byte_data(client, MAX6639_REG_FAN_CONFIG1(attr->index));
++	mutex_unlock(&data->update_lock);
++	if (conf < 0)
++		return conf;
++
++        pwm_mode = (conf & MAX6639_FAN_CONFIG1_PWM_MODE) >> MAX6639_FAN_CONFIG1_PWM_MODE_OFFSET;
++	temp_ch = (conf & MAX6639_FAN_CONFIG1_TEMP_CH) >> MAX6639_FAN_CONFIG1_TEMP_CH_OFFSET;
++
++	if (pwm_mode == 1)
++		mode = 1;
++	else if (temp_ch == 0)
++		mode = 2;		
++	return sprintf(buf, "%d\n",mode);
++}
++
++static ssize_t set_pwm_enable(struct device *dev,
++			    struct device_attribute *dev_attr,
++			    const char *buf, size_t count)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
++	int mode, pwm_mode, temp_ch;
++	int res;
++	int val = 0;
++	/*Modes 0: Auto Control, 1: Manual PWM Control, 2: Manual RPM Control */
++	res = strict_strtoul(buf, 10, &mode);
++	if (res < 0)
++		return res;			 
++
++	if (mode == 0) {
++		pwm_mode = 0;
++		temp_ch = 3;
++	} else if (mode == 1){
++		pwm_mode = 1;
++		temp_ch = 3;
++	} else {
++		pwm_mode = 0;
++		temp_ch = 0;
++	}
++	val |= ((pwm_mode << MAX6639_FAN_CONFIG1_PWM_MODE_OFFSET) &
++		MAX6639_FAN_CONFIG1_PWM_MODE);
++	val |= ((temp_ch << MAX6639_FAN_CONFIG1_TEMP_CH_OFFSET) &
++		MAX6639_FAN_CONFIG1_TEMP_CH);
++
++	mutex_lock(&data->update_lock);
++	res = i2c_smbus_write_byte_data(client,
++					MAX6639_REG_FAN_CONFIG1(attr->index), val);
++	mutex_unlock(&data->update_lock);
++	if (res < 0)
++		return res;			 
++	return count;
++}
++
++static ssize_t show_value(struct device *dev, char *buf,
++			  u8 reg, u8 mask, u8 offset)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	int reg_val;
++
++	if (IS_ERR(data))
++		return PTR_ERR(data);
++	mutex_lock(&data->update_lock);
++	reg_val = i2c_smbus_read_byte_data(client, reg);					      
++	mutex_unlock(&data->update_lock);
++	if (reg_val < 0)
++		return reg_val;
++
++	reg_val = (reg_val & mask) >> offset;
++	return sprintf(buf, "%d\n", reg_val);
++}
++
++static ssize_t set_value(struct device *dev, const char *buf, size_t count,
++			 u8 reg, u8 mask, u8 offset)
++{
++	struct i2c_client *client = to_i2c_client(dev);
++	struct max6639_data *data = i2c_get_clientdata(client);
++	unsigned long val;
++	int res;
++	int reg_val;
++
++	if (IS_ERR(data))
++		return PTR_ERR(data);
++	res = strict_strtoul(buf, 10, &val);
++	if (res)
++		return res;
++	mutex_lock(&data->update_lock);
++	reg_val = i2c_smbus_read_byte_data(client, reg);					      
++	mutex_unlock(&data->update_lock);
++	if (reg_val < 0)
++		return reg_val;
++
++	reg_val &= ~mask;
++	val = (val << offset) & mask;
++	reg_val |= val;
++
++	mutex_lock(&data->update_lock);
++	res = i2c_smbus_write_byte_data(client, reg, val);	
++	mutex_unlock(&data->update_lock);
++	if (res < 0)
++		return res;			 
++	return count;
++}
++
++#define max6639_attr(type, reg, mask, off)	       \
++static ssize_t show_##type(struct device *dev, \
++                           struct device_attribute *dev_attr, char *buf) \
++{ \
++        return  show_value(dev, buf, reg, mask, off); \
++} \
++static ssize_t set_##type(struct device *dev, \
++			  struct device_attribute *dev_attr, \
++			  const char *buf, size_t count) \
++{ \
++        return  set_value(dev, buf, count, reg, mask, off); \
++} \
++static SENSOR_DEVICE_ATTR(type, S_IWUSR | S_IRUGO, show_##type, set_##type, 0); \
++
++static SENSOR_DEVICE_ATTR(pwm1_enable, S_IWUSR | S_IRUGO, show_pwm_enable, set_pwm_enable, 0);
++static SENSOR_DEVICE_ATTR(pwm2_enable, S_IWUSR | S_IRUGO, show_pwm_enable, set_pwm_enable, 1);
++static SENSOR_DEVICE_ATTR(fan1_target, S_IWUSR | S_IRUGO, show_fan_target, set_fan_target, 0);
++static SENSOR_DEVICE_ATTR(fan2_target, S_IWUSR | S_IRUGO, show_fan_target, set_fan_target, 1);
++
++max6639_attr(standby, MAX6639_REG_GCONFIG, MAX6639_GCONFIG_STANDBY,
++	     MAX6639_GCONFIG_STANDBY_OFFSET)
++max6639_attr(por, MAX6639_REG_GCONFIG, MAX6639_GCONFIG_POR,
++	     MAX6639_GCONFIG_POR_OFFSET)
++max6639_attr(disable_smbus_timeout, MAX6639_REG_GCONFIG, MAX6639_GCONFIG_DISABLE_TIMEOUT,
++	     MAX6639_GCONFIG_DISABLE_TIMEOUT_OFFSET)
++max6639_attr(ch2_local, MAX6639_REG_GCONFIG, MAX6639_GCONFIG_CH2_LOCAL,
++	     MAX6639_GCONFIG_CH2_LOCAL_OFFSET)
++max6639_attr(pwm_freq_hi, MAX6639_REG_GCONFIG, MAX6639_GCONFIG_PWM_FREQ_HI,
++	     MAX6639_GCONFIG_PWM_FREQ_HI_OFFSET)
++
++max6639_attr(ch1_alert_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH1_ALERT_DISABLE,
++	     MAX6639_OUTMASK_CH1_ALERT_DISABLE)
++max6639_attr(ch2_alert_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH2_ALERT_DISABLE,
++	     MAX6639_OUTMASK_CH2_ALERT_DISABLE)
++max6639_attr(ch1_ot_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH1_OT_DISABLE,
++	     MAX6639_OUTMASK_CH1_OT_DISABLE)
++max6639_attr(ch2_ot_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH2_OT_DISABLE,
++	     MAX6639_OUTMASK_CH2_OT_DISABLE)
++max6639_attr(ch1_therm_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH1_THERM_DISABLE,
++	     MAX6639_OUTMASK_CH1_THERM_DISABLE)
++max6639_attr(ch2_therm_disable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_CH2_THERM_DISABLE,
++	     MAX6639_OUTMASK_CH2_THERM_DISABLE)
++max6639_attr(fan1_fault_enable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_FAN1_FAULT_ENABLE,
++	     MAX6639_OUTMASK_FAN1_FAULT_ENABLE)
++max6639_attr(fan2_fault_enable, MAX6639_REG_OUTPUT_MASK, 1 << MAX6639_OUTMASK_FAN2_FAULT_ENABLE,
++	     MAX6639_OUTMASK_FAN2_FAULT_ENABLE)
++
++
++max6639_attr(fan1_pwm_mode, MAX6639_REG_FAN_CONFIG1(0), MAX6639_FAN_CONFIG1_PWM_MODE,
++	     MAX6639_FAN_CONFIG1_PWM_MODE_OFFSET)
++max6639_attr(fan2_pwm_mode, MAX6639_REG_FAN_CONFIG1(1), MAX6639_FAN_CONFIG1_PWM_MODE,
++	     MAX6639_FAN_CONFIG1_PWM_MODE_OFFSET)
++max6639_attr(fan1_duty, MAX6639_REG_FAN_CONFIG1(0), MAX6639_FAN_CONFIG1_DUTY,
++	     MAX6639_FAN_CONFIG1_DUTY_OFFSET)
++max6639_attr(fan2_duty, MAX6639_REG_FAN_CONFIG1(1), MAX6639_FAN_CONFIG1_DUTY,
++	     MAX6639_FAN_CONFIG1_DUTY_OFFSET)
++max6639_attr(fan1_temp_ch, MAX6639_REG_FAN_CONFIG1(0), MAX6639_FAN_CONFIG1_TEMP_CH,
++	     MAX6639_FAN_CONFIG1_TEMP_CH_OFFSET)
++max6639_attr(fan2_temp_ch, MAX6639_REG_FAN_CONFIG1(1), MAX6639_FAN_CONFIG1_TEMP_CH,
++	     MAX6639_FAN_CONFIG1_TEMP_CH_OFFSET)
++max6639_attr(fan1_rpm_range, MAX6639_REG_FAN_CONFIG1(0), MAX6639_FAN_CONFIG1_RPM_RANGE,
++	     MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET)
++max6639_attr(fan2_rpm_range, MAX6639_REG_FAN_CONFIG1(1), MAX6639_FAN_CONFIG1_RPM_RANGE,
++	     MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET)
++
++max6639_attr(fan1_rpm_step_size_a, MAX6639_REG_FAN_CONFIG2a(0), MAX6639_FAN_CONFIG2a_RPM_STEPA,
++	     MAX6639_FAN_CONFIG2a_RPM_STEPA_OFFSET)
++max6639_attr(fan2_rpm_step_size_a, MAX6639_REG_FAN_CONFIG2a(1), MAX6639_FAN_CONFIG2a_RPM_STEPA,
++	     MAX6639_FAN_CONFIG2a_RPM_STEPA_OFFSET)
++max6639_attr(fan1_temp_step_size, MAX6639_REG_FAN_CONFIG2a(0), MAX6639_FAN_CONFIG2a_TEMP_STEPA,
++	     MAX6639_FAN_CONFIG2a_RPM_STEPA_OFFSET)
++max6639_attr(fan2_temp_step_size, MAX6639_REG_FAN_CONFIG2a(1), MAX6639_FAN_CONFIG2a_TEMP_STEPA,
++	     MAX6639_FAN_CONFIG2a_TEMP_STEPA_OFFSET)
++
++max6639_attr(fan1_rpm_step_size_b, MAX6639_REG_FAN_CONFIG2b(0), MAX6639_FAN_CONFIG2b_RPM_STEPB,
++	     MAX6639_FAN_CONFIG2b_RPM_STEPB_OFFSET)
++max6639_attr(fan2_rpm_step_size_b, MAX6639_REG_FAN_CONFIG2b(1), MAX6639_FAN_CONFIG2b_RPM_STEPB,
++	     MAX6639_FAN_CONFIG2b_RPM_STEPB_OFFSET)
++max6639_attr(fan1_rpm_start_step_b, MAX6639_REG_FAN_CONFIG2b(0), MAX6639_FAN_CONFIG2b_START_STEPB,
++	     MAX6639_FAN_CONFIG2b_START_STEPB_OFFSET)
++max6639_attr(fan2_rpm_start_step_b, MAX6639_REG_FAN_CONFIG2b(1), MAX6639_FAN_CONFIG2b_RPM_STEPB,
++	     MAX6639_FAN_CONFIG2b_START_STEPB_OFFSET)
++
++max6639_attr(fan1_spinup_disable, MAX6639_REG_FAN_CONFIG3(0), MAX6639_FAN_CONFIG3_SPINUP_DISABLE,
++	     MAX6639_FAN_CONFIG3_SPINUP_DISABLE_OFFSET)
++max6639_attr(fan2_spinup_disable, MAX6639_REG_FAN_CONFIG3(1), MAX6639_FAN_CONFIG3_SPINUP_DISABLE,
++	     MAX6639_FAN_CONFIG3_SPINUP_DISABLE_OFFSET)
++max6639_attr(fan1_therm_full_speed_enable, MAX6639_REG_FAN_CONFIG3(0), MAX6639_FAN_CONFIG3_THERM_FULL_SPEED,
++	     MAX6639_FAN_CONFIG3_THERM_FULL_SPEED_OFFSET)
++max6639_attr(fan2_therm_full_speed_enable, MAX6639_REG_FAN_CONFIG3(1), MAX6639_FAN_CONFIG3_THERM_FULL_SPEED,
++	     MAX6639_FAN_CONFIG3_THERM_FULL_SPEED_OFFSET)
++max6639_attr(fan1_pulse_stretch_disable, MAX6639_REG_FAN_CONFIG3(0), MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE,
++	     MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE_OFFSET)
++max6639_attr(fan2_pulse_stretch_disable, MAX6639_REG_FAN_CONFIG3(1), MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE,
++	     MAX6639_FAN_CONFIG3_PULSE_STR_DISABLE_OFFSET)
++max6639_attr(fan1_pwm_freq, MAX6639_REG_FAN_CONFIG3(0), MAX6639_FAN_CONFIG3_PWM_FREQ,
++	     MAX6639_FAN_CONFIG3_PWM_FREQ_OFFSET)
++max6639_attr(fan2_pwm_freq, MAX6639_REG_FAN_CONFIG3(1), MAX6639_FAN_CONFIG3_PWM_FREQ,
++	     MAX6639_FAN_CONFIG3_PWM_FREQ_OFFSET)
++
++max6639_attr(fan1_ppr_count, MAX6639_REG_FAN_PPR(0), MAX6639_FAN_PPR_COUNT,
++	     MAX6639_FAN_PPR_COUNT_OFFSET)
++max6639_attr(fan2_ppr_count, MAX6639_REG_FAN_PPR(1), MAX6639_FAN_PPR_COUNT,
++	     MAX6639_FAN_PPR_COUNT_OFFSET)
++max6639_attr(fan1_tach_min, MAX6639_REG_FAN_PPR(0), MAX6639_FAN_PPR_TACH_MIN,
++	     MAX6639_FAN_PPR_TACH_MIN_OFFSET)
++max6639_attr(fan2_tach_min, MAX6639_REG_FAN_PPR(1), MAX6639_FAN_PPR_TACH_MIN,
++	     MAX6639_FAN_PPR_TACH_MIN_OFFSET)
++
++max6639_attr(fan1_cnt_target, MAX6639_REG_TARGET_CNT(0), MAX6639_FAN_TARGET_CNT,
++	     MAX6639_FAN_TARGET_CNT_OFFSET)
++max6639_attr(fan2_cnt_target, MAX6639_REG_TARGET_CNT(1), MAX6639_FAN_TARGET_CNT,
++	     MAX6639_FAN_TARGET_CNT_OFFSET)
++
++max6639_attr(fan1_cnt, MAX6639_REG_FAN_CNT(0), MAX6639_FAN_CNT,
++	     MAX6639_FAN_CNT_OFFSET)
++max6639_attr(fan2_cnt, MAX6639_REG_FAN_CNT(1), MAX6639_FAN_CNT,
++	     MAX6639_FAN_CNT_OFFSET)
++
++/*Puneet end */
+ static ssize_t show_temp_input(struct device *dev,
+ 			       struct device_attribute *dev_attr, char *buf)
+ {
+@@ -326,14 +672,27 @@ static ssize_t set_pwm(struct device *dev,
+ static ssize_t show_fan_input(struct device *dev,
+ 			      struct device_attribute *dev_attr, char *buf)
+ {
++	struct i2c_client *client = to_i2c_client(dev);
+ 	struct max6639_data *data = max6639_update_device(dev);
+ 	struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
++	int conf, range, input;
+ 
+ 	if (IS_ERR(data))
+ 		return PTR_ERR(data);
++	mutex_lock(&data->update_lock);
++	conf = i2c_smbus_read_byte_data(client, MAX6639_REG_FAN_CONFIG1(attr->index));
++	input = i2c_smbus_read_byte_data(client, MAX6639_REG_FAN_CNT(attr->index));
++	mutex_unlock(&data->update_lock);
++	if (conf < 0)
++		return conf;
++
++	if (input < 0)
++		return input;
++
++        range = (conf & MAX6639_FAN_CONFIG1_RPM_RANGE) >>
++		MAX6639_FAN_CONFIG1_RPM_RANGE_OFFSET;
+ 
+-	return sprintf(buf, "%d\n", FAN_FROM_REG(data->fan[attr->index],
+-		       data->rpm_range));
++	return sprintf(buf, "%d\n", FAN_FROM_REG(input, range));
+ }
+ 
+ static ssize_t show_alarm(struct device *dev,
+@@ -401,6 +760,55 @@ static struct attribute *max6639_attributes[] = {
+ 	&sensor_dev_attr_temp2_crit_alarm.dev_attr.attr,
+ 	&sensor_dev_attr_temp1_emergency_alarm.dev_attr.attr,
+ 	&sensor_dev_attr_temp2_emergency_alarm.dev_attr.attr,
++	&sensor_dev_attr_standby.dev_attr.attr,
++	&sensor_dev_attr_por.dev_attr.attr,
++	&sensor_dev_attr_disable_smbus_timeout.dev_attr.attr,
++	&sensor_dev_attr_ch2_local.dev_attr.attr,
++	&sensor_dev_attr_pwm_freq_hi.dev_attr.attr,
++	&sensor_dev_attr_ch1_alert_disable.dev_attr.attr,
++	&sensor_dev_attr_ch2_alert_disable.dev_attr.attr,
++	&sensor_dev_attr_ch1_ot_disable.dev_attr.attr,
++	&sensor_dev_attr_ch2_ot_disable.dev_attr.attr,
++	&sensor_dev_attr_ch1_therm_disable.dev_attr.attr,
++	&sensor_dev_attr_ch2_therm_disable.dev_attr.attr,
++	&sensor_dev_attr_fan1_fault_enable.dev_attr.attr,
++	&sensor_dev_attr_fan2_fault_enable.dev_attr.attr,
++	&sensor_dev_attr_fan1_pwm_mode.dev_attr.attr,
++	&sensor_dev_attr_fan2_pwm_mode.dev_attr.attr,
++	&sensor_dev_attr_fan1_duty.dev_attr.attr,
++	&sensor_dev_attr_fan2_duty.dev_attr.attr,
++	&sensor_dev_attr_fan1_temp_ch.dev_attr.attr,
++	&sensor_dev_attr_fan2_temp_ch.dev_attr.attr,
++	&sensor_dev_attr_fan1_rpm_range.dev_attr.attr,
++	&sensor_dev_attr_fan2_rpm_range.dev_attr.attr,
++	&sensor_dev_attr_fan1_rpm_step_size_a.dev_attr.attr,
++	&sensor_dev_attr_fan2_rpm_step_size_a.dev_attr.attr,
++	&sensor_dev_attr_fan1_rpm_step_size_b.dev_attr.attr,
++	&sensor_dev_attr_fan2_rpm_step_size_b.dev_attr.attr,
++	&sensor_dev_attr_fan1_temp_step_size.dev_attr.attr,
++	&sensor_dev_attr_fan2_temp_step_size.dev_attr.attr,
++	&sensor_dev_attr_fan1_rpm_start_step_b.dev_attr.attr,
++	&sensor_dev_attr_fan2_rpm_start_step_b.dev_attr.attr,
++	&sensor_dev_attr_fan1_spinup_disable.dev_attr.attr,
++	&sensor_dev_attr_fan2_spinup_disable.dev_attr.attr,
++	&sensor_dev_attr_fan1_therm_full_speed_enable.dev_attr.attr,
++	&sensor_dev_attr_fan2_therm_full_speed_enable.dev_attr.attr,
++	&sensor_dev_attr_fan1_pulse_stretch_disable.dev_attr.attr,
++	&sensor_dev_attr_fan2_pulse_stretch_disable.dev_attr.attr,
++	&sensor_dev_attr_fan1_pwm_freq.dev_attr.attr,
++	&sensor_dev_attr_fan2_pwm_freq.dev_attr.attr,
++	&sensor_dev_attr_fan1_ppr_count.dev_attr.attr,
++	&sensor_dev_attr_fan2_ppr_count.dev_attr.attr,
++	&sensor_dev_attr_fan1_tach_min.dev_attr.attr,
++	&sensor_dev_attr_fan2_tach_min.dev_attr.attr,
++	&sensor_dev_attr_fan1_cnt_target.dev_attr.attr,
++	&sensor_dev_attr_fan2_cnt_target.dev_attr.attr,
++	&sensor_dev_attr_fan1_cnt.dev_attr.attr,
++	&sensor_dev_attr_fan2_cnt.dev_attr.attr,
++	&sensor_dev_attr_pwm1_enable.dev_attr.attr,
++	&sensor_dev_attr_pwm2_enable.dev_attr.attr,
++	&sensor_dev_attr_fan1_target.dev_attr.attr,
++	&sensor_dev_attr_fan2_target.dev_attr.attr,
+ 	NULL
+ };
+ 
+diff --git a/drivers/hwmon/max6697.c b/drivers/hwmon/max6697.c
+new file mode 100644
+index 0000000..b567828

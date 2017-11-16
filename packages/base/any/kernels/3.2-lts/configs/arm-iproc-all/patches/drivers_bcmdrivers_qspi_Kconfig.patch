@@ -1,0 +1,78 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/qspi/Kconfig
+@@ -0,0 +1,72 @@
++menuconfig IPROC_QSPI
++	tristate "QSPI support"
++	depends on ARCH_IPROC
++	select SPI
++	select SPI_MASTER
++	select MTD
++	select MTD_M25P80
++	select M25PXX_USE_FAST_READ
++	default n
++	help
++	  This selects a driver for the iProc QSPI Controller (for serial flash).
++
++	  If unsure, say N.
++
++if IPROC_QSPI
++
++choice
++	prompt "Multi I/O SPI support"
++	default IPROC_QSPI_SINGLE_MODE
++	help
++	  Number of (multi I/O) data lanes supported by the SPI flash.
++
++config IPROC_QSPI_SINGLE_MODE
++	bool "Single lane"
++	help
++	  Single lane.
++
++config IPROC_QSPI_DUAL_MODE
++	bool "Dual mode"
++	help
++	  Dual mode.
++
++config IPROC_QSPI_QUAD_MODE
++	bool "Quad mode"
++	help
++	  Quad mode.
++
++endchoice
++
++config IPROC_QSPI_MULTI_LANE_ADDR
++	bool "Use multi lanes also for address"
++	depends on IPROC_QSPI_DUAL_MODE || IPROC_QSPI_QUAD_MODE
++    default y
++	help
++	  Use multi lanes also for address.
++
++config IPROC_QSPI_READ_CMD
++	hex "Flash opcode for multi I/O read"
++	depends on IPROC_QSPI_DUAL_MODE || IPROC_QSPI_QUAD_MODE
++	range 0x00 0xff
++	default 0xbb if IPROC_QSPI_DUAL_MODE
++    default 0xeb
++	help
++	  Flash opcode to send to flash for multip I/O read.
++
++config IPROC_QSPI_READ_DUMMY_CYCLES
++	int "Dummy cycles for multi I/O read operation"
++	depends on IPROC_QSPI_DUAL_MODE || IPROC_QSPI_QUAD_MODE
++	range 0 255
++	default 8 if IPROC_QSPI_DUAL_MODE
++	default 10
++	help
++	  Dummy cycles for flash read operation
++
++config IPROC_QSPI_MAX_HZ
++	int "Maximal SPI clock in HZ"
++	range 1 1000000000
++	default 62500000
++	help
++	  The maximal SPI clock (in Hz) supported by the flash.
++
++endif # IPROC_QSPI
+diff --git a/drivers/bcmdrivers/qspi/Makefile b/drivers/bcmdrivers/qspi/Makefile
+new file mode 100644
+index 0000000..be164d1

@@ -132,3 +132,70 @@ onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
 
     return rv;
 }
+
+int
+onlp_sysi_platform_manage_leds(void)
+{
+	int fan_number;
+	onlp_led_mode_t mode;
+	int min_fan_speed;
+	enum onlp_led_id fan_led_id[4] = { LED_FAN1, LED_FAN2, LED_FAN3, LED_FAN4 };
+
+	/* after reboot, status LED should blink green, SW set to solid green */
+	onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED,LED_SYSTEM), ONLP_LED_MODE_GREEN);
+	/*
+	 * FAN Indicators
+	 *
+	 *     Green - Fan is operating
+	 *     Red   - No power or Fan failure
+	 *     Off   - No power
+	 *
+	 */
+	for( fan_number = 1; fan_number <= CHASSIS_FAN_COUNT; fan_number+=2)
+	{
+		/* each 2 fans had same led_fan */
+		onlp_fan_info_t fi;
+		/* check fans */
+		mode = ONLP_LED_MODE_GREEN;
+		if(onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number), &fi) < 0) {
+			mode = ONLP_LED_MODE_RED;
+		}
+		else if( (fi.status & 0x1) == 0) {
+			/* Not present */
+			mode = ONLP_LED_MODE_RED;
+		}
+		else if(fi.status & ONLP_FAN_STATUS_FAILED) {
+			mode = ONLP_LED_MODE_RED;
+		}
+		else
+		{
+			min_fan_speed = onlp_fani_get_min_rpm(fan_number);
+			if( fi.rpm < min_fan_speed)
+			{
+				mode = ONLP_LED_MODE_RED;
+			}
+		}
+		/* check fan i+1 */
+		if(onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number+1), &fi) < 0) {
+			mode = ONLP_LED_MODE_RED;
+		}
+		else if( (fi.status & 0x1) == 0) {
+			/* Not present */
+			mode = ONLP_LED_MODE_RED;
+		}
+		else if(fi.status & ONLP_FAN_STATUS_FAILED) {
+			mode = ONLP_LED_MODE_RED;
+		}
+		else
+		{
+			min_fan_speed = onlp_fani_get_min_rpm(fan_number+1);
+			if( fi.rpm < min_fan_speed)
+			{
+				mode = ONLP_LED_MODE_RED;
+			}
+		}
+		onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED,fan_led_id[fan_number/2]), mode);
+	}
+	return ONLP_STATUS_OK;
+}
+

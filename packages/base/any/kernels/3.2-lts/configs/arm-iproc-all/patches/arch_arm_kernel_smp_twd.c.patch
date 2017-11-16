@@ -1,0 +1,70 @@
+--- a/arch/arm/kernel/smp_twd.c
++++ b/arch/arm/kernel/smp_twd.c
+@@ -39,7 +39,7 @@ static void twd_set_mode(enum clock_event_mode mode,
+ 		/* timer load already set up */
+ 		ctrl = TWD_TIMER_CONTROL_ENABLE | TWD_TIMER_CONTROL_IT_ENABLE
+ 			| TWD_TIMER_CONTROL_PERIODIC;
+-		__raw_writel(twd_timer_rate / HZ, twd_base + TWD_TIMER_LOAD);
++		writel_relaxed(twd_timer_rate / HZ, twd_base + TWD_TIMER_LOAD);
+ 		break;
+ 	case CLOCK_EVT_MODE_ONESHOT:
+ 		/* period set, and timer enabled in 'next_event' hook */
+@@ -51,18 +51,18 @@ static void twd_set_mode(enum clock_event_mode mode,
+ 		ctrl = 0;
+ 	}
+ 
+-	__raw_writel(ctrl, twd_base + TWD_TIMER_CONTROL);
++	writel_relaxed(ctrl, twd_base + TWD_TIMER_CONTROL);
+ }
+ 
+ static int twd_set_next_event(unsigned long evt,
+ 			struct clock_event_device *unused)
+ {
+-	unsigned long ctrl = __raw_readl(twd_base + TWD_TIMER_CONTROL);
++	unsigned long ctrl = readl_relaxed(twd_base + TWD_TIMER_CONTROL);
+ 
+ 	ctrl |= TWD_TIMER_CONTROL_ENABLE;
+ 
+-	__raw_writel(evt, twd_base + TWD_TIMER_COUNTER);
+-	__raw_writel(ctrl, twd_base + TWD_TIMER_CONTROL);
++	writel_relaxed(evt, twd_base + TWD_TIMER_COUNTER);
++	writel_relaxed(ctrl, twd_base + TWD_TIMER_CONTROL);
+ 
+ 	return 0;
+ }
+@@ -75,8 +75,8 @@ static int twd_set_next_event(unsigned long evt,
+  */
+ int twd_timer_ack(void)
+ {
+-	if (__raw_readl(twd_base + TWD_TIMER_INTSTAT)) {
+-		__raw_writel(1, twd_base + TWD_TIMER_INTSTAT);
++	if (readl_relaxed(twd_base + TWD_TIMER_INTSTAT)) {
++		writel_relaxed(1, twd_base + TWD_TIMER_INTSTAT);
+ 		return 1;
+ 	}
+ 
+@@ -110,16 +110,16 @@ static void __cpuinit twd_calibrate_rate(void)
+ 		/* OK, now the tick has started, let's get the timer going */
+ 		waitjiffies += 5;
+ 
+-				 /* enable, no interrupt or reload */
+-		__raw_writel(0x1, twd_base + TWD_TIMER_CONTROL);
++		/* enable, no interrupt or reload */
++		writel_relaxed(0x1, twd_base + TWD_TIMER_CONTROL);
+ 
+-				 /* maximum value */
+-		__raw_writel(0xFFFFFFFFU, twd_base + TWD_TIMER_COUNTER);
++		/* maximum value */
++		writel_relaxed(0xFFFFFFFFU, twd_base + TWD_TIMER_COUNTER);
+ 
+ 		while (get_jiffies_64() < waitjiffies)
+ 			udelay(10);
+ 
+-		count = __raw_readl(twd_base + TWD_TIMER_COUNTER);
++		count = readl_relaxed(twd_base + TWD_TIMER_COUNTER);
+ 
+ 		twd_timer_rate = (0xFFFFFFFFU - count) * (HZ / 5);
+ 
+diff --git a/arch/arm/mach-iproc/Kconfig b/arch/arm/mach-iproc/Kconfig
+new file mode 100644
+index 0000000..c77208d

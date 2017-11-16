@@ -103,10 +103,11 @@ K_ARCHIVE_NAME := $(K_NAME).$(K_ARCHIVE_EXT)
 endif
 K_ARCHIVE_PATH := $(ONL_KERNELS)/archives/$(K_ARCHIVE_NAME)
 ifndef K_ARCHIVE_URL
-K_ARCHIVE_URL := https://www.kernel.org/pub/linux/kernel/v3.x/$(K_ARCHIVE_NAME)
+K_ARCHIVE_URL := https://www.kernel.org/pub/linux/kernel/v$(K_MAJOR_VERSION).x/$(K_ARCHIVE_NAME)
 endif
 K_SOURCE_DIR := $(K_TARGET_DIR)/$(K_NAME)
 K_MBUILD_DIR := $(K_SOURCE_DIR)-mbuild
+K_INSTALL_MOD_PATH := $(K_TARGET_DIR)
 K_DTBS_DIR := $(K_SOURCE_DIR)-dtbs
 
 #
@@ -153,6 +154,12 @@ K_MAKE    := $(MAKE) -C $(K_SOURCE_DIR)
 #
 build: setup
 	+$(K_MAKE) $(K_BUILD_TARGET)
+	+$(K_MAKE) modules
+	+$(K_MAKE) modules_install INSTALL_MOD_PATH=$(K_INSTALL_MOD_PATH)
+	find $(K_INSTALL_MOD_PATH) -type l -name source -delete
+	find $(K_INSTALL_MOD_PATH) -type l -name build -delete
+
+
 ifdef K_COPY_SRC
 ifdef K_COPY_DST
 ifdef K_COPY_GZIP
@@ -164,9 +171,15 @@ endif
 endif
 
 
-MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts arch/x86/include arch/x86/Makefile arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/arm/include arch/arm/Makefile arch/arm/lib drivers
+MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts drivers \
+			arch/x86/include arch/x86/Makefile \
+			arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/powerpc/boot/dts \
+			arch/arm/include arch/arm/Makefile arch/arm/lib arch/arm/boot/dts
 
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA)
+
+# This file must be preserved for PPC module builds.
+MODSYNCKEEP := arch/powerpc/lib/crtsavres.o
 
 mbuild: build
 	rm -rf $(K_MBUILD_DIR)
@@ -174,6 +187,8 @@ mbuild: build
 	$(foreach f,$(MODSYNCLIST),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
 	find $(K_MBUILD_DIR) -name "*.o*" -delete
 	find $(K_MBUILD_DIR) -name "*.c" -delete
+	find $(K_MBUILD_DIR) -name "*.ko" -delete
+	$(foreach f,$(MODSYNCKEEP), cp $(K_SOURCE_DIR)/$(f) $(K_MBUILD_DIR)/$(f) || true;)
 
 dtbs: mbuild
 ifdef DTS_LIST

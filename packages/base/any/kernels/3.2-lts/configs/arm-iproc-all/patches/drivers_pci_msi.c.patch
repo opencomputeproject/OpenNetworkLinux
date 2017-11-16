@@ -1,0 +1,190 @@
+--- a/drivers/pci/msi.c
++++ b/drivers/pci/msi.c
+@@ -306,6 +306,9 @@ void write_msi_msg(unsigned int irq, struct msi_msg *msg)
+ static void free_msi_irqs(struct pci_dev *dev)
+ {
+ 	struct msi_desc *entry, *tmp;
++	struct attribute **msi_attrs;
++	struct device_attribute *dev_attr;
++	int count = 0;
+ 
+ 	list_for_each_entry(entry, &dev->msi_list, list) {
+ 		int i, nvec;
+@@ -323,9 +326,25 @@ static void free_msi_irqs(struct pci_dev *dev)
+ 			if (list_is_last(&entry->list, &dev->msi_list))
+ 				iounmap(entry->mask_base);
+ 		}
++
+ 		list_del(&entry->list);
+ 		kfree(entry);
+ 	}
++
++	if (dev->msi_irq_group) {
++		sysfs_remove_group(&dev->dev.kobj, dev->msi_irq_group);
++		msi_attrs = dev->msi_irq_group->attrs;
++		while (msi_attrs[count]) {
++			dev_attr = container_of(msi_attrs[count],
++						struct device_attribute, attr);
++			kfree(dev_attr->attr.name);
++			kfree(dev_attr);
++			++count;
++		}
++		kfree(msi_attrs);
++		kfree(dev->msi_irq_group);
++		dev->msi_irq_group = NULL;
++	}
+ }
+ 
+ static struct msi_desc *alloc_msi_entry(struct pci_dev *dev)
+@@ -403,6 +422,98 @@ void pci_restore_msi_state(struct pci_dev *dev)
+ }
+ EXPORT_SYMBOL_GPL(pci_restore_msi_state);
+ 
++static ssize_t msi_mode_show(struct device *dev, struct device_attribute *attr,
++			     char *buf)
++{
++	struct pci_dev *pdev = to_pci_dev(dev);
++	struct msi_desc *entry;
++	unsigned long irq;
++	int retval;
++
++	retval = kstrtoul(attr->attr.name, 10, &irq);
++	if (retval)
++		return retval;
++
++	list_for_each_entry(entry, &pdev->msi_list, list) {
++		if (entry->irq == irq) {
++			return sprintf(buf, "%s\n",
++				       entry->msi_attrib.is_msix ? "msix" : "msi");
++		}
++	}
++	return -ENODEV;
++}
++
++static int populate_msi_sysfs(struct pci_dev *pdev)
++{
++	struct attribute **msi_attrs;
++	struct attribute *msi_attr;
++	struct device_attribute *msi_dev_attr;
++	struct attribute_group *msi_irq_group;
++	struct msi_desc *entry;
++	int ret = -ENOMEM;
++	int num_msi = 0;
++	int count = 0;
++
++	/* Determine how many msi entries we have */
++	list_for_each_entry(entry, &pdev->msi_list, list) {
++		++num_msi;
++	}
++	if (!num_msi)
++		return 0;
++
++	/* Dynamically create the MSI attributes for the PCI device */
++	msi_attrs = kzalloc(sizeof(void *) * (num_msi + 1), GFP_KERNEL);
++	if (!msi_attrs)
++		return -ENOMEM;
++	list_for_each_entry(entry, &pdev->msi_list, list) {
++		char *name = kmalloc(20, GFP_KERNEL);
++		if (!name)
++			goto error_attrs;
++
++		msi_dev_attr = kzalloc(sizeof(*msi_dev_attr), GFP_KERNEL);
++		if (!msi_dev_attr) {
++			kfree(name);
++			goto error_attrs;
++		}
++
++		sprintf(name, "%d", entry->irq);
++		sysfs_attr_init(&msi_dev_attr->attr);
++		msi_dev_attr->attr.name = name;
++		msi_dev_attr->attr.mode = S_IRUGO;
++		msi_dev_attr->show = msi_mode_show;
++		msi_attrs[count] = &msi_dev_attr->attr;
++		++count;
++	}
++
++	msi_irq_group = kzalloc(sizeof(*msi_irq_group), GFP_KERNEL);
++	if (!msi_irq_group)
++		goto error_attrs;
++	msi_irq_group->name = "msi_irqs";
++	msi_irq_group->attrs = msi_attrs;
++
++	ret = sysfs_create_group(&pdev->dev.kobj, msi_irq_group);
++	if (ret)
++		goto error_irq_group;
++	pdev->msi_irq_group = msi_irq_group;
++
++	return 0;
++
++error_irq_group:
++	kfree(msi_irq_group);
++error_attrs:
++	count = 0;
++	msi_attr = msi_attrs[count];
++	while (msi_attr) {
++		msi_dev_attr = container_of(msi_attr, struct device_attribute, attr);
++		kfree(msi_attr->name);
++		kfree(msi_dev_attr);
++		++count;
++		msi_attr = msi_attrs[count];
++	}
++	kfree(msi_attrs);
++	return ret;
++}
++
+ /**
+  * msi_capability_init - configure device's MSI capability structure
+  * @dev: pointer to the pci_dev data structure of MSI device function
+@@ -454,6 +565,13 @@ static int msi_capability_init(struct pci_dev *dev, int nvec)
+ 		return ret;
+ 	}
+ 
++	ret = populate_msi_sysfs(dev);
++	if (ret) {
++		msi_mask_irq(entry, mask, ~mask);
++		free_msi_irqs(dev);
++		return ret;
++	}
++
+ 	/* Set MSI enabled bits	 */
+ 	pci_intx_for_msi(dev, 0);
+ 	msi_set_enable(dev, pos, 1);
+@@ -562,7 +680,7 @@ static int msix_capability_init(struct pci_dev *dev,
+ 
+ 	ret = arch_setup_msi_irqs(dev, nvec, PCI_CAP_ID_MSIX);
+ 	if (ret)
+-		goto error;
++		goto out_avail;
+ 
+ 	/*
+ 	 * Some devices require MSI-X to be enabled before we can touch the
+@@ -574,6 +692,10 @@ static int msix_capability_init(struct pci_dev *dev,
+ 
+ 	msix_program_entries(dev, entries);
+ 
++	ret = populate_msi_sysfs(dev);
++	if (ret)
++		goto out_free;
++
+ 	/* Set MSI-X enabled bits and unmask the function */
+ 	pci_intx_for_msi(dev, 0);
+ 	dev->msix_enabled = 1;
+@@ -583,7 +705,7 @@ static int msix_capability_init(struct pci_dev *dev,
+ 
+ 	return 0;
+ 
+-error:
++out_avail:
+ 	if (ret < 0) {
+ 		/*
+ 		 * If we had some success, report the number of irqs
+@@ -600,6 +722,7 @@ error:
+ 			ret = avail;
+ 	}
+ 
++out_free:
+ 	free_msi_irqs(dev);
+ 
+ 	return ret;
+diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
+index 4c3a9e9..e4823bf 100644

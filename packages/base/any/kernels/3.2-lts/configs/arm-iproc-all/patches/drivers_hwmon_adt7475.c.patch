@@ -1,0 +1,26 @@
+--- a/drivers/hwmon/adt7475.c
++++ b/drivers/hwmon/adt7475.c
+@@ -671,6 +671,21 @@ static ssize_t set_pwm(struct device *dev, struct device_attribute *attr,
+ 			return count;
+ 		}
+ 
++		/* Clear PWM invert bit, i.e. force normal sense of
++		 * duty cycle.  See ADT7473 data sheet for description
++		 * of register 0x5C, bit 4:
++		 *
++		 *   This bit inverts the PWM output. The default is
++		 *   0, which corresponds to a logic high output for
++		 *   100% duty cycle. Setting this bit to 1 inverts
++		 *   the PWM output, so 100% duty cycle corresponds to
++		 *   a logic low output.
++		 *
++		 */
++		data->pwm[CONTROL][sattr->index] &= ~(1 << 4);
++		i2c_smbus_write_byte_data(client, PWM_CONFIG_REG(sattr->index),
++					  data->pwm[CONTROL][sattr->index]);
++
+ 		reg = PWM_REG(sattr->index);
+ 		break;
+ 
+diff --git a/drivers/hwmon/coretemp.c b/drivers/hwmon/coretemp.c
+index e6ec920..ce9d21f 100644

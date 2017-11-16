@@ -113,6 +113,9 @@ installer_mkchroot() {
     mkdir -p ${rootdir}/dev/pts
   fi
   mount -t devpts devpts "${rootdir}/dev/pts"
+  if test -d "${rootdir}/sys/firmware/efi/efivars"; then
+    mount -t efivarfs efivarfs "${rootdir}/sys/firmware/efi/efivars"
+  fi
 
   if test ${TMPDIR+set}; then
     # make the tempdir available to the chroot
@@ -182,6 +185,166 @@ visit_blkid()
 
   done
   IFS=$ifs
+
+  return 0
+}
+
+##############################
+#
+# Fixup a corrupted GPT partition, within reason
+# See SWL-3971
+#
+##############################
+
+blkid_find_gpt_boot() {
+  local dev label
+  dev=$1; shift
+  label=$1; shift
+  rest="$@"
+
+  installer_say "Examining $dev --> $label"
+
+  # EFI partition shows up as a valid partition with blkid
+  if test "$label" = "EFI System"; then
+    installer_say "Found EFI System partition at $dev"
+    ESP_DEVICE=$(echo "$dev" | sed -e 's/[0-9]$//')
+
+    # this is definitely the boot disk
+    return 2
+  fi
+
+  # sometimes this is hidden from blkid (no filesystem)
+  if test "$label" = "GRUB-BOOT"; then
+    installer_say "Found GRUB boot partition at $dev"
+    GRUB_DEVICE=$(echo "$dev" | sed -e 's/[0-9]$//')
+
+    # probably the boot disk, look for a GPT header
+    return 0
+  fi
+
+  # shows up in blkid but may not be GPT
+  if test "$label" = "ONIE-BOOT"; then
+    installer_say "Found ONIE boot partition at $dev"
+    ONIE_DEVICE=$(echo "$dev" | sed -e 's/[0-9]$//')
+
+    # probably the boot disk, look for a GPT header
+    return 0
+  fi
+
+  # not found, skip
+  return 0
+}
+
+installer_fixup_gpt() {
+  local buf dat sts dev do_recover
+
+  buf=$(mktemp -u -t sgdisk-XXXXXX)
+
+  ESP_DEVICE=
+  GRUB_DEVICE=
+  ONIE_DEVICE=
+  visit_blkid blkid_find_gpt_boot
+
+  dev=
+  if test -b "$ESP_DEVICE"; then
+    dev=$ESP_DEVICE
+  elif test -b "$GRUB_DEVICE"; then
+    sgdisk -p "$GRUB_DEVICE" > "$buf" 2>&1 || :
+    if grep -q GUID "$buf"; then
+      dev=$GRUB_DEVICE
+    fi
+  elif test -b "$ONIE_DEVICE"; then
+    sgdisk -p "$ONIE_DEVICE" > "$buf" 2>&1 || :
+    if grep -q GUID "$buf"; then
+      # here we assume that the ONIE boot partition is on
+      # the boot disk
+      # (additionally we could also look for 'GRUB-BOOT')
+      dev=$ONIE_DEVICE
+    fi
+  fi
+  test -b "$dev" || return 0
+
+  do_recover=
+
+  # simple validation using sgdisk
+  if test "$do_recover"; then
+    :
+  else
+    if sgdisk -p "$dev" > "$buf" 2>&1; then
+      sts=0
+    else
+      sts=$?
+    fi
+    if test $sts -ne 0; then
+      cat "$buf" 1>&2
+      rm -f "$buf"
+      installer_say "Cannot reliably get GPT partition table"
+      return 1
+    fi
+
+    case $(cat "$buf") in
+      *Caution*|*Warning*)
+        cat $buf 1>&2
+        installer_say "Found issues with the GPT partition table"
+        do_recover=1
+        rm -f "$buf"
+      ;;
+    esac
+
+  fi
+
+  # more thorough validation
+  if test "$do_recover"; then
+    :
+  else
+
+    local inp
+    inp=$(mktemp -u -t sgdisk-XXXXXX)
+    cat > "$inp" <<-END
+	x
+	r
+	v
+	q
+	END
+    if gdisk "$dev" < "$inp" > "$buf" 2>&1; then
+      sts=0
+    else
+      sts=$?
+    fi
+    rm -f "$inp"
+    if test $sts -ne 0; then
+      cat "$buf" 1>&2
+      rm -f "$buf"
+      installer_say "Cannot reliably verify GPT partition table"
+      return 1
+    fi
+
+    case $(cat "$buf") in
+      *Caution*|*Warning*|*Problem:*)
+        cat $buf 1>&2
+        installer_say "Found issues with the GPT partition table"
+        do_recover=1
+        rm -f "$buf"
+      ;;
+    esac
+
+  fi
+
+  if test "$do_recover"; then
+    :
+  else
+    installer_say "Found a clean GPT partition table"
+    rm -f "$buf"
+    return 0
+  fi
+  installer_say "Attempting to correct the GPT partition table"
+
+  # this is the simple method; gdisk/sfgdisk will correct
+  # simple errors but not horrendous faults
+  dat=$(mktemp -u -t sgdisk-XXXXXX)
+  sgdisk -b "$dat" "$dev" || return 1
+  sgdisk -l "$dat" "$dev" || return 1
+  rm -f "$dat"
 
   return 0
 }

@@ -35,6 +35,9 @@ trap "restoreconsole; reboot -f" EXIT
 # Mount special filesystems
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+if [ -d /sys/firmware/efi/efivars ]; then
+    mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+fi
 mount -o remount,size=1M /dev
 case "$(stat -f -c "%T" /tmp)" in
   tmpfs|ramfs) ;;
@@ -144,4 +147,5 @@ trap - EXIT
 
 # Local variables:
 # sh-basic-offset: 4
+# sh-indentation: 4
 # End:

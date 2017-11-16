@@ -1,0 +1,90 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/Kconfig
+@@ -0,0 +1,84 @@
++menu "Broadcom iProc Drivers"
++	depends on ARCH_IPROC
++
++source "drivers/bcmdrivers/timer/Kconfig"
++source "drivers/bcmdrivers/mdio/Kconfig"
++source "drivers/bcmdrivers/dma/Kconfig"
++source "drivers/bcmdrivers/gpio/Kconfig"
++source "drivers/bcmdrivers/qspi/Kconfig"
++source "drivers/bcmdrivers/nand/Kconfig"
++source "drivers/bcmdrivers/pwm/Kconfig"
++source "drivers/bcmdrivers/wdt/Kconfig"
++source "drivers/bcmdrivers/usb2h/Kconfig"
++source "drivers/bcmdrivers/gmac/et/Kconfig"
++source "drivers/bcmdrivers/gmac/hnd/Kconfig"
++source "drivers/bcmdrivers/smbus/Kconfig"
++source "drivers/bcmdrivers/pmu/Kconfig"
++
++config BCM_IPROC_CA9_PREFETCH
++	tristate "CortexA9 cache auto-prefetching support"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Enable iProc CortexA9 L1/L2 cache auto-prefetching support
++
++	  If unsure, say N.
++
++config BCM_BARRIER_PERFORMANCE
++	bool "Linux memory barrier performance improvement"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Enable linux memory barrier performance improvements
++
++	  If unsure, say N.
++
++config BCM_MEM_OPTIMIZATION
++	bool "ARM Memory library optimization"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Enable ARM memory library optimization
++
++	  If unsure, say N.
++
++config BROADCOM_CUSTOM_SENDFILE
++	bool "Custom Sendfile optimization"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Enable Broadcom Custom Sendfile optimization
++
++	  If unsure, say N.
++
++config BCM_CUSTOM_RECVFILE
++	bool "Custom Receivefile optimization"
++	depends on ARCH_IPROC
++	default n
++	help
++	  Enable Broadcom Custom Receivefile optimization
++
++	  If unsure, say N.
++
++config BCM_CUSTOM_RECVFILE_MAX_PERF
++# Enabling BCM_CUSTOM_RECVFILE_MAX_PERF gives maximum write performance
++# at the risk of filesystem errors (due to skipping cache invalidation
++# on writes) and exposure to A0 hardware errata for lazy interrupts.
++	bool "Custom Receivefile Max Performance optimization"
++	depends on ARCH_IPROC && BCM_CUSTOM_RECVFILE
++	default n
++	help
++	  Enable Broadcom Custom Receivefile Maximum Performance optimization
++
++	  If unsure, say N.
++
++config BCM_GRO_ENABLE
++	bool "Broadcom GRO Enable"
++	depends on ARCH_IPROC && (ET_NAPI_POLL || ET_NAPI2_POLL)
++	default n
++	help
++	  Enable Broadcom Generic Receive Offload
++
++	  If unsure, say N.
++
++endmenu
+diff --git a/drivers/bcmdrivers/Makefile b/drivers/bcmdrivers/Makefile
+new file mode 100755
+index 0000000..6a8ba6f

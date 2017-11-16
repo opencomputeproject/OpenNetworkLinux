@@ -1,0 +1,170 @@
+--- a/drivers/rtc/rtc-m41t80.c
++++ b/drivers/rtc/rtc-m41t80.c
+@@ -93,25 +93,32 @@ static int m41t80_get_datetime(struct i2c_client *client,
+ 			       struct rtc_time *tm)
+ {
+ 	u8 buf[M41T80_DATETIME_REG_SIZE], dt_addr[1] = { M41T80_REG_SEC };
+-	struct i2c_msg msgs[] = {
+-		{
+-			.addr	= client->addr,
+-			.flags	= 0,
+-			.len	= 1,
+-			.buf	= dt_addr,
+-		},
+-		{
+-			.addr	= client->addr,
+-			.flags	= I2C_M_RD,
+-			.len	= M41T80_DATETIME_REG_SIZE - M41T80_REG_SEC,
+-			.buf	= buf + M41T80_REG_SEC,
+-		},
+-	};
+-
+-	if (i2c_transfer(client->adapter, msgs, 2) < 0) {
+-		dev_err(&client->dev, "read error\n");
+-		return -EIO;
+-	}
++	/* struct i2c_msg msgs[] = { */
++	/* 	{ */
++	/* 		.addr	= client->addr, */
++	/* 		.flags	= 0, */
++	/* 		.len	= 1, */
++	/* 		.buf	= dt_addr, */
++	/* 	}, */
++	/* 	{ */
++	/* 		.addr	= client->addr, */
++	/* 		.flags	= I2C_M_RD, */
++	/* 		.len	= M41T80_DATETIME_REG_SIZE - M41T80_REG_SEC, */
++	/* 		.buf	= buf + M41T80_REG_SEC, */
++	/* 	}, */
++	/* }; */
++
++	/* if (i2c_transfer(client->adapter, msgs, 2) < 0) { */
++	/* 	dev_err(&client->dev, "read error\n"); */
++	/* 	return -EIO; */
++	/* } */
++	buf[M41T80_REG_YEAR] = i2c_smbus_read_byte_data(client, M41T80_REG_YEAR);
++	buf[M41T80_REG_MON] = i2c_smbus_read_byte_data(client, M41T80_REG_MON);
++	buf[M41T80_REG_WDAY] = i2c_smbus_read_byte_data(client, M41T80_REG_WDAY);	
++	buf[M41T80_REG_DAY] = i2c_smbus_read_byte_data(client, M41T80_REG_DAY);	
++	buf[M41T80_REG_HOUR] = i2c_smbus_read_byte_data(client, M41T80_REG_HOUR);
++	buf[M41T80_REG_MIN] = i2c_smbus_read_byte_data(client, M41T80_REG_MIN);
++	buf[M41T80_REG_SEC] = i2c_smbus_read_byte_data(client, M41T80_REG_SEC);
+ 
+ 	tm->tm_sec = bcd2bin(buf[M41T80_REG_SEC] & 0x7f);
+ 	tm->tm_min = bcd2bin(buf[M41T80_REG_MIN] & 0x7f);
+@@ -129,36 +136,46 @@ static int m41t80_get_datetime(struct i2c_client *client,
+ static int m41t80_set_datetime(struct i2c_client *client, struct rtc_time *tm)
+ {
+ 	u8 wbuf[1 + M41T80_DATETIME_REG_SIZE];
++	int rc = 0;
+ 	u8 *buf = &wbuf[1];
+ 	u8 dt_addr[1] = { M41T80_REG_SEC };
+-	struct i2c_msg msgs_in[] = {
+-		{
+-			.addr	= client->addr,
+-			.flags	= 0,
+-			.len	= 1,
+-			.buf	= dt_addr,
+-		},
+-		{
+-			.addr	= client->addr,
+-			.flags	= I2C_M_RD,
+-			.len	= M41T80_DATETIME_REG_SIZE - M41T80_REG_SEC,
+-			.buf	= buf + M41T80_REG_SEC,
+-		},
+-	};
+-	struct i2c_msg msgs[] = {
+-		{
+-			.addr	= client->addr,
+-			.flags	= 0,
+-			.len	= 1 + M41T80_DATETIME_REG_SIZE,
+-			.buf	= wbuf,
+-		 },
+-	};
++	/* struct i2c_msg msgs_in[] = { */
++	/* 	{ */
++	/* 		.addr	= client->addr, */
++	/* 		.flags	= 0, */
++	/* 		.len	= 1, */
++	/* 		.buf	= dt_addr, */
++	/* 	}, */
++	/* 	{ */
++	/* 		.addr	= client->addr, */
++	/* 		.flags	= I2C_M_RD, */
++	/* 		.len	= M41T80_DATETIME_REG_SIZE - M41T80_REG_SEC, */
++	/* 		.buf	= buf + M41T80_REG_SEC, */
++	/* 	}, */
++	/* }; */
++	/* struct i2c_msg msgs[] = { */
++	/* 	{ */
++	/* 		.addr	= client->addr, */
++	/* 		.flags	= 0, */
++	/* 		.len	= 1 + M41T80_DATETIME_REG_SIZE, */
++	/* 		.buf	= wbuf, */
++	/* 	 }, */
++	/* }; */
++
++	/* /\* Read current reg values into buf[1..7] *\/ */
++	/* if (i2c_transfer(client->adapter, msgs_in, 2) < 0) { */
++	/* 	dev_err(&client->dev, "read error\n"); */
++	/* 	return -EIO; */
++	/* } */
++	buf[M41T80_REG_YEAR] = i2c_smbus_read_byte_data(client, M41T80_REG_YEAR);
++	buf[M41T80_REG_MON] = i2c_smbus_read_byte_data(client, M41T80_REG_MON);
++	buf[M41T80_REG_WDAY] = i2c_smbus_read_byte_data(client, M41T80_REG_WDAY);	
++	buf[M41T80_REG_DAY] = i2c_smbus_read_byte_data(client, M41T80_REG_DAY);	
++	buf[M41T80_REG_HOUR] = i2c_smbus_read_byte_data(client, M41T80_REG_HOUR);
++	buf[M41T80_REG_MIN] = i2c_smbus_read_byte_data(client, M41T80_REG_MIN);
++	buf[M41T80_REG_SEC] = i2c_smbus_read_byte_data(client, M41T80_REG_SEC);
++
+ 
+-	/* Read current reg values into buf[1..7] */
+-	if (i2c_transfer(client->adapter, msgs_in, 2) < 0) {
+-		dev_err(&client->dev, "read error\n");
+-		return -EIO;
+-	}
+ 
+ 	wbuf[0] = 0; /* offset into rtc's regs */
+ 	/* Merge time-data and register flags into buf[0..7] */
+@@ -178,10 +195,25 @@ static int m41t80_set_datetime(struct i2c_client *client, struct rtc_time *tm)
+ 	/* assume 20YY not 19YY */
+ 	buf[M41T80_REG_YEAR] = bin2bcd(tm->tm_year % 100);
+ 
+-	if (i2c_transfer(client->adapter, msgs, 1) != 1) {
+-		dev_err(&client->dev, "write error\n");
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_YEAR, buf[M41T80_REG_YEAR]) < 0)
+ 		return -EIO;
+-	}
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_MON, buf[M41T80_REG_MON]) < 0)
++		return -EIO;
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_DAY, buf[M41T80_REG_DAY]) < 0)
++		return -EIO;
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_WDAY, buf[M41T80_REG_WDAY]) < 0)
++		return -EIO;
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_HOUR, buf[M41T80_REG_HOUR]) < 0)
++		return -EIO;
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_MIN, buf[M41T80_REG_MIN]) < 0)
++		return -EIO;
++	if (i2c_smbus_write_byte_data(client, M41T80_REG_SEC, buf[M41T80_REG_SEC]) < 0)
++		return -EIO;
++	
++	/* if (i2c_transfer(client->adapter, msgs, 1) != 1) { */
++	/* 	dev_err(&client->dev, "write error\n"); */
++	/* 	return -EIO; */
++	/* } */
+ 	return 0;
+ }
+ 
+@@ -777,8 +809,8 @@ static int m41t80_probe(struct i2c_client *client,
+ 	struct rtc_time tm;
+ 	struct m41t80_data *clientdata = NULL;
+ 
+-	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C
+-				     | I2C_FUNC_SMBUS_BYTE_DATA)) {
++	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
++				     
+ 		rc = -ENODEV;
+ 		goto exit;
+ 	}
+diff --git a/drivers/rtc/rtc-mv.c b/drivers/rtc/rtc-mv.c
+index 768e2ed..0dd8421 100644

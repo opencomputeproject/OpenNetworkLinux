@@ -1,0 +1,14 @@
+--- /dev/null
++++ b/drivers/bcmdrivers/smbus/.gitignore
+@@ -0,0 +1,8 @@
++/.built-in.o.cmd
++/.iproc_i2c.o.cmd
++/.iproc_smbus.o.cmd
++/built-in.o
++/iproc_i2c.o
++/iproc_smbus.o
++/modules.builtin
++/modules.order
+diff --git a/drivers/bcmdrivers/smbus/Kconfig b/drivers/bcmdrivers/smbus/Kconfig
+new file mode 100644
+index 0000000..9ae0f71

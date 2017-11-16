@@ -1,0 +1,20 @@
+--- a/drivers/hwmon/pmbus/pmbus.h
++++ b/drivers/hwmon/pmbus/pmbus.h
+@@ -288,6 +288,7 @@ enum pmbus_sensor_classes {
+ 	PSC_POWER,
+ 	PSC_TEMPERATURE,
+ 	PSC_FAN,
++	PSC_PWM,
+ 	PSC_NUM_CLASSES		/* Number of power sensor classes */
+ };
+ 
+@@ -312,6 +313,7 @@ enum pmbus_sensor_classes {
+ #define PMBUS_HAVE_STATUS_TEMP	(1 << 15)
+ #define PMBUS_HAVE_STATUS_FAN12	(1 << 16)
+ #define PMBUS_HAVE_STATUS_FAN34	(1 << 17)
++#define PMBUS_HAVE_MFR_INFO     (1 << 18)
+ 
+ enum pmbus_data_format { linear = 0, direct, vid };
+ 
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index d89b339..60c846c 100644

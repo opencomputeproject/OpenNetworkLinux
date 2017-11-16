@@ -70,7 +70,7 @@ sff_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; sff_config_settings[i].name; i++) {
-        if(strcmp(sff_config_settings[i].name, setting)) {
+        if(!strcmp(sff_config_settings[i].name, setting)) {
             return sff_config_settings[i].value;
         }
     }

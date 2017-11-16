@@ -1,0 +1,35 @@
+--- a/drivers/hwmon/adt7470.c
++++ b/drivers/hwmon/adt7470.c
+@@ -32,6 +32,7 @@
+ #include <linux/log2.h>
+ #include <linux/kthread.h>
+ #include <linux/slab.h>
++#include <linux/of.h>
+ 
+ /* Addresses to scan */
+ static const unsigned short normal_i2c[] = { 0x2C, 0x2E, 0x2F, I2C_CLIENT_END };
+@@ -48,6 +49,7 @@ static const unsigned short normal_i2c[] = { 0x2C, 0x2E, 0x2F, I2C_CLIENT_END };
+ #define ADT7470_REG_PWM_MAX_MAX_ADDR		0x3B
+ #define ADT7470_REG_CFG				0x40
+ #define		ADT7470_FSPD_MASK		0x04
++#define		ADT7470_TODIS_MASK		0x08
+ #define ADT7470_REG_ALARM1			0x41
+ #define		ADT7470_R1T_ALARM		0x01
+ #define		ADT7470_R2T_ALARM		0x02
+@@ -225,6 +227,14 @@ static void adt7470_init_client(struct i2c_client *client)
+ 	if (reg < 0) {
+ 		dev_err(&client->dev, "cannot read configuration register\n");
+ 	} else {
++		struct property *pp;
++		pp = of_find_property(client->dev.of_node,
++				      "disable-smbus-timeout", NULL);
++		if (pp)
++			reg |= ADT7470_TODIS_MASK;
++		else
++			reg &= ~ADT7470_TODIS_MASK;
++
+ 		/* start monitoring (and do a self-test) */
+ 		i2c_smbus_write_byte_data(client, ADT7470_REG_CFG, reg | 3);
+ 	}
+diff --git a/drivers/hwmon/adt7475.c b/drivers/hwmon/adt7475.c
+index b5fcd87..d460f4e 100644

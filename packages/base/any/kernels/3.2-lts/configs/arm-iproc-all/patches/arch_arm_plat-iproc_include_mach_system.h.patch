@@ -1,0 +1,42 @@
+--- /dev/null
++++ b/arch/arm/plat-iproc/include/mach/system.h
+@@ -0,0 +1,36 @@
++/*
++ * Copyright (C) 2013, Broadcom Corporation. All Rights Reserved.
++ *
++ * Permission to use, copy, modify, and/or distribute this software for any
++ * purpose with or without fee is hereby granted, provided that the above
++ * copyright notice and this permission notice appear in all copies.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
++ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
++ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
++ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ */
++#ifndef __PLAT_IPROC_SYSTEM_H
++#define __PLAT_IPROC_SYSTEM_H
++
++#include <linux/io.h>
++#include <mach/io_map.h>
++
++
++static void arch_idle(void)
++{
++    /*
++     * This should do all the clock switching
++     * and wait for interrupt tricks
++     */
++    cpu_do_idle();
++}
++
++static inline void arch_reset(char mode, const char *cmd)
++{
++}
++
++#endif /*__PLAT_IPROC_SYSTEM_H */
+diff --git a/arch/arm/plat-iproc/include/mach/timer.h b/arch/arm/plat-iproc/include/mach/timer.h
+new file mode 100644
+index 0000000..1b28414

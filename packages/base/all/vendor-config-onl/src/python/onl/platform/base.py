@@ -164,6 +164,7 @@ class OnlPlatformBase(object):
             except ValueError, e:
                 if required:
                     raise e
+                self.add_info_dict(name, {}, klass)
         elif required:
             raise RuntimeError("A required system file (%s) is missing." % f)
 
@@ -354,36 +355,34 @@ class OnlPlatformBase(object):
         return self.platform_info.CPLD_VERSIONS
 
     def dmi_versions(self):
-        # Note - the dmidecode module returns empty lists for powerpc systems.
-        if platform.machine() != "x86_64":
-            return {}
-
-        try:
-            import dmidecode
-        except ImportError:
-            return {}
-
-        fields = [
-            {
-                'name': 'DMI BIOS Version',
-                'subsystem': dmidecode.bios,
-                'dmi_type' : 0,
-                'key' : 'Version',
-                },
-
-            {
-                'name': 'DMI System Version',
-                'subsystem': dmidecode.system,
-                'dmi_type' : 1,
-                'key' : 'Version',
-                },
-            ]
         rv = {}
-        for field in fields:
-                for v in field['subsystem']().values():
-                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
-                                rv[field['name']] = v['data'][field['key']]
+        arches = [ 'x86_64' ]
+        if platform.machine() in arches:
+            try:
+                import dmidecode
+                fields = [
+                    {
+                        'name': 'DMI BIOS Version',
+                        'subsystem': dmidecode.bios,
+                        'dmi_type' : 0,
+                        'key' : 'Version',
+                    },
 
+                    {
+                        'name': 'DMI System Version',
+                        'subsystem': dmidecode.system,
+                        'dmi_type' : 1,
+                        'key' : 'Version',
+                    },
+                ]
+                # Todo -- disable dmidecode library warnings to stderr
+                # or figure out how to clear the warning log in the decode module.
+                for field in fields:
+                    for v in field['subsystem']().values():
+                        if type(v) is dict and v['dmi_type'] == field['dmi_type']:
+                            rv[field['name']] = v['data'][field['key']]
+            except:
+                pass
         return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
@@ -483,6 +482,14 @@ class OnlPlatformPortConfig_48x10_6x40(object):
     PORT_COUNT=54
     PORT_CONFIG="48x10 + 6x40"
 
+class OnlPlatformPortConfig_48x25_6x100(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x25 + 6x100"
+
+class OnlPlatformPortConfig_48x25_8x100(object):
+    PORT_COUNT=56
+    PORT_CONFIG="48x25 + 8x100"
+
 class OnlPlatformPortConfig_32x40(object):
     PORT_COUNT=32
     PORT_CONFIG="32x40"
@@ -495,6 +502,10 @@ class OnlPlatformPortConfig_32x100(object):
     PORT_COUNT=32
     PORT_CONFIG="32x100"
 
+class OnlPlatformPortConfig_64x100(object):
+    PORT_COUNT=64
+    PORT_CONFIG="64x100"
+
 class OnlPlatformPortConfig_24x1_4x10(object):
     PORT_COUNT=28
     PORT_CONFIG="24x1 + 4x10"
@@ -502,3 +513,7 @@ class OnlPlatformPortConfig_24x1_4x10(object):
 class OnlPlatformPortConfig_8x1_8x10(object):
     PORT_COUNT=16
     PORT_CONFIG="8x1 + 8x10"
+
+class OnlPlatformPortConfig_48x10_6x100(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x10 + 6x100"

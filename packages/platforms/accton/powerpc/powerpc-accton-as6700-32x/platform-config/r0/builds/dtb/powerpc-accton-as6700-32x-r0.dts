@@ -1,0 +1,378 @@
+/*
+ * P2041RDB Device Tree Source
+ *
+ * Copyright 2011-2012 Freescale Semiconductor Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *	 notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *	 notice, this list of conditions and the following disclaimer in the
+ *	 documentation and/or other materials provided with the distribution.
+ *     * Neither the name of Freescale Semiconductor nor the
+ *	 names of its contributors may be used to endorse or promote products
+ *	 derived from this software without specific prior written permission.
+ *
+ *
+ * ALTERNATIVELY, this software may be distributed under the terms of the
+ * GNU General Public License ("GPL") as published by the Free Software
+ * Foundation, either version 2 of that License or (at your option) any
+ * later version.
+ *
+ * THIS SOFTWARE IS PROVIDED BY Freescale Semiconductor ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL Freescale Semiconductor BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/include/ "fsl/as6700_32x-pre.dtsi"
+
+/ {
+	model = "powerpc-accton-as6700-32x-r0";
+	compatible = "accton,as6700_32x";
+	#address-cells = <2>;
+	#size-cells = <2>;
+	interrupt-parent = <&mpic>;
+
+	aliases {
+        ethernet0 = &enet3;
+        ethernet2 = &enet2;
+        phy_sgmii_2 = &phy_sgmii_2;
+        phy_sgmii_1e = &phy_sgmii_1e;
+        phy_sgmii_1 = &phy_sgmii_1;
+	};
+
+	memory {
+		device_type = "memory";
+	};
+
+	dcsr: dcsr@f00000000 {
+		ranges = <0x00000000 0xf 0x00000000 0x01008000>;
+	};
+
+	bportals: bman-portals@ff4000000 {
+		ranges = <0x0 0xf 0xf4000000 0x200000>;
+	};
+
+	qportals: qman-portals@ff4200000 {
+		ranges = <0x0 0xf 0xf4200000 0x200000>;
+	};
+
+	soc: soc@ffe000000 {
+		ranges = <0x00000000 0xf 0xfe000000 0x1000000>;
+		reg = <0xf 0xfe000000 0 0x00001000>;
+
+        spi@110000 {
+            flash@0 {
+                #address-cells = <1>;
+                #size-cells = <1>;
+                compatible = "numonyx,n25q512a13";
+                reg = <0>;
+                spi-max-frequency = <12000000>; /* input clock */
+                partition@uboot {
+                    label = "uboot";
+                    reg = <0x00000000 0x00100000>;
+                };
+                partition@uboot-env {
+                    label = "uboot-env";
+                    reg = <0x00100000 0x00010000>;
+                    env_size = <0x2000>;
+                };
+                partition@Fman-FW {
+                    label = "Fman-FW";
+                    reg = <0x00110000 0x00010000>;
+                    read-only;
+                };
+                partition@hw-info {
+                    label = "hw-info";
+                    reg = <0x00120000 0x00010000>;
+                    read-only;
+                };
+                partition@onie {
+                    label = "onie";
+                    reg = <0x00130000 0x00800000>;
+                };
+                partition@diag {
+                    label = "diag";
+                    reg = <0x00930000 0x01600000>;
+                };
+                partition@reserved {
+                    label = "reserved";
+                    reg = <0x01f30000 0x020d0000>;
+                };
+            };
+        };
+
+		i2c@118000 {
+                        clock-frequency = <0x18000>;
+			rtc@68 {
+				compatible = "dallas,ds1672";
+				reg = <0x68>;
+			};
+		};
+
+		i2c@118100 {
+                	clock-frequency = <0x18000>;
+			accton_i2c_cpld@18 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x18>;
+			};
+			accton_i2c_cpld@19 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x19>;
+			};
+			accton_i2c_cpld@1a {
+				compatible = "accton_i2c_cpld";
+				reg = <0x1a>;
+			};
+			accton_i2c_cpld@20 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x20>;
+			};
+			accton_i2c_cpld@70 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x70>;
+			};
+			accton_as6700_32x_sfp@50 {
+				compatible = "acc_as6700_32x_sfp";
+				reg = <0x50>;
+			};
+			accton_i2c_cpld@31 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x31>;
+			};
+			accton_i2c_cpld@35 {
+				compatible = "accton_i2c_cpld";
+				reg = <0x35>;
+			};
+		};
+
+		i2c@119000 {
+		    clock-frequency = <0x18000>;
+		};
+
+		i2c@119100 {
+		    clock-frequency = <0x18000>;
+			pca9546@70 {
+				compatible = "nxp,pca9546";
+				reg = <0x70>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+
+					max6581@4d {
+						compatible = "max6581";
+						reg = <0x4d>;
+					};
+                };
+
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+
+                    as6700_32x_ac_psu1@3a {
+                        compatible = "acc_as6700_32x_psu";
+                        reg = <0x3a>;
+                    };
+                    cpr_4011_4mxx_psu1@3e {
+                        compatible = "cpr_4011_4mxx";
+                        reg = <0x3e>;
+                    };
+                    as6700_32x_dc_psu1@52 {
+                        compatible = "acc_as6700_32x_psu";
+                        reg = <0x52>;
+                    };
+
+                    as6700_32x_ac_psu2@39 {
+                        compatible = "acc_as6700_32x_psu";
+                        reg = <0x39>;
+                    };
+                    cpr_4011_4mxx_psu2@3d {
+                        compatible = "cpr_4011_4mxx";
+                        reg = <0x3d>;
+                    };
+                    as6700_32x_dc_psu2@51 {
+                        compatible = "acc_as6700_32x_psu";
+                        reg = <0x51>;
+                    };
+				};
+			};
+		};
+
+		usb1: usb@211000 {
+			dr_mode = "host";
+		};
+
+		fman0: fman@400000 {
+			enet0: ethernet@e0000 {
+				tbi-handle = <&tbi0>;
+				phy-handle = <&phy_sgmii_2>;
+				phy-connection-type = "sgmii";
+			};
+
+			mdio0: mdio@e1120 {
+				tbi0: tbi-phy@8 {
+					reg = <0x8>;
+					device_type = "tbi-phy";
+				};
+				phy_sgmii_2: ethernet-phy@2 {
+					reg = <0x2>;
+				};
+                                phy_sgmii_1e: ethernet-phy@1e {
+                                        reg = <0x1e>;
+                                };
+                                phy_sgmii_1: ethernet-phy@1 {
+                                        reg = <0x1>;
+                                };
+                       };
+
+                       enet2: ethernet@e4000 {
+                           tbi-handle = <&tbi2>;
+                           phy-handle = <&phy_sgmii_1e>;
+                           phy-connection-type = "sgmii";
+                       };
+
+                       mdio@e5120 {
+                           tbi2: tbi-phy@8 {
+                               reg = <8>;
+                               device_type = "tbi-phy";
+        		   };
+                       };
+
+                       enet3: ethernet@e6000 {
+                           tbi-handle = <&tbi3>;
+                               phy-handle = <&phy_sgmii_1>;
+                               phy-connection-type = "sgmii";
+                           };
+
+	                   mdio@e7120 {
+			       tbi3: tbi-phy@8 {
+			       reg = <8>;
+                               device_type = "tbi-phy";
+                           };
+                       };
+
+		};
+	};
+
+	rio: rapidio@ffe0c0000 {
+		reg = <0xf 0xfe0c0000 0 0x11000>;
+
+		port1 {
+			ranges = <0 0 0xc 0x20000000 0 0x10000000>;
+		};
+		port2 {
+			ranges = <0 0 0xc 0x30000000 0 0x10000000>;
+		};
+	};
+
+
+	lbc: localbus@ffe124000 {
+
+		reg = <0xf 0xfe124000 0 0x1000>;
+		ranges = <0 0 0xf 0xec000000 0x04000000>;
+
+        flash@0,0 {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            compatible = "cfi-flash";
+            reg = <0 0 0x04000000>;
+            bank-width = <2>;
+            device-width = <2>;
+        };
+	};
+
+	pci0: pcie@ffe200000 {
+		reg = <0xf 0xfe200000 0 0x1000>;
+		ranges = <0x02000000 0x0 0xd0000000
+                  0x0 0xd0000000
+                  0x0 0x08000000
+
+			      0x01000000 0x0 0x00000000
+                  0x0 0xf8000000
+                  0x0 0x00010000>;
+		pcie@0 {
+            ranges = <0x02000000 0 0xe0000000
+                      0x02000000 0 0xe0000000
+				      0 0x08000000
+
+				      0x01000000 0 0x00000000
+                      0x01000000 0 0x00000000
+				      0 0x00010000>;
+		};
+	};
+
+	pci1: pcie@ffe201000 {
+		reg = <0xf 0xfe201000 0 0x1000>;
+		ranges = <0x02000000 0x0 0xd8000000
+                  0x0 0xd8000000
+                  0x0 0x08000000
+
+			      0x01000000 0x0 0x00000000
+                  0x0 0xf8010000
+                  0x0 0x00010000>;
+		pcie@0 {
+            ranges = <0x02000000 0 0xe0000000
+                      0x02000000 0 0xe0000000
+				      0 0x08000000
+
+				      0x01000000 0 0x00000000
+                      0x01000000 0 0x00000000
+				      0 0x00010000>;
+		};
+	};
+
+	pci2: pcie@ffe202000 {
+		reg = <0xf 0xfe202000 0 0x1000>;
+		ranges = <0x02000000 0x0 0xe0000000
+                  0x0 0xe0000000
+                  0x0 0x08000000
+
+			      0x01000000 0x0 0x00000000
+                  0x0 0xf8020000
+                  0x0 0x00010000>;
+
+		pcie@0 {
+			ranges = <0x02000000 0 0xe0000000
+				      0x02000000 0 0xe0000000
+				      0 0x08000000
+
+				      0x01000000 0 0x00000000
+                      0x01000000 0 0x00000000
+				      0 0x00010000>;
+		};
+	};
+
+	fsl,dpaa {
+		compatible = "fsl,p2041-dpaa", "fsl,dpaa";
+
+		ethernet@0 {
+			compatible = "fsl,p2041-dpa-ethernet", "fsl,dpa-ethernet";
+            fsl,fman-mac = <&enet0>;
+		};
+        ethernet@2 {
+			compatible = "fsl,p2041-dpa-ethernet", "fsl,dpa-ethernet";
+            fsl,fman-mac = <&enet2>;
+        };
+        ethernet@3 {
+            compatible = "fsl,p2041-dpa-ethernet", "fsl,dpa-ethernet";
+            fsl,fman-mac = <&enet3>;
+		};
+	};
+};
+
+/include/ "fsl/as6700_32x-post.dtsi"
+
+/include/ "fsl/qoriq-dpaa-res1.dtsi"

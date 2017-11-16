@@ -49,7 +49,13 @@ done <${mtab}
 rm -f ${mtab}
 
 mount --move /proc /newroot/proc
+if [ -d /sys/firmware/efi/efivars ]; then
+    umount /sys/firmware/efi/efivars || :
+fi
 mount --move /sys /newroot/sys
+if [ -d /newroot/sys/firmware/efi/efivars ]; then
+    mount -t efivarfs efivarfs /newroot/sys/firmware/efi/efivars
+fi
 mount --move /dev /newroot/dev
 
 # Switch to /newroot if possible, else re-execute /init
@@ -58,3 +64,8 @@ if [ -x /newroot/sbin/init ]; then
 else
     exec /init
 fi
+
+# Local variables:
+# sh-indentation: 4
+# sh-basic-offset: 4
+# End:

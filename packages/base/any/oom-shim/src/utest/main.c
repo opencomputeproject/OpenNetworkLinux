@@ -115,9 +115,9 @@ aim_main(int argc, char* argv[])
 
     /* Example Platform Dump */
     onlp_init();
-    onlp_platform_dump(&aim_pvs_stdout, ONLP_OID_DUMP_F_RECURSE);
+    onlp_platform_dump(&aim_pvs_stdout, ONLP_OID_DUMP_RECURSE);
     onlp_oid_iterate(0, 0, iter__, NULL);
-    onlp_platform_show(&aim_pvs_stdout, ONLP_OID_SHOW_F_RECURSE|ONLP_OID_SHOW_F_EXTENDED);
+    onlp_platform_show(&aim_pvs_stdout, ONLP_OID_SHOW_RECURSE|ONLP_OID_SHOW_EXTENDED);
 
     if(argv[1] && !strcmp("manage", argv[1])) {
         onlp_sys_platform_manage_start();

@@ -1,0 +1,28 @@
+--- a/drivers/base/sys.c
++++ b/drivers/base/sys.c
+@@ -126,7 +126,7 @@ void sysdev_class_remove_file(struct sysdev_class *c,
+ }
+ EXPORT_SYMBOL_GPL(sysdev_class_remove_file);
+ 
+-static struct kset *system_kset;
++extern struct kset *system_kset;
+ 
+ int sysdev_class_register(struct sysdev_class *cls)
+ {
+@@ -331,14 +331,6 @@ void sysdev_unregister(struct sys_device *sysdev)
+ EXPORT_SYMBOL_GPL(sysdev_register);
+ EXPORT_SYMBOL_GPL(sysdev_unregister);
+ 
+-int __init system_bus_init(void)
+-{
+-	system_kset = kset_create_and_add("system", NULL, &devices_kset->kobj);
+-	if (!system_kset)
+-		return -ENOMEM;
+-	return 0;
+-}
+-
+ #define to_ext_attr(x) container_of(x, struct sysdev_ext_attribute, attr)
+ 
+ ssize_t sysdev_store_ulong(struct sys_device *sysdev,
+diff --git a/drivers/base/topology.c b/drivers/base/topology.c
+index f6f37a0..ae989c5 100644

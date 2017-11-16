@@ -6,6 +6,7 @@
 #include <onlp_snmp/onlp_snmp_config.h>
 #include <onlp/onlp.h>
 #include "onlp_snmp_log.h"
+#include "onlp_snmp_int.h"
 
 static int
 datatypes_init__(void)
@@ -37,13 +38,11 @@ void __onlp_snmp_module_init__(void)
 static int
 onlp_snmp_client__(int enable, void* cookie)
 {
-    /* onlp_snmp_sensors.c */
-    extern int onlp_snmp_sensors_init(void);
-    /* onlp_snmp_platform.c */
-    extern int onlp_snmp_platform_init(void);
-
     onlp_snmp_sensors_init();
     onlp_snmp_platform_init();
+
+    onlp_snmp_sensor_update_start();
+    onlp_snmp_platform_update_start();
 
     return 0;
 }

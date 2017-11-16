@@ -1,0 +1,14 @@
+--- a/include/linux/ptrace.h
++++ b/include/linux/ptrace.h
+@@ -112,7 +112,9 @@
+ 
+ #include <linux/compiler.h>		/* For unlikely.  */
+ #include <linux/sched.h>		/* For struct task_struct.  */
++#ifndef __GENKSYMS__
+ #include <linux/pid_namespace.h>	/* For task_active_pid_ns.  */
++#endif
+ 
+ 
+ extern long arch_ptrace(struct task_struct *child, long request,
+diff --git a/include/linux/random.h b/include/linux/random.h
+index f5e1311..02c1d28 100644
