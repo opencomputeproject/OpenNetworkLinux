@@ -1,7 +1,7 @@
 ############################################################
-# <bsn.cl fy=2015 v=onl>
+# <bsn.cl fy=2014 v=onl>
 #
-#           Copyright 2015 Big Switch Networks, Inc.
+#           Copyright 2014 BigSwitch Networks, Inc.
 #
 # Licensed under the Eclipse Public License, Version 1.0 (the
 # "License"); you may not use this file except in compliance
@@ -18,26 +18,27 @@
 #
 # </bsn.cl>
 ############################################################
+#
+#
+############################################################
+include $(ONL)/make/config.armel.mk
 
-THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-include $(ONL)/make/config.mk
+MODULE := libonlp-arm-delta-ag6248c
+include $(BUILDER)/standardinit.mk
 
-ifndef K_TARGET_DIR
-K_TARGET_DIR := $(THIS_DIR)
-endif
+DEPENDMODULES := AIM IOF arm_delta_ag6248c onlplib
+DEPENDMODULE_HEADERS := sff
 
-K_PATCH_DIR := $(THIS_DIR)/patches
+include $(BUILDER)/dependmodules.mk
 
-include ../../kconfig.mk
-K_CONFIG := arm-iproc-all.config
-K_BUILD_TARGET := Image
-K_COPY_SRC := arch/arm/boot/Image
-K_COPY_GZIP := 1
-ifndef K_COPY_DST
-K_COPY_DST := kernel-3.2-lts-arm-iproc-all.bin.gz
-endif
+SHAREDLIB := libonlp-arm-delta-ag6248c.so
+$(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
+include $(BUILDER)/so.mk
+.DEFAULT_GOAL := $(SHAREDLIB)
 
-export ARCH=arm
-DTS_LIST := accton_as4610_54 delta_ag6248c
+GLOBAL_CFLAGS += -I$(onlp_BASEDIR)/module/inc
+GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MODULES_INIT=1
+GLOBAL_CFLAGS += -fPIC
+GLOBAL_LINK_LIBS += -lpthread
 
-include $(ONL)/make/kbuild.mk
+include $(BUILDER)/targets.mk
