@@ -79,7 +79,7 @@ static long psu_data_convert_16(unsigned int d, int mult)
 }
 
 		
-static int 
+int 
 psu_status_info_get(int id, char *node)
 {
     int ret;
@@ -234,9 +234,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
     psu_type_t psu_type; 
-	int r_data;
-	char sn_data[15]={0};
-	char model_data[17]={0};
+    int r_data;
+    char sn_data[15]={0};
+    char model_data[17]={0};
 	
     VALIDATE(id);
 
@@ -245,29 +245,30 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
     /* Get the present state */
-	val=psu_status_info_get(index, "present");
+    val=psu_status_info_get(index, "present");
 	
     if (val<0) {
-		AIM_LOG_INFO("Unable to read PSU %d present value)\r\n", index);
-		return ONLP_STATUS_E_INVALID;
+	    AIM_LOG_INFO("Unable to read PSU %d present value)\r\n", index);
+	    return ONLP_STATUS_E_INVALID;
     }
 
-	if (val != PSU_STATUS_PRESENT) {
+    if (val != PSU_STATUS_PRESENT) {
         info->status &= ~ONLP_PSU_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
     info->status |= ONLP_PSU_STATUS_PRESENT;
 
     /* Get power good status */
-	val=psu_status_info_get(index,"good");
+    val=psu_status_info_get(index,"good");
 	
-	if (val<0) {
-		AIM_LOG_INFO("Unable to read PSU %d good value)\r\n", index);
-		return ONLP_STATUS_E_INVALID;
+    if (val<0) {
+	    AIM_LOG_INFO("Unable to read PSU %d good value)\r\n", index);
+	    return ONLP_STATUS_E_INVALID;
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
         info->status |=  ONLP_PSU_STATUS_FAILED;
+	    return ONLP_STATUS_OK;
     }
 	
     /* Get PSU type

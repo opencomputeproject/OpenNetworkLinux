@@ -29,9 +29,9 @@
 #include "platform_lib.h"
 #include "arm_delta_ag6248c_int.h"
 #include "arm_delta_i2c.h"
+#include <onlp/platformi/psui.h>
 
-
-#define MAX_FAN_SPEED       16000
+#define MAX_FAN_SPEED       12000
 #define MAX_PSU_FAN_SPEED   23000
 
 #define FILE_NAME_LEN       80
@@ -176,7 +176,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     }
     else{
         info->status &= ~ONLP_FAN_STATUS_PRESENT;
-        return ONLP_STATUS_E_UNSUPPORTED;
+        return ONLP_STATUS_OK;
     }
     
     /* get fan speed */
@@ -213,10 +213,11 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
     int   psu_id;
     int   r_data,fan_rpm;
-	
+	int   psu_present;
+    int   psu_good;
     psu_type_t psu_type;
 
-	enum ag6248c_product_id pid = get_product_id();
+    enum ag6248c_product_id pid = get_product_id();
     /* get fan fault status
      */
     psu_id   = (local_id - FAN_1_ON_PSU1) + 1;
@@ -224,6 +225,12 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
     psu_type = get_psu_type(psu_id); /* psu_id = 1 , present PSU1. pus_id =2 , present PSU2 */
     DEBUG_PRINT("[Debug][%s][%d][psu_type: %d]\n", __FUNCTION__, __LINE__, psu_type);
+    psu_present=psu_status_info_get(psu_id, "present");
+    psu_good=psu_status_info_get(psu_id, "good");
+    if((psu_present<=0)||(psu_good<=0)){
+        info->status &= ~ONLP_FAN_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
 
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
@@ -408,13 +415,13 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
         return ONLP_STATUS_E_INVALID;
     }
 	
-	rpm_val=p* MAX_PSU_FAN_SPEED/100;
+	rpm_val=p*(MAX_FAN_SPEED/100);
 	
 	/*get ret value for the speed set*/
 	fan_set_rpm_cont=FAN_FROM_REG(rpm_val);
 		
 	/*set the rpm speed */
-	rc=i2c_devname_write_byte("FAN_ON_BOARD", MAX6639_REG_TARGET_CNT(id), fan_set_rpm_cont);
+	rc=i2c_devname_write_byte("FAN_ON_BOARD", MAX6639_REG_TARGET_CNT(local_id), fan_set_rpm_cont);
 	
 	if(rc<0)
 		return ONLP_STATUS_E_INVALID;

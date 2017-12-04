@@ -28,7 +28,7 @@
 
 #include "arm_delta_ag6248c_log.h"
 
-#define CHASSIS_THERMAL_COUNT 2 
+#define CHASSIS_THERMAL_COUNT 4 
 #define CHASSIS_PSU_COUNT     2 
 
 #define PSU1_ID 1
@@ -53,7 +53,7 @@ psu_type_t get_psu_type(int id);
 
 enum onlp_fan_duty_cycle_percentage
 {
-    FAN_IDLE_RPM    = 5500,
+        FAN_IDLE_RPM    = 5500,
 	FAN_LEVEL1_RPM  = 7000,
 	FAN_LEVEL2_RPM  = 9000,
 	FAN_LEVEL3_RPM  = 12000,
@@ -130,5 +130,6 @@ typedef enum platform_id_e {
 
 extern platform_id_t platform_id;
 
+extern int psu_status_info_get(int id, char *node);
 #endif  /* __PLATFORM_LIB_H__ */
 
