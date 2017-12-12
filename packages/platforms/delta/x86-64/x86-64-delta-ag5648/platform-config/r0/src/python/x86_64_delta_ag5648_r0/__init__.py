@@ -62,7 +62,6 @@ class OnlPlatform_x86_64_delta_ag5648_r0(OnlPlatformDelta,
         os.system("echo 80000 > /sys/class/hwmon/hwmon8/temp1_max_hyst")
         os.system("echo 60000 > /sys/class/hwmon/hwmon9/temp1_max_hyst")
         os.system("echo 55000 > /sys/class/hwmon/hwmon10/temp1_max_hyst")
-
         return True
 
 

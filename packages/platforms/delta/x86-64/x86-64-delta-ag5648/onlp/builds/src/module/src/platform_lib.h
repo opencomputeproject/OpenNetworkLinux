@@ -39,7 +39,7 @@
 
 #define MAX_REAR_FAN_SPEED  20500
 #define MAX_FRONT_FAN_SPEED 23000
-#define MAX_PSU_FAN_SPEED   19000
+#define MAX_PSU_FAN_SPEED   20256
 
 #define NUM_OF_SFP 48
 #define NUM_OF_QSFP 6
@@ -94,6 +94,7 @@
 #define TURN_OFF              (0)
 #define TURN_ON               (1)
 #define ALL_FAN_TRAY_EXIST    (4)
+#define FAN_SPEED_NORMALLY    (4)
 #define PSU_STATUS_PRESENT    (1)
 #define PSU_NODE_MAX_PATH_LEN (64)
 #define FAN_ZERO_RPM          (960)
@@ -133,7 +134,6 @@
 #define FAN_STAT1_REG            (0x05)  
 #define FAN_STAT2_REG            (0x06)  
 #define PSU_STAT_REG             (0x03)  
-#define ALARM_REG                (0x06)  
 #define INTERRUPT_REG            (0x02)
 #define PORT_ADDR                (0x50)
 
@@ -170,6 +170,7 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data);
 int dni_lock_cpld_read_attribute(char *cpld_path, int addr);
+int dni_fan_speed_good();
 
 #define DEBUG_MODE 0
 

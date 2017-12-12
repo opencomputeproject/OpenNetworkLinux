@@ -69,28 +69,28 @@ static char* cpu_coretemp_files[] =
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
-	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core",   0},
+    { }, /* Not used */
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core",   0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD), "Thermal sensor near CPU (U57, middle)", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD), "Thermal sensor near CPU (U57, middle)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(65000,75000,80000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD), "Thermal sensor near Middle of front vents (U291, Middle)", 0},
-	    ONLP_THERMAL_STATUS_PRESENT,
-	    ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(55000,65000,70000)
-	},
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD), "Thermal sensor near Left of front vents (U290, Left)", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD), "Thermal sensor near Middle of front vents (U291, Middle)", 0},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(55000,65000,70000)
+    },
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD), "Thermal sensor near Left of front vents (U290, Left)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(45000,55000,60000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD), "Thermal sensor near MAC (U288, Middle)", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD), "Thermal sensor near MAC (U288, Middle)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(70000,80000,85000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BOARD), "Thermal sensor near Right of front vents (U289, right)", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BOARD), "Thermal sensor near Right of front vents (U289, right)", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(50000,60000,65000)
         },
@@ -98,11 +98,11 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(45000,55000,60000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         }
@@ -152,4 +152,3 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 
     return ONLP_STATUS_OK;
 }
-
