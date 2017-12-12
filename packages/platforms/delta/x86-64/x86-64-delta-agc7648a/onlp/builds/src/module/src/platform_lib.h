@@ -33,7 +33,7 @@
 
 #define PSU1_ID 1
 #define PSU2_ID 2
-
+#define ALL_FAN_TRAY_EXIST 4
 #define SYS_DEV_PATH "/sys/bus/i2c/devices"
 #define CPU_CPLD_PATH SYS_DEV_PATH "/2-0031"
 #define SWPLD_PATH SYS_DEV_PATH "/5-0030"
