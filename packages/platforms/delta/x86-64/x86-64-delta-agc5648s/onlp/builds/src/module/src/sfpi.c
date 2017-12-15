@@ -47,7 +47,6 @@ struct portCtrl
     int rxLosRegBit;
     int txDisableReg;
     int txDisableRegBit;
-    
 };
 
 static struct portCtrl gPortCtrl[] = 
@@ -122,7 +121,7 @@ static int port_to_presence_all_bitmap(int portstart, int portend, uint64_t* pre
 {
     int i = 0, j =0;
     int  rv = ONLP_STATUS_OK;
-	uint8_t present_bit = 0;
+    uint8_t present_bit = 0;
     
     for (i = portstart; i <= portend; i += 8)
     {
@@ -210,13 +209,12 @@ int onlp_sfpi_is_present(int port)
             AIM_LOG_ERROR("Unable to read present status from port(%d). error code: %d\r\n", port, rv);
             return ONLP_STATUS_E_INTERNAL;
         }
-	
     }
-	else
+    else
     {
-		AIM_LOG_ERROR("The port %d is invalid \r\n", port);
-		return ONLP_STATUS_E_UNSUPPORTED;
-	}
+        AIM_LOG_ERROR("The port %d is invalid \r\n", port);
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
 }
 
 int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)

@@ -119,14 +119,14 @@ int onlp_sysi_oids_get(onlp_oid_t* table, int max)
 int onlp_sysi_platform_manage_leds(void)
 { 
     int i = 0, rc = ONLP_STATUS_OK;
-	onlp_fan_info_t fan_info;
-	onlp_led_mode_t fan_new_mode;
+    onlp_fan_info_t fan_info;
+    onlp_led_mode_t fan_new_mode;
     onlp_led_mode_t fan_tray_new_mode[NUM_OF_FAN_ON_MAIN_BROAD];
-	onlp_psu_info_t psu_info[NUM_OF_PSU_ON_MAIN_BROAD];
-	onlp_led_mode_t psu_new_mode;
-	onlp_led_mode_t sys_new_mode;
+    onlp_psu_info_t psu_info[NUM_OF_PSU_ON_MAIN_BROAD];
+    onlp_led_mode_t psu_new_mode;
+    onlp_led_mode_t sys_new_mode;
 
-	/* FAN LED */
+    /* FAN LED */
     for(i = 0; i < NUM_OF_FAN_ON_MAIN_BROAD; i++)
     {
         rc = onlp_fani_info_get(ONLP_FAN_ID_CREATE(i+1), &fan_info);
@@ -171,9 +171,9 @@ int onlp_sysi_platform_manage_leds(void)
         fan_new_mode = ONLP_LED_MODE_ORANGE;
     }
     
-	onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), fan_new_mode);
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), fan_new_mode);
     
-	/* PSU1 and PSU2 LED */
+    /* PSU1 and PSU2 LED */
     for( i = 0; i < NUM_OF_PSU_ON_MAIN_BROAD; i++)
     {
         rc = onlp_psui_info_get(ONLP_PSU_ID_CREATE(i+1), &psu_info[i]);
@@ -215,12 +215,12 @@ int onlp_sysi_platform_manage_leds(void)
     {
         psu_new_mode = ONLP_LED_MODE_OFF;
     }
-     	
+
 SET_PSU_LED:
-	onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), psu_new_mode);
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_PSU), psu_new_mode);
         
-	/* SYS LED */
-	if((psu_new_mode == ONLP_LED_MODE_GREEN) && (fan_new_mode == ONLP_LED_MODE_GREEN))
+    /* SYS LED */
+    if((psu_new_mode == ONLP_LED_MODE_GREEN) && (fan_new_mode == ONLP_LED_MODE_GREEN))
     {
         sys_new_mode = ONLP_LED_MODE_GREEN;
     }

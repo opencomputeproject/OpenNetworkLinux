@@ -164,15 +164,14 @@ int onlp_ledi_init(void)
 
 int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
-    int  rv		     = ONLP_STATUS_OK;
+    int  rv          = ONLP_STATUS_OK;
     int  local_id    = 0;
     uint32_t LedMode = 0;
             
     VALIDATE(id);
     
     local_id = ONLP_OID_ID_GET(id);
-    
-    *info = linfo[local_id];	
+    *info = linfo[local_id];
 
     /* Get LED mode */
     switch(local_id)

@@ -42,17 +42,17 @@
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
-		
+
 /* Static values */
 static onlp_fan_info_t linfo[] = 
 {
-	{ }, /* Not used */
-	{ 
+    { }, /* Not used */
+    { 
         { ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD), "Chassis Fan 1", 0},
         ONLP_FAN_STATUS_PRESENT,
         ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
     },
-	{ 
+    {
         { ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD), "Chassis Fan 2", 0},
         ONLP_FAN_STATUS_PRESENT,
         ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
@@ -97,7 +97,7 @@ static onlp_fan_info_t linfo[] =
         ONLP_FAN_STATUS_PRESENT,
         ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
     },
-	{ 
+    { 
         { ONLP_FAN_ID_CREATE(FAN_ON_PSU1), "FAN ON PSU1", 0},
         ONLP_FAN_STATUS_PRESENT,
         ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
@@ -188,8 +188,8 @@ static int dni_fani_info_get_on_fanboard(int local_id, onlp_fan_info_t* info)
         case FAN_9_ON_FAN_BOARD:
             rv = ifnOS_LINUX_BmcGetDataByName("Fan_9", &FanSpeed);
             break;
-			
-	    case FAN_10_ON_FAN_BOARD:
+
+        case FAN_10_ON_FAN_BOARD:
             rv = ifnOS_LINUX_BmcGetDataByName("Fan_10", &FanSpeed);
             break;
             
@@ -249,8 +249,7 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     VALIDATE(id);
     
     local_id = ONLP_OID_ID_GET(id);
-    
-    *info = linfo[ONLP_OID_ID_GET(id)];	
+    *info = linfo[ONLP_OID_ID_GET(id)];
     
     switch(local_id)
     {

@@ -55,7 +55,7 @@ int ifnOS_LINUX_BmcI2CGet(uint8_t bus, uint8_t dev, uint32_t reg, uint32_t *rdat
             memset(tmp_data, 0x0, sizeof(tmp_data));
             
             for(dIndex = 1; dIndex <= datalen; dIndex++)
-            {			
+            {
                 if(dIndex == 1)
                 {
                     pch = strtok(cmd_rdata," ");
@@ -234,5 +234,5 @@ uint32_t xtoi(const char* str)
         str++;
     }
     
-    return x;	
+    return x;
 }

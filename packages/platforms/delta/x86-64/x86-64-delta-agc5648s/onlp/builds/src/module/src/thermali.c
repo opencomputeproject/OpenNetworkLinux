@@ -43,7 +43,7 @@
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
-		
+
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
     { }, /* Not used */
@@ -94,8 +94,7 @@ int onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     VALIDATE(id);
     
     local_id = ONLP_OID_ID_GET(id);
-    
-    *info = linfo[local_id];	
+    *info = linfo[local_id];
     
     switch(local_id)
     {
@@ -113,7 +112,7 @@ int onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             
         case THERMAL_KBP2_ON_MAIN_BOARD:
             rv = ifnOS_LINUX_BmcGetDataByName("Temp_3", &temp_data);
-            break;	
+            break;
 
         case THERMAL_JER1_ON_MAIN_BOARD:
             rv = ifnOS_LINUX_BmcGetDataByName("Temp_4", &temp_data);

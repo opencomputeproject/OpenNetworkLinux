@@ -76,8 +76,7 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     
     local_id = ONLP_OID_ID_GET(id);
     
-    *info = pinfo[local_id];	
-    
+    *info = pinfo[local_id];
     rv = ifnOS_LINUX_BmcI2CGet(I2C_BMC_BUS_3, SWPLD_1_ADDR, PSU_PRESENT_REGISTER, &PSUStatus, DATA_LEN);
     
     if(rv == ONLP_STATUS_OK)

@@ -87,19 +87,19 @@
 #define SFP_45_TO_48_PRESENT_REG        0x91
 #define QSFP_49_TO_54_PRESENT_REG       0xB2
     
-#define SFP_1_8_RX_LOS_REG			    0x75
-#define SFP_9_16_RX_LOS_REG		        0x76
-#define SFP_17_24_RX_LOS_REG		    0x77
-#define SFP_25_32_RX_LOS_REG		    0x78
-#define SFP_33_36_RX_LOS_REG		    0x79
-#define SFP_37_44_RX_LOS_REG		    0x95
-#define SFP_45_48_RX_LOS_REG		    0x96
+#define SFP_1_8_RX_LOS_REG              0x75
+#define SFP_9_16_RX_LOS_REG             0x76
+#define SFP_17_24_RX_LOS_REG            0x77
+#define SFP_25_32_RX_LOS_REG            0x78
+#define SFP_33_36_RX_LOS_REG            0x79
+#define SFP_37_44_RX_LOS_REG            0x95
+#define SFP_45_48_RX_LOS_REG            0x96
     
-#define SFP_1_8_TX_DISABLE_REG		    0x80
-#define SFP_9_16_TX_DISABLE_REG	        0x81
+#define SFP_1_8_TX_DISABLE_REG          0x80
+#define SFP_9_16_TX_DISABLE_REG         0x81
 #define SFP_17_24_TX_DISABLE_REG        0x82
-#define SFP_25_32_TX_DISABLE_REG	    0x83
-#define SFP_33_36_TX_DISABLE_REG	    0x84
+#define SFP_25_32_TX_DISABLE_REG        0x83
+#define SFP_33_36_TX_DISABLE_REG        0x84
 #define SFP_37_44_TX_DISABLE_REG        0xA0
 #define SFP_45_48_TX_DISABLE_REG        0xA1
     
@@ -107,15 +107,15 @@
 #define INVALID_REG                     0xFF
 #define INVALID_REG_BIT                 0xFF
     
-#define THERMAL_CPU_ADDR	            0x4D
-#define THERMAL_FAN_ADDR	            0x4F
-#define THERMAL_AMBI_ADDR		        0x48
-#define THERMAL_KBP1_ADDR		        0x4E
-#define THERMAL_KBP2_ADDR		        0x4F
-#define THERMAL_JER1_ADDR		        0x4C
-#define THERMAL_JER2_ADDR		        0x4D
-#define THERMAL_REGISTER	            0x00
-    
+#define THERMAL_CPU_ADDR                0x4D
+#define THERMAL_FAN_ADDR                0x4F
+#define THERMAL_AMBI_ADDR               0x48
+#define THERMAL_KBP1_ADDR               0x4E
+#define THERMAL_KBP2_ADDR               0x4F
+#define THERMAL_JER1_ADDR               0x4C
+#define THERMAL_JER2_ADDR               0x4D
+#define THERMAL_REGISTER                0x00
+                
 #define DATA_LEN                        0x01
 
 enum onlp_led_id
@@ -168,17 +168,17 @@ enum onlp_thermal_id
 
 enum led_light_mode 
 {
-	LED_MODE_OFF    = 0,
-	LED_MODE_GREEN  = 1,
-	LED_MODE_RED    = 3,
+    LED_MODE_OFF    = 0,
+    LED_MODE_GREEN  = 1,
+    LED_MODE_RED    = 3,
     LED_MODE_AMBER  = 2,
-	LED_MODE_YELLOW = 2,
-	LED_MODE_GREEN_BLINK  = 2,
-	LED_MODE_AMBER_BLINK  = 2,
-	LED_MODE_YELLOW_BLINK = 3,
+    LED_MODE_YELLOW = 2,
+    LED_MODE_GREEN_BLINK  = 2,
+    LED_MODE_AMBER_BLINK  = 2,
+    LED_MODE_YELLOW_BLINK = 3,
     LED_MODE_FAN_TRAY_RED = 2,
     LED_MODE_FAN_TRAY_GREEN = 1,
-	LED_MODE_UNKNOWN
+    LED_MODE_UNKNOWN
 };
 
 int ifnOS_LINUX_BmcI2CGet(uint8_t bus, uint8_t dev, uint32_t addr, uint32_t *data, uint8_t datalen);
