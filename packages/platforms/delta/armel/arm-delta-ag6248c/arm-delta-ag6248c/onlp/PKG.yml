@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=arm-delta-ag6248c ARCH=armel TOOLCHAIN=arm-linux-gnueabi
