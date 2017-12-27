@@ -60,8 +60,9 @@ class App(SubprocessMixin):
 
                 src = os.path.join(octx.initrdDir, "etc/machine.conf")
                 dst = os.path.join(ctx.dir, "etc/machine.conf")
-                self.log.debug("+ /bin/cp %s %s", src, dst)
-                shutil.copy2(src, dst)
+                if os.path.exists(src):
+                    self.log.debug("+ /bin/cp %s %s", src, dst)
+                    shutil.copy2(src, dst)
 
             src = "/etc/fw_env.config"
             if os.path.exists(src):
