@@ -12,7 +12,7 @@ from onl.upgrade import ubase
 from onl.sysconfig import sysconfig
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 from onl.install import BaseInstall, ConfUtils, InstallUtils
-from onl.install.ShellApp import OnieBootContext
+from onl.install.ShellApp import OnieBootContext, OnieSysinfo
 import onl.platform.current
 import onl.versions
 
@@ -83,8 +83,12 @@ class LoaderUpgrade_Fit(LoaderUpgradeBase):
         onlPlatform = onl.platform.current.OnlPlatform()
 
         with OnieBootContext(log=self.logger) as octx:
-            path = os.path.join(octx.initrdDir, "etc/machine.conf")
-            machineConf = ConfUtils.MachineConf(path=path)
+            if os.path.exists("/usr/bin/onie-shell"):
+                machineConf = OnieSysinfo(log=self.logger.getChild("onie-sysinfo"))
+            else:
+                path = os.path.join(octx.initrdDir, "etc/machine.conf")
+                if os.path.exists(path):
+                    machineConf = ConfUtils.MachineConf(path=path)
 
         installerConf = ConfUtils.InstallerConf(path="/dev/null")
         # start with an empty installerConf, fill it in piece by piece
