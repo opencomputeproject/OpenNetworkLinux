@@ -17,7 +17,7 @@ import time
 from InstallUtils import InitrdContext
 from InstallUtils import SubprocessMixin
 from InstallUtils import ProcMountsParser
-from ShellApp import OnieBootContext
+from ShellApp import OnieBootContext, OnieSysinfo
 import ConfUtils, BaseInstall
 
 class App(SubprocessMixin, object):
@@ -129,7 +129,7 @@ class App(SubprocessMixin, object):
     def runLocalOrChroot(self):
 
         if self.machineConf is None:
-            self.log.error("missing machine.conf")
+            self.log.error("missing onie-sysinfo or machine.conf")
             return 1
         if self.installerConf is None:
             self.log.error("missing installer.conf")
@@ -230,10 +230,17 @@ class App(SubprocessMixin, object):
     def runLocal(self):
 
         self.log.info("getting installer configuration")
-        if os.path.exists(ConfUtils.MachineConf.PATH):
+        osi = OnieSysinfo(log=self.log.getChild("onie-sysinfo"))
+        try:
+            halp = osi.help
+        except AttributeError:
+            halp = None
+        if halp is not None:
+            self.machineConf = osi
+        elif os.path.exists(ConfUtils.MachineConf.PATH):
             self.machineConf = ConfUtils.MachineConf()
         else:
-            self.log.warn("missing /etc/machine.conf from ONIE runtime")
+            self.log.warn("missing onie-sysinfo or /etc/machine.conf from ONIE runtime")
             self.machineConf = ConfUtils.MachineConf(path='/dev/null')
 
         self.installerConf = ConfUtils.InstallerConf()
@@ -243,7 +250,7 @@ class App(SubprocessMixin, object):
     def findPlatform(self):
 
         plat = arch = None
-        if os.path.exists(ConfUtils.MachineConf.PATH):
+        if self.machineConf is not None:
             plat = getattr(self.machineConf, 'onie_platform', None)
             arch = getattr(self.machineConf, 'onie_arch', None)
             if plat and arch:
