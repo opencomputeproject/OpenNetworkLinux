@@ -199,7 +199,7 @@ static ssize_t for_r_port_data(struct device *dev, struct device_attribute *dev_
     }
   }
  
-  return sprintf(buf, "%d\n", sfp_port_data);
+  return sprintf(buf, "%d\n", (int)sfp_port_data);
 }
 
 static ssize_t set_w_lp_mode_data(struct device *dev, struct device_attribute *dev_attr, const char *buf, size_t count)

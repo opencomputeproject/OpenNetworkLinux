@@ -14,6 +14,7 @@ class OnlPlatformMellanox(OnlPlatformBase):
         print "Caching ONIE System EEPROM..."
         onie = self.onie_syseeprom_get()
         mc = self.onie_machine_get()
+        # XXX roth -- deprecated
         if 'onie_version' in mc:
             onie['0x29'] = mc['onie_version']
             self.onie_syseeprom_set(onie)

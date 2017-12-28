@@ -50,6 +50,6 @@ class OnlPlatform_x86_64_delta_agc7648a_r0(OnlPlatformDelta,
         self.new_i2c_device('agc7648a_sfp', 0x50, 8)
 
         # Set front panel green light of sys led
-        os.system("echo 0x30 > /sys/bus/i2c/devices/5-0030/addr")
+        os.system("echo 0x1c > /sys/bus/i2c/devices/5-0030/addr")
         os.system("echo 0x10 > /sys/bus/i2c/devices/5-0030/data")
         return True
