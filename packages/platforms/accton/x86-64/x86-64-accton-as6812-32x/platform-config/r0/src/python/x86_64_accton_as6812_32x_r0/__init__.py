@@ -25,7 +25,7 @@ class OnlPlatform_x86_64_accton_as6812_32x_r0(OnlPlatformAccton,
 
         # initialize QSFP port 1~32
         for port in range(1, 33):
-            self.new_i2c_device('as6812_32x_sfp%d' % port,
+            self.new_i2c_device('as6812_32x_port%d' % port,
                                 0x50,
                                 port+1)
 
