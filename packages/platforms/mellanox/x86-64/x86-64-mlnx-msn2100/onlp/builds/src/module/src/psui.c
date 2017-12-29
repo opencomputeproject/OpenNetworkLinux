@@ -135,7 +135,6 @@ int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
     int val   = 0;
-    int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
     const char psu_model[]=PSU_MODEL;
 
@@ -156,14 +155,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     if (val != PSU_CABLE_PRESENT) {
         info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-        return ONLP_STATUS_OK;
+    }
+    else {
+    	info->status &= ~ONLP_PSU_STATUS_UNPLUGGED;
     }
 
-    info->status |= ONLP_PSU_STATUS_PRESENT;
+    _psu_info_get(info);
 
-    ret = _psu_info_get(info);
-
-    return ret;
+    return ONLP_STATUS_OK;
 }
 
 int

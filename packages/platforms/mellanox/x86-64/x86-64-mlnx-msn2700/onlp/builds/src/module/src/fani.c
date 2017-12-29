@@ -176,7 +176,8 @@ _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
         local_id /= 2;
     }
 
-    rv = onlp_file_read(data, sizeof(data), &len, IDPROM_PATH, "fan", local_id);
+    rv = onlp_file_read(data, sizeof(data), &len,
+    		IDPROM_PATH, "fan", local_id);
     if (rv < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -243,6 +244,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[(int)fru_index].status);
     OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
+    	info->status &= ~ONLP_FAN_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
     info->status |= ONLP_FAN_STATUS_PRESENT;
@@ -302,6 +304,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
     snprintf(fullpath, sizeof(fullpath), "%s%s", PREFIX_MODULE_PATH, fan_path[local_id].status);
     OPEN_READ_FILE(fullpath, r_data, nbytes, len);
     if (atoi(r_data) != FAN_STATUS_OK) {
+    	info->status &= ~ONLP_FAN_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
     info->status |= ONLP_FAN_STATUS_PRESENT;
