@@ -69,12 +69,11 @@ class OnlPlatform_x86_64_accton_as5912_54x_r0(OnlPlatformAccton,
 
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('as5912_54x_sfp%d' % port, 0x50, port+25)
-            self.new_i2c_device('as5912_54x_sfp%d' % port, 0x51, port+25)
+            self.new_i2c_device('as5912_54x_port%d' % port, 0x50, port+25)
 
         # initialize QSFP devices
         for port in range(49, 55):
-            self.new_i2c_device('as5912_54x_sfp%d' % port, 0x50, port+25)
+            self.new_i2c_device('as5912_54x_port%d' % port, 0x50, port+25)
 
         return True
 
