@@ -61,6 +61,13 @@ def baseconfig():
 
     ONLPDUMP = "%s/bin/onlpdump" % (platform.basedir_onl())
 
+    try:
+        import dmidecode
+        with open("%s/dmi-system-version" % platform.basedir_onl(), "w") as f:
+            f.write(dmidecode.QuerySection('system')['0x0001']['data']['Version'])
+    except:
+        pass
+
     if not platform.baseconfig():
         msg("*** platform class baseconfig failed.\n", fatal=True)
 

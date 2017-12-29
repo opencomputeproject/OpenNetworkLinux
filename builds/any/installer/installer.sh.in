@@ -144,7 +144,14 @@ if test "$installer_debug"; then
 fi
 
 # Pickup ONIE defines for this machine.
-if test -r /etc/machine.conf; then
+if test "$onie_platform"; then
+  :
+else
+  onie_platform=$(onie-sysinfo -p 2>/dev/null) || :
+fi
+if test "$onie_platform"; then
+  :
+elif test -r /etc/machine.conf; then
   . /etc/machine.conf
 fi
 
@@ -252,7 +259,7 @@ if test "${onie_platform}"; then
   }
 else
   if test "$ARCH_X86"; then
-    echo "Missing onie_platform (invalid /etc/machine.conf)" 1>&2
+    echo "Missing onie_platform (invalid or missing onie-sysinfo or /etc/machine.conf)" 1>&2
     exit 1
   fi
   #

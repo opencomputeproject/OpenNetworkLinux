@@ -472,6 +472,7 @@ sff_eeprom_parse_standard__(sff_eeprom_t* se, uint8_t* eeprom)
                     se->info.length = se->eeprom[146];
                     break;
                 case SFF_SFP_TYPE_SFP:
+                case SFF_SFP_TYPE_SFP28:
                     se->info.length = se->eeprom[18];
                     break;
                 default:
