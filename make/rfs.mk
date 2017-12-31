@@ -44,3 +44,6 @@ clean:
 
 show-packages:
 	$(ONL_V_at) $(RFS_COMMAND) --show-packages
+
+build-packages:
+	$(ONL_V_at) $(RFS_COMMAND) --only-build-packages
