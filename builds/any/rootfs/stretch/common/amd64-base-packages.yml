@@ -9,7 +9,6 @@
 - grub2
 - onl-upgrade
 - hw-management
-- sx-kernel
-- onl-kernel-3.16-lts-x86-64-all-modules
+- onl-kernel-4.9-lts-x86-64-all-modules
 - efibootmgr
 - gdisk

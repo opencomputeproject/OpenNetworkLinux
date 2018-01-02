@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+"""Run native onie-sysinfo
+"""
+
+import onl.install.ShellApp
+onl.install.ShellApp.OnieSysinfoApp.main()
