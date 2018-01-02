@@ -126,13 +126,13 @@ onlp_sysi_onie_info_get(onlp_onie_info_t* onie)
 int
 onlp_sysi_platform_manage_leds(void)
 {
-	int fan_number;
-	onlp_led_mode_t mode;
+	int fan_number, psu_number;
+	onlp_led_mode_t mode, system_mode;
 	int min_fan_speed;
-	enum onlp_led_id fan_led_id = LED_FAN;
+	enum onlp_led_id psu_led_id[2] = { LED_PSU1, LED_PSU2 };
+	int fan_problem = 0;
+	int psu_problem = 0;
 
-	/* after reboot, status LED should blink green, SW set to solid green */
-	onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED,LED_SYSTEM), ONLP_LED_MODE_GREEN);
 	/*
 	 * FAN Indicators
 	 *
@@ -142,7 +142,6 @@ onlp_sysi_platform_manage_leds(void)
 	 *
 	 */
 	mode = ONLP_LED_MODE_GREEN;
-
 	for( fan_number = 1; fan_number<= CHASSIS_FAN_COUNT; fan_number+=2)
 	{
 		/* each 2 fans had same led_fan */
@@ -150,9 +149,11 @@ onlp_sysi_platform_manage_leds(void)
 		/* check fans */
 		if(onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number), &fi) < 0) {
 			mode = ONLP_LED_MODE_RED;
+			fan_problem = 1;
 		}
 		else if(fi.status & ONLP_FAN_STATUS_FAILED) {
 			mode = ONLP_LED_MODE_RED;
+			fan_problem = 1;
 		}
 		else
 		{
@@ -160,6 +161,7 @@ onlp_sysi_platform_manage_leds(void)
 			if( fi.rpm < min_fan_speed)
 			{
 				mode = ONLP_LED_MODE_RED;
+				fan_problem = 1;
 			}
 		}
 		/* check fan i+1 */
@@ -168,6 +170,7 @@ onlp_sysi_platform_manage_leds(void)
 		}
 		else if(fi.status & ONLP_FAN_STATUS_FAILED) {
 			mode = ONLP_LED_MODE_RED;
+			fan_problem = 1;
 		}
 		else
 		{
@@ -175,10 +178,35 @@ onlp_sysi_platform_manage_leds(void)
 			if( fi.rpm < min_fan_speed)
 			{
 				mode = ONLP_LED_MODE_RED;
+				fan_problem = 1;
 			}
 		}
 	}
-	onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED,fan_led_id), mode);
+	onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, LED_FAN), mode);
+
+	for (psu_number = 1; psu_number <= CHASSIS_PSU_COUNT; psu_number++)
+	{
+		onlp_psu_info_t pi;
+		mode = ONLP_LED_MODE_GREEN;
+		if(onlp_psui_info_get(ONLP_PSU_ID_CREATE(psu_number), &pi) < 0) {
+			mode = ONLP_LED_MODE_RED;
+			psu_problem = 1;
+		}
+		/* Fixed system, PSU always in. Check only cable plugged. */
+		else if(pi.status & ONLP_PSU_STATUS_UNPLUGGED) {
+			mode = ONLP_LED_MODE_RED;
+			psu_problem = 1;
+		}
+		onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, psu_led_id[(psu_number-1)]), mode);
+	}
+
+	/* Set System status LED green if no problem in FANs or PSUs */
+	if (fan_problem || psu_problem)
+		system_mode = ONLP_LED_MODE_RED;
+	else
+		system_mode = ONLP_LED_MODE_GREEN;
+
+	onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, LED_SYSTEM), system_mode);
 
 	return ONLP_STATUS_OK;
 }

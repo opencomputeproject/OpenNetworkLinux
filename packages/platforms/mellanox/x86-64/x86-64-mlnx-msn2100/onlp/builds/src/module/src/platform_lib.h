@@ -41,6 +41,10 @@
 #define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
 #define IDPROM_PATH "/bsp/eeprom/%s%d_info"
 
+#ifndef KERNEL_VERSION
+#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
+#endif
+
 /* LED related data
  */
 enum onlp_led_id
@@ -62,5 +66,6 @@ typedef enum psu_type {
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 
 int onlp_fani_get_min_rpm(int id);
+int onlp_get_kernel_ver(void);
 
 #endif  /* __PLATFORM_LIB_H__ */

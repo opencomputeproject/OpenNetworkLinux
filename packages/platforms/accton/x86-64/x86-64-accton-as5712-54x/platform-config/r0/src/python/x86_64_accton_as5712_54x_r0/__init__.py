@@ -25,16 +25,15 @@ class OnlPlatform_x86_64_accton_as5712_54x_r0(OnlPlatformAccton,
             )
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('as5712_54x_sfp%d' % port, 0x50, port+1)
-            self.new_i2c_device('as5712_54x_sfp%d' % port, 0x51, port+1)
+            self.new_i2c_device('as5712_54x_port%d' % port, 0x50, port+1)
 
         # Initialize QSFP devices
-        self.new_i2c_device('as5712_54x_sfp49', 0x50, 50)
-        self.new_i2c_device('as5712_54x_sfp52', 0x50, 51)
-        self.new_i2c_device('as5712_54x_sfp50', 0x50, 52)
-        self.new_i2c_device('as5712_54x_sfp53', 0x50, 53)
-        self.new_i2c_device('as5712_54x_sfp51', 0x50, 54)
-        self.new_i2c_device('as5712_54x_sfp54', 0x50, 55)
+        self.new_i2c_device('as5712_54x_port49', 0x50, 50)
+        self.new_i2c_device('as5712_54x_port52', 0x50, 51)
+        self.new_i2c_device('as5712_54x_port50', 0x50, 52)
+        self.new_i2c_device('as5712_54x_port53', 0x50, 53)
+        self.new_i2c_device('as5712_54x_port51', 0x50, 54)
+        self.new_i2c_device('as5712_54x_port54', 0x50, 55)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(

@@ -284,10 +284,11 @@ class OnlRfsBuilder(object):
         msconfig = self.ms.generate_file()
 
         # Optional local package updates
-        for r in self.ms.localrepos:
-            logger.info("Updating %s" % r)
-            if os.path.exists(os.path.join(r, 'Makefile')):
-                onlu.execute("make -C %s" % r)
+        if os.getenv("ONLRFS_NO_PACKAGE_SCAN") is None:
+            for r in self.ms.localrepos:
+                logger.info("Updating %s" % r)
+                if os.path.exists(os.path.join(r, 'Makefile')):
+                    onlu.execute("make -C %s" % r)
 
         if os.path.exists(dir_):
             onlu.execute("sudo rm -rf %s" % dir_,
@@ -545,6 +546,7 @@ if __name__ == '__main__':
     ap.add_argument("--dir")
     ap.add_argument("--show-packages", action='store_true')
     ap.add_argument("--no-build-packages", action='store_true')
+    ap.add_argument("--only-build-packages", action='store_true')
     ap.add_argument("--msconfig")
     ap.add_argument("--multistrap-only", action='store_true')
     ap.add_argument("--no-multistrap", action='store_true')
@@ -572,7 +574,8 @@ if __name__ == '__main__':
             # Invoke onlpm to build all required (local) packages.
             onlu.execute("onlpm --try-arches %s all --skip-missing --require %s" % (ops.arch, " ".join(pkgs)),
                          ex=OnlRfsError("Failed to build all required packages."))
-
+            if ops.only_build_packages:
+                sys.exit(0)
 
         if ops.multistrap_only:
             x.multistrap(ops.dir)

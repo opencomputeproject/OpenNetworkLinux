@@ -23,12 +23,12 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
         self.new_i2c_device('pca9548', 0x71, 0)
 
         # Initialize QSFP devices
-        self.new_i2c_device('as5812_54t_qsfp49', 0x50, 4)
-        self.new_i2c_device('as5812_54t_qsfp50', 0x50, 6)
-        self.new_i2c_device('as5812_54t_qsfp51', 0x50, 3)
-        self.new_i2c_device('as5812_54t_qsfp52', 0x50, 5)
-        self.new_i2c_device('as5812_54t_qsfp53', 0x50, 7)
-        self.new_i2c_device('as5812_54t_qsfp54', 0x50, 2)
+        self.new_i2c_device('as5812_54t_port49', 0x50, 4)
+        self.new_i2c_device('as5812_54t_port50', 0x50, 6)
+        self.new_i2c_device('as5812_54t_port51', 0x50, 3)
+        self.new_i2c_device('as5812_54t_port52', 0x50, 5)
+        self.new_i2c_device('as5812_54t_port53', 0x50, 7)
+        self.new_i2c_device('as5812_54t_port54', 0x50, 2)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(

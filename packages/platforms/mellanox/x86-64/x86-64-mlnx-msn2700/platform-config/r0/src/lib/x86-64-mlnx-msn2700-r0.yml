@@ -18,7 +18,7 @@ x86-64-mlnx-msn2700-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-3-16
+      <<: *kernel-4-9
 
     args: >-
       nopat

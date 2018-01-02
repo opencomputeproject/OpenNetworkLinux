@@ -27,6 +27,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <sys/utsname.h>
+#include <linux/version.h>
 #include <AIM/aim.h>
 #include <onlplib/file.h>
 #include <sys/mman.h>
@@ -76,4 +79,31 @@ psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_i
     }
 
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_get_kernel_ver()
+{
+    struct utsname buff;
+    char ver[4];
+    char *p;
+    int i = 0;
+
+    if (uname(&buff) != 0)
+        return ONLP_STATUS_E_INTERNAL;
+
+    p = buff.release;
+
+    while (*p) {
+        if (isdigit(*p)) {
+            ver[i] = strtol(p, &p, 10);
+            i++;
+            if (i >= 3)
+                break;
+        } else {
+            p++;
+        }
+    }
+
+    return KERNEL_VERSION(ver[0], ver[1], ver[2]);
 }

@@ -41,6 +41,7 @@
 - usbutils
 - mtd-utils
 - i2c-tools
+- kmod
 - isc-dhcp-client
 - ntp
 - wget
