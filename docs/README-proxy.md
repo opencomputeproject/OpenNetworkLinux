@@ -6,12 +6,6 @@ build process dynamically pulls lots of things, this can be a pain.
 While everyone's setup is different, hopefully these directions help
 reduce that pain.
 
-
-* Update the git modules to point to http: instead of git:
-
-
-       sed -i -e 's/git:/http:/' $ONL/.gitmodules
-
 * Make sure you have apt-cacher-ng installed in your host (non-docker)
     environment and that docker starts it.  Next, configure it to use
     your proxy:
