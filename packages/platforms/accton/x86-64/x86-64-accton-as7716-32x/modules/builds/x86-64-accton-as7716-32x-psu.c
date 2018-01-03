@@ -42,7 +42,7 @@
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
 static int as7716_32x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as7716_32x_cpld_read (unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned 
  */
@@ -314,7 +314,7 @@ static struct as7716_32x_psu_data *as7716_32x_psu_update_device(struct device *d
         dev_dbg(&client->dev, "Starting as7716_32x update\n");
 
         /* Read psu status */
-        status = accton_i2c_cpld_read(0x60, 0x2);
+        status = as7716_32x_cpld_read(0x60, 0x2);
         
         if (status < 0) {
             dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
@@ -362,11 +362,6 @@ exit:
 
 static int __init as7716_32x_psu_init(void)
 {
-	extern int platform_accton_as7716_32x(void);
-	if (!platform_accton_as7716_32x()) {
-		return -ENODEV;
-	}
-
     return i2c_add_driver(&as7716_32x_psu_driver);
 }
 
