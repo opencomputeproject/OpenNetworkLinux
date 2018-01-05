@@ -17,6 +17,7 @@ import yaml
 import onl.YamlUtils
 import subprocess
 import platform
+import ast
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -256,9 +257,11 @@ class OnlPlatformBase(object):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
             data = {}
-            mcconf = subprocess.check_output("""onie-shell -c "cat /etc/machine.conf" """, shell=True)
+            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine.conf; set | egrep ^onie_.*=" """, shell=True)
             for entry in mcconf.split():
                 (k,e,v) = entry.partition('=')
+                if v and (v.startswith("'") or v.startswith('"')):
+                    v = ast.literal_eval(v)
                 if e:
                     data[k] = v
 

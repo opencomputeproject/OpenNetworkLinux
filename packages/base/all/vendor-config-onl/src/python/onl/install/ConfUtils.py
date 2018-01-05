@@ -63,18 +63,30 @@ class ConfFileBase(ConfBase):
     PATH = None
     # Override me
 
-    def __init__(self, path=None):
+    SHELL = False
+    # override me
+
+    def __init__(self, path=None, shell=False):
         self.__dict__['path'] = path or self.PATH
+        self.__dict__['shell'] = shell or self.SHELL
         ConfBase.__init__(self)
 
     def _parse(self):
         self.__dict__['_data'] = {}
-        with open(self.path) as fd:
-            for line in fd.xreadlines():
+        if self.SHELL:
+            cmd = "IFS=; set -e; . '%s'; set +e; set | egrep ^[a-zA-Z][a-zA-Z0-9_]*=" % self.path
+            buf = subprocess.check_output(cmd, shell=True)
+            for line in buf.splitlines(False):
                 self._feedLine(line)
+        else:
+            with open(self.path) as fd:
+                for line in fd.xreadlines():
+                    self._feedLine(line)
 
 class MachineConf(ConfFileBase):
+    """XXX roth -- deprecated, machine.conf is executable shell now."""
     PATH = "/etc/machine.conf"
+    SHELL = True
 
 class InstallerConf(ConfFileBase):
     PATH = "/etc/onl/installer.conf"
