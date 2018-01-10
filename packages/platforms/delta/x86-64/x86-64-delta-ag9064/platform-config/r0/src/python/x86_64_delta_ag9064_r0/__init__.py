@@ -12,7 +12,5 @@ class OnlPlatform_x86_64_delta_ag9064_r0(OnlPlatformDelta,
         # initiate eeprom
         self.new_i2c_device('24c02', 0x56, 0)
         
-        self.insmod('i2c-mei')
-        
         return True
 
