@@ -1,0 +1,2 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=delta BASENAME=x86-64-delta-ag9032v2 REVISION=r0
+
