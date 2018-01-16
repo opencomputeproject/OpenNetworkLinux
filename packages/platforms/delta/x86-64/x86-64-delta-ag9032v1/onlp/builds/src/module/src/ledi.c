@@ -48,7 +48,7 @@ static onlp_led_info_t linfo[] =
     {
         { ONLP_LED_ID_CREATE(LED_FRONT_FAN), "FRONT LED (FAN LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
     },
     {
         { ONLP_LED_ID_CREATE(LED_FRONT_SYS), "FRONT LED  (SYS LED)", 0 },
@@ -173,11 +173,13 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
            {
                if((r_data & 0x40) == 0x40)
                   info->mode = ONLP_LED_MODE_GREEN;
-               else
+               else if((r_data & 0x80) == 0x80)
                   info->mode = ONLP_LED_MODE_RED;
+               else
+                  info->mode = ONLP_LED_MODE_OFF;
            }
            else
-                info->mode = ONLP_LED_MODE_OFF;
+               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_2:
            /* Select fan tray 2 */
@@ -189,11 +191,13 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
            {
                if((r_data & 0x10) == 0x10)
                   info->mode = ONLP_LED_MODE_GREEN;
-               else
+               else if((r_data & 0x20) == 0x20)
                   info->mode = ONLP_LED_MODE_RED;
+               else
+                  info->mode = ONLP_LED_MODE_OFF;
            }
            else
-                info->mode = ONLP_LED_MODE_OFF;
+               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_3:
            /* Select fan tray 3 */
@@ -205,11 +209,13 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
            {
                if((r_data & 0x04) == 0x04)
                   info->mode = ONLP_LED_MODE_GREEN;
-               else
+               else if((r_data & 0x08) == 0x08)
                   info->mode = ONLP_LED_MODE_RED;
+               else
+                  info->mode = ONLP_LED_MODE_OFF;
            }
            else
-                info->mode = ONLP_LED_MODE_OFF;
+               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_4:
            /* Select fan tray 4 */
@@ -221,11 +227,13 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
            {
                if((r_data & 0x01) == 0x01)
                   info->mode = ONLP_LED_MODE_GREEN;
-               else
+               else if((r_data & 0x02) == 0x02)
                   info->mode = ONLP_LED_MODE_RED;
+               else
+                  info->mode = ONLP_LED_MODE_OFF;
            }
            else
-                info->mode = ONLP_LED_MODE_OFF;
+               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_5:
            /* Select fan tray 5 */
@@ -237,11 +245,13 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
            {
                if((r_data & 0x40) == 0x40)
                   info->mode = ONLP_LED_MODE_GREEN;
-               else
+               else if((r_data & 0x80) == 0x80)
                   info->mode = ONLP_LED_MODE_RED;
+               else
+                  info->mode = ONLP_LED_MODE_OFF;
            }
            else
-                info->mode = ONLP_LED_MODE_OFF;
+               info->status = ONLP_LED_STATUS_FAILED;
 	   break; 
         default:
             break;
@@ -389,11 +399,13 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                  fan_tray_led_reg_value |= 0x40;
                  dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
              }
-             else
+             else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_value |= 0x80;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
              }
+             else
+                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
              break;
         case LED_REAR_FAN_TRAY_2:
             fan_tray_led_reg_value &= ~0x30;
@@ -402,11 +414,13 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 fan_tray_led_reg_value |= 0x10;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
-            else
+            else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x20;
                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
+            else
+                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             break;
         case LED_REAR_FAN_TRAY_3:
             fan_tray_led_reg_value &= ~0x0c;
@@ -415,11 +429,13 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 fan_tray_led_reg_value |= 0x04;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
-            else
+            else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x08;
                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
+            else
+                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             break;
         case LED_REAR_FAN_TRAY_4:
             fan_tray_led_reg_value &= ~0x03;
@@ -428,11 +444,13 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 fan_tray_led_reg_value |= 0x01;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
-            else
+            else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                 fan_tray_led_reg_value |= 0x02;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             }
+            else
+                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
             break;
          case LED_REAR_FAN_TRAY_5:
              fan_tray_led_reg_2_value &= ~0xC0;
@@ -441,11 +459,13 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
                 fan_tray_led_reg_2_value |= 0x40;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
              }
-             else
+             else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_2_value |= 0x80;
                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
              }
+             else
+                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
              break;
     }
     return ONLP_STATUS_OK;
