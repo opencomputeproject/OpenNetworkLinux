@@ -85,12 +85,34 @@ class OnlRfsSystemAdmin(object):
         self.chmod("go-wx", pf);
         self.chmod("go-wx", sf);
 
+    def groupadd(self, group, gid=None, unique=True, system=False, force=False, password=None):
+        args = [ 'groupadd' ]
+        if force:
+            args.append("--force")
+        if system:
+            args.append("--system")
+        if not unique:
+            args.append("--non-unique")
+        if password:
+            args = args + [ '--password', password ]
+        if gid:
+            args = args + [ '--gid', str(gid) ]
+
+        args.append(group)
+
+        onlu.execute(args,
+                     chroot=self.chroot,
+                     ex=OnlRfsError("Adding group  '%s' failed." % group))
+
+        logger.info("added group %s", group)
+
     def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
         args = [ 'useradd', '--create-home' ]
 
-        if uid is not None:
+        if uid:
             args = args + [ '--non-unique', '--uid', str(uid) ]
-        if gid is not None:
+
+        if gid:
             args = args + [ '--gid', str(gid) ]
 
         if password:
@@ -100,14 +122,11 @@ class OnlRfsSystemAdmin(object):
         if shell:
             args = args + [ '--shell', shell ]
 
-        if gid:
-            args = args + [ '--gid', gid ]
-
         if home:
             args = args + [ '--home', home ]
 
         if groups:
-            args = args + [ '--group', groups ]
+            args = args + [ '--groups', ','.join(groups) ]
 
         if deleteFirst:
             self.userdel(username)
@@ -399,9 +418,12 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute(command,
                                  ex=OnlRfsError("Command '%s' failed." % command))
 
-                for (user, values) in Configure.get('users', {}).iteritems():
-                    ua = OnlRfsSystemAdmin(dir_)
 
+                ua = OnlRfsSystemAdmin(dir_)
+                for (group, values) in Configure.get('groups', {}).iteritems():
+                    ua.groupadd(group=group, **values if values else {})
+
+                for (user, values) in Configure.get('users', {}).iteritems():
                     if user == 'root':
                         if 'password' in values:
                             ua.user_password_set(user, values['password'])
