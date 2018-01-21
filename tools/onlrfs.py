@@ -109,10 +109,10 @@ class OnlRfsSystemAdmin(object):
     def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
         args = [ 'useradd', '--create-home' ]
 
-        if uid:
+        if uid is not None:
             args = args + [ '--non-unique', '--uid', str(uid) ]
 
-        if gid:
+        if gid is not None:
             args = args + [ '--gid', str(gid) ]
 
         if password:
@@ -574,8 +574,29 @@ if __name__ == '__main__':
     ap.add_argument("--no-multistrap", action='store_true')
     ap.add_argument("--cpio")
     ap.add_argument("--squash")
-
+    ap.add_argument("--enable-root")
     ops = ap.parse_args()
+
+    if ops.enable_root:
+        #
+        # Fixme -- this should all be rearranged to naturally support
+        # arbitrary filesystem modifications.
+        #
+        sa = OnlRfsSystemAdmin(ops.dir)
+        sa.user_password_set('root', ops.enable_root)
+        config = os.path.join(ops.dir, 'etc/ssh/sshd_config')
+        sa.chmod('a+rw', config)
+        lines = open(config).readlines()
+        with open(config, "w") as f:
+            for line in lines:
+                if line.startswith('PermitRootLogin'):
+                    v = "Yes"
+                    logger.info("Setting PermitRootLogin to %s" % v)
+                    f.write('PermitRootLogin %s\n' % v)
+                else:
+                    f.write(line)
+        sa.chmod('644', config)
+        sys.exit(0)
 
     try:
         x = OnlRfsBuilder(ops.config, ops.arch)
