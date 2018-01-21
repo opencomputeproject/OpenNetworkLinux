@@ -615,7 +615,7 @@ if __name__ == '__main__':
         if not ops.no_build_packages:
             pkgs = x.get_packages()
             # Invoke onlpm to build all required (local) packages.
-            onlu.execute("onlpm --try-arches %s all --skip-missing --require %s" % (ops.arch, " ".join(pkgs)),
+            onlu.execute("%s/tools/onlpm.py --try-arches %s all --skip-missing --require %s" % (os.getenv('ONL'), ops.arch, " ".join(pkgs)),
                          ex=OnlRfsError("Failed to build all required packages."))
             if ops.only_build_packages:
                 sys.exit(0)
@@ -630,7 +630,7 @@ if __name__ == '__main__':
         x.configure(ops.dir)
 
         if ops.cpio:
-            if onlu.execute("make-cpio.sh %s %s" % (ops.dir, ops.cpio)) != 0:
+            if onlu.execute("%s/tools/scripts/make-cpio.sh %s %s" % (os.getenv('ONL'), ops.dir, ops.cpio)) != 0:
                 raise OnlRfsError("cpio creation failed.")
 
         if ops.squash:
