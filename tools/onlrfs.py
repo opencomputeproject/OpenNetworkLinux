@@ -85,33 +85,11 @@ class OnlRfsSystemAdmin(object):
         self.chmod("go-wx", pf);
         self.chmod("go-wx", sf);
 
-    def groupadd(self, group, gid=None, unique=True, system=False, force=False, password=None):
-        args = [ 'groupadd' ]
-        if force:
-            args.append("--force")
-        if system:
-            args.append("--system")
-        if not unique:
-            args.append("--non-unique")
-        if password:
-            args = args + [ '--password', password ]
-        if gid:
-            args = args + [ '--gid', str(gid) ]
-
-        args.append(group)
-
-        onlu.execute(args,
-                     chroot=self.chroot,
-                     ex=OnlRfsError("Adding group  '%s' failed." % group))
-
-        logger.info("added group %s", group)
-
     def useradd(self, username, uid=None, gid=None, password=None, shell='/bin/bash', home=None, groups=None, sudo=False, deleteFirst=True):
         args = [ 'useradd', '--create-home' ]
 
         if uid is not None:
             args = args + [ '--non-unique', '--uid', str(uid) ]
-
         if gid is not None:
             args = args + [ '--gid', str(gid) ]
 
@@ -122,11 +100,14 @@ class OnlRfsSystemAdmin(object):
         if shell:
             args = args + [ '--shell', shell ]
 
+        if gid:
+            args = args + [ '--gid', gid ]
+
         if home:
             args = args + [ '--home', home ]
 
         if groups:
-            args = args + [ '--groups', ','.join(groups) ]
+            args = args + [ '--group', groups ]
 
         if deleteFirst:
             self.userdel(username)
@@ -418,12 +399,9 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute(command,
                                  ex=OnlRfsError("Command '%s' failed." % command))
 
-
-                ua = OnlRfsSystemAdmin(dir_)
-                for (group, values) in Configure.get('groups', {}).iteritems():
-                    ua.groupadd(group=group, **values if values else {})
-
                 for (user, values) in Configure.get('users', {}).iteritems():
+                    ua = OnlRfsSystemAdmin(dir_)
+
                     if user == 'root':
                         if 'password' in values:
                             ua.user_password_set(user, values['password'])
@@ -574,29 +552,8 @@ if __name__ == '__main__':
     ap.add_argument("--no-multistrap", action='store_true')
     ap.add_argument("--cpio")
     ap.add_argument("--squash")
-    ap.add_argument("--enable-root")
-    ops = ap.parse_args()
 
-    if ops.enable_root:
-        #
-        # Fixme -- this should all be rearranged to naturally support
-        # arbitrary filesystem modifications.
-        #
-        sa = OnlRfsSystemAdmin(ops.dir)
-        sa.user_password_set('root', ops.enable_root)
-        config = os.path.join(ops.dir, 'etc/ssh/sshd_config')
-        sa.chmod('a+rw', config)
-        lines = open(config).readlines()
-        with open(config, "w") as f:
-            for line in lines:
-                if line.startswith('PermitRootLogin'):
-                    v = "Yes"
-                    logger.info("Setting PermitRootLogin to %s" % v)
-                    f.write('PermitRootLogin %s\n' % v)
-                else:
-                    f.write(line)
-        sa.chmod('644', config)
-        sys.exit(0)
+    ops = ap.parse_args()
 
     try:
         x = OnlRfsBuilder(ops.config, ops.arch)
@@ -615,7 +572,7 @@ if __name__ == '__main__':
         if not ops.no_build_packages:
             pkgs = x.get_packages()
             # Invoke onlpm to build all required (local) packages.
-            onlu.execute("%s/tools/onlpm.py --try-arches %s all --skip-missing --require %s" % (os.getenv('ONL'), ops.arch, " ".join(pkgs)),
+            onlu.execute("onlpm --try-arches %s all --skip-missing --require %s" % (ops.arch, " ".join(pkgs)),
                          ex=OnlRfsError("Failed to build all required packages."))
             if ops.only_build_packages:
                 sys.exit(0)
@@ -630,7 +587,7 @@ if __name__ == '__main__':
         x.configure(ops.dir)
 
         if ops.cpio:
-            if onlu.execute("%s/tools/scripts/make-cpio.sh %s %s" % (os.getenv('ONL'), ops.dir, ops.cpio)) != 0:
+            if onlu.execute("make-cpio.sh %s %s" % (ops.dir, ops.cpio)) != 0:
                 raise OnlRfsError("cpio creation failed.")
 
         if ops.squash:

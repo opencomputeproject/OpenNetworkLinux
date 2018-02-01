@@ -250,37 +250,20 @@ class App(SubprocessMixin, object):
     def findPlatform(self):
 
         plat = arch = None
-
-        def _p2a(plat):
-            if plat.startswith('x86-64'):
-                return 'x86_64'
-            else:
-                return plat.partition('-')[0]
-
-        # recover platform specifier from installer configuration
-        if plat is None:
-            plat = getattr(self.installerConf, 'onie_platform', None)
-            if plat:
-                self.log.info("ONL installer running chrooted.")
-                plat = plat.replace('_', '-').replace('.', '-')
-            arch = getattr(self.installerConf, 'onie_arch', None)
-
-        # recover platform specifier from legacy ONIE machine.conf
-        if plat is None and self.machineConf is not None:
+        if self.machineConf is not None:
             plat = getattr(self.machineConf, 'onie_platform', None)
             arch = getattr(self.machineConf, 'onie_arch', None)
-            if plat:
+            if plat and arch:
                 self.log.info("ONL installer running under ONIE.")
                 plat = plat.replace('_', '-').replace('.', '-')
-
-        # recover platform specifier from ONL runtime
-        if plat is None and os.path.exists("/etc/onl/platform"):
+        elif os.path.exists("/etc/onl/platform"):
             with open("/etc/onl/platform") as fd:
                 plat = fd.read().strip()
+            if plat.startswith('x86-64'):
+                arch = 'x86_64'
+            else:
+                arch = plat.partition('-')[0]
             self.log.info("ONL installer running under ONL or ONL loader.")
-
-        if plat is not None and arch is None:
-            arch = _p2a(plat)
 
         if plat and arch:
             self.installerConf.installer_platform = plat
