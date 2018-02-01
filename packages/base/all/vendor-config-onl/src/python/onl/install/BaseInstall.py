@@ -1253,7 +1253,6 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
         self.log.info("found a disk with %d blocks",
                       self.partedDevice.getLength())
 
-        self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
         code = self.findMsdos()
         if code: return code
 

@@ -30,8 +30,8 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 
-extern int as7816_64x_cpld_read (unsigned short cpld_addr, u8 reg);
-extern int as7816_64x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
+extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 extern void led_classdev_unregister(struct led_classdev *led_cdev);
 extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
@@ -185,12 +185,12 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 
 static int as7816_64x_led_read_value(u8 reg)
 {
-	return as7816_64x_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
+	return accton_i2c_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
 }
 
 static int as7816_64x_led_write_value(u8 reg, u8 value)
 {
-	return as7816_64x_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
+	return accton_i2c_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
 }
 
 static void as7816_64x_led_update(void)

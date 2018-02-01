@@ -350,6 +350,19 @@ diff -urpN a/fs/ecryptfs/main.c b/fs/ecryptfs/main.c
 diff -urpN a/fs/ext4/namei.c b/fs/ext4/namei.c
 --- a/fs/ext4/namei.c	2016-11-20 01:17:41.000000000 +0000
 +++ b/fs/ext4/namei.c	2016-12-21 21:06:34.010677297 +0000
+@@ -1849,10 +1849,10 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	retval = ext4_handle_dirty_dx_node(handle, dir, frame->bh);
+ 	if (retval)
+-		goto out_frames;	
++		goto out_frames;
+ 	retval = ext4_handle_dirty_dirent_node(handle, dir, bh);
+ 	if (retval)
+-		goto out_frames;	
++		goto out_frames;
+ 
+ 	de = do_split(handle,dir, &bh, frame, &hinfo);
+ 	if (IS_ERR(de)) {
 @@ -2905,7 +2905,7 @@ retry:
  		 * for transaction commit if we are running out of space
  		 * and thus we deadlock. So we have to stop transaction now
@@ -4062,6 +4075,20 @@ diff -urpN a/include/linux/fs.h b/include/linux/fs.h
   *
   * @AOP_TRUNCATED_PAGE: The AOP method that was handed a locked page has
   *  			unlocked it and the page might have been truncated.
+@@ -806,10 +826,10 @@ static inline struct file *get_file(stru
+ 
+ #define	MAX_NON_LFS	((1UL<<31) - 1)
+ 
+-/* Page cache limit. The filesystems should put that into their s_maxbytes 
+-   limits, otherwise bad things can happen in VM. */ 
++/* Page cache limit. The filesystems should put that into their s_maxbytes
++   limits, otherwise bad things can happen in VM. */
+ #if BITS_PER_LONG==32
+-#define MAX_LFS_FILESIZE	(((loff_t)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1) 
++#define MAX_LFS_FILESIZE	(((loff_t)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1)
+ #elif BITS_PER_LONG==64
+ #define MAX_LFS_FILESIZE 	((loff_t)0x7fffffffffffffffLL)
+ #endif
 @@ -1401,6 +1421,7 @@ extern int vfs_link(struct dentry *, str
  extern int vfs_rmdir(struct inode *, struct dentry *);
  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
