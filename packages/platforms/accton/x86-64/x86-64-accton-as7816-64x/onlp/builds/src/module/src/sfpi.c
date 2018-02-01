@@ -40,11 +40,8 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 81, 82, 83, 84, 25, 26, 27, 28
 };
 
-#define PORT_BUS_INDEX(port) (port_bus_index[port])
-#define PORT_FORMAT	 "/sys/bus/i2c/devices/%d-0050/%s"
-
-#define MODULE_PRESENT_FORMAT		"/sys/bus/i2c/devices/19-0060/module_present_%d"
-#define MODULE_PRESENT_ALL_ATTR		"/sys/bus/i2c/devices/19-0060/module_present_all"
+#define QSFP_BUS_INDEX(port) (port_bus_index[port])
+#define QSFP_PORT_FORMAT	 "/sys/bus/i2c/devices/%d-0050/%s"
 
 /************************************************************
  *
@@ -62,7 +59,7 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {0, 64}
+     * Ports {0, 16}
      */
     int p;
     AIM_BITMAP_CLR_ALL(bmap);
@@ -83,8 +80,7 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-
-	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, (port+1)) < 0) {
+    if (onlp_file_read_int(&present, QSFP_PORT_FORMAT, QSFP_BUS_INDEX(port), "sfp_is_present") < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -96,9 +92,11 @@ int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     uint32_t bytes[8];
+    char  path[64] = {0};
     FILE* fp;
 
-    fp = fopen(MODULE_PRESENT_ALL_ATTR, "r");
+    sprintf(path, QSFP_PORT_FORMAT, QSFP_BUS_INDEX(0), "sfp_is_present_all");
+    fp = fopen(path, "r");
 
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open the sfp_is_present_all device file.");
@@ -116,7 +114,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     /* Convert to 64 bit integer in port order */
     int i = 0;
-    uint64_t presence_all = 0 ;
+    uint32_t presence_all = 0 ;
     for(i = AIM_ARRAYSIZE(bytes)-1; i >= 0; i--) {
         presence_all <<= 8;
         presence_all |= bytes[i];
@@ -134,51 +132,42 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    /*
-     * Read the SFP eeprom into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
 	int size = 0;
 
-    if(onlp_file_read(data, 256, &size, PORT_FORMAT, PORT_BUS_INDEX(port), "eeprom") != ONLP_STATUS_OK) {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
+    if(onlp_file_read(data, 256, &size, QSFP_PORT_FORMAT, QSFP_BUS_INDEX(port), "sfp_eeprom") == ONLP_STATUS_OK) {
+        if(size == 256) {
+            return ONLP_STATUS_OK;
+        }
     }
 
-    if(size != 256) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-	return ONLP_STATUS_OK;
+	return ONLP_STATUS_E_INTERNAL;
 }
 
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = PORT_BUS_INDEX(port);
+    int bus = QSFP_BUS_INDEX(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    int bus = PORT_BUS_INDEX(port);
+    int bus = QSFP_BUS_INDEX(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = PORT_BUS_INDEX(port);
+    int bus = QSFP_BUS_INDEX(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    int bus = PORT_BUS_INDEX(port);
+    int bus = QSFP_BUS_INDEX(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 

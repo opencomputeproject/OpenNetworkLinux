@@ -42,7 +42,7 @@ Multistrap:
 
   ONL:
     packages: *Packages
-    source: http://${APT_CACHE}apt.opennetlinux.org/debian
+    source: http://apt.opennetlinux.org/debian
     suite: unstable
     omitdebsrc: true
 

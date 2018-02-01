@@ -42,7 +42,7 @@
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static struct as7816_64x_psu_data *as7816_64x_psu_update_device(struct device *dev);
-extern int as7816_64x_cpld_read (unsigned short cpld_addr, u8 reg);
+extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned 
  */
@@ -200,7 +200,7 @@ static struct as7816_64x_psu_data *as7816_64x_psu_update_device(struct device *d
         dev_dbg(&client->dev, "Starting as7816_64x update\n");
 
 		/* Read psu status */
-        status = as7816_64x_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
+        status = accton_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
 		
 		if (status < 0) {
 			dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);

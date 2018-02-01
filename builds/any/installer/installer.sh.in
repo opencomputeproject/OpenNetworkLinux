@@ -149,11 +149,6 @@ if test "$onie_platform"; then
 else
   onie_platform=$(onie-sysinfo -p 2>/dev/null) || :
 fi
-if test "$onie_arch"; then
-  :
-else
-  onie_arch=$(onie-sysinfo -c 2>/dev/null) || :
-fi
 if test "$onie_platform"; then
   :
 elif test -r /etc/machine.conf; then
@@ -483,11 +478,6 @@ fi
 mkdir -p "${rootdir}/etc/onl"
 cp /dev/null "${rootdir}/etc/onl/installer.conf"
 echo "onl_version=\"$onl_version\"" >> "${rootdir}/etc/onl/installer.conf"
-
-# pass in the platform identifier, otherwise encoded in
-# machine-XXX.conf and onie-sysinfo
-echo "onie_platform=$onie_platform" >> "${rootdir}/etc/onl/installer.conf"
-echo "onie_arch=$onie_arch" >> "${rootdir}/etc/onl/installer.conf"
 
 # Generate the MD5 signature for ourselves for future reference.
 installer_md5=$(md5sum "$0" | awk '{print $1}')

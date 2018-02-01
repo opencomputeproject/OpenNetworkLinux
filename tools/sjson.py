@@ -48,10 +48,7 @@ if ops.inout:
 g_data={}
 
 if ops._in:
-    try:
-        g_data = yaml.load(open(ops._in))
-    except:
-        g_data = json.load(open(ops._in))
+    g_data = json.load(open(ops._in))
 
 if ops.kj:
     (k, j) = ops.kj

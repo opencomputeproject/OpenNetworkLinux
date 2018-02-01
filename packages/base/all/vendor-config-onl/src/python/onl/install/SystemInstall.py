@@ -12,7 +12,6 @@ import shutil
 import argparse
 import fnmatch
 import subprocess
-import glob
 
 from onl.install.InstallUtils import InitrdContext
 from onl.install.InstallUtils import ProcMountsParser
@@ -59,9 +58,9 @@ class App(SubprocessMixin):
                 self.log.info("onie directory is %s", octx.onieDir)
                 self.log.info("initrd directory is %s", octx.initrdDir)
 
-                srcPat = os.path.join(octx.initrdDir, "etc/machine*.conf")
-                for src in glob.glob(srcPat):
-                    dst = os.path.join(ctx.dir, "etc", os.path.split(src)[1])
+                src = os.path.join(octx.initrdDir, "etc/machine.conf")
+                dst = os.path.join(ctx.dir, "etc/machine.conf")
+                if os.path.exists(src):
                     self.log.debug("+ /bin/cp %s %s", src, dst)
                     shutil.copy2(src, dst)
 
@@ -99,13 +98,6 @@ class App(SubprocessMixin):
             with zipfile.ZipFile(zipPath, "w") as zf:
                 pass
             installerConf.installer_zip = os.path.split(zipPath)[1]
-
-            import onl.platform.current
-            plat = onl.platform.current.OnlPlatformName
-            if plat.startswith('x86-64'):
-                plat = 'x86_64' + plat[6:]
-            installerConf.onie_platform = plat
-            installerConf.onie_arch = plat.partition('-')[0]
 
             # finalize the local installer.conf
             dst = os.path.join(ctx.dir, "etc/onl/installer.conf")
