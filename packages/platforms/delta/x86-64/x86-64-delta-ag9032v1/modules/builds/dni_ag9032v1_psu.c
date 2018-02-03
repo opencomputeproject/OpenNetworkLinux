@@ -290,7 +290,6 @@ static int dps_800ab_16_d_write_word(struct i2c_client *client, u8 reg, \
 				client->flags |= I2C_CLIENT_PEC,
                               	I2C_SMBUS_WRITE, reg,
                               	I2C_SMBUS_WORD_DATA, &data);
-
 }
 
 static int dps_800ab_16_d_read_block(struct i2c_client *client, u8 command, \
@@ -344,8 +343,8 @@ static struct dps_800ab_16_d_data *dps_800ab_16_d_update_device( \
 				{0x8b, &data->v_out},
 				{0x89, &data->i_in},
 				{0x8c, &data->i_out},
-				{0x96, &data->p_out},
 				{0x97, &data->p_in},
+				{0x96, &data->p_out},
 				{0x8d, &(data->temp_input[0])},
 				{0x8e, &(data->temp_input[1])},
 				{0x3b, &(data->fan_duty_cycle[0])},
@@ -357,6 +356,37 @@ static struct dps_800ab_16_d_data *dps_800ab_16_d_update_device( \
 		/* one milliseconds from now */
 		data->last_updated = jiffies + HZ / 1000;
 		
+		data->v_in  = 0;
+		data->v_out = 0;
+		data->i_in  = 0;
+		data->i_out = 0;
+		data->p_in  = 0;
+		data->p_out = 0;
+		data->temp_input[0] = 0;
+		data->temp_input[1] = 0;
+		data->fan_duty_cycle[0] = 0;
+		data->fan_speed[0]  = 0;
+		data->mfr_model[0]  = '\0';
+		data->mfr_serial[0] = '\0';
+
+		command = 0x9a;		/* PSU mfr_model */
+		status = dps_800ab_16_d_read_block(client, command, 
+		data->mfr_model, ARRAY_SIZE(data->mfr_model) - 1);
+    	data->mfr_model[ARRAY_SIZE(data->mfr_model) - 1] = '\0';
+    	if (status < 0) {
+            	dev_dbg(&client->dev, "reg %d, err %d\n", command, 
+							status);
+    	}
+
+    	command = 0x9e;		/* PSU mfr_serial */
+    	status = dps_800ab_16_d_read_block(client, command, 
+		data->mfr_serial, ARRAY_SIZE(data->mfr_serial) - 1);
+    	data->mfr_serial[ARRAY_SIZE(data->mfr_serial) - 1] = '\0';
+    	if (status < 0) {
+            	dev_dbg(&client->dev, "reg %d, err %d\n", command, 
+							status);
+		}
+
 		for (i = 0; i < ARRAY_SIZE(regs_byte); i++) {
 			status = dps_800ab_16_d_read_byte(client, 
 							regs_byte[i].reg);
@@ -377,26 +407,9 @@ static struct dps_800ab_16_d_data *dps_800ab_16_d_update_device( \
 			} else {
 				*(regs_word[i].value) = status;
 			}
-		}
+		}   			
+   		
 
-		command = 0x9a;		/* PSU mfr_model */
-		status = dps_800ab_16_d_read_block(client, command, 
-			data->mfr_model, ARRAY_SIZE(data->mfr_model) - 1);
-        	data->mfr_model[ARRAY_SIZE(data->mfr_model) - 1] = '\0';
-        	if (status < 0) {
-                	dev_dbg(&client->dev, "reg %d, err %d\n", command, 
-								status);
-        	}
-
-        	command = 0x9e;		/* PSU mfr_serial */
-        	status = dps_800ab_16_d_read_block(client, command, 
-			data->mfr_serial, ARRAY_SIZE(data->mfr_serial) - 1);
-        	data->mfr_serial[ARRAY_SIZE(data->mfr_serial) - 1] = '\0';
-        	if (status < 0) {
-                	dev_dbg(&client->dev, "reg %d, err %d\n", command, 
-								status);
-       		}	
-		
 		data->valid = 1;
 	}
 	
