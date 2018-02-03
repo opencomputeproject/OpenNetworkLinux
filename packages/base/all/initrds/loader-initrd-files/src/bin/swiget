@@ -221,7 +221,7 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
 
         blkid = BlkidParser(log=self.log)
 
-        if ':' in SWI:
+        if not SWI.startswith('/') and ':' in SWI:
             devspec, sep, r = SWI.partition(':')
 
             p = "/dev/%s" % devspec
