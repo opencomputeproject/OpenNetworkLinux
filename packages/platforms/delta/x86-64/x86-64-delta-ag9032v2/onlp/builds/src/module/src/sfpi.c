@@ -30,7 +30,7 @@
 static inline int ag9032v2_sfp_get_lp_mode_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			            /* port 0-7 */
-        reg_offset = SFP_LP_MODE_1;	
+        reg_offset = SFP_LP_MODE_1;
     else if (port > 7 && port < 16)	    /* port 8-15 */
         reg_offset = SFP_LP_MODE_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -44,7 +44,7 @@ static inline int ag9032v2_sfp_get_lp_mode_reg(int port) {
 static inline int ag9032v2_sfp_get_reset_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			            /* port 0-7 */
-        reg_offset = SFP_RESET_1;	
+        reg_offset = SFP_RESET_1;
     else if (port > 7 && port < 16)	    /* port 8-15 */
         reg_offset = SFP_RESET_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -58,7 +58,7 @@ static inline int ag9032v2_sfp_get_reset_reg(int port) {
 static inline int ag9032v2_sfp_get_present_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			            /* port 0-7 */
-        reg_offset = SFP_PRESENT_1;	
+        reg_offset = SFP_PRESENT_1;
     else if (port > 7 && port < 16)	    /* port 8-15 */
         reg_offset = SFP_PRESENT_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -72,7 +72,7 @@ static inline int ag9032v2_sfp_get_present_reg(int port) {
 static inline int ag9032v2_sfp_get_respond_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)                       /* port 0-7 */
-        reg_offset = SFP_RESPOND_1; 
+        reg_offset = SFP_RESPOND_1;
     else if (port > 7 && port < 16)     /* port 8-15 */
         reg_offset = SFP_RESPOND_2;
     else if (port > 15 && port < 24)    /* port 16-23 */
@@ -86,10 +86,10 @@ static inline int ag9032v2_sfp_get_respond_reg(int port) {
 static inline int ag9032v2_sfp_get_mux_reg(int port) {
     uint8_t sel_channel = 0x00;
     if (port >= 0 && port < NUM_OF_QSFP_PORT)   /* port 0-31 ,reg : 0x01 - 0x32 */
-        sel_channel = port;                                     
+        sel_channel = port;
     else if (port == NUM_OF_QSFP_PORT){         /* port 32 */
         sel_channel = 0x20;
-    } 
+    }
     else if (port == NUM_OF_QSFP_PORT + 1){     /* port 333 */
         sel_channel = 0x21;
     }
@@ -188,14 +188,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     char *r_array[4];
     int count = 0;
     int i     = 0;
-    int j     = NUM_OF_QSFP_PORT - 1;        
+    int j     = NUM_OF_QSFP_PORT - 1;
     uint8_t bytes[4];
     uint8_t byte_get;
     uint8_t sfp1;
     uint8_t sfp2;
     uint32_t presence_all = 0 ;
-     
-    /* Read presence bitmap from SWPLD QSFP28 Presence Register 
+
+    /* Read presence bitmap from SWPLD QSFP28 Presence Register
      * if only port 0 is present, return 7F FF FF FF
      * if only port 0 and 1 present, return 3F FF FF FF
      */
@@ -223,7 +223,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     r_byte = strtok(present_all_data, " ");
     count = 0;
     while (r_byte != NULL) {
-        r_array[count++] = r_byte; 
+        r_array[count++] = r_byte;
         r_byte = strtok(NULL, " ");
     }
 
@@ -254,14 +254,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         j--;
     }
 
-    /* Populate SFP bitmap */  
+    /* Populate SFP bitmap */
     byte_get = onlp_i2c_readb(I2C_BUS_1, SWPLD_2_ADDR, SFP_SIGNAL_REG, ONLP_I2C_F_TENBIT);
     if(byte_get < 0)return ONLP_STATUS_E_GENERIC;
     sfp2 = (byte_get & 0x08) >> 3;  //get sfp2 present bit
     byte_get = byte_get >> 4;
     sfp1 = (byte_get & 0x08) >> 3;  //get sfp1 present bit
 
-    AIM_BITMAP_MOD(dst, 32, !(sfp1 & 1));    
+    AIM_BITMAP_MOD(dst, 32, !(sfp1 & 1));
     AIM_BITMAP_MOD(dst, 33, !(sfp2 & 1));
 
     return ONLP_STATUS_OK;
@@ -283,9 +283,9 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     /* Select qsfp port to response mode */
     backup_response_data = onlp_i2c_readb(I2C_BUS_1, SWPLD_1_ADDR, sfp_response_reg, ONLP_I2C_F_TENBIT);
     if(backup_response_data < 0)return ONLP_STATUS_E_GENERIC;
-    response_data = ~(1 << (7 - (port % 8)));    
+    response_data = ~(1 << (7 - (port % 8)));
     onlp_i2c_write(I2C_BUS_1, SWPLD_1_ADDR, sfp_response_reg, 1, &response_data, ONLP_I2C_F_TENBIT);
-    
+
     /* Select QSFP port */
     onlp_i2c_write(I2C_BUS_1, SWPLD_1_ADDR, SFP_I2C_MUX_REG, 1, &sfp_mux_reg, ONLP_I2C_F_TENBIT);
     memset(data, 0, 256);
@@ -320,11 +320,11 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
         switch (control) {
             case ONLP_SFP_CONTROL_RESET_STATE:
             case ONLP_SFP_CONTROL_LP_MODE:
-                *rv = 1; 
-                break;        
+                *rv = 1;
+                break;
             case ONLP_SFP_CONTROL_RX_LOS:
             case ONLP_SFP_CONTROL_TX_DISABLE:
-                *rv = 0; 
+                *rv = 0;
                 break;
             default:
                 break;
@@ -334,11 +334,11 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
         switch (control) {
             case ONLP_SFP_CONTROL_RESET_STATE:
             case ONLP_SFP_CONTROL_LP_MODE:
-                *rv = 0; 
-                break;        
+                *rv = 0;
+                break;
             case ONLP_SFP_CONTROL_RX_LOS:
             case ONLP_SFP_CONTROL_TX_DISABLE:
-                *rv = 1; 
+                *rv = 1;
                 break;
             default:
                 break;
@@ -359,7 +359,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 
     /* Select QSFP port */
     onlp_i2c_write(I2C_BUS_1, SWPLD_1_ADDR, SFP_I2C_MUX_REG, 1, &sfp_mux_reg, ONLP_I2C_F_TENBIT);
-    
+
     if(port < NUM_OF_QSFP_PORT){    //port: QSFP(0-31)
         switch (control) {
             case ONLP_SFP_CONTROL_RESET_STATE:
@@ -384,7 +384,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             case ONLP_SFP_CONTROL_RESET_STATE:
             case ONLP_SFP_CONTROL_LP_MODE:
                 value_t = ONLP_STATUS_E_INTERNAL;
-                break;                
+                break;
             case ONLP_SFP_CONTROL_RX_LOS:
                 value_backup = onlp_i2c_readb(I2C_BUS_1, SWPLD_2_ADDR, SFP_SIGNAL_REG, ONLP_I2C_F_TENBIT);
                 if(value_backup < 0)return ONLP_STATUS_E_GENERIC;
@@ -448,11 +448,13 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                  * return 0 = The module is in Reset
                  * return 1 = The module is NOT in Reset
                  */
-                if (*value == 0)
-                    *value = 1;         
-                else if (*value == 1)
-                    *value = 0;     
-                    value_t = ONLP_STATUS_OK;
+                if (*value == 0) {
+                    *value = 1;
+                }
+                else if (*value == 1) {
+                    *value = 0;
+                }
+                value_t = ONLP_STATUS_OK;
                 break;
             case ONLP_SFP_CONTROL_LP_MODE:
                 /* From sfp_lp_mode value,
@@ -465,12 +467,12 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 }
                 *value = (1 << (7 - (*value % 8))) & 1 ;
                 value_t = ONLP_STATUS_OK;
-                break;            
+                break;
         case ONLP_SFP_CONTROL_RX_LOS:
         case ONLP_SFP_CONTROL_TX_DISABLE:
-            *value = 0; 
+            *value = 0;
             value_t = ONLP_STATUS_OK;
-            break;  
+            break;
         default:
             value_t = ONLP_STATUS_E_UNSUPPORTED;
             break;
@@ -481,11 +483,11 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         case ONLP_SFP_CONTROL_RESET_STATE:
         case ONLP_SFP_CONTROL_LP_MODE:
             value_t = ONLP_STATUS_OK;
-            break;           
+            break;
         case ONLP_SFP_CONTROL_RX_LOS:
             value_t = onlp_i2c_readb(I2C_BUS_1, SWPLD_2_ADDR, SFP_SIGNAL_REG, ONLP_I2C_F_TENBIT);
             if(port == (NUM_OF_ALL_PORT - NUM_OF_SFP_PORT) && value_t >= 0){
-                *value = (value_t >> 6) & 0x01;    
+                *value = (value_t >> 6) & 0x01;
             }
             else if(port == (NUM_OF_ALL_PORT - 1) && value_t >= 0){
                 *value = (value_t >> 2) & 0x01;
