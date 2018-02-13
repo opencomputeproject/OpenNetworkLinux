@@ -1,0 +1,33 @@
+prerequisites:
+  packages:
+    - "onl-vendor-nxp-modules:arm64"
+
+common:
+  version: 1.0.0
+  arch: arm64
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+  
+
+packages:
+  - name: onl-platform-modules-arm64-nxp-ls2088ardb
+    summary: ONL Platform Modules Package for the arm64-nxp-ls2088ardb
+    depends: onl-vendor-nxp-modules
+    changelog: Changes
+
+  - name: onl-platform-modules-arm64-nxp-ls1043ardb
+    summary: ONL Platform Modules Package for the arm64-nxp-ls1043ardb
+    depends: onl-vendor-nxp-modules
+    changelog: Changes
+
+  - name: onl-platform-modules-arm64-nxp-ls1046ardb
+    summary: ONL Platform Modules Package for the arm64-nxp-ls1046ardb
+    depends: onl-vendor-nxp-modules
+    changelog: Changes
+
+  - name: onl-platform-modules-arm64-nxp-ls1088ardb
+    summary: ONL Platform Modules Package for the arm64-nxp-ls1088ardb
+    depends: onl-vendor-nxp-modules
+    changelog: Changes
+
