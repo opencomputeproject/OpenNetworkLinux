@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=arm64-nxp-ls2088ardb ARCH=arm64 TOOLCHAIN=aarch64-linux-gnu

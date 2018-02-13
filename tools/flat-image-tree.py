@@ -134,8 +134,11 @@ class InitrdImage(Image):
 class DtbImage(Image):
     """DTB Image Entry"""
 
-    def __init__(self, fdata):
+    def __init__(self, fdata, arch):
         Image.__init__(self, "flat_dt", fdata, compression="none")
+	if arch == 'arm64':
+		self.load = "<0x90000000>"
+		self.entry ="<0x90000000>"
 
     def write(self, f):
         self.start_image(f)
@@ -240,7 +243,7 @@ class FlatImageTree(object):
 
         ddict = {}
         for d in self.dtbs:
-            di = DtbImage(d)
+            di = DtbImage(d, ops.arch)
             ddict[di.name] = di
 
         idict = {}
@@ -281,7 +284,7 @@ class FlatImageTree(object):
             f.write("""            description = "%s";\n""" % name)
             f.write("""            kernel = "%s";\n""" % (KernelImage(kernel, ops.arch).name))
             f.write("""            ramdisk = "%s";\n""" % (InitrdImage(initrd, ops.arch).name))
-            f.write("""            fdt = "%s";\n""" % (DtbImage(dtb).name))
+            f.write("""            fdt = "%s";\n""" % (DtbImage(dtb, ops.arch).name))
             f.write("""        };\n\n""")
         f.write("""    };\n""")
         f.write("""};\n""")
