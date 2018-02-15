@@ -13,7 +13,7 @@ endif
 include $(ONL)/make/config.mk
 
 # All available architectures.
-ALL_ARCHES := amd64 armel
+ALL_ARCHES := amd64 powerpc armel arm64
 
 # Build rule for each architecture.
 define build_arch_template
