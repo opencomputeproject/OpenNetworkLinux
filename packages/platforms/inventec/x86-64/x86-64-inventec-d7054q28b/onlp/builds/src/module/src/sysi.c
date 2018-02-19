@@ -193,7 +193,7 @@ onlp_sysi_platform_manage_fans(void)
     {
         onlp_fan_info_t fan_info;
 
-        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
+        if (onlp_fan_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
             AIM_LOG_ERROR("Unable to get fan(%d) status\r\n", i);
             return ONLP_STATUS_E_INTERNAL;
         }
@@ -202,14 +202,14 @@ onlp_sysi_platform_manage_fans(void)
          */
         if (fan_info.status & ONLP_FAN_STATUS_FAILED) {
             AIM_LOG_ERROR("Fan(%d) is not working, set the other fans as full speed\r\n", i);
-            return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            return onlp_fan_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
 
         /* Decision 1.1: Set fan as full speed if any fan is not present.
          */
         if (!(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
             AIM_LOG_ERROR("Fan(%d) is not present, set the other fans as full speed\r\n", i);
-            return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            return onlp_fan_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
 
         /* Get fan direction (Only get the first one since all fan direction are the same)
@@ -254,14 +254,14 @@ onlp_sysi_platform_manage_fans(void)
 	}
 
 	if (i == arr_size) {
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), policy[0].duty_cycle);
+        return onlp_fan_percentage_set(ONLP_FAN_ID_CREATE(1), policy[0].duty_cycle);
 	}
 
     /* Get current temperature
      */
-    if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(2), &thermal_1) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(3), &thermal_2) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(4), &thermal_3) != ONLP_STATUS_OK) {
+    if (onlp_thermal_info_get(ONLP_THERMAL_ID_CREATE(2), &thermal_1) != ONLP_STATUS_OK ||
+        onlp_thermal_info_get(ONLP_THERMAL_ID_CREATE(3), &thermal_2) != ONLP_STATUS_OK ||
+        onlp_thermal_info_get(ONLP_THERMAL_ID_CREATE(4), &thermal_3) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read thermal status");
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -284,7 +284,7 @@ onlp_sysi_platform_manage_fans(void)
 	    return ONLP_STATUS_OK;
 	}
 
-    return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), new_duty_cycle);
+    return onlp_fan_percentage_set(ONLP_FAN_ID_CREATE(1), new_duty_cycle);
 }
 
 int
