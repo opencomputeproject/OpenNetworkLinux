@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=armel VENDOR=delta BASENAME=arm-delta-ag6248c-poe REVISION=r0

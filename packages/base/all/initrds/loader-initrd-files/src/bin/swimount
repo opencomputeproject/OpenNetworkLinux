@@ -11,6 +11,7 @@ import logging
 
 import onl.install.InstallUtils
 BlkidParser = onl.install.InstallUtils.BlkidParser
+UbinfoParser = onl.install.InstallUtils.UbinfoParser
 
 import onl.mounts
 MountContext = onl.install.InstallUtils.MountContext
@@ -26,6 +27,7 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
         self.log = log
 
         self.blkid = BlkidParser(log=self.log)
+        self.ubinfo = UbinfoParser(log=self.log)
 
     def mount(self, SWI):
 
@@ -125,6 +127,13 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
                 part = self.blkid[label]
             except IndexError:
                 part = None
+            if part is None:
+                part = {}
+                part = self.ubinfo[label]
+                
+                device = "/dev/" + part['device'] + "_" + part['Volume ID']
+
+                return self.blockdevMount(device, path, dir=mpt)
             if part is not None:
                 return self.blockdevMount(part.device, path, dir=mpt)
 
@@ -141,7 +150,12 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
             if not os.path.exists(dst):
                 self.log.error("missing SWI: %s", dst)
                 return None
-            self.check_call(('mount', '-o', 'rw,remount', dst,))
+            p = dev.find('ubi')
+            if p < 0:
+                self.check_call(('mount', '-o', 'rw,remount', dst,))
+            else:
+                self.check_call(('mount', '-t', 'ubifs', '-o', 'rw,remount', dst,))
+                
             return dst
 
         with MountContext(device=dev, log=self.log) as ctx:
@@ -154,7 +168,12 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
             # move to its proper location as per mtab
             # XXX perms may not be right here
             if dir is not None:
-                self.check_call(('mount', '-o', 'rw,remount', ctx.dir,))
+                p = dev.find('ubi')
+                if p < 0:
+                    self.check_call(('mount', '-o', 'rw,remount', ctx.dir,))
+                else:
+                    self.check_call(('mount', '-t', 'ubifs',  '-o', 'rw,remount', ctx.dir,))
+                    
                 self.check_call(('mount', '--move', ctx.dir, dir,))
                 ctx.mounted = False
                 dst = dir
