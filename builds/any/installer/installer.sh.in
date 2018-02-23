@@ -578,7 +578,7 @@ if test -f "$postinst"; then
 fi
 
 installer_unzip $installer_zip postinstall.sh || :
-if test -f preinstall.sh; then
+if test -f postinstall.sh; then
   chmod +x postinstall.sh
   ./postinstall.sh $rootdir
 fi
