@@ -19,6 +19,7 @@ import zipfile
 import onl.install.InstallUtils
 MountContext = onl.install.InstallUtils.MountContext
 BlkidParser = onl.install.InstallUtils.BlkidParser
+UbinfoParser = onl.install.InstallUtils.UbinfoParser
 ProcMountsParser = onl.install.InstallUtils.ProcMountsParser
 
 import onl.mounts
@@ -247,6 +248,14 @@ class Runner(onl.install.InstallUtils.SubprocessMixin):
                     part = blkid[label]
                 except IndexError:
                     part = None
+                if part is None:
+                    ubinfo = UbinfoParser(log=self.log)
+                    part = {}
+                    part = ubinfo[label]
+                    device = "/dev/" + part['device'] + "_" + part['Volume ID']
+                    
+                    return self.blockdevCopy(device, r, dir=mpt)
+
                 if part is not None:
                     return self.blockdevCopy(part.device, r, dir=mpt)
 
