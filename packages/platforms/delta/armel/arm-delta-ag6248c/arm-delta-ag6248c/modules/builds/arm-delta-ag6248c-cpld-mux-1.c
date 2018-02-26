@@ -1,13 +1,11 @@
 /*
- * An I2C multiplexer dirver for delta as5812 CPLD
+ * An I2C multiplexer dirver for delta ag6248c CPLD
  *
- * Copyright (C) 2017 Delta Networks, Inc.
- * Brandon Chuang <brandon_chuang@delta.com.tw>
+ * Copyright (C) 2018 Delta Networks, Inc.
+ * Shaohua Xiong <shaohua.xiong@deltaww.com>
  *
  * This module supports the delta cpld that hold the channel select
  * mechanism for other i2c slave devices, such as SFP.
- * This includes the:
- *	 Delta ag7648c CPLD1/CPLD2/CPLD3
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -233,7 +231,7 @@ static void __exit delta_i2c_cpld_mux_exit(void)
 	__delta_i2c_cpld_mux_remove ();
 }
 
-MODULE_AUTHOR("Dave Hu <dave.hu@deltasystems.com>");
+MODULE_AUTHOR("Shaohua Xiong <shaohua.xiong@deltaww.com>");
 MODULE_DESCRIPTION("Delta I2C CPLD mux driver");
 MODULE_LICENSE("GPL");
 
