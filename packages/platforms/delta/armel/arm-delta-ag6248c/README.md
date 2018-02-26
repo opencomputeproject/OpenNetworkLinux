@@ -1,7 +1,4 @@
-#How to run ONL in DELTA AG6248C board
-
-For the first step, it only support install the ONL to the USB and boot up.
-It will be support to install the ONL to NandFlash next step.
+#How to run ONL in DELTA AG6248C and AG6248C_POE board
 
 Build the ONL
 --------------------------------------------------------------------------
