@@ -64,7 +64,7 @@ enum onlp_fan_id
 #define MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(id) \
     { \
         { ONLP_FAN_ID_CREATE(FAN_##id##_ON_MAIN_BOARD), "Chassis Fan "#id, 0 }, \
-        ONLP_FAN_STATUS_B2F | ONLP_FAN_STATUS_PRESENT, \
+        ONLP_FAN_STATUS_F2B | ONLP_FAN_STATUS_PRESENT, \
         (ONLP_FAN_CAPS_SET_PERCENTAGE |ONLP_FAN_CAPS_SET_RPM| ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
         0, \
         0, \
@@ -74,7 +74,7 @@ enum onlp_fan_id
 #define MAKE_FAN_INFO_NODE_ON_PSU(psu_id, fan_id) \
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
-        ONLP_FAN_STATUS_B2F | ONLP_FAN_STATUS_PRESENT, \
+        ONLP_FAN_STATUS_F2B | ONLP_FAN_STATUS_PRESENT, \
         (ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
         0, \
         0, \

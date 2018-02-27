@@ -37,7 +37,7 @@
 psu_type_t get_psu_type(int id)
 {
 	if ((id == PSU1_ID)||(id == PSU2_ID))
-		return PSU_TYPE_AC_B2F;
+		return PSU_TYPE_AC_F2B;
     return PSU_TYPE_UNKNOWN;
 }
 

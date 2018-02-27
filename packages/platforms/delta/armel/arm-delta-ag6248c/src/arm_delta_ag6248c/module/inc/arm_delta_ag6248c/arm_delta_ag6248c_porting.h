@@ -1,13 +1,7 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- * 
- *        http://www.eclipse.org/legal/epl-v10.html
+ * Copyright 2018, Delta Networks, Inc.       
  * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -32,12 +26,12 @@
  * @{
  *
  ***********************************************************/
-#ifndef __ONLPSIM_PORTING_H__
-#define __ONLPSIM_PORTING_H__
+#ifndef __ARM_DELTA_AG6248C_PORTING_H__
+#define __ARM_DELTA_AG6248C_PORTING_H__
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,88 +39,88 @@
 #include <memory.h>
 #endif
 
-#ifndef ONLPSIM_MALLOC
+#ifndef ARM_DELTA_AG6248C_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define ONLPSIM_MALLOC GLOBAL_MALLOC
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_MALLOC malloc
+        #define ARM_DELTA_AG6248C_MALLOC GLOBAL_MALLOC
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_MALLOC malloc
     #else
-        #error The macro ONLPSIM_MALLOC is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_FREE
+#ifndef ARM_DELTA_AG6248C_FREE
     #if defined(GLOBAL_FREE)
-        #define ONLPSIM_FREE GLOBAL_FREE
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_FREE free
+        #define ARM_DELTA_AG6248C_FREE GLOBAL_FREE
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_FREE free
     #else
-        #error The macro ONLPSIM_FREE is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_MEMSET
+#ifndef ARM_DELTA_AG6248C_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define ONLPSIM_MEMSET GLOBAL_MEMSET
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_MEMSET memset
+        #define ARM_DELTA_AG6248C_MEMSET GLOBAL_MEMSET
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_MEMSET memset
     #else
-        #error The macro ONLPSIM_MEMSET is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_MEMCPY
+#ifndef ARM_DELTA_AG6248C_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define ONLPSIM_MEMCPY GLOBAL_MEMCPY
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_MEMCPY memcpy
+        #define ARM_DELTA_AG6248C_MEMCPY GLOBAL_MEMCPY
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_MEMCPY memcpy
     #else
-        #error The macro ONLPSIM_MEMCPY is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_STRNCPY
+#ifndef ARM_DELTA_AG6248C_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define ONLPSIM_STRNCPY GLOBAL_STRNCPY
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_STRNCPY strncpy
+        #define ARM_DELTA_AG6248C_STRNCPY GLOBAL_STRNCPY
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_STRNCPY strncpy
     #else
-        #error The macro ONLPSIM_STRNCPY is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_VSNPRINTF
+#ifndef ARM_DELTA_AG6248C_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define ONLPSIM_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_VSNPRINTF vsnprintf
+        #define ARM_DELTA_AG6248C_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_VSNPRINTF vsnprintf
     #else
-        #error The macro ONLPSIM_VSNPRINTF is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_SNPRINTF
+#ifndef ARM_DELTA_AG6248C_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define ONLPSIM_SNPRINTF GLOBAL_SNPRINTF
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_SNPRINTF snprintf
+        #define ARM_DELTA_AG6248C_SNPRINTF GLOBAL_SNPRINTF
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_SNPRINTF snprintf
     #else
-        #error The macro ONLPSIM_SNPRINTF is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef ONLPSIM_STRLEN
+#ifndef ARM_DELTA_AG6248C_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define ONLPSIM_STRLEN GLOBAL_STRLEN
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_STRLEN strlen
+        #define ARM_DELTA_AG6248C_STRLEN GLOBAL_STRLEN
+    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
+        #define ARM_DELTA_AG6248C_STRLEN strlen
     #else
-        #error The macro ONLPSIM_STRLEN is required but cannot be defined.
+        #error The macro ARM_DELTA_AG6248C_STRLEN is required but cannot be defined.
     #endif
 #endif
 
 /* <auto.end.portingmacro(ALL).define> */
 
 
-#endif /* __ONLPSIM_PORTING_H__ */
+#endif /* __ARM_DELTA_AG6248C_PORTING_H__ */
 /* @} */

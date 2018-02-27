@@ -1,13 +1,8 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
+ * Copyright 2018, Delta Networks, Inc.       
  * 
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- * 
- *        http://www.eclipse.org/legal/epl-v10.html
  * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -30,9 +25,9 @@
  * arm_delta_ag6248c log struct.
  */
 AIM_LOG_STRUCT_DEFINE(
-                      ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT,
-                      ONLPSIM_CONFIG_LOG_BITS_DEFAULT,
+                      ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT,
+                      ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT,
                       NULL, /* Custom log map */
-                      ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+                      ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT
                      );
 
