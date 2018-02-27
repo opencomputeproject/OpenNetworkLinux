@@ -1,14 +1,8 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  *
- *        Copyright 2014, 2015 Big Switch Networks, Inc.
- *
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- *
- *        http://www.eclipse.org/legal/epl-v10.html
- *
+ * Copyright 2018, Delta Networks, Inc.
+
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
@@ -32,96 +26,96 @@
  * @{
  *
  *****************************************************************************/
-#ifndef __ONLPSIM_CONFIG_H__
-#define __ONLPSIM_CONFIG_H__
+#ifndef __ARM_DELTA_AG6248C_CONFIG_H__
+#define __ARM_DELTA_AG6248C_CONFIG_H__
 
 #ifdef GLOBAL_INCLUDE_CUSTOM_CONFIG
 #include <global_custom_config.h>
 #endif
-#ifdef ONLPSIM_INCLUDE_CUSTOM_CONFIG
+#ifdef ARM_DELTA_AG6248C_INCLUDE_CUSTOM_CONFIG
 #include <arm_delta_ag6248c_custom_config.h>
 #endif
 
-/* <auto.start.cdefs(ONLPSIM_CONFIG_HEADER).header> */
+/* <auto.start.cdefs(ARM_DELTA_AG6248C_CONFIG_HEADER).header> */
 #include <AIM/aim.h>
 /**
- * ONLPSIM_CONFIG_INCLUDE_LOGGING
+ * ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING
  *
  * Include or exclude logging. */
 
 
-#ifndef ONLPSIM_CONFIG_INCLUDE_LOGGING
-#define ONLPSIM_CONFIG_INCLUDE_LOGGING 1
+#ifndef ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING
+#define ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING 1
 #endif
 
 /**
- * ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT
+ * ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT
  *
  * Default enabled log options. */
 
 
-#ifndef ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT
-#define ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT AIM_LOG_OPTIONS_DEFAULT
+#ifndef ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT
+#define ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT AIM_LOG_OPTIONS_DEFAULT
 #endif
 
 /**
- * ONLPSIM_CONFIG_LOG_BITS_DEFAULT
+ * ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT
  *
  * Default enabled log bits. */
 
 
-#ifndef ONLPSIM_CONFIG_LOG_BITS_DEFAULT
-#define ONLPSIM_CONFIG_LOG_BITS_DEFAULT AIM_LOG_BITS_DEFAULT
+#ifndef ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT
+#define ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT AIM_LOG_BITS_DEFAULT
 #endif
 
 /**
- * ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+ * ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT
  *
  * Default enabled custom log bits. */
 
 
-#ifndef ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT
-#define ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT 0
+#ifndef ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+#define ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT 0
 #endif
 
 /**
- * ONLPSIM_CONFIG_PORTING_STDLIB
+ * ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB
  *
  * Default all porting macros to use the C standard libraries. */
 
 
-#ifndef ONLPSIM_CONFIG_PORTING_STDLIB
-#define ONLPSIM_CONFIG_PORTING_STDLIB 1
+#ifndef ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB
+#define ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB 1
 #endif
 
 /**
- * ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
+ * ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
  *
  * Include standard library headers for stdlib porting macros. */
 
 
-#ifndef ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
-#define ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS ONLPSIM_CONFIG_PORTING_STDLIB
+#ifndef ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
+#define ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB
 #endif
 
 /**
- * ONLPSIM_CONFIG_INCLUDE_UCLI
+ * ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI
  *
  * Include generic uCli support. */
 
 
-#ifndef ONLPSIM_CONFIG_INCLUDE_UCLI
-#define ONLPSIM_CONFIG_INCLUDE_UCLI 0
+#ifndef ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI
+#define ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI 0
 #endif
 
 /**
- * ONLPSIM_CONFIG_SFP_COUNT
+ * ARM_DELTA_AG6248C_CONFIG_SFP_COUNT
  *
  * SFP Count. */
 
 
-#ifndef ONLPSIM_CONFIG_SFP_COUNT
-#define ONLPSIM_CONFIG_SFP_COUNT 0
+#ifndef ARM_DELTA_AG6248C_CONFIG_SFP_COUNT
+#define ARM_DELTA_AG6248C_CONFIG_SFP_COUNT 0
 #endif
 
 
@@ -154,9 +148,9 @@ const char* arm_delta_ag6248c_config_lookup(const char* setting);
  */
 int arm_delta_ag6248c_config_show(struct aim_pvs_s* pvs);
 
-/* <auto.end.cdefs(ONLPSIM_CONFIG_HEADER).header> */
+/* <auto.end.cdefs(ARM_DELTA_AG6248C_CONFIG_HEADER).header> */
 
 #include "arm_delta_ag6248c_porting.h"
 
-#endif /* __ONLPSIM_CONFIG_H__ */
+#endif /* __ARM_DELTA_AG6248C_CONFIG_H__ */
 /* @} */

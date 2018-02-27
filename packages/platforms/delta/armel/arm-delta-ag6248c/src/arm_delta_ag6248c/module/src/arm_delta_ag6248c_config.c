@@ -1,13 +1,8 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  *
- *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ * Copyright 2018, Delta Networks, Inc.
  *
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- *
- *        http://www.eclipse.org/legal/epl-v10.html
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -25,50 +20,50 @@
 
 #include <arm_delta_ag6248c/arm_delta_ag6248c_config.h>
 
-/* <auto.start.cdefs(ONLPSIM_CONFIG_HEADER).source> */
+/* <auto.start.cdefs(ARM_DELTA_AG6248C_CONFIG_HEADER).source> */
 #define __arm_delta_ag6248c_config_STRINGIFY_NAME(_x) #_x
 #define __arm_delta_ag6248c_config_STRINGIFY_VALUE(_x) __arm_delta_ag6248c_config_STRINGIFY_NAME(_x)
 arm_delta_ag6248c_config_settings_t arm_delta_ag6248c_config_settings[] =
 {
-#ifdef ONLPSIM_CONFIG_INCLUDE_LOGGING
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_INCLUDE_LOGGING), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_INCLUDE_LOGGING) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING) },
 #else
-{ ONLPSIM_CONFIG_INCLUDE_LOGGING(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_INCLUDE_LOGGING(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT) },
 #else
-{ ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_LOG_OPTIONS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_LOG_BITS_DEFAULT
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_LOG_BITS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_LOG_BITS_DEFAULT) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT) },
 #else
-{ ONLPSIM_CONFIG_LOG_BITS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_LOG_BITS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT) },
 #else
-{ ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_LOG_CUSTOM_BITS_DEFAULT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_PORTING_STDLIB
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_PORTING_STDLIB), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_PORTING_STDLIB) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB) },
 #else
-{ ONLPSIM_CONFIG_PORTING_STDLIB(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS) },
 #else
-{ ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_INCLUDE_UCLI
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_INCLUDE_UCLI), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_INCLUDE_UCLI) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI) },
 #else
-{ ONLPSIM_CONFIG_INCLUDE_UCLI(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_INCLUDE_UCLI(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
-#ifdef ONLPSIM_CONFIG_SFP_COUNT
-    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ONLPSIM_CONFIG_SFP_COUNT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ONLPSIM_CONFIG_SFP_COUNT) },
+#ifdef ARM_DELTA_AG6248C_CONFIG_SFP_COUNT
+    { __arm_delta_ag6248c_config_STRINGIFY_NAME(ARM_DELTA_AG6248C_CONFIG_SFP_COUNT), __arm_delta_ag6248c_config_STRINGIFY_VALUE(ARM_DELTA_AG6248C_CONFIG_SFP_COUNT) },
 #else
-{ ONLPSIM_CONFIG_SFP_COUNT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
+{ ARM_DELTA_AG6248C_CONFIG_SFP_COUNT(__arm_delta_ag6248c_config_STRINGIFY_NAME), "__undefined__" },
 #endif
     { NULL, NULL }
 };
@@ -97,5 +92,5 @@ arm_delta_ag6248c_config_show(struct aim_pvs_s* pvs)
     return i;
 }
 
-/* <auto.end.cdefs(ONLPSIM_CONFIG_HEADER).source> */
+/* <auto.end.cdefs(ARM_DELTA_AG6248C_CONFIG_HEADER).source> */
 

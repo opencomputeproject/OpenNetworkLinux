@@ -1,13 +1,7 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- * 
- *        http://www.eclipse.org/legal/epl-v10.html
+ * Copyright 2018, Delta Networks, Inc.       
  * 
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -30,7 +24,7 @@
 static int
 datatypes_init__(void)
 {
-#define ONLPSIM_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
+#define ARM_DELTA_AG6248C_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
 #include <arm_delta_ag6248c/arm_delta_ag6248c.x>
     return 0;
 }

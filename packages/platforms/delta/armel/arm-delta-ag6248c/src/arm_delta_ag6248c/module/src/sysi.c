@@ -165,13 +165,13 @@ onlp_sysi_platform_manage_fans(void)
     }
   
     /* Get temperature */
-    rc = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(1), &ti1);
+    rc = onlp_thermal_info_get(ONLP_THERMAL_ID_CREATE(1), &ti1);
 	
     if (rc != ONLP_STATUS_OK) {
         return rc;
     }
         
-    rc = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(2), &ti2);
+    rc = onlp_thermal_info_get(ONLP_THERMAL_ID_CREATE(2), &ti2);
 	
     if (rc != ONLP_STATUS_OK) {
         return rc;
@@ -192,8 +192,8 @@ onlp_sysi_platform_manage_fans(void)
         return ONLP_STATUS_OK;
    }
        
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(1),new_rpm);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(2),new_rpm); 
+    onlp_fan_rpm_set(ONLP_FAN_ID_CREATE(1),new_rpm);
+    onlp_fan_rpm_set(ONLP_FAN_ID_CREATE(2),new_rpm); 
     
         
     return ONLP_STATUS_OK;
