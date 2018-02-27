@@ -1,16 +1,1 @@
-variables:
-  platform: x86-64-accton-wedge100s-32x-r0
-  install: /lib/platform-config/${platform}/onl
-
-common:
-  version: 1.0.0
-  arch: amd64
-  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
-  maintainer: support@bigswitch.com
-  support: opennetworklinux@googlegroups.com
-  comment: dummy package for ONLP on Wedge
-packages:
-  - name: onlp-${platform}
-    summary: ONLP Package for the ${platform} platform.
-
-    changelog: initial version
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=x86-64-accton-wedge100s-32x ARCH=amd64 TOOLCHAIN=x86_64-linux-gnu
