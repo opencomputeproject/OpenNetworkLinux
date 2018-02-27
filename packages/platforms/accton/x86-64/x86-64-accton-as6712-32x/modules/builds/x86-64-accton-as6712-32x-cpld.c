@@ -32,36 +32,20 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
-#include <linux/dmi.h>
 #include <linux/version.h>
+#include <linux/stat.h>
+#include <linux/hwmon-sysfs.h>
+#include <linux/delay.h>
 
-static struct dmi_system_id as6712_dmi_table[] = {
-    {
-        .ident = "Accton AS6712",
-        .matches = {
-            DMI_MATCH(DMI_BOARD_VENDOR, "Accton"),
-            DMI_MATCH(DMI_PRODUCT_NAME, "AS6712"),
-        },
-    },
-    {
-        .ident = "Accton AS6712",
-        .matches = {
-            DMI_MATCH(DMI_SYS_VENDOR, "Accton"),
-            DMI_MATCH(DMI_PRODUCT_NAME, "AS6712"),
-        },
-    },
-};
-
-int platform_accton_as6712_32x(void)
-{
-    return dmi_check_system(as6712_dmi_table);
-}
-EXPORT_SYMBOL(platform_accton_as6712_32x);
+#define I2C_RW_RETRY_COUNT				10
+#define I2C_RW_RETRY_INTERVAL			60 /* ms */
 
 #define NUM_OF_CPLD1_CHANS 0x0
 #define NUM_OF_CPLD2_CHANS 0x10
 #define NUM_OF_CPLD3_CHANS 0x10
-#define NUM_OF_ALL_CPLD_CHANS (NUM_OF_CPLD2_CHANS + NUM_OF_CPLD3_CHANS)
+#define CPLD_CHANNEL_SELECT_REG 0x2
+#define CPLD_DESELECT_CHANNEL   0xFF
+
 #define ACCTON_I2C_CPLD_MUX_MAX_NCHANS  NUM_OF_CPLD3_CHANS
 
 static LIST_HEAD(cpld_client_list);
@@ -78,10 +62,13 @@ enum cpld_mux_type {
     as6712_32x_cpld1
 };
 
-struct accton_i2c_cpld_mux {
+struct as6712_32x_cpld_data {
     enum cpld_mux_type type;
     struct i2c_adapter *virt_adaps[ACCTON_I2C_CPLD_MUX_MAX_NCHANS];
     u8 last_chan;  /* last register value */
+
+    struct device      *hwmon_dev;
+    struct mutex        update_lock;
 };
 
 struct chip_desc {
@@ -105,53 +92,298 @@ static const struct chip_desc chips[] = {
     }
 };
 
-static const struct i2c_device_id accton_i2c_cpld_mux_id[] = {
+static const struct i2c_device_id as6712_32x_cpld_mux_id[] = {
     { "as6712_32x_cpld1", as6712_32x_cpld1 },
     { "as6712_32x_cpld2", as6712_32x_cpld2 },
     { "as6712_32x_cpld3", as6712_32x_cpld3 },
     { }
 };
-MODULE_DEVICE_TABLE(i2c, accton_i2c_cpld_mux_id);
+MODULE_DEVICE_TABLE(i2c, as6712_32x_cpld_mux_id);
+
+#define TRANSCEIVER_PRESENT_ATTR_ID(index)   	MODULE_PRESENT_##index
+#define TRANSCEIVER_TXDISABLE_ATTR_ID(index)   	MODULE_TXDISABLE_##index
+#define TRANSCEIVER_RXLOS_ATTR_ID(index)   		MODULE_RXLOS_##index
+#define TRANSCEIVER_TXFAULT_ATTR_ID(index)   	MODULE_TXFAULT_##index
+
+enum as6712_32x_cpld_sysfs_attributes {
+	CPLD_VERSION,
+	ACCESS,
+	MODULE_PRESENT_ALL,
+	MODULE_RXLOS_ALL,
+	/* transceiver attributes */
+	TRANSCEIVER_PRESENT_ATTR_ID(1),
+	TRANSCEIVER_PRESENT_ATTR_ID(2),
+	TRANSCEIVER_PRESENT_ATTR_ID(3),
+	TRANSCEIVER_PRESENT_ATTR_ID(4),
+	TRANSCEIVER_PRESENT_ATTR_ID(5),
+	TRANSCEIVER_PRESENT_ATTR_ID(6),
+	TRANSCEIVER_PRESENT_ATTR_ID(7),
+	TRANSCEIVER_PRESENT_ATTR_ID(8),
+	TRANSCEIVER_PRESENT_ATTR_ID(9),
+	TRANSCEIVER_PRESENT_ATTR_ID(10),
+	TRANSCEIVER_PRESENT_ATTR_ID(11),
+	TRANSCEIVER_PRESENT_ATTR_ID(12),
+	TRANSCEIVER_PRESENT_ATTR_ID(13),
+	TRANSCEIVER_PRESENT_ATTR_ID(14),
+	TRANSCEIVER_PRESENT_ATTR_ID(15),
+	TRANSCEIVER_PRESENT_ATTR_ID(16),
+	TRANSCEIVER_PRESENT_ATTR_ID(17),
+	TRANSCEIVER_PRESENT_ATTR_ID(18),
+	TRANSCEIVER_PRESENT_ATTR_ID(19),
+	TRANSCEIVER_PRESENT_ATTR_ID(20),
+	TRANSCEIVER_PRESENT_ATTR_ID(21),
+	TRANSCEIVER_PRESENT_ATTR_ID(22),
+	TRANSCEIVER_PRESENT_ATTR_ID(23),
+	TRANSCEIVER_PRESENT_ATTR_ID(24),
+	TRANSCEIVER_PRESENT_ATTR_ID(25),
+	TRANSCEIVER_PRESENT_ATTR_ID(26),
+	TRANSCEIVER_PRESENT_ATTR_ID(27),
+	TRANSCEIVER_PRESENT_ATTR_ID(28),
+	TRANSCEIVER_PRESENT_ATTR_ID(29),
+	TRANSCEIVER_PRESENT_ATTR_ID(30),
+	TRANSCEIVER_PRESENT_ATTR_ID(31),
+	TRANSCEIVER_PRESENT_ATTR_ID(32),
+};
+
+/* sysfs attributes for hwmon 
+ */
+static ssize_t show_status(struct device *dev, struct device_attribute *da,
+             char *buf);
+static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
+             char *buf);
+static ssize_t access(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_version(struct device *dev, struct device_attribute *da,
+             char *buf);
+static int as6712_32x_cpld_read_internal(struct i2c_client *client, u8 reg);
+static int as6712_32x_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
+
+/* transceiver attributes */
+#define DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, NULL, MODULE_PRESENT_##index)
+#define DECLARE_TRANSCEIVER_PRESENT_ATTR(index)  &sensor_dev_attr_module_present_##index.dev_attr.attr
+
+
+static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
+static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
+/* transceiver attributes */
+static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_present_all, NULL, MODULE_PRESENT_ALL);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(1);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(2);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(3);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(4);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(5);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(6);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(7);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(8);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(9);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(10);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(11);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(12);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(13);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(14);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(15);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(16);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(17);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(18);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(19);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(20);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(21);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(22);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(23);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(24);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(25);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(26);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(27);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(28);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(29);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(30);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(31);
+DECLARE_TRANSCEIVER_PRESENT_SENSOR_DEVICE_ATTR(32);
+
+static struct attribute *as6712_32x_cpld1_attributes[] = {
+    &sensor_dev_attr_version.dev_attr.attr,
+    &sensor_dev_attr_access.dev_attr.attr,
+	NULL
+};
+
+static const struct attribute_group as6712_32x_cpld1_group = {
+	.attrs = as6712_32x_cpld1_attributes,
+};
+
+static struct attribute *as6712_32x_cpld2_attributes[] = {
+    &sensor_dev_attr_version.dev_attr.attr,
+    &sensor_dev_attr_access.dev_attr.attr,
+	/* transceiver attributes */
+	&sensor_dev_attr_module_present_all.dev_attr.attr,
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(1),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(2),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(3),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(4),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(5),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(6),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(7),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(8),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(9),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(10),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(11),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(12),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(13),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(14),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(15),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(16),
+	NULL
+};
+
+static const struct attribute_group as6712_32x_cpld2_group = {
+	.attrs = as6712_32x_cpld2_attributes,
+};
+
+static struct attribute *as6712_32x_cpld3_attributes[] = {
+    &sensor_dev_attr_version.dev_attr.attr,
+    &sensor_dev_attr_access.dev_attr.attr,
+	/* transceiver attributes */
+	&sensor_dev_attr_module_present_all.dev_attr.attr,
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(17),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(18),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(19),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(20),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(21),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(22),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(23),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(24),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(25),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(26),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(27),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(28),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(29),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(30),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(31),
+	DECLARE_TRANSCEIVER_PRESENT_ATTR(32),
+	NULL
+};
+
+static const struct attribute_group as6712_32x_cpld3_group = {
+	.attrs = as6712_32x_cpld3_attributes,
+};
+
+static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+	int i, status;
+	u8 values[2] = {0};
+	u8 regs[] = {0xA, 0xB};
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+
+    for (i = 0; i < ARRAY_SIZE(regs); i++) {
+        status = as6712_32x_cpld_read_internal(client, regs[i]);
+        
+        if (status < 0) {
+            goto exit;
+        }
+
+        values[i] = ~(u8)status;
+    }
+
+	mutex_unlock(&data->update_lock);
+
+    /* Return values 1 -> 32 in order */
+    return sprintf(buf, "%.2x %.2x\n", values[0], values[1]);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+static ssize_t show_status(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
+	int status = 0;
+	u8 reg = 0, mask = 0;
+
+	switch (attr->index) {
+	case MODULE_PRESENT_1 ... MODULE_PRESENT_8:
+		reg  = 0xA;
+		mask = 0x1 << (attr->index - MODULE_PRESENT_1);
+		break;
+	case MODULE_PRESENT_9 ... MODULE_PRESENT_16:
+		reg  = 0xB;
+		mask = 0x1 << (attr->index - MODULE_PRESENT_9);
+		break;
+	case MODULE_PRESENT_17 ... MODULE_PRESENT_24:
+		reg  = 0xA;
+		mask = 0x1 << (attr->index - MODULE_PRESENT_17);
+		break;
+	case MODULE_PRESENT_25 ... MODULE_PRESENT_32:
+		reg  = 0xB;
+		mask = 0x1 << (attr->index - MODULE_PRESENT_25);
+		break;
+	default:
+		return 0;
+	}
+
+    mutex_lock(&data->update_lock);
+	status = as6712_32x_cpld_read_internal(client, reg);
+	if (unlikely(status < 0)) {
+		goto exit;
+	}
+	mutex_unlock(&data->update_lock);
+
+	return sprintf(buf, "%d\n", !(status & mask));
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+static ssize_t access(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+	int status;
+	u32 addr, val;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
+
+	if (sscanf(buf, "0x%x 0x%x", &addr, &val) != 2) {
+		return -EINVAL;
+	}
+
+	if (addr > 0xFF || val > 0xFF) {
+		return -EINVAL;
+	}
+
+	mutex_lock(&data->update_lock);
+	status = as6712_32x_cpld_write_internal(client, addr, val);
+	if (unlikely(status < 0)) {
+		goto exit;
+	}
+	mutex_unlock(&data->update_lock);
+	return count;
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
 
 /* Write to mux register. Don't use i2c_transfer()/i2c_smbus_xfer()
    for this as they will try to lock adapter a second time */
-static int accton_i2c_cpld_mux_reg_write(struct i2c_adapter *adap,
+static int as6712_32x_cpld_mux_reg_write(struct i2c_adapter *adap,
 			     struct i2c_client *client, u8 val)
 {
-#if 0
-	int ret = -ENODEV;
-
-	//if (adap->algo->master_xfer) {
-        if (0)
-		struct i2c_msg msg;
-		char buf[2];
-
-		msg.addr = client->addr;
-		msg.flags = 0;
-		msg.len = 2;
-        buf[0] = 0x2;
-		buf[1] = val;
-		msg.buf = buf;
-		ret = adap->algo->master_xfer(adap, &msg, 1);
-	}
-    else {
-		union i2c_smbus_data data;
-		ret = adap->algo->smbus_xfer(adap, client->addr,
-					     client->flags,
-					     I2C_SMBUS_WRITE,
-					     0x2, I2C_SMBUS_BYTE, &data);
-	}
-
-	return ret;
-#else
 	unsigned long orig_jiffies;
-        unsigned short flags;
+    unsigned short flags;
 	union i2c_smbus_data data;
 	int try;
 	s32 res = -EIO;
 
-        data.byte = val;
-        flags = client->flags;
+    data.byte = val;
+    flags = client->flags;
 	flags &= I2C_M_TEN | I2C_CLIENT_PEC;
 
 	if (adap->algo->smbus_xfer) {
@@ -159,49 +391,48 @@ static int accton_i2c_cpld_mux_reg_write(struct i2c_adapter *adap,
 		orig_jiffies = jiffies;
 		for (res = 0, try = 0; try <= adap->retries; try++) {
 			res = adap->algo->smbus_xfer(adap, client->addr, flags,
-                                                     I2C_SMBUS_WRITE, 0x2,
-                                                     I2C_SMBUS_BYTE_DATA, &data);
+                             I2C_SMBUS_WRITE, CPLD_CHANNEL_SELECT_REG,
+                             I2C_SMBUS_BYTE_DATA, &data);
 			if (res != -EAGAIN)
 				break;
 			if (time_after(jiffies,
-			        orig_jiffies + adap->timeout))
+			    orig_jiffies + adap->timeout))
 				break;
 		}
 	}
 
-        return res;
-#endif
+    return res;
 }
 
-static int accton_i2c_cpld_mux_select_chan(struct i2c_adapter *adap,
+static int as6712_32x_cpld_mux_select_chan(struct i2c_adapter *adap,
 			       void *client, u32 chan)
 {
-	struct accton_i2c_cpld_mux *data = i2c_get_clientdata(client);
+	struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
 	u8 regval;
 	int ret = 0;
-        regval = chan;
+    regval = chan;
 
 	/* Only select the channel if its different from the last channel */
 	if (data->last_chan != regval) {
-		ret = accton_i2c_cpld_mux_reg_write(adap, client, regval);
+		ret = as6712_32x_cpld_mux_reg_write(adap, client, regval);
 		data->last_chan = regval;
 	}
 
 	return ret;
 }
 
-static int accton_i2c_cpld_mux_deselect_mux(struct i2c_adapter *adap,
+static int as6712_32x_cpld_mux_deselect_mux(struct i2c_adapter *adap,
 				void *client, u32 chan)
 {
-	struct accton_i2c_cpld_mux *data = i2c_get_clientdata(client);
+	struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
 
 	/* Deselect active channel */
 	data->last_chan = chips[data->type].deselectChan;
 
-	return accton_i2c_cpld_mux_reg_write(adap, client, data->last_chan);
+	return as6712_32x_cpld_mux_reg_write(adap, client, data->last_chan);
 }
 
-static void accton_i2c_cpld_add_client(struct i2c_client *client)
+static void as6712_32x_cpld_add_client(struct i2c_client *client)
 {
     struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node), GFP_KERNEL);
 
@@ -217,9 +448,9 @@ static void accton_i2c_cpld_add_client(struct i2c_client *client)
 	mutex_unlock(&list_lock);
 }
 
-static void accton_i2c_cpld_remove_client(struct i2c_client *client)
+static void as6712_32x_cpld_remove_client(struct i2c_client *client)
 {
-    struct list_head        *list_node = NULL;
+    struct list_head    *list_node = NULL;
     struct cpld_client_node *cpld_node = NULL;
     int found = 0;
 
@@ -243,101 +474,128 @@ static void accton_i2c_cpld_remove_client(struct i2c_client *client)
 	mutex_unlock(&list_lock);
 }
 
-static ssize_t show_cpld_version(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_version(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    u8 reg = 0x1;
-    struct i2c_client *client;
-    int len;
+    int val = 0;
+    struct i2c_client *client = to_i2c_client(dev);
+	
+	val = i2c_smbus_read_byte_data(client, 0x1);
 
-    client = to_i2c_client(dev);
-    len = sprintf(buf, "%d", i2c_smbus_read_byte_data(client, reg));
-
-    return len;
+    if (val < 0) {
+        dev_dbg(&client->dev, "cpld(0x%x) reg(0x1) err %d\n", client->addr, val);
+    }
+	
+    return sprintf(buf, "%d", val);
 }
-
-static struct device_attribute ver = __ATTR(version, 0600, show_cpld_version, NULL);
 
 /*
  * I2C init/probing/exit functions
  */
-static int accton_i2c_cpld_mux_probe(struct i2c_client *client,
+static int as6712_32x_cpld_mux_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
 	int chan=0;
-	struct accton_i2c_cpld_mux *data;
+	struct as6712_32x_cpld_data *data;
 	int ret = -ENODEV;
+	const struct attribute_group *group = NULL;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
-		goto err;
+		goto exit;
 
-	data = kzalloc(sizeof(struct accton_i2c_cpld_mux), GFP_KERNEL);
+	data = kzalloc(sizeof(struct as6712_32x_cpld_data), GFP_KERNEL);
 	if (!data) {
 		ret = -ENOMEM;
-		goto err;
+		goto exit;
 	}
 
 	i2c_set_clientdata(client, data);
-
-#if 0
-	/* Write the mux register at addr to verify
-	 * that the mux is in fact present.
-	 */
-	if (i2c_smbus_write_byte(client, 0) < 0) {
-		dev_warn(&client->dev, "probe failed\n");
-		goto exit_free;
-	}
-#endif
-
+    mutex_init(&data->update_lock);
 	data->type = id->driver_data;
 
     if (data->type == as6712_32x_cpld2 || data->type == as6712_32x_cpld3) {
     	data->last_chan = chips[data->type].deselectChan; /* force the first selection */
 
-        /* Now create an adapter for each channel */
+	    /* Now create an adapter for each channel */
         for (chan = 0; chan < chips[data->type].nchans; chan++) {
-            data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0, chan,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
-                                                         I2C_CLASS_HWMON | I2C_CLASS_SPD,
-#endif
-                                                         accton_i2c_cpld_mux_select_chan,
-                                                         accton_i2c_cpld_mux_deselect_mux);
+            data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0, chan, 0,
+                                                         as6712_32x_cpld_mux_select_chan,
+                                                         as6712_32x_cpld_mux_deselect_mux);
 
             if (data->virt_adaps[chan] == NULL) {
                 ret = -ENODEV;
                 dev_err(&client->dev, "failed to register multiplexed adapter %d\n", chan);
-                goto virt_reg_failed;
+                goto exit_mux_register;
             }
         }
 
-        dev_info(&client->dev, "registered %d multiplexed busses for I2C mux %s\n",
-                    chan, client->name);
+        dev_info(&client->dev, "registered %d multiplexed busses for I2C mux %s\n", 
+                                chan, client->name);
     }
 
-    accton_i2c_cpld_add_client(client);
+    /* Register sysfs hooks */
+    switch (data->type) {
+    case as6712_32x_cpld1:
+        group = &as6712_32x_cpld1_group;
+        break;
+    case as6712_32x_cpld2:
+        group = &as6712_32x_cpld2_group;
+        break;
+	case as6712_32x_cpld3:
+        group = &as6712_32x_cpld3_group;
+        break;
+    default:
+        break;
+    }
 
-    ret = sysfs_create_file(&client->dev.kobj, &ver.attr);
-    if (ret)
-         goto virt_reg_failed;
+	
+    if (group) {
+        ret = sysfs_create_group(&client->dev.kobj, group);
+        if (ret) {
+            goto exit_mux_register;
+        }
+    }
+
+    as6712_32x_cpld_add_client(client);
 
     return 0;
 
-virt_reg_failed:
+exit_mux_register:
 	for (chan--; chan >= 0; chan--) {
 		i2c_del_mux_adapter(data->virt_adaps[chan]);
     }
-	kfree(data);
-err:
+    kfree(data);
+exit:
 	return ret;
-}
+} 
 
-static int accton_i2c_cpld_mux_remove(struct i2c_client *client)
+static int as6712_32x_cpld_mux_remove(struct i2c_client *client)
 {
-    struct accton_i2c_cpld_mux *data = i2c_get_clientdata(client);
+    struct as6712_32x_cpld_data *data = i2c_get_clientdata(client);
     const struct chip_desc *chip = &chips[data->type];
     int chan;
+    const struct attribute_group *group = NULL;
 
-    sysfs_remove_file(&client->dev.kobj, &ver.attr);
+    as6712_32x_cpld_remove_client(client);
+
+    /* Remove sysfs hooks */
+    switch (data->type) {
+    case as6712_32x_cpld1:
+        group = &as6712_32x_cpld1_group;
+        break;
+    case as6712_32x_cpld2:
+        group = &as6712_32x_cpld2_group;
+        break;
+	case as6712_32x_cpld3:
+        group = &as6712_32x_cpld3_group;
+        break;
+    default:
+        break;
+    }
+
+    if (group) {
+        sysfs_remove_group(&client->dev.kobj, group);
+    }
 
     for (chan = 0; chan < chip->nchans; ++chan) {
         if (data->virt_adaps[chan]) {
@@ -347,12 +605,47 @@ static int accton_i2c_cpld_mux_remove(struct i2c_client *client)
     }
 
     kfree(data);
-    accton_i2c_cpld_remove_client(client);
 
     return 0;
 }
 
-int as6712_32x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
+static int as6712_32x_cpld_read_internal(struct i2c_client *client, u8 reg)
+{
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+	while (retry) {
+		status = i2c_smbus_read_byte_data(client, reg);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
+	}
+
+    return status;
+}
+
+static int as6712_32x_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value)
+{
+	int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+	while (retry) {
+		status = i2c_smbus_write_byte_data(client, reg, value);
+		if (unlikely(status < 0)) {
+			msleep(I2C_RW_RETRY_INTERVAL);
+			retry--;
+			continue;
+		}
+
+		break;
+	}
+
+    return status;
+}
+
+int as6712_32x_cpld_read(unsigned short cpld_addr, u8 reg)
 {
     struct list_head   *list_node = NULL;
     struct cpld_client_node *cpld_node = NULL;
@@ -365,8 +658,8 @@ int as6712_32x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
         cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
         if (cpld_node->client->addr == cpld_addr) {
-            ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
-			break;
+            ret = as6712_32x_cpld_read_internal(cpld_node->client, reg);
+    		break;
         }
     }
 
@@ -374,9 +667,9 @@ int as6712_32x_i2c_cpld_read(unsigned short cpld_addr, u8 reg)
 
     return ret;
 }
-EXPORT_SYMBOL(as6712_32x_i2c_cpld_read);
+EXPORT_SYMBOL(as6712_32x_cpld_read);
 
-int as6712_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
+int as6712_32x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 {
     struct list_head   *list_node = NULL;
     struct cpld_client_node *cpld_node = NULL;
@@ -389,8 +682,8 @@ int as6712_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
         cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
         if (cpld_node->client->addr == cpld_addr) {
-            ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
-			break;
+            ret = as6712_32x_cpld_write_internal(cpld_node->client, reg, value);
+            break;
         }
     }
 
@@ -398,32 +691,33 @@ int as6712_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 
     return ret;
 }
-EXPORT_SYMBOL(as6712_32x_i2c_cpld_write);
+EXPORT_SYMBOL(as6712_32x_cpld_write);
 
-static struct i2c_driver accton_i2c_cpld_mux_driver = {
+static struct i2c_driver as6712_32x_cpld_mux_driver = {
 	.driver		= {
 		.name	= "as6712_32x_cpld",
 		.owner	= THIS_MODULE,
 	},
-	.probe		= accton_i2c_cpld_mux_probe,
-	.remove		= accton_i2c_cpld_mux_remove,
-	.id_table	= accton_i2c_cpld_mux_id,
+	.probe		= as6712_32x_cpld_mux_probe,
+	.remove		= as6712_32x_cpld_mux_remove,
+	.id_table	= as6712_32x_cpld_mux_id,
 };
 
-static int __init accton_i2c_cpld_mux_init(void)
+static int __init as6712_32x_cpld_mux_init(void)
 {
     mutex_init(&list_lock);
-    return i2c_add_driver(&accton_i2c_cpld_mux_driver);
+    return i2c_add_driver(&as6712_32x_cpld_mux_driver);
 }
 
-static void __exit accton_i2c_cpld_mux_exit(void)
+static void __exit as6712_32x_cpld_mux_exit(void)
 {
-    i2c_del_driver(&accton_i2c_cpld_mux_driver);
+    i2c_del_driver(&as6712_32x_cpld_mux_driver);
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("Accton I2C CPLD mux driver");
 MODULE_LICENSE("GPL");
 
-module_init(accton_i2c_cpld_mux_init);
-module_exit(accton_i2c_cpld_mux_exit);
+module_init(as6712_32x_cpld_mux_init);
+module_exit(as6712_32x_cpld_mux_exit);
+

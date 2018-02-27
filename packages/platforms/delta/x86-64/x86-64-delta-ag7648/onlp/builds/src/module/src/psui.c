@@ -34,7 +34,7 @@
 #define CPLD_PSU_NAME                   "MASTERCPLD"
 
 #define PSU_STATUS_PRESENT    			1
-#define PSU_STATUS_POWER_GOOD 			1
+#define PSU_STATUS_POWER_GOOD 			0
 #define PSU_STATUS_REG					(0X03)
 #define PSU_STATUS_PRESENT_BIT(ch)		(0x8<<4*(ch-1))
 #define PSU_STATUS_GOOD_BIT(ch)			(0x4<<4*(ch-1))
@@ -79,7 +79,7 @@ static long psu_data_convert_16(unsigned int d, int mult)
 
 }
 
-static int
+int
 psu_status_info_get(int id, char *node)
 {
     int ret;
@@ -246,6 +246,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     if (val != PSU_STATUS_POWER_GOOD) {
         info->status |=  ONLP_PSU_STATUS_FAILED;
+		return ONLP_STATUS_OK;
     }
 
     /* Get PSU type
