@@ -376,11 +376,8 @@ rm -f /usr/sbin/policy-rc.d
             onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
                          ex=OnlRfsError("Could not mount proc in new filesystem."))
 
-            script = os.path.join(dir_, "tmp/configure.sh")
-
             if not os.getenv('NO_DPKG_CONFIGURE'):
                 self.dpkg_configure(dir_)
-
 
             os_release = os.path.join(dir_, 'etc', 'os-release')
             if os.path.exists(os_release):
@@ -559,6 +556,76 @@ rm -f /usr/sbin/policy-rc.d
         finally:
             onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
 
+    def update(self, dir_, packages):
+
+        ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
+
+        try:
+
+            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
+                         ex=OnlRfsError("Could not mount dev in new filesystem."))
+
+            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
+                         ex=OnlRfsError("Could not mount proc in new filesystem."))
+
+            for pspec in packages:
+                for pkg in pspec.split(','):
+                    logger.info("updating %s into %s", pkg, dir_)
+                    cmd = (ONLPM, '--verbose',
+                           '--sudo',
+                           '--extract-dir', pkg, dir_,)
+                    onlu.execute(cmd,
+                                 ex=OnlRfsError("update of %s failed" % pkg))
+
+        finally:
+            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
+
+    def install(self, dir_, packages):
+
+        ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
+
+        try:
+
+            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
+                         ex=OnlRfsError("Could not mount dev in new filesystem."))
+
+            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
+                         ex=OnlRfsError("Could not mount proc in new filesystem."))
+
+            for pspec in packages:
+                for pkg in pspec.split(','):
+
+                    cmd = (ONLPM, '--lookup', pkg,)
+                    try:
+                        buf = subprocess.check_output(cmd)
+                    except subprocess.CalledProcessError as ex:
+                        logger.error("cannot find %s", pkg)
+                        raise ValueError("update failed")
+
+                    if not buf.strip():
+                        raise ValueError("cannot find %s" % pkg)
+                    src = buf.splitlines(False)[0]
+                    d, b = os.path.split(src)
+                    dst = os.path.join(dir_, "tmp", b)
+                    shutil.copy2(src, dst)
+                    src2 = os.path.join("/tmp", b)
+
+                    logger.info("installing %s into %s", pkg, dir_)
+                    cmd = ('/usr/bin/rfs-dpkg', '-i', src2,)
+                    onlu.execute(cmd,
+                                 chroot=dir_,
+                                 ex=OnlRfsError("install of %s failed" % pkg))
+
+                    name, _, _ = pkg.partition(':')
+                    logger.info("updating dependencies for %s", pkg)
+                    cmd = ('/usr/bin/rfs-apt-get', '-f', 'install', name,)
+                    onlu.execute(cmd,
+                                 chroot=dir_,
+                                 ex=OnlRfsError("install of %s failed" % pkg))
+
+        finally:
+            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
+
 
 if __name__ == '__main__':
 
@@ -575,6 +642,11 @@ if __name__ == '__main__':
     ap.add_argument("--cpio")
     ap.add_argument("--squash")
     ap.add_argument("--enable-root")
+
+    ap.add_argument("--no-configure", action='store_true')
+    ap.add_argument("--update", action='append')
+    ap.add_argument("--install", action='append')
+
     ops = ap.parse_args()
 
     if ops.enable_root:
@@ -627,7 +699,14 @@ if __name__ == '__main__':
         if not ops.no_multistrap and not os.getenv('NO_MULTISTRAP'):
             x.multistrap(ops.dir)
 
-        x.configure(ops.dir)
+        if not ops.no_configure and not os.getenv('NO_DPKG_CONFIGURE'):
+            x.configure(ops.dir)
+
+        if ops.update:
+            x.update(ops.dir, ops.update)
+
+        if ops.install:
+            x.install(ops.dir, ops.install)
 
         if ops.cpio:
             if onlu.execute("%s/tools/scripts/make-cpio.sh %s %s" % (os.getenv('ONL'), ops.dir, ops.cpio)) != 0:
