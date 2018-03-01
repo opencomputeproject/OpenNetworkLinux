@@ -1,11 +1,5 @@
 ---
 
-######################################################################
-#
-# platform-config for WEDGE
-#
-######################################################################
-
 x86-64-accton-wedge100s-32x-r0:
 
   grub:
@@ -17,7 +11,7 @@ x86-64-accton-wedge100s-32x-r0:
       --parity=0
       --stop=1
 
-    kernel: 
+    kernel:
       <<: *kernel-4-9
 
     args: >-
@@ -26,9 +20,4 @@ x86-64-accton-wedge100s-32x-r0:
       rd_NO_MD
       rd_NO_LUKS
       intel_iommu=off
-
-  ##network
-  ##  interfaces:
-  ##    ma1:
-  ##      name: ~
-  ##      syspath: pci0000:00/0000:00:14.0
+      noapic

@@ -33,7 +33,7 @@
 #define PSU2_ID 2
 
 #define CHASSIS_FAN_COUNT     6
-#define CHASSIS_THERMAL_COUNT 4
+#define CHASSIS_THERMAL_COUNT 6
 #define CHASSIS_PSU_COUNT     2
 
 
@@ -145,4 +145,5 @@ typedef enum platform_id_e {
 } platform_id_t;
 
 extern platform_id_t platform_id;
+extern int psu_status_info_get(int id, char *node);
 #endif  /* __PLATFORM_LIB_H__ */

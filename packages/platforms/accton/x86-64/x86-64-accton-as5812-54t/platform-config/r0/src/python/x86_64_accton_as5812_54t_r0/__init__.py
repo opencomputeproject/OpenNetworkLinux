@@ -10,25 +10,28 @@ class OnlPlatform_x86_64_accton_as5812_54t_r0(OnlPlatformAccton,
 
     def baseconfig(self):
         ########### initialize I2C bus 0 ###########
-        self.insmod("accton_i2c_cpld")
+        self.insmod("optoe")
         self.insmod("cpr_4011_4mxx")
         self.insmod("ym2651y")
-        for m in [ "sfp", "psu", "fan", "leds" ]:
+        for m in [ "cpld", "psu", "fan", "leds" ]:
             self.insmod("x86-64-accton-as5812-54t-%s" % m)
 
         # initialize CPLDs
-        self.new_i2c_device('accton_i2c_cpld', 0x60, 0)
+        self.new_i2c_device('as5812_54t_cpld', 0x60, 0)
 
         # initiate multiplexer (PCA9548)
         self.new_i2c_device('pca9548', 0x71, 0)
 
         # Initialize QSFP devices
-        self.new_i2c_device('as5812_54t_port49', 0x50, 4)
-        self.new_i2c_device('as5812_54t_port50', 0x50, 6)
-        self.new_i2c_device('as5812_54t_port51', 0x50, 3)
-        self.new_i2c_device('as5812_54t_port52', 0x50, 5)
-        self.new_i2c_device('as5812_54t_port53', 0x50, 7)
-        self.new_i2c_device('as5812_54t_port54', 0x50, 2)
+        for bus in range(2, 8):
+            self.new_i2c_device('optoe1', 0x50, bus)
+
+        subprocess.call('echo port54 > /sys/bus/i2c/devices/2-0050/port_name', shell=True)
+        subprocess.call('echo port51 > /sys/bus/i2c/devices/3-0050/port_name', shell=True)
+        subprocess.call('echo port49 > /sys/bus/i2c/devices/4-0050/port_name', shell=True)
+        subprocess.call('echo port52 > /sys/bus/i2c/devices/5-0050/port_name', shell=True)
+        subprocess.call('echo port50 > /sys/bus/i2c/devices/6-0050/port_name', shell=True)
+        subprocess.call('echo port53 > /sys/bus/i2c/devices/7-0050/port_name', shell=True)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(
