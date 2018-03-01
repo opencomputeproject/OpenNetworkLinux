@@ -33,7 +33,7 @@ RFS_MANIFEST := etc/onl/rootfs/manifest.json
 endif
 
 RFS:
-	$(ONL_V_at) rm -rf manifest.json
+	$(ONL_V_at) sudo rm -rf manifest.json
 	$(ONL_V_at) $(RFS_COMMAND)
 	$(ONL_V_at) [ -f $(RFS_DIR)/$(RFS_MANIFEST) ] && cp $(RFS_DIR)/$(RFS_MANIFEST) .
 
