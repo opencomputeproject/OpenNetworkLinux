@@ -60,7 +60,7 @@ x86_64_delta_ag7648_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; x86_64_delta_ag7648_config_settings[i].name; i++) {
-        if(strcmp(x86_64_delta_ag7648_config_settings[i].name, setting)) {
+        if(!strcmp(x86_64_delta_ag7648_config_settings[i].name, setting)) {
             return x86_64_delta_ag7648_config_settings[i].value;
         }
     }

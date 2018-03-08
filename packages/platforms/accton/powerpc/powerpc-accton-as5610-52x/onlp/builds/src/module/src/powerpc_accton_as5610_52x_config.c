@@ -55,7 +55,7 @@ powerpc_accton_as5610_52x_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; powerpc_accton_as5610_52x_config_settings[i].name; i++) {
-        if(strcmp(powerpc_accton_as5610_52x_config_settings[i].name, setting)) {
+        if(!strcmp(powerpc_accton_as5610_52x_config_settings[i].name, setting)) {
             return powerpc_accton_as5610_52x_config_settings[i].value;
         }
     }

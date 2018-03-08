@@ -7,7 +7,7 @@
 
 #include <x86_64_delta_ag9064/x86_64_delta_ag9064_config.h>
 
-/* <auto.start.cdefs(x86_64_delta_ag9064_CONFIG_HEADER).source> */
+/* <auto.start.cdefs(X86_64_DELTA_AG9064_CONFIG_HEADER).source> */
 #define __x86_64_delta_ag9064_config_STRINGIFY_NAME(_x) #_x
 #define __x86_64_delta_ag9064_config_STRINGIFY_VALUE(_x) __x86_64_delta_ag9064_config_STRINGIFY_NAME(_x)
 x86_64_delta_ag9064_config_settings_t x86_64_delta_ag9064_config_settings[] =
@@ -72,7 +72,7 @@ x86_64_delta_ag9064_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; x86_64_delta_ag9064_config_settings[i].name; i++) {
-        if(strcmp(x86_64_delta_ag9064_config_settings[i].name, setting)) {
+        if(!strcmp(x86_64_delta_ag9064_config_settings[i].name, setting)) {
             return x86_64_delta_ag9064_config_settings[i].value;
         }
     }
@@ -89,5 +89,4 @@ x86_64_delta_ag9064_config_show(struct aim_pvs_s* pvs)
     return i;
 }
 
-/* <auto.end.cdefs(x86_64_delta_ag9064_CONFIG_HEADER).source> */
-
+/* <auto.end.cdefs(X86_64_DELTA_AG9064_CONFIG_HEADER).source> */

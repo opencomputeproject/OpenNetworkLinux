@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_MALLOC
+#ifndef X86_64_ACCTON_WEDGE100_32X_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_accton_wedge100_32x_MALLOC GLOBAL_MALLOC
+        #define X86_64_ACCTON_WEDGE100_32X_MALLOC GLOBAL_MALLOC
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_MALLOC malloc
+        #define X86_64_ACCTON_WEDGE100_32X_MALLOC malloc
     #else
-        #error The macro x86_64_accton_wedge100_32x_MALLOC is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_FREE
+#ifndef X86_64_ACCTON_WEDGE100_32X_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_accton_wedge100_32x_FREE GLOBAL_FREE
+        #define X86_64_ACCTON_WEDGE100_32X_FREE GLOBAL_FREE
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_FREE free
+        #define X86_64_ACCTON_WEDGE100_32X_FREE free
     #else
-        #error The macro x86_64_accton_wedge100_32x_FREE is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_MEMSET
+#ifndef X86_64_ACCTON_WEDGE100_32X_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_accton_wedge100_32x_MEMSET GLOBAL_MEMSET
+        #define X86_64_ACCTON_WEDGE100_32X_MEMSET GLOBAL_MEMSET
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_MEMSET memset
+        #define X86_64_ACCTON_WEDGE100_32X_MEMSET memset
     #else
-        #error The macro x86_64_accton_wedge100_32x_MEMSET is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_MEMCPY
+#ifndef X86_64_ACCTON_WEDGE100_32X_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_accton_wedge100_32x_MEMCPY GLOBAL_MEMCPY
+        #define X86_64_ACCTON_WEDGE100_32X_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_MEMCPY memcpy
+        #define X86_64_ACCTON_WEDGE100_32X_MEMCPY memcpy
     #else
-        #error The macro x86_64_accton_wedge100_32x_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_STRNCPY
+#ifndef X86_64_ACCTON_WEDGE100_32X_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_accton_wedge100_32x_STRNCPY GLOBAL_STRNCPY
+        #define X86_64_ACCTON_WEDGE100_32X_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_STRNCPY strncpy
+        #define X86_64_ACCTON_WEDGE100_32X_STRNCPY strncpy
     #else
-        #error The macro x86_64_accton_wedge100_32x_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_VSNPRINTF
+#ifndef X86_64_ACCTON_WEDGE100_32X_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_accton_wedge100_32x_VSNPRINTF GLOBAL_VSNPRINTF
+        #define X86_64_ACCTON_WEDGE100_32X_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_VSNPRINTF vsnprintf
+        #define X86_64_ACCTON_WEDGE100_32X_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_accton_wedge100_32x_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_SNPRINTF
+#ifndef X86_64_ACCTON_WEDGE100_32X_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_accton_wedge100_32x_SNPRINTF GLOBAL_SNPRINTF
+        #define X86_64_ACCTON_WEDGE100_32X_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_SNPRINTF snprintf
+        #define X86_64_ACCTON_WEDGE100_32X_SNPRINTF snprintf
     #else
-        #error The macro x86_64_accton_wedge100_32x_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_wedge100_32x_STRLEN
+#ifndef X86_64_ACCTON_WEDGE100_32X_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_accton_wedge100_32x_STRLEN GLOBAL_STRLEN
+        #define X86_64_ACCTON_WEDGE100_32X_STRLEN GLOBAL_STRLEN
     #elif X86_64_ACCTON_WEDGE100_32X_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_wedge100_32x_STRLEN strlen
+        #define X86_64_ACCTON_WEDGE100_32X_STRLEN strlen
     #else
-        #error The macro x86_64_accton_wedge100_32x_STRLEN is required but cannot be defined.
+        #error The macro X86_64_ACCTON_WEDGE100_32X_STRLEN is required but cannot be defined.
     #endif
 #endif
 

@@ -55,7 +55,7 @@ x86_64_cel_redstone_xp_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; x86_64_cel_redstone_xp_config_settings[i].name; i++) {
-        if(strcmp(x86_64_cel_redstone_xp_config_settings[i].name, setting)) {
+        if(!strcmp(x86_64_cel_redstone_xp_config_settings[i].name, setting)) {
             return x86_64_cel_redstone_xp_config_settings[i].value;
         }
     }

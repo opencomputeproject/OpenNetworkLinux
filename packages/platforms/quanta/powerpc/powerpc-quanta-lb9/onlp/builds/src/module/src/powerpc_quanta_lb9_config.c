@@ -75,7 +75,7 @@ powerpc_quanta_lb9_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; powerpc_quanta_lb9_config_settings[i].name; i++) {
-        if(strcmp(powerpc_quanta_lb9_config_settings[i].name, setting)) {
+        if(!strcmp(powerpc_quanta_lb9_config_settings[i].name, setting)) {
             return powerpc_quanta_lb9_config_settings[i].value;
         }
     }

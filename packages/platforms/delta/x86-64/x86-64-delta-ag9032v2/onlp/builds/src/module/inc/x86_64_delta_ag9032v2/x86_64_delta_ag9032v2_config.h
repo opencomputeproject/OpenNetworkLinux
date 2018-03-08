@@ -17,10 +17,10 @@
 #include <x86_64_delta_ag9032v2_custom_config.h>
 #endif
 
-/* <auto.start.cdefs(x86_64_delta_ag9032v2_CONFIG_HEADER).header> */
+/* <auto.start.cdefs(X86_64_DELTA_AG9032V2_CONFIG_HEADER).header> */
 #include <AIM/aim.h>
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_INCLUDE_LOGGING
+ * X86_64_DELTA_AG9032V2_CONFIG_INCLUDE_LOGGING
  *
  * Include or exclude logging. */
 
@@ -30,7 +30,7 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_LOG_OPTIONS_DEFAULT
+ * X86_64_DELTA_AG9032V2_CONFIG_LOG_OPTIONS_DEFAULT
  *
  * Default enabled log options. */
 
@@ -40,7 +40,7 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_LOG_BITS_DEFAULT
+ * X86_64_DELTA_AG9032V2_CONFIG_LOG_BITS_DEFAULT
  *
  * Default enabled log bits. */
 
@@ -50,7 +50,7 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+ * X86_64_DELTA_AG9032V2_CONFIG_LOG_CUSTOM_BITS_DEFAULT
  *
  * Default enabled custom log bits. */
 
@@ -60,7 +60,7 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_PORTING_STDLIB
+ * X86_64_DELTA_AG9032V2_CONFIG_PORTING_STDLIB
  *
  * Default all porting macros to use the C standard libraries. */
 
@@ -70,17 +70,17 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
+ * X86_64_DELTA_AG9032V2_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
  *
  * Include standard library headers for stdlib porting macros. */
 
 
 #ifndef X86_64_DELTA_AG9032V2_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS
-#define X86_64_DELTA_AG9032V2_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS X86_64_DELTA_AG9032V2_CONFIG_PORTING_STDLIB
+#define X86_64_DELTA_AG9032V2_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS X86_64_DELTA_ag9032v2_CONFIG_PORTING_STDLIB
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_INCLUDE_UCLI
+ * X86_64_DELTA_AG9032V2_CONFIG_INCLUDE_UCLI
  *
  * Include generic uCli support. */
 
@@ -90,7 +90,7 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION
+ * X86_64_DELTA_AG9032V2_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION
  *
  * Assume chassis fan direction is the same as the PSU fan direction. */
 
@@ -100,24 +100,26 @@
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_SFP_COUNT
+ * X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT
  *
  * SFP port numbers. */
- 
- 
+
+
 #ifndef X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT
 #define X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT 4
 #endif
 
 /**
- * X86_64_DELTA_ag9032v2_CONFIG_FAN_RPM_MAX
+ * X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX
  *
  * Max fan speed. */
- 
- 
+
+
 #ifndef X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX
 #define X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX 18000
 #endif
+
+
 
 /**
  * All compile time options can be queried or displayed
@@ -147,7 +149,7 @@ const char* x86_64_delta_ag9032v2_config_lookup(const char* setting);
  */
 int x86_64_delta_ag9032v2_config_show(struct aim_pvs_s* pvs);
 
-/* <auto.end.cdefs(x86_64_delta_ag9032v2_CONFIG_HEADER).header> */
+/* <auto.end.cdefs(X86_64_DELTA_AG9032V2_CONFIG_HEADER).header> */
 
 #include "x86_64_delta_ag9032v2_porting.h"
 

@@ -103,21 +103,23 @@
  * X86_64_DELTA_AGC5648S_CONFIG_SFP_COUNT
  *
  * SFP port numbers. */
- 
- 
+
+
 #ifndef X86_64_DELTA_AGC5648S_CONFIG_SFP_COUNT
-#define X86_64_DELTA_AGC5648S_CONFIG_SFP_COUNT 54
+#define X86_64_DELTA_AGC5648S_CONFIG_SFP_COUNT 4
 #endif
 
 /**
  * X86_64_DELTA_AGC5648S_CONFIG_FAN_RPM_MAX
  *
  * Max fan speed. */
- 
- 
+
+
 #ifndef X86_64_DELTA_AGC5648S_CONFIG_FAN_RPM_MAX
-#define X86_64_DELTA_AGC5648S_CONFIG_FAN_RPM_MAX 23000
+#define X86_64_DELTA_AGC5648S_CONFIG_FAN_RPM_MAX 18000
 #endif
+
+
 
 /**
  * All compile time options can be queried or displayed

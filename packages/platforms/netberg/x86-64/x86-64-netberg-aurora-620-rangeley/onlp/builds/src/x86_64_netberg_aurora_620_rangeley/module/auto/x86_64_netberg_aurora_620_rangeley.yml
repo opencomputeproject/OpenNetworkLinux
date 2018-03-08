@@ -96,11 +96,11 @@ definitions:
 
     led_id:
       members:
-        - STAT : 1
+        - LED1 : 1
 
     led_oid:
       members:
-        - STAT : ONLP_LED_ID_CREATE(1)
+        - LED1 : ONLP_LED_ID_CREATE(1)
 
 
   portingmacro:

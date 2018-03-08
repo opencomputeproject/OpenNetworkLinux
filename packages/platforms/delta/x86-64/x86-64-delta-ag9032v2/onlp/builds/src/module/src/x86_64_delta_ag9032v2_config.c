@@ -50,6 +50,16 @@ x86_64_delta_ag9032v2_config_settings_t x86_64_delta_ag9032v2_config_settings[] 
 #else
 { X86_64_DELTA_AG9032V2_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION(__x86_64_delta_ag9032v2_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT
+    { __x86_64_delta_ag9032v2_config_STRINGIFY_NAME(X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT), __x86_64_delta_ag9032v2_config_STRINGIFY_VALUE(X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT) },
+#else
+{ X86_64_DELTA_AG9032V2_CONFIG_SFP_COUNT(__x86_64_delta_ag9032v2_config_STRINGIFY_NAME), "__undefined__" },
+#endif
+#ifdef X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX
+    { __x86_64_delta_ag9032v2_config_STRINGIFY_NAME(X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX), __x86_64_delta_ag9032v2_config_STRINGIFY_VALUE(X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX) },
+#else
+{ X86_64_DELTA_AG9032V2_CONFIG_FAN_RPM_MAX(__x86_64_delta_ag9032v2_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __x86_64_delta_ag9032v2_config_STRINGIFY_VALUE
@@ -60,7 +70,7 @@ x86_64_delta_ag9032v2_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; x86_64_delta_ag9032v2_config_settings[i].name; i++) {
-        if(strcmp(x86_64_delta_ag9032v2_config_settings[i].name, setting)) {
+        if(!strcmp(x86_64_delta_ag9032v2_config_settings[i].name, setting)) {
             return x86_64_delta_ag9032v2_config_settings[i].value;
         }
     }

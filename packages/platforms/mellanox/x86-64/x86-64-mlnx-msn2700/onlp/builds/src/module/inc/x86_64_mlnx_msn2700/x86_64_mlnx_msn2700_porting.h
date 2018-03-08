@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if x86_64_mlnx_msn2700_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if X86_64_MLNX_MSN2700_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_mlnx_msn2700_MALLOC
+#ifndef X86_64_MLNX_MSN2700_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_mlnx_msn2700_MALLOC GLOBAL_MALLOC
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_MALLOC malloc
+        #define X86_64_MLNX_MSN2700_MALLOC GLOBAL_MALLOC
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_MALLOC malloc
     #else
-        #error The macro x86_64_mlnx_msn2700_MALLOC is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_FREE
+#ifndef X86_64_MLNX_MSN2700_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_mlnx_msn2700_FREE GLOBAL_FREE
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_FREE free
+        #define X86_64_MLNX_MSN2700_FREE GLOBAL_FREE
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_FREE free
     #else
-        #error The macro x86_64_mlnx_msn2700_FREE is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_MEMSET
+#ifndef X86_64_MLNX_MSN2700_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_mlnx_msn2700_MEMSET GLOBAL_MEMSET
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_MEMSET memset
+        #define X86_64_MLNX_MSN2700_MEMSET GLOBAL_MEMSET
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_MEMSET memset
     #else
-        #error The macro x86_64_mlnx_msn2700_MEMSET is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_MEMCPY
+#ifndef X86_64_MLNX_MSN2700_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_mlnx_msn2700_MEMCPY GLOBAL_MEMCPY
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_MEMCPY memcpy
+        #define X86_64_MLNX_MSN2700_MEMCPY GLOBAL_MEMCPY
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_MEMCPY memcpy
     #else
-        #error The macro x86_64_mlnx_msn2700_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_STRNCPY
+#ifndef X86_64_MLNX_MSN2700_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_mlnx_msn2700_STRNCPY GLOBAL_STRNCPY
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_STRNCPY strncpy
+        #define X86_64_MLNX_MSN2700_STRNCPY GLOBAL_STRNCPY
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_STRNCPY strncpy
     #else
-        #error The macro x86_64_mlnx_msn2700_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_VSNPRINTF
+#ifndef X86_64_MLNX_MSN2700_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_mlnx_msn2700_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_VSNPRINTF vsnprintf
+        #define X86_64_MLNX_MSN2700_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_mlnx_msn2700_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_SNPRINTF
+#ifndef X86_64_MLNX_MSN2700_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_mlnx_msn2700_SNPRINTF GLOBAL_SNPRINTF
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_SNPRINTF snprintf
+        #define X86_64_MLNX_MSN2700_SNPRINTF GLOBAL_SNPRINTF
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_SNPRINTF snprintf
     #else
-        #error The macro x86_64_mlnx_msn2700_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_mlnx_msn2700_STRLEN
+#ifndef X86_64_MLNX_MSN2700_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_mlnx_msn2700_STRLEN GLOBAL_STRLEN
-    #elif x86_64_mlnx_msn2700_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_mlnx_msn2700_STRLEN strlen
+        #define X86_64_MLNX_MSN2700_STRLEN GLOBAL_STRLEN
+    #elif X86_64_MLNX_MSN2700_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_MLNX_MSN2700_STRLEN strlen
     #else
-        #error The macro x86_64_mlnx_msn2700_STRLEN is required but cannot be defined.
+        #error The macro X86_64_MLNX_MSN2700_STRLEN is required but cannot be defined.
     #endif
 #endif
 

@@ -80,7 +80,7 @@ arm_qemu_armv7a_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; arm_qemu_armv7a_config_settings[i].name; i++) {
-        if(strcmp(arm_qemu_armv7a_config_settings[i].name, setting)) {
+        if(!strcmp(arm_qemu_armv7a_config_settings[i].name, setting)) {
             return arm_qemu_armv7a_config_settings[i].value;
         }
     }

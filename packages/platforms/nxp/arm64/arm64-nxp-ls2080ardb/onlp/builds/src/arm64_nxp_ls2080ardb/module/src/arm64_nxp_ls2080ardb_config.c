@@ -80,7 +80,7 @@ arm64_nxp_ls2080ardb_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; arm64_nxp_ls2080ardb_config_settings[i].name; i++) {
-        if(strcmp(arm64_nxp_ls2080ardb_config_settings[i].name, setting)) {
+        if(!strcmp(arm64_nxp_ls2080ardb_config_settings[i].name, setting)) {
             return arm64_nxp_ls2080ardb_config_settings[i].value;
         }
     }
