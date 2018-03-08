@@ -200,3 +200,27 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
     return ONLP_STATUS_OK;
 }
 
+#define PSU_SERIAL_NUMBER_LEN	18
+
+int psu_serial_number_get(int id, char *serial, int serial_len)
+{
+	int   size = 0;
+	int   ret  = ONLP_STATUS_OK; 
+	char *prefix = NULL;
+
+	if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
+		return ONLP_STATUS_E_PARAM;
+	}
+
+	prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+
+	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
+    if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
+		return ONLP_STATUS_E_INTERNAL;
+
+    }
+
+	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+	return ONLP_STATUS_OK;
+}
+

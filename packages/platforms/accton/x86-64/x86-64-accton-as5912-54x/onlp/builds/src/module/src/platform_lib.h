@@ -67,6 +67,7 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+int psu_serial_number_get(int id, char *serial, int serial_len);
 
 enum onlp_thermal_id
 {

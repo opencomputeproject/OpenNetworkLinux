@@ -23,6 +23,8 @@
  *
  *
  ***********************************************************/
+#include <onlp/onlp.h>
+#include <onlplib/file.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -248,3 +250,29 @@ int psu_ym2401_pmbus_info_set(int id, char *node, int value)
     return ONLP_STATUS_OK;
 }
 
+#define PSU_SERIAL_NUMBER_LEN	18
+
+int psu_serial_number_get(int id, int is_ac, char *serial, int serial_len)
+{
+	int   size = 0;
+	int   ret  = ONLP_STATUS_OK; 
+	char *prefix = NULL;
+
+	if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
+		return ONLP_STATUS_E_PARAM;
+	}
+    
+    memset((void *)serial, 0x0, serial_len);
+    if(is_ac)
+	    prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
+	else
+        prefix = (id == PSU1_ID) ? PSU1_DC_EEPROM_PREFIX : PSU2_DC_EEPROM_PREFIX;
+	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_serial");
+    if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
+		return ONLP_STATUS_E_INTERNAL;
+
+    }
+
+	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+	return ONLP_STATUS_OK;
+}
