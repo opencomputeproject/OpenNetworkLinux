@@ -34,8 +34,8 @@
 #include <onlp/platformi/psui.h>
 #include "platform_lib.h"
 
-#include "x86_64_accton_as5916_54x_int.h"
-#include "x86_64_accton_as5916_54x_log.h"
+#include "x86_64_accton_as5916_54xk_int.h"
+#include "x86_64_accton_as5916_54xk_log.h"
 
 #define CPLD_VERSION_FORMAT			"/sys/bus/i2c/devices/%s/version"
 #define NUM_OF_CPLD         		2
@@ -49,7 +49,7 @@ static char* cpld_path[NUM_OF_CPLD] =
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "x86-64-accton-as5916-54x-r1";
+    return "x86-64-accton-as5916-54xk-r1";
 }
 
 int

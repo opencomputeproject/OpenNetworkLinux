@@ -1,5 +1,5 @@
 /*
- * A hwmon driver for the Accton as5916 54x fan
+ * A hwmon driver for the Accton as5916 54xk fan
  *
  * Copyright (C) 2016 Accton Technology Corporation.
  * Brandon Chuang <brandon_chuang@accton.com.tw>
@@ -30,10 +30,10 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 
-#define DRVNAME "as5916_54x_fan"
+#define DRVNAME "as5916_54xk_fan"
 #define MAX_FAN_SPEED_RPM	25500
 
-static struct as5916_54x_fan_data *as5916_54x_fan_update_device(struct device *dev);                    
+static struct as5916_54xk_fan_data *as5916_54xk_fan_update_device(struct device *dev);                    
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
             const char *buf, size_t count);
@@ -59,7 +59,7 @@ static const u8 fan_reg[] = {
 };
 
 /* Each client has this additional data */
-struct as5916_54x_fan_data {
+struct as5916_54xk_fan_data {
     struct device   *hwmon_dev;
     struct mutex     update_lock;
     char             valid;           /* != 0 if registers are valid */
@@ -171,7 +171,7 @@ DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(6);
 /* 1 fan duty cycle attribute in this platform */
 DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
 
-static struct attribute *as5916_54x_fan_attributes[] = {
+static struct attribute *as5916_54xk_fan_attributes[] = {
     /* fan related attributes */
     DECLARE_FAN_FAULT_ATTR(1),
     DECLARE_FAN_FAULT_ATTR(2),
@@ -206,12 +206,12 @@ static struct attribute *as5916_54x_fan_attributes[] = {
 #define FAN_MAX_DUTY_CYCLE              100
 #define FAN_REG_VAL_TO_SPEED_RPM_STEP   100
 
-static int as5916_54x_fan_read_value(struct i2c_client *client, u8 reg)
+static int as5916_54xk_fan_read_value(struct i2c_client *client, u8 reg)
 {
     return i2c_smbus_read_byte_data(client, reg);
 }
 
-static int as5916_54x_fan_write_value(struct i2c_client *client, u8 reg, u8 value)
+static int as5916_54xk_fan_write_value(struct i2c_client *client, u8 reg, u8 value)
 {
     return i2c_smbus_write_byte_data(client, reg, value);
 }
@@ -244,7 +244,7 @@ static u8 reg_val_to_is_present(u8 reg_val, enum fan_id id)
     return !(reg_val & BIT(id));
 }
 
-static u8 is_fan_fault(struct as5916_54x_fan_data *data, enum fan_id id)
+static u8 is_fan_fault(struct as5916_54xk_fan_data *data, enum fan_id id)
 {
     u8 ret = 1;
     int front_fan_index = FAN1_FRONT_SPEED_RPM + id;
@@ -273,8 +273,8 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
     if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
         return -EINVAL;
 	
-    as5916_54x_fan_write_value(client, 0x33, 0); /* Disable fan speed watch dog */
-    as5916_54x_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
+    as5916_54xk_fan_write_value(client, 0x33, 0); /* Disable fan speed watch dog */
+    as5916_54xk_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
     return count;
 }
 
@@ -282,7 +282,7 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54x_fan_data *data = as5916_54x_fan_update_device(dev);
+    struct as5916_54xk_fan_data *data = as5916_54xk_fan_update_device(dev);
     ssize_t ret = 0;
     
     if (data->valid) {
@@ -345,14 +345,14 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
     return ret;
 }
 
-static const struct attribute_group as5916_54x_fan_group = {
-    .attrs = as5916_54x_fan_attributes,
+static const struct attribute_group as5916_54xk_fan_group = {
+    .attrs = as5916_54xk_fan_attributes,
 };
 
-static struct as5916_54x_fan_data *as5916_54x_fan_update_device(struct device *dev)
+static struct as5916_54xk_fan_data *as5916_54xk_fan_update_device(struct device *dev)
 {
     struct i2c_client *client = to_i2c_client(dev);
-    struct as5916_54x_fan_data *data = i2c_get_clientdata(client);
+    struct as5916_54xk_fan_data *data = i2c_get_clientdata(client);
 
     mutex_lock(&data->update_lock);
 
@@ -360,13 +360,13 @@ static struct as5916_54x_fan_data *as5916_54x_fan_update_device(struct device *d
         !data->valid) {
         int i;
 
-        dev_dbg(&client->dev, "Starting as5916_54x_fan update\n");
+        dev_dbg(&client->dev, "Starting as5916_54xk_fan update\n");
         data->valid = 0;
         
         /* Update fan data
          */
         for (i = 0; i < ARRAY_SIZE(data->reg_val); i++) {
-            int status = as5916_54x_fan_read_value(client, fan_reg[i]);
+            int status = as5916_54xk_fan_read_value(client, fan_reg[i]);
             
             if (status < 0) {
                 data->valid = 0;
@@ -388,10 +388,10 @@ static struct as5916_54x_fan_data *as5916_54x_fan_update_device(struct device *d
     return data;
 }
 
-static int as5916_54x_fan_probe(struct i2c_client *client,
+static int as5916_54xk_fan_probe(struct i2c_client *client,
             const struct i2c_device_id *dev_id)
 {
-    struct as5916_54x_fan_data *data;
+    struct as5916_54xk_fan_data *data;
     int status;
 
     if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -399,7 +399,7 @@ static int as5916_54x_fan_probe(struct i2c_client *client,
         goto exit;
     }
 
-    data = kzalloc(sizeof(struct as5916_54x_fan_data), GFP_KERNEL);
+    data = kzalloc(sizeof(struct as5916_54xk_fan_data), GFP_KERNEL);
     if (!data) {
         status = -ENOMEM;
         goto exit;
@@ -412,7 +412,7 @@ static int as5916_54x_fan_probe(struct i2c_client *client,
     dev_info(&client->dev, "chip found\n");
 
     /* Register sysfs hooks */
-    status = sysfs_create_group(&client->dev.kobj, &as5916_54x_fan_group);
+    status = sysfs_create_group(&client->dev.kobj, &as5916_54xk_fan_group);
     if (status) {
         goto exit_free;
     }
@@ -429,7 +429,7 @@ static int as5916_54x_fan_probe(struct i2c_client *client,
     return 0;
 
 exit_remove:
-    sysfs_remove_group(&client->dev.kobj, &as5916_54x_fan_group);
+    sysfs_remove_group(&client->dev.kobj, &as5916_54xk_fan_group);
 exit_free:
     kfree(data);
 exit:
@@ -437,11 +437,11 @@ exit:
     return status;
 }
 
-static int as5916_54x_fan_remove(struct i2c_client *client)
+static int as5916_54xk_fan_remove(struct i2c_client *client)
 {
-    struct as5916_54x_fan_data *data = i2c_get_clientdata(client);
+    struct as5916_54xk_fan_data *data = i2c_get_clientdata(client);
     hwmon_device_unregister(data->hwmon_dev);
-    sysfs_remove_group(&client->dev.kobj, &as5916_54x_fan_group);
+    sysfs_remove_group(&client->dev.kobj, &as5916_54xk_fan_group);
     
     return 0;
 }
@@ -449,37 +449,37 @@ static int as5916_54x_fan_remove(struct i2c_client *client)
 /* Addresses to scan */
 static const unsigned short normal_i2c[] = { 0x66, I2C_CLIENT_END };
 
-static const struct i2c_device_id as5916_54x_fan_id[] = {
-    { "as5916_54x_fan", 0 },
+static const struct i2c_device_id as5916_54xk_fan_id[] = {
+    { "as5916_54xk_fan", 0 },
     {}
 };
-MODULE_DEVICE_TABLE(i2c, as5916_54x_fan_id);
+MODULE_DEVICE_TABLE(i2c, as5916_54xk_fan_id);
 
-static struct i2c_driver as5916_54x_fan_driver = {
+static struct i2c_driver as5916_54xk_fan_driver = {
     .class        = I2C_CLASS_HWMON,
     .driver = {
         .name     = DRVNAME,
     },
-    .probe        = as5916_54x_fan_probe,
-    .remove       = as5916_54x_fan_remove,
-    .id_table     = as5916_54x_fan_id,
+    .probe        = as5916_54xk_fan_probe,
+    .remove       = as5916_54xk_fan_remove,
+    .id_table     = as5916_54xk_fan_id,
     .address_list = normal_i2c,
 };
 
-static int __init as5916_54x_fan_init(void)
+static int __init as5916_54xk_fan_init(void)
 {
-    return i2c_add_driver(&as5916_54x_fan_driver);
+    return i2c_add_driver(&as5916_54xk_fan_driver);
 }
 
-static void __exit as5916_54x_fan_exit(void)
+static void __exit as5916_54xk_fan_exit(void)
 {
-    i2c_del_driver(&as5916_54x_fan_driver);
+    i2c_del_driver(&as5916_54xk_fan_driver);
 }
 
-module_init(as5916_54x_fan_init);
-module_exit(as5916_54x_fan_exit);
+module_init(as5916_54xk_fan_init);
+module_exit(as5916_54xk_fan_exit);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("as5916_54x_fan driver");
+MODULE_DESCRIPTION("as5916_54xk_fan driver");
 MODULE_LICENSE("GPL");
 

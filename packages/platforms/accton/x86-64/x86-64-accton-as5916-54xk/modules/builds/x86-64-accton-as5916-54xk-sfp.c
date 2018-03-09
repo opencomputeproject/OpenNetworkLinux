@@ -1,5 +1,5 @@
 /*
- * SFP driver for accton as5916_54x sfp
+ * SFP driver for accton as5916_54xk sfp
  *
  * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
  *
@@ -32,7 +32,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 
-#define DRIVER_NAME 	"as5916_54x_sfp" /* Platform dependent */
+#define DRIVER_NAME 	"as5916_54xk_sfp" /* Platform dependent */
 
 #define DEBUG_MODE 0
 
@@ -181,30 +181,30 @@ static struct attribute *sfp_ddm_attributes[] = {
 #define CPLD_PORT_TO_FRONT_PORT(port)  (port+1)
 
 enum port_numbers {
-as5916_54x_sfp1,  as5916_54x_sfp2,  as5916_54x_sfp3,  as5916_54x_sfp4,  as5916_54x_sfp5,  as5916_54x_sfp6,  as5916_54x_sfp7,  as5916_54x_sfp8, 
-as5916_54x_sfp9,  as5916_54x_sfp10, as5916_54x_sfp11, as5916_54x_sfp12, as5916_54x_sfp13, as5916_54x_sfp14, as5916_54x_sfp15, as5916_54x_sfp16,
-as5916_54x_sfp17, as5916_54x_sfp18, as5916_54x_sfp19, as5916_54x_sfp20, as5916_54x_sfp21, as5916_54x_sfp22, as5916_54x_sfp23, as5916_54x_sfp24,
-as5916_54x_sfp25, as5916_54x_sfp26, as5916_54x_sfp27, as5916_54x_sfp28, as5916_54x_sfp29, as5916_54x_sfp30, as5916_54x_sfp31, as5916_54x_sfp32,
-as5916_54x_sfp33, as5916_54x_sfp34, as5916_54x_sfp35, as5916_54x_sfp36, as5916_54x_sfp37, as5916_54x_sfp38, as5916_54x_sfp39, as5916_54x_sfp40,
-as5916_54x_sfp41, as5916_54x_sfp42, as5916_54x_sfp43, as5916_54x_sfp44, as5916_54x_sfp45, as5916_54x_sfp46, as5916_54x_sfp47, as5916_54x_sfp48,
-as5916_54x_sfp49, as5916_54x_sfp50, as5916_54x_sfp51, as5916_54x_sfp52, as5916_54x_sfp53, as5916_54x_sfp54
+as5916_54xk_sfp1,  as5916_54xk_sfp2,  as5916_54xk_sfp3,  as5916_54xk_sfp4,  as5916_54xk_sfp5,  as5916_54xk_sfp6,  as5916_54xk_sfp7,  as5916_54xk_sfp8, 
+as5916_54xk_sfp9,  as5916_54xk_sfp10, as5916_54xk_sfp11, as5916_54xk_sfp12, as5916_54xk_sfp13, as5916_54xk_sfp14, as5916_54xk_sfp15, as5916_54xk_sfp16,
+as5916_54xk_sfp17, as5916_54xk_sfp18, as5916_54xk_sfp19, as5916_54xk_sfp20, as5916_54xk_sfp21, as5916_54xk_sfp22, as5916_54xk_sfp23, as5916_54xk_sfp24,
+as5916_54xk_sfp25, as5916_54xk_sfp26, as5916_54xk_sfp27, as5916_54xk_sfp28, as5916_54xk_sfp29, as5916_54xk_sfp30, as5916_54xk_sfp31, as5916_54xk_sfp32,
+as5916_54xk_sfp33, as5916_54xk_sfp34, as5916_54xk_sfp35, as5916_54xk_sfp36, as5916_54xk_sfp37, as5916_54xk_sfp38, as5916_54xk_sfp39, as5916_54xk_sfp40,
+as5916_54xk_sfp41, as5916_54xk_sfp42, as5916_54xk_sfp43, as5916_54xk_sfp44, as5916_54xk_sfp45, as5916_54xk_sfp46, as5916_54xk_sfp47, as5916_54xk_sfp48,
+as5916_54xk_sfp49, as5916_54xk_sfp50, as5916_54xk_sfp51, as5916_54xk_sfp52, as5916_54xk_sfp53, as5916_54xk_sfp54
 };
 
 static const struct i2c_device_id sfp_device_id[] = {
-{ "as5916_54x_sfp1",  as5916_54x_sfp1 },  { "as5916_54x_sfp2",  as5916_54x_sfp2 },  { "as5916_54x_sfp3",  as5916_54x_sfp3 },  { "as5916_54x_sfp4",  as5916_54x_sfp4 },
-{ "as5916_54x_sfp5",  as5916_54x_sfp5 },  { "as5916_54x_sfp6",  as5916_54x_sfp6 },  { "as5916_54x_sfp7",  as5916_54x_sfp7 },  { "as5916_54x_sfp8",  as5916_54x_sfp8 },
-{ "as5916_54x_sfp9",  as5916_54x_sfp9 },  { "as5916_54x_sfp10", as5916_54x_sfp10 }, { "as5916_54x_sfp11", as5916_54x_sfp11 }, { "as5916_54x_sfp12", as5916_54x_sfp12 },
-{ "as5916_54x_sfp13", as5916_54x_sfp13 }, { "as5916_54x_sfp14", as5916_54x_sfp14 }, { "as5916_54x_sfp15", as5916_54x_sfp15 }, { "as5916_54x_sfp16", as5916_54x_sfp16 },
-{ "as5916_54x_sfp17", as5916_54x_sfp17 }, { "as5916_54x_sfp18", as5916_54x_sfp18 }, { "as5916_54x_sfp19", as5916_54x_sfp19 }, { "as5916_54x_sfp20", as5916_54x_sfp20 },
-{ "as5916_54x_sfp21", as5916_54x_sfp21 }, { "as5916_54x_sfp22", as5916_54x_sfp22 }, { "as5916_54x_sfp23", as5916_54x_sfp23 }, { "as5916_54x_sfp24", as5916_54x_sfp24 },
-{ "as5916_54x_sfp25", as5916_54x_sfp25 }, { "as5916_54x_sfp26", as5916_54x_sfp26 }, { "as5916_54x_sfp27", as5916_54x_sfp27 }, { "as5916_54x_sfp28", as5916_54x_sfp28 },
-{ "as5916_54x_sfp29", as5916_54x_sfp29 }, { "as5916_54x_sfp30", as5916_54x_sfp30 }, { "as5916_54x_sfp31", as5916_54x_sfp31 }, { "as5916_54x_sfp32", as5916_54x_sfp32 },
-{ "as5916_54x_sfp33", as5916_54x_sfp33 }, { "as5916_54x_sfp34", as5916_54x_sfp34 }, { "as5916_54x_sfp35", as5916_54x_sfp35 }, { "as5916_54x_sfp36", as5916_54x_sfp36 },
-{ "as5916_54x_sfp37", as5916_54x_sfp37 }, { "as5916_54x_sfp38", as5916_54x_sfp38 }, { "as5916_54x_sfp39", as5916_54x_sfp39 }, { "as5916_54x_sfp40", as5916_54x_sfp40 },
-{ "as5916_54x_sfp41", as5916_54x_sfp41 }, { "as5916_54x_sfp42", as5916_54x_sfp42 }, { "as5916_54x_sfp43", as5916_54x_sfp43 }, { "as5916_54x_sfp44", as5916_54x_sfp44 },
-{ "as5916_54x_sfp45", as5916_54x_sfp45 }, { "as5916_54x_sfp46", as5916_54x_sfp46 }, { "as5916_54x_sfp47", as5916_54x_sfp47 }, { "as5916_54x_sfp48", as5916_54x_sfp48 },
-{ "as5916_54x_sfp49", as5916_54x_sfp49 }, { "as5916_54x_sfp50", as5916_54x_sfp50 }, { "as5916_54x_sfp51", as5916_54x_sfp51 }, { "as5916_54x_sfp52", as5916_54x_sfp52 },
-{ "as5916_54x_sfp53", as5916_54x_sfp53 }, { "as5916_54x_sfp54", as5916_54x_sfp54 },
+{ "as5916_54xk_sfp1",  as5916_54xk_sfp1 },  { "as5916_54xk_sfp2",  as5916_54xk_sfp2 },  { "as5916_54xk_sfp3",  as5916_54xk_sfp3 },  { "as5916_54xk_sfp4",  as5916_54xk_sfp4 },
+{ "as5916_54xk_sfp5",  as5916_54xk_sfp5 },  { "as5916_54xk_sfp6",  as5916_54xk_sfp6 },  { "as5916_54xk_sfp7",  as5916_54xk_sfp7 },  { "as5916_54xk_sfp8",  as5916_54xk_sfp8 },
+{ "as5916_54xk_sfp9",  as5916_54xk_sfp9 },  { "as5916_54xk_sfp10", as5916_54xk_sfp10 }, { "as5916_54xk_sfp11", as5916_54xk_sfp11 }, { "as5916_54xk_sfp12", as5916_54xk_sfp12 },
+{ "as5916_54xk_sfp13", as5916_54xk_sfp13 }, { "as5916_54xk_sfp14", as5916_54xk_sfp14 }, { "as5916_54xk_sfp15", as5916_54xk_sfp15 }, { "as5916_54xk_sfp16", as5916_54xk_sfp16 },
+{ "as5916_54xk_sfp17", as5916_54xk_sfp17 }, { "as5916_54xk_sfp18", as5916_54xk_sfp18 }, { "as5916_54xk_sfp19", as5916_54xk_sfp19 }, { "as5916_54xk_sfp20", as5916_54xk_sfp20 },
+{ "as5916_54xk_sfp21", as5916_54xk_sfp21 }, { "as5916_54xk_sfp22", as5916_54xk_sfp22 }, { "as5916_54xk_sfp23", as5916_54xk_sfp23 }, { "as5916_54xk_sfp24", as5916_54xk_sfp24 },
+{ "as5916_54xk_sfp25", as5916_54xk_sfp25 }, { "as5916_54xk_sfp26", as5916_54xk_sfp26 }, { "as5916_54xk_sfp27", as5916_54xk_sfp27 }, { "as5916_54xk_sfp28", as5916_54xk_sfp28 },
+{ "as5916_54xk_sfp29", as5916_54xk_sfp29 }, { "as5916_54xk_sfp30", as5916_54xk_sfp30 }, { "as5916_54xk_sfp31", as5916_54xk_sfp31 }, { "as5916_54xk_sfp32", as5916_54xk_sfp32 },
+{ "as5916_54xk_sfp33", as5916_54xk_sfp33 }, { "as5916_54xk_sfp34", as5916_54xk_sfp34 }, { "as5916_54xk_sfp35", as5916_54xk_sfp35 }, { "as5916_54xk_sfp36", as5916_54xk_sfp36 },
+{ "as5916_54xk_sfp37", as5916_54xk_sfp37 }, { "as5916_54xk_sfp38", as5916_54xk_sfp38 }, { "as5916_54xk_sfp39", as5916_54xk_sfp39 }, { "as5916_54xk_sfp40", as5916_54xk_sfp40 },
+{ "as5916_54xk_sfp41", as5916_54xk_sfp41 }, { "as5916_54xk_sfp42", as5916_54xk_sfp42 }, { "as5916_54xk_sfp43", as5916_54xk_sfp43 }, { "as5916_54xk_sfp44", as5916_54xk_sfp44 },
+{ "as5916_54xk_sfp45", as5916_54xk_sfp45 }, { "as5916_54xk_sfp46", as5916_54xk_sfp46 }, { "as5916_54xk_sfp47", as5916_54xk_sfp47 }, { "as5916_54xk_sfp48", as5916_54xk_sfp48 },
+{ "as5916_54xk_sfp49", as5916_54xk_sfp49 }, { "as5916_54xk_sfp50", as5916_54xk_sfp50 }, { "as5916_54xk_sfp51", as5916_54xk_sfp51 }, { "as5916_54xk_sfp52", as5916_54xk_sfp52 },
+{ "as5916_54xk_sfp53", as5916_54xk_sfp53 }, { "as5916_54xk_sfp54", as5916_54xk_sfp54 },
 { /* LIST END */ }
 };
 MODULE_DEVICE_TABLE(i2c, sfp_device_id);
@@ -351,7 +351,7 @@ static struct sfp_port_data* sfp_update_tx_rx_status(struct device *dev)
 		return data;
 	}
 
-	DEBUG_PRINT("Starting as5916_54x sfp tx rx status update");
+	DEBUG_PRINT("Starting as5916_54xk sfp tx rx status update");
 	mutex_lock(&data->update_lock);
 	data->msa->valid = 0;
 	memset(data->msa->status, 0, sizeof(data->msa->status));
@@ -1220,7 +1220,7 @@ static int sfp_device_probe(struct i2c_client *client,
 	data->port 	 = dev_id->driver_data;
 	data->client = client;
 
-	if (dev_id->driver_data >= as5916_54x_sfp1 && dev_id->driver_data <= as5916_54x_sfp48) {
+	if (dev_id->driver_data >= as5916_54xk_sfp1 && dev_id->driver_data <= as5916_54xk_sfp48) {
 		if (client->addr == SFP_EEPROM_A0_I2C_ADDR) {
 			data->driver_type = DRIVER_TYPE_SFP_MSA;
 			return sfp_msa_probe(client, dev_id, &data->msa);
@@ -1230,7 +1230,7 @@ static int sfp_device_probe(struct i2c_client *client,
 			return sfp_ddm_probe(client, dev_id, &data->ddm);
 		}
 	}
-	else { /* as5916_54x_sfp49 ~ as5916_54x_sfp54 */
+	else { /* as5916_54xk_sfp49 ~ as5916_54xk_sfp54 */
 		if (client->addr == SFP_EEPROM_A0_I2C_ADDR) {
 			data->driver_type = DRIVER_TYPE_QSFP;
 			return qsfp_probe(client, dev_id, &data->qsfp);
@@ -1306,7 +1306,7 @@ static void __exit sfp_exit(void)
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("accton as5916_54x_sfp driver");
+MODULE_DESCRIPTION("accton as5916_54xk_sfp driver");
 MODULE_LICENSE("GPL");
 
 late_initcall(sfp_init);

@@ -23,15 +23,15 @@
 ############################################################
 include $(ONL)/make/config.amd64.mk
 
-MODULE := libonlp-x86-64-accton-as5916-54x
+MODULE := libonlp-x86-64-accton-as5916-54xk
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM IOF x86_64_accton_as5916_54x onlplib
+DEPENDMODULES := AIM IOF x86_64_accton_as5916_54xk onlplib
 DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-x86-64-accton-as5916-54x.so
+SHAREDLIB := libonlp-x86-64-accton-as5916-54xk.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)

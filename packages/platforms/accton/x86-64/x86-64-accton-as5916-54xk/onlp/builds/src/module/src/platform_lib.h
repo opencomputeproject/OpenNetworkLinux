@@ -26,7 +26,7 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
-#include "x86_64_accton_as5916_54x_log.h"
+#include "x86_64_accton_as5916_54xk_log.h"
 
 #define CHASSIS_FAN_COUNT		6
 #define CHASSIS_THERMAL_COUNT	5
@@ -51,7 +51,7 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/9-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/bus/i2c/devices/0-0054/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/0-0056/eeprom"
 
 enum onlp_thermal_id
 {

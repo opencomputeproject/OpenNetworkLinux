@@ -4,6 +4,6 @@
 #
 ###############################################################################
 
-LIBRARY := x86_64_accton_as5916_54x
+LIBRARY := x86_64_accton_as5916_54xk
 $(LIBRARY)_SUBDIR := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(BUILDER)/lib.mk

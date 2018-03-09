@@ -27,7 +27,7 @@
 #include <onlplib/file.h>
 #include "platform_lib.h"
 
-#include "x86_64_accton_as5916_54x_log.h"
+#include "x86_64_accton_as5916_54xk_log.h"
 
 #define NUM_OF_SFP_PORT 54
 #define MAX_PORT_PATH 	64

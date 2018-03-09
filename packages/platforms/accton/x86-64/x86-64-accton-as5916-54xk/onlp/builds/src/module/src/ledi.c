@@ -27,7 +27,7 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT "/sys/class/leds/accton_as5916_54x_led::%s/brightness"
+#define LED_FORMAT "/sys/class/leds/accton_as5916_54xk_led::%s/brightness"
 
 #define VALIDATE(_id)                           \
     do {                                        \

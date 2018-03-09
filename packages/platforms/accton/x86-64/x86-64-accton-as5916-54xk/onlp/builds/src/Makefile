@@ -4,6 +4,6 @@
 #
 ###############################################################################
 include ../../init.mk
-MODULE := x86_64_accton_as5916_54x
-AUTOMODULE := x86_64_accton_as5916_54x
+MODULE := x86_64_accton_as5916_54xk
+AUTOMODULE := x86_64_accton_as5916_54xk
 include $(BUILDER)/definemodule.mk

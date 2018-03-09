@@ -3,7 +3,7 @@
  *
  *
  *****************************************************************************/
-#include <x86_64_accton_as5916_54x/x86_64_accton_as5916_54x_config.h>
+#include <x86_64_accton_as5916_54xk/x86_64_accton_as5916_54xk_config.h>
 
 /* <--auto.start.enum(ALL).source> */
 /* <auto.end.enum(ALL).source> */

@@ -5,5 +5,5 @@
 ###############################################################################
 
 ucli:
-	@../../../../tools/uclihandlers.py x86_64_accton_as5916_54x_ucli.c
+	@../../../../tools/uclihandlers.py x86_64_accton_as5916_54xk_ucli.c
 

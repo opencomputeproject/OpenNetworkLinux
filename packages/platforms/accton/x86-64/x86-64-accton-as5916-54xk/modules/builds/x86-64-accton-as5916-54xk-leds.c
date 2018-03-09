@@ -1,5 +1,5 @@
 /*
- * A LED driver for the accton_as5916_54x_led
+ * A LED driver for the accton_as5916_54xk_led
  *
  * Copyright (C) 2016 Accton Technology Corporation.
  * Brandon Chuang <brandon_chuang@accton.com.tw>
@@ -27,7 +27,7 @@
 #include <linux/leds.h>
 #include <linux/slab.h>
 
-#define DRVNAME "accton_as5916_54x_led"
+#define DRVNAME "accton_as5916_54xk_led"
 
 #define DEBUG_MODE 1
 
@@ -41,7 +41,7 @@
 extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
 extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
-struct accton_as5916_54x_led_data {
+struct accton_as5916_54xk_led_data {
 	struct platform_device *pdev;
 	struct mutex	update_lock;
 	char			valid;		  /* != 0 if registers are valid */
@@ -51,7 +51,7 @@ struct accton_as5916_54x_led_data {
 													 2 ~ 4 = SYSTEM LED */
 };
 
-static struct accton_as5916_54x_led_data  *ledctl = NULL;
+static struct accton_as5916_54xk_led_data  *ledctl = NULL;
 
 #define LED_CNTRLER_I2C_ADDRESS		(0x60)
 
@@ -155,17 +155,17 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 	return reg_val;
 }
 
-static int accton_as5916_54x_led_read_value(u8 reg)
+static int accton_as5916_54xk_led_read_value(u8 reg)
 {
 	return accton_i2c_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
 }
 
-static int accton_as5916_54x_led_write_value(u8 reg, u8 value)
+static int accton_as5916_54xk_led_write_value(u8 reg, u8 value)
 {
 	return accton_i2c_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
 }
 
-static void accton_as5916_54x_led_update(void)
+static void accton_as5916_54xk_led_update(void)
 {
 	mutex_lock(&ledctl->update_lock);
 
@@ -173,13 +173,13 @@ static void accton_as5916_54x_led_update(void)
 		|| !ledctl->valid) {
 		int i;
 
-		dev_dbg(&ledctl->pdev->dev, "Starting accton_as5916_54x_led update\n");
+		dev_dbg(&ledctl->pdev->dev, "Starting accton_as5916_54xk_led update\n");
 		ledctl->valid = 0;
 		
 		/* Update LED data
 		 */
 		for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
-			int status = accton_as5916_54x_led_read_value(led_reg[i]);
+			int status = accton_as5916_54xk_led_read_value(led_reg[i]);
 			
 			if (status < 0) {
 				dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg[i], status);
@@ -197,14 +197,14 @@ exit:
 	mutex_unlock(&ledctl->update_lock);
 }
 
-static void accton_as5916_54x_led_set(struct led_classdev *led_cdev,
+static void accton_as5916_54xk_led_set(struct led_classdev *led_cdev,
 									  enum led_brightness led_light_mode, 
 									  u8 reg, enum led_type type)
 {
 	int reg_val;
 	
 	mutex_lock(&ledctl->update_lock);
-	reg_val = accton_as5916_54x_led_read_value(reg);
+	reg_val = accton_as5916_54xk_led_read_value(reg);
 	
 	if (reg_val < 0) {
 		dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", reg, reg_val);
@@ -212,91 +212,91 @@ static void accton_as5916_54x_led_set(struct led_classdev *led_cdev,
 	}
 
 	reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);
-	accton_as5916_54x_led_write_value(reg, reg_val);
+	accton_as5916_54xk_led_write_value(reg, reg_val);
 	ledctl->valid = 0;
 	
 exit:
 	mutex_unlock(&ledctl->update_lock);
 }
 
-static void accton_as7312_54x_led_auto_set(struct led_classdev *led_cdev,
+static void accton_as7312_54xk_led_auto_set(struct led_classdev *led_cdev,
 										   enum led_brightness led_light_mode)
 {
 }
 
-static enum led_brightness accton_as7312_54x_led_auto_get(struct led_classdev *cdev)
+static enum led_brightness accton_as7312_54xk_led_auto_get(struct led_classdev *cdev)
 {
 	return LED_MODE_AUTO;
 }
 
-static void accton_as5916_54x_led_diag_set(struct led_classdev *led_cdev,
+static void accton_as5916_54xk_led_diag_set(struct led_classdev *led_cdev,
 										   enum led_brightness led_light_mode)
 {
-	accton_as5916_54x_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_DIAG);
+	accton_as5916_54xk_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_DIAG);
 }
 
-static enum led_brightness accton_as5916_54x_led_diag_get(struct led_classdev *cdev)
+static enum led_brightness accton_as5916_54xk_led_diag_get(struct led_classdev *cdev)
 {
-	accton_as5916_54x_led_update();
+	accton_as5916_54xk_led_update();
 	return led_reg_val_to_light_mode(LED_TYPE_DIAG, ledctl->reg_val[0]);
 }
 
-static enum led_brightness accton_as5916_54x_led_loc_get(struct led_classdev *cdev)
+static enum led_brightness accton_as5916_54xk_led_loc_get(struct led_classdev *cdev)
 {
-	accton_as5916_54x_led_update();
+	accton_as5916_54xk_led_update();
 	return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[0]);
 }
 
-static void accton_as5916_54x_led_loc_set(struct led_classdev *led_cdev,
+static void accton_as5916_54xk_led_loc_set(struct led_classdev *led_cdev,
 										   enum led_brightness led_light_mode)
 {
-	accton_as5916_54x_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_LOC);
+	accton_as5916_54xk_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_LOC);
 }
 
-static struct led_classdev accton_as5916_54x_leds[] = {
+static struct led_classdev accton_as5916_54xk_leds[] = {
 	[LED_TYPE_LOC] = {
-		.name			 = "accton_as5916_54x_led::loc",
+		.name			 = "accton_as5916_54xk_led::loc",
 		.default_trigger = "unused",
-		.brightness_set	 = accton_as5916_54x_led_loc_set,
-		.brightness_get  = accton_as5916_54x_led_loc_get,
+		.brightness_set	 = accton_as5916_54xk_led_loc_set,
+		.brightness_get  = accton_as5916_54xk_led_loc_get,
 		.max_brightness  = LED_MODE_ORANGE,
 	},
 	[LED_TYPE_DIAG] = {
-		.name			 = "accton_as5916_54x_led::diag",
+		.name			 = "accton_as5916_54xk_led::diag",
 		.default_trigger = "unused",
-		.brightness_set	 = accton_as5916_54x_led_diag_set,
-		.brightness_get  = accton_as5916_54x_led_diag_get,
+		.brightness_set	 = accton_as5916_54xk_led_diag_set,
+		.brightness_get  = accton_as5916_54xk_led_diag_get,
 		.max_brightness  = LED_MODE_GREEN,
 	},
 	[LED_TYPE_PSU1] = {
-		.name			 = "accton_as5916_54x_led::psu1",
+		.name			 = "accton_as5916_54xk_led::psu1",
 		.default_trigger = "unused",
-		.brightness_set	 = accton_as7312_54x_led_auto_set,
-		.brightness_get  = accton_as7312_54x_led_auto_get,
+		.brightness_set	 = accton_as7312_54xk_led_auto_set,
+		.brightness_get  = accton_as7312_54xk_led_auto_get,
 		.max_brightness  = LED_MODE_AUTO,
 	},
 	[LED_TYPE_PSU2] = {
-		.name			 = "accton_as5916_54x_led::psu2",
+		.name			 = "accton_as5916_54xk_led::psu2",
 		.default_trigger = "unused",
-		.brightness_set	 = accton_as7312_54x_led_auto_set,
-		.brightness_get  = accton_as7312_54x_led_auto_get,
+		.brightness_set	 = accton_as7312_54xk_led_auto_set,
+		.brightness_get  = accton_as7312_54xk_led_auto_get,
 		.max_brightness  = LED_MODE_AUTO,
 	},
 	[LED_TYPE_FAN] = {
-		.name			 = "accton_as5916_54x_led::fan",
+		.name			 = "accton_as5916_54xk_led::fan",
 		.default_trigger = "unused",
-		.brightness_set	 = accton_as7312_54x_led_auto_set,
-		.brightness_get  = accton_as7312_54x_led_auto_get,
+		.brightness_set	 = accton_as7312_54xk_led_auto_set,
+		.brightness_get  = accton_as7312_54xk_led_auto_get,
 		.max_brightness  = LED_MODE_AUTO,
 	},
 };
 
-static int accton_as5916_54x_led_probe(struct platform_device *pdev)
+static int accton_as5916_54xk_led_probe(struct platform_device *pdev)
 {
 	int ret, i;
 	
-	for (i = 0; i < ARRAY_SIZE(accton_as5916_54x_leds); i++) {
-		ret = led_classdev_register(&pdev->dev, &accton_as5916_54x_leds[i]);
+	for (i = 0; i < ARRAY_SIZE(accton_as5916_54xk_leds); i++) {
+		ret = led_classdev_register(&pdev->dev, &accton_as5916_54xk_leds[i]);
 		
 		if (ret < 0) {
 			break;
@@ -304,48 +304,48 @@ static int accton_as5916_54x_led_probe(struct platform_device *pdev)
 	}
 	
 	/* Check if all LEDs were successfully registered */
-	if (i != ARRAY_SIZE(accton_as5916_54x_leds)){
+	if (i != ARRAY_SIZE(accton_as5916_54xk_leds)){
 		int j;
 		
 		/* only unregister the LEDs that were successfully registered */
 		for (j = 0; j < i; j++) {
-			led_classdev_unregister(&accton_as5916_54x_leds[i]);
+			led_classdev_unregister(&accton_as5916_54xk_leds[i]);
 		}
 	}
 
 	return ret;
 }
 
-static int accton_as5916_54x_led_remove(struct platform_device *pdev)
+static int accton_as5916_54xk_led_remove(struct platform_device *pdev)
 {
 	int i;
 	
-	for (i = 0; i < ARRAY_SIZE(accton_as5916_54x_leds); i++) {
-		led_classdev_unregister(&accton_as5916_54x_leds[i]);
+	for (i = 0; i < ARRAY_SIZE(accton_as5916_54xk_leds); i++) {
+		led_classdev_unregister(&accton_as5916_54xk_leds[i]);
 	}
 
 	return 0;
 }
 
-static struct platform_driver accton_as5916_54x_led_driver = {
-	.probe	= accton_as5916_54x_led_probe,
-	.remove	= accton_as5916_54x_led_remove,
+static struct platform_driver accton_as5916_54xk_led_driver = {
+	.probe	= accton_as5916_54xk_led_probe,
+	.remove	= accton_as5916_54xk_led_remove,
 	.driver = {
 		.name   = DRVNAME,
 		.owner  = THIS_MODULE,
 	},
 };
 
-static int __init accton_as5916_54x_led_init(void)
+static int __init accton_as5916_54xk_led_init(void)
 {
 	int ret;
 
-	ret = platform_driver_register(&accton_as5916_54x_led_driver);
+	ret = platform_driver_register(&accton_as5916_54xk_led_driver);
 	if (ret < 0) {
 		goto exit;
 	}
 
-	ledctl = kzalloc(sizeof(struct accton_as5916_54x_led_data), GFP_KERNEL);
+	ledctl = kzalloc(sizeof(struct accton_as5916_54xk_led_data), GFP_KERNEL);
 	if (!ledctl) {
 		ret = -ENOMEM;
 		goto exit_driver;
@@ -364,23 +364,23 @@ static int __init accton_as5916_54x_led_init(void)
 exit_free:
 	kfree(ledctl);
 exit_driver:
-	platform_driver_unregister(&accton_as5916_54x_led_driver);
+	platform_driver_unregister(&accton_as5916_54xk_led_driver);
 exit:
 	return ret;
 }
 
-static void __exit accton_as5916_54x_led_exit(void)
+static void __exit accton_as5916_54xk_led_exit(void)
 {
 	platform_device_unregister(ledctl->pdev);
-	platform_driver_unregister(&accton_as5916_54x_led_driver);
+	platform_driver_unregister(&accton_as5916_54xk_led_driver);
 	kfree(ledctl);
 }
 
-late_initcall(accton_as5916_54x_led_init);
-module_exit(accton_as5916_54x_led_exit);
+late_initcall(accton_as5916_54xk_led_init);
+module_exit(accton_as5916_54xk_led_exit);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("accton_as5916_54x_led driver");
+MODULE_DESCRIPTION("accton_as5916_54xk_led driver");
 MODULE_LICENSE("GPL");
 
 
