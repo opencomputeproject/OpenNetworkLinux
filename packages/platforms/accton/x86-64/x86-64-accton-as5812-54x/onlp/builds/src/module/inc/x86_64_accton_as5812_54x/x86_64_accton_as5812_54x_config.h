@@ -99,6 +99,16 @@
 #define X86_64_ACCTON_AS5812_54X_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION 0
 #endif
 
+/**
+ * x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX
+ *
+ * Maximum system fan(Front) rpm. */
+
+
+#ifndef x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX
+#define x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX 21500
+#endif
+
 
 
 /**
