@@ -50,6 +50,11 @@ powerpc_accton_as5710_54x_config_settings_t powerpc_accton_as5710_54x_config_set
 #else
 { POWERPC_ACCTON_AS5710_54X_CONFIG_INCLUDE_DEBUG(__powerpc_accton_as5710_54x_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef POWERPC_ACCTON_AS5710_54X_CONFIG_SYS_FAN_FRONT_RPM_MAX
+    { __powerpc_accton_as5710_54x_config_STRINGIFY_NAME(POWERPC_ACCTON_AS5710_54X_CONFIG_SYS_FAN_FRONT_RPM_MAX), __powerpc_accton_as5710_54x_config_STRINGIFY_VALUE(POWERPC_ACCTON_AS5710_54X_CONFIG_SYS_FAN_FRONT_RPM_MAX) },
+#else
+{ POWERPC_ACCTON_AS5710_54X_CONFIG_SYS_FAN_FRONT_RPM_MAX(__powerpc_accton_as5710_54x_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __powerpc_accton_as5710_54x_config_STRINGIFY_VALUE

@@ -29,7 +29,9 @@ cdefs: &cdefs
 - X86_64_ACCTON_AS5812_54X_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION:
     doc: "Assume chassis fan direction is the same as the PSU fan direction."
     default: 0
-
+- x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX:
+    doc: "Maximum system fan(Front) rpm."
+    default: 21500
 
 definitions:
   cdefs:

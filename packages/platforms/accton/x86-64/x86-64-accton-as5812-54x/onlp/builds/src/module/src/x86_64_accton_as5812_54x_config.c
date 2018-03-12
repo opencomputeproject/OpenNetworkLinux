@@ -50,6 +50,11 @@ x86_64_accton_as5812_54x_config_settings_t x86_64_accton_as5812_54x_config_setti
 #else
 { X86_64_ACCTON_AS5812_54X_CONFIG_INCLUDE_DEFAULT_FAN_DIRECTION(__x86_64_accton_as5812_54x_config_STRINGIFY_NAME), "__undefined__" },
 #endif
+#ifdef x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX
+    { __x86_64_accton_as5812_54x_config_STRINGIFY_NAME(x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX), __x86_64_accton_as5812_54x_config_STRINGIFY_VALUE(x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX) },
+#else
+{ x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX(__x86_64_accton_as5812_54x_config_STRINGIFY_NAME), "__undefined__" },
+#endif
     { NULL, NULL }
 };
 #undef __x86_64_accton_as5812_54x_config_STRINGIFY_VALUE
