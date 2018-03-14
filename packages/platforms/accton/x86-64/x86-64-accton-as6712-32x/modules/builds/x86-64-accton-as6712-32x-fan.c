@@ -270,7 +270,6 @@ static void accton_as6712_32x_fan_update_device(struct device *dev)
 {
     int speed, r_speed, fault, r_fault, direction, ctrl_speed;
     int i;
-    int retry_count = 5;
 
     mutex_lock(&fan_data->update_lock);
 
@@ -300,6 +299,8 @@ static void accton_as6712_32x_fan_update_device(struct device *dev)
 
     for (i = 0; i < FAN_MAX_NUMBER; i++)
     {
+        int retry_count = 5;
+
         /* Update fan data
          */
 
