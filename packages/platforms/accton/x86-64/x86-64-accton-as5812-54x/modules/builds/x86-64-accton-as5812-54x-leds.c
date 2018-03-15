@@ -551,11 +551,7 @@ static struct platform_driver accton_as5812_54x_led_driver = {
 static int __init accton_as5812_54x_led_init(void)
 {
     int ret;
-
-    extern int platform_accton_as5812_54x(void);
-    if(!platform_accton_as5812_54x()) {
-        return -ENODEV;
-    }
+  
     ret = platform_driver_register(&accton_as5812_54x_led_driver);
     if (ret < 0) {
         goto exit;
