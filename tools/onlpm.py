@@ -432,13 +432,14 @@ class OnlPackage(object):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
 
         if self.pkg.get('asr', True):
-            # Generate the ASR documentation for this package.
-            sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
-            import asr
-            asro = asr.AimSyslogReference()
-            asro.extract(workdir)
-            asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
-
+            with onlu.Profiler() as profiler:
+                # Generate the ASR documentation for this package.
+                sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
+                import asr
+                asro = asr.AimSyslogReference()
+                asro.extract(workdir)
+                asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
+            profiler.log("ASR generation for %(name)s" % self.pkg)
         ############################################################
 
         if logger.level < logging.INFO:
@@ -1234,13 +1235,14 @@ if __name__ == '__main__':
         if ops.list_all:
             print pm
 
+        if ops.pmake:
+            pm.pmake()
+
+
         pm.filter(subdir = ops.subdir, arches=ops.arches)
 
         if ops.list:
             print pm
-
-        if ops.pmake:
-            pm.pmake()
 
         if ops.pkg_info:
             print pm.pkg_info()
