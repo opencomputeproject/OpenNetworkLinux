@@ -67,7 +67,7 @@ def init_logging(name, lvl=logging.DEBUG):
 class Profiler(object):
 
     ENABLED=True
-    LOGFILE='plog'
+    LOGFILE=None
 
     def __enter__(self):
         self.start = time.time()
