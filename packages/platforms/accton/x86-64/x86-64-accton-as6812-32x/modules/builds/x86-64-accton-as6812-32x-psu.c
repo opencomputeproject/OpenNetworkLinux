@@ -297,8 +297,8 @@ struct serial_number_info {
 struct serial_number_info serials[] = {
 {PSU_YM_2401_JCR,   0x20, 11},
 {PSU_YM_2401_JDR,   0x20, 11},
-{PSU_CPR_4011_4M11, 0x46, 15},
-{PSU_CPR_4011_4M21, 0x46, 15},
+{PSU_CPR_4011_4M11, 0x47, 15},
+{PSU_CPR_4011_4M21, 0x47, 15},
 {PSU_CPR_6011_2M11, 0x46, 15},
 {PSU_CPR_6011_2M21, 0x46, 15},
 {PSU_UM400D_01G,    0x50,  9},
@@ -317,16 +317,18 @@ static int as6812_32x_psu_serial_number_get(struct device *dev, enum psu_type ty
     case PSU_CPR_6011_2M11:
     case PSU_CPR_6011_2M21:
         {
-            status = as6812_32x_psu_read_block(client, serials[i].offset,
-                                               data->serial, serials[i].length);
+            if(type >= sizeof(serials)/sizeof(struct serial_number_info))
+                return -EINVAL;
+            status = as6812_32x_psu_read_block(client, serials[type].offset,
+                                               data->serial, serials[type].length);
             if (status < 0) {
                 data->serial[0] = '\0';
                 dev_dbg(&client->dev, "unable to read serial number from (0x%x) offset(0x%x)\n", 
-                                      client->addr, serials[i].offset);
+                                      client->addr, serials[type].offset);
                 return status;
             }
             else {
-                data->serial[serials[i].length] = '\0';
+                data->serial[serials[type].length] = '\0';
                 return 0;
             }
         }
