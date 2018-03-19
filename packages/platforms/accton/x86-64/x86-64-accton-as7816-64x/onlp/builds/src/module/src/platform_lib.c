@@ -30,7 +30,7 @@
 #include "platform_lib.h"
 
 #define PSU_MODEL_NAME_LEN 		8
-#define PSU_SERIAL_NUMBER_LEN	14
+#define PSU_SERIAL_NUMBER_LEN	18
 #define PSU_NODE_MAX_PATH_LEN   64
 
 int psu_serial_number_get(int id, char *serial, int serial_len)
