@@ -225,6 +225,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int val   = 0;
     int   ret = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
+    int is_ac=1;
     psu_type_t psu_type; 
 
     VALIDATE(id);
@@ -270,12 +271,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             break;
         case PSU_TYPE_DC_48V_F2B:
         case PSU_TYPE_DC_48V_B2F:
+            is_ac=0;
             ret = psu_um400d_info_get(info);
             break;
         default:
             ret = ONLP_STATUS_E_UNSUPPORTED;
             break;
     }
+    psu_serial_number_get(index, is_ac, info->serial, sizeof(info->serial));
 
     return ret;
 }
