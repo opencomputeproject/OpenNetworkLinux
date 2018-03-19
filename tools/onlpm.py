@@ -1347,6 +1347,11 @@ if __name__ == '__main__':
         if ops.delete:
             pm.opr.remove_packages(ops.delete)
 
+        if ops.lookup:
+            logger.debug("looking up %s", ops.lookup)
+            for p in pm.opr.lookup_all(ops.lookup):
+                print p
+
     except (OnlPackageError, onlyaml.OnlYamlError), e:
         logger.error(e)
         sys.exit(1)
