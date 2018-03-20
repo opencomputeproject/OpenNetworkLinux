@@ -8,9 +8,10 @@ class OnlPlatform_x86_64_accton_as6812_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".6812.32"
 
     def baseconfig(self):
+        self.insmod('optoe')
         self.insmod('cpr_4011_4mxx')
         self.insmod("ym2651y")
-        for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as6812-32x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -25,9 +26,8 @@ class OnlPlatform_x86_64_accton_as6812_32x_r0(OnlPlatformAccton,
 
         # initialize QSFP port 1~32
         for port in range(1, 33):
-            self.new_i2c_device('as6812_32x_port%d' % port,
-                                0x50,
-                                port+1)
+            self.new_i2c_device('optoe1', 0x50, port+1)
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+1), shell=True)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(
