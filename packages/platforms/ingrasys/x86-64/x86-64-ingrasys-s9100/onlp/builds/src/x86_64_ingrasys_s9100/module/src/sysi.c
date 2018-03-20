@@ -197,13 +197,18 @@ _EXIT :
 int
 onlp_sysi_platform_manage_leds(void)
 {
-    int psu1_status, psu2_status, rc, i, tmp_fan_status;
+    int psu1_status, psu2_status, rc, i;
+    int fan_tray_id, sum, total = 0;
     static int pre_psu1_status = 0, pre_psu2_status = 0, pre_fan_status = 0;
+    static int pre_fan_tray_status[4] = {0};
 
     onlp_psu_info_t psu_info;
     onlp_fan_info_t fan_info;
+    onlp_led_status_t fan_tray_status[SYS_FAN_NUM];
+
     memset(&psu_info, 0, sizeof(onlp_psu_info_t));
     memset(&fan_info, 0, sizeof(onlp_fan_info_t));
+    memset(&fan_tray_status, 0, sizeof(fan_tray_status));
     uint32_t fan_arr[] = { FAN_OID_FAN1, 
                            FAN_OID_FAN2, 
                            FAN_OID_FAN3, 
@@ -213,6 +218,7 @@ onlp_sysi_platform_manage_leds(void)
                            FAN_OID_FAN7, 
                            FAN_OID_FAN8, };
     
+
     /* PSU LED CTRL */
     if ((rc = onlp_psui_info_get(PSU_OID_PSU1, &psu_info)) != ONLP_STATUS_OK) {
         goto _EXIT;
@@ -220,7 +226,10 @@ onlp_sysi_platform_manage_leds(void)
     
     psu1_status = psu_info.status;
     if (psu1_status != pre_psu1_status) {
-        if(psu1_status != ONLP_PSU_STATUS_PRESENT) {
+        if((psu1_status & ONLP_PSU_STATUS_PRESENT) == 0) {
+            rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_OFF);
+        }
+        else if(psu1_status != ONLP_PSU_STATUS_PRESENT) {
             rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_ORANGE);
         } else {        
             rc = onlp_ledi_mode_set(LED_OID_PSU1, ONLP_LED_MODE_GREEN);
@@ -238,7 +247,10 @@ onlp_sysi_platform_manage_leds(void)
     
     psu2_status = psu_info.status;
     if( psu2_status != pre_psu2_status) {
-        if(psu2_status != ONLP_PSU_STATUS_PRESENT) {
+        if((psu2_status & ONLP_PSU_STATUS_PRESENT) == 0) {
+            rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_OFF);
+        }
+        else if(psu2_status != ONLP_PSU_STATUS_PRESENT) {
             rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_ORANGE);
         } else {        
             rc = onlp_ledi_mode_set(LED_OID_PSU2, ONLP_LED_MODE_GREEN);
@@ -251,29 +263,65 @@ onlp_sysi_platform_manage_leds(void)
     }
     
     /* FAN LED CTRL */
-    tmp_fan_status = ONLP_LED_STATUS_PRESENT;
+
     for (i=0; i<SYS_FAN_NUM; i++) {
         if ((rc = onlp_fani_info_get(fan_arr[i], &fan_info)) != ONLP_STATUS_OK) {
             goto _EXIT;
         }
+        /* FAN TRAY LED CTRL */
+        fan_tray_status[i] = fan_info.status;
+        if (i%2 == 1) {
+            sum = fan_tray_status[i-1] + fan_tray_status[i];
+            total = total + sum;
+                        
+            switch (i) {
+                case 1:
+                    fan_tray_id = LED_FAN_TRAY1;
+                    break;
+                case 3:
+                    fan_tray_id = LED_FAN_TRAY2;
+                    break;
+                case 5:
+                    fan_tray_id = LED_FAN_TRAY3;
+                    break;
+                case 7:
+                    fan_tray_id = LED_FAN_TRAY4;
+                    break;
+            }
+            
+            /* the enum of fan_tray id is start from 5 to 8,
+             * the "-5" means mapping to array index 0 to 3
+             */
+            
+            if (sum != pre_fan_tray_status[fan_tray_id - 5]) {
+                if (sum > ONLP_LED_STATUS_FAILED) {            
+                    rc = onlp_ledi_mode_set(fan_tray_id, ONLP_LED_MODE_ORANGE);
+                } else {                    
+                    rc = onlp_ledi_mode_set(fan_tray_id, ONLP_LED_MODE_GREEN);
+                }
 
-        if(fan_info.status != ONLP_LED_STATUS_PRESENT) {
-            tmp_fan_status = fan_info.status;
+                if (rc != ONLP_STATUS_OK) {
+                    goto _EXIT;
+                }
+
+                pre_fan_tray_status[fan_tray_id - 5] = sum;
+            }
         }
-    }    
+    }
     
-    if (tmp_fan_status != pre_fan_status) {
-        if (tmp_fan_status != ONLP_LED_STATUS_PRESENT) {
-            rc = onlp_ledi_mode_set(LED_OID_FAN, ONLP_LED_MODE_ORANGE);
-        } else {
+    if (total != pre_fan_status) {
+        if (total == (ONLP_LED_STATUS_PRESENT * 8)) {
             rc = onlp_ledi_mode_set(LED_OID_FAN, ONLP_LED_MODE_GREEN);
+        } else {
+            rc = onlp_ledi_mode_set(LED_OID_FAN, ONLP_LED_MODE_ORANGE);
         }
-        
+
         if (rc != ONLP_STATUS_OK) {
             goto _EXIT;
         }
+        
+        pre_fan_status = total;
     }
-    pre_fan_status = fan_info.status;
     
 _EXIT :
     return rc;
