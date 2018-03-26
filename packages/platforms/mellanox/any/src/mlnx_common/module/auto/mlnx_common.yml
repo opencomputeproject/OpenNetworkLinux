@@ -1,0 +1,47 @@
+###############################################################################
+#
+# mlnx_common Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- MLNX_COMMON_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- MLNX_COMMON_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- MLNX_COMMON_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- MLNX_COMMON_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- MLNX_COMMON_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- MLNX_COMMON_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: MLNX_COMMON_CONFIG_PORTING_STDLIB
+- MLNX_COMMON_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+
+
+definitions:
+  cdefs:
+    MLNX_COMMON_CONFIG_HEADER:
+      defs: *cdefs
+      basename: mlnx_common_config
+
+  portingmacro:
+    MLNX_COMMON:
+      macros:
+        - malloc
+        - free
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen
