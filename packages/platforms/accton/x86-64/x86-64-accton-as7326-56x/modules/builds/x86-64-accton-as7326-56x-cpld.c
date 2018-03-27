@@ -671,7 +671,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		break;
 	case MODULE_PRESENT_57 ... MODULE_PRESENT_58:
 		reg  = 0x12;
-		mask = 0x1 << (( MODULE_PRESENT_58 - attr->index)+2);
+		mask = 0x1 << ((attr->index - MODULE_PRESENT_57)+2);
 		break;
 	case MODULE_PRESENT_49 ... MODULE_PRESENT_56:   /*QSFP*/
 		reg  = 0x13 ;
@@ -717,7 +717,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		return 0;
 	}
 
-    if (attr->index >= MODULE_PRESENT_1 && attr->index <= MODULE_PRESENT_56) {
+    if (attr->index >= MODULE_PRESENT_1 && attr->index <= MODULE_PRESENT_58) {
         revert = 1;
     }
 

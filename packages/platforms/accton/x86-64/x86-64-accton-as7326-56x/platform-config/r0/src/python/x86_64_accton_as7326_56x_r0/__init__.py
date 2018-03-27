@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.accton import *
 
 class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
-                                              OnlPlatformPortConfig_48x25_6x100):
+                                              OnlPlatformPortConfig_48x25_8x100):
 
     PLATFORM='x86-64-accton-as7326-56x-r0'
     MODEL="AS7326-56X"
@@ -66,28 +66,28 @@ class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
 
         sfp_map =  [
         42,41,44,43,47,45,46,50,
-        48,49,51,52,53,56,55,54,
-        58,57,59,60,61,63,62,64,
+        48,49,52,51,53,56,55,54,
+        58,57,60,59,61,63,62,64,
         66,68,65,67,69,71,72,70,
         74,73,76,75,77,79,78,80,
         81,82,84,85,83,87,88,86,    #port 41~48
         25,26,27,28,29,30,31,32,    #port 49~56 QSFP
         22,23]                      #port 57~58 SFP+ from CPU NIF.
 
-        # initialize SFP+ port 1~54 and 57+58.
+        # initialize SFP+ port 1~56 and 57+58.
         for port in range(1, 49):
             bus = sfp_map[port-1]
             self.new_i2c_device('optoe2', 0x50, bus)
     
-        self.new_i2c_device('optoe2', 0x50, sfp[56])
-        self.new_i2c_device('optoe2', 0x50, sfp[57])
+        self.new_i2c_device('optoe2', 0x50, sfp_map[57-1])
+        self.new_i2c_device('optoe2', 0x50, sfp_map[58-1])
 
         # initialize QSFP port 49~56
-        for port in range(49, 58):
+        for port in range(49, 57):
             bus = sfp_map[port-1]
             self.new_i2c_device('optoe1', 0x50, bus)
 
-        for port in range(1, len(sfp)+1):
+        for port in range(1, len(sfp_map)):
             bus = sfp_map[port-1]
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus), shell=True)
 
