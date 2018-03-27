@@ -11,7 +11,7 @@ x86-64-accton-as7326-56x-r0:
   grub:
 
     serial: >-
-      --port=0x2f8
+      --port=0x3f8
       --speed=115200
       --word=8
       --parity=no
@@ -22,9 +22,9 @@ x86-64-accton-as7326-56x-r0:
 
     args: >-
       nopat
-      console=ttyS1,115200n8
+      console=ttyS0,115200n8
 
-  ##network
+  ##network:
   ##  interfaces:
   ##    ma1:
   ##      name: ~

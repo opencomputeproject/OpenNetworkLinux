@@ -29,7 +29,7 @@
 #include "x86_64_accton_as7326_56x_int.h"
 #include "x86_64_accton_as7326_56x_log.h"
 
-#define PORT_BUS_INDEX(port) sfp_map(port)
+#define PORT_BUS_INDEX(port) sfp_map[port]
 
 #define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
 #define MODULE_PRESENT_FORMAT		    "/sys/bus/i2c/devices/%d-00%d/module_present_%d"
