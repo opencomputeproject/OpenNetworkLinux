@@ -103,11 +103,12 @@ onlp_sfpi_is_present(int port)
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    uint32_t bytes[8], *ptr = NULL;
+    uint8_t bytes[8];
+    uint32_t *words[2];
     FILE* fp;
-    int addr;
-
-    ptr = bytes;
+    int addr, i;
+    uint8_t *ptr = bytes;
+    unsigned long long presence_all = 0, per_cpld;
 
     for (addr = 62; addr >= 60; addr-=2) {
         /* Read present status of port 0~53 */
@@ -121,7 +122,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        int count = fscanf(fp, "%x %x %x %x", ptr+0, ptr+1, ptr+2, ptr+3);
+        int count = fscanf(fp, "%hhx %hhx %hhx %hhx", ptr+0, ptr+1, ptr+2, ptr+3);
         fclose(fp);
         if(count != 4) {
             /* Likely a CPLD read timeout. */
@@ -132,26 +133,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         ptr += count;
     }
 
-    /* Mask out non-existant QSFP ports */
-    bytes[3] &= 0xF;
-    bytes[7] &= 0x3;
+    /*Presumed here are little-endian.*/
+    words[0] = (uint32_t*)&bytes[0];
+    words[1] = (uint32_t*)&bytes[4];
 
     /* Convert to 64 bit integer in port order */
-    int i = 0;
-    uint64_t presence_all = 0 ;
-    presence_all |= bytes[7];
-    presence_all <<= 4;
-    presence_all |= bytes[3];
-
-    for(i = 6; i >= 4; i--) {
-        presence_all <<= 8;
-        presence_all |= bytes[i];
-    }
-    
-    for(i = 2; i >= 0; i--) {
-        presence_all <<= 8;
-        presence_all |= bytes[i];
-    }
+    presence_all |= *words[0] & ((1<<30)-1);    /*30 port at cpld 2*/
+    per_cpld = (unsigned long long)(*words[1] & ((1<<28)-1)) << 30; /*28 port at cpld 1*/
+    presence_all |= per_cpld;
 
     /* Populate bitmap */
     for(i = 0; presence_all; i++) {
@@ -165,19 +154,21 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    uint32_t bytes[6];
-    uint32_t *ptr = bytes;
+    uint8_t bytes[8];
+    uint32_t *words[2];
+    uint8_t *ptr = bytes;
     FILE* fp;
+    unsigned long long all = 0, per_cpld;
 
     /* Read present status of port 0~23 */
     int addr, i = 0;
 
     for (addr = 62; addr >= 60; addr-=2) {
         if (addr == 62) {
-            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD1, "r");
+            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD2, "r");
         }
         else {
-            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD2, "r");
+            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD1, "r");
         }
 
         if(fp == NULL) {
@@ -185,9 +176,9 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        int count = fscanf(fp, "%x %x %x", ptr+0, ptr+1, ptr+2);
+        int count = fscanf(fp, "%hhx %hhx %hhx %hhx", ptr+0, ptr+1, ptr+2, ptr+3);
         fclose(fp);
-        if(count != 3) {
+        if(count != 4) {
             /* Likely a CPLD read timeout. */
             AIM_LOG_ERROR("Unable to read all fields from the module_rx_los_all device file of CPLD(0x%d)", addr);
             return ONLP_STATUS_E_INTERNAL;
@@ -195,19 +186,19 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 
         ptr += count;
     }
+    /*Presumed here are little-endian.*/
+    words[0] = (uint32_t*)&bytes[0];
+    words[1] = (uint32_t*)&bytes[4];
 
     /* Convert to 64 bit integer in port order */
-    i = 0;
-    uint64_t rx_los_all = 0 ;
-    for(i = 5; i >= 0; i--) {
-        rx_los_all <<= 8;
-        rx_los_all |= bytes[i];
-    }
+    all |= *words[0] & ((1<<30)-1);    /*30 port at cpld 2*/
+    per_cpld = (unsigned long long)(*words[1] & ((1<<28)-1)) << 30; /*28 port at cpld 1*/
+    all |= per_cpld;
 
     /* Populate bitmap */
-    for(i = 0; rx_los_all; i++) {
-        AIM_BITMAP_MOD(dst, i, (rx_los_all & 1));
-        rx_los_all >>= 1;
+    for(i = 0; all; i++) {
+        AIM_BITMAP_MOD(dst, i, (all & 1));
+        all >>= 1;
     }
 
     return ONLP_STATUS_OK;

@@ -581,74 +581,138 @@ static const struct attribute_group as7326_56x_cpld1_group = {
 	.attrs = as7326_56x_cpld1_attributes,
 };
 
+/*Split a number into bytes and insert blank between any 2 of bytes.*/
+static int string_byte_sep(char *out, int bits, u64 bytes)
+{ 
+    int i;
+    char sb[8];
+   
+    if (!out) 
+        return -EINVAL;
+
+    out[0] = 0; 
+    for (i = 0; i < ((bits+7)/8); i++) {
+        sprintf(sb, "%02llx ", (bytes>>(i*8))&0xff);
+        strncat(out, sb, strlen(sb));
+    }
+    out[strlen(out)-1] = 0;
+
+    return 0;
+}
+
 static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
              char *buf)
 {
-	int i, status;
-	u8 values[4]  = {0};
-	u8 regs[] = {0x9, 0xA, 0xB, 0x18};
-	struct i2c_client *client = to_i2c_client(dev);
-	struct as7326_56x_cpld_data *data = i2c_get_clientdata(client);
+    int i, status;
+    u64 values = 0, num;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_cpld_data *data = i2c_get_clientdata(client);
 
-	mutex_lock(&data->update_lock);
-
-    for (i = 0; i < ARRAY_SIZE(regs); i++) {
-        status = as7326_56x_cpld_read_internal(client, regs[i]);
-        
-        if (status < 0) {
-            goto exit;
-        }
-
-        values[i] = ~(u8)status;
-    }
-
-	mutex_unlock(&data->update_lock);
-
-    /* Return values 1 -> 56 in order */
     if (data->type == as7326_56x_cpld2) {
-        values[3] &= 0xF;
-    }
-    else { /* as7326_56x_cpld3 */
-        values[3] &= 0x3;
-    }
+        u8 byte;
+        u8 regs[] = {0x0F, 0x10, 0x11, 0x12};
 
-    return sprintf(buf, "%.2x %.2x %.2x %.2x\n",
-                        values[0], values[1], values[2], values[3]);
+        mutex_lock(&data->update_lock);
+        for (i = 0; i < ARRAY_SIZE(regs); i++) {
+            status = as7326_56x_cpld_read_internal(client, regs[i]);
+        
+            if (status < 0) {
+                goto exit;
+            }
+            byte= (u64)status;
+            byte= ~byte;
+            values |= (byte)<<(i*8);
+        }
+        mutex_unlock(&data->update_lock);
 
+        /* Return values for port 1~30 in order */
+        num = 30;
+        values &= (1<<num)-1;
+    }
+    else { /* as7326_56x_cpld1 */
+        u8 regs[] = {0x10, 0x11, 0x12, 0x13};
+        u8 bytes[4] = {0};
+
+        mutex_lock(&data->update_lock);
+        for (i = 0; i < ARRAY_SIZE(regs); i++) {
+            status = as7326_56x_cpld_read_internal(client, regs[i]);
+            if (status < 0) {
+                goto exit;
+            }
+            bytes[i] = (u8)status;
+            bytes[i] = ~bytes[i];
+        }
+        mutex_unlock(&data->update_lock);
+
+        /* Return values of port 31 -> 58 in order */
+        values = bytes[0] | (bytes[1]<<8) | ((bytes[2]&0x3)<<16) | ((bytes[3])<<18) | 
+                (((bytes[2]&0xC) >> 2)<<26);
+        num = 28;
+        values &= (1<<num)-1;
+    }
+    string_byte_sep(buf, num, values);
+    return sprintf(buf, "%s", buf);
 exit:
-	mutex_unlock(&data->update_lock);
-	return status;
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t show_rxlos_all(struct device *dev, struct device_attribute *da,
              char *buf)
 {
-	int i, status;
-	u8 values[3]  = {0};
-	u8 regs[] = {0x12, 0x13, 0x14};
-	struct i2c_client *client = to_i2c_client(dev);
-	struct as7326_56x_cpld_data *data = i2c_get_clientdata(client);
+    int i, status;
+    u64 values = 0, num;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_cpld_data *data = i2c_get_clientdata(client);
 
-	mutex_lock(&data->update_lock);
+    if (data->type == as7326_56x_cpld2) {
+        u8 byte;
+        u8 regs[] = {0x0B, 0x0C, 0x0D, 0x0E};
 
-    for (i = 0; i < ARRAY_SIZE(regs); i++) {
-        status = as7326_56x_cpld_read_internal(client, regs[i]);
+        mutex_lock(&data->update_lock);
+        for (i = 0; i < ARRAY_SIZE(regs); i++) {
+            status = as7326_56x_cpld_read_internal(client, regs[i]);
         
-        if (status < 0) {
-            goto exit;
+            if (status < 0) {
+                goto exit;
+            }
+            byte= (u64)status;
+            values |= (byte)<<(i*8);
         }
+        mutex_unlock(&data->update_lock);
 
-        values[i] = (u8)status;
+        /* Return values for port 1~30 in order */
+        num = 30;
+        values &= (1<<num)-1;
+
     }
+    else { /* as7326_56x_cpld1 */
+        u8 regs[] = {0x17, 0x18, 0x19};
+        u8 bytes[4] = {0};
 
-	mutex_unlock(&data->update_lock);
+        mutex_lock(&data->update_lock);
+        for (i = 0; i < ARRAY_SIZE(regs); i++) {
+            status = as7326_56x_cpld_read_internal(client, regs[i]);
+        
+            if (status < 0) {
+                goto exit;
+            }
+            bytes[i] = (u8)status;
+        }
+        mutex_unlock(&data->update_lock);
 
-    /* Return values 1 -> 24 in order */
-    return sprintf(buf, "%.2x %.2x %.2x\n", values[0], values[1], values[2]);
+        /* Return values of port 31 -> 58 in order */
+        values = bytes[0] | (bytes[1]<<8) | ((bytes[2]&0x3)<<16) |
+                (((bytes[2]&0xC) >> 2)<<26);
 
+        num = 28;
+        values &= (1<<num)-1;
+    }
+    string_byte_sep(buf, num, values);
+    return sprintf(buf, "%s", buf);
 exit:
-	mutex_unlock(&data->update_lock);
-	return status;
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
