@@ -37,9 +37,11 @@
 #define LED_MODE_OFF         "none"
 #define LED_MODE_GREEN       "green"
 #define LED_MODE_RED         "red"
+#define LED_MODE_ORANGE      "orange"
 #define LED_MODE_BLUE        "blue"
 #define LED_MODE_GREEN_BLINK "green_blink"
 #define LED_MODE_RED_BLINK   "red_blink"
+#define LED_MODE_ORANGE_BLINK "orange_blink"
 #define LED_MODE_BLUE_BLINK  "blue_blink"
 #define LED_MODE_AUTO        "cpld_control"
 
@@ -76,56 +78,90 @@ led_light_mode_map_t led_map[] = {
     {LED_FAN1, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_FAN1, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_FAN1, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN1, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_FAN1, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN1, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_FAN1, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_FAN1, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_FAN2, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_FAN2, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_FAN2, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN2, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_FAN2, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN2, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_FAN2, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_FAN2, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_FAN3, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_FAN3, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_FAN3, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN3, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_FAN3, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN3, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_FAN3, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_FAN3, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_FAN4, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_FAN4, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_FAN4, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN4, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_FAN4, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN4, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_FAN4, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_FAN4, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
+
+    {LED_FAN5, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
+    {LED_FAN5, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
+    {LED_FAN5, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN5, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
+    {LED_FAN5, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN5, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_FAN5, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_FAN5, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
+
+    {LED_FAN6, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
+    {LED_FAN6, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
+    {LED_FAN6, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN6, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
+    {LED_FAN6, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN6, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_FAN6, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_FAN6, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_PSU, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_PSU, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_PSU, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_PSU, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_PSU, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_PSU, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_PSU, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_PSU, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_FAN, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_FAN, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_FAN, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_FAN, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_FAN, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_FAN, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_FAN, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_FAN, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_PSU1, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_PSU1, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_PSU1, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_PSU1, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_PSU1, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_PSU1, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_PSU1, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_PSU1, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
     {LED_PSU2, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_PSU2, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_PSU2, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_PSU2, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_PSU2, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_PSU2, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_PSU2, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_PSU2, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
@@ -133,25 +169,36 @@ led_light_mode_map_t led_map[] = {
     {LED_UID,  LED_MODE_BLUE,        ONLP_LED_MODE_BLUE},
     {LED_UID,  LED_MODE_BLUE_BLINK,  ONLP_LED_MODE_BLUE_BLINKING},
     {LED_UID,  LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
+
+    {LED_PSU_T3, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
+    {LED_PSU_T3, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
+    {LED_PSU_T3, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_PSU_T3, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
+    {LED_PSU_T3, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_PSU_T3, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
+    {LED_PSU_T3, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_PSU_T3, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 };
 
 typedef struct led_colors {
     int id;
-    const char* color1;
-    const char* color2;
+    const char* color;
 } led_colors_t;
 
 static led_colors_t led_colors_map[] = {
-    {LED_SYSTEM, "green", "red"},
-    {LED_FAN1, "green", "red"},
-    {LED_FAN2, "green", "red"},
-    {LED_FAN3, "green", "red"},
-    {LED_FAN4, "green", "red"},
-    {LED_PSU, "green", "red"},
-    {LED_FAN, "green", "red"},
-    {LED_PSU1, "green", "red"},
-    {LED_PSU2, "green", "red"},
-    {LED_UID, "blue", NULL},
+    {LED_SYSTEM, "green"},
+    {LED_FAN1, "green"},
+    {LED_FAN2, "green"},
+    {LED_FAN3, "green"},
+    {LED_FAN4, "green"},
+    {LED_FAN5, "green"},
+    {LED_FAN6, "green"},
+    {LED_PSU, "green"},
+    {LED_FAN, "green"},
+    {LED_PSU1, "green"},
+    {LED_PSU2, "green"},
+    {LED_UID, "blue"},
+    {LED_PSU_T3, "green"},
 };
 
 static int driver_to_onlp_led_mode(int id, char* driver_led_mode)
@@ -199,6 +246,10 @@ static int led_set_mode(onlp_oid_t id, onlp_led_mode_t mode)
         strcpy(color, "red");
         blinking = 1;
         break;
+    case ONLP_LED_MODE_ORANGE_BLINKING:
+    	strcpy(color, "orange");
+    	blinking = 1;
+    	break;
     case ONLP_LED_MODE_GREEN_BLINKING:
         strcpy(color, "green");
         blinking = 1;
@@ -213,6 +264,9 @@ static int led_set_mode(onlp_oid_t id, onlp_led_mode_t mode)
         break;
     case ONLP_LED_MODE_RED:
         strcpy(color, "red");
+        break;
+    case ONLP_LED_MODE_ORANGE:
+    	strcpy(color, "orange");
         break;
     case ONLP_LED_MODE_GREEN:
         strcpy(color, "green");
@@ -303,9 +357,9 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
                 if (id == led_colors_map[i].id)
                     break;
             }
-            if (led_colors_map[i].color1)
+            if (led_colors_map[i].color)
                 onlp_file_write((uint8_t*)LED_OFF, LED_MODE_LEN,
-                                "%s%s_%s", prefix_path, mlnx_platform_info->led_fnames[id], led_colors_map[i].color1);
+                                "%s%s_%s", prefix_path, mlnx_platform_info->led_fnames[id], led_colors_map[i].color);
         }
     }
 
