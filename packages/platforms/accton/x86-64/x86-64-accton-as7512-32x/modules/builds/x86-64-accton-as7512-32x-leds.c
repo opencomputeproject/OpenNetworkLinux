@@ -30,8 +30,8 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 
-extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
-extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as7512_32x_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as7512_32x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 #define DRVNAME "as7512_32x_led"
 #define NUM_OF_LED_REG  5
@@ -191,12 +191,12 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 
 static int accton_as7512_32x_led_read_value(u8 reg)
 {
-	return accton_i2c_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
+	return as7512_32x_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
 }
 
 static int accton_as7512_32x_led_write_value(u8 reg, u8 value)
 {
-	return accton_i2c_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
+	return as7512_32x_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
 }
 
 static void accton_as7512_32x_led_update(void)
@@ -457,11 +457,6 @@ static int __init accton_as7512_32x_led_init(void)
 {
 	int ret;
 
-	extern int platform_accton_as7512_32x(void);
-	if (!platform_accton_as7512_32x()) {
-		return -ENODEV;
-	}	
-	
 	ret = platform_driver_register(&accton_as7512_32x_led_driver);
 	if (ret < 0) {
 		goto exit;
