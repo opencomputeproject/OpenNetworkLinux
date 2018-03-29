@@ -37,21 +37,6 @@
         }                                       \
     } while(0)
 
-static int 
-psu_status_info_get(int id, char *node, int *value)
-{
-	char *prefix = NULL;
-    *value = 0;
-
-	prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
-    if (onlp_file_read_int(value, "%s%s", prefix, node) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file(%s%s)\r\n", prefix, node);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return 0;
-}
-
 int
 onlp_psui_init(void)
 {
@@ -124,9 +109,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
-    /* Get the present state */
-    if (psu_status_info_get(index, "psu_present", &val) != 0) {
-        printf("Unable to read PSU(%d) node(psu_present)\r\n", index);
+    if (onlp_file_read_int(&val, PSU_PRESENT_FORMAT, index) < 0) {
+        AIM_LOG_ERROR("Unable to read present status from PSU(%d)\r\n", index);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     if (val != PSU_STATUS_PRESENT) {
@@ -137,8 +122,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
 
     /* Get power good status */
-    if (psu_status_info_get(index, "psu_power_good", &val) != 0) {
-        printf("Unable to read PSU(%d) node(psu_power_good)\r\n", index);
+    if (onlp_file_read_int(&val, PSU_POWERGOOD_FORMAT, index) < 0) {
+        AIM_LOG_ERROR("Unable to read power status from PSU(%d)\r\n", index);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
