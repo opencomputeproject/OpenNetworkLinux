@@ -111,7 +111,7 @@ decode_tlv__(onlp_onie_info_t* info, tlvinfo_tlv_t * tlv)
                     }                                                   \
                     _info -> _member = aim_zmalloc(_tlv->length + 1);   \
                     memcpy((void*) _info -> _member, _tlv->value, _tlv->length); \
-                    break;                                              \
+                    break; \
                 }
 
             CASE_TLV_STRING(info, product_name, PRODUCT_NAME, tlv);
@@ -425,6 +425,7 @@ onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
         cJSON_AddStringToObject(cj, "MAC", mac);
         aim_free(mac);
     }
+    _S(Manufacturer, manufacturer);
     _S(Manufacture Date,manufacture_date);
     _S(Vendor,vendor);
     _S(Platform Name,platform_name);
@@ -522,8 +523,3 @@ onlp_onie_read_json(onlp_onie_info_t* info, const char* fname)
     cJSON_Delete(cj);
     return 0;
 }
-
-
-
-
-
