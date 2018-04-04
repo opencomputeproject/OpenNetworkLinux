@@ -8,9 +8,9 @@ class OnlPlatform_x86_64_accton_as5912_54xk_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5912.54"
 
     def baseconfig(self):
-        self.insmod("accton_i2c_cpld")
+        self.insmod('optoe')
         self.insmod("ym2651y")
-        for m in [ "sfp", "psu", "fan", "leds" ]:
+        for m in [ "cpld", "psu", "fan", "leds" ]:
             self.insmod("x86-64-accton-as5912-54xk-%s" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -29,8 +29,8 @@ class OnlPlatform_x86_64_accton_as5912_54xk_r0(OnlPlatformAccton,
                 ('lm75', 0x4b, 3),
 
                 # initialize CPLDs
-                ('accton_i2c_cpld', 0x60, 4),
-                ('accton_i2c_cpld', 0x62, 5),
+                ('as5912_54xk_cpld1', 0x60, 4),
+                ('as5912_54xk_cpld2', 0x62, 5),
                 ]
             )
 
@@ -69,12 +69,14 @@ class OnlPlatform_x86_64_accton_as5912_54xk_r0(OnlPlatformAccton,
 
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('as5912_54xk_sfp%d' % port, 0x50, port+25)
-            self.new_i2c_device('as5912_54xk_sfp%d' % port, 0x51, port+25)
+            self.new_i2c_device('optoe2', 0x50, port+25)
 
         # initialize QSFP devices
         for port in range(49, 55):
-            self.new_i2c_device('as5912_54xk_sfp%d' % port, 0x50, port+25)
+            self.new_i2c_device('optoe1', 0x50, port+25)
+
+        for port in range(1, 55):
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+25), shell=True)
 
         return True
 
