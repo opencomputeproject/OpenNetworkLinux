@@ -25,6 +25,7 @@
 #include <onlp/platformi/fani.h>
 #include "x86_64_ingrasys_s9100_int.h"
 #include <onlplib/file.h>
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 onlp_fan_info_t fan_info[] = {
@@ -111,12 +112,67 @@ onlp_fani_init(void)
     return ONLP_STATUS_OK;
 }
 
+/* get fan present status*/
+int sys_fan_present_get(onlp_fan_info_t* info, int id)
+{
+    int rv, fan_presence, i2c_bus, offset, fan_reg_mask;
+    
+    /* get fan presence*/
+    i2c_bus = I2C_BUS_9;
+    switch (id)
+	{
+        case FAN_ID_FAN1:    
+        case FAN_ID_FAN2:
+            offset = 0;
+            fan_reg_mask = FAN_1_2_PRESENT_MASK;
+            break;
+        case FAN_ID_FAN3:
+        case FAN_ID_FAN4:
+            offset = 0;
+            fan_reg_mask = FAN_3_4_PRESENT_MASK;
+            break;
+        case FAN_ID_FAN5:
+        case FAN_ID_FAN6:
+            offset = 1;
+            fan_reg_mask = FAN_5_6_PRESENT_MASK;
+            break;
+        case FAN_ID_FAN7:
+        case FAN_ID_FAN8:
+            offset = 1;
+            fan_reg_mask = FAN_7_8_PRESENT_MASK;
+            break;
+        default:
+            return ONLP_STATUS_E_INVALID;
+    }   
+
+    rv = onlp_i2c_readb(i2c_bus, FAN_REG, offset, ONLP_I2C_F_FORCE);
+    if (rv < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    fan_presence = (rv & fan_reg_mask) ? 0 : 1;
+
+    if (!fan_presence) {
+        info->status &= ~ONLP_FAN_STATUS_PRESENT;
+    } else {
+        info->status |= ONLP_FAN_STATUS_PRESENT;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 int 
 sys_fan_info_get(onlp_fan_info_t* info, int id)
 {
     int rv, fan_status, fan_rpm, perc_val, percentage;
+    int max_fan_speed = 16000;
     fan_status = 0;
     fan_rpm = 0;       
+
+    rv = sys_fan_present_get(info, id);
+    if (rv < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
  
     rv = onlp_file_read_int(&fan_status, SYS_FAN_PREFIX "fan%d_alarm", id);
     if (rv < 0) {
@@ -157,21 +213,8 @@ sys_fan_info_get(onlp_fan_info_t* info, int id)
         return ONLP_STATUS_E_INTERNAL;
     }
     
-    /* 
-       Get fan speed, converting driver value to percnet.
-       Value 128 is 50%.
-       Value 200 is 80%.
-       Value 255 is 100%.
-    */
-    if (perc_val == 255) {
-       percentage = 100;
-    } else if (perc_val == 200) {
-        percentage = 80;
-    } else if (perc_val == 128) {
-        percentage = 50;
-    } else {
-        return ONLP_STATUS_E_INTERNAL;
-    }            
+    percentage = (info->rpm*100)/max_fan_speed;
+
     info->percentage = percentage;
     
     return ONLP_STATUS_OK;
