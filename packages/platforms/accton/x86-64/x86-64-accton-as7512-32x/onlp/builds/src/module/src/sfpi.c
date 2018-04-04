@@ -25,43 +25,16 @@
  ***********************************************************/
 #include <onlp/platformi/sfpi.h>
 
-#include <fcntl.h> /* For O_RDWR && open */
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-
+#include <onlplib/i2c.h>
+#include <onlplib/file.h>
 #include "platform_lib.h"
 
-#define MAX_SFP_PATH 64
-static char sfp_node_path[MAX_SFP_PATH] = {0};
-#define FRONT_PORT_TO_CPLD_MUX_INDEX(port) (port+18)
 
-static int 
-as7512_32x_sfp_node_read_int(char *node_path, int *value, int data_len)
-{
-    int ret = 0;
-    char buf[8];    
-    *value = 0;
+#define PORT_BUS_INDEX(port) (port+18)
+#define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
 
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), data_len);
-
-    if (ret == 0) {
-        *value = atoi(buf);
-    }
-
-    return ret;
-}
-
-static char* 
-as7512_32x_sfp_get_port_path(int port, char *node_name)
-{
-    sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-0050/%s", 
-                           FRONT_PORT_TO_CPLD_MUX_INDEX(port),
-                           node_name);
-
-    return sfp_node_path;
-}
+#define MODULE_PRESENT_FORMAT		"/sys/bus/i2c/devices/4-0060/module_present_%d"
+#define MODULE_PRESENT_ALL_ATTR		"/sys/bus/i2c/devices/4-0060/module_present_all"
 
 /************************************************************
  *
@@ -100,13 +73,12 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-    char* path = as7512_32x_sfp_get_port_path(port, "sfp_is_present");
 
-    if (as7512_32x_sfp_node_read_int(path, &present, 0) != 0) {
+	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, (port+1)) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
-    
+
     return present;
 }
 
@@ -114,12 +86,10 @@ int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     uint32_t bytes[4];
-    char* path;
     FILE* fp;
 
-    path = as7512_32x_sfp_get_port_path(0, "sfp_is_present_all");
-    fp = fopen(path, "r");
-    
+    fp = fopen(MODULE_PRESENT_ALL_ATTR, "r");
+
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open the sfp_is_present_all device file.");
         return ONLP_STATUS_E_INTERNAL;
@@ -155,30 +125,56 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
-{
-    return ONLP_STATUS_OK;
-}
-
-int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char* path = as7512_32x_sfp_get_port_path(port, "sfp_eeprom");
-
     /*
      * Read the SFP eeprom into data[]
      *
      * Return MISSING if SFP is missing.
      * Return OK if eeprom is read
      */
+    int size = 0;
     memset(data, 0, 256);
-    
-    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
+
+	if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
+    if (size != 256) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d), size is different!\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = PORT_BUS_INDEX(port);
+    return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int bus = PORT_BUS_INDEX(port);
+    return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int bus = PORT_BUS_INDEX(port);
+    return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int bus = PORT_BUS_INDEX(port);
+    return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
