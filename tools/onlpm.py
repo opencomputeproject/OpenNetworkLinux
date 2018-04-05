@@ -431,7 +431,7 @@ class OnlPackage(object):
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
 
-        if self.pkg.get('asr', True):
+        if self.pkg.get('asr', False):
             with onlu.Profiler() as profiler:
                 # Generate the ASR documentation for this package.
                 sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
