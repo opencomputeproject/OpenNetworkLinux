@@ -21,6 +21,9 @@ if [ -f /etc/onl/abort ]; then
     exit 1
 fi
 
+if [ -f /mnt/onl/boot/autoboot ]; then
+    . /mnt/onl/boot/autoboot
+fi
 
 #
 # The maximum number of times we will retry autobooting before
@@ -118,4 +121,3 @@ else
     msg_error "BOOTMODE $BOOTMODE is not implemented. Autobooting cannot continue."
     exit 1
 fi
-

@@ -111,9 +111,11 @@
 #define LED_PSU1_AND_MASK     0xFC
 #define LED_PSU1_GMASK        0x01
 #define LED_PSU1_YMASK        0x02
+#define LED_PSU1_OFFMASK      0x03
 #define LED_PSU2_AND_MASK     0xCF
 #define LED_PSU2_GMASK        0x10
 #define LED_PSU2_YMASK        0x20
+#define LED_PSU2_OFFMASK      0x30
 
 /* SYS */
 #define CPLD_REG              0x33
@@ -125,12 +127,23 @@
 #define QSFP_PRES_OFFSET1     0x00
 #define QSFP_PRES_OFFSET2     0x01
 
+/* FAN */
+#define FAN_REG               0x20
+#define FAN_1_2_PRESENT_MASK  0x04
+#define FAN_3_4_PRESENT_MASK  0x40
+#define FAN_5_6_PRESENT_MASK  0x04
+#define FAN_7_8_PRESENT_MASK  0x40
+
 /** led_oid */
 typedef enum led_oid_e {
     LED_OID_SYSTEM = ONLP_LED_ID_CREATE(1),
     LED_OID_FAN = ONLP_LED_ID_CREATE(2),
     LED_OID_PSU1 = ONLP_LED_ID_CREATE(3),
     LED_OID_PSU2 = ONLP_LED_ID_CREATE(4),
+    LED_OID_FAN_TRAY1 = ONLP_LED_ID_CREATE(5),
+    LED_OID_FAN_TRAY2 = ONLP_LED_ID_CREATE(6),
+    LED_OID_FAN_TRAY3 = ONLP_LED_ID_CREATE(7),
+    LED_OID_FAN_TRAY4 = ONLP_LED_ID_CREATE(8), 
 } led_oid_t;
 
 /** led_id */
@@ -139,6 +152,10 @@ typedef enum led_id_e {
     LED_FAN_LED = 2,
     LED_PSU1_LED = 3,
     LED_PSU2_LED = 4,
+    LED_FAN_TRAY1 = 5,
+    LED_FAN_TRAY2 = 6,
+    LED_FAN_TRAY3 = 7,
+    LED_FAN_TRAY4 = 8,
 } led_id_t;
 
 /** Thermal_oid */
@@ -240,6 +257,8 @@ int psu1_led_set(onlp_led_mode_t mode);
 int fan_led_set(onlp_led_mode_t mode);
 
 int system_led_set(onlp_led_mode_t mode);
+
+int fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode);
 
 int sysi_platform_info_get(onlp_platform_info_t* pi);
 

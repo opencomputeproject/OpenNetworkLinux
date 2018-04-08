@@ -50,11 +50,26 @@ ds_connect__(const char* path)
         return -1;
     }
 
+    /*
+     * UDS connects must be non-blocking.
+     */
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, path, sizeof(addr.sun_path)-1);
 
     if(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+
+        /*
+         * Set blocking with a 1 second timeout on all domain socket read/write operations.
+         */
+        struct timeval tv;
+
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
         return fd;
     }
     else {

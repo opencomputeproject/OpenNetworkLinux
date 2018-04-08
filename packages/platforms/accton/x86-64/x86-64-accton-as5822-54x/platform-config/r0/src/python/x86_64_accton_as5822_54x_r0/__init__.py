@@ -8,9 +8,9 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5822.54"
 
     def baseconfig(self):
-        self.insmod("accton_i2c_cpld")
+        self.insmod('optoe')
         self.insmod("ym2651y")
-        for m in [ "sfp", "psu", "fan", "leds" ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as5822-54x-%s" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -20,7 +20,7 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
                 ('pca9548', 0x72, 0),
 
                 # initialize CPLD
-                ('accton_i2c_cpld', 0x60, 6),
+                ('as5822_54x_cpld1', 0x60, 6),
 
                 # initiate PSU-1 AC Power
                 ('as5822_54x_psu1', 0x50, 3),
@@ -45,8 +45,8 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
                 ('pca9548', 0x70, 1),
 
                 # initialize CPLD
-                ('accton_i2c_cpld', 0x61, 10),
-                ('accton_i2c_cpld', 0x62, 11),
+                ('as5822_54x_cpld2', 0x61, 10),
+                ('as5822_54x_cpld3', 0x62, 11),
 
                 # initialize multiplexer (PCA9548)
                 ('pca9548', 0x71, 12),
@@ -64,11 +64,13 @@ class OnlPlatform_x86_64_accton_as5822_54x_r0(OnlPlatformAccton,
 
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('as5822_54x_sfp%d' % port, 0x50, port+17)
-            self.new_i2c_device('as5822_54x_sfp%d' % port, 0x51, port+17)
+            self.new_i2c_device('optoe2', 0x50, port+17)
 
         # initialize QSFP devices
         for port in range(49, 55):
-            self.new_i2c_device('as5822_54x_sfp%d' % port, 0x50, port+17)
+            self.new_i2c_device('optoe1', 0x50, port+17)	
+
+        for port in range(1, 55):
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+17), shell=True)
 
         return True

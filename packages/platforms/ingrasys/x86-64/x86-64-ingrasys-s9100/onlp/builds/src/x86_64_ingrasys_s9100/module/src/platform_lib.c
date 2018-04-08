@@ -70,8 +70,11 @@ psu_thermal_get(onlp_thermal_info_t* info, int thermal_id)
 
     if (pw_exist != PSU_STATUS_PRESENT) {
         info->mcelsius = 0;
+        info->status &= ~ONLP_THERMAL_STATUS_PRESENT;
         return ONLP_STATUS_OK;
-    } 
+    } else {
+        info->status |= ONLP_THERMAL_STATUS_PRESENT;
+    }
     
     if ((rc = psu_pwgood_get(&pw_good, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
@@ -126,7 +129,10 @@ psu_fan_info_get(onlp_fan_info_t* info, int id)
 
     if (pw_exist != PSU_STATUS_PRESENT) {
         info->rpm = 0;
+        info->status &= ~ONLP_FAN_STATUS_PRESENT;
         return ONLP_STATUS_OK;
+    } else {
+        info->status |= ONLP_FAN_STATUS_PRESENT;
     } 
     
     if ((rc = psu_pwgood_get(&pw_good, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
@@ -472,6 +478,10 @@ psu1_led_set(onlp_led_mode_t mode)
         rc = onlp_i2c_modifyb(I2C_BUS_9, LED_REG, LED_OFFSET,
                               LED_PSU1_AND_MASK, LED_PSU1_YMASK, 
                               ONLP_I2C_F_FORCE);      
+    } else if(mode == ONLP_LED_MODE_OFF) {
+        rc = onlp_i2c_modifyb(I2C_BUS_9, LED_REG, LED_OFFSET,
+                              LED_PSU1_AND_MASK, LED_PSU1_OFFMASK, 
+                              ONLP_I2C_F_FORCE);      
     } else {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -495,6 +505,10 @@ psu2_led_set(onlp_led_mode_t mode)
         rc = onlp_i2c_modifyb(I2C_BUS_9, LED_REG, LED_OFFSET, 
                               LED_PSU2_AND_MASK, LED_PSU2_YMASK, 
                               ONLP_I2C_F_FORCE);
+    } else if(mode == ONLP_LED_MODE_OFF) {        
+        rc = onlp_i2c_modifyb(I2C_BUS_9, LED_REG, LED_OFFSET, 
+                              LED_PSU2_AND_MASK, LED_PSU2_OFFMASK, 
+                              ONLP_I2C_F_FORCE);
     } else {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -504,6 +518,60 @@ psu2_led_set(onlp_led_mode_t mode)
         return ONLP_STATUS_E_INTERNAL;
     }
     
+    return ONLP_STATUS_OK;
+}
+
+int
+fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
+{
+    int rc, temp_id;
+    int fan_tray_id, offset;
+char cmd[256];
+memset(cmd, 0, sizeof(cmd));
+
+    temp_id = ONLP_OID_ID_GET(id);
+    switch (temp_id) {
+        case 5:
+            fan_tray_id = 1;
+            offset = 2;
+            break;
+        case 6:
+            fan_tray_id = 2;
+            offset = 2;
+            break;
+        case 7:
+            fan_tray_id = 3;
+            offset = 3;
+            break;
+        case 8:
+            fan_tray_id = 4;
+            offset = 3;
+            break;
+        default:
+            return ONLP_STATUS_E_INTERNAL;
+            break;
+    }
+    if (fan_tray_id == 1 || fan_tray_id == 3) {
+        if (mode == ONLP_LED_MODE_GREEN) {
+            rc = onlp_i2c_modifyb(I2C_BUS_9, FAN_REG, offset, 0xFC,
+                                  0x01, ONLP_I2C_F_FORCE);
+        } else if (mode == ONLP_LED_MODE_ORANGE) {
+            rc = onlp_i2c_modifyb(I2C_BUS_9, FAN_REG, offset, 0xFC,
+                                  0x02, ONLP_I2C_F_FORCE);
+        }
+    } else if (fan_tray_id == 2 || fan_tray_id == 4) {
+        if (mode == ONLP_LED_MODE_GREEN) {
+            rc = onlp_i2c_modifyb(I2C_BUS_9, FAN_REG, offset, 0xCF,
+                                  0x10, ONLP_I2C_F_FORCE);
+        } else if (mode == ONLP_LED_MODE_ORANGE) {
+            rc = onlp_i2c_modifyb(I2C_BUS_9, FAN_REG, offset, 0xCF,
+                                  0x20, ONLP_I2C_F_FORCE);
+        }
+    }
+    if (rc < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     return ONLP_STATUS_OK;
 }
 
