@@ -161,31 +161,36 @@ class OnlMountManager(object):
             if useUbiDev == True:
                 if k == 'EFI-BOOT':
                     return False
-                output  = subprocess.check_output("ubinfo -d 0 -N %s" % k, shell=True).splitlines()
+                try:
+                    output  = subprocess.check_output("ubinfo -d 0 -N %s" % k, ,
+                                                      stderr=subprocess.STDOUT, shell=True).splitlines()
+                except subprocess.CalledProcessError:
+                    return False
+
                 volumeId = None
                 device = None
                 for line in output:
                     line = line.strip()
                     p = line.find(':')
                     if p < 0:
-                        self.logger.debug("Invaild ubinfo output %s" % line)
-                        
+                        self.logger.debug("Invalid ubinfo output %s" % line)
+
                     name, value = line[:p], line[p+1:].strip()
                     if 'Volume ID' in name:
                         p = value.find('(')
                         if p < 0:
                             self.logger.debug("Invalid Volume ID %s" % value)
-                           
+
                         volumeId = value[:p].strip()
                         p = value.find('on')
                         if p < 0:
                             self.logger.debug("Invalid ubi devicde %s" % value)
-                       
+
                         device = value[p+2:-1].strip()
                     if 'Name' in name:
                         v['device'] = "/dev/" + device + "_" + volumeId
-                 
-                    
+
+
             if not os.path.isdir(v['dir']):
                 self.logger.debug("Make directory '%s'...", v['dir'])
                 os.makedirs(v['dir'])
