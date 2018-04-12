@@ -162,8 +162,7 @@ class OnlMountManager(object):
                 if k == 'EFI-BOOT':
                     return False
                 try:
-                    output  = subprocess.check_output("ubinfo -d 0 -N %s" % k, ,
-                                                      stderr=subprocess.STDOUT, shell=True).splitlines()
+                    output  = subprocess.check_output("ubinfo -d 0 -N %s" % k, shell=True).splitlines()
                 except subprocess.CalledProcessError:
                     return False
 
