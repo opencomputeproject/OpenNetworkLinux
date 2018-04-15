@@ -270,7 +270,7 @@ class OnlRfsContext(object):
         onlu.execute("sudo rm %s" % (self.resolv),
                      ex=OnlRfsError("Could not remove resolv.conf"))
 
-        if os.path.islink("%s" % self.resolvb) or os.path.exists(resolvb):
+        if os.path.islink(self.resolvb) or os.path.exists(self.resolvb):
             onlu.execute("sudo mv %s %s" % (self.resolvb, self.resolv),
                          ex=OnlRfsError("Could not restore the resolv.conf backup"))
 
