@@ -69,10 +69,17 @@ class OnlPackageServiceScript(object):
 
 class OnlPackageAfterInstallScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
-set -e
 if [ -x "/etc/init.d/%(service)s" ]; then
-	update-rc.d %(service)s defaults >/dev/null
-	invoke-rc.d %(service)s start || exit $?
+    if [ -x "/usr/sbin/policy-rc.d" ]; then
+        /usr/sbin/policy-rc.d
+        if [ $? -eq 101 ]; then
+            echo "warning: service %(service)s: postinst: ignored due to policy-rc.d"
+            exit 0;
+        fi
+    fi
+    set -e
+    update-rc.d %(service)s defaults >/dev/null
+    invoke-rc.d %(service)s start || exit $?
 fi
 """
 
@@ -80,7 +87,7 @@ class OnlPackageBeforeRemoveScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
 set -e
 if [ -x "/etc/init.d/%(service)s" ]; then
-	invoke-rc.d %(service)s stop || exit $?
+    invoke-rc.d %(service)s stop || exit $?
 fi
 """
 
@@ -88,7 +95,7 @@ class OnlPackageAfterRemoveScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
 set -e
 if [ "$1" = "purge" ] ; then
-	update-rc.d %(service)s remove >/dev/null
+    update-rc.d %(service)s remove >/dev/null
 fi
 """
 
