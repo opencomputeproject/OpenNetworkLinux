@@ -243,6 +243,37 @@ class OnlMultistrapConfig(object):
         return handle.getvalue()
 
 
+
+class OnlRfsContext(object):
+    def __init__(self, directory):
+        self.directory = directory
+        self.dev = os.path.join(self.directory, "dev")
+        self.proc = os.path.join(self.directory, "proc")
+        self.resolv = os.path.join(self.directory, "etc", "resolv.conf")
+        self.resolvb = "%s.backup" % self.resolv
+
+    def __enter__(self):
+        onlu.execute("sudo mount -t devtmpfs dev %s" % self.dev,
+                     ex=OnlRfsError("Could not mount dev in rfs."))
+        onlu.execute("sudo mount -t proc proc %s" % self.proc,
+                     ex=OnlRfsError("Could not mount proc in rfs."))
+        if os.path.islink(self.resolv) or os.path.exists(self.resolv):
+            onlu.execute("sudo mv %s %s" % (self.resolv, self.resolvb),
+                         ex=OnlRfsError("Could not backup %s" % (self.resolv)))
+        onlu.execute("sudo cp /etc/resolv.conf %s" % (self.resolv),
+                     ex=OnlRfsError("Could not copy resolv.conf"))
+        return self
+
+    def __exit__(self, eType, eValue, eTrace):
+        onlu.execute("sudo umount -l %s %s" % (self.dev, self.proc),
+                     ex=OnlRfsError("Could not unmount dev and proc"))
+        onlu.execute("sudo rm %s" % (self.resolv),
+                     ex=OnlRfsError("Could not remove resolv.conf"))
+
+        if os.path.islink("%s" % self.resolvb) or os.path.exists(resolvb):
+            onlu.execute("sudo mv %s %s" % (self.resolvb, self.resolv),
+                         ex=OnlRfsError("Could not restore the resolv.conf backup"))
+
 class OnlRfsBuilder(object):
 
     DEFAULTS = dict(
@@ -368,13 +399,7 @@ rm -f /usr/sbin/policy-rc.d
 
     def configure(self, dir_):
 
-        try:
-
-            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
-                         ex=OnlRfsError("Could not mount dev in new filesystem."))
-
-            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
-                         ex=OnlRfsError("Could not mount proc in new filesystem."))
+        with OnlRfsContext(dir_):
 
             if not os.getenv('NO_DPKG_CONFIGURE'):
                 self.dpkg_configure(dir_)
@@ -393,6 +418,11 @@ rm -f /usr/sbin/policy-rc.d
 
             Configure = self.config.get('Configure', None)
             if Configure:
+
+                for cmd in Configure.get('run', []):
+                    onlu.execute("sudo chroot %s %s" % (dir_, cmd),
+                                 ex=OnlRfsError("run command '%s' failed" % cmd))
+
                 for overlay in Configure.get('overlays', []):
                     logger.info("Overlay %s..." % overlay)
                     onlu.execute('tar -C %s -c --exclude "*~" . | sudo tar -C %s -x -v --no-same-owner' % (overlay, dir_),
@@ -552,22 +582,11 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute("sudo chmod a-w %s" % fn)
 
 
-
-        finally:
-            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
-
     def update(self, dir_, packages):
 
         ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
 
-        try:
-
-            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
-                         ex=OnlRfsError("Could not mount dev in new filesystem."))
-
-            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
-                         ex=OnlRfsError("Could not mount proc in new filesystem."))
-
+        with OnlRfsContext(dir_):
             for pspec in packages:
                 for pkg in pspec.split(','):
                     logger.info("updating %s into %s", pkg, dir_)
@@ -577,21 +596,11 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute(cmd,
                                  ex=OnlRfsError("update of %s failed" % pkg))
 
-        finally:
-            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
-
     def install(self, dir_, packages):
 
         ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
 
-        try:
-
-            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
-                         ex=OnlRfsError("Could not mount dev in new filesystem."))
-
-            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
-                         ex=OnlRfsError("Could not mount proc in new filesystem."))
-
+        with OnlRfsContext(dir_):
             for pspec in packages:
                 for pkg in pspec.split(','):
 
@@ -622,9 +631,6 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute(cmd,
                                  chroot=dir_,
                                  ex=OnlRfsError("install of %s failed" % pkg))
-
-        finally:
-            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
 
 
 if __name__ == '__main__':
