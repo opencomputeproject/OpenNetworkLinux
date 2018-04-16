@@ -29,7 +29,7 @@ include $(ONL)/make/config.amd64.mk
 MODULE := onlpdump
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM IOF onlp x86_64_mlnx_msn2100 onlplib onlp_platform_defaults sff cjson cjson_util timer_wheel OS
+DEPENDMODULES := AIM IOF onlp mlnx_common x86_64_mlnx_msn2100 onlplib onlp_platform_defaults sff cjson cjson_util timer_wheel OS
 
 include $(BUILDER)/dependmodules.mk
 
@@ -40,6 +40,7 @@ include $(BUILDER)/bin.mk
 GLOBAL_CFLAGS += -DAIM_CONFIG_AIM_MAIN_FUNCTION=onlpdump_main
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MODULES_INIT=1
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MAIN=1
+GLOBAL_CFLAGS += -I$(mlnx_common_BASEDIR)/module/inc
 GLOBAL_LINK_LIBS += -lpthread -lm
 
 include $(BUILDER)/targets.mk

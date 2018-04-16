@@ -32,8 +32,10 @@
 #include <linux/version.h>
 #include <AIM/aim.h>
 #include <onlplib/file.h>
+#include <onlp/onlp.h>
 #include <sys/mman.h>
-#include "platform_lib.h"
+#include "mlnx_common_log.h"
+#include "mlnx_common_int.h"
 
 int
 psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_info)
@@ -45,7 +47,7 @@ psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_i
     int index = 0, rv = 0, len = 0;
 
     rv = onlp_file_read((uint8_t* )data, sizeof(data)-1, &len,
-    		IDPROM_PATH, "psu", psu_index);
+                IDPROM_PATH, "psu", psu_index);
     if (rv < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -82,7 +84,7 @@ psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_i
 }
 
 int
-onlp_get_kernel_ver()
+mc_get_kernel_ver()
 {
     struct utsname buff;
     char ver[4];

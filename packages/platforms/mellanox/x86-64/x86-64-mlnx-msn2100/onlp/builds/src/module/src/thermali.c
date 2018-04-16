@@ -29,41 +29,8 @@
 #include <onlplib/mmap.h>
 #include <onlp/platformi/thermali.h>
 #include "platform_lib.h"
+#include "mlnx_common/mlnx_common.h"
 
-#define prefix_path "/bsp/thermal"
-
-/* CPU thermal_threshold */
-typedef enum cpu_thermal_threshold_e {
-    CPU_THERMAL_THRESHOLD_WARNING_DEFAULT  = 87000,
-    CPU_THERMAL_THRESHOLD_ERROR_DEFAULT    = 100000,
-    CPU_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT = 105000,
-} cpu_thermal_threshold_t;
-
-/* Shortcut for CPU thermal threshold value. */
-#define CPU_THERMAL_THRESHOLD_INIT_DEFAULTS  \
-    { CPU_THERMAL_THRESHOLD_WARNING_DEFAULT, \
-      CPU_THERMAL_THRESHOLD_ERROR_DEFAULT,   \
-      CPU_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT }
-
-/* Asic thermal_threshold */
-typedef enum asic_thermal_threshold_e {
-    ASIC_THERMAL_THRESHOLD_WARNING_DEFAULT  = 105000,
-    ASIC_THERMAL_THRESHOLD_ERROR_DEFAULT    = 115000,
-    ASIC_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT = 120000,
-} asic_thermal_threshold_t;
-
-/* Shortcut for CPU thermal threshold value. */
-#define ASIC_THERMAL_THRESHOLD_INIT_DEFAULTS  \
-    { ASIC_THERMAL_THRESHOLD_WARNING_DEFAULT, \
-      ASIC_THERMAL_THRESHOLD_ERROR_DEFAULT,   \
-      ASIC_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT }
-
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_THERMAL(_id)) {         \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
 
 enum onlp_thermal_id
 {
@@ -77,7 +44,7 @@ enum onlp_thermal_id
     THERMAL_PORT
 };
 
-static char* last_path[] =  /* must map with onlp_thermal_id */
+static char* thermal_fnames[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
     "cpu_core0",
@@ -90,7 +57,7 @@ static char* last_path[] =  /* must map with onlp_thermal_id */
 };
 
 /* Static values */
-static onlp_thermal_info_t linfo[] = {
+static onlp_thermal_info_t tinfo[] = {
     { }, /* Not used */
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE_0), "CPU Core 0", 0},
             ONLP_THERMAL_STATUS_PRESENT,
@@ -128,39 +95,9 @@ static onlp_thermal_info_t linfo[] = {
 int
 onlp_thermali_init(void)
 {
-    return ONLP_STATUS_OK;
-}
-
-/*
- * Retrieve the information structure for the given thermal OID.
- *
- * If the OID is invalid, return ONLP_E_STATUS_INVALID.
- * If an unexpected error occurs, return ONLP_E_STATUS_INTERNAL.
- * Otherwise, return ONLP_STATUS_OK with the OID's information.
- *
- * Note -- it is expected that you fill out the information
- * structure even if the sensor described by the OID is not present.
- */
-int
-onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
-{
-    int   rv, len = 10, temp_base=1, local_id = 0;
-    char  r_data[10]   = {0};
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-
-    /* Set the onlp_oid_hdr_t and capabilities */
-    *info = linfo[local_id];
-
-    rv = onlp_file_read((uint8_t*)r_data, sizeof(r_data), &len, "%s/%s",
-    		prefix_path, last_path[local_id]);
-	if (rv < 0) {
-		return ONLP_STATUS_E_INTERNAL;
-	}
-
-    info->mcelsius = atoi(r_data) / temp_base;
-
+    mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
+    mlnx_platform_info->tinfo=tinfo;
+    mlnx_platform_info->thermal_fnames=thermal_fnames;
     return ONLP_STATUS_OK;
 }
 
