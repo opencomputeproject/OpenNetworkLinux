@@ -1,0 +1,472 @@
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index 3bc6cf8..07cc7ea 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -33,6 +33,7 @@
+  */
+ 
+ #include <linux/device.h>
++#include <linux/dmi.h>
+ #include <linux/err.h>
+ #include <linux/kernel.h>
+ #include <linux/sysfs.h>
+@@ -49,7 +50,8 @@
+ #define MLXSW_QSFP_MAX_NUM		64
+ #define MLXSW_QSFP_MIN_REQ_LEN		4
+ #define MLXSW_QSFP_STATUS_VALID_TIME	(120 * HZ)
+-#define MLXSW_QSFP_MAX_CPLD_NUM		1
++#define MLXSW_QSFP_MAX_CPLD_NUM		3
++#define MLXSW_QSFP_MIN_CPLD_NUM		1
+ 
+ static const u8 mlxsw_qsfp_page_number[] = { 0xa0, 0x00, 0x01, 0x02, 0x03 };
+ static const u16 mlxsw_qsfp_page_shift[] = { 0x00, 0x80, 0x80, 0x80, 0x80 };
+@@ -85,6 +87,8 @@ struct mlxsw_qsfp {
+ 	struct device_attribute *cpld_dev_attrs;
+ };
+ 
++static int mlxsw_qsfp_cpld_num = MLXSW_QSFP_MIN_CPLD_NUM;
++
+ static int
+ mlxsw_qsfp_query_module_eeprom(struct mlxsw_qsfp *mlxsw_qsfp, u8 index,
+ 			       loff_t off, size_t count, int page, char *buf)
+@@ -210,11 +214,11 @@ mlxsw_qsfp_cpld_show(struct device *dev, struct device_attribute *attr,
+ 	u32 version, i;
+ 	int err;
+ 
+-	for (i = 0; i < MLXSW_QSFP_MAX_CPLD_NUM; i++) {
++	for (i = 0; i < mlxsw_qsfp_cpld_num; i++) {
+ 		if ((mlxsw_qsfp->cpld_dev_attrs + i) == attr)
+ 			break;
+ 	}
+-	if (i == MLXSW_QSFP_MAX_CPLD_NUM)
++	if (i == mlxsw_qsfp_cpld_num)
+ 		return -EINVAL;
+ 
+ 	mlxsw_reg_msci_pack(msci_pl, i);
+@@ -227,6 +231,32 @@ mlxsw_qsfp_cpld_show(struct device *dev, struct device_attribute *attr,
+ 	return sprintf(buf, "%u\n", version);
+ }
+ 
++static int __init mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
++{
++	mlxsw_qsfp_cpld_num = MLXSW_QSFP_MAX_CPLD_NUM;
++
++	return 1;
++};
++
++static struct dmi_system_id mlxsw_qsfp_dmi_table[] __initdata = {
++	{
++		.callback = mlxsw_qsfp_dmi_set_cpld_num,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "MSN24"),
++		},
++	},
++	{
++		.callback = mlxsw_qsfp_dmi_set_cpld_num,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "MSN27"),
++		},
++	},
++	{ }
++};
++MODULE_DEVICE_TABLE(dmi, mlxsw_qsfp_dmi_table);
++
+ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 		    const struct mlxsw_bus_info *mlxsw_bus_info,
+ 		    struct mlxsw_qsfp **p_qsfp)
+@@ -242,6 +272,8 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	if (!strcmp(mlxsw_bus_info->device_kind, "i2c"))
+ 		return 0;
+ 
++	dmi_check_system(mlxsw_qsfp_dmi_table);
++
+ 	mlxsw_qsfp = devm_kzalloc(mlxsw_bus_info->dev, sizeof(*mlxsw_qsfp),
+ 				  GFP_KERNEL);
+ 	if (!mlxsw_qsfp)
+@@ -285,7 +317,7 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 		return -ENOMEM;
+ 
+ 	mlxsw_qsfp->cpld_dev_attrs = devm_kzalloc(mlxsw_bus_info->dev,
+-					MLXSW_QSFP_MAX_CPLD_NUM *
++					mlxsw_qsfp_cpld_num *
+ 					sizeof(*mlxsw_qsfp->cpld_dev_attrs),
+ 					GFP_KERNEL);
+ 	if (!mlxsw_qsfp->cpld_dev_attrs)
+@@ -323,7 +355,7 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	}
+ 
+ 	cpld_dev_attr = mlxsw_qsfp->cpld_dev_attrs;
+-	for (i = 0; i < MLXSW_QSFP_MAX_CPLD_NUM; i++, cpld_dev_attr++) {
++	for (i = 0; i < mlxsw_qsfp_cpld_num; i++, cpld_dev_attr++) {
+ 		cpld_dev_attr->show = mlxsw_qsfp_cpld_show;
+ 		cpld_dev_attr->attr.mode = 0444;
+ 		cpld_dev_attr->attr.name = devm_kasprintf(mlxsw_bus_info->dev,
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index ba9241e..5c13591 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -58,6 +58,7 @@
+ #define MLXREG_HOTPLUG_PROP_STATUS	"status"
+ 
+ #define MLXREG_HOTPLUG_ATTRS_MAX	24
++#define MLXREG_HOTPLUG_NOT_ASSERT	3
+ 
+ /**
+  * struct mlxreg_hotplug_priv_data - platform private data:
+@@ -74,6 +75,7 @@
+  * @cell: location of top aggregation interrupt register;
+  * @mask: top aggregation interrupt common mask;
+  * @aggr_cache: last value of aggregation register status;
++ * @not_asserted: number of entries in workqueue with no signal assertion;
+  */
+ struct mlxreg_hotplug_priv_data {
+ 	int irq;
+@@ -94,6 +96,7 @@ struct mlxreg_hotplug_priv_data {
+ 	u32 mask;
+ 	u32 aggr_cache;
+ 	bool after_probe;
++	u8 not_asserted;
+ };
+ 
+ #if defined(CONFIG_OF_DYNAMIC)
+@@ -441,7 +444,7 @@ mlxreg_hotplug_health_work_helper(struct mlxreg_hotplug_priv_data *priv,
+  *				*---*
+  *
+  * In case some system changed are detected: FAN in/out, PSU in/out, power
+- * cable attached/detached, ASIC helath good/bad, relevant device is created
++ * cable attached/detached, ASIC health good/bad, relevant device is created
+  * or destroyed.
+  */
+ static void mlxreg_hotplug_work_handler(struct work_struct *work)
+@@ -472,6 +475,13 @@ static void mlxreg_hotplug_work_handler(struct work_struct *work)
+ 	aggr_asserted = priv->aggr_cache ^ regval;
+ 	priv->aggr_cache = regval;
+ 
++	if (priv->not_asserted == MLXREG_HOTPLUG_NOT_ASSERT) {
++		priv->not_asserted = 0;
++		aggr_asserted = pdata->mask;
++	}
++	if (!aggr_asserted)
++		goto unmask_event;
++
+ 	/* Handle topology and health configuration changes. */
+ 	for (i = 0; i < pdata->counter; i++, item++) {
+ 		if (aggr_asserted & item->aggr_mask) {
+@@ -503,6 +513,8 @@ static void mlxreg_hotplug_work_handler(struct work_struct *work)
+ 		return;
+ 	}
+ 
++unmask_event:
++	priv->not_asserted++;
+ 	/* Unmask aggregation event (no need acknowledge). */
+ 	ret = regmap_write(priv->regmap, pdata->cell +
+ 			   MLXREG_HOTPLUG_AGGR_MASK_OFF, pdata->mask);
+@@ -626,6 +638,7 @@ static int mlxreg_hotplug_probe(struct platform_device *pdev)
+ {
+ 	struct mlxreg_core_hotplug_platform_data *pdata;
+ 	struct mlxreg_hotplug_priv_data *priv;
++	struct i2c_adapter *deferred_adap;
+ 	int err;
+ 
+ 	pdata = dev_get_platdata(&pdev->dev);
+@@ -634,6 +647,12 @@ static int mlxreg_hotplug_probe(struct platform_device *pdev)
+ 		return -EINVAL;
+ 	}
+ 
++	/* Defer probing if the necessary adapter is not configured yet. */
++	deferred_adap = i2c_get_adapter(pdata->deferred_nr);
++	if (!deferred_adap)
++		return -EPROBE_DEFER;
++	i2c_put_adapter(deferred_adap);
++
+ 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+ 	if (!priv)
+ 		return -ENOMEM;
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 61cbe35..e03f03f 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -99,6 +99,15 @@
+ #define MLXPLAT_CPLD_LED_LO_NIBBLE_MASK	GENMASK(7, 4)
+ #define MLXPLAT_CPLD_LED_HI_NIBBLE_MASK	GENMASK(3, 0)
+ 
++/* Default I2C parent bus number */
++#define MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR	1
++
++/* Maximum number of possible physical buses equipped on system */
++#define MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM	16
++
++/* Number of channels in group */
++#define MLXPLAT_CPLD_GRP_CHNL_NUM		8
++
+ /* Start channel numbers */
+ #define MLXPLAT_CPLD_CH1			2
+ #define MLXPLAT_CPLD_CH2			10
+@@ -106,7 +115,8 @@
+ /* Number of LPC attached MUX platform devices */
+ #define MLXPLAT_CPLD_LPC_MUX_DEVS		2
+ 
+-/* PSU adapter numbers */
++/* Hotplug devices adapter numbers */
++#define MLXPLAT_CPLD_NR_NONE			-1
+ #define MLXPLAT_CPLD_PSU_DEFAULT_NR		10
+ #define MLXPLAT_CPLD_PSU_MSNXXXX_NR		4
+ 
+@@ -137,7 +147,7 @@ static const struct resource mlxplat_lpc_resources[] = {
+ };
+ 
+ /* Platform default channels */
+-static const int mlxplat_default_channels[][8] = {
++static const int mlxplat_default_channels[][MLXPLAT_CPLD_GRP_CHNL_NUM] = {
+ 	{
+ 		MLXPLAT_CPLD_CH1, MLXPLAT_CPLD_CH1 + 1, MLXPLAT_CPLD_CH1 + 2,
+ 		MLXPLAT_CPLD_CH1 + 3, MLXPLAT_CPLD_CH1 + 4, MLXPLAT_CPLD_CH1 +
+@@ -472,14 +482,14 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_fan_items_data[] = {
+ 	{
+ 		.label = "fan5",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFF,
+-		.mask = BIT(3),
++		.mask = BIT(4),
+ 		.hpdev.brdinfo = &mlxplat_mlxcpld_ng_fan,
+ 		.hpdev.nr = 15,
+ 	},
+ 	{
+ 		.label = "fan6",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFF,
+-		.mask = BIT(3),
++		.mask = BIT(5),
+ 		.hpdev.brdinfo = &mlxplat_mlxcpld_ng_fan,
+ 		.hpdev.nr = 16,
+ 	},
+@@ -943,10 +953,18 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_regs_io_data[] = {
+ 	  GENMASK(7, 0) & ~BIT(0), 0x00, 0444 },
+ 	{ "cause_short_pb", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
+ 	  GENMASK(7, 0) & ~BIT(1), 0x00, 0444 },
+-	{ "cause_pwr_aux", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	{ "cause_aux_pwr_or_refresh", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
+ 	  GENMASK(7, 0) & ~BIT(2), 0x00, 0444 },
+-	{ "cause_pwr_fail", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	{ "cause_main_pwr_fail", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
+ 	  GENMASK(7, 0) & ~BIT(3), 0x00, 0444 },
++	{ "cause_sw_reset", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	  GENMASK(7, 0) & ~BIT(4), 0x00, 0444 },
++	{ "cause_fw_reset", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	  GENMASK(7, 0) & ~BIT(5), 0x00, 0444 },
++	{ "cause_hotswap_or_wd", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	  GENMASK(7, 0) & ~BIT(6), 0x00, 0444 },
++	{ "cause_asic_thermal", MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFF,
++	  GENMASK(7, 0) & ~BIT(7), 0x00, 0444 },
+ 	{ "psu1_on", MLXPLAT_CPLD_LPC_REG_GP1_OFF, GENMASK(7, 0) & ~BIT(0),
+ 	  0x00, 0200 },
+ 	{ "psu2_on", MLXPLAT_CPLD_LPC_REG_GP1_OFF,  GENMASK(7, 0) & ~BIT(1),
+@@ -977,6 +995,8 @@ static int __init mlxplat_dmi_default_matched(const struct dmi_system_id *dmi)
+ 				ARRAY_SIZE(mlxplat_default_channels[i]);
+ 	}
+ 	mlxplat_hotplug = &mlxplat_mlxcpld_default_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_default_channels[i - 1][MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_default_led_data;
+ 	mlxplat_regs_io = &mlxplat_default_regs_io_data;
+ 
+@@ -993,6 +1013,8 @@ static int __init mlxplat_dmi_msn21xx_matched(const struct dmi_system_id *dmi)
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+ 	}
+ 	mlxplat_hotplug = &mlxplat_mlxcpld_msn21xx_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_msn21xx_led_data;
+ 	mlxplat_regs_io = &mlxplat_default_regs_io_data;
+ 
+@@ -1009,6 +1031,8 @@ static int __init mlxplat_dmi_msn274x_matched(const struct dmi_system_id *dmi)
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+ 	}
+ 	mlxplat_hotplug = &mlxplat_mlxcpld_msn274x_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_default_led_data;
+ 	mlxplat_regs_io = &mlxplat_default_regs_io_data;
+ 
+@@ -1025,6 +1049,8 @@ static int __init mlxplat_dmi_qmb7xx_matched(const struct dmi_system_id *dmi)
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+ 	}
+ 	mlxplat_hotplug = &mlxplat_mlxcpld_default_ng_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_default_channels[i - 1][MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_default_ng_led_data;
+ 	mlxplat_regs_io = &mlxplat_default_regs_io_data;
+ 
+@@ -1041,13 +1067,15 @@ static int __init mlxplat_dmi_msn201x_matched(const struct dmi_system_id *dmi)
+ 				ARRAY_SIZE(mlxplat_msn21xx_channels);
+ 	}
+ 	mlxplat_hotplug = &mlxplat_mlxcpld_msn201x_data;
++	mlxplat_hotplug->deferred_nr =
++		mlxplat_msn21xx_channels[MLXPLAT_CPLD_GRP_CHNL_NUM - 1];
+ 	mlxplat_led = &mlxplat_msn21xx_led_data;
+ 	mlxplat_regs_io = &mlxplat_default_regs_io_data;
+ 
+ 	return 1;
+ };
+ 
+-static struct dmi_system_id mlxplat_dmi_table[] __initdata = {
++static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+ 	{
+ 		.callback = mlxplat_dmi_msn274x_matched,
+ 		.matches = {
+@@ -1118,14 +1146,84 @@ static struct dmi_system_id mlxplat_dmi_table[] __initdata = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "SN34"),
+ 		},
+ 	},
++	{
++		.callback = mlxplat_dmi_default_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0001"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn21xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0002"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn274x_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0003"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_msn201x_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0004"),
++		},
++	},
++	{
++		.callback = mlxplat_dmi_qmb7xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0005"),
++		},
++	},
+ 	{ }
+ };
+ 
++MODULE_DEVICE_TABLE(dmi, mlxplat_dmi_table);
++
++static int mlxplat_mlxcpld_verify_bus_topology(int *nr)
++{
++	struct i2c_adapter *search_adap;
++	int shift, i;
++
++	/* Scan adapters from expected id to verify it is free. */
++	*nr = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR;
++	for (i = MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR; i <
++	     MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM; i++) {
++		search_adap = i2c_get_adapter(i);
++		if (search_adap) {
++			i2c_put_adapter(search_adap);
++			continue;
++		}
++
++		/* Return if expected parent adapter is free. */
++		if (i == MLXPLAT_CPLD_PHYS_ADAPTER_DEF_NR)
++			return 0;
++		break;
++	}
++
++	/* Return with error if free id for adapter is not found. */
++	if (i == MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM)
++		return -ENODEV;
++
++	/* Shift adapter ids, since expected parent adapter is not free. */
++	*nr = i;
++	for (i = 0; i < ARRAY_SIZE(mlxplat_mux_data); i++) {
++		shift = *nr - mlxplat_mux_data[i].parent;
++		mlxplat_mux_data[i].parent = *nr;
++		mlxplat_mux_data[i].base_nr += shift;
++		if (shift > 0)
++			mlxplat_hotplug->shift_nr = shift;
++	}
++
++	return 0;
++}
++
+ static int __init mlxplat_init(void)
+ {
+ 	struct mlxplat_priv *priv;
+ 	void __iomem *base;
+-	int i, j, err = 0;
++	int i, j, nr, err = 0;
+ 
+ 	if (!dmi_check_system(mlxplat_dmi_table))
+ 		return -ENODEV;
+@@ -1145,7 +1243,12 @@ static int __init mlxplat_init(void)
+ 	}
+ 	platform_set_drvdata(mlxplat_dev, priv);
+ 
+-	priv->pdev_i2c = platform_device_register_simple("i2c_mlxcpld", -1,
++	err = mlxplat_mlxcpld_verify_bus_topology(&nr);
++	if (nr < 0)
++		goto fail_alloc;
++
++	nr = (nr == MLXPLAT_CPLD_MAX_PHYS_ADAPTER_NUM) ? -1 : nr;
++	priv->pdev_i2c = platform_device_register_simple("i2c_mlxcpld", nr,
+ 							 NULL, 0);
+ 	if (IS_ERR(priv->pdev_i2c)) {
+ 		err = PTR_ERR(priv->pdev_i2c);
+@@ -1166,13 +1269,17 @@ static int __init mlxplat_init(void)
+ 
+ 	base = devm_ioport_map(&mlxplat_dev->dev,
+ 			       mlxplat_lpc_resources[1].start, 1);
+-	if (IS_ERR(base))
++	if (!base) {
++		err = -ENOMEM;
+ 		goto fail_platform_mux_register;
++	}
+ 
+ 	mlxplat_hotplug->regmap = devm_regmap_init(&mlxplat_dev->dev, NULL,
+ 					base, &mlxplat_mlxcpld_regmap_config);
+-	if (IS_ERR(mlxplat_hotplug->regmap))
++	if (IS_ERR(mlxplat_hotplug->regmap)) {
++		err = PTR_ERR(mlxplat_hotplug->regmap);
+ 		goto fail_platform_mux_register;
++	}
+ 
+ 	/* Set default registers. */
+ 	for (j = 0; j <  mlxplat_mlxcpld_regmap_config.num_reg_defaults; j++) {
+@@ -1257,13 +1364,3 @@ module_exit(mlxplat_exit);
+ MODULE_AUTHOR("Vadim Pasternak (vadimp@mellanox.com)");
+ MODULE_DESCRIPTION("Mellanox platform driver");
+ MODULE_LICENSE("Dual BSD/GPL");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN24*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN27*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSB*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSX*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*:MSN21*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*MSN274*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*MSN201*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*QMB7*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*SN37*:");
+-MODULE_ALIAS("dmi:*:*Mellanox*QM34*:");
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index c25623b..b77c7a5 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -129,6 +129,8 @@ struct mlxreg_core_platform_data {
+  * @mask: top aggregation interrupt common mask;
+  * @cell_low: location of low aggregation interrupt register;
+  * @mask_low: low aggregation interrupt common mask;
++ * @deferred_nr: I2C adapter number must be exist prior probing execution;
++ * @shift_nr: I2C adapter numbers must be incremented by this value;
+  */
+ struct mlxreg_core_hotplug_platform_data {
+ 	struct mlxreg_core_item *items;
+@@ -139,6 +141,8 @@ struct mlxreg_core_hotplug_platform_data {
+ 	u32 mask;
+ 	u32 cell_low;
+ 	u32 mask_low;
++	int deferred_nr;
++	int shift_nr;
+ };
+ 
+ #endif /* __LINUX_PLATFORM_DATA_MLXREG_H */
