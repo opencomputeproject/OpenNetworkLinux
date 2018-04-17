@@ -80,7 +80,7 @@ led_light_mode_map_t led_map[] = {
 {LED_DIAG, LED_MODE_AMBER, ONLP_LED_MODE_ORANGE},
 {LED_DIAG, LED_MODE_RED,   ONLP_LED_MODE_RED},
 {LED_LOC,  LED_MODE_OFF,   ONLP_LED_MODE_OFF},
-{LED_LOC,  LED_MODE_BLUE,  ONLP_LED_MODE_BLUE},
+{LED_LOC,  LED_MODE_AMBER, ONLP_LED_MODE_ORANGE},
 {LED_FAN,  LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
 {LED_PSU1, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
 {LED_PSU2, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO}
@@ -159,15 +159,27 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
     return 0;
 }
 
+/* Get the highest bit position of input value.*/
+static int _log2(int val) {
+    int bits = sizeof(val)*8 - 1;
+    int i, t;
+
+    for (i = bits; i>=0; i--) {
+        t = (val >> i);
+        if ( t & 1)
+            return i;
+    }
+    return i;
+}
+
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */
 int
 onlp_ledi_init(void)
 {
-	onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
-	onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
-
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
     return ONLP_STATUS_OK;
 }
 
@@ -220,9 +232,19 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 
     if (!on_or_off) {
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
-    }
+    } else {
+        int rv;
 
-    return ONLP_STATUS_E_UNSUPPORTED;
+        onlp_led_mode_t mode = ONLP_LED_MODE_OFF; 
+        onlp_led_info_t led_info;
+        rv = onlp_ledi_info_get(id, &led_info);
+        if (rv < 0)
+            return rv;
+
+        /*If multiple color is supported, take the mode at highest bit.*/
+        mode = _log2(led_info.caps); 
+        return  onlp_ledi_mode_set(id, mode);
+    }
 }
 
 /*
