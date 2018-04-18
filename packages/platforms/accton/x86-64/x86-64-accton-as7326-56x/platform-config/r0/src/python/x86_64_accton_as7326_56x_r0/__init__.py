@@ -6,7 +6,7 @@ class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
 
     PLATFORM='x86-64-accton-as7326-56x-r0'
     MODEL="AS7326-56X"
-    SYS_OBJECT_ID=".7326.54"
+    SYS_OBJECT_ID=".7326.56"
 
     def baseconfig(self):
         self.insmod('optoe')
