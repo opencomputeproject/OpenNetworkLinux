@@ -23,7 +23,7 @@ Multistrap:
     noauth: true
     explicitsuite: false
     unpack: true
-    debootstrap: Debian-Local Local-All Local-Arch ONL
+    debootstrap: Debian-Local Local-All Local-Arch ONL-Local
     aptsources: Debian ONL
 
   Debian:
@@ -41,6 +41,12 @@ Multistrap:
     omitdebsrc: true
 
   ONL:
+    packages: *Packages
+    source: http://apt.opennetlinux.org/debian
+    suite: unstable
+    omitdebsrc: true
+
+  ONL-Local:
     packages: *Packages
     source: http://${APT_CACHE}apt.opennetlinux.org/debian
     suite: unstable
