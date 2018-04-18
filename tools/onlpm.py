@@ -281,7 +281,7 @@ class OnlPackage(object):
         return True
 
     @staticmethod
-    def copyf(src, dst, root):
+    def copyf(src, dst, root, symlinks=False):
         if dst.startswith('/'):
             dst = dst[1:]
 
@@ -291,7 +291,7 @@ class OnlPackage(object):
             #
             dstpath = os.path.join(root, dst)
             logger.debug("Copytree %s -> %s" % (src, dstpath))
-            shutil.copytree(src, dstpath)
+            shutil.copytree(src, dstpath, symlinks=symlinks)
         else:
             #
             # If the destination ends in a '/' it means copy the filename
@@ -353,7 +353,7 @@ class OnlPackage(object):
         self.pkg['__workdir'] = workdir
 
         for (src,dst) in self.pkg.get('files', {}):
-            OnlPackage.copyf(src, dst, root)
+            OnlPackage.copyf(src, dst, root, symlinks=self.pkg.get('symlinks', False))
 
         for (src,dst) in self.pkg.get('optional-files', {}):
             if os.path.exists(src):
