@@ -2,6 +2,7 @@ prerequisites:
     packages:
       - onl-kernel-3.16-lts-x86-64-all:amd64
       - onl-kernel-4.9-lts-x86-64-all:amd64
+      - onl-kernel-4.14-lts-x86-64-all:amd64
       - onl-loader-initrd:amd64
 
 common:
