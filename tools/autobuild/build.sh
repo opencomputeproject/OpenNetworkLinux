@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH=master
 
-while getopts ":b:s:d:u:p:vc789r:" opt; do
+while getopts ":b:s:d:u:p:vVc789r:" opt; do
     case $opt in
         7)
             ONLB_OPTIONS=--7
@@ -37,6 +37,9 @@ while getopts ":b:s:d:u:p:vc789r:" opt; do
             ;;
         v)
             set -x
+            ;;
+        V)
+            export VERBOSE=1
             ;;
         r)
             export BUILDROOTMIRROR=$OPTARG
