@@ -8,3 +8,4 @@ driver-support-intel-igb-bcm5461-phy.patch
 0007-hwmon-pmbus-Add-support-for-Intel-VID-protocol-VR13.patch
 0008-hwmon-pmbus-Add-support-for-Texas-Instruments-tps536.patch
 driver-i2c-i2c-core.patch
+add-the-support-max6620-driver.patch

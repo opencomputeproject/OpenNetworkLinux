@@ -11,7 +11,6 @@ class OnlPlatform_x86_64_delta_ag8032_r0(OnlPlatformDelta,OnlPlatformPortConfig_
 
         self.insmod('x86-64-delta-ag8032-i2c-mux-setting.ko')
         self.insmod('x86-64-delta-ag8032-i2c-mux-cpld.ko')
-        self.insmod('delta-max6620.ko')
         self.insmod('delta-at24.ko')
 
         
@@ -25,8 +24,8 @@ class OnlPlatform_x86_64_delta_ag8032_r0(OnlPlatformDelta,OnlPlatformPortConfig_
                 ('delta-24c02', 0x52, 2),
                 ('delta-24c02', 0x53, 2),
                 ('delta-24c08', 0x54, 5),
-                ('delta-max6620', 0x29, 2),
-                ('delta-max6620', 0x2a, 2),
+                ('max6620', 0x29, 2),
+                ('max6620', 0x2a, 2),
                 ('delta-at24c02', 0x50, 4),
             ]
             )
