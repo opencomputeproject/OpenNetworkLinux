@@ -76,13 +76,8 @@ dni_psu_info_get(onlp_psu_info_t* info)
     char val_char[16] = {'\0'};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {'\0'};
 
-    /* Set capability
-     */
+    /* Set capability */
     info->caps |= ONLP_PSU_CAPS_AC;
- 
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
-        return ONLP_STATUS_OK;
-    }
 
     /* Set the associated oid_table
      * Set PSU's fan and thermal to child OID
@@ -170,7 +165,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     	channel = PSU_I2C_SEL_PSU1_EEPROM;
 	break;
     case PSU2_ID:
-	channel = PSU_I2C_SEL_PSU2_EEPROM;
+        channel = PSU_I2C_SEL_PSU2_EEPROM;
 	break;
     default:
 	break;
@@ -185,32 +180,34 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     dev_info.offset = 0x00;	/* In EEPROM address 0x00 */
     dev_info.flags = DEFAULT_FLAG;
 
-    /* Check PSU is PRESENT or not
-     * Read PSU EEPROM 1 byte from adress 0x00
-     * if not present, return Negative value.
-     */
-    if(dni_i2c_lock_read(&mux_info, &dev_info) < 0)
-    {
-	/* Unable to read PSU(%d) node(psu_present) */
-        return ONLP_STATUS_OK;
-    } else {
-        info->status |= ONLP_PSU_STATUS_PRESENT;
-    }
-
-    /* Select PSU member */
+    /* Select PSU member(channel) */
     sprintf(channel_data, "%x", channel);
     dni_i2c_lock_write_attribute(NULL, channel_data, PSU_SELECT_MEMBER_PATH);
 
+
     /* Check PSU have voltage input or not */
     dni_psu_pmbus_info_get(index, "psu_v_in", &val);
-    if (val == 0) {
-	/* Unable to read PSU(%d) node(psu_power_good) */
-	info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-	return ONLP_STATUS_OK;
+
+    /* Check PSU is PRESENT or not
+     * Read PSU EEPROM 1 byte from adress 0x00
+     * if not present, return Negative value.
+     */        
+    if(val == 0 && dni_i2c_lock_read(&mux_info, &dev_info) < 0)
+    {
+        /* Unable to read PSU EEPROM */
+        /* Able to read PSU VIN(psu_power_not_good) */
+        info->status |= ONLP_PSU_STATUS_FAILED;
+        return ONLP_STATUS_OK;
+    }
+    else if(val == 0){
+        /* Unable to read PSU VIN(psu_power_good) */
+        info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+    } 
+    else {
+        info->status |= ONLP_PSU_STATUS_PRESENT;
     }
 
     ret = dni_psu_info_get(info);
-
     return ret;
 }
 
@@ -219,4 +216,3 @@ onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

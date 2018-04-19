@@ -39,14 +39,14 @@ typedef struct fan_path_S
 static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
 {
     { NULL, NULL, NULL },
-    { "/3-004d/fan1_fault", "/3-004d/fan1_input", "/3-004d/fan1_input" },
-    { "/3-004d/fan2_fault", "/3-004d/fan2_input", "/3-004d/fan2_input" },
-    { "/3-004d/fan3_fault", "/3-004d/fan3_input", "/3-004d/fan3_input" },
-    { "/3-004d/fan4_fault", "/3-004d/fan4_input", "/3-004d/fan4_input" },
-    { "/5-004d/fan1_fault", "/5-004d/fan1_input", "/5-004d/fan1_input" },
-    { "/5-004d/fan2_fault", "/5-004d/fan2_input", "/5-004d/fan2_input" },
-    { "/5-004d/fan3_fault", "/5-004d/fan3_input", "/5-004d/fan3_input" },
-    { "/5-004d/fan4_fault", "/5-004d/fan4_input", "/5-004d/fan4_input" },
+    { "/3-004d/fan1_fault", "/3-004d/fan1_input", "/3-004d/fan1_input_percentage" },
+    { "/3-004d/fan2_fault", "/3-004d/fan2_input", "/3-004d/fan2_input_percentage" },
+    { "/3-004d/fan3_fault", "/3-004d/fan3_input", "/3-004d/fan3_input_percentage" },
+    { "/3-004d/fan4_fault", "/3-004d/fan4_input", "/3-004d/fan4_input_percentage" },
+    { "/5-004d/fan1_fault", "/5-004d/fan1_input", "/5-004d/fan1_input_percentage" },
+    { "/5-004d/fan2_fault", "/5-004d/fan2_input", "/5-004d/fan2_input_percentage" },
+    { "/5-004d/fan3_fault", "/5-004d/fan3_input", "/5-004d/fan3_input_percentage" },
+    { "/5-004d/fan4_fault", "/5-004d/fan4_input", "/5-004d/fan4_input_percentage" },
     { "/6-0059/psu_fan1_fault", "/6-0059/psu_fan1_speed_rpm", "/6-0059/psu_fan1_duty_cycle_percentage" },
     { "/6-0058/psu_fan1_fault", "/6-0058/psu_fan1_speed_rpm", "/6-0058/psu_fan1_duty_cycle_percentage" }
 };
@@ -55,7 +55,7 @@ static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
     { \
         { ONLP_FAN_ID_CREATE(FAN_##id##_ON_FAN_BOARD), "Chassis Fan "#id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_RPM | ONLP_FAN_CAPS_GET_RPM), \
+        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_PERCENTAGE | ONLP_FAN_CAPS_SET_RPM | ONLP_FAN_CAPS_GET_RPM), \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -274,7 +274,7 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
         case FAN_6_ON_FAN_BOARD:
         case FAN_7_ON_FAN_BOARD:
         case FAN_8_ON_FAN_BOARD:
-            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
+            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
             break;
         default:
             return ONLP_STATUS_E_INVALID;
@@ -303,13 +303,21 @@ onlp_fani_percentage_set(onlp_oid_t id, int percentage)
 
     /* Select PSU member */
     switch (local_id) {
-    case FAN_1_ON_PSU1:
-    case FAN_1_ON_PSU2:
-        break;
+        case FAN_1_ON_FAN_BOARD:
+        case FAN_2_ON_FAN_BOARD:
+        case FAN_3_ON_FAN_BOARD:
+        case FAN_4_ON_FAN_BOARD:
+        case FAN_5_ON_FAN_BOARD:
+        case FAN_6_ON_FAN_BOARD:
+        case FAN_7_ON_FAN_BOARD:
+        case FAN_8_ON_FAN_BOARD:
+        case FAN_1_ON_PSU1:
+        case FAN_1_ON_PSU2:
+            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
+            break;
     default:
         return ONLP_STATUS_E_INVALID;
     }
-    sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
  
     /* Write percentage to psu_fan1_duty_cycle_percentage */
     sprintf(data, "%d", percentage);

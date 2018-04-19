@@ -16,11 +16,4 @@
 rm -rf $ONL/make/modules/module*
 
 # Rebuild pkg cache
-onlpm.py --rebuild-pkg-cache
-
-
-
-
-
-
-
+$ONL/tools/onlpm.py --rebuild-pkg-cache

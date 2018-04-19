@@ -1,0 +1,35 @@
+---
+
+######################################################################
+#
+# platform-config for WEDGE
+#
+######################################################################
+
+x86-64-accton-wedge100bf-32x-r0:
+
+  grub:
+
+    serial: >-
+      --unit=0
+      --speed=57600
+      --word=8
+      --parity=0
+      --stop=1
+
+    kernel: 
+      <<: *kernel-3-16
+
+    args: >-
+      nopat
+      console=ttyS0,57600n8
+      rd_NO_MD
+      rd_NO_LUKS
+      intel_iommu=off
+      noapic
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

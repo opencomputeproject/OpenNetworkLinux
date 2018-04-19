@@ -41,24 +41,29 @@ int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, in
     int fd;
     int len;
 
-    if ((buffer == NULL) || (buf_size < 0)) {
+    if ((buffer == NULL) || (buf_size < 0)) 
+    {
         return -1;
     }
 
-    if ((fd = open(filename, O_RDONLY)) == -1) {
+    if ((fd = open(filename, O_RDONLY)) == -1) 
+    {
         return -1;
     }
 
-    if ((len = read(fd, buffer, buf_size)) < 0) {
+    if ((len = read(fd, buffer, buf_size)) < 0) 
+    { 
         close(fd);
         return -1;
     }
 
-    if ((close(fd) == -1)) {
+    if ((close(fd) == -1)) 
+    {
         return -1;
     }
 
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
+    if ((len > buf_size) || (data_len != 0 && len != data_len)) 
+    {
         return -1;
     }
 
@@ -276,5 +281,33 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
     close(fd);
     pthread_mutex_unlock(&mutex1);
     return -1;
+}
+
+
+int dni_fan_speed_good()
+{
+    int rpm = 0, rpm1 = 0, speed_good = 0;
+
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
+    if(rpm != 0 && rpm != FAN_ZERO_RPM && rpm1 != 0 && rpm1 != FAN_ZERO_RPM)
+        speed_good++;
+
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
+    if(rpm != 0 && rpm != FAN_ZERO_RPM && rpm1 != 0 && rpm1 != FAN_ZERO_RPM)
+        speed_good++;
+
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
+    if(rpm != 0 && rpm != FAN_ZERO_RPM && rpm1 != 0 && rpm1 != FAN_ZERO_RPM)
+        speed_good++;
+                                                                    
+    rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
+    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
+    if(rpm != 0 && rpm != FAN_ZERO_RPM && rpm1 != 0 && rpm1 != FAN_ZERO_RPM)
+        speed_good++;
+
+    return speed_good;
 }
 

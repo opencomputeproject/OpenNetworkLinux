@@ -170,7 +170,7 @@ onlp_sysi_platform_manage_fans(void)
 
         /* Decision 1: Set fan as full speed if any fan is failed.
          */
-        if (fan_info.status & ONLP_FAN_STATUS_FAILED) {
+        if (fan_info.status & ONLP_FAN_STATUS_FAILED || !(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
             AIM_LOG_ERROR("Fan(%d) is not working, set the other fans as full speed\r\n", i);
             return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }

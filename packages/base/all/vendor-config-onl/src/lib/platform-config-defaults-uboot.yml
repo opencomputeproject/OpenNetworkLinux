@@ -129,6 +129,13 @@ default:
     - ext2load mmc 0:1 $onl_loadaddr $onl_itb
     - "bootm $onl_loadaddr#$onl_platform"
 
+    #ubifs to boot onl
+    flash_bootcmds: &flash_bootcmds
+    - ubi part open
+    - ubifsmount ONL-BOOT
+    - ubifsload $loadaddr  $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
     nos_bootcmds: *ide_bootcmds
 
     # Configure the fw_env.config file,

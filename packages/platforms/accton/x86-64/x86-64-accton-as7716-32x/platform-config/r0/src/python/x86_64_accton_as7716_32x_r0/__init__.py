@@ -8,10 +8,11 @@ class OnlPlatform_x86_64_accton_as7716_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7716.32"
 
     def baseconfig(self):
-
-        self.insmod("ym2651y")
+        self.insmod('optoe')
+        self.insmod('ym2651y')
         self.insmod('accton_i2c_cpld')
-        self.insmod_platform()
+        for m in [ 'fan', 'cpld1', 'psu', 'leds' ]:
+            self.insmod("x86-64-accton-as7716-32x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([
@@ -30,7 +31,7 @@ class OnlPlatform_x86_64_accton_as7716_32x_r0(OnlPlatformAccton,
                 ('lm75', 0x4a, 10),
 
                 #initiate CPLD
-                ('accton_i2c_cpld', 0x60, 11),
+                ('as7716_32x_cpld1', 0x60, 11),
                 ('accton_i2c_cpld', 0x62, 12),
                 ('accton_i2c_cpld', 0x64, 13),
 
@@ -52,39 +53,71 @@ class OnlPlatform_x86_64_accton_as7716_32x_r0(OnlPlatformAccton,
                 ('pca9548', 0x75, 2),
 
                 # initialize QSFP port 1-32
-                ('as7716_32x_sfp9',  0x50, 25),
-                ('as7716_32x_sfp10', 0x50, 26),
-                ('as7716_32x_sfp11', 0x50, 27),
-                ('as7716_32x_sfp12', 0x50, 28),
-                ('as7716_32x_sfp1',  0x50, 29),
-                ('as7716_32x_sfp2',  0x50, 30),
-                ('as7716_32x_sfp3',  0x50, 31),
-                ('as7716_32x_sfp4',  0x50, 32),
-                ('as7716_32x_sfp6',  0x50, 33),
-                ('as7716_32x_sfp5',  0x50, 34),
-                ('as7716_32x_sfp8',  0x50, 35),
-                ('as7716_32x_sfp7',  0x50, 36),
-                ('as7716_32x_sfp13', 0x50, 37),
-                ('as7716_32x_sfp14', 0x50, 38),
-                ('as7716_32x_sfp15', 0x50, 39),
-                ('as7716_32x_sfp16', 0x50, 40),
-                ('as7716_32x_sfp17', 0x50, 41),
-                ('as7716_32x_sfp18', 0x50, 42),
-                ('as7716_32x_sfp19', 0x50, 43),
-                ('as7716_32x_sfp20', 0x50, 44),
-                ('as7716_32x_sfp25', 0x50, 45),
-                ('as7716_32x_sfp26', 0x50, 46),
-                ('as7716_32x_sfp27', 0x50, 47),
-                ('as7716_32x_sfp28', 0x50, 48),
-                ('as7716_32x_sfp29', 0x50, 49),
-                ('as7716_32x_sfp30', 0x50, 50),
-                ('as7716_32x_sfp31', 0x50, 51),
-                ('as7716_32x_sfp32', 0x50, 52),
-                ('as7716_32x_sfp21', 0x50, 53),
-                ('as7716_32x_sfp22', 0x50, 54),
-                ('as7716_32x_sfp23', 0x50, 55),
-                ('as7716_32x_sfp24', 0x50, 56),
+                ('optoe1', 0x50, 25),
+                ('optoe1', 0x50, 26),
+                ('optoe1', 0x50, 27),
+                ('optoe1', 0x50, 28),
+                ('optoe1', 0x50, 29),
+                ('optoe1', 0x50, 30),
+                ('optoe1', 0x50, 31),
+                ('optoe1', 0x50, 32),
+                ('optoe1', 0x50, 33),
+                ('optoe1', 0x50, 34),
+                ('optoe1', 0x50, 35),
+                ('optoe1', 0x50, 36),
+                ('optoe1', 0x50, 37),
+                ('optoe1', 0x50, 38),
+                ('optoe1', 0x50, 39),
+                ('optoe1', 0x50, 40),
+                ('optoe1', 0x50, 41),
+                ('optoe1', 0x50, 42),
+                ('optoe1', 0x50, 43),
+                ('optoe1', 0x50, 44),
+                ('optoe1', 0x50, 45),
+                ('optoe1', 0x50, 46),
+                ('optoe1', 0x50, 47),
+                ('optoe1', 0x50, 48),
+                ('optoe1', 0x50, 49),
+                ('optoe1', 0x50, 50),
+                ('optoe1', 0x50, 51),
+                ('optoe1', 0x50, 52),
+                ('optoe1', 0x50, 53),
+                ('optoe1', 0x50, 54),
+                ('optoe1', 0x50, 55),
+                ('optoe1', 0x50, 56),
                 ('24c02', 0x56, 0),
                 ])
 
+        subprocess.call('echo port9 > /sys/bus/i2c/devices/25-0050/port_name', shell=True)
+        subprocess.call('echo port10 > /sys/bus/i2c/devices/26-0050/port_name', shell=True)
+        subprocess.call('echo port11 > /sys/bus/i2c/devices/27-0050/port_name', shell=True)
+        subprocess.call('echo port12 > /sys/bus/i2c/devices/28-0050/port_name', shell=True)
+        subprocess.call('echo port1 > /sys/bus/i2c/devices/29-0050/port_name', shell=True)
+        subprocess.call('echo port2 > /sys/bus/i2c/devices/30-0050/port_name', shell=True)
+        subprocess.call('echo port3 > /sys/bus/i2c/devices/31-0050/port_name', shell=True)
+        subprocess.call('echo port4 > /sys/bus/i2c/devices/32-0050/port_name', shell=True)
+        subprocess.call('echo port6 > /sys/bus/i2c/devices/33-0050/port_name', shell=True)
+        subprocess.call('echo port5 > /sys/bus/i2c/devices/34-0050/port_name', shell=True)
+        subprocess.call('echo port8 > /sys/bus/i2c/devices/35-0050/port_name', shell=True)
+        subprocess.call('echo port7 > /sys/bus/i2c/devices/36-0050/port_name', shell=True)
+        subprocess.call('echo port13 > /sys/bus/i2c/devices/37-0050/port_name', shell=True)
+        subprocess.call('echo port14 > /sys/bus/i2c/devices/38-0050/port_name', shell=True)
+        subprocess.call('echo port15 > /sys/bus/i2c/devices/39-0050/port_name', shell=True)
+        subprocess.call('echo port16 > /sys/bus/i2c/devices/40-0050/port_name', shell=True)
+        subprocess.call('echo port17 > /sys/bus/i2c/devices/41-0050/port_name', shell=True)
+        subprocess.call('echo port18 > /sys/bus/i2c/devices/42-0050/port_name', shell=True)
+        subprocess.call('echo port19 > /sys/bus/i2c/devices/43-0050/port_name', shell=True)
+        subprocess.call('echo port20 > /sys/bus/i2c/devices/44-0050/port_name', shell=True)
+        subprocess.call('echo port25 > /sys/bus/i2c/devices/45-0050/port_name', shell=True)
+        subprocess.call('echo port26 > /sys/bus/i2c/devices/46-0050/port_name', shell=True)
+        subprocess.call('echo port27 > /sys/bus/i2c/devices/47-0050/port_name', shell=True)
+        subprocess.call('echo port28 > /sys/bus/i2c/devices/48-0050/port_name', shell=True)
+        subprocess.call('echo port29 > /sys/bus/i2c/devices/49-0050/port_name', shell=True)
+        subprocess.call('echo port30 > /sys/bus/i2c/devices/50-0050/port_name', shell=True)
+        subprocess.call('echo port31 > /sys/bus/i2c/devices/51-0050/port_name', shell=True)
+        subprocess.call('echo port32 > /sys/bus/i2c/devices/52-0050/port_name', shell=True)
+        subprocess.call('echo port21 > /sys/bus/i2c/devices/53-0050/port_name', shell=True)
+        subprocess.call('echo port22 > /sys/bus/i2c/devices/54-0050/port_name', shell=True)
+        subprocess.call('echo port23 > /sys/bus/i2c/devices/55-0050/port_name', shell=True)
+        subprocess.call('echo port24 > /sys/bus/i2c/devices/56-0050/port_name', shell=True)
         return True

@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/no-platform-modules.yml VENDOR=delta BASENAME=x86-64-delta-ag9064 ARCH=amd64

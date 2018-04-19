@@ -1,12 +1,24 @@
+import subprocess
+
 class OnlVersionImplementation(object):
 
     PRODUCTS = [
         {
             "id" : "ONL",
-            "version": "2.0.0"
-            }
-        ]
+#            "version": "20YY-MM"
+        }
+    ]
 
+    def __init__(self):
+        if 'version' in self.PRODUCTS[0]:
+            # Release builds have a specific version.
+            self.release = True
+        else:
+            # The current branch is used as the release version.
+            self.release = False
+            cmd = ('git', 'rev-parse', '--abbrev-ref', 'HEAD')
+            branch = subprocess.check_output(cmd).strip()
+            self.PRODUCTS[0]['version'] = branch
 
     def V_OS_NAME(self, data):
         return "Open Network Linux OS"
@@ -55,3 +67,9 @@ class OnlVersionImplementation(object):
 
     def V_SYSTEM_COMPATIBILITY_VERSION(self, data):
         return "2"
+
+    def V_ISSUE(self, data):
+        if self.release:
+            return "%s %s" % (self.V_OS_NAME(data), self.V_VERSION_ID(data))
+        else:
+            return self.V_VERSION_STRING(data)

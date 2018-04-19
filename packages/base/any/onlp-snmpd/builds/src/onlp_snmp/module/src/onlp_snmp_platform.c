@@ -259,9 +259,29 @@ us_to_next_update(void)
     return MIN(period - deltat, period);
 }
 
+#include <onlplib/file_uds.h>
+
+static int
+cpu_utilization_handler__(int fd, void* cookie)
+{
+    char svalue[64];
+    resources_t *curr = get_curr_resources();
+    sprintf(svalue, "%d", curr->utilization_percent);
+    write(fd, svalue, strlen(svalue));
+    close(fd);
+    return 0;
+}
+
 static void *
 do_update(void *arg)
 {
+    onlp_file_uds_t* uds;
+    if(ONLP_SUCCESS(onlp_file_uds_create(&uds))) {
+        onlp_file_uds_add(uds,
+                          "/var/run/onl/cpu-utilization",
+                          cpu_utilization_handler__, NULL);
+    }
+
     for (;;) {
         resource_update();
         usleep(us_to_next_update());

@@ -36,8 +36,6 @@ static struct as7312_54x_fan_data *as7312_54x_fan_update_device(struct device *d
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
                               const char *buf, size_t count);
-extern int as7312_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-extern int as7312_54x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 /* fan related data, the index should match sysfs_fan_attributes
  */
@@ -467,23 +465,7 @@ static struct i2c_driver as7312_54x_fan_driver = {
     .address_list = normal_i2c,
 };
 
-static int __init as7312_54x_fan_init(void)
-{
-    extern int platform_accton_as7312_54x(void);
-    if (!platform_accton_as7312_54x()) {
-        return -ENODEV;
-    }
-
-    return i2c_add_driver(&as7312_54x_fan_driver);
-}
-
-static void __exit as7312_54x_fan_exit(void)
-{
-    i2c_del_driver(&as7312_54x_fan_driver);
-}
-
-module_init(as7312_54x_fan_init);
-module_exit(as7312_54x_fan_exit);
+module_i2c_driver(as7312_54x_fan_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as7312_54x_fan driver");

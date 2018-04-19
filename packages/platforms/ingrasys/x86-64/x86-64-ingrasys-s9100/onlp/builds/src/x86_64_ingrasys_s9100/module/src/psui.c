@@ -93,6 +93,8 @@ psu_status_info_get(int id, onlp_psu_info_t *info)
     if (pw_good != PSU_STATUS_POWER_GOOD) {        
         info->status |= ONLP_PSU_STATUS_UNPLUGGED;
         return ONLP_STATUS_OK;
+    } else {
+        info->status &= ~ONLP_PSU_STATUS_UNPLUGGED;
     }
     
     /* Get power eeprom status */

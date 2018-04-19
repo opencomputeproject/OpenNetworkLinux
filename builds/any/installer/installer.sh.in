@@ -144,7 +144,19 @@ if test "$installer_debug"; then
 fi
 
 # Pickup ONIE defines for this machine.
-if test -r /etc/machine.conf; then
+if test "$onie_platform"; then
+  :
+else
+  onie_platform=$(onie-sysinfo -p 2>/dev/null) || :
+fi
+if test "$onie_arch"; then
+  :
+else
+  onie_arch=$(onie-sysinfo -c 2>/dev/null) || :
+fi
+if test "$onie_platform"; then
+  :
+elif test -r /etc/machine.conf; then
   . /etc/machine.conf
 fi
 
@@ -252,7 +264,7 @@ if test "${onie_platform}"; then
   }
 else
   if test "$ARCH_X86"; then
-    echo "Missing onie_platform (invalid /etc/machine.conf)" 1>&2
+    echo "Missing onie_platform (invalid or missing onie-sysinfo or /etc/machine.conf)" 1>&2
     exit 1
   fi
   #
@@ -472,6 +484,11 @@ mkdir -p "${rootdir}/etc/onl"
 cp /dev/null "${rootdir}/etc/onl/installer.conf"
 echo "onl_version=\"$onl_version\"" >> "${rootdir}/etc/onl/installer.conf"
 
+# pass in the platform identifier, otherwise encoded in
+# machine-XXX.conf and onie-sysinfo
+echo "onie_platform=$onie_platform" >> "${rootdir}/etc/onl/installer.conf"
+echo "onie_arch=$onie_arch" >> "${rootdir}/etc/onl/installer.conf"
+
 # Generate the MD5 signature for ourselves for future reference.
 installer_md5=$(md5sum "$0" | awk '{print $1}')
 echo "installer_md5=\"$installer_md5\"" >> "${rootdir}/etc/onl/installer.conf"
@@ -561,7 +578,7 @@ if test -f "$postinst"; then
 fi
 
 installer_unzip $installer_zip postinstall.sh || :
-if test -f preinstall.sh; then
+if test -f postinstall.sh; then
   chmod +x postinstall.sh
   ./postinstall.sh $rootdir
 fi

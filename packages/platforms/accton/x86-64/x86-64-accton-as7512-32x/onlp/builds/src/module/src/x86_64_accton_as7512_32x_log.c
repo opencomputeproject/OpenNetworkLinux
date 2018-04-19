@@ -10,9 +10,8 @@
  * x86_64_accton_as7512_32x log struct.
  */
 AIM_LOG_STRUCT_DEFINE(
-                      x86_64_accton_as7512_32x_CONFIG_LOG_OPTIONS_DEFAULT,
-                      x86_64_accton_as7512_32x_CONFIG_LOG_BITS_DEFAULT,
+                      X86_64_ACCTON_AS7512_32X_CONFIG_LOG_OPTIONS_DEFAULT,
+                      X86_64_ACCTON_AS7512_32X_CONFIG_LOG_BITS_DEFAULT,
                       NULL, /* Custom log map */
-                      x86_64_accton_as7512_32x_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+                      X86_64_ACCTON_AS7512_32X_CONFIG_LOG_CUSTOM_BITS_DEFAULT
                      );
-

@@ -143,7 +143,8 @@ onlp_sys_info_get_locked__(onlp_sys_info_t* rv)
     }
     else {
         if(onlp_sysi_onie_info_get(&rv->onie_info) != 0) {
-            return ONLP_STATUS_E_INTERNAL;
+            memset(&rv->onie_info, 0, sizeof(rv->onie_info));
+            list_init(&rv->onie_info.vx_list);
         }
     }
 
@@ -214,7 +215,7 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
     int yaml;
 
     onlp_oid_show_iof_init_default(&iof, pvs, flags);
-    yaml = (flags & ONLP_OID_SHOW_F_YAML);
+    yaml = (flags & ONLP_OID_SHOW_YAML);
 
     if(id && ONLP_OID_TYPE_GET(id) != ONLP_OID_TYPE_SYS) {
         return;
@@ -234,14 +235,14 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
      * unless you specify EXTENDED or !RECURSIVE
      */
     if(yaml ||
-       flags & ONLP_OID_SHOW_F_EXTENDED ||
-       (flags & ONLP_OID_SHOW_F_RECURSE) == 0) {
+       flags & ONLP_OID_SHOW_EXTENDED ||
+       (flags & ONLP_OID_SHOW_RECURSE) == 0) {
         iof_push(&iof, "System Information:");
         onlp_onie_show(&si.onie_info, &iof.inherit);
         iof_pop(&iof);
     }
 
-    if(flags & ONLP_OID_SHOW_F_RECURSE) {
+    if(flags & ONLP_OID_SHOW_RECURSE) {
 
         onlp_oid_t* oidp;
 
@@ -266,7 +267,7 @@ onlp_sys_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         }
         YPOP();
 
-        if(flags & ONLP_OID_SHOW_F_EXTENDED) {
+        if(flags & ONLP_OID_SHOW_EXTENDED) {
             /** Show all LEDs */
             YPUSH("LEDs:");
             ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, LED) {

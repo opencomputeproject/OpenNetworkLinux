@@ -28,6 +28,7 @@
 #include <sff/8636.h>
 #include "sff_log.h"
 #include <ctype.h>
+#include "sff_int.h"
 
 sff_sfp_type_t
 sff_sfp_type_get(const uint8_t* eeprom)
@@ -143,6 +144,16 @@ sff_module_type_get(const uint8_t* eeprom)
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_cr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_CR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
+        && _sff8472_media_sfp28_sr(eeprom)) {
+        return SFF_MODULE_TYPE_25G_BASE_SR;
+    }
+
+    if (SFF8472_MODULE_SFP(eeprom)
         && SFF8472_MEDIA_XGE_SR(eeprom)
         && !_sff8472_media_gbe_sx_fc_hack(eeprom))
         return SFF_MODULE_TYPE_10G_BASE_SR;
@@ -180,16 +191,6 @@ sff_module_type_get(const uint8_t* eeprom)
             return SFF_MODULE_TYPE_10G_BASE_SR;
         else
             return SFF_MODULE_TYPE_10G_BASE_CR;
-    }
-
-    if (SFF8472_MODULE_SFP(eeprom)
-        && _sff8472_media_sfp28_cr(eeprom)) {
-        return SFF_MODULE_TYPE_25G_BASE_CR;
-    }
-
-    if (SFF8472_MODULE_SFP(eeprom)
-        && _sff8472_media_sfp28_sr(eeprom)) {
-        return SFF_MODULE_TYPE_25G_BASE_SR;
     }
 
     if (SFF8472_MODULE_SFP(eeprom)
@@ -471,6 +472,7 @@ sff_eeprom_parse_standard__(sff_eeprom_t* se, uint8_t* eeprom)
                     se->info.length = se->eeprom[146];
                     break;
                 case SFF_SFP_TYPE_SFP:
+                case SFF_SFP_TYPE_SFP28:
                     se->info.length = se->eeprom[18];
                     break;
                 default:
@@ -665,6 +667,14 @@ sff_eeprom_parse_nonstandard__(sff_eeprom_t* se, uint8_t* eeprom)
                      se->info.length);
         return 0;
     }
+
+    if (sff_nonstandard_lookup(&se->info) == 0) {
+        se->identified = 1;
+        SFF_SNPRINTF(se->info.length_desc, sizeof(se->info.length_desc), "%dm",
+                     se->info.length);
+        return 0;
+    }
+
     return -1;
 }
 
@@ -756,10 +766,15 @@ sff_info_init(sff_info_t* info, sff_module_type_t mt,
 
         case SFF_MODULE_TYPE_1G_BASE_SX:
         case SFF_MODULE_TYPE_1G_BASE_LX:
+            info->sfp_type = SFF_SFP_TYPE_SFP;
+            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->caps = SFF_MODULE_CAPS_F_1G;
+            break;
+
         case SFF_MODULE_TYPE_1G_BASE_CX:
         case SFF_MODULE_TYPE_1G_BASE_T:
             info->sfp_type = SFF_SFP_TYPE_SFP;
-            info->media_type = SFF_MEDIA_TYPE_FIBER;
+            info->media_type = SFF_MEDIA_TYPE_COPPER;
             info->caps = SFF_MODULE_CAPS_F_1G;
             break;
 

@@ -968,7 +968,6 @@ _sff8472_media_sfp28_cr(const uint8_t* idprom)
     /* module should be sfp */
     if (!SFF8472_MODULE_SFP(idprom)) return 0;
 
-    if (idprom[2] != SFF8472_CONN_NOSEP) return 0;
     if ((idprom[3] & SFF8472_CC3_INF_1X_CU_PASSIVE) == 0) return 0;
     if (idprom[12] == 0xFF) return 1;
 

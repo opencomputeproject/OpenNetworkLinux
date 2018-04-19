@@ -46,8 +46,8 @@
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
 
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/11-0051/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0050/"
+#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/11-0051/"
+#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0050/"
 
 #define PSU1_AC_HWMON_NODE(node) PSU1_AC_HWMON_PREFIX#node
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
@@ -72,6 +72,7 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+int psu_serial_number_get(int id, char *serial, int serial_len);
 
 //#define DEBUG_MODE 1
 

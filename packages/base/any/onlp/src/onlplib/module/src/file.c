@@ -50,11 +50,26 @@ ds_connect__(const char* path)
         return -1;
     }
 
+    /*
+     * UDS connects must be non-blocking.
+     */
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, path, sizeof(addr.sun_path)-1);
 
     if(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
+
+        /*
+         * Set blocking with a 1 second timeout on all domain socket read/write operations.
+         */
+        struct timeval tv;
+
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
         return fd;
     }
     else {
@@ -112,6 +127,34 @@ vopen__(char** dst, int flags, const char* fmt, va_list vargs)
     return (fd > 0) ? fd : ONLP_STATUS_E_MISSING;
 }
 
+int
+onlp_file_vsize(const char* fmt, va_list vargs)
+{
+    int rv;
+    struct stat sb;
+
+    char* fname = aim_vfstrdup(fmt, vargs);
+    if(stat(fname, &sb) != -1) {
+        rv = sb.st_size;
+    }
+    else {
+        rv = ONLP_STATUS_E_MISSING;
+    }
+    aim_free(fname);
+    return rv;
+}
+
+int
+onlp_file_size(const char* fmt, ...)
+{
+    int rv;
+    va_list vargs;
+    va_start(vargs, fmt);
+    rv = onlp_file_vsize(fmt, vargs);
+    va_end(vargs);
+    return rv;
+}
+
 
 int
 onlp_file_vread(uint8_t* data, int max, int* len, const char* fmt, va_list vargs)
@@ -145,6 +188,72 @@ onlp_file_read(uint8_t* data, int max, int* len, const char* fmt, ...)
     va_list vargs;
     va_start(vargs, fmt);
     rv = onlp_file_vread(data, max, len, fmt, vargs);
+    va_end(vargs);
+    return rv;
+}
+
+int
+onlp_file_vread_all(uint8_t** data, const char* fmt, va_list vargs)
+{
+    int rv;
+    uint8_t* contents = NULL;
+    char * fname = NULL;
+    int fsize, rsize;
+
+    if(data == NULL || fmt == NULL) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    fname = aim_vdfstrdup(fmt, vargs);
+
+    *data = NULL;
+
+    if((fsize = onlp_file_size(fname)) > 0) {
+        contents = aim_zmalloc(fsize);
+        if((rv = onlp_file_read(contents, fsize,  &rsize, fname)) >= 0) {
+            *data = contents;
+            rv = rsize;
+        }
+    }
+    else {
+        rv = fsize;
+    }
+    aim_free(fname);
+    return rv;
+}
+
+int
+onlp_file_read_all(uint8_t** data, const char* fmt, ...)
+{
+    int rv;
+    va_list vargs;
+    va_start(vargs, fmt);
+    rv = onlp_file_vread_all(data, fmt, vargs);
+    va_end(vargs);
+    return rv;
+}
+
+int
+onlp_file_vread_str(char** str, const char* fmt, va_list vargs)
+{
+    int rv = onlp_file_vread_all((uint8_t**)str, fmt, vargs);
+    if(rv > 0) {
+        while(rv && ( (*str)[rv-1] == '\n' || (*str)[rv-1] == '\r')) {
+            (*str)[rv-1] = 0;
+            rv--;
+        }
+    }
+    return rv;
+
+}
+
+int
+onlp_file_read_str(char** str, const char* fmt, ...)
+{
+    int rv;
+    va_list vargs;
+    va_start(vargs, fmt);
+    rv = onlp_file_vread_str(str, fmt, vargs);
     va_end(vargs);
     return rv;
 }

@@ -1,0 +1,9 @@
+#!/bin/bash
+/bin/echo -e "#!/bin/sh\\nexit 101" >/usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+$@
+rc=$?
+rm -f /usr/sbin/policy-rc.d
+exit $rc

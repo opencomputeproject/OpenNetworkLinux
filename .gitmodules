@@ -1,21 +1,21 @@
 [submodule "packages/base/any/initrds/buildroot/builds/buildroot-mirror"]
 	path = packages/base/any/initrds/buildroot/builds/buildroot-mirror
-	url = git://github.com/opennetworklinux/buildroot-mirror
+	url = http://github.com/opennetworklinux/buildroot-mirror
 [submodule "packages/base/any/kernels/legacy/linux-3.9.6"]
 	path = packages/base/any/kernels/legacy/linux-3.9.6
-	url = git://github.com/opennetworklinux/linux-3.9.6
+	url = http://github.com/opennetworklinux/linux-3.9.6
 [submodule "sm/infra"]
 	path = sm/infra
-	url = git://github.com/floodlight/infra
+	url = http://github.com/floodlight/infra
 [submodule "sm/bigcode"]
 	path = sm/bigcode
-	url = git://github.com/floodlight/bigcode
+	url = http://github.com/floodlight/bigcode
 [submodule "packages/base/any/kernels/legacy/linux-3.8.13"]
 	path = packages/base/any/kernels/legacy/linux-3.8.13
-	url = git://github.com/opennetworklinux/linux-3.8.13
+	url = http://github.com/opennetworklinux/linux-3.8.13
 [submodule "packages/platforms-closed"]
 	path = packages/platforms-closed
 	url = git@github.com:opennetworklinux/platforms-closed
 [submodule "sm/build-artifacts"]
 	path = sm/build-artifacts
-        url = git://github.com/opennetworklinux/build-artifacts
+        url = http://github.com/opennetworklinux/build-artifacts

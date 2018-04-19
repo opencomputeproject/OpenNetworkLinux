@@ -12,15 +12,48 @@ import os
 import fcntl
 import glob
 from string import Template
+import time
 
 logger = None
 
-# Cheap colored terminal logging. Fixme.
-def color_logging():
-    if sys.stderr.isatty():
-        logging.addLevelName( logging.WARNING, "\033[1;31m%s\033[1;0m" % logging.getLevelName(logging.WARNING))
-        logging.addLevelName( logging.ERROR, "\033[1;41m%s\033[1;0m" % logging.getLevelName(logging.ERROR))
+class colors(object):
 
+    RED=31
+    GREEN=32
+    YELLOW=33
+    BLUE=34
+    PURPLE=35
+    CYAN=36
+    REDB=41
+    GREENB=42
+    YELLOWB=43
+    BLUEB=44
+    PURPLEB=45
+    CYANB=46
+
+    @staticmethod
+    def color(string, color):
+        if sys.stderr.isatty():
+            return "\033[1;%sm%s\033[1;0m" % (color, string)
+        else:
+            return string
+
+# Adds a method for each color to the colors class
+for attr in dir(colors):
+    def colormethod(attr):
+        def f(klass, string):
+            return colors.color(string, getattr(colors, attr))
+        return classmethod(f)
+
+    if attr.isupper():
+        setattr(colors, attr.lower(), colormethod(attr))
+
+
+
+
+def color_logging():
+    logging.addLevelName( logging.WARNING, colors.red(logging.getLevelName(logging.WARNING)))
+    logging.addLevelName( logging.ERROR, colors.redb(logging.getLevelName(logging.ERROR)))
 
 def init_logging(name, lvl=logging.DEBUG):
     global logger
@@ -30,6 +63,27 @@ def init_logging(name, lvl=logging.DEBUG):
     color_logging()
     return logger
 
+
+class Profiler(object):
+
+    ENABLED=True
+    LOGFILE=None
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *exc):
+        self.end = time.time()
+        self.duration = self.end - self.start
+
+    def log(self, operation, prefix=''):
+        msg = "[profiler] %s%s : %s seconds (%s minutes)" % (prefix, operation, self.duration, self.duration / 60.0)
+        if self.ENABLED:
+            logger.info(colors.cyan(msg))
+        if self.LOGFILE:
+            with open(self.LOGFILE, "a") as f:
+                f.write(msg + "\n")
 
 ############################################################
 #
@@ -62,13 +116,17 @@ def execute(args, sudo=False, chroot=None, ex=None):
 
     logger.debug("Executing:%s", args)
 
-    try:
-        subprocess.check_call(args, shell=shell)
-        return 0
-    except subprocess.CalledProcessError, e:
-        if ex:
-            raise ex
-        return e.returncode
+    rv = 0
+    with Profiler() as profiler:
+        try:
+            subprocess.check_call(args, shell=shell)
+            rv = 0
+        except subprocess.CalledProcessError, e:
+            if ex:
+                raise ex
+            rv = e.returncode
+    profiler.log(args)
+    return rv
 
 
 # Flatten lists if string lists

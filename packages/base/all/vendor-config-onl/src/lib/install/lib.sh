@@ -122,10 +122,8 @@ installer_mkchroot() {
     mkdir -p "${rootdir}${TMPDIR}"
   fi
 
-  # export ONIE defines to the installer
-  if test -r /etc/machine.conf; then
-    cp /etc/machine.conf "${rootdir}/etc/machine.conf"
-  fi
+  # export ONIE defines to the installer, if they exist
+  cp /etc/machine*.conf "${rootdir}/etc/."
 
   # export ONL defines to the installer
   mkdir -p "${rootdir}/etc/onl"

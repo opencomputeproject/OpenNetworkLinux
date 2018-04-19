@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if x86_64_accton_as5812_54t_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_accton_as5812_54t_MALLOC
+#ifndef X86_64_ACCTON_AS5812_54T_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_accton_as5812_54t_MALLOC GLOBAL_MALLOC
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_MALLOC malloc
+        #define X86_64_ACCTON_AS5812_54T_MALLOC GLOBAL_MALLOC
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_MALLOC malloc
     #else
-        #error The macro x86_64_accton_as5812_54t_MALLOC is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_FREE
+#ifndef X86_64_ACCTON_AS5812_54T_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_accton_as5812_54t_FREE GLOBAL_FREE
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_FREE free
+        #define X86_64_ACCTON_AS5812_54T_FREE GLOBAL_FREE
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_FREE free
     #else
-        #error The macro x86_64_accton_as5812_54t_FREE is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_MEMSET
+#ifndef X86_64_ACCTON_AS5812_54T_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_accton_as5812_54t_MEMSET GLOBAL_MEMSET
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_MEMSET memset
+        #define X86_64_ACCTON_AS5812_54T_MEMSET GLOBAL_MEMSET
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_MEMSET memset
     #else
-        #error The macro x86_64_accton_as5812_54t_MEMSET is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_MEMCPY
+#ifndef X86_64_ACCTON_AS5812_54T_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_accton_as5812_54t_MEMCPY GLOBAL_MEMCPY
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_MEMCPY memcpy
+        #define X86_64_ACCTON_AS5812_54T_MEMCPY GLOBAL_MEMCPY
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_MEMCPY memcpy
     #else
-        #error The macro x86_64_accton_as5812_54t_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_STRNCPY
+#ifndef X86_64_ACCTON_AS5812_54T_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_accton_as5812_54t_STRNCPY GLOBAL_STRNCPY
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_STRNCPY strncpy
+        #define X86_64_ACCTON_AS5812_54T_STRNCPY GLOBAL_STRNCPY
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_STRNCPY strncpy
     #else
-        #error The macro x86_64_accton_as5812_54t_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_VSNPRINTF
+#ifndef X86_64_ACCTON_AS5812_54T_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_accton_as5812_54t_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_VSNPRINTF vsnprintf
+        #define X86_64_ACCTON_AS5812_54T_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_accton_as5812_54t_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_SNPRINTF
+#ifndef X86_64_ACCTON_AS5812_54T_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_accton_as5812_54t_SNPRINTF GLOBAL_SNPRINTF
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_SNPRINTF snprintf
+        #define X86_64_ACCTON_AS5812_54T_SNPRINTF GLOBAL_SNPRINTF
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_SNPRINTF snprintf
     #else
-        #error The macro x86_64_accton_as5812_54t_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as5812_54t_STRLEN
+#ifndef X86_64_ACCTON_AS5812_54T_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_accton_as5812_54t_STRLEN GLOBAL_STRLEN
-    #elif x86_64_accton_as5812_54t_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as5812_54t_STRLEN strlen
+        #define X86_64_ACCTON_AS5812_54T_STRLEN GLOBAL_STRLEN
+    #elif X86_64_ACCTON_AS5812_54T_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_AS5812_54T_STRLEN strlen
     #else
-        #error The macro x86_64_accton_as5812_54t_STRLEN is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS5812_54T_STRLEN is required but cannot be defined.
     #endif
 #endif
 

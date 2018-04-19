@@ -216,7 +216,7 @@ onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_t type,
     }
 
     ONLP_OID_TABLE_ITER(hdr.coids, oidp) {
-        if(type == 0 || ONLP_OID_IS_TYPE(*oidp, type)) {
+        if(type == 0 || ONLP_OID_IS_TYPE(type, *oidp)) {
             int rv = itf(*oidp, cookie);
             if(rv < 0) {
                 return rv;

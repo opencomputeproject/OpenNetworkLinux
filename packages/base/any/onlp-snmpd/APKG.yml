@@ -21,5 +21,4 @@ packages:
     init: ${ONL}/packages/base/any/onlp-snmpd/onlp-snmpd.init
 
     changelog:  Change changes changes.,
-
-
+    asr: True

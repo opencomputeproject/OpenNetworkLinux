@@ -110,7 +110,7 @@ onlp_snmp_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; onlp_snmp_config_settings[i].name; i++) {
-        if(strcmp(onlp_snmp_config_settings[i].name, setting)) {
+        if(!strcmp(onlp_snmp_config_settings[i].name, setting)) {
             return onlp_snmp_config_settings[i].value;
         }
     }

@@ -12,6 +12,7 @@ import shutil
 import argparse
 import fnmatch
 import subprocess
+import glob
 
 from onl.install.InstallUtils import InitrdContext
 from onl.install.InstallUtils import ProcMountsParser
@@ -58,10 +59,11 @@ class App(SubprocessMixin):
                 self.log.info("onie directory is %s", octx.onieDir)
                 self.log.info("initrd directory is %s", octx.initrdDir)
 
-                src = os.path.join(octx.initrdDir, "etc/machine.conf")
-                dst = os.path.join(ctx.dir, "etc/machine.conf")
-                self.log.debug("+ /bin/cp %s %s", src, dst)
-                shutil.copy2(src, dst)
+                srcPat = os.path.join(octx.initrdDir, "etc/machine*.conf")
+                for src in glob.glob(srcPat):
+                    dst = os.path.join(ctx.dir, "etc", os.path.split(src)[1])
+                    self.log.debug("+ /bin/cp %s %s", src, dst)
+                    shutil.copy2(src, dst)
 
             src = "/etc/fw_env.config"
             if os.path.exists(src):
@@ -97,6 +99,13 @@ class App(SubprocessMixin):
             with zipfile.ZipFile(zipPath, "w") as zf:
                 pass
             installerConf.installer_zip = os.path.split(zipPath)[1]
+
+            import onl.platform.current
+            plat = onl.platform.current.OnlPlatformName
+            if plat.startswith('x86-64'):
+                plat = 'x86_64' + plat[6:]
+            installerConf.onie_platform = plat
+            installerConf.onie_arch = plat.partition('-')[0]
 
             # finalize the local installer.conf
             dst = os.path.join(ctx.dir, "etc/onl/installer.conf")
@@ -195,7 +204,7 @@ class App(SubprocessMixin):
                              pdir,))
 
         for m in pm.mounts:
-            if m.dir.startswith('/mnt/onl'):
+            if m.dir.startswith('/mnt/onl') or m.dir.startswith('/boot'):
                 if not self.force:
                     self.log.error("directory %s is still mounted (try --force)", m.dir)
                     return 1

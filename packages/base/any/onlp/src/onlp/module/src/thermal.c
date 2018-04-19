@@ -202,7 +202,7 @@ onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
 
     rv = onlp_thermal_info_get(id, &ti);
 
-    yaml = flags & ONLP_OID_SHOW_F_YAML;
+    yaml = flags & ONLP_OID_SHOW_YAML;
 
     if(yaml) {
         iof_push(&iof, "- ");

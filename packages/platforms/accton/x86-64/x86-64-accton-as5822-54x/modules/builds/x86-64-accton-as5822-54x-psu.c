@@ -50,7 +50,7 @@
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
 static int as5822_54x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as5822_54x_cpld_read(unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned 
  */
@@ -224,6 +224,55 @@ static struct i2c_driver as5822_54x_psu_driver = {
 	.address_list = normal_i2c,
 };
 
+static int as5822_54x_psu_read_byte(struct i2c_client *client, u8 command, u8 *data)
+{
+	int status = 0;
+	int retry_count = 5;
+
+	while (retry_count) {
+		status = i2c_smbus_read_byte_data(client, command);
+		if (unlikely(status < 0)) {
+			msleep(10);
+			retry_count--;
+			continue;
+		}
+
+		break;
+	}
+
+	if (unlikely(status < 0)) {
+		dev_dbg(&client->dev, "sfp read byte data failed, command(0x%2x), data(0x%2x)\r\n", command, status);
+		goto abort;
+	}
+
+	*data  = (u8)status;
+
+abort:
+	return status;
+}
+
+static int as5822_54x_psu_read_bytes(struct i2c_client *client, u8 command, u8 *data,
+			  int data_len)
+{
+    int ret = 0;
+
+	while (data_len) {
+		ssize_t status;
+
+		status = as5822_54x_psu_read_byte(client, command, data);
+		if (status <= 0) {
+            ret = status;
+			break;
+		}
+
+		data += 1;
+		command  += 1;
+		data_len -= 1;
+	}
+    
+    return ret;
+}
+
 static int as5822_54x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,
 			  int data_len)
 {
@@ -268,7 +317,7 @@ static struct as5822_54x_psu_data *as5822_54x_psu_update_device(struct device *d
 		data->valid = 0;
 
 		/* Read psu status */
-		status = accton_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
+		status = as5822_54x_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
 		
 		if (status < 0) {
 			dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
@@ -284,7 +333,7 @@ static struct as5822_54x_psu_data *as5822_54x_psu_update_device(struct device *d
 		
 		if (IS_PRESENT(data->index, data->status)) {
 			/* Read model name */
-			status = as5822_54x_psu_read_block(client, MODEL_NAME_REG_OFFSET, data->model_name, 
+            status = as5822_54x_psu_read_bytes(client, MODEL_NAME_REG_OFFSET, data->model_name, 
 											   ARRAY_SIZE(data->model_name)-1);
 
 			if (status < 0) {
@@ -300,7 +349,7 @@ static struct as5822_54x_psu_data *as5822_54x_psu_update_device(struct device *d
 			}
 
 			/* Read serial number */
-			status = as5822_54x_psu_read_block(client, SERIAL_NUM_REG_OFFSET, data->serial, 
+			status = as5822_54x_psu_read_bytes(client, SERIAL_NUM_REG_OFFSET, data->serial, 
 											   ARRAY_SIZE(data->serial)-1);
 
 			if (status < 0) {
@@ -323,18 +372,7 @@ exit:
 	return data;
 }
 
-static int __init as5822_54x_psu_init(void)
-{
-	return i2c_add_driver(&as5822_54x_psu_driver);
-}
-
-static void __exit as5822_54x_psu_exit(void)
-{
-	i2c_del_driver(&as5822_54x_psu_driver);
-}
-
-module_init(as5822_54x_psu_init);
-module_exit(as5822_54x_psu_exit);
+module_i2c_driver(as5822_54x_psu_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as5822_54x_psu driver");
