@@ -109,13 +109,18 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(&mux_info, fullpath);
+    if(rpm == -1){
+        AIM_LOG_ERROR("Unable to read rpm from fan(%d)\r\n",local_id);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     info->rpm = rpm;
 
     if(info->rpm == FAN_ZERO_RPM)
         info->rpm = 0;
 
     /* get speed percentage from rpm */
-    info->percentage = (info->rpm * 100)/MAX_FRONT_FAN_SPEED;
+    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
    
     mux_info.channel = FAN_I2C_SEL_FAN_IO_CTRL; 
     present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
@@ -181,13 +186,19 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].status);
     r_data = dni_i2c_lock_read_attribute(&mux_info, fullpath);
 
-    if (r_data == 1) {
+    if ((r_data == -1)) {
         info->status |= ONLP_FAN_STATUS_FAILED;
+        AIM_LOG_ERROR("Unable to read status from fan(%d)\r\n",local_id);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     /* Read PSU FAN speed from psu_fan1_speed_rpm */
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     r_data = dni_i2c_lock_read_attribute(&mux_info, fullpath);
+    if(r_data == -1){
+        AIM_LOG_ERROR("Unable to read rpm from fan(%d)\r\n",local_id);
+        return ONLP_STATUS_E_INTERNAL;
+    }
     info->rpm = r_data;
 
     /* get speed percentage from rpm */
@@ -224,9 +235,16 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
         case FAN_5_ON_FAN_BOARD:
         case FAN_6_ON_FAN_BOARD:
             rc = dni_fani_info_get_fan(local_id, info);
+            if(rc != ONLP_STATUS_OK){
+                rc = ONLP_STATUS_E_INVALID;
+            }
             break;
         case FAN_1_ON_PSU1:
             rc = dni_fani_info_get_fan_on_psu(local_id, info);
+            if(rc != ONLP_STATUS_OK){
+                rc = ONLP_STATUS_E_INVALID;
+            }
+
             break;
         default:
             rc = ONLP_STATUS_E_INVALID;
@@ -252,6 +270,7 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     char data[10] = {0};
     char fullpath[70] = {0};
     mux_info_t mux_info;
+    int ret = 0;
 
     VALIDATE(id);
     local_id = ONLP_OID_ID_GET(id);
@@ -278,7 +297,11 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     mux_info.channel = FAN_I2C_SEL_FAN_CTRL;
     mux_info.flags = DEFAULT_FLAG;
 
-    dni_i2c_lock_write_attribute(&mux_info, data, fullpath);
+    ret = dni_i2c_lock_write_attribute(&mux_info, data, fullpath);
+    if(ret == -1){
+        AIM_LOG_ERROR("Unable to set fan(%d) rpm\r\n",local_id);
+        return ONLP_STATUS_E_INVALID;
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -327,7 +350,11 @@ onlp_fani_percentage_set(onlp_oid_t id, int percentage)
  
     /* Write percentage to psu_fan1_duty_cycle_percentage */
     sprintf(data, "%d", percentage);
-    dni_i2c_lock_write_attribute(&mux_info, data, fullpath);
+
+    if(dni_i2c_lock_write_attribute(&mux_info, data, fullpath) == -1){
+        AIM_LOG_ERROR("Unable to set fan(%d) percentage\r\n",local_id);
+        return ONLP_STATUS_E_INVALID;
+    }
     
     return ONLP_STATUS_OK;
 }

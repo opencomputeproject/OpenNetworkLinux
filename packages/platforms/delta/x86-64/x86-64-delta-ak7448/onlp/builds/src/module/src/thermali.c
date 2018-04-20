@@ -136,6 +136,12 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     }
 
     switch (local_id) {
+        case THERMAL_1_ON_CPU_BOARD:
+        case THERMAL_2_ON_MAIN_BOARD:
+        case THERMAL_3_ON_MAIN_BOARD:
+        case THERMAL_4_ON_MAIN_BOARD:
+            channel = 0x00; /* DEFAULT */
+            break;
         case THERMAL_5_ON_FAN_BOARD:
             offset = FAN_I2C_MUX_SEL_REG;
             channel = FAN_I2C_SEL_THERMAL;
@@ -145,8 +151,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             channel = PSU_I2C_SEL_PSU_EEPROM;
             break;
         default:
-            channel = 0x00; /* DEFAULT */
-            break;
+            return ONLP_STATUS_E_INVALID;
     }
 
     mux_info.bus = I2C_BUS_5;
@@ -156,7 +161,11 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     mux_info.flags = DEFAULT_FLAG;
     
     sprintf(fullpath, "%s%s", PREFIX_PATH, last_path[local_id]);
-    r_data = dni_i2c_lock_read_attribute(&mux_info, fullpath);
+   
+    r_data = dni_i2c_lock_read_attribute(&mux_info, fullpath); 
+    if(r_data == -1){
+        return ONLP_STATUS_E_INTERNAL;
+    }
     
     /* Current temperature in milli-celsius */
     info->mcelsius = r_data / temp_base;

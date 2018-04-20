@@ -169,6 +169,28 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
 }
 
 int
+dni_sysi_set_fan(int new_percentage)
+{
+    int ret = 0;
+    int i = 0;
+    for(i = 1; i <= 6 ; i++)
+    {
+        ret = onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(i), MAX_FAN_SPEED  * new_percentage / 100);
+        if(ret != ONLP_STATUS_OK)
+        {
+            AIM_LOG_ERROR("Unable to set fan(%d) rpm\r\n",ONLP_FAN_ID_CREATE(i));
+            return ret;
+        }
+    }
+    if(onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1) , new_percentage) != ONLP_STATUS_OK)
+    {
+        AIM_LOG_ERROR("Unable to set fan(%d) percentage\r\n",ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1));
+        return ret;
+    }
+    return ONLP_STATUS_OK;
+}
+
+int
 onlp_sysi_platform_manage_fans(void)
 {
     int i = 0;
@@ -176,28 +198,24 @@ onlp_sysi_platform_manage_fans(void)
     int highest_temp = 0;
     onlp_thermal_info_t thermal[NUM_OF_THERMAL_ON_BOARDS];
 
-    /* Get current temperature */
-    if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE),        &thermal[0]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD),  &thermal[1]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BOARD), &thermal[2]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD), &thermal[3]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD), &thermal[4]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_FAN_BOARD),  &thermal[5]) != ONLP_STATUS_OK ||
-        onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1),       &thermal[6]) != ONLP_STATUS_OK)
+    for(i = 1; i <= NUM_OF_THERMAL_ON_BOARDS; i++)
     {
+        //ret = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i),&thermal[i-1]);
+        if(onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i),&thermal[i-1]) != ONLP_STATUS_OK)
+        {
             /* Setting all fans speed to maximum */
             new_percentage = SPEED_100_PERCENTAGE;
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_3_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_4_ON_FAN_BOARD), MAX_REAR_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_5_ON_FAN_BOARD), MAX_REAR_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_6_ON_FAN_BOARD), MAX_REAR_FAN_SPEED  * new_percentage / 100);
-            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1) , new_percentage);
-                                                                                                            
-            AIM_LOG_ERROR("Unable to read thermal status");
+            if(dni_sysi_set_fan(new_percentage) != ONLP_STATUS_OK)
+            {
+                AIM_LOG_ERROR("Unable to set fan\r\n");
+                return ONLP_STATUS_E_INTERNAL;
+            }
+ 
+            AIM_LOG_ERROR("Unable to read status from thermal(%d)\r\n",i);
             return ONLP_STATUS_E_INTERNAL;
+        }
     }
+    
 
     for (i = 0; i < NUM_OF_THERMAL_ON_BOARDS; i++)
     {
@@ -210,13 +228,10 @@ onlp_sysi_platform_manage_fans(void)
     highest_temp = highest_temp/1000;
     decide_percentage(&new_percentage, highest_temp);
 
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED * new_percentage / 100);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED * new_percentage / 100);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_3_ON_FAN_BOARD), MAX_FRONT_FAN_SPEED * new_percentage / 100);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_4_ON_FAN_BOARD), MAX_REAR_FAN_SPEED * new_percentage / 100);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_5_ON_FAN_BOARD), MAX_REAR_FAN_SPEED  * new_percentage / 100);
-    onlp_fani_rpm_set(ONLP_FAN_ID_CREATE(FAN_6_ON_FAN_BOARD), MAX_REAR_FAN_SPEED  * new_percentage / 100);
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1) , new_percentage);
+    if(dni_sysi_set_fan(new_percentage) != ONLP_STATUS_OK)
+    {
+        AIM_LOG_ERROR("Unable to set fan\r\n");
+    }
     
     return ONLP_STATUS_OK;
 }
@@ -250,12 +265,14 @@ onlp_sysi_platform_manage_leds(void)
     if(fantray_present >= 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
     {
         /* Green */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_GREEN);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
     else
     {
         /* Red */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_RED);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_RED) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
 
     /* Fan tray 2 */
@@ -269,12 +286,14 @@ onlp_sysi_platform_manage_leds(void)
     if(fantray_present >= 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
     {
         /* Green */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_GREEN);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
     else
     {
         /* Red */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_RED);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_RED) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
 
     /* Fan tray 3 */
@@ -288,12 +307,14 @@ onlp_sysi_platform_manage_leds(void)
     if(fantray_present >= 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
     {
         /* Green */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_GREEN);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
     else
     {
         /* Red */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_RED);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_RED) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
 
     /* FRONT FAN & SYS LED */
@@ -309,14 +330,16 @@ onlp_sysi_platform_manage_leds(void)
     if(count == ALL_FAN_TRAY_EXIST && dni_fan_speed_good() == FAN_SPEED_NORMALLY)
     {   
         /* Green FAN operates normally */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_FAN),ONLP_LED_MODE_GREEN);
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_SYS),ONLP_LED_MODE_GREEN);
+        if((onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_FAN),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK) ||
+        (onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_SYS),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK))
+            return ONLP_STATUS_E_INTERNAL;
     }
     else
     {
         /* Solid Amber FAN or more failed*/
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_FAN),ONLP_LED_MODE_ORANGE);	
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_SYS),ONLP_LED_MODE_ORANGE);
+        if((onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_FAN),ONLP_LED_MODE_ORANGE) != ONLP_STATUS_OK) ||	
+        (onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_SYS),ONLP_LED_MODE_ORANGE) !=  ONLP_STATUS_OK))
+            return ONLP_STATUS_E_INTERNAL;
     }
 
     /* Set front light of PWR */
@@ -336,11 +359,13 @@ onlp_sysi_platform_manage_leds(void)
     if(psu_state == 1)
     {
         /* Green */
-        onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR), ONLP_LED_MODE_GREEN);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR), ONLP_LED_MODE_GREEN) !=  ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }	
-	else
+    else
     {
-		onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR), ONLP_LED_MODE_OFF);
+        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR), ONLP_LED_MODE_OFF) != ONLP_STATUS_OK)
+            return ONLP_STATUS_E_INTERNAL;
     }
 			
     return ONLP_STATUS_OK;

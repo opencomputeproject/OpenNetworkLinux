@@ -107,7 +107,11 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     mux_info.flags = DEFAULT_FLAG;
 
     /* Set front panel's  mode of leds */
-    r_data = dni_lock_cpld_read_attribute(CPLD_B_PATH,LED_REG); 
+    r_data = dni_lock_cpld_read_attribute(CPLD_B_PATH,LED_REG);
+    if(r_data == -1){
+        AIM_LOG_ERROR("Unable to read front panel led status from reg\r\n");
+        return ONLP_STATUS_E_INTERNAL;
+    } 
     int local_id = ONLP_OID_ID_GET(id);
     switch(local_id)
     {
@@ -146,6 +150,10 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             dev_info.addr = FAN_TRAY;
             mux_info.channel = 0x02;
             r_data = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(r_data == -1){
+                AIM_LOG_ERROR("Unable to read fan tray 1 led status from reg\r\n");
+                return ONLP_STATUS_E_INTERNAL;
+            }
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
             if(fantray_present >= 0)
             {
@@ -164,6 +172,11 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             dev_info.addr = FAN_TRAY;
             mux_info.channel = 0x01;
             r_data = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(r_data == -1){
+                AIM_LOG_ERROR("Unable to read fan tray 2 led status from reg\r\n");
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
             if(fantray_present >= 0)
             {
@@ -182,6 +195,11 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             dev_info.addr = FAN_TRAY;
             mux_info.channel = 0x00;
             r_data = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(r_data == -1){
+                AIM_LOG_ERROR("Unable to read fan tray 3 led status from reg\r\n");
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
             if(fantray_present >= 0)
             {
@@ -244,118 +262,163 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     {
         case LED_FRONT_FAN:
             front_panel_led_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,LED_REG);
+            if(front_panel_led_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+ 
             front_panel_led_value &= ~0x30;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 front_panel_led_value |= 0x10;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else if(mode == ONLP_LED_MODE_ORANGE)
-            {
+            else if(mode == ONLP_LED_MODE_ORANGE){
                 front_panel_led_value |= 0x20;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
+            else{
+                front_panel_led_value = front_panel_led_value;
+            }
+
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
         case LED_FRONT_SYS:
             front_panel_led_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,LED_REG);
+            if(front_panel_led_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             front_panel_led_value &= ~0x03;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 front_panel_led_value |= 0x03;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else if(mode == ONLP_LED_MODE_ORANGE)
-            {
+            else if(mode == ONLP_LED_MODE_ORANGE){
                 front_panel_led_value |= 0x01;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-			else if(mode == ONLP_LED_MODE_GREEN_BLINKING)
-            {
+	    else if(mode == ONLP_LED_MODE_GREEN_BLINKING){
                 front_panel_led_value |= 0x02;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
+            else{
+                front_panel_led_value = front_panel_led_value;
+            }
+
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
         case LED_FRONT_PWR:
             front_panel_led_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,LED_REG);
+            if(front_panel_led_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             front_panel_led_value &= ~0x0c;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 front_panel_led_value |= 0x0c;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else if(mode == ONLP_LED_MODE_ORANGE)
-            {
+            else if(mode == ONLP_LED_MODE_ORANGE){
                 front_panel_led_value |= 0x08;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else if(mode == ONLP_LED_MODE_ORANGE_BLINKING)
-            {
+            else if(mode == ONLP_LED_MODE_ORANGE_BLINKING){
                 front_panel_led_value |= 0x04;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value);
+            else{
+                front_panel_led_value = front_panel_led_value;
+            }
+
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,LED_REG,front_panel_led_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
         case LED_REAR_FAN_TRAY_1:
             fan_tray_led_reg_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(fan_tray_led_reg_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             fan_tray_led_reg_value &= ~0x30;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 fan_tray_led_reg_value |= 0x20;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else if(mode == ONLP_LED_MODE_RED)
-            {
+            else if(mode == ONLP_LED_MODE_RED){
                 fan_tray_led_reg_value |= 0x10;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
+            else{
+                fan_tray_led_reg_value = fan_tray_led_reg_value;
+            }
+         
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
         case LED_REAR_FAN_TRAY_2:
             fan_tray_led_reg_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(fan_tray_led_reg_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             fan_tray_led_reg_value &= ~0x0c;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 fan_tray_led_reg_value |= 0x08;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else if(mode == ONLP_LED_MODE_RED)
-            {
+            else if(mode == ONLP_LED_MODE_RED){
                 fan_tray_led_reg_value |= 0x04;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
+            else{
+                fan_tray_led_reg_value = fan_tray_led_reg_value;
+            }
+
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
         case LED_REAR_FAN_TRAY_3: 
             fan_tray_led_reg_value = dni_lock_cpld_read_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG);
+            if(fan_tray_led_reg_value == -1 ){
+                AIM_LOG_ERROR("Unable to read led(%d) status from reg\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             fan_tray_led_reg_value &= ~0x03;
-            if(mode == ONLP_LED_MODE_GREEN)
-            {
+            if(mode == ONLP_LED_MODE_GREEN){
                 fan_tray_led_reg_value |= 0x02;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else if(mode == ONLP_LED_MODE_RED)
-            {
+            else if(mode == ONLP_LED_MODE_RED){
                 fan_tray_led_reg_value |= 0x01;
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
             }
-            else
-                dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value);
+            else{
+                fan_tray_led_reg_value = fan_tray_led_reg_value;
+            }
+
+            if(dni_lock_cpld_write_attribute(CPLD_B_PATH,FAN_TRAY_LED_REG,fan_tray_led_reg_value) != 0){
+                AIM_LOG_ERROR("Unable to set led(%d) status\r\n",local_id);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
             break;
 
     }
     return ONLP_STATUS_OK;
+
 }
 
 /*
