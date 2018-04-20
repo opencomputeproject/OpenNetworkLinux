@@ -96,4 +96,12 @@ if ! make all; then
     exit 1
 fi
 
+make -C $ONL/REPO build-clean
+
+# Remove all installer/rootfs/swi packages from the repo. These do not need to be kept and take significant
+# amounts of time to transfer.
+find $ONL/REPO -name "*-installer_0.*" -delete
+find $ONL/REPO -name "*-rootfs_0.*" -delete
+find $ONL/REPO -name "*-swi_0*" -delete
+
 echo Build Succeeded.
