@@ -1,0 +1,30 @@
+variables:
+  basename: onl-kernel-$VERSION-lts-$CONFIG
+
+common:
+  arch: $ARCH
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+
+packages:
+  - name: $basename
+    version: 1.0.0
+    summary: Open Network Linux $VERSION LTS Kernel for $ARCH Platforms.
+    symlinks: True
+
+    files:
+      builds/$ONL_DEBIAN_SUITE/kernel-*        : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/linux-*-mbuild   : $$PKG_INSTALL/mbuilds
+
+    changelog:  Change changes changes.,
+
+  - name: $basename-modules
+    version: 1.0.0
+    summary: Open Network Linux $VERSION LTS Kernel Modules for $ARCH Platforms
+
+    files:
+      builds/$ONL_DEBIAN_SUITE/lib: /lib
+
+    changelog:  Change changes changes.,
