@@ -30,32 +30,7 @@
 
 #include "onlp/onlp_config.h"
 
-#define FAN_ATTR_VALUE_MAX_SIZE		ONLP_CONFIG_INFO_STR_MAX
-
-#define FAN_ATTR_ID_PPID			0x00
-#define FAN_ATTR_ID_DPN_REV			0x14
-#define FAN_ATTR_ID_SERV_TAG		0x17
-#define FAN_ATTR_ID_PART_NUM		0x1e
-#define FAN_ATTR_ID_PART_NUM_REV	0x28
-#define FAN_ATTR_ID_SN				0x23
-#define FAN_ATTR_ID_MFG_TEST_RES	0x2b
-#define FAN_ATTR_ID_NUM_OF_FAN		0x2d
-#define FAN_ATTR_ID_FAN_TYPE		0x2f
-#define FAN_ATTR_ID_FAN_REV			0x2e
-
-extern int fan_eeprom_parse (uint8_t *eeprom, int attr, char *v);
-
-#define PSU_ATTR_ID_PPID			0x00
-#define PSU_ATTR_ID_DPN_REV			0x14
-#define PSU_ATTR_ID_SERV_TAG		0x17
-#define PSU_ATTR_ID_PART_NUM		0x22
-#define PSU_ATTR_ID_PART_NUM_REV	0x28
-#define PSU_ATTR_ID_SN				0x23
-#define PSU_ATTR_ID_MFG_TEST_RES	0x2b
-#define PSU_ATTR_ID_PSU_TYPE		0x2d
-#define PSU_ATTR_ID_FAB_REV			0x2e
-
-extern int psu_eeprom_parse (uint8_t *eeprom, int attr, char *v);
+extern int eeprom_info_get(uint8_t *eeprom, int len, char *type, char *v);
 
 #endif // __EEPROM_INFO__
 

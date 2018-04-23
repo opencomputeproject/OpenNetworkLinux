@@ -219,8 +219,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 	info->caps |= _psu_vin_type_guess (psu);
 
 	// get psu info
-	psu_eeprom_parse (psu->eeprom, PSU_ATTR_ID_PPID, info->model);
-	psu_eeprom_parse (psu->eeprom, PSU_ATTR_ID_SN, info->serial);
+	eeprom_info_get (psu->eeprom, sizeof(psu->eeprom), "psu_model", info->model);
+	eeprom_info_get (psu->eeprom, sizeof(psu->eeprom), "psu_series", info->serial);
 
 	///////////////////////////////////////////////////////////////
 	// get and check value

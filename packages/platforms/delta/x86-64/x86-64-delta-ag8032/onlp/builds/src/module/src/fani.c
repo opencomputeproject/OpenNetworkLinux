@@ -304,8 +304,8 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 		}
 
 		// get fan info
-		fan_eeprom_parse (fan->eeprom, FAN_ATTR_ID_PPID, info->model);
-		fan_eeprom_parse (fan->eeprom, FAN_ATTR_ID_SN, info->serial);
+		eeprom_info_get (fan->eeprom, sizeof(fan->eeprom), "fan_model", info->model);
+		eeprom_info_get (fan->eeprom, sizeof(fan->eeprom),  "fan_series", info->serial);
 	}
 
 	if ((info->caps & (ONLP_FAN_CAPS_B2F | ONLP_FAN_CAPS_B2F)) == (ONLP_FAN_CAPS_B2F | ONLP_FAN_CAPS_B2F)) {
