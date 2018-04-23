@@ -24,73 +24,95 @@
  *
  *
  ***********************************************************/
-#include "tlvinfo.h"
 #include "eeprom_info.h"
+#include <string.h>
 
-static struct tlv_code_desc fan_tray_tlv_code_list[] = {
-    { FAN_ATTR_ID_PPID ,	"PPID",			TLV_TYPE_STRING},
-    { FAN_ATTR_ID_DPN_REV,	"DPN Rev",		TLV_TYPE_STRING},
-    { FAN_ATTR_ID_SERV_TAG,	"Service Tag",		TLV_TYPE_STRING},
-    { FAN_ATTR_ID_PART_NUM,	"Part Number",		TLV_TYPE_STRING},
-    { FAN_ATTR_ID_PART_NUM_REV,"Part Number Rev",	TLV_TYPE_STRING},
-    { FAN_ATTR_ID_SN,		"Serial Number",	TLV_TYPE_STRING},
-    { FAN_ATTR_ID_MFG_TEST_RES,"MFG Test Results",	TLV_TYPE_STRING},
-    { FAN_ATTR_ID_NUM_OF_FAN,	"Number of Fans",	TLV_TYPE_STRING},
-    { FAN_ATTR_ID_FAN_TYPE,	"Fan Type",		TLV_TYPE_STRING},
-    { FAN_ATTR_ID_FAN_REV,	"Fan Rev",		TLV_TYPE_STRING},
+#define PSU_MODEL_LEN		11
+#define PSU_SERIES_LEN		14
 
-    { TLV_CODE_CRC_32	         , "CRC-32",		TLV_TYPE_UINT32},
+/*
+	function:
+		search the eeprom with the key 
+	variables:
+		eeprom: the eeprom data;
+		key : the searching key	 string
+		mode : 1 means model search, 0 means series search
+	return:
+		success, return index which points to the finding string
+	    failed, return -1
+*/
 
-    { -1, NULL, -1}
-};
-
-static uint8_t fan_info_start[] = {0x00};
-
-static struct tlv_code_desc psu_tray_tlv_code_list[] = {
-    { PSU_ATTR_ID_PPID ,	"PPID",			TLV_TYPE_STRING},
-    { PSU_ATTR_ID_DPN_REV,	"DPN Rev",		TLV_TYPE_STRING},
-    { PSU_ATTR_ID_SERV_TAG,	"Service Tag",		TLV_TYPE_STRING},
-    { PSU_ATTR_ID_PART_NUM,	"Part Number",		TLV_TYPE_STRING},
-    { PSU_ATTR_ID_PART_NUM_REV,"Part Number Rev",	TLV_TYPE_STRING},
-    { PSU_ATTR_ID_SN,		"Serial Number",	TLV_TYPE_STRING},
-    { PSU_ATTR_ID_MFG_TEST_RES,"MFG Test Results",	TLV_TYPE_STRING},
-    { PSU_ATTR_ID_PSU_TYPE,	"PSU Type",		TLV_TYPE_STRING},
-    { PSU_ATTR_ID_FAB_REV,	"Fab Rev",		TLV_TYPE_STRING},
-
-    { TLV_CODE_CRC_32	         , "CRC-32",		TLV_TYPE_UINT32},
-
-    { -1, NULL, -1}
-};
-static uint8_t psu_info_start[] = { 0xa0, 0x00};
-
-int fan_eeprom_parse (uint8_t *eeprom, int attr, char *v)
+int eeprom_info_find(char *eeprom, int len, const char *key,int mode)
 {
-	int ret;
-	int i;
+	int index=0;
+	int found=0;
+	int key_len=0;
+	if(!eeprom || !key)
+		return -1;
 
-	for (i = 0 ; i < sizeof(fan_info_start) ; i ++) {
-		ret = tlvinfo_decode_tlv (fan_tray_tlv_code_list, 
-				&eeprom[fan_info_start[i]], attr, v);
-		if (ret)
-			return 0;
+	key_len=strlen(key);
+	
+	while(index < len-key_len){
+		if (!strncmp(&eeprom[index], key, key_len)){
+			found=1;
+			break;
+		}
+		index++;
+	}
+	if(found){
+		/*mode is 1 means the model search and mode is 0 means the series search*/
+		if((mode == 1) && (index < len-PSU_MODEL_LEN)) 
+			return index;
+		else if ((mode == 0) && (index < len-PSU_SERIES_LEN))
+			return index;
+		else
+			return -1;
 	}
 
 	return -1;
+
 }
 
-int psu_eeprom_parse (uint8_t *eeprom, int attr, char *v)
+int eeprom_info_get(uint8_t *eeprom, int len, char *type, char *v)
 {
-	int ret;
-	int i;
+	const char psu_model_key[]="DPS";
+	const char psu_460_series_key[]="DZRD";
+	const char psu_550_series_key[]="GVVD";
+	int index=0;
+	char model[PSU_MODEL_LEN+1]={'\0'};
+	char * eep=NULL;
+	if(!eeprom || !type ||!v)
+		return -1;
+	eep=(char *)eeprom;
+	/*fan eeprom is not now*/
+	if((strcmp(type, "fan_model")==0) ||(strcmp(type,"fan_series"))==0)
+		return 0;
+	/*first get the psu tpye*/
+	index = eeprom_info_find(eep,len,psu_model_key,1);
+	if(index <0)
+		return -1;
+	strncpy(model,&eep[index],PSU_MODEL_LEN);
 
-	for (i = 0 ; i < sizeof(psu_info_start) ; i ++) {
-		ret = tlvinfo_decode_tlv (psu_tray_tlv_code_list, 
-				&eeprom[psu_info_start[i]], attr, v);
-		if (ret)
-			return 0;
+	if((strcmp(type,"psu_model"))==0){
+		strncpy(v,model,PSU_MODEL_LEN);
 	}
+	else if ((strcmp(type,"psu_series"))==0){
+		if(strstr(model,"460")){
+			index = eeprom_info_find(eep,len,psu_460_series_key,0);
+			if(index <0)
+				return -1;
+			strncpy(v,&eep[index],PSU_SERIES_LEN);
+		}
+		else if(strstr(model,"550")){
+			index = eeprom_info_find(eep,len,psu_550_series_key,0);
+			if(index <0)
+				return -1;
+			strncpy(v,&eep[index],PSU_SERIES_LEN);
+		} 
+	}
+	else
+		return -1;
 
-	return -1;
+	return 0;
 }
-
 

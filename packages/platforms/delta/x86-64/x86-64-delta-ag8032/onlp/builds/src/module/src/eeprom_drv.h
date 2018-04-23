@@ -28,7 +28,6 @@
 #ifndef __EEPROM_DRV_H__
 #define __EEPROM_DRV_H__
 
-int eeprom_read (int buf, uint8_t addr, int offset, uint8_t *buff, int len);
-
+int eeprom_read (int bus, uint8_t addr, uint8_t offset, uint8_t *buff, int len);
 #endif // __EEPROM_DRV_H__
 

@@ -24,67 +24,20 @@
  *
  *
  ***********************************************************/
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include "24cXX.h"
+#include "platform_lib.h"
 #include "eeprom_drv.h"
 
-int eeprom_read (int bus, uint8_t addr, int offset, uint8_t *buff, int len)
+int eeprom_read (int bus, uint8_t addr, uint8_t offset, uint8_t *buff, int len)
 {
-	struct eeprom e;
-	char bus_str[128];
-	int i;
-	int r;
+	int i,r;
 
-	snprintf (bus_str, sizeof(bus_str), "/dev/i2c-%d", bus);
-
-	/////////////////////////////////////////////////////////////////////
-	// Try 16 bit offset first
-	do {
-		if (eeprom_open (bus_str, addr, EEPROM_TYPE_16BIT_ADDR, &e)) {
+	for (i = 0 ; i < len ; i ++) {
+		r = onlp_i2c_readb(bus,addr,offset+i,0);
+		if (r < 0) {
 			return -1;
 		}
-
-		for (i = 0 ; i < len ; i ++) {
-			r = eeprom_read_byte(&e, (__u16)(offset + i));
-			if (r < 0) {
-				goto start_for_8bit;
-			}
-			buff[i] = (uint8_t)r;
-		}
-
-		eeprom_close (&e);
-		return 0;
-	} while (0);
-
-start_for_8bit:
-
-	eeprom_close (&e);
-
-	/////////////////////////////////////////////////////////////////////
-	// Try 8 bit offset length
-	do {
-		if (eeprom_open (bus_str, addr, EEPROM_TYPE_8BIT_ADDR, &e)) {
-			return -1;
-		}
-
-		for (i = 0 ; i < len ; i ++) {
-			r = eeprom_read_byte(&e, (__u16)(offset + i));
-			if (r < 0) {
-				goto error_out;
-			}
-			buff[i] = (uint8_t)r;
-		}
-
-		eeprom_close (&e);
-		return 0;
-	} while (0);
-
-error_out:
-
-	eeprom_close (&e);
-
-	return -1;
+		buff[i] = (uint8_t)r;
+	}
+	return 0;
 }
 
