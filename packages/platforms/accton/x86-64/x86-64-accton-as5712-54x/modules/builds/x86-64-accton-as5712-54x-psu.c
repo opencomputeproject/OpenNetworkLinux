@@ -43,7 +43,7 @@ static ssize_t show_index(struct device *dev, struct device_attribute *da, char 
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
 static int as5712_54x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int as5712_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as5712_54x_cpld_read(unsigned short cpld_addr, u8 reg);
 static int as5712_54x_psu_model_name_get(struct device *dev);
 
 /* Addresses scanned
@@ -329,7 +329,7 @@ static struct as5712_54x_psu_data *as5712_54x_psu_update_device(struct device *d
 
 
         /* Read psu status */
-        status = as5712_54x_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
+        status = as5712_54x_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
 
         if (status < 0) {
             dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
@@ -349,24 +349,9 @@ exit:
     return data;
 }
 
-static int __init as5712_54x_psu_init(void)
-{
-    extern int platform_accton_as5712_54x(void);
-    if(!platform_accton_as5712_54x()) {
-        return -ENODEV;
-    }
-    return i2c_add_driver(&as5712_54x_psu_driver);
-}
-
-static void __exit as5712_54x_psu_exit(void)
-{
-    i2c_del_driver(&as5712_54x_psu_driver);
-}
+module_i2c_driver(as5712_54x_psu_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("accton as5712_54x_psu driver");
 MODULE_LICENSE("GPL");
-
-module_init(as5712_54x_psu_init);
-module_exit(as5712_54x_psu_exit);
 
