@@ -1,6 +1,6 @@
 if policy=$(/usr/bin/onl-sysconfig upgrade.onie.bootd); then
-   if [ "$policy" = "disabled" ]; then
-      exit 0
+   if [ "$policy" = "quiet" ]; then
+      args=--quiet
    fi
 fi
-/sbin/onl-upgrade-onie
+/sbin/onl-upgrade-onie $args
