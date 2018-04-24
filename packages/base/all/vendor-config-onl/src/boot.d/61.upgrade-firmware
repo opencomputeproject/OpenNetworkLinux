@@ -1,2 +1,6 @@
+if policy=$(/usr/bin/onl-sysconfig upgrade.firmware.bootd); then
+   if [ "$policy" = "disabled" ]; then
+      exit 0
+   fi
+fi
 /sbin/onl-upgrade-firmware
-
