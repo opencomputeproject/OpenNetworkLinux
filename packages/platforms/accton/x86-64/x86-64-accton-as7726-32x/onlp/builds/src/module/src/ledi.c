@@ -110,7 +110,7 @@ static onlp_led_info_t linfo[] =
     {
         { ONLP_LED_ID_CREATE(LED_LOC), "LED 2 (LOC LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_BLUE,
     },
     {
         { ONLP_LED_ID_CREATE(LED_FAN), "LED 3 (FAN LED)", 0 },
