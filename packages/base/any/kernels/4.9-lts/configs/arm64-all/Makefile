@@ -1,6 +1,6 @@
 ############################################################
 #
-# Default 4.9.30 configuration for arm64 platforms.
+# Default 4.9 LTS configuration for arm64 platforms.
 #
 ############################################################
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -19,7 +19,7 @@ K_BUILD_TARGET := Image Image.gz freescale/fsl-ls1043a-rdb-sdk.dtb  freescale/fs
 K_COPY_SRC := arch/arm64/boot/Image
 K_COPY_GZIP := 1
 ifndef K_COPY_DST
-K_COPY_DST := kernel-4.9-arm64-all.bin.gz
+K_COPY_DST := kernel-4.9-lts-arm64-all.bin.gz
 endif
 
 export ARCH=arm64

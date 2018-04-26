@@ -7,7 +7,7 @@ common:
   support: opennetworklinux@googlegroups.com
 
 packages:
-  - name: onl-kernel-4.9-arm64-all
+  - name: onl-kernel-4.9-lts-arm64-all
     version: 1.0.0
     summary: Open Network Linux Kernel 4.9 for ARM64 Integrated Processor Platforms.
 
