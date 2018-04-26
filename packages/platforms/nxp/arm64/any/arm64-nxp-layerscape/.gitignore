@@ -1,2 +1,1 @@
-*arm64*nxp*ls2080ardb*.mk
-onlpdump.mk
+arm64_nxp_layerscape.mk
