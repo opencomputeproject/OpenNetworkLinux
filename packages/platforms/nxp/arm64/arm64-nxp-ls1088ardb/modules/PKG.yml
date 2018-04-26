@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/no-platform-modules.yml ARCH=arm64 VENDOR=nxp BASENAME=arm64-nxp-ls1088ardb

@@ -1,0 +1,37 @@
+From 63ac44cb36b5e011ee5f04d533975c5eac83149c Mon Sep 17 00:00:00 2001
+From: Zhao Qiang <qiang.zhao@nxp.com>
+Date: Tue, 13 Mar 2018 15:51:49 +0800
+Subject: [PATCH 80/80] Revert "DPAA: adjust DPAA to adapt to Linux 4.9"
+
+This reverts commit 863f99812459396fe3431dbd1ba3f773a0d1285f.
+---
+ drivers/net/ethernet/freescale/dpaa/dpaa_eth.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/freescale/dpaa/dpaa_eth.c b/drivers/net/ethernet/freescale/dpaa/dpaa_eth.c
+index 250ab80..627a961 100644
+--- a/drivers/net/ethernet/freescale/dpaa/dpaa_eth.c
++++ b/drivers/net/ethernet/freescale/dpaa/dpaa_eth.c
+@@ -328,8 +328,8 @@ static void dpaa_tx_timeout(struct net_device *net_dev)
+ /* Calculates the statistics for the given device by adding the statistics
+  * collected by each CPU.
+  */
+-static struct rtnl_link_stats64 *dpaa_get_stats64(struct net_device *net_dev,
+-						  struct rtnl_link_stats64 *s)
++static void dpaa_get_stats64(struct net_device *net_dev,
++			     struct rtnl_link_stats64 *s)
+ {
+ 	int numstats = sizeof(struct rtnl_link_stats64) / sizeof(u64);
+ 	struct dpaa_priv *priv = netdev_priv(net_dev);
+@@ -347,8 +347,6 @@ static void dpaa_tx_timeout(struct net_device *net_dev)
+ 		for (j = 0; j < numstats; j++)
+ 			netstats[j] += cpustats[j];
+ 	}
+-
+-	return s;
+ }
+ 
+ static int dpaa_setup_tc(struct net_device *net_dev, u32 handle, __be16 proto,
+-- 
+1.7.1
+

@@ -1,0 +1,61 @@
+From 561e179a2e1474576c0c2ce5db576142dfab906b Mon Sep 17 00:00:00 2001
+From: Guanhua Gao <guanhua.gao@nxp.com>
+Date: Fri, 2 Mar 2018 11:03:17 +0800
+Subject: [PATCH 67/80] crypto: caam/qi2 - fix probing order dependencies
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+1. If no DPIO devices are found during probe, it may be either because
+there's none available or because they haven't been probed yet.
+Request deferred probing in case it's the latter.
+
+2. MC portals may not be available at probe time due to dependencies
+on other modules.
+Check the return value of the MC portal allocation function and
+defer probing in case it's not available yet (-ENXIO).
+For all other error cases the behaviour stays the same.
+
+Integrated-by: Guanhua Gao <guanhua.gao@nxp.com>
+Signed-off-by: Horia Geantă horia.geanta@nxp.com
+---
+ drivers/crypto/caam/caamalg_qi2.c |   15 +++++++++++++--
+ 1 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/crypto/caam/caamalg_qi2.c b/drivers/crypto/caam/caamalg_qi2.c
+index 1804094..23db390 100644
+--- a/drivers/crypto/caam/caamalg_qi2.c
++++ b/drivers/crypto/caam/caamalg_qi2.c
+@@ -5120,8 +5120,15 @@ static int __cold dpaa2_dpseci_dpio_setup(struct dpaa2_caam_priv *priv)
+ 		/* Register notification callbacks */
+ 		err = dpaa2_io_service_register(NULL, nctx);
+ 		if (unlikely(err)) {
+-			dev_err(dev, "notification register failed\n");
++			dev_dbg(dev, "No affine DPIO for cpu %d\n", cpu);
+ 			nctx->cb = NULL;
++			/*
++			 * If no affine DPIO for this core, there's probably
++			 * none available for next cores either. Signal we want
++			 * to retry later, in case the DPIO devices weren't
++			 * probed yet.
++			 */
++			err = -EPROBE_DEFER;
+ 			goto err;
+ 		}
+ 
+@@ -5599,7 +5606,11 @@ static int dpaa2_caam_probe(struct fsl_mc_device *dpseci_dev)
+ 	/* Obtain a MC portal */
+ 	err = fsl_mc_portal_allocate(dpseci_dev, 0, &priv->mc_io);
+ 	if (err) {
+-		dev_err(dev, "MC portal allocation failed\n");
++		if (err == -ENXIO)
++			err = -EPROBE_DEFER;
++		else
++			dev_err(dev, "MC portal allocation failed\n");
++
+ 		goto err_dma_mask;
+ 	}
+ 
+-- 
+1.7.1
+

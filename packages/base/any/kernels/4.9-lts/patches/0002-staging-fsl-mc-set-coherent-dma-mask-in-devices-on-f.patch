@@ -1,0 +1,28 @@
+From 7dce678aa79947b235e0677822e32ba1e3905a6f Mon Sep 17 00:00:00 2001
+From: Nipun Gupta <nipun.gupta@nxp.com>
+Date: Fri, 27 Oct 2017 19:31:21 +0530
+Subject: [PATCH 66/80] staging: fsl-mc: set coherent dma mask in devices on fsl-mc bus
+
+Setting the dma cohernet mask is required to properly set the
+DMA address range for the devices on fsl-mc bus
+
+Signed-off-by: Nipun Gupta <nipun.gupta@nxp.com>
+---
+ drivers/staging/fsl-mc/bus/fsl-mc-bus.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/drivers/staging/fsl-mc/bus/fsl-mc-bus.c b/drivers/staging/fsl-mc/bus/fsl-mc-bus.c
+index 30a48df..c70b630 100644
+--- a/drivers/staging/fsl-mc/bus/fsl-mc-bus.c
++++ b/drivers/staging/fsl-mc/bus/fsl-mc-bus.c
+@@ -662,6 +662,7 @@ int fsl_mc_device_add(struct dprc_obj_desc *obj_desc,
+ 		mc_dev->icid = parent_mc_dev->icid;
+ 		mc_dev->dma_mask = FSL_MC_DEFAULT_DMA_MASK;
+ 		mc_dev->dev.dma_mask = &mc_dev->dma_mask;
++		mc_dev->dev.coherent_dma_mask = mc_dev->dma_mask;
+ 		dev_set_msi_domain(&mc_dev->dev,
+ 				   dev_get_msi_domain(&parent_mc_dev->dev));
+ 	}
+-- 
+1.7.1
+

@@ -23,15 +23,15 @@
 ############################################################
 include $(ONL)/make/config.arm64.mk
 
-MODULE := libonlp-arm64-nxp-ls2080ardb
+MODULE := libonlp-arm64-nxp-ls2088ardb
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM IOF arm64_nxp_ls2080ardb onlplib
+DEPENDMODULES := AIM IOF arm64_nxp_layerscape onlplib
 DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
 
-SHAREDLIB := libonlp-arm64-nxp-ls2080ardb.so
+SHAREDLIB := libonlp-arm64-nxp-ls2088ardb.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
 include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)
