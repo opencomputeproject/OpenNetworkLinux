@@ -9,10 +9,10 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7726.32"
 
     def baseconfig(self):
-        #self.insmod('optoe')
-        #self.insmod('ym2651y')
-        #for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
-        #    self.insmod("x86-64-accton-as7726-32x-%s.ko" % m)
+        self.insmod('optoe')
+        self.insmod('ym2651y')
+        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
+            self.insmod("x86-64-accton-as7726-32x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
         # initialize multiplexer (PCA9548)        
