@@ -1,1 +1,0 @@
-!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=arm64 VENDOR=nxp BASENAME=arm64-nxp-ls2080ardb REVISION=r0

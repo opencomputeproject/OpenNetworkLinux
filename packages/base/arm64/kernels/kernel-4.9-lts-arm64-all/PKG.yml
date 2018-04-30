@@ -1,0 +1,19 @@
+
+common:
+  arch: arm64
+  version: 1.0.0
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+
+packages:
+  - name: onl-kernel-4.9-lts-arm64-all
+    version: 1.0.0
+    summary: Open Network Linux Kernel 4.9 for ARM64 Integrated Processor Platforms.
+
+    files:
+      builds/kernel-4.9* : $$PKG_INSTALL/
+      builds/linux-4.9*-mbuild : $$PKG_INSTALL/mbuilds
+      builds/linux-4.9*-dtbs : $$PKG_INSTALL/dtbs
+
+    changelog:  Change changes changes.,

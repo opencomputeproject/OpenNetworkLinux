@@ -245,34 +245,49 @@ class OnlMultistrapConfig(object):
 
 
 class OnlRfsContext(object):
-    def __init__(self, directory):
+    def __init__(self, directory, resolvconf=True):
         self.directory = directory
         self.dev = os.path.join(self.directory, "dev")
         self.proc = os.path.join(self.directory, "proc")
-        self.resolv = os.path.join(self.directory, "etc", "resolv.conf")
-        self.resolvb = "%s.backup" % self.resolv
+        self.rc = resolvconf
+        if self.rc:
+            self.resolvconf = os.path.join(self.directory, "etc", "resolv.conf")
+            self.resolvconfb = "%s.onlrfs" % (self.resolvconf)
+
+    def exists(self, fname):
+        return os.path.islink(fname) or os.path.exists(fname)
 
     def __enter__(self):
-        onlu.execute("sudo mount -t devtmpfs dev %s" % self.dev,
-                     ex=OnlRfsError("Could not mount dev in rfs."))
-        onlu.execute("sudo mount -t proc proc %s" % self.proc,
-                     ex=OnlRfsError("Could not mount proc in rfs."))
-        if os.path.islink(self.resolv) or os.path.exists(self.resolv):
-            onlu.execute("sudo mv %s %s" % (self.resolv, self.resolvb),
-                         ex=OnlRfsError("Could not backup %s" % (self.resolv)))
-        onlu.execute("sudo cp /etc/resolv.conf %s" % (self.resolv),
-                     ex=OnlRfsError("Could not copy resolv.conf"))
-        return self
+        try:
+            onlu.execute("sudo mount -t devtmpfs dev %s" % self.dev,
+                         ex=OnlRfsError("Could not mount dev in rfs."))
+            onlu.execute("sudo mount -t proc proc %s" % self.proc,
+                         ex=OnlRfsError("Could not mount proc in rfs."))
+
+            if self.rc:
+                if self.exists(self.resolvconf):
+                    onlu.execute("sudo mv %s %s" % (self.resolvconf, self.resolvconfb),
+                                 ex=OnlRfsError("Could not backup resolv.conf"))
+
+                onlu.execute("sudo cp --remove-destination /etc/resolv.conf %s" % (self.resolvconf),
+                             ex=OnlRfsError("Could install new resolv.conf"))
+            return self
+
+        except Exception, e:
+            logger.error("Exception %s in OnlRfsContext::__enter__" % e)
+            self.__exit__(None, None, None)
+            raise e
 
     def __exit__(self, eType, eValue, eTrace):
         onlu.execute("sudo umount -l %s %s" % (self.dev, self.proc),
                      ex=OnlRfsError("Could not unmount dev and proc"))
-        onlu.execute("sudo rm %s" % (self.resolv),
-                     ex=OnlRfsError("Could not remove resolv.conf"))
 
-        if os.path.islink(self.resolvb) or os.path.exists(self.resolvb):
-            onlu.execute("sudo mv %s %s" % (self.resolvb, self.resolv),
-                         ex=OnlRfsError("Could not restore the resolv.conf backup"))
+        if self.rc:
+            onlu.execute("sudo rm %s" % (self.resolvconf),
+                         ex=OnlRfsError("Could not remove new resolv.conf"))
+            if self.exists(self.resolvconfb):
+                onlu.execute("sudo mv %s %s" % (self.resolvconfb, self.resolvconf),
+                             ex=OnlRfsError("Could not restore resolv.conf"))
 
 class OnlRfsBuilder(object):
 
@@ -399,11 +414,11 @@ rm -f /usr/sbin/policy-rc.d
 
     def configure(self, dir_):
 
-        with OnlRfsContext(dir_):
-
-            if not os.getenv('NO_DPKG_CONFIGURE'):
+        if not os.getenv('NO_DPKG_CONFIGURE'):
+            with OnlRfsContext(dir_, resolvconf=False):
                 self.dpkg_configure(dir_)
 
+        with OnlRfsContext(dir_):
             os_release = os.path.join(dir_, 'etc', 'os-release')
             if os.path.exists(os_release):
                 # Convert /etc/os-release to /etc/os-release.json

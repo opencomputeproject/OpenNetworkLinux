@@ -188,14 +188,16 @@ mbuild: build
 	find $(K_MBUILD_DIR) -name "*.o*" -delete
 	find $(K_MBUILD_DIR) -name "*.c" -delete
 	find $(K_MBUILD_DIR) -name "*.ko" -delete
+ifeq ($(ARCH), powerpc)
 	$(foreach f,$(MODSYNCKEEP), cp $(K_SOURCE_DIR)/$(f) $(K_MBUILD_DIR)/$(f) || true;)
+endif
 
 dtbs: mbuild
 ifdef DTS_LIST
 	rm -rf $(K_DTBS_DIR)
 	mkdir -p $(K_DTBS_DIR)
 ifeq ($(ARCH),arm64)
-	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/*.dtb $(K_DTBS_DIR)
+	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/freescale/*.dtb $(K_DTBS_DIR)
 else
 	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
 endif

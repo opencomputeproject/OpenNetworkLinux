@@ -1,0 +1,55 @@
+From 598594852ab8bd742446e4051b08f6d83b0c6834 Mon Sep 17 00:00:00 2001
+From: Pankaj Bansal <pankaj.bansal@nxp.com>
+Date: Mon, 5 Mar 2018 12:37:04 +0530
+Subject: [PATCH 75/80] arm64: dts: ls208x: remove NXP Erratum A008585 from LS2088A.
+
+NXP Erratum A008585 affects A57 core cluster used in LS2085rev1.
+However this problem has been fixed in A72 core cluster used in LS2088.
+Therefore remove the erratum from LS2088A. Keeping it only in LS2085.
+
+Cc: <stable@vger.kernel.org> # 4.14
+Signed-off-by: Pankaj Bansal <pankaj.bansal@nxp.com>
+Reviewed-by: Sandeep Malik <sandeep.malik@nxp.com>
+Acked-by: Priyanka Jain <priyanka.jain@nxp.com>
+---
+ arch/arm64/boot/dts/freescale/fsl-ls2080a.dtsi |    4 ++++
+ arch/arm64/boot/dts/freescale/fsl-ls208xa.dtsi |    3 +--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/freescale/fsl-ls2080a.dtsi b/arch/arm64/boot/dts/freescale/fsl-ls2080a.dtsi
+index 71f15fa..3a64397 100644
+--- a/arch/arm64/boot/dts/freescale/fsl-ls2080a.dtsi
++++ b/arch/arm64/boot/dts/freescale/fsl-ls2080a.dtsi
+@@ -143,6 +143,10 @@
+ 	snps,dma-snooping;
+ };
+ 
++&timer {
++	fsl,erratum-a008585;
++};
++
+ &pcie1 {
+ 	reg = <0x00 0x03400000 0x0 0x00100000   /* controller registers */
+ 	       0x10 0x00000000 0x0 0x00002000>; /* configuration space */
+diff --git a/arch/arm64/boot/dts/freescale/fsl-ls208xa.dtsi b/arch/arm64/boot/dts/freescale/fsl-ls208xa.dtsi
+index 9bef9e1..2a0a1df 100644
+--- a/arch/arm64/boot/dts/freescale/fsl-ls208xa.dtsi
++++ b/arch/arm64/boot/dts/freescale/fsl-ls208xa.dtsi
+@@ -111,13 +111,12 @@
+ 		mask = <0x2>;
+ 	};
+ 
+-	timer {
++	timer: timer {
+ 		compatible = "arm,armv8-timer";
+ 		interrupts = <1 13 4>, /* Physical Secure PPI, active-low */
+ 			     <1 14 4>, /* Physical Non-Secure PPI, active-low */
+ 			     <1 11 4>, /* Virtual PPI, active-low */
+ 			     <1 10 4>; /* Hypervisor PPI, active-low */
+-		fsl,erratum-a008585;
+ 	};
+ 
+ 	pmu {
+-- 
+1.7.1
+

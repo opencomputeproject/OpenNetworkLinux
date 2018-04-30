@@ -1,0 +1,34 @@
+From 0f8843da350fd2a2e2be4df3c936d63ad7a24f08 Mon Sep 17 00:00:00 2001
+From: Prabhakar Kushwaha <prabhakar.kushwaha@nxp.com>
+Date: Tue, 28 Nov 2017 15:47:45 +0530
+Subject: [PATCH 69/80] ARM: dts: ls1021aqds: Add nand node for ifc controller
+
+LS1021AQDS support NAND flash on IFC chip-select 2.
+
+So add NAND node in device tree for IFC controller.
+
+Signed-off-by: Jagdish Gediya <jagdish.gediya@nxp.com>
+Signed-off-by: Prabhakar Kushwaha <prabhakar.kushwaha@nxp.com>
+---
+ arch/arm/boot/dts/ls1021a-qds.dts |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/arch/arm/boot/dts/ls1021a-qds.dts b/arch/arm/boot/dts/ls1021a-qds.dts
+index f6280a6..bfd3746 100644
+--- a/arch/arm/boot/dts/ls1021a-qds.dts
++++ b/arch/arm/boot/dts/ls1021a-qds.dts
+@@ -252,6 +252,11 @@
+ 		device-width = <1>;
+ 	};
+ 
++	nand@2,0 {
++		compatible = "fsl,ifc-nand";
++		reg = <0x2 0x0 0x10000>;
++	};
++
+ 	fpga: board-control@3,0 {
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+-- 
+1.7.1
+

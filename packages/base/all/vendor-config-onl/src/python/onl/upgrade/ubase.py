@@ -76,6 +76,7 @@ class BaseUpgrade(object):
         self.ap.add_argument("--check", action='store_true', help="Check only.")
         self.ap.add_argument("--auto-upgrade", help="Override auto-upgrade mode.", default=self.auto_upgrade_default())
         self.ap.add_argument("--summarize", action='store_true', help="Summarize only, no upgrades.")
+        self.ap.add_argument("--quiet", action='store_true', help="No output.")
 
     def banner(self):
         self.logger.info("************************************************************")
@@ -366,6 +367,8 @@ If you choose not to perform this upgrade booting cannot continue.""" % self.aty
 
     def main(self):
         self.ops = self.ap.parse_args()
+        if self.ops.quiet:
+            self.logger.setLevel(logging.WARNING)
         self.banner()
         self.init_upgrade()
         self.summarize()
