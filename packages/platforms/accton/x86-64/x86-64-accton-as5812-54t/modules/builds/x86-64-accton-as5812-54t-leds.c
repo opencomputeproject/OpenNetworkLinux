@@ -32,11 +32,6 @@
 extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
 extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
-extern void led_classdev_unregister(struct led_classdev *led_cdev);
-extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
-extern void led_classdev_resume(struct led_classdev *led_cdev);
-extern void led_classdev_suspend(struct led_classdev *led_cdev);
-
 #define DRVNAME "as5812_54t_led"
 
 struct accton_as5812_54t_led_data {
