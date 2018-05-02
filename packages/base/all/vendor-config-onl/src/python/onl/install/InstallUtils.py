@@ -1059,6 +1059,16 @@ class InitrdContext(SubprocessMixin):
         cmd = ('mount', '-t', 'sysfs', 'sysfs', dst,)
         self.check_call(cmd, vmode=self.V1)
 
+        # Hurr, the efivarfs module may not be loaded
+        with open("/proc/filesystems") as fd:
+            buf = fd.read()
+        if "efivarfs" not in buf:
+            cmd = ('modprobe', 'efivarfs',)
+            try:
+                self.check_call(cmd, vmode=self.V1)
+            except subprocess.CalledProcessError:
+                pass
+
         dst = os.path.join(self.dir, "sys/firmware/efi/efivars")
         if os.path.exists(dst):
             cmd = ('mount', '-t', 'efivarfs', 'efivarfs', dst,)
