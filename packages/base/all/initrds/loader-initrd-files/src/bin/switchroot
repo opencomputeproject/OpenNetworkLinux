@@ -54,6 +54,7 @@ if [ -d /sys/firmware/efi/efivars ]; then
 fi
 mount --move /sys /newroot/sys
 if [ -d /newroot/sys/firmware/efi/efivars ]; then
+    modprobe efivarfs || :
     mount -t efivarfs efivarfs /newroot/sys/firmware/efi/efivars
 fi
 mount --move /dev /newroot/dev
