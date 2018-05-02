@@ -1,0 +1,49 @@
+From dca4750eba8a9f0927eeb8462d99f911e3887456 Mon Sep 17 00:00:00 2001
+From: Alison Wang <alison.wang@nxp.com>
+Date: Thu, 8 Mar 2018 09:02:05 +0800
+Subject: [PATCH 72/80] Revert "drm/fsl-dcu: Fix DCU pixel clock issue in suspend/resume functions"
+
+This reverts commit 618875870eace8f96e83b48cb1ceff2042db8109.
+
+As upstream commit 48f4d1f7fe48627a4c5c9332bcdf0f2a906e2f20 can also fix
+the original issue, the commit 618875870eace8f96e83b48cb1ceff2042db8109
+needs to be reverted.
+
+Signed-off-by: Alison Wang <alison.wang@nxp.com>
+---
+ drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c |   12 ------------
+ 1 files changed, 0 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c b/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
+index b1b4ab3..cc2fde2 100644
+--- a/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
++++ b/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
+@@ -263,12 +263,6 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
+ 		return ret;
+ 	}
+ 
+-	ret = clk_prepare_enable(fsl_dev->pix_clk);
+-	if (ret < 0) {
+-		dev_err(dev, "failed to enable dcu pix clk\n");
+-		return ret;
+-	}
+-
+ 	if (fsl_dev->tcon)
+ 		fsl_tcon_bypass_enable(fsl_dev->tcon);
+ 	fsl_dcu_drm_init_planes(fsl_dev->drm);
+@@ -395,12 +389,6 @@ static int fsl_dcu_drm_probe(struct platform_device *pdev)
+ 		goto disable_clk;
+ 	}
+ 
+-	ret = clk_prepare_enable(fsl_dev->pix_clk);
+-	if (ret < 0) {
+-		dev_err(dev, "failed to enable dcu pix clk\n");
+-		return ret;
+-	}
+-
+ 	fsl_dev->tcon = fsl_tcon_init(dev);
+ 
+ 	drm = drm_dev_alloc(driver, dev);
+-- 
+1.7.1
+

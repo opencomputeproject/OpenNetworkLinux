@@ -1,0 +1,39 @@
+From 79fbbb04a03779c56101be7f022df931e0d54e03 Mon Sep 17 00:00:00 2001
+From: Robert Baronescu <robert.baronescu@nxp.com>
+Date: Tue, 10 Oct 2017 13:21:59 +0300
+Subject: [PATCH 68/80] crypto: tcrypt - fix S/G table for test_aead_speed()
+
+In case buffer length is a multiple of PAGE_SIZE,
+the S/G table is incorrectly generated.
+Fix this by handling buflen = k * PAGE_SIZE separately.
+
+Signed-off-by: Robert Baronescu <robert.baronescu@nxp.com>
+Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
+(cherry picked from commit 5c6ac1d4f8fbdbed65dbeb8cf149d736409d16a1)
+---
+ crypto/tcrypt.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/crypto/tcrypt.c b/crypto/tcrypt.c
+index bbb35ee..ddef3fb 100644
+--- a/crypto/tcrypt.c
++++ b/crypto/tcrypt.c
+@@ -223,11 +223,13 @@ static void sg_init_aead(struct scatterlist *sg, char *xbuf[XBUFSIZE],
+ 	}
+ 
+ 	sg_init_table(sg, np + 1);
+-	np--;
++	if (rem)
++		np--;
+ 	for (k = 0; k < np; k++)
+ 		sg_set_buf(&sg[k + 1], xbuf[k], PAGE_SIZE);
+ 
+-	sg_set_buf(&sg[k + 1], xbuf[k], rem);
++	if (rem)
++		sg_set_buf(&sg[k + 1], xbuf[k], rem);
+ }
+ 
+ static void test_aead_speed(const char *algo, int enc, unsigned int secs,
+-- 
+1.7.1
+

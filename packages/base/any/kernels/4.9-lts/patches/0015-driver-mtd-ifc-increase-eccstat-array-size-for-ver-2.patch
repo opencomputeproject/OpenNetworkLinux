@@ -1,0 +1,47 @@
+From b4fefb1d0b6f8b669e6a3b6988dcf95c80f5e244 Mon Sep 17 00:00:00 2001
+From: Prabhakar Kushwaha <prabhakar.kushwaha@nxp.com>
+Date: Wed, 7 Mar 2018 13:48:39 +0530
+Subject: [PATCH 79/80] driver: mtd: ifc: increase eccstat array size for ver >= 2.0.0
+
+Number of ECC status registers i.e. (ECCSTATx) has been increased
+in IFC version 2.0.0 due to increase in SRAM size.
+
+Fix the resulting eccstat array overflow.
+
+Signed-off-by: Prabhakar Kushwaha <prabhakar.kushwaha@nxp.com>
+---
+ drivers/mtd/nand/fsl_ifc_nand.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/mtd/nand/fsl_ifc_nand.c b/drivers/mtd/nand/fsl_ifc_nand.c
+index 785e9ee..6ec0b0e 100644
+--- a/drivers/mtd/nand/fsl_ifc_nand.c
++++ b/drivers/mtd/nand/fsl_ifc_nand.c
+@@ -221,7 +221,7 @@ static void fsl_ifc_run_command(struct mtd_info *mtd)
+ 	struct fsl_ifc_ctrl *ctrl = priv->ctrl;
+ 	struct fsl_ifc_nand_ctrl *nctrl = ifc_nand_ctrl;
+ 	struct fsl_ifc_runtime __iomem *ifc = ctrl->rregs;
+-	u32 eccstat[4];
++	u32 eccstat[8];
+ 	int i;
+ 
+ 	/* set the chip select for NAND Transaction */
+@@ -265,8 +265,14 @@ static void fsl_ifc_run_command(struct mtd_info *mtd)
+ 		else
+ 			eccstat_regs = ifc->ifc_nand.v1_nand_eccstat;
+ 
+-		for (i = sector / 4; i <= sector_end / 4; i++)
++		for (i = sector / 4; i <= sector_end / 4; i++) {
++			if (i >= ARRAY_SIZE(eccstat)) {
++				dev_err(priv->dev, "%s: eccstat small for %d\n",
++					__func__, i);
++				return;
++			}
+ 			eccstat[i] = ifc_in32(&eccstat_regs[i]);
++		}
+ 
+ 		for (i = sector; i <= sector_end; i++) {
+ 			errors = check_read_ecc(mtd, ctrl, eccstat, i);
+-- 
+1.7.1
+

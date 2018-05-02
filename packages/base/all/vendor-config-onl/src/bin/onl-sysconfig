@@ -6,9 +6,13 @@ import yaml
 
 if len(sys.argv) == 2:
     try:
-        print yaml.dump((eval("sysconfig.%s" % sys.argv[1])), default_flow_style=False)
+        data = eval("sysconfig.%s" % sys.argv[1])
+        if isinstance(data,(type(None),str,int,float,bool)):
+            print data
+        else:
+            print yaml.dump(data, default_flow_style=False)
     except AttributeError, e:
         print "Path %s is not in the config." % sys.argv[1]
+        sys.exit(1)
 else:
     print sysconfig['OnlSystemConfig'].dump()
-
