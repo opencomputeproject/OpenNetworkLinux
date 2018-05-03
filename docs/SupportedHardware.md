@@ -80,8 +80,8 @@ Netberg
 
 |Device       |Ports           |CPU            |Forwarding    |In Lab|
 |-------------|:--------------|:-------------|:------------|:-----------|
-|Auora 720|32x100G|Intel C2558|BCM56960 (Tomahawk)|YES|
-|Auora 620|48x10/25G + 6x40/100G|Intel C2558|BCM56960 (Tomahawk)|YES|
+|Aurora 720|32x100G|Intel C2558|BCM56960 (Tomahawk)|YES|
+|Aurora 620|48x10/25G + 6x40/100G|Intel C2558|BCM56960 (Tomahawk)|YES|
 
 Inventec
 ------
