@@ -5,8 +5,8 @@ class OnlPlatform_x86_64_accton_csp9250_r0(OnlPlatformAccton,
                                               OnlPlatformPortConfig_48x25_6x100):
 
     PLATFORM='x86-64-accton-csp9250-r0'
-    MODEL="csp9250"
-    SYS_OBJECT_ID=".csp9250.54"
+    MODEL="CSP9250"
+    SYS_OBJECT_ID=".9250.54"
 
     def baseconfig(self):
         self.insmod('ym2651y')
