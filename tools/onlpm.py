@@ -301,8 +301,11 @@ class OnlPackage(object):
             #
             if dst.endswith('/'):
                 dstpath = os.path.join(root, dst)
-                if not os.path.exists(dstpath):
+                try:
                     os.makedirs(dstpath)
+                except OSError, e:
+                    if e.errno != os.errno.EEXIST:
+                        raise
                 shutil.copy(src, dstpath)
             else:
                 dstpath = os.path.join(root, os.path.dirname(dst))
