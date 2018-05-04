@@ -25,7 +25,6 @@
  ***********************************************************/
 #include <onlp/platformi/psui.h>
 #include <onlplib/mmap.h>
-//#include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "platform_lib.h"
@@ -148,10 +147,8 @@ static int onlp_psui_check_file_valid(char* const file_path)
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
-//    int val   = 0;
     int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);    
-    //psu_type_t psu_type;  
     int size=0;   
     onlp_psu_info_id_t i;    
     char cmd[PSU_MAX_LENGTH/2]={0};
