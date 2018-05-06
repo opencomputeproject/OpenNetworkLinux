@@ -435,6 +435,14 @@ class packages_base_arch_Makefile(ArchFile, OnlPkgMakefile):
 class REPO_Makefile(CommonFile, OnlSubdirsMakefile):
     pass
 
+class REPO_gitignore(CommonFile):
+    template="""
+extracts
+*.deb
+Packages
+Packages.gz
+"""
+
 class tools_vi(CommonFile):
     path='tools/%(prefix)svi.py'
     template="""
