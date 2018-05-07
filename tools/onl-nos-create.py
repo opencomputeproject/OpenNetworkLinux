@@ -9,13 +9,11 @@ import os
 import sys
 import argparse
 import inspect
+import logging
 
-def fwrite(root, relpath, contents):
-    abspath = os.path.join(root, relpath)
-    if not os.path.isdir(os.path.dirname(abspath)):
-        os.makedirs(os.path.dirname(abspath))
-    with open(relpath, "w") as f:
-        f.write(contents)
+logging.basicConfig()
+logger = logging.getLogger("onl-nos-create")
+logger.setLevel(logging.INFO)
 
 ap = argparse.ArgumentParser("onl-nos-create");
 
@@ -39,6 +37,8 @@ ap.add_argument("--csr-emailAddress", help="CSR Generation: emailAddress", requi
 ap.add_argument("--file", help="Output file object to stdout.")
 ap.add_argument("--list-files", help="Show all files.", action='store_true')
 ap.add_argument("--write-files", help="Write out all files.", action='store_true')
+ap.add_argument("--overwrite", help="Overwrite existing files.", action='store_true')
+ap.add_argument("--dry", "-n", help="Dry run.", action='store_true')
 
 class NOSFile(object):
     path=None
@@ -80,21 +80,32 @@ class NOSFile(object):
         try:
             self.etemplate = template % self.keywords
         except:
-
+            logger.error("Error evaluating template.")
             for line in template.split('\n'):
-                print "Running: '%s'" % line
-                print line % keywords
+                logger.error("Running: '%s'" % line)
+                logger.error(line % keywords)
             raise
 
-    def write(self, stdout=False):
+    def write(self, stdout=False, overwrite=False, dry=False):
         if stdout:
             print self.etemplate
         else:
             abspath = os.path.join(self.root, self.epath)
             if not os.path.isdir(os.path.dirname(abspath)):
                 os.makedirs(os.path.dirname(abspath))
-            with open(abspath, "w") as f:
-                f.write(self.etemplate)
+
+            if os.path.exists(abspath):
+                if not overwrite:
+                    logger.debug("SKIP  %s" % abspath)
+                    return
+                else:
+                    logger.info("OVER  %s" % abspath)
+            else:
+                logger.info("WRITE %s" % abspath)
+
+            if not dry:
+                with open(abspath, "w") as f:
+                    f.write(self.etemplate)
 
     @classmethod
     def is_file(klass):
@@ -152,6 +163,35 @@ class OnlPkgMakefile(PKGFile):
 class OnlSubdirsMakefile(PKGFile):
     template="""include $(ONL)/make/subdirs.mk"""
 
+
+class gitignore(CommonFile):
+    template="""
+# Everything in the REPO directory is ignored by default.
+
+# Build products
+BUILD/
+dependmodules.x
+*.deb
+*.cpio.gz
+*.sqsh
+*.pyc
+*.pyo
+
+# Package cache and lock files
+.lock
+.PKGs.cache*
+
+# Local module manifest.
+.manifest.mk
+RELEASE/
+
+.bash_history
+.buildroot-ccache
+
+# temporary files
+*~
+.#*
+"""
 
 class make_config(CommonFile):
     path='make/config.mk'
@@ -1126,7 +1166,7 @@ if __name__ == '__main__':
     OBJECTS = sorted(OBJECTS,key=lambda entry: entry.epath)
 
     for obj in OBJECTS:
-        if ops.list_files or ops.write_files:
-            print "%-60s[%s]" % (obj.epath, obj.__class__)
+        if ops.list_files:
+            print "%-60s" % (obj.epath)
         if ops.write_files:
-            obj.write()
+            obj.write(overwrite=ops.overwrite, dry=ops.dry)
