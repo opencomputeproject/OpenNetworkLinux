@@ -25,8 +25,8 @@
  ***********************************************************/
 #include <onlp/platformi/psui.h>
 #include <onlplib/mmap.h>
-//#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "platform_lib.h"
 
 #define PSU_STATUS_PRESENT    1
@@ -128,14 +128,27 @@ static onlp_psu_info_t pinfo[] =
         { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0 },
     }
 };
+/* return code=0:no such file or the file content is invalid
+ * return code=1:file content is valid
+ */
+static int onlp_psui_check_file_valid(char* const file_path)
+{
+    struct stat file_info;
+    if(stat(file_path ,&file_info)==0)
+    {
+        if(file_info.st_size==0)
+            return 0;
+        return 1;
+    }
+    else
+       return 0;   
+}
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
-//    int val   = 0;
     int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);    
-    //psu_type_t psu_type;  
     int size=0;   
     onlp_psu_info_id_t i;    
     char cmd[PSU_MAX_LENGTH/2]={0};
@@ -159,6 +172,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         find=psu_sensor_table[index-1].psu_dev_info_table[i].find;
         snprintf(cmd , (PSU_MAX_LENGTH/2)-1, "cat %s|grep %s > %s", PSU_IPMI_TMP_FILE, tag, PSU_IPMI_TMP_FILE_ONE_ENTRY);
         system(cmd);
+        if(!onlp_psui_check_file_valid(PSU_IPMI_TMP_FILE_ONE_ENTRY))
+        {
+            continue;
+        }
         if(onlp_file_read(data, PSU_MAX_LENGTH, &size, PSU_IPMI_TMP_FILE_ONE_ENTRY)!=ONLP_STATUS_OK)
         {
     	      return ONLP_STATUS_E_INTERNAL;
@@ -221,11 +238,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     if(info->mpout == 0)
     	  info->status |=  ONLP_PSU_STATUS_FAILED;
-    
-     /* Set the associated oid_table */
-    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);	  
-    
+   
     ret = ONLP_STATUS_OK;	
 
     return ret;
