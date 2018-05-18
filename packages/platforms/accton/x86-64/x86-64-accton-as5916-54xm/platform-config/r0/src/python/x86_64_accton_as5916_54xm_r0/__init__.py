@@ -17,9 +17,6 @@ class OnlPlatform_x86_64_accton_as5916_54xm_r0(OnlPlatformAccton,
         self.new_i2c_devices([
                 # initialize multiplexer (PCA9548)
                 ('pca9548', 0x77, 0),
-
-                # initiate IDPROM
-                ('24c02', 0x56, 0),
                 ])
 
         self.new_i2c_devices([
