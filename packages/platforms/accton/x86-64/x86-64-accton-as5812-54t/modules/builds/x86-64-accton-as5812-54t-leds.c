@@ -29,8 +29,8 @@
 #include <linux/leds.h>
 #include <linux/slab.h>
 
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as5812_54t_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as5812_54t_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 #define DRVNAME "as5812_54t_led"
 
@@ -218,12 +218,12 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 
 static int accton_as5812_54t_led_read_value(u8 reg)
 {
-    return accton_i2c_cpld_read(0x60, reg);
+    return as5812_54t_cpld_read(0x60, reg);
 }
 
 static int accton_as5812_54t_led_write_value(u8 reg, u8 value)
 {
-    return accton_i2c_cpld_write(0x60, reg, value);
+    return as5812_54t_cpld_write(0x60, reg, value);
 }
 
 static void accton_as5812_54t_led_update(void)
@@ -550,12 +550,7 @@ static int __init accton_as5812_54t_led_init(void)
 {
     int ret;
 
-	extern int platform_accton_as5812_54t(void);
-	if (!platform_accton_as5812_54t()) {
-		return -ENODEV;
-	}
-
-    ret = platform_driver_register(&accton_as5812_54t_led_driver);
+	ret = platform_driver_register(&accton_as5812_54t_led_driver);
     if (ret < 0) {
         goto exit;
     }
