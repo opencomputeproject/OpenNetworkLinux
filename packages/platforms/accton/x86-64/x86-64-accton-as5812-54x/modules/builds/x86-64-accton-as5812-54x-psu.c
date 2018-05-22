@@ -42,9 +42,10 @@
 static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_serial_number(struct device *dev, struct device_attribute *da,char *buf);
 static int as5812_54x_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int as5812_54x_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-static int as5812_54x_psu_model_name_get(struct device *dev);
+extern int as5812_54x_cpld_read(unsigned short cpld_addr, u8 reg);
+static int as5812_54x_psu_model_name_get(struct device *dev , int get_serial);
 
 /* Addresses scanned
  */
@@ -60,6 +61,7 @@ struct as5812_54x_psu_data {
     u8  index;           /* PSU index */
     u8  status;          /* Status(present/power_good) register read from CPLD */
     char model_name[14]; /* Model name, read from eeprom */
+    char serial[16]; /* Model name, read from eeprom */
 };
 
 static struct as5812_54x_psu_data *as5812_54x_psu_update_device(struct device *dev);
@@ -68,7 +70,8 @@ enum as5812_54x_psu_sysfs_attributes {
     PSU_INDEX,
     PSU_PRESENT,
     PSU_MODEL_NAME,
-    PSU_POWER_GOOD
+    PSU_POWER_GOOD,
+    PSU_SERIAL_NUMBER
 };
 
 /* sysfs attributes for hwmon
@@ -76,12 +79,14 @@ enum as5812_54x_psu_sysfs_attributes {
 static SENSOR_DEVICE_ATTR(psu_index,      S_IRUGO, show_index,     NULL, PSU_INDEX);
 static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status,    NULL, PSU_PRESENT);
 static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
+static SENSOR_DEVICE_ATTR(psu_serial, S_IRUGO, show_serial_number, NULL, PSU_SERIAL_NUMBER);
 static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,    NULL, PSU_POWER_GOOD);
 
 static struct attribute *as5812_54x_psu_attributes[] = {
     &sensor_dev_attr_psu_index.dev_attr.attr,
     &sensor_dev_attr_psu_present.dev_attr.attr,
     &sensor_dev_attr_psu_model_name.dev_attr.attr,
+    &sensor_dev_attr_psu_serial.dev_attr.attr,
     &sensor_dev_attr_psu_power_good.dev_attr.attr,
     NULL
 };
@@ -116,6 +121,25 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     return sprintf(buf, "%d\n", status);
 }
 
+static ssize_t show_serial_number(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct as5812_54x_psu_data *data = as5812_54x_psu_update_device(dev);
+
+    if (!data->valid) {
+        return 0;
+    }
+
+    if (!IS_PRESENT(data->index, data->status)) {
+        return 0;
+    }
+
+    if (as5812_54x_psu_model_name_get(dev, 1) < 0) {
+        return -ENXIO;
+    }
+    return sprintf(buf, "%s\n", data->serial);
+}
+
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
              char *buf)
 {
@@ -129,7 +153,7 @@ static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
         return 0;
     }
 
-    if (as5812_54x_psu_model_name_get(dev) < 0) {
+    if (as5812_54x_psu_model_name_get(dev, 0) < 0) {
         return -ENXIO;
     }
 
@@ -254,6 +278,59 @@ enum psu_type {
     PSU_UM400D01_01G    /* DC48V  - B2F */
 };
 
+struct serial_number_info {
+    enum psu_type type;
+    u8 offset;
+    u8 length;
+};
+
+struct serial_number_info serials[] = {
+{PSU_YM_2401_JCR,   0x20, 11},
+{PSU_YM_2401_JDR,   0x20, 11},
+{PSU_CPR_4011_4M11, 0x47, 15},
+{PSU_CPR_4011_4M21, 0x47, 15},
+{PSU_CPR_6011_2M11, 0x46, 15},
+{PSU_CPR_6011_2M21, 0x46, 15},
+{PSU_UM400D_01G,    0x50,  9},
+{PSU_UM400D01_01G,  0x50, 12},
+};
+
+static int as5812_54x_psu_serial_number_get(struct device *dev, enum psu_type type)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5812_54x_psu_data *data = i2c_get_clientdata(client);
+    int i, status;
+
+    switch (type) {
+    case PSU_CPR_4011_4M11:
+    case PSU_CPR_4011_4M21:
+    case PSU_CPR_6011_2M11:
+    case PSU_CPR_6011_2M21:
+        {
+            if(type >= sizeof(serials)/sizeof(struct serial_number_info))
+                return -EINVAL;
+            status = as5812_54x_psu_read_block(client, serials[type].offset,
+                                               data->serial, serials[type].length);
+            if (status < 0) {
+                data->serial[0] = '\0';
+                dev_dbg(&client->dev, "unable to read serial number from (0x%x) offset(0x%x)\n", 
+                                      client->addr, serials[type].offset);
+                return status;
+            }
+            else {
+                data->serial[serials[type].length] = '\0';
+                return 0;
+            }
+        }
+        break;
+    default:
+        break;
+    }
+    
+    return -ENODATA;
+}                                            
+
+
 struct model_name_info {
     enum psu_type type;
     u8 offset;
@@ -272,7 +349,7 @@ struct model_name_info models[] = {
 {PSU_UM400D01_01G,  0x50, 12, "um400d01-01G"},
 };
 
-static int as5812_54x_psu_model_name_get(struct device *dev)
+static int as5812_54x_psu_model_name_get(struct device *dev , int get_serial)
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as5812_54x_psu_data *data = i2c_get_clientdata(client);
@@ -303,7 +380,7 @@ static int as5812_54x_psu_model_name_get(struct device *dev)
         /* Determine if the model name is known, if not, read next index
          */
         if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
-            return 0;
+            return get_serial ? as5812_54x_psu_serial_number_get(dev, i) : 0;
         }
         else {
             data->model_name[0] = '\0';
@@ -329,7 +406,7 @@ static struct as5812_54x_psu_data *as5812_54x_psu_update_device(struct device *d
 
 
         /* Read psu status */
-        status = as5812_54x_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
+        status = as5812_54x_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
 
         if (status < 0) {
             dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
@@ -349,24 +426,9 @@ exit:
     return data;
 }
 
-static int __init as5812_54x_psu_init(void)
-{
-    extern int platform_accton_as5812_54x(void);
-    if(!platform_accton_as5812_54x()) {
-        return -ENODEV;
-    }
-    return i2c_add_driver(&as5812_54x_psu_driver);
-}
-
-static void __exit as5812_54x_psu_exit(void)
-{
-    i2c_del_driver(&as5812_54x_psu_driver);
-}
+module_i2c_driver(as5812_54x_psu_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("accton as5812_54x_psu driver");
 MODULE_LICENSE("GPL");
-
-module_init(as5812_54x_psu_init);
-module_exit(as5812_54x_psu_exit);
 

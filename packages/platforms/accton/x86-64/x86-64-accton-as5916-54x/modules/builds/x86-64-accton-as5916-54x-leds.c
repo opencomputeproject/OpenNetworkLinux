@@ -38,8 +38,8 @@
 	#define DEBUG_PRINT(fmt, args...)
 #endif
 
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as5916_54x_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as5916_54x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 struct accton_as5916_54x_led_data {
 	struct platform_device *pdev;
@@ -157,12 +157,12 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 
 static int accton_as5916_54x_led_read_value(u8 reg)
 {
-	return accton_i2c_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
+	return as5916_54x_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
 }
 
 static int accton_as5916_54x_led_write_value(u8 reg, u8 value)
 {
-	return accton_i2c_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
+	return as5916_54x_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
 }
 
 static void accton_as5916_54x_led_update(void)

@@ -16,7 +16,4 @@ packages:
     init: ${ONL}/packages/base/any/faultd/faultd.init
 
     changelog:  Change changes changes.,
-
-
-
-
+    asr: True

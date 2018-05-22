@@ -42,11 +42,8 @@
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
 
-#define PSU1_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/10-0053/"
-#define PSU2_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/9-0050/"
-
-#define PSU1_AC_EEPROM_NODE(node) PSU1_AC_EEPROM_PREFIX#node
-#define PSU2_AC_EEPROM_NODE(node) PSU2_AC_EEPROM_PREFIX#node
+#define PSU_PRESENT_FORMAT		"/sys/bus/i2c/devices/19-0060/psu%d_present"
+#define PSU_POWERGOOD_FORMAT	"/sys/bus/i2c/devices/19-0060/psu%d_power_good"
 
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/17-0068/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node

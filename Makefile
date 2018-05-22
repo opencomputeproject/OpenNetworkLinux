@@ -25,8 +25,8 @@ $(foreach a,$(ALL_ARCHES),$(eval $(call build_arch_template,$(a))))
 
 # Available build architectures based on the current suite
 BUILD_ARCHES_wheezy := amd64 powerpc
-BUILD_ARCHES_jessie := $(ALL_ARCHES)
-BUILD_ARCHES_stretch := amd64
+BUILD_ARCHES_jessie := amd64 powerpc armel
+BUILD_ARCHES_stretch := arm64 amd64
 
 # Build available architectures by default.
 .DEFAULT_GOAL := all

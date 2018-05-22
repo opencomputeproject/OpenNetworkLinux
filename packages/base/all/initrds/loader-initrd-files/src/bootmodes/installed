@@ -15,8 +15,8 @@ if [ ! -d /mnt/onl/data ]; then
 fi
 
 # make sure it's mounted as per mtab.yml
-d1=$(stat -f -c '%d' /mnt/onl)
-d2=$(stat -f -c '%d' /mnt/onl/data)
+d1=$(stat -f -c '%b' /mnt/onl)
+d2=$(stat -f -c '%b' /mnt/onl/data)
 if [ "$d1" -eq "$d2" ]; then
     msg_error "Unmounted /mnt/onl/data, disk boot cannot continue"
     exit 200

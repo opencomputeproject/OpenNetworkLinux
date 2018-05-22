@@ -69,10 +69,17 @@ class OnlPackageServiceScript(object):
 
 class OnlPackageAfterInstallScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
-set -e
 if [ -x "/etc/init.d/%(service)s" ]; then
-	update-rc.d %(service)s defaults >/dev/null
-	invoke-rc.d %(service)s start || exit $?
+    if [ -x "/usr/sbin/policy-rc.d" ]; then
+        /usr/sbin/policy-rc.d
+        if [ $? -eq 101 ]; then
+            echo "warning: service %(service)s: postinst: ignored due to policy-rc.d"
+            exit 0;
+        fi
+    fi
+    set -e
+    update-rc.d %(service)s defaults >/dev/null
+    invoke-rc.d %(service)s start || exit $?
 fi
 """
 
@@ -80,7 +87,7 @@ class OnlPackageBeforeRemoveScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
 set -e
 if [ -x "/etc/init.d/%(service)s" ]; then
-	invoke-rc.d %(service)s stop || exit $?
+    invoke-rc.d %(service)s stop || exit $?
 fi
 """
 
@@ -88,7 +95,7 @@ class OnlPackageAfterRemoveScript(OnlPackageServiceScript):
     SCRIPT = """#!/bin/sh
 set -e
 if [ "$1" = "purge" ] ; then
-	update-rc.d %(service)s remove >/dev/null
+    update-rc.d %(service)s remove >/dev/null
 fi
 """
 
@@ -274,7 +281,7 @@ class OnlPackage(object):
         return True
 
     @staticmethod
-    def copyf(src, dst, root):
+    def copyf(src, dst, root, symlinks=False):
         if dst.startswith('/'):
             dst = dst[1:]
 
@@ -284,7 +291,7 @@ class OnlPackage(object):
             #
             dstpath = os.path.join(root, dst)
             logger.debug("Copytree %s -> %s" % (src, dstpath))
-            shutil.copytree(src, dstpath)
+            shutil.copytree(src, dstpath, symlinks=symlinks)
         else:
             #
             # If the destination ends in a '/' it means copy the filename
@@ -294,8 +301,11 @@ class OnlPackage(object):
             #
             if dst.endswith('/'):
                 dstpath = os.path.join(root, dst)
-                if not os.path.exists(dstpath):
+                try:
                     os.makedirs(dstpath)
+                except OSError, e:
+                    if e.errno != os.errno.EEXIST:
+                        raise
                 shutil.copy(src, dstpath)
             else:
                 dstpath = os.path.join(root, os.path.dirname(dst))
@@ -346,7 +356,7 @@ class OnlPackage(object):
         self.pkg['__workdir'] = workdir
 
         for (src,dst) in self.pkg.get('files', {}):
-            OnlPackage.copyf(src, dst, root)
+            OnlPackage.copyf(src, dst, root, symlinks=self.pkg.get('symlinks', False))
 
         for (src,dst) in self.pkg.get('optional-files', {}):
             if os.path.exists(src):
@@ -431,14 +441,15 @@ class OnlPackage(object):
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
 
-        if self.pkg.get('asr', True):
-            # Generate the ASR documentation for this package.
-            sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
-            import asr
-            asro = asr.AimSyslogReference()
-            asro.extract(workdir)
-            asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
-
+        if self.pkg.get('asr', False):
+            with onlu.Profiler() as profiler:
+                # Generate the ASR documentation for this package.
+                sys.path.append("%s/sm/infra/tools" % os.getenv('ONL'))
+                import asr
+                asro = asr.AimSyslogReference()
+                asro.extract(workdir)
+                asro.format(os.path.join(docpath, asr.AimSyslogReference.ASR_NAME), 'json')
+            profiler.log("ASR generation for %(name)s" % self.pkg)
         ############################################################
 
         if logger.level < logging.INFO:
@@ -1234,13 +1245,14 @@ if __name__ == '__main__':
         if ops.list_all:
             print pm
 
+        if ops.pmake:
+            pm.pmake()
+
+
         pm.filter(subdir = ops.subdir, arches=ops.arches)
 
         if ops.list:
             print pm
-
-        if ops.pmake:
-            pm.pmake()
 
         if ops.pkg_info:
             print pm.pkg_info()
@@ -1344,6 +1356,11 @@ if __name__ == '__main__':
         ############################################################
         if ops.delete:
             pm.opr.remove_packages(ops.delete)
+
+        if ops.lookup:
+            logger.debug("looking up %s", ops.lookup)
+            for p in pm.opr.lookup_all(ops.lookup):
+                print p
 
     except (OnlPackageError, onlyaml.OnlYamlError), e:
         logger.error(e)

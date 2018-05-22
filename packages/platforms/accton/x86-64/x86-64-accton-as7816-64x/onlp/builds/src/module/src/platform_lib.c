@@ -30,7 +30,7 @@
 #include "platform_lib.h"
 
 #define PSU_MODEL_NAME_LEN 		8
-#define PSU_SERIAL_NUMBER_LEN	14
+#define PSU_SERIAL_NUMBER_LEN	18
 #define PSU_NODE_MAX_PATH_LEN   64
 
 int psu_serial_number_get(int id, char *serial, int serial_len)
@@ -68,9 +68,8 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 
 	/* Check if the psu is power good
 	 */
-	prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
-    if (onlp_file_read_int(&value, "%s%s", prefix, "psu_power_good") < 0) {
-        AIM_LOG_ERROR("Unable to read status from file(%s%s)\r\n", prefix, "psu_power_good");
+    if (onlp_file_read_int(&value, PSU_POWERGOOD_FORMAT, id) < 0) {
+        AIM_LOG_ERROR("Unable to read present status from PSU(%d)\r\n", index);
         return ONLP_STATUS_E_INTERNAL;
     }
 

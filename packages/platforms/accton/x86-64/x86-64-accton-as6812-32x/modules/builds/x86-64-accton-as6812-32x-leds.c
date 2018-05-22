@@ -29,8 +29,8 @@
 #include <linux/leds.h>
 #include <linux/slab.h>
 
-extern int as6812_32x_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
-extern int as6812_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as6812_32x_cpld_read (unsigned short cpld_addr, u8 reg);
+extern int as6812_32x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 extern void led_classdev_unregister(struct led_classdev *led_cdev);
 extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
@@ -239,12 +239,12 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 
 static int accton_as6812_32x_led_read_value(u8 reg)
 {
-    return as6812_32x_i2c_cpld_read(0x60, reg);
+    return as6812_32x_cpld_read(0x60, reg);
 }
 
 static int accton_as6812_32x_led_write_value(u8 reg, u8 value)
 {
-    return as6812_32x_i2c_cpld_write(0x60, reg, value);
+    return as6812_32x_cpld_write(0x60, reg, value);
 }
 
 static void accton_as6812_32x_led_update(void)
@@ -570,11 +570,6 @@ static struct platform_driver accton_as6812_32x_led_driver = {
 static int __init accton_as6812_32x_led_init(void)
 {
     int ret;
-
-    extern int platform_accton_as6812_32x(void);
-    if(!platform_accton_as6812_32x()) { 
-      return -ENODEV;
-    }
 
     ret = platform_driver_register(&accton_as6812_32x_led_driver);
     if (ret < 0) {

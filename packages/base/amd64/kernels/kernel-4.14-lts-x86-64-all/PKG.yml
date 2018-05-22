@@ -1,0 +1,1 @@
+!include $ONL/packages/base/any/kernels/lts/APKG.yml VERSION=4.14 ARCH=amd64 CONFIG=x86-64-all

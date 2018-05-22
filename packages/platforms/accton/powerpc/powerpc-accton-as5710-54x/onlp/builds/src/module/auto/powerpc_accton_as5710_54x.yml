@@ -29,6 +29,9 @@ cdefs: &cdefs
 - POWERPC_ACCTON_AS5710_54X_CONFIG_INCLUDE_DEBUG:
     doc: "Include debug tool."
     default: 0
+- POWERPC_ACCTON_AS5710_54X_CONFIG_SYS_FAN_FRONT_RPM_MAX:
+    doc: "Maximum system fan(Front) rpm."
+    default: 19725
 
 definitions:
   cdefs:

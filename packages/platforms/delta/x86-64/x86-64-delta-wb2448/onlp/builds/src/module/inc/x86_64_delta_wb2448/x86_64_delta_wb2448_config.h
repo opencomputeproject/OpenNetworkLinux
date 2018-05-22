@@ -17,7 +17,7 @@
 #include <x86_64_delta_wb2448_custom_config.h>
 #endif
 
-/* <auto.start.cdefs(x86_64_delta_wb2448_CONFIG_HEADER).header> */
+/* <auto.start.cdefs(X86_64_DELTA_WB2448_CONFIG_HEADER).header> */
 #include <AIM/aim.h>
 /**
  * X86_64_DELTA_WB2448_CONFIG_INCLUDE_LOGGING
@@ -103,8 +103,8 @@
  * X86_64_DELTA_WB2448_CONFIG_SFP_COUNT
  *
  * SFP port numbers. */
- 
- 
+
+
 #ifndef X86_64_DELTA_WB2448_CONFIG_SFP_COUNT
 #define X86_64_DELTA_WB2448_CONFIG_SFP_COUNT 4
 #endif
@@ -113,11 +113,13 @@
  * X86_64_DELTA_WB2448_CONFIG_FAN_RPM_MAX
  *
  * Max fan speed. */
- 
- 
+
+
 #ifndef X86_64_DELTA_WB2448_CONFIG_FAN_RPM_MAX
 #define X86_64_DELTA_WB2448_CONFIG_FAN_RPM_MAX 18000
 #endif
+
+
 
 /**
  * All compile time options can be queried or displayed
@@ -147,7 +149,7 @@ const char* x86_64_delta_wb2448_config_lookup(const char* setting);
  */
 int x86_64_delta_wb2448_config_show(struct aim_pvs_s* pvs);
 
-/* <auto.end.cdefs(x86_64_delta_wb2448_CONFIG_HEADER).header> */
+/* <auto.end.cdefs(X86_64_DELTA_WB2448_CONFIG_HEADER).header> */
 
 #include "x86_64_delta_wb2448_porting.h"
 

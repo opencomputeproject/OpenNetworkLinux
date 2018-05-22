@@ -75,7 +75,7 @@ onlpie_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; onlpie_config_settings[i].name; i++) {
-        if(strcmp(onlpie_config_settings[i].name, setting)) {
+        if(!strcmp(onlpie_config_settings[i].name, setting)) {
             return onlpie_config_settings[i].value;
         }
     }

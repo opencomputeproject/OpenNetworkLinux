@@ -9,9 +9,10 @@ class OnlPlatform_x86_64_accton_as5812_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5812.54.1"
 
     def baseconfig(self):
+        self.insmod('optoe')
         self.insmod('cpr_4011_4mxx')
         self.insmod("ym2651y")
-        for m in [ 'cpld', 'fan', 'psu', 'leds', 'sfp' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as5812-54x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -26,16 +27,18 @@ class OnlPlatform_x86_64_accton_as5812_54x_r0(OnlPlatformAccton,
             )
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('as5812_54x_sfp%d' % port, 0x50, port+1)
-            self.new_i2c_device('as5812_54x_sfp%d' % port, 0x51, port+1)
+            self.new_i2c_device('optoe2', 0x50, port+1)
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+1), shell=True)
 
         # Initialize QSFP devices
-        self.new_i2c_device('as5812_54x_sfp49', 0x50, 50)
-        self.new_i2c_device('as5812_54x_sfp52', 0x50, 51)
-        self.new_i2c_device('as5812_54x_sfp50', 0x50, 52)
-        self.new_i2c_device('as5812_54x_sfp53', 0x50, 53)
-        self.new_i2c_device('as5812_54x_sfp51', 0x50, 54)
-        self.new_i2c_device('as5812_54x_sfp54', 0x50, 55)
+        for port in range(49, 55):
+            self.new_i2c_device('optoe1', 0x50, port+1)
+        subprocess.call('echo port49 > /sys/bus/i2c/devices/50-0050/port_name', shell=True)
+        subprocess.call('echo port52 > /sys/bus/i2c/devices/51-0050/port_name', shell=True)
+        subprocess.call('echo port50 > /sys/bus/i2c/devices/52-0050/port_name', shell=True)
+        subprocess.call('echo port53 > /sys/bus/i2c/devices/53-0050/port_name', shell=True)
+        subprocess.call('echo port51 > /sys/bus/i2c/devices/54-0050/port_name', shell=True)
+        subprocess.call('echo port54 > /sys/bus/i2c/devices/55-0050/port_name', shell=True)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(

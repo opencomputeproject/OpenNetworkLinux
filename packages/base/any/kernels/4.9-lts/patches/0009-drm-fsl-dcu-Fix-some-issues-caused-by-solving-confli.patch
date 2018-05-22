@@ -1,0 +1,36 @@
+From 0ced0d50e4590f960e3bec793ac990b1fd69ecd8 Mon Sep 17 00:00:00 2001
+From: Alison Wang <alison.wang@nxp.com>
+Date: Thu, 8 Mar 2018 09:12:48 +0800
+Subject: [PATCH 73/80] drm/fsl-dcu: Fix some issues caused by solving conflicts
+
+This patch is to fix some issues caused by solving conflicts in merging
+the patches.
+
+Signed-off-by: Alison Wang <alison.wang@nxp.com>
+---
+ drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c b/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
+index cc2fde2..956a439 100644
+--- a/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
++++ b/drivers/gpu/drm/fsl-dcu/fsl_dcu_drm_drv.c
+@@ -243,7 +243,6 @@ static int fsl_dcu_drm_pm_suspend(struct device *dev)
+ 		return PTR_ERR(fsl_dev->state);
+ 	}
+ 
+-	clk_disable_unprepare(fsl_dev->pix_clk);
+ 	clk_disable_unprepare(fsl_dev->clk);
+ 
+ 	return 0;
+@@ -273,7 +272,6 @@ static int fsl_dcu_drm_pm_resume(struct device *dev)
+ 	console_unlock();
+ 
+ 	drm_kms_helper_poll_enable(fsl_dev->drm);
+-	enable_irq(fsl_dev->irq);
+ 
+ 	return 0;
+ }
+-- 
+1.7.1
+

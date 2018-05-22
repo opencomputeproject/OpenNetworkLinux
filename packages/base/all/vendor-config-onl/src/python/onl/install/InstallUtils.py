@@ -388,6 +388,63 @@ class BlkidParser(SubprocessMixin):
     def __len__(self):
         return len(self.parts)
 
+class UbinfoParser(SubprocessMixin):
+
+    def __init__(self, log=None):
+        self.log = log or logging.getLogger("ubinfo -a")
+        self.parse()
+
+    def parse(self):
+        self.parts = []
+        lines = ''
+        try:
+            cmd = ('ubinfo', '-a',)
+            lines = self.check_output(cmd).splitlines()
+        except Exception as ex:
+            return self
+
+        dev = None
+        volId = None
+        name = None
+        attrs = {}
+        for line in lines:
+            line = line.strip()
+
+            p = line.find(':')
+            if p < 0: continue
+            name, value = line[:p], line[p+1:].strip()
+            if 'Volume ID' in name:
+                p = value.find('(')
+                if p < 0: continue
+                volumeId = value[:p].strip()
+                attrs['Volume ID'] = volumeId
+                p = value.find('on')
+                if p < 0: continue
+                dev = value[p+2:-1].strip()
+                attrs['device'] = dev
+
+            if 'Name' in name:
+               dev = "/dev/" + dev + "_" + volumeId
+               p = line.find(':')
+               if p < 0: continue
+               attrs['Name'] = line[p+1:].strip()
+               attrs['fsType'] = 'ubifs'
+               self.parts.append(attrs)
+               dev = None
+               volId = None
+               name = None
+               attrs = {}
+
+    def __getitem__(self, idxOrName):
+        if type(idxOrName) == int:
+            return self.parts[idxOrName]
+        for part in self.parts:
+            if part['Name'] == idxOrName: return part
+        raise IndexError("cannot find partition %s" % repr(idxOrName))
+
+    def __len__(self):
+        return len(self.parts)
+
 class ProcMtdEntry:
 
     def __init__(self,
@@ -1001,6 +1058,16 @@ class InitrdContext(SubprocessMixin):
         dst = os.path.join(self.dir, "sys")
         cmd = ('mount', '-t', 'sysfs', 'sysfs', dst,)
         self.check_call(cmd, vmode=self.V1)
+
+        # Hurr, the efivarfs module may not be loaded
+        with open("/proc/filesystems") as fd:
+            buf = fd.read()
+        if "efivarfs" not in buf:
+            cmd = ('modprobe', 'efivarfs',)
+            try:
+                self.check_call(cmd, vmode=self.V1)
+            except subprocess.CalledProcessError:
+                pass
 
         dst = os.path.join(self.dir, "sys/firmware/efi/efivars")
         if os.path.exists(dst):

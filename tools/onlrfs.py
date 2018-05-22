@@ -243,6 +243,52 @@ class OnlMultistrapConfig(object):
         return handle.getvalue()
 
 
+
+class OnlRfsContext(object):
+    def __init__(self, directory, resolvconf=True):
+        self.directory = directory
+        self.dev = os.path.join(self.directory, "dev")
+        self.proc = os.path.join(self.directory, "proc")
+        self.rc = resolvconf
+        if self.rc:
+            self.resolvconf = os.path.join(self.directory, "etc", "resolv.conf")
+            self.resolvconfb = "%s.onlrfs" % (self.resolvconf)
+
+    def exists(self, fname):
+        return os.path.islink(fname) or os.path.exists(fname)
+
+    def __enter__(self):
+        try:
+            onlu.execute("sudo mount -t devtmpfs dev %s" % self.dev,
+                         ex=OnlRfsError("Could not mount dev in rfs."))
+            onlu.execute("sudo mount -t proc proc %s" % self.proc,
+                         ex=OnlRfsError("Could not mount proc in rfs."))
+
+            if self.rc:
+                if self.exists(self.resolvconf):
+                    onlu.execute("sudo mv %s %s" % (self.resolvconf, self.resolvconfb),
+                                 ex=OnlRfsError("Could not backup resolv.conf"))
+
+                onlu.execute("sudo cp --remove-destination /etc/resolv.conf %s" % (self.resolvconf),
+                             ex=OnlRfsError("Could install new resolv.conf"))
+            return self
+
+        except Exception, e:
+            logger.error("Exception %s in OnlRfsContext::__enter__" % e)
+            self.__exit__(None, None, None)
+            raise e
+
+    def __exit__(self, eType, eValue, eTrace):
+        onlu.execute("sudo umount -l %s %s" % (self.dev, self.proc),
+                     ex=OnlRfsError("Could not unmount dev and proc"))
+
+        if self.rc:
+            onlu.execute("sudo rm %s" % (self.resolvconf),
+                         ex=OnlRfsError("Could not remove new resolv.conf"))
+            if self.exists(self.resolvconfb):
+                onlu.execute("sudo mv %s %s" % (self.resolvconfb, self.resolvconf),
+                             ex=OnlRfsError("Could not restore resolv.conf"))
+
 class OnlRfsBuilder(object):
 
     DEFAULTS = dict(
@@ -368,20 +414,11 @@ rm -f /usr/sbin/policy-rc.d
 
     def configure(self, dir_):
 
-        try:
-
-            onlu.execute("sudo mount -t devtmpfs dev %s" % os.path.join(dir_, "dev"),
-                         ex=OnlRfsError("Could not mount dev in new filesystem."))
-
-            onlu.execute("sudo mount -t proc proc %s" % os.path.join(dir_, "proc"),
-                         ex=OnlRfsError("Could not mount proc in new filesystem."))
-
-            script = os.path.join(dir_, "tmp/configure.sh")
-
-            if not os.getenv('NO_DPKG_CONFIGURE'):
+        if not os.getenv('NO_DPKG_CONFIGURE'):
+            with OnlRfsContext(dir_, resolvconf=False):
                 self.dpkg_configure(dir_)
 
-
+        with OnlRfsContext(dir_):
             os_release = os.path.join(dir_, 'etc', 'os-release')
             if os.path.exists(os_release):
                 # Convert /etc/os-release to /etc/os-release.json
@@ -396,6 +433,11 @@ rm -f /usr/sbin/policy-rc.d
 
             Configure = self.config.get('Configure', None)
             if Configure:
+
+                for cmd in Configure.get('run', []):
+                    onlu.execute("sudo chroot %s %s" % (dir_, cmd),
+                                 ex=OnlRfsError("run command '%s' failed" % cmd))
+
                 for overlay in Configure.get('overlays', []):
                     logger.info("Overlay %s..." % overlay)
                     onlu.execute('tar -C %s -c --exclude "*~" . | sudo tar -C %s -x -v --no-same-owner' % (overlay, dir_),
@@ -555,9 +597,55 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute("sudo chmod a-w %s" % fn)
 
 
+    def update(self, dir_, packages):
 
-        finally:
-            onlu.execute("sudo umount -l %s %s" % (os.path.join(dir_, "dev"), os.path.join(dir_, "proc")))
+        ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
+
+        with OnlRfsContext(dir_):
+            for pspec in packages:
+                for pkg in pspec.split(','):
+                    logger.info("updating %s into %s", pkg, dir_)
+                    cmd = (ONLPM, '--verbose',
+                           '--sudo',
+                           '--extract-dir', pkg, dir_,)
+                    onlu.execute(cmd,
+                                 ex=OnlRfsError("update of %s failed" % pkg))
+
+    def install(self, dir_, packages):
+
+        ONLPM = "%s/tools/onlpm.py" % os.getenv('ONL')
+
+        with OnlRfsContext(dir_):
+            for pspec in packages:
+                for pkg in pspec.split(','):
+
+                    cmd = (ONLPM, '--lookup', pkg,)
+                    try:
+                        buf = subprocess.check_output(cmd)
+                    except subprocess.CalledProcessError as ex:
+                        logger.error("cannot find %s", pkg)
+                        raise ValueError("update failed")
+
+                    if not buf.strip():
+                        raise ValueError("cannot find %s" % pkg)
+                    src = buf.splitlines(False)[0]
+                    d, b = os.path.split(src)
+                    dst = os.path.join(dir_, "tmp", b)
+                    shutil.copy2(src, dst)
+                    src2 = os.path.join("/tmp", b)
+
+                    logger.info("installing %s into %s", pkg, dir_)
+                    cmd = ('/usr/bin/rfs-dpkg', '-i', src2,)
+                    onlu.execute(cmd,
+                                 chroot=dir_,
+                                 ex=OnlRfsError("install of %s failed" % pkg))
+
+                    name, _, _ = pkg.partition(':')
+                    logger.info("updating dependencies for %s", pkg)
+                    cmd = ('/usr/bin/rfs-apt-get', '-f', 'install', name,)
+                    onlu.execute(cmd,
+                                 chroot=dir_,
+                                 ex=OnlRfsError("install of %s failed" % pkg))
 
 
 if __name__ == '__main__':
@@ -575,6 +663,11 @@ if __name__ == '__main__':
     ap.add_argument("--cpio")
     ap.add_argument("--squash")
     ap.add_argument("--enable-root")
+
+    ap.add_argument("--no-configure", action='store_true')
+    ap.add_argument("--update", action='append')
+    ap.add_argument("--install", action='append')
+
     ops = ap.parse_args()
 
     if ops.enable_root:
@@ -627,7 +720,14 @@ if __name__ == '__main__':
         if not ops.no_multistrap and not os.getenv('NO_MULTISTRAP'):
             x.multistrap(ops.dir)
 
-        x.configure(ops.dir)
+        if not ops.no_configure and not os.getenv('NO_DPKG_CONFIGURE'):
+            x.configure(ops.dir)
+
+        if ops.update:
+            x.update(ops.dir, ops.update)
+
+        if ops.install:
+            x.install(ops.dir, ops.install)
 
         if ops.cpio:
             if onlu.execute("%s/tools/scripts/make-cpio.sh %s %s" % (os.getenv('ONL'), ops.dir, ops.cpio)) != 0:

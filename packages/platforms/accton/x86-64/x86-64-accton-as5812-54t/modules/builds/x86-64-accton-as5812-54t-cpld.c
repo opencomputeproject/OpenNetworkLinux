@@ -346,6 +346,13 @@ static int as5812_54t_cpld_probe(struct i2c_client *client,
 
 	as5812_54t_cpld_add_client(client);
 
+    /*
+     * Bring QSFPs out of reset,
+     * This is a temporary fix until the QSFP+_MOD_RST register
+     * can be exposed through the driver.
+     */
+    as5812_54t_cpld_write_internal(client, 0x23, 0x3F);
+
 	dev_info(&client->dev, "%s: cpld '%s'\n",
 		 dev_name(data->hwmon_dev), client->name);
 

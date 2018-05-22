@@ -99,6 +99,8 @@
 #define X86_64_NETBERG_AURORA_620_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD 3000
 #endif
 
+
+
 /**
  * All compile time options can be queried or displayed
  */

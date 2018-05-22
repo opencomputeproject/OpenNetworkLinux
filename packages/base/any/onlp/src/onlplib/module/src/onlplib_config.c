@@ -95,7 +95,7 @@ onlplib_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; onlplib_config_settings[i].name; i++) {
-        if(strcmp(onlplib_config_settings[i].name, setting)) {
+        if(!strcmp(onlplib_config_settings[i].name, setting)) {
             return onlplib_config_settings[i].value;
         }
     }

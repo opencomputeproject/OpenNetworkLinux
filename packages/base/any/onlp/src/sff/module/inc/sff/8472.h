@@ -149,6 +149,9 @@
 #define SFF8472_CC36_XGE_UNALLOCATED      0x01
 #define SFF8472_CC36_UNALLOCATED1         0xF7
 #define SFF8472_CC36_100G_25G_SR          0x02
+#define SFF8472_CC36_100G_25G_LR          0x03
+#define SFF8472_CC36_100G_25G_AOC_1       0x01
+#define SFF8472_CC36_100G_25G_AOC_2       0x18
 
 #define SFF8471_CC60_FC_PI_4_LIMITING     0x08
 #define SFF8471_CC60_SFF8431_LIMITING     0x04
@@ -986,4 +989,30 @@ _sff8472_media_sfp28_sr(const uint8_t* idprom)
     return 0;
 }
 
+static inline int
+_sff8472_media_sfp28_lr(const uint8_t* idprom)
+{
+    /* module should be sfp */
+    if (!SFF8472_MODULE_SFP(idprom)) return 0;
+
+    if (idprom[12] != 0xFF) return 0;
+    if (idprom[36] == SFF8472_CC36_100G_25G_LR) return 1;
+
+    return 0;
+}
+
+static inline int
+_sff8472_media_sfp28_aoc(const uint8_t* idprom)
+{
+    /* module should be sfp */
+    if (!SFF8472_MODULE_SFP(idprom)) return 0;
+
+    if (idprom[12] != 0xFF) return 0;
+    if ((idprom[36] == SFF8472_CC36_100G_25G_AOC_1) ||
+         (idprom[36] == SFF8472_CC36_100G_25G_AOC_2)) {
+        return 1;
+    }
+
+    return 0;
+}
 #endif

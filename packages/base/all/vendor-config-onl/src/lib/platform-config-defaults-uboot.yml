@@ -47,10 +47,10 @@ default:
       <<: *arm-iproc-kernel-package
 
     arm64-kernel-package: &arm64-kernel-package
-      package: onl-kernel-3.18.25-arm64-all:arm64
+      package: onl-kernel-4.9-lts-arm64-all:arm64
 
     arm64-kernel: &arm64-kernel
-      =: kernel-3.18.25-arm64-all.bin.gz
+      =: kernel-4.9-lts-arm64-all.bin.gz
       <<: *arm64-kernel-package
 
     ##############################
@@ -127,6 +127,13 @@ default:
     mmc_bootcmds: &mmc_bootcmds
     - mmc part 0
     - ext2load mmc 0:1 $onl_loadaddr $onl_itb
+    - "bootm $onl_loadaddr#$onl_platform"
+
+    #ubifs to boot onl
+    flash_bootcmds: &flash_bootcmds
+    - ubi part open
+    - ubifsmount ONL-BOOT
+    - ubifsload $loadaddr  $onl_itb
     - "bootm $onl_loadaddr#$onl_platform"
 
     nos_bootcmds: *ide_bootcmds

@@ -26,7 +26,7 @@ include $(ONL)/make/config.amd64.mk
 MODULE := libonlp-x86-64-mlnx-msn2410
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM IOF x86_64_mlnx_msn2410 onlplib
+DEPENDMODULES := AIM IOF mlnx_common x86_64_mlnx_msn2410 onlplib
 DEPENDMODULE_HEADERS := sff
 
 include $(BUILDER)/dependmodules.mk
@@ -37,6 +37,7 @@ include $(BUILDER)/so.mk
 .DEFAULT_GOAL := $(SHAREDLIB)
 
 GLOBAL_CFLAGS += -I$(onlp_BASEDIR)/module/inc
+GLOBAL_CFLAGS += -I$(mlnx_common_BASEDIR)/module/inc
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MODULES_INIT=1
 GLOBAL_CFLAGS += -fPIC
 GLOBAL_LINK_LIBS += -lpthread

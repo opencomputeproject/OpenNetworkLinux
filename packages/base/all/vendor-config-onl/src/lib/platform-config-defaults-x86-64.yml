@@ -31,6 +31,11 @@ default:
       =: kernel-4.9-lts-x86_64-all
       package: onl-kernel-4.9-lts-x86-64-all:amd64
 
+
+    kernel-4.14: &kernel-4-14
+      =: kernel-4.14-lts-x86_64-all
+      package: onl-kernel-4.14-lts-x86-64-all:amd64
+
     # pick one of the above kernels
     kernel:
       <<: *kernel-3-16

@@ -114,6 +114,7 @@ installer_mkchroot() {
   fi
   mount -t devpts devpts "${rootdir}/dev/pts"
   if test -d "${rootdir}/sys/firmware/efi/efivars"; then
+    modprobe efivarfs || :
     mount -t efivarfs efivarfs "${rootdir}/sys/firmware/efi/efivars"
   fi
 

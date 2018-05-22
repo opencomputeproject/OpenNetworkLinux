@@ -80,7 +80,7 @@ arm_accton_as4610_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; arm_accton_as4610_config_settings[i].name; i++) {
-        if(strcmp(arm_accton_as4610_config_settings[i].name, setting)) {
+        if(!strcmp(arm_accton_as4610_config_settings[i].name, setting)) {
             return arm_accton_as4610_config_settings[i].value;
         }
     }

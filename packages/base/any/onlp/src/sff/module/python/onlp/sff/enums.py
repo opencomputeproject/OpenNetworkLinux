@@ -43,22 +43,25 @@ class SFF_MODULE_TYPE(Enumeration):
     _40G_BASE_SM4 = 13
     _40G_BASE_ER4 = 14
     _25G_BASE_CR = 15
-    _10G_BASE_SR = 16
-    _10G_BASE_LR = 17
-    _10G_BASE_LRM = 18
-    _10G_BASE_ER = 19
-    _10G_BASE_CR = 20
-    _10G_BASE_SX = 21
-    _10G_BASE_LX = 22
-    _10G_BASE_ZR = 23
-    _10G_BASE_SRL = 24
-    _1G_BASE_SX = 25
-    _1G_BASE_LX = 26
-    _1G_BASE_CX = 27
-    _1G_BASE_T = 28
-    _100_BASE_LX = 29
-    _100_BASE_FX = 30
-    _4X_MUX = 31
+    _25G_BASE_SR = 16
+    _25G_BASE_LR = 17
+    _25G_BASE_AOC = 18
+    _10G_BASE_SR = 19
+    _10G_BASE_LR = 20
+    _10G_BASE_LRM = 21
+    _10G_BASE_ER = 22
+    _10G_BASE_CR = 23
+    _10G_BASE_SX = 24
+    _10G_BASE_LX = 25
+    _10G_BASE_ZR = 26
+    _10G_BASE_SRL = 27
+    _1G_BASE_SX = 28
+    _1G_BASE_LX = 29
+    _1G_BASE_CX = 30
+    _1G_BASE_T = 31
+    _100_BASE_LX = 32
+    _100_BASE_FX = 33
+    _4X_MUX = 34
 
 
 class SFF_SFP_TYPE(Enumeration):
@@ -66,5 +69,6 @@ class SFF_SFP_TYPE(Enumeration):
     QSFP = 1
     QSFP_PLUS = 2
     QSFP28 = 3
+    SFP28 = 4
 
 # <auto.end.pyenum(ALL).define>

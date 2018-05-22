@@ -8,22 +8,22 @@ cdefs: &cdefs
 - X86_64_DELTA_AGC7648A_CONFIGINCLUDE_LOGGING:
     doc: "Include or exclude logging."
     default: 1
-- X86_64_DELTA_AGC7648A_CONFIGLOG_OPTIONS_DEFAULT:
+- X86_64_DELTA_AGC7648A_CONFIG_LOG_OPTIONS_DEFAULT:
     doc: "Default enabled log options."
     default: AIM_LOG_OPTIONS_DEFAULT
-- X86_64_DELTA_AGC7648A_CONFIGLOG_BITS_DEFAULT:
+- X86_64_DELTA_AGC7648A_CONFIG_LOG_BITS_DEFAULT:
     doc: "Default enabled log bits."
     default: AIM_LOG_BITS_DEFAULT
-- X86_64_DELTA_AGC7648A_CONFIGLOG_CUSTOM_BITS_DEFAULT:
+- X86_64_DELTA_AGC7648A_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
     doc: "Default enabled custom log bits."
     default: 0
-- X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB:
+- X86_64_DELTA_AGC7648A_CONFIG_PORTING_STDLIB:
     doc: "Default all porting macros to use the C standard libraries."
     default: 1
-- X86_64_DELTA_AGC7648A_CONFIGPORTING_INCLUDE_STDLIB_HEADERS:
+- X86_64_DELTA_AGC7648A_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
     doc: "Include standard library headers for stdlib porting macros."
     default: X86_64_DELTA_AGC7648A_CONFIGPORTING_STDLIB
-- X86_64_DELTA_AGC7648A_CONFIGINCLUDE_UCLI:
+- X86_64_DELTA_AGC7648A_CONFIG_INCLUDE_UCLI:
     doc: "Include generic uCli support."
     default: 0
 - X86_64_DELTA_AGC7648A_CONFIGINCLUDE_DEFAULT_FAN_DIRECTION:
@@ -33,7 +33,7 @@ cdefs: &cdefs
 
 definitions:
   cdefs:
-    X86_64_DELTA_AGC7648A_CONFIGHEADER:
+    X86_64_DELTA_AGC7648A_CONFIG_HEADER:
       defs: *cdefs
       basename: x86_64_delta_agc7648a_config
 

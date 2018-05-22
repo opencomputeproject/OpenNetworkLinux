@@ -3,7 +3,7 @@
 # 
 #
 ###############################################################################
-include ../../init.mk
+include $(ONL)/make/config.mk
 MODULE := x86_64_mlnx_msn2100
 AUTOMODULE := x86_64_mlnx_msn2100
 include $(BUILDER)/definemodule.mk

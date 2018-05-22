@@ -55,7 +55,7 @@ quanta_sys_eeprom_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; quanta_sys_eeprom_config_settings[i].name; i++) {
-        if(strcmp(quanta_sys_eeprom_config_settings[i].name, setting)) {
+        if(!strcmp(quanta_sys_eeprom_config_settings[i].name, setting)) {
             return quanta_sys_eeprom_config_settings[i].value;
         }
     }

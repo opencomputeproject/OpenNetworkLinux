@@ -7,3 +7,7 @@ driver-support-intel-igb-bcm5461-phy.patch
 0006-Mellanox-switch-drivers-changes.patch
 0007-hwmon-pmbus-Add-support-for-Intel-VID-protocol-VR13.patch
 0008-hwmon-pmbus-Add-support-for-Texas-Instruments-tps536.patch
+0009-platform-mellonox-introduce-mlxreg-io-driver-and-add.patch
+0010-platform-mellanox-mlxreg-hotplug-driver-add-check-fo.patch
+0011-platform-x86-mlx-platform-new-features.patch
+0012-i2c-busses-Add-capabilities-to-i2c-mlxcpld.patch

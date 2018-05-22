@@ -283,6 +283,12 @@ static struct i2c_board_info ix8_i2c_devices[] = {
 		I2C_BOARD_INFO("pca9555", 0x20),		// 17 0x71 ch0 CPU Board Data
 		.platform_data = &pca9555_CPU_data,
 	},
+	{
+		I2C_BOARD_INFO("CPLDLED_IX8", 0x3a),	// 18 0x72 ch0 CPLD4 LED function of SFP28 & QSFP28 (Port27~56)
+	},
+	{
+		I2C_BOARD_INFO("CPLDLED_IX8", 0x39),	// 19 0x72 ch0 CPLD6 LED function of SFP28 & QSFP28 (Port1~26)
+	},
 };
 
 static struct platform_driver ix8_platform_driver = {
@@ -327,6 +333,8 @@ static int __init ix8_platform_init(void)
 
 	adapter = i2c_get_adapter(0x10);
 	client = i2c_new_device(adapter, &ix8_i2c_devices[10]);		// CPLD_1
+	client = i2c_new_device(adapter, &ix8_i2c_devices[18]);		// CPLD_4
+	client = i2c_new_device(adapter, &ix8_i2c_devices[19]);		// CPLD_6
 	i2c_put_adapter(adapter);
 
 	adapter = i2c_get_adapter(0x11);

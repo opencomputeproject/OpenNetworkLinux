@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH=master
 
-while getopts ":b:s:d:u:p:vc789r:" opt; do
+while getopts ":b:s:d:u:p:vVc789r:" opt; do
     case $opt in
         7)
             ONLB_OPTIONS=--7
@@ -37,6 +37,9 @@ while getopts ":b:s:d:u:p:vc789r:" opt; do
             ;;
         v)
             set -x
+            ;;
+        V)
+            export VERBOSE=1
             ;;
         r)
             export BUILDROOTMIRROR=$OPTARG
@@ -92,5 +95,13 @@ if ! make all; then
     echo Build Failed.
     exit 1
 fi
+
+make -C $ONL/REPO build-clean
+
+# Remove all installer/rootfs/swi packages from the repo. These do not need to be kept and take significant
+# amounts of time to transfer.
+find $ONL/REPO -name "*-installer_0.*" -delete
+find $ONL/REPO -name "*-rootfs_0.*" -delete
+find $ONL/REPO -name "*-swi_0*" -delete
 
 echo Build Succeeded.

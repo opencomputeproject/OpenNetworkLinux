@@ -28,6 +28,7 @@
 #include <onlplib/file.h>
 #include <fcntl.h>
 #include "platform_lib.h"
+#include "x86_64_accton_as5812_54x/x86_64_accton_as5812_54x_config.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD  "/sys/devices/platform/as5812_54x_fan/"
 #define PREFIX_PATH_ON_PSU  "/sys/bus/i2c/devices/"
@@ -191,7 +192,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     info->rpm = (info->rpm + atoi(r_data))/2;
 
     /* get speed percentage from rpm */
-    info->percentage = (info->rpm * 100)/16800;        
+    info->percentage = (info->rpm * 100)/x86_64_accton_as5812_54x_CONFIG_SYS_FAN_FRONT_RPM_MAX;
 
     /* check present */        
     if (info->rpm > 0)

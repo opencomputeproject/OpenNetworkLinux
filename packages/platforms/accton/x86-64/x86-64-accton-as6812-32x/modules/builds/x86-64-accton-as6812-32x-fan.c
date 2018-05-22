@@ -32,6 +32,7 @@
 #include <linux/kthread.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/delay.h>
 
 #define FAN_MAX_NUMBER                   5
 #define FAN_SPEED_CPLD_TO_RPM_STEP       150
@@ -137,8 +138,8 @@ static ssize_t fan_set_duty_cycle(struct device *dev,
 static ssize_t fan_show_value(struct device *dev, 
                     struct device_attribute *da, char *buf);
 
-extern int as6812_32x_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-extern int as6812_32x_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as6812_32x_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as6812_32x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
                     
 /*******************/
@@ -257,18 +258,18 @@ static const struct attribute_group accton_as6812_32x_fan_group = {
 
 static int accton_as6812_32x_fan_read_value(u8 reg)
 {
-    return as6812_32x_i2c_cpld_read(0x60, reg);
+    return as6812_32x_cpld_read(0x60, reg);
 }
 
 static int accton_as6812_32x_fan_write_value(u8 reg, u8 value)
 {
-    return as6812_32x_i2c_cpld_write(0x60, reg, value);
+    return as6812_32x_cpld_write(0x60, reg, value);
 }
 
 static void accton_as6812_32x_fan_update_device(struct device *dev)
 {
     int speed, r_speed, fault, r_fault, direction, ctrl_speed;
-    int i;
+    int i, retry_count;
     
     mutex_lock(&fan_data->update_lock);
 
@@ -298,6 +299,7 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
 
     for (i = 0; i < FAN_MAX_NUMBER; i++)
     {
+        retry_count = 5;
         /* Update fan data
          */
 
@@ -314,12 +316,21 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
         
         /* fan speed 
          */
-        speed   = accton_as6812_32x_fan_read_value(fan_speed_reg[i]);
-        r_speed = accton_as6812_32x_fan_read_value(fanr_speed_reg[i]);
-        if ( (speed < 0) || (r_speed < 0) )
-        {      
-            DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);      
-            goto _exit; /* error */ 
+        while (retry_count) {
+            retry_count--;
+            speed   = accton_as6812_32x_fan_read_value(fan_speed_reg[i]);
+            r_speed = accton_as6812_32x_fan_read_value(fanr_speed_reg[i]);
+            if ( (speed < 0) || (r_speed < 0) )
+            {
+                DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);
+                goto _exit; /* error */
+            }
+            if ( (speed == 0) || (r_speed == 0) )
+            {
+                msleep(200);
+                continue;
+            }
+            break;
         }
 
         DEBUG_PRINT("[fan%d:] speed:%d, r_speed=%d \n", i, speed, r_speed);    
@@ -385,11 +396,6 @@ static struct platform_driver accton_as6812_32x_fan_driver = {
 static int __init accton_as6812_32x_fan_init(void)
 {
     int ret;
-    
-    extern int platform_accton_as6812_32x(void);
-    if(!platform_accton_as6812_32x()) { 
-      return -ENODEV;
-    }
 
     ret = platform_driver_register(&accton_as6812_32x_fan_driver);
     if (ret < 0) {

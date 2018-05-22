@@ -55,8 +55,35 @@ static onlp_led_info_t led_info[] =
         { LED_OID_PSU2, "Chassis LED 4 (PSU2 LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { LED_OID_FAN_TRAY1, "Rear LED 1 (FAN TRAY1 LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { LED_OID_FAN_TRAY2, "Rear LED 2 (FAN TRAY2 LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { LED_OID_FAN_TRAY3, "Rear LED 3 (FAN TRAY3 LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { LED_OID_FAN_TRAY4, "Rear LED 4 (FAN TRAY4 LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE |
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_AUTO,
     }
+
 };
+
+extern int sys_fan_info_get(onlp_fan_info_t* info, int id);
 
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
@@ -70,13 +97,56 @@ onlp_ledi_init(void)
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
-    int led_id;
+    int led_id, pw_exist, pw_good, rc, psu_mask, fan_id;
+    onlp_fan_info_t fan_info;
 
+    memset(&fan_info, 0, sizeof(onlp_fan_info_t));
     led_id = ONLP_OID_ID_GET(id);
 
     *info = led_info[led_id];
-    info->status |= ONLP_LED_STATUS_ON;
-    info->mode |= ONLP_LED_MODE_ON;
+
+    if (id == LED_OID_PSU1 || id == LED_OID_PSU2) {
+        if (id == LED_OID_PSU1) {
+            psu_mask = PSU1_MUX_MASK;
+        } else {
+            psu_mask = PSU2_MUX_MASK;
+        }
+        /* check psu status */
+        if ((rc = psu_present_get(&pw_exist, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        if ((rc = psu_pwgood_get(&pw_good, I2C_BUS_0, psu_mask)) != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        /* psu not present */
+        if (pw_exist != PSU_STATUS_PRESENT) {
+            info->status &= ~ONLP_LED_STATUS_ON;
+            info->mode = ONLP_LED_MODE_OFF;
+        } else if (pw_good != PSU_STATUS_POWER_GOOD) {
+            info->status |= ONLP_LED_STATUS_ON;
+            info->mode |= ONLP_LED_MODE_ORANGE; 
+        } else {
+            info->status |= ONLP_LED_STATUS_ON;
+            info->mode |= ONLP_LED_MODE_GREEN;
+        }
+    } else if (id == LED_OID_FAN) {
+        info->status |= ONLP_LED_STATUS_ON;
+        info->mode |= ONLP_LED_MODE_GREEN;
+        for (fan_id=FAN_ID_FAN1; fan_id<=FAN_ID_FAN8; ++fan_id) {
+            rc = sys_fan_info_get(&fan_info, fan_id);
+            if (rc != ONLP_STATUS_OK || fan_info.status & ONLP_FAN_STATUS_FAILED) {
+                info->mode &= ~ONLP_LED_MODE_GREEN;
+                info->mode |= ONLP_LED_MODE_ORANGE;
+                break;
+            }
+        }
+    } else if (id == LED_OID_SYSTEM) {
+        info->status |= ONLP_LED_STATUS_ON;
+        info->mode |= ONLP_LED_MODE_GREEN;
+    } else {
+        info->status |= ONLP_LED_STATUS_ON;
+        info->mode |= ONLP_LED_MODE_ON;
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -124,6 +194,12 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             break;
         case LED_PSU2_LED:
             rc = psu2_led_set(mode);
+            break;
+        case LED_FAN_TRAY1:
+        case LED_FAN_TRAY2:
+        case LED_FAN_TRAY3:
+        case LED_FAN_TRAY4:
+            rc = fan_tray_led_set(id, mode);
             break;
         default:
             return ONLP_STATUS_E_INTERNAL;

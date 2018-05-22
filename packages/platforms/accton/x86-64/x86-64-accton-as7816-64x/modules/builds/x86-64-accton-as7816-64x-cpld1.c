@@ -45,6 +45,8 @@ struct cpld_client_node {
 #define I2C_RW_RETRY_COUNT				10
 #define I2C_RW_RETRY_INTERVAL			60 /* ms */
 
+static ssize_t show_psu(struct device *dev, struct device_attribute *da,
+             char *buf);
 static ssize_t show_present(struct device *dev, struct device_attribute *da,
              char *buf);
 static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
@@ -66,6 +68,8 @@ struct as7816_64x_cpld_data {
 static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 
 #define TRANSCEIVER_PRESENT_ATTR_ID(index)   MODULE_PRESENT_##index
+#define PSU_PRESENT_ATTR_ID(index)		     PSU##index##_PRESENT
+#define PSU_POWERGOOD_ATTR_ID(index)  	     PSU##index##_POWER_GOOD
 
 enum as7816_64x_cpld_sysfs_attributes {
 	CPLD_VERSION,
@@ -136,6 +140,12 @@ enum as7816_64x_cpld_sysfs_attributes {
 	TRANSCEIVER_PRESENT_ATTR_ID(62),
 	TRANSCEIVER_PRESENT_ATTR_ID(63),
 	TRANSCEIVER_PRESENT_ATTR_ID(64),
+
+	/* psu attributes */
+    PSU_PRESENT_ATTR_ID(1),
+    PSU_PRESENT_ATTR_ID(2),
+    PSU_POWERGOOD_ATTR_ID(1),
+    PSU_POWERGOOD_ATTR_ID(2),
 };
 
 /* sysfs attributes for hwmon 
@@ -145,6 +155,14 @@ enum as7816_64x_cpld_sysfs_attributes {
 #define DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_present, NULL, MODULE_PRESENT_##index)
 #define DECLARE_TRANSCEIVER_ATTR(index)  &sensor_dev_attr_module_present_##index.dev_attr.attr
+
+/* psu attributes */
+#define DECLARE_PSU_SENSOR_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(psu##index##_present,    S_IRUGO, show_psu, NULL, PSU##index##_PRESENT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_power_good, S_IRUGO, show_psu, NULL, PSU##index##_POWER_GOOD);
+#define DECLARE_PSU_ATTR(index) \
+    &sensor_dev_attr_psu##index##_present.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_power_good.dev_attr.attr
 
 static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
@@ -215,6 +233,10 @@ DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(62);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(63);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(64);
 
+/* psu attributes*/
+DECLARE_PSU_SENSOR_DEVICE_ATTR(1);
+DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
+
 static struct attribute *as7816_64x_cpld_attributes[] = {
     &sensor_dev_attr_version.dev_attr.attr,
     &sensor_dev_attr_access.dev_attr.attr,
@@ -284,12 +306,52 @@ static struct attribute *as7816_64x_cpld_attributes[] = {
 	DECLARE_TRANSCEIVER_ATTR(62),
 	DECLARE_TRANSCEIVER_ATTR(63),
 	DECLARE_TRANSCEIVER_ATTR(64),
+
+    /* psu attributes*/
+	DECLARE_PSU_ATTR(1),
+	DECLARE_PSU_ATTR(2),
 	NULL
 };
 
 static const struct attribute_group as7816_64x_cpld_group = {
 	.attrs = as7816_64x_cpld_attributes,
 };
+
+static ssize_t show_psu(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7816_64x_cpld_data *data = i2c_get_clientdata(client);
+	int status = 0, value = 0;
+    
+    mutex_lock(&data->update_lock);
+	status = as7816_64x_cpld_read_internal(client, 0x03);
+	if (unlikely(status < 0)) {
+		goto exit;
+	}
+	mutex_unlock(&data->update_lock);
+
+	switch (attr->index) {
+		case PSU1_PRESENT:
+		case PSU2_PRESENT:
+			value = !(status & BIT(attr->index - PSU1_PRESENT));
+			break;
+		case PSU1_POWER_GOOD:
+		case PSU2_POWER_GOOD:
+			value = !!(status & BIT(attr->index - PSU1_POWER_GOOD + 2));
+			break;
+		default:
+			return 0;
+	}
+
+
+	return sprintf(buf, "%d\n", value);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
 
 static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
              char *buf)

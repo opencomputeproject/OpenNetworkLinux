@@ -11,7 +11,7 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
         self.insmod('optoe')
         self.insmod('ym2651y')
         self.insmod('accton_i2c_cpld')
-        for m in [ 'fan', 'cpld1', 'psu', 'leds' ]:
+        for m in [ 'fan', 'cpld1', 'leds' ]:
             self.insmod("x86-64-accton-as7816-64x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -25,11 +25,11 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
                 ('pca9548', 0x73, 1),
 
                 # initiate PSU-1
-                ('as7816_64x_psu1', 0x53, 10),
+                ('24c02', 0x53, 10),
                 ('ym2851', 0x5b, 10),
 
                 # initiate PSU-2
-                ('as7816_64x_psu2', 0x50, 9),
+                ('24c02', 0x50, 9),
                 ('ym2851', 0x58, 9),
 
                 # initiate chassis fan

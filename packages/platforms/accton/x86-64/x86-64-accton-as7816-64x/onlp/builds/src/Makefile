@@ -3,7 +3,7 @@
 #
 #
 ###############################################################################
-include ../../init.mk
+include $(ONL)/make/config.mk
 MODULE := x86_64_accton_as7816_64x
 AUTOMODULE := x86_64_accton_as7816_64x
 include $(BUILDER)/definemodule.mk
