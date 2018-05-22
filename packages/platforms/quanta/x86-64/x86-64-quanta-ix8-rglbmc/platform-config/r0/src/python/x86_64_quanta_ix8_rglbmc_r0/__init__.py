@@ -17,6 +17,7 @@ class OnlPlatform_x86_64_quanta_ix8_rglbmc_r0(OnlPlatformQuanta,
 
     def baseconfig(self):
         self.insmod("qci_cpld_sfp28")
+        self.insmod("qci_cpld_led")
         self.insmod("qci_platform_ix8")
 
         return True

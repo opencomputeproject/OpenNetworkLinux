@@ -141,6 +141,9 @@ if has_boot_env onl_installer_debug; then installer_debug=1; fi
 if test "$installer_debug"; then
   echo "Debug mode"
   set -x
+  installer_wait=30
+else
+  installer_wait=3
 fi
 
 # Pickup ONIE defines for this machine.
@@ -254,7 +257,7 @@ if test "${onie_platform}"; then
 
     installer_umount
 
-    if installer_reboot; then
+    if installer_reboot $installer_wait; then
       :
     else
       sync
@@ -587,7 +590,7 @@ trap - 0 1
 installer_umount
 
 if test "${onie_platform}"; then
-  installer_reboot
+  installer_reboot $installer_wait
 fi
 
 exit
