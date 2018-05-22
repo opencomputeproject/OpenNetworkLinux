@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_MALLOC
+#ifndef x86_64_accton_as5916_54x_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define X86_64_ACCTON_AS5916_54X_MALLOC GLOBAL_MALLOC
+        #define x86_64_accton_as5916_54x_MALLOC GLOBAL_MALLOC
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_MALLOC malloc
+        #define x86_64_accton_as5916_54x_MALLOC malloc
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_MALLOC is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_FREE
+#ifndef x86_64_accton_as5916_54x_FREE
     #if defined(GLOBAL_FREE)
-        #define X86_64_ACCTON_AS5916_54X_FREE GLOBAL_FREE
+        #define x86_64_accton_as5916_54x_FREE GLOBAL_FREE
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_FREE free
+        #define x86_64_accton_as5916_54x_FREE free
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_FREE is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_MEMSET
+#ifndef x86_64_accton_as5916_54x_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define X86_64_ACCTON_AS5916_54X_MEMSET GLOBAL_MEMSET
+        #define x86_64_accton_as5916_54x_MEMSET GLOBAL_MEMSET
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_MEMSET memset
+        #define x86_64_accton_as5916_54x_MEMSET memset
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_MEMSET is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_MEMCPY
+#ifndef x86_64_accton_as5916_54x_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define X86_64_ACCTON_AS5916_54X_MEMCPY GLOBAL_MEMCPY
+        #define x86_64_accton_as5916_54x_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_MEMCPY memcpy
+        #define x86_64_accton_as5916_54x_MEMCPY memcpy
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_MEMCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_STRNCPY
+#ifndef x86_64_accton_as5916_54x_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define X86_64_ACCTON_AS5916_54X_STRNCPY GLOBAL_STRNCPY
+        #define x86_64_accton_as5916_54x_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_STRNCPY strncpy
+        #define x86_64_accton_as5916_54x_STRNCPY strncpy
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_STRNCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_VSNPRINTF
+#ifndef x86_64_accton_as5916_54x_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define X86_64_ACCTON_AS5916_54X_VSNPRINTF GLOBAL_VSNPRINTF
+        #define x86_64_accton_as5916_54x_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_VSNPRINTF vsnprintf
+        #define x86_64_accton_as5916_54x_VSNPRINTF vsnprintf
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_VSNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_SNPRINTF
+#ifndef x86_64_accton_as5916_54x_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define X86_64_ACCTON_AS5916_54X_SNPRINTF GLOBAL_SNPRINTF
+        #define x86_64_accton_as5916_54x_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_SNPRINTF snprintf
+        #define x86_64_accton_as5916_54x_SNPRINTF snprintf
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_SNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5916_54X_STRLEN
+#ifndef x86_64_accton_as5916_54x_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define X86_64_ACCTON_AS5916_54X_STRLEN GLOBAL_STRLEN
+        #define x86_64_accton_as5916_54x_STRLEN GLOBAL_STRLEN
     #elif X86_64_ACCTON_AS5916_54X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5916_54X_STRLEN strlen
+        #define x86_64_accton_as5916_54x_STRLEN strlen
     #else
-        #error The macro X86_64_ACCTON_AS5916_54X_STRLEN is required but cannot be defined.
+        #error The macro x86_64_accton_as5916_54x_STRLEN is required but cannot be defined.
     #endif
 #endif
 

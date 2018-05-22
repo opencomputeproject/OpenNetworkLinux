@@ -3,7 +3,7 @@
 # 
 #
 ###############################################################################
-include $(ONL)/make/config.mk
+include ../../init.mk
 MODULE := x86_64_delta_ag5648
 AUTOMODULE := x86_64_delta_ag5648
 include $(BUILDER)/definemodule.mk

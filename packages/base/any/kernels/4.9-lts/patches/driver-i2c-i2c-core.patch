@@ -1,0 +1,39 @@
+diff --git a/drivers/i2c/i2c-core.c b/drivers/i2c/i2c-core.c
+index 35c0bc6..25878eb 100644
+--- a/drivers/i2c/i2c-core.c
++++ b/drivers/i2c/i2c-core.c
+@@ -62,6 +62,8 @@
+ static DEFINE_MUTEX(core_lock);
+ static DEFINE_IDR(i2c_adapter_idr);
+ 
++static char i2c_dev_auto_detect = 1;
++
+ static struct device_type i2c_client_type;
+ static int i2c_detect(struct i2c_adapter *adapter, struct i2c_driver *driver);
+ 
+@@ -2011,6 +2013,9 @@ static int i2c_detect(struct i2c_adapter *adapter, struct i2c_driver *driver)
+ 	if (!driver->detect || !address_list)
+ 		return 0;
+ 
++	if (i2c_dev_auto_detect == 0)
++		return 0;
++
+ 	/* Stop here if the classes do not match */
+ 	if (!(adapter->class & driver->class))
+ 		return 0;
+@@ -2617,6 +2622,15 @@ trace:
+ }
+ EXPORT_SYMBOL(i2c_smbus_xfer);
+ 
++static int __init __i2c_dev_auto_detect(char *str)
++{
++	if (str[0] == '0')
++		i2c_dev_auto_detect = 0;
++
++    return 1;
++}
++__setup("i2c_dev_auto_detect=", __i2c_dev_auto_detect);
++
+ MODULE_AUTHOR("Simon G. Vogl <simon@tk.uni-linz.ac.at>");
+ MODULE_DESCRIPTION("I2C-Bus main module");
+ MODULE_LICENSE("GPL");
