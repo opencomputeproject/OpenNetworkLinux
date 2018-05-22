@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/no-platform-modules.yml ARCH=amd64 VENDOR=ingrasys BASENAME=x86-64-ingrasys-s9180-32x KERNELS="onl-kernel-3.16-lts-x86-64-all:amd64"
