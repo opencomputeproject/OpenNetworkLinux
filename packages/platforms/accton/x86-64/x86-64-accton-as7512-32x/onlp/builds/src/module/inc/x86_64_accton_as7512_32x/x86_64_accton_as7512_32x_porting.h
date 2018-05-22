@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if x86_64_accton_as7512_32x_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_MALLOC
+#ifndef x86_64_accton_as7512_32x_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define X86_64_ACCTON_AS7512_32X_MALLOC GLOBAL_MALLOC
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_MALLOC malloc
+        #define x86_64_accton_as7512_32x_MALLOC GLOBAL_MALLOC
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_MALLOC malloc
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_MALLOC is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_FREE
+#ifndef x86_64_accton_as7512_32x_FREE
     #if defined(GLOBAL_FREE)
-        #define X86_64_ACCTON_AS7512_32X_FREE GLOBAL_FREE
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_FREE free
+        #define x86_64_accton_as7512_32x_FREE GLOBAL_FREE
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_FREE free
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_FREE is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_MEMSET
+#ifndef x86_64_accton_as7512_32x_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define X86_64_ACCTON_AS7512_32X_MEMSET GLOBAL_MEMSET
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_MEMSET memset
+        #define x86_64_accton_as7512_32x_MEMSET GLOBAL_MEMSET
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_MEMSET memset
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_MEMSET is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_MEMCPY
+#ifndef x86_64_accton_as7512_32x_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define X86_64_ACCTON_AS7512_32X_MEMCPY GLOBAL_MEMCPY
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_MEMCPY memcpy
+        #define x86_64_accton_as7512_32x_MEMCPY GLOBAL_MEMCPY
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_MEMCPY memcpy
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_MEMCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_STRNCPY
+#ifndef x86_64_accton_as7512_32x_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define X86_64_ACCTON_AS7512_32X_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_STRNCPY strncpy
+        #define x86_64_accton_as7512_32x_STRNCPY GLOBAL_STRNCPY
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_STRNCPY strncpy
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_STRNCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_VSNPRINTF
+#ifndef x86_64_accton_as7512_32x_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define X86_64_ACCTON_AS7512_32X_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_VSNPRINTF vsnprintf
+        #define x86_64_accton_as7512_32x_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_VSNPRINTF vsnprintf
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_VSNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_SNPRINTF
+#ifndef x86_64_accton_as7512_32x_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define X86_64_ACCTON_AS7512_32X_SNPRINTF GLOBAL_SNPRINTF
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_SNPRINTF snprintf
+        #define x86_64_accton_as7512_32x_SNPRINTF GLOBAL_SNPRINTF
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_SNPRINTF snprintf
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_SNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7512_32X_STRLEN
+#ifndef x86_64_accton_as7512_32x_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define X86_64_ACCTON_AS7512_32X_STRLEN GLOBAL_STRLEN
-    #elif X86_64_ACCTON_AS7512_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7512_32X_STRLEN strlen
+        #define x86_64_accton_as7512_32x_STRLEN GLOBAL_STRLEN
+    #elif x86_64_accton_as7512_32x_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_accton_as7512_32x_STRLEN strlen
     #else
-        #error The macro X86_64_ACCTON_AS7512_32X_STRLEN is required but cannot be defined.
+        #error The macro x86_64_accton_as7512_32x_STRLEN is required but cannot be defined.
     #endif
 #endif
 
