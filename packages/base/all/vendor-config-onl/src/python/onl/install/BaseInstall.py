@@ -726,6 +726,9 @@ class GrubInstaller(SubprocessMixin, Base):
         ctx['boot_loading_name'] = sysconfig.installer.os_name
 
         if self.isUEFI:
+            if not self.espFsUuid:
+                self.log.error("cannnot find ESP UUID")
+                return 1
             ctx['onie_boot_uuid'] = self.espFsUuid
         else:
             ctx['onie_boot_uuid'] = ""
@@ -845,6 +848,16 @@ class GrubInstaller(SubprocessMixin, Base):
         """Upgrade the boot loader settings."""
 
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
+
+        code = self.findGpt()
+        if code: return code
+
+        if self.isUEFI:
+            code = self.findEsp()
+            if code: return code
+            self.im.grubEnv.__dict__['espPart'] = self.espDevice
+        else:
+            self.im.grubEnv.__dict__['espPart'] = None
 
         code = self.installGrubCfg()
         if code: return code

@@ -77,6 +77,10 @@ sff_module_types: &sff_module_types
     desc: "25GBASE-CR"
 - 25G_BASE_SR:
     desc: "25GBASE-SR"
+- 25G_BASE_LR:
+    desc: "25GBASE-LR"
+- 25G_BASE_AOC:
+    desc: "25GBASE-AOC"
 - 10G_BASE_SR:
     desc: "10GBASE-SR"
 - 10G_BASE_LR:

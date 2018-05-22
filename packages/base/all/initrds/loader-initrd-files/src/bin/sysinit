@@ -36,6 +36,7 @@ trap "restoreconsole; reboot -f" EXIT
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 if [ -d /sys/firmware/efi/efivars ]; then
+    modprobe efivarfs || :
     mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 fi
 mount -o remount,size=1M /dev
