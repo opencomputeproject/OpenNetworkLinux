@@ -89,8 +89,6 @@ class LoaderUpgrade_Fit(LoaderUpgradeBase):
                 path = os.path.join(octx.initrdDir, "etc/machine.conf")
                 if os.path.exists(path):
                     machineConf = ConfUtils.MachineConf(path=path)
-                else:
-                    machineConf = ConfUtils.MachineConf(path='/dev/null')
 
         installerConf = ConfUtils.InstallerConf(path="/dev/null")
         # start with an empty installerConf, fill it in piece by piece
@@ -173,54 +171,41 @@ class LoaderUpgrade_x86_64(LoaderUpgradeBase, InstallUtils.SubprocessMixin):
 
         onlPlatform = onl.platform.current.OnlPlatform()
 
-        with OnieBootContext(log=self.log) as octx:
-
-            octx.ictx.attach()
-            octx.ictx.unmount()
-            octx.ictx.detach()
-            # XXX roth -- here, detach the initrd mounts
-
-            octx.detach()
-        # hold on to the ONIE boot context for grub access
-
-        if os.path.exists("/usr/bin/onie-shell"):
-            machineConf = OnieSysinfo(log=self.logger.getChild("onie-sysinfo"))
-        else:
+        with OnieBootContext(log=self.logger) as octx:
             path = os.path.join(octx.initrdDir, "etc/machine.conf")
-            if os.path.exists(path):
-                machineConf = ConfUtils.MachineConf(path=path)
-            else:
-                machineConf = ConfUtils.MachineConf(path='/dev/null')
+            machineConf = ConfUtils.MachineConf(path=path)
 
-        installerConf = ConfUtils.InstallerConf(path="/dev/null")
+            # hold on to the ONIE boot context for grub access
 
-        # XXX fill in installerConf fields
-        installerConf.installer_platform = onlPlatform.platform()
-        installerConf.installer_arch = machineConf.onie_arch
-        installerConf.installer_platform_dir = os.path.join("/lib/platform-config",
-                                                            onlPlatform.platform())
+            installerConf = ConfUtils.InstallerConf(path="/dev/null")
 
-        mfPath = os.path.join(sysconfig.upgrade.loader.package.dir, "manifest.json")
-        mf = onl.versions.OnlVersionManifest(mfPath)
-        installerConf.onl_version = mf.RELEASE_ID
+            # XXX fill in installerConf fields
+            installerConf.installer_platform = onlPlatform.platform()
+            installerConf.installer_arch = machineConf.onie_arch
+            installerConf.installer_platform_dir = os.path.join("/lib/platform-config",
+                                                                onlPlatform.platform())
 
-        grubEnv = ConfUtils.ChrootGrubEnv(octx.initrdDir,
-                                          bootDir=octx.onieDir,
-                                          path="/grub/grubenv",
-                                          log=self.logger.getChild("grub"))
+            mfPath = os.path.join(sysconfig.upgrade.loader.package.dir, "manifest.json")
+            mf = onl.versions.OnlVersionManifest(mfPath)
+            installerConf.onl_version = mf.RELEASE_ID
 
-        ubootEnv = None
+            grubEnv = ConfUtils.ChrootGrubEnv(octx.initrdDir,
+                                              bootDir=octx.onieDir,
+                                              path="/grub/grubenv",
+                                              log=self.logger.getChild("grub"))
 
-        installer = self.installer_klass(machineConf=machineConf,
-                                         installerConf=installerConf,
-                                         platformConf=onlPlatform.platform_config,
-                                         grubEnv=grubEnv,
-                                         ubootEnv=ubootEnv,
-                                         force=True,
-                                         log=self.logger)
+            ubootEnv = None
 
-        installer.upgradeBootLoader()
-        installer.shutdown()
+            installer = self.installer_klass(machineConf=machineConf,
+                                             installerConf=installerConf,
+                                             platformConf=onlPlatform.platform_config,
+                                             grubEnv=grubEnv,
+                                             ubootEnv=ubootEnv,
+                                             force=True,
+                                             log=self.logger)
+
+            installer.upgradeBootLoader()
+            installer.shutdown()
 
         self.reboot()
 

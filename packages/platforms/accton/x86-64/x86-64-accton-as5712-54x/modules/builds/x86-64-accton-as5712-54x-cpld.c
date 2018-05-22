@@ -1088,9 +1088,6 @@ static int as5712_54x_cpld_mux_probe(struct i2c_client *client,
         break;
 	case as5712_54x_cpld3:
         group = &as5712_54x_cpld3_group;
-
-        /* Bring QSFPs out of reset */
-        as5712_54x_cpld_write_internal(client, 0x15, 0x3F);
         break;
     default:
         break;

@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_MALLOC
+#ifndef x86_64_accton_as7816_64x_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define X86_64_ACCTON_AS7816_64X_MALLOC GLOBAL_MALLOC
+        #define x86_64_accton_as7816_64x_MALLOC GLOBAL_MALLOC
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_MALLOC malloc
+        #define x86_64_accton_as7816_64x_MALLOC malloc
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_MALLOC is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_FREE
+#ifndef x86_64_accton_as7816_64x_FREE
     #if defined(GLOBAL_FREE)
-        #define X86_64_ACCTON_AS7816_64X_FREE GLOBAL_FREE
+        #define x86_64_accton_as7816_64x_FREE GLOBAL_FREE
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_FREE free
+        #define x86_64_accton_as7816_64x_FREE free
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_FREE is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_MEMSET
+#ifndef x86_64_accton_as7816_64x_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define X86_64_ACCTON_AS7816_64X_MEMSET GLOBAL_MEMSET
+        #define x86_64_accton_as7816_64x_MEMSET GLOBAL_MEMSET
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_MEMSET memset
+        #define x86_64_accton_as7816_64x_MEMSET memset
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_MEMSET is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_MEMCPY
+#ifndef x86_64_accton_as7816_64x_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define X86_64_ACCTON_AS7816_64X_MEMCPY GLOBAL_MEMCPY
+        #define x86_64_accton_as7816_64x_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_MEMCPY memcpy
+        #define x86_64_accton_as7816_64x_MEMCPY memcpy
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_MEMCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_STRNCPY
+#ifndef x86_64_accton_as7816_64x_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define X86_64_ACCTON_AS7816_64X_STRNCPY GLOBAL_STRNCPY
+        #define x86_64_accton_as7816_64x_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_STRNCPY strncpy
+        #define x86_64_accton_as7816_64x_STRNCPY strncpy
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_STRNCPY is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_VSNPRINTF
+#ifndef x86_64_accton_as7816_64x_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define X86_64_ACCTON_AS7816_64X_VSNPRINTF GLOBAL_VSNPRINTF
+        #define x86_64_accton_as7816_64x_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_VSNPRINTF vsnprintf
+        #define x86_64_accton_as7816_64x_VSNPRINTF vsnprintf
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_VSNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_SNPRINTF
+#ifndef x86_64_accton_as7816_64x_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define X86_64_ACCTON_AS7816_64X_SNPRINTF GLOBAL_SNPRINTF
+        #define x86_64_accton_as7816_64x_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_SNPRINTF snprintf
+        #define x86_64_accton_as7816_64x_SNPRINTF snprintf
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_SNPRINTF is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS7816_64X_STRLEN
+#ifndef x86_64_accton_as7816_64x_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define X86_64_ACCTON_AS7816_64X_STRLEN GLOBAL_STRLEN
+        #define x86_64_accton_as7816_64x_STRLEN GLOBAL_STRLEN
     #elif X86_64_ACCTON_AS7816_64X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS7816_64X_STRLEN strlen
+        #define x86_64_accton_as7816_64x_STRLEN strlen
     #else
-        #error The macro X86_64_ACCTON_AS7816_64X_STRLEN is required but cannot be defined.
+        #error The macro x86_64_accton_as7816_64x_STRLEN is required but cannot be defined.
     #endif
 #endif
 

@@ -38,6 +38,6 @@ K_COPY_DST := kernel-3.2-lts-arm-iproc-all.bin.gz
 endif
 
 export ARCH=arm
-DTS_LIST := accton_as4610_54 delta_ag6248c
+DTS_LIST := accton_as4610_54
 
 include $(ONL)/make/kbuild.mk

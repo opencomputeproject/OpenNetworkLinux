@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if X86_64_MLNX_MSN2410_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if x86_64_mlnx_msn2410_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_MALLOC
+#ifndef x86_64_mlnx_msn2410_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define X86_64_MLNX_MSN2410_MALLOC GLOBAL_MALLOC
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_MALLOC malloc
+        #define x86_64_mlnx_msn2410_MALLOC GLOBAL_MALLOC
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_MALLOC malloc
     #else
-        #error The macro X86_64_MLNX_MSN2410_MALLOC is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_FREE
+#ifndef x86_64_mlnx_msn2410_FREE
     #if defined(GLOBAL_FREE)
-        #define X86_64_MLNX_MSN2410_FREE GLOBAL_FREE
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_FREE free
+        #define x86_64_mlnx_msn2410_FREE GLOBAL_FREE
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_FREE free
     #else
-        #error The macro X86_64_MLNX_MSN2410_FREE is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_MEMSET
+#ifndef x86_64_mlnx_msn2410_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define X86_64_MLNX_MSN2410_MEMSET GLOBAL_MEMSET
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_MEMSET memset
+        #define x86_64_mlnx_msn2410_MEMSET GLOBAL_MEMSET
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_MEMSET memset
     #else
-        #error The macro X86_64_MLNX_MSN2410_MEMSET is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_MEMCPY
+#ifndef x86_64_mlnx_msn2410_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define X86_64_MLNX_MSN2410_MEMCPY GLOBAL_MEMCPY
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_MEMCPY memcpy
+        #define x86_64_mlnx_msn2410_MEMCPY GLOBAL_MEMCPY
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_MEMCPY memcpy
     #else
-        #error The macro X86_64_MLNX_MSN2410_MEMCPY is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_STRNCPY
+#ifndef x86_64_mlnx_msn2410_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define X86_64_MLNX_MSN2410_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_STRNCPY strncpy
+        #define x86_64_mlnx_msn2410_STRNCPY GLOBAL_STRNCPY
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_STRNCPY strncpy
     #else
-        #error The macro X86_64_MLNX_MSN2410_STRNCPY is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_VSNPRINTF
+#ifndef x86_64_mlnx_msn2410_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define X86_64_MLNX_MSN2410_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_VSNPRINTF vsnprintf
+        #define x86_64_mlnx_msn2410_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_VSNPRINTF vsnprintf
     #else
-        #error The macro X86_64_MLNX_MSN2410_VSNPRINTF is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_SNPRINTF
+#ifndef x86_64_mlnx_msn2410_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define X86_64_MLNX_MSN2410_SNPRINTF GLOBAL_SNPRINTF
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_SNPRINTF snprintf
+        #define x86_64_mlnx_msn2410_SNPRINTF GLOBAL_SNPRINTF
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_SNPRINTF snprintf
     #else
-        #error The macro X86_64_MLNX_MSN2410_SNPRINTF is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_STRLEN
+#ifndef x86_64_mlnx_msn2410_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define X86_64_MLNX_MSN2410_STRLEN GLOBAL_STRLEN
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_STRLEN strlen
+        #define x86_64_mlnx_msn2410_STRLEN GLOBAL_STRLEN
+    #elif x86_64_mlnx_msn2410_CONFIG_PORTING_STDLIB == 1
+        #define x86_64_mlnx_msn2410_STRLEN strlen
     #else
-        #error The macro X86_64_MLNX_MSN2410_STRLEN is required but cannot be defined.
+        #error The macro x86_64_mlnx_msn2410_STRLEN is required but cannot be defined.
     #endif
 #endif
 
