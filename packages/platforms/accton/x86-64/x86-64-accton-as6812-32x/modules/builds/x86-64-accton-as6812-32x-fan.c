@@ -396,7 +396,7 @@ static struct platform_driver accton_as6812_32x_fan_driver = {
 static int __init accton_as6812_32x_fan_init(void)
 {
     int ret;
-    
+
     ret = platform_driver_register(&accton_as6812_32x_fan_driver);
     if (ret < 0) {
         goto exit;

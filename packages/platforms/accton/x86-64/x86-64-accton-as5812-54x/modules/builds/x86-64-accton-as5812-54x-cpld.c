@@ -65,7 +65,7 @@ enum cpld_mux_type {
 
 struct as5812_54x_cpld_data {
     enum cpld_mux_type type;
-    struct i2c_client *client;
+    struct i2c_adapter *virt_adaps[ACCTON_I2C_CPLD_MUX_MAX_NCHANS];
     u8 last_chan;  /* last register value */
 
     struct device      *hwmon_dev;
@@ -100,6 +100,7 @@ static const struct i2c_device_id as5812_54x_cpld_mux_id[] = {
     { }
 };
 MODULE_DEVICE_TABLE(i2c, as5812_54x_cpld_mux_id);
+
 #define TRANSCEIVER_PRESENT_ATTR_ID(index)   	MODULE_PRESENT_##index
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index)   	MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index)   		MODULE_RXLOS_##index
@@ -595,9 +596,8 @@ static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
 	int i, status, num_regs = 0;
 	u8 values[4]  = {0};
 	u8 regs[] = {0x6, 0x7, 0x8, 0x14};
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 
 	mutex_lock(&data->update_lock);
 
@@ -639,9 +639,8 @@ static ssize_t show_rxlos_all(struct device *dev, struct device_attribute *da,
 	int i, status;
 	u8 values[3]  = {0};
 	u8 regs[] = {0xF, 0x10, 0x11};
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 
 	mutex_lock(&data->update_lock);
 
@@ -670,8 +669,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
+    struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 	int status = 0;
 	u8 reg = 0, mask = 0, revert = 0;
 
@@ -822,9 +820,8 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 	long disable;
 	int status;
     u8 reg = 0, mask = 0;
@@ -894,11 +891,10 @@ exit:
 static ssize_t access(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
 	int status;
 	u32 addr, val;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 
 	if (sscanf(buf, "0x%x 0x%x", &addr, &val) != 2) {
 		return -EINVAL;
@@ -920,6 +916,7 @@ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
+
 /* Write to mux register. Don't use i2c_transfer()/i2c_smbus_xfer()
    for this as they will try to lock adapter a second time */
 static int as5812_54x_cpld_mux_reg_write(struct i2c_adapter *adap,
@@ -953,35 +950,32 @@ static int as5812_54x_cpld_mux_reg_write(struct i2c_adapter *adap,
     return res;
 }
 
-static int as5812_54x_cpld_mux_select_chan(struct i2c_mux_core *muxc, 
-    u32 chan)
+static int as5812_54x_cpld_mux_select_chan(struct i2c_adapter *adap,
+			       void *client, u32 chan)
 {
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
-	struct i2c_client *client = data->client;
+	struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 	u8 regval;
 	int ret = 0;
-
     regval = chan;
 
 	/* Only select the channel if its different from the last channel */
 	if (data->last_chan != regval) {
-		ret = as5812_54x_cpld_mux_reg_write(muxc->parent, client, regval);
+		ret = as5812_54x_cpld_mux_reg_write(adap, client, regval);
 		data->last_chan = regval;
 	}
 
 	return ret;
 }
 
-static int as5812_54x_cpld_mux_deselect_mux(struct i2c_mux_core *muxc,
-    u32 chan)
+static int as5812_54x_cpld_mux_deselect_mux(struct i2c_adapter *adap,
+				void *client, u32 chan)
 {
-	struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
-	struct i2c_client *client = data->client;
+	struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
 
 	/* Deselect active channel */
 	data->last_chan = chips[data->type].deselectChan;
 
-	return as5812_54x_cpld_mux_reg_write(muxc->parent, client, data->last_chan);
+	return as5812_54x_cpld_mux_reg_write(adap, client, data->last_chan);
 }
 
 static void as5812_54x_cpld_add_client(struct i2c_client *client)
@@ -1008,7 +1002,8 @@ static void as5812_54x_cpld_remove_client(struct i2c_client *client)
 
 	mutex_lock(&list_lock);
 
-    list_for_each(list_node, &cpld_client_list) {
+    list_for_each(list_node, &cpld_client_list)
+    {
         cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
         if (cpld_node->client == client) {
@@ -1045,43 +1040,44 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr, c
 static int as5812_54x_cpld_mux_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-    struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
-	int num, force, class;
-	struct i2c_mux_core *muxc;
+	struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
+	int chan=0;
 	struct as5812_54x_cpld_data *data;
-    int ret = 0;
-    const struct attribute_group *group = NULL;
+	int ret = -ENODEV;
+	const struct attribute_group *group = NULL;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
-		return -ENODEV;
+		goto exit;
 
-	muxc = i2c_mux_alloc(adap, &client->dev,
-			     chips[id->driver_data].nchans, sizeof(*data), 0,
-			     as5812_54x_cpld_mux_select_chan, as5812_54x_cpld_mux_deselect_mux);
-	if (!muxc)
-		return -ENOMEM;
-
-    i2c_set_clientdata(client, muxc);
-	data = i2c_mux_priv(muxc);
-	data->client = client;
-    data->type = id->driver_data;
-    data->last_chan = CPLD_DESELECT_CHANNEL;	/* force the first selection */
-    mutex_init(&data->update_lock);
-
-	/* Now create an adapter for each channel */
-	for (num = 0; num < chips[data->type].nchans; num++) {
-		force = 0;			  /* dynamic adap number */
-		class = 0;			  /* no class by default */
-
-		ret = i2c_mux_add_adapter(muxc, force, num, class);
-
-		if (ret) {
-			dev_err(&client->dev,
-				"failed to register multiplexed adapter"
-				" %d as bus %d\n", num, force);
-			goto add_mux_failed;
-		}
+	data = kzalloc(sizeof(struct as5812_54x_cpld_data), GFP_KERNEL);
+	if (!data) {
+		ret = -ENOMEM;
+		goto exit;
 	}
+
+	i2c_set_clientdata(client, data);
+    mutex_init(&data->update_lock);
+	data->type = id->driver_data;
+
+    if (data->type == as5812_54x_cpld2 || data->type == as5812_54x_cpld3) {
+    	data->last_chan = chips[data->type].deselectChan; /* force the first selection */
+
+	    /* Now create an adapter for each channel */
+        for (chan = 0; chan < chips[data->type].nchans; chan++) {
+            data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0, chan, 0,
+                                                         as5812_54x_cpld_mux_select_chan,
+                                                         as5812_54x_cpld_mux_deselect_mux);
+
+            if (data->virt_adaps[chan] == NULL) {
+                ret = -ENODEV;
+                dev_err(&client->dev, "failed to register multiplexed adapter %d\n", chan);
+                goto exit_mux_register;
+            }
+        }
+
+        dev_info(&client->dev, "registered %d multiplexed busses for I2C mux %s\n", 
+                                chan, client->name);
+    }
 
     /* Register sysfs hooks */
     switch (data->type) {
@@ -1100,37 +1096,33 @@ static int as5812_54x_cpld_mux_probe(struct i2c_client *client,
     default:
         break;
     }
+
 	
     if (group) {
         ret = sysfs_create_group(&client->dev.kobj, group);
         if (ret) {
-            goto add_mux_failed;
+            goto exit_mux_register;
         }
-    }
-
-    if (chips[data->type].nchans) {
-    	dev_info(&client->dev,
-    		 "registered %d multiplexed busses for I2C %s\n",
-    		 num, client->name);
-    }
-    else {
-    	dev_info(&client->dev,
-    		 "device %s registered\n", client->name);
     }
 
     as5812_54x_cpld_add_client(client);
 
     return 0;
 
-add_mux_failed:
-	i2c_mux_del_adapters(muxc);
+exit_mux_register:
+	for (chan--; chan >= 0; chan--) {
+		i2c_del_mux_adapter(data->virt_adaps[chan]);
+    }
+    kfree(data);
+exit:
 	return ret;
 }
 
 static int as5812_54x_cpld_mux_remove(struct i2c_client *client)
 {
-    struct i2c_mux_core *muxc = i2c_get_clientdata(client);
-    struct as5812_54x_cpld_data *data = i2c_mux_priv(muxc);
+    struct as5812_54x_cpld_data *data = i2c_get_clientdata(client);
+    const struct chip_desc *chip = &chips[data->type];
+    int chan;
     const struct attribute_group *group = NULL;
 
     as5812_54x_cpld_remove_client(client);
@@ -1154,7 +1146,14 @@ static int as5812_54x_cpld_mux_remove(struct i2c_client *client)
         sysfs_remove_group(&client->dev.kobj, group);
     }
 
-	i2c_mux_del_adapters(muxc);
+    for (chan = 0; chan < chip->nchans; ++chan) {
+        if (data->virt_adaps[chan]) {
+            i2c_del_mux_adapter(data->virt_adaps[chan]);
+            data->virt_adaps[chan] = NULL;
+        }
+    }
+
+    kfree(data);
 
     return 0;
 }
@@ -1203,7 +1202,8 @@ int as5812_54x_cpld_read(unsigned short cpld_addr, u8 reg)
 
     mutex_lock(&list_lock);
 
-    list_for_each(list_node, &cpld_client_list) {
+    list_for_each(list_node, &cpld_client_list)
+    {
         cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
         if (cpld_node->client->addr == cpld_addr) {
@@ -1226,7 +1226,8 @@ int as5812_54x_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 
 	mutex_lock(&list_lock);
 
-    list_for_each(list_node, &cpld_client_list) {
+    list_for_each(list_node, &cpld_client_list)
+    {
         cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
         if (cpld_node->client->addr == cpld_addr) {
@@ -1263,7 +1264,7 @@ static void __exit as5812_54x_cpld_mux_exit(void)
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("Accton as5812-54x CPLD driver");
+MODULE_DESCRIPTION("Accton I2C CPLD mux driver");
 MODULE_LICENSE("GPL");
 
 module_init(as5812_54x_cpld_mux_init);
