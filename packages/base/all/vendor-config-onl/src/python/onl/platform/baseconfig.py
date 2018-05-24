@@ -67,6 +67,13 @@ def baseconfig():
             f.write(dmidecode.QuerySection('system')['0x0001']['data']['Version'])
     except:
         pass
+    finally:
+        if 'dmidecodemod' in sys.modules:
+            mod = sys.modules['dmidecodemod']
+            buf = mod.get_warnings()
+            if buf:
+                [msg("*** %s\n" % x) for x in buf.splitlines(False)]
+            mod.clear_warnings()
 
     if not platform.baseconfig():
         msg("*** platform class baseconfig failed.\n", fatal=True)

@@ -11,7 +11,7 @@
 
 import pprint
 import json
-import os
+import os, sys
 import re
 import yaml
 import onl.YamlUtils
@@ -386,6 +386,9 @@ class OnlPlatformBase(object):
                             rv[field['name']] = v['data'][field['key']]
             except:
                 pass
+            finally:
+                if 'dmidecodemod' in sys.modules:
+                    sys.modules['dmidecodemod'].clear_warnings()
         return rv
 
     def upgrade_manifest(self, type_, override_dir=None):
