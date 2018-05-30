@@ -196,7 +196,7 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
             }
             else {
                 iof_iprintf(&iof, "Status: Running");
-                iof_iprintf(&iof, "Model: %s", pi.model[0] ? pi.model : "Unknown");
+                if(pi.model[0]) iof_iprintf(&iof, "Model: %s", pi.model);
                 if(pi.serial[0]) iof_iprintf(&iof, "SN: %s", pi.serial);
                 if(pi.caps & ONLP_PSU_CAPS_AC) {
                     iof_iprintf(&iof, "Type: AC");
