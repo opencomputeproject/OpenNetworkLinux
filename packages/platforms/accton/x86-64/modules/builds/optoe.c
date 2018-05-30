@@ -21,16 +21,16 @@
  *	c) 256 bytes are mapped at a time. 'Lower page 00h' is the first 128
  *	        bytes of address space, and always references the same
  *	        location, independent of the page select register.
- *	        All mapped pages are mapped into the upper 128 bytes 
+ *	        All mapped pages are mapped into the upper 128 bytes
  *	        (offset 128-255) of the i2c address.
- *	d) Devices with one I2C address (eg QSFP) use I2C address 0x50 
+ *	d) Devices with one I2C address (eg QSFP) use I2C address 0x50
  *		(A0h in the spec), and map all pages in the upper 128 bytes
  *		of that address.
  *	e) Devices with two I2C addresses (eg SFP) have 256 bytes of data
  *		at I2C address 0x50, and 256 bytes of data at I2C address
  *		0x51 (A2h in the spec).  Page selection and paged access
  *		only apply to this second I2C address (0x51).
- *	e) The address space is presented, by the driver, as a linear 
+ *	e) The address space is presented, by the driver, as a linear
  *	        address space.  For devices with one I2C client at address
  *	        0x50 (eg QSFP), offset 0-127 are in the lower
  *	        half of address 50/A0h/client[0].  Offset 128-255 are in
@@ -39,7 +39,7 @@
  *	        half, offset 0-127).
  *	f) For devices with two I2C clients at address 0x50 and 0x51 (eg SFP),
  *		the address space places offset 0-127 in the lower
- *	        half of 50/A0/client[0], offset 128-255 in the upper 
+ *	        half of 50/A0/client[0], offset 128-255 in the upper
  *	        half.  Offset 256-383 is in the lower half of 51/A2/client[1].
  *	        Offset 384-511 is in page 0, in the upper half of 51/A2/...
  *	        Offset 512-639 is in page 1, in the upper half of 51/A2/...
@@ -118,35 +118,28 @@
 #include <linux/sysfs.h>
 #include <linux/jiffies.h>
 #include <linux/i2c.h>
-#include <linux/types.h>
-#include <linux/memory.h>
-
-/*
- * The optoe driver is for read/write access to the EEPROM on standard
- * I2C based optical transceivers (SFP, QSFP, etc)
- *
- * While based on the at24 driver, it eliminates code that supports other
- * types of I2C EEPROMs, and adds support for pages accessed through the
- * page-select register at offset 127.
- */
-
-struct optoe_platform_data {
-	u32		byte_len;		/* size (sum of all addr) */
-	u16		page_size;		/* for writes */
-	u8		flags;
-
-	void		(*setup)(struct memory_accessor *, void *context);
-	void		*context;
-#ifdef EEPROM_CLASS
-	struct eeprom_platform_data *eeprom_data; /* extra data for the eeprom_class */
-#endif
-};
 
 #ifdef EEPROM_CLASS
 #include <linux/eeprom_class.h>
 #endif
 
 #include <linux/types.h>
+
+/* The maximum length of a port name */
+#define MAX_PORT_NAME_LEN 20
+
+struct optoe_platform_data {
+	u32		byte_len;		/* size (sum of all addr) */
+	u16		page_size;		/* for writes */
+	u8		flags;
+	void		*dummy1;		/* backward compatibility */
+	void		*dummy2;		/* backward compatibility */
+
+#ifdef EEPROM_CLASS
+	struct eeprom_platform_data *eeprom_data;
+#endif
+	char port_name[MAX_PORT_NAME_LEN];
+};
 
 /* fundamental unit of addressing for EEPROM */
 #define OPTOE_PAGE_SIZE 128
@@ -158,13 +151,14 @@ struct optoe_platform_data {
 #define OPTOE_ARCH_PAGES 256
 #define ONE_ADDR_EEPROM_SIZE ((1 + OPTOE_ARCH_PAGES) * OPTOE_PAGE_SIZE)
 #define ONE_ADDR_EEPROM_UNPAGED_SIZE (2 * OPTOE_PAGE_SIZE)
-/* 
+/*
  * Dual address devices (eg SFP) have 256 pages, plus the unpaged
- * low 128 bytes, plus 256 bytes at 0x50.  If the device does not 
+ * low 128 bytes, plus 256 bytes at 0x50.  If the device does not
  * support paging, it is 4 'pages' long.
  */
 #define TWO_ADDR_EEPROM_SIZE ((3 + OPTOE_ARCH_PAGES) * OPTOE_PAGE_SIZE)
 #define TWO_ADDR_EEPROM_UNPAGED_SIZE (4 * OPTOE_PAGE_SIZE)
+#define TWO_ADDR_NO_0X51_SIZE (2 * OPTOE_PAGE_SIZE)
 
 /* a few constants to find our way around the EEPROM */
 #define OPTOE_PAGE_SELECT_REG   0x7F
@@ -172,13 +166,15 @@ struct optoe_platform_data {
 #define ONE_ADDR_NOT_PAGEABLE (1<<2)
 #define TWO_ADDR_PAGEABLE_REG 0x40
 #define TWO_ADDR_PAGEABLE (1<<4)
+#define TWO_ADDR_0X51_REG 92
+#define TWO_ADDR_0X51_SUPP (1<<6)
 #define OPTOE_ID_REG 0
+#define OPTOE_READ_OP 0
+#define OPTOE_WRITE_OP 1
+#define OPTOE_EOF 0  /* used for access beyond end of device */
 
-/* The maximum length of a port name */
-#define MAX_PORT_NAME_LEN 20
 struct optoe_data {
 	struct optoe_platform_data chip;
-	struct memory_accessor macc;
 	int use_smbus;
 	char port_name[MAX_PORT_NAME_LEN];
 
@@ -191,9 +187,9 @@ struct optoe_data {
 	struct attribute_group attr_group;
 
 	u8 *writebuf;
-	unsigned write_max;
+	unsigned int write_max;
 
-	unsigned num_addresses;
+	unsigned int num_addresses;
 
 #ifdef EEPROM_CLASS
 	struct eeprom_device *eeprom_dev;
@@ -205,10 +201,6 @@ struct optoe_data {
 	struct i2c_client *client[];
 };
 
-typedef enum optoe_opcode {
-	OPTOE_READ_OP = 0,
-	OPTOE_WRITE_OP = 1
-} optoe_opcode_e;
 
 /*
  * This parameter is to help this driver avoid blocking other drivers out
@@ -219,13 +211,13 @@ typedef enum optoe_opcode {
  *
  * This value is forced to be a power of two so that writes align on pages.
  */
-static unsigned io_limit = OPTOE_PAGE_SIZE;
+static unsigned int io_limit = OPTOE_PAGE_SIZE;
 
 /*
  * specs often allow 5 msec for a page write, sometimes 20 msec;
  * it's important to recover from write timeouts.
  */
-static unsigned write_timeout = 25;
+static unsigned int write_timeout = 25;
 
 /*
  * flags to distinguish one-address (QSFP family) from two-address (SFP family)
@@ -251,7 +243,7 @@ MODULE_DEVICE_TABLE(i2c, optoe_ids);
  * Task is to calculate the client (0 = i2c addr 50, 1 = i2c addr 51),
  * the page, and the offset.
  *
- * Handles both single address (eg QSFP) and two address (eg SFP).  
+ * Handles both single address (eg QSFP) and two address (eg SFP).
  *     For SFP, offset 0-255 are on client[0], >255 is on client[1]
  *     Offset 256-383 are on the lower half of client[1]
  *     Pages are accessible on the upper half of client[1].
@@ -265,7 +257,7 @@ MODULE_DEVICE_TABLE(i2c, optoe_ids);
  *     Callers must not read/write beyond the end of a client or a page
  *     without recomputing the client/page.  Hence offset (within page)
  *     plus length must be less than or equal to 128.  (Note that this
- *     routine does not have access to the length of the call, hence 
+ *     routine does not have access to the length of the call, hence
  *     cannot do the validity check.)
  *
  * Offset within Lower Page 00h and Upper Page 00h are not recomputed
@@ -274,7 +266,7 @@ MODULE_DEVICE_TABLE(i2c, optoe_ids);
 static uint8_t optoe_translate_offset(struct optoe_data *optoe,
 		loff_t *offset, struct i2c_client **client)
 {
-	unsigned page = 0;
+	unsigned int page = 0;
 
 	*client = optoe->client[0];
 
@@ -283,7 +275,7 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
 		if (*offset > 255) {
 			/* like QSFP, but shifted to client[1] */
 			*client = optoe->client[1];
-			*offset -= 256;  
+			*offset -= 256;
 		}
 	}
 
@@ -305,7 +297,7 @@ static uint8_t optoe_translate_offset(struct optoe_data *optoe,
 
 static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
 		    struct i2c_client *client,
-		    char *buf, unsigned offset, size_t count)
+		    char *buf, unsigned int offset, size_t count)
 {
 	struct i2c_msg msg[2];
 	u8 msgbuf[2];
@@ -393,21 +385,21 @@ static ssize_t optoe_eeprom_read(struct optoe_data *optoe,
 			return status;
 
 		/* REVISIT: at HZ=100, this is sloooow */
-		msleep(1);
+		usleep_range(1000, 2000);
 	} while (time_before(read_time, timeout));
 
 	return -ETIMEDOUT;
 }
 
 static ssize_t optoe_eeprom_write(struct optoe_data *optoe,
-		    		struct i2c_client *client,
+				struct i2c_client *client,
 				const char *buf,
-				unsigned offset, size_t count)
+				unsigned int offset, size_t count)
 {
 	struct i2c_msg msg;
 	ssize_t status;
 	unsigned long timeout, write_time;
-	unsigned next_page_start;
+	unsigned int next_page_start;
 	int i = 0;
 
 	/* write max is at most a page
@@ -496,7 +488,7 @@ static ssize_t optoe_eeprom_write(struct optoe_data *optoe,
 			return count;
 
 		/* REVISIT: at HZ=100, this is sloooow */
-		msleep(1);
+		usleep_range(1000, 2000);
 	} while (time_before(write_time, timeout));
 
 	return -ETIMEDOUT;
@@ -504,8 +496,8 @@ static ssize_t optoe_eeprom_write(struct optoe_data *optoe,
 
 
 static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
-				char *buf, loff_t off, 
-				size_t count, optoe_opcode_e opcode)
+				char *buf, loff_t off,
+				size_t count, int opcode)
 {
 	struct i2c_client *client;
 	ssize_t retval = 0;
@@ -515,10 +507,10 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
 
 	page = optoe_translate_offset(optoe, &phy_offset, &client);
 	dev_dbg(&client->dev,
-			"optoe_eeprom_update_client off %lld  page:%d phy_offset:%lld, count:%ld, opcode:%d\n",
-			off, page, phy_offset, (long int) count, opcode);
+		"%s off %lld  page:%d phy_offset:%lld, count:%ld, opcode:%d\n",
+		__func__, off, page, phy_offset, (long int) count, opcode);
 	if (page > 0) {
-		ret = optoe_eeprom_write(optoe, client, &page, 
+		ret = optoe_eeprom_write(optoe, client, &page,
 			OPTOE_PAGE_SELECT_REG, 1);
 		if (ret < 0) {
 			dev_dbg(&client->dev,
@@ -553,13 +545,14 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
 	if (page > 0) {
 		/* return the page register to page 0 (why?) */
 		page = 0;
-		ret = optoe_eeprom_write(optoe, client, &page, 
+		ret = optoe_eeprom_write(optoe, client, &page,
 			OPTOE_PAGE_SELECT_REG, 1);
 		if (ret < 0) {
 			dev_err(&client->dev,
 				"Restore page register to 0 failed:%d!\n", ret);
 			/* error only if nothing has been transferred */
-			if (retval == 0) retval = ret;
+			if (retval == 0)
+				retval = ret;
 		}
 	}
 	return retval;
@@ -575,9 +568,9 @@ static ssize_t optoe_eeprom_update_client(struct optoe_data *optoe,
  * Returns updated len for this access:
  *     - entire access is legal, original len is returned.
  *     - access begins legal but is too long, len is truncated to fit.
- *     - initial offset exceeds supported pages, return -EINVAL
+ *     - initial offset exceeds supported pages, return OPTOE_EOF (zero)
  */
-static ssize_t optoe_page_legal(struct optoe_data *optoe, 
+static ssize_t optoe_page_legal(struct optoe_data *optoe,
 		loff_t off, size_t len)
 {
 	struct i2c_client *client = optoe->client[0];
@@ -585,24 +578,44 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 	int status;
 	size_t maxlen;
 
-	if (off < 0) return -EINVAL;
+	if (off < 0)
+		return -EINVAL;
 	if (optoe->dev_class == TWO_ADDR) {
 		/* SFP case */
-		/* if no pages needed, we're good */
-		if ((off + len) <= TWO_ADDR_EEPROM_UNPAGED_SIZE) return len;
+		/* if only using addr 0x50 (first 256 bytes) we're good */
+		if ((off + len) <= TWO_ADDR_NO_0X51_SIZE)
+			return len;
 		/* if offset exceeds possible pages, we're not good */
-		if (off >= TWO_ADDR_EEPROM_SIZE) return -EINVAL;
+		if (off >= TWO_ADDR_EEPROM_SIZE)
+			return OPTOE_EOF;
 		/* in between, are pages supported? */
-		status = optoe_eeprom_read(optoe, client, &regval, 
+		status = optoe_eeprom_read(optoe, client, &regval,
 				TWO_ADDR_PAGEABLE_REG, 1);
-		if (status < 0) return status;  /* error out (no module?) */
+		if (status < 0)
+			return status;  /* error out (no module?) */
 		if (regval & TWO_ADDR_PAGEABLE) {
 			/* Pages supported, trim len to the end of pages */
 			maxlen = TWO_ADDR_EEPROM_SIZE - off;
 		} else {
 			/* pages not supported, trim len to unpaged size */
-			if (off >= TWO_ADDR_EEPROM_UNPAGED_SIZE) return -EINVAL;
-			maxlen = TWO_ADDR_EEPROM_UNPAGED_SIZE - off;
+			if (off >= TWO_ADDR_EEPROM_UNPAGED_SIZE)
+				return OPTOE_EOF;
+
+			/* will be accessing addr 0x51, is that supported? */
+			/* byte 92, bit 6 implies DDM support, 0x51 support */
+			status = optoe_eeprom_read(optoe, client, &regval,
+						TWO_ADDR_0X51_REG, 1);
+			if (status < 0)
+				return status;
+			if (regval & TWO_ADDR_0X51_SUPP) {
+				/* addr 0x51 is OK */
+				maxlen = TWO_ADDR_EEPROM_UNPAGED_SIZE - off;
+			} else {
+				/* addr 0x51 NOT supported, trim to 256 max */
+				if (off >= TWO_ADDR_NO_0X51_SIZE)
+					return OPTOE_EOF;
+				maxlen = TWO_ADDR_NO_0X51_SIZE - off;
+			}
 		}
 		len = (len > maxlen) ? maxlen : len;
 		dev_dbg(&client->dev,
@@ -611,16 +624,20 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 	} else {
 		/* QSFP case */
 		/* if no pages needed, we're good */
-		if ((off + len) <= ONE_ADDR_EEPROM_UNPAGED_SIZE) return len;
+		if ((off + len) <= ONE_ADDR_EEPROM_UNPAGED_SIZE)
+			return len;
 		/* if offset exceeds possible pages, we're not good */
-		if (off >= ONE_ADDR_EEPROM_SIZE) return -EINVAL;
+		if (off >= ONE_ADDR_EEPROM_SIZE)
+			return OPTOE_EOF;
 		/* in between, are pages supported? */
-		status = optoe_eeprom_read(optoe, client, &regval, 
+		status = optoe_eeprom_read(optoe, client, &regval,
 				ONE_ADDR_PAGEABLE_REG, 1);
-		if (status < 0) return status;  /* error out (no module?) */
+		if (status < 0)
+			return status;  /* error out (no module?) */
 		if (regval & ONE_ADDR_NOT_PAGEABLE) {
 			/* pages not supported, trim len to unpaged size */
-			if (off >= ONE_ADDR_EEPROM_UNPAGED_SIZE) return -EINVAL;
+			if (off >= ONE_ADDR_EEPROM_UNPAGED_SIZE)
+				return OPTOE_EOF;
 			maxlen = ONE_ADDR_EEPROM_UNPAGED_SIZE - off;
 		} else {
 			/* Pages supported, trim len to the end of pages */
@@ -635,7 +652,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 }
 
 static ssize_t optoe_read_write(struct optoe_data *optoe,
-		char *buf, loff_t off, size_t len, optoe_opcode_e opcode)
+		char *buf, loff_t off, size_t len, int opcode)
 {
 	struct i2c_client *client = optoe->client[0];
 	int chunk;
@@ -645,8 +662,9 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 	loff_t chunk_offset = 0, chunk_start_offset = 0;
 
 	dev_dbg(&client->dev,
-		"optoe_read_write: off %lld  len:%ld, opcode:%s\n",
-		off, (long int) len, (opcode == OPTOE_READ_OP) ? "r": "w");
+		"%s: off %lld  len:%ld, opcode:%s\n",
+		__func__, off, (long int) len,
+		(opcode == OPTOE_READ_OP) ? "r" : "w");
 	if (unlikely(!len))
 		return len;
 
@@ -655,13 +673,14 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 	 * from this host, but not from other I2C masters.
 	 */
 	mutex_lock(&optoe->lock);
-	
+
 	/*
-	 * Confirm this access fits within the device suppored addr range 
+	 * Confirm this access fits within the device suppored addr range
 	 */
 	status = optoe_page_legal(optoe, off, len);
-	if (status < 0) {
-		goto err;
+	if ((status == OPTOE_EOF) || (status < 0)) {
+		mutex_unlock(&optoe->lock);
+		return status;
 	}
 	len = status;
 
@@ -670,7 +689,7 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 	 * separate call to sff_eeprom_update_client(), to
 	 * ensure that each access recalculates the client/page
 	 * and writes the page register as needed.
-	 * Note that chunk to page mapping is confusing, is different for 
+	 * Note that chunk to page mapping is confusing, is different for
 	 * QSFP and SFP, and never needs to be done.  Don't try!
 	 */
 	pending_len = len; /* amount remaining to transfer */
@@ -711,18 +730,22 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 			off, (long int) len, chunk_start_offset, chunk_offset,
 			(long int) chunk_len, (long int) pending_len);
 
-		/* 
-		 * note: chunk_offset is from the start of the EEPROM, 
-		 * not the start of the chunk 
+		/*
+		 * note: chunk_offset is from the start of the EEPROM,
+		 * not the start of the chunk
 		 */
-		status = optoe_eeprom_update_client(optoe, buf, 
+		status = optoe_eeprom_update_client(optoe, buf,
 				chunk_offset, chunk_len, opcode);
 		if (status != chunk_len) {
 			/* This is another 'no device present' path */
-			dev_dbg(&client->dev, 
-	"optoe_update_client for chunk %d chunk_offset %lld chunk_len %ld failed %d!\n",
-				chunk, chunk_offset, (long int) chunk_len, status);
-			goto err;
+			dev_dbg(&client->dev,
+			"o_u_c: chunk %d c_offset %lld c_len %ld failed %d!\n",
+			chunk, chunk_offset, (long int) chunk_len, status);
+			if (status > 0)
+				retval += status;
+			if (retval == 0)
+				retval = status;
+			break;
 		}
 		buf += status;
 		pending_len -= status;
@@ -731,11 +754,6 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 	mutex_unlock(&optoe->lock);
 
 	return retval;
-
-err:
-	mutex_unlock(&optoe->lock);
-
-	return status;
 }
 
 static ssize_t optoe_bin_read(struct file *filp, struct kobject *kobj,
@@ -760,34 +778,6 @@ static ssize_t optoe_bin_write(struct file *filp, struct kobject *kobj,
 
 	return optoe_read_write(optoe, buf, off, count, OPTOE_WRITE_OP);
 }
-/*-------------------------------------------------------------------------*/
-
-/*
- * This lets other kernel code access the eeprom data. For example, it
- * might hold a board's Ethernet address, or board-specific calibration
- * data generated on the manufacturing floor.
- */
-
-static ssize_t optoe_macc_read(struct memory_accessor *macc,
-		char *buf, off_t offset, size_t count)
-{
-	struct optoe_data *optoe = container_of(macc,
-					struct optoe_data, macc);
-
-	return optoe_read_write(optoe, buf, offset, count, OPTOE_READ_OP);
-}
-
-static ssize_t optoe_macc_write(struct memory_accessor *macc,
-		const char *buf, off_t offset, size_t count)
-{
-	struct optoe_data *optoe = container_of(macc,
-					struct optoe_data, macc);
-
-	return optoe_read_write(optoe, (char *) buf, offset,
-						count, OPTOE_WRITE_OP);
-}
-
-/*-------------------------------------------------------------------------*/
 
 static int optoe_remove(struct i2c_client *client)
 {
@@ -809,6 +799,51 @@ static int optoe_remove(struct i2c_client *client)
 	kfree(optoe);
 	return 0;
 }
+
+static ssize_t show_dev_class(struct device *dev,
+			struct device_attribute *dattr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct optoe_data *optoe = i2c_get_clientdata(client);
+	ssize_t count;
+
+	mutex_lock(&optoe->lock);
+	count = sprintf(buf, "%d\n", optoe->dev_class);
+	mutex_unlock(&optoe->lock);
+
+	return count;
+}
+
+static ssize_t set_dev_class(struct device *dev,
+			struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct optoe_data *optoe = i2c_get_clientdata(client);
+	int dev_class;
+
+	/*
+	 * dev_class is actually the number of i2c addresses used, thus
+	 * legal values are "1" (QSFP class) and "2" (SFP class)
+	 */
+
+	if (kstrtoint(buf, 0, &dev_class) != 0 ||
+		dev_class < 1 || dev_class > 2)
+		return -EINVAL;
+
+	mutex_lock(&optoe->lock);
+	optoe->dev_class = dev_class;
+	mutex_unlock(&optoe->lock);
+
+	return count;
+}
+
+/*
+ * if using the EEPROM CLASS driver, we don't report a port_name,
+ * the EEPROM CLASS drive handles that.  Hence all this code is
+ * only compiled if we are NOT using the EEPROM CLASS driver.
+ */
+#ifndef EEPROM_CLASS
 
 static ssize_t show_port_name(struct device *dev,
 			struct device_attribute *dattr, char *buf)
@@ -844,51 +879,15 @@ static ssize_t set_port_name(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(port_name,  S_IRUGO | S_IWUSR,
-					show_port_name, set_port_name);
+static DEVICE_ATTR(port_name,  0644, show_port_name, set_port_name);
+#endif  /* if NOT defined EEPROM_CLASS, the common case */
 
-static ssize_t show_dev_class(struct device *dev,
-			struct device_attribute *dattr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct optoe_data *optoe = i2c_get_clientdata(client);
-	ssize_t count;
-
-	mutex_lock(&optoe->lock);
-	count = sprintf(buf, "%d\n", optoe->dev_class);
-	mutex_unlock(&optoe->lock);
-
-	return count;
-}
-
-static ssize_t set_dev_class(struct device *dev,
-			struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct optoe_data *optoe = i2c_get_clientdata(client);
-	int dev_class;
-
-	/*
-	 * dev_class is actually the number of sfp ports used, thus
-	 * legal values are "1" (QSFP class) and "2" (SFP class)
-	 */
-	if (sscanf(buf, "%d", &dev_class) != 1 ||
-		dev_class < 1 || dev_class > 2)
-		return -EINVAL;
-
-	mutex_lock(&optoe->lock);
-	optoe->dev_class = dev_class;
-	mutex_unlock(&optoe->lock);
-
-	return count;
-}
-
-static DEVICE_ATTR(dev_class,  S_IRUGO | S_IWUSR,
-					show_dev_class, set_dev_class);
+static DEVICE_ATTR(dev_class,  0644, show_dev_class, set_dev_class);
 
 static struct attribute *optoe_attrs[] = {
+#ifndef EEPROM_CLASS
 	&dev_attr_port_name.attr,
+#endif
 	&dev_attr_dev_class.attr,
 	NULL,
 };
@@ -905,7 +904,7 @@ static int optoe_probe(struct i2c_client *client,
 	struct optoe_platform_data chip;
 	struct optoe_data *optoe;
 	int num_addresses = 0;
-	int i = 0;
+	char port_name[MAX_PORT_NAME_LEN];
 
 	if (client->addr != 0x50) {
 		dev_dbg(&client->dev, "probe, bad i2c addr: 0x%x\n",
@@ -916,16 +915,23 @@ static int optoe_probe(struct i2c_client *client,
 
 	if (client->dev.platform_data) {
 		chip = *(struct optoe_platform_data *)client->dev.platform_data;
-		dev_dbg(&client->dev, "probe, chip provided, flags:0x%x; name: %s\n", chip.flags, client->name);
+		/* take the port name from the supplied platform data */
+#ifdef EEPROM_CLASS
+		strncpy(port_name, chip.eeprom_data->label, MAX_PORT_NAME_LEN);
+#else
+		memcpy(port_name, chip.port_name, MAX_PORT_NAME_LEN);
+#endif
+		dev_dbg(&client->dev,
+			"probe, chip provided, flags:0x%x; name: %s\n",
+			chip.flags, client->name);
 	} else {
 		if (!id->driver_data) {
 			err = -ENODEV;
 			goto exit;
 		}
 		dev_dbg(&client->dev, "probe, building chip\n");
+		strcpy(port_name, "unitialized");
 		chip.flags = 0;
-		chip.setup = NULL;
-		chip.context = NULL;
 #ifdef EEPROM_CLASS
 		chip.eeprom_data = NULL;
 #endif
@@ -965,7 +971,7 @@ static int optoe_probe(struct i2c_client *client,
 	mutex_init(&optoe->lock);
 
 	/* determine whether this is a one-address or two-address module */
-	if ((strcmp(client->name, "optoe1") == 0) || 
+	if ((strcmp(client->name, "optoe1") == 0) ||
 	    (strcmp(client->name, "sff8436") == 0)) {
 		/* one-address (eg QSFP) family */
 		optoe->dev_class = ONE_ADDR;
@@ -985,7 +991,7 @@ static int optoe_probe(struct i2c_client *client,
 	optoe->use_smbus = use_smbus;
 	optoe->chip = chip;
 	optoe->num_addresses = num_addresses;
-	strcpy(optoe->port_name, "unitialized");
+	memcpy(optoe->port_name, port_name, MAX_PORT_NAME_LEN);
 
 	/*
 	 * Export the EEPROM bytes through sysfs, since that's convenient.
@@ -993,11 +999,9 @@ static int optoe_probe(struct i2c_client *client,
 	 */
 	sysfs_bin_attr_init(&optoe->bin);
 	optoe->bin.attr.name = "eeprom";
-	optoe->bin.attr.mode = S_IRUGO;
+	optoe->bin.attr.mode = 0444;
 	optoe->bin.read = optoe_bin_read;
 	optoe->bin.size = chip.byte_len;
-
-	optoe->macc.read = optoe_macc_read;
 
 	if (!use_smbus ||
 			(i2c_check_functionality(client->adapter,
@@ -1013,12 +1017,10 @@ static int optoe_probe(struct i2c_client *client,
 		 * 2 byte writes are acceptable for PE and Vout changes per
 		 * Application Note AN-2071.
 		 */
-		unsigned write_max = 1;
-
-		optoe->macc.write = optoe_macc_write;
+		unsigned int write_max = 1;
 
 		optoe->bin.write = optoe_bin_write;
-		optoe->bin.attr.mode |= S_IWUSR;
+		optoe->bin.attr.mode |= 0200;
 
 		if (write_max > io_limit)
 			write_max = io_limit;
@@ -1033,19 +1035,17 @@ static int optoe_probe(struct i2c_client *client,
 			goto exit_kfree;
 		}
 	} else {
-			dev_warn(&client->dev,
-				"cannot write due to controller restrictions.");
+		dev_warn(&client->dev,
+			"cannot write due to controller restrictions.");
 	}
 
 	optoe->client[0] = client;
 
-	/* use a dummy I2C device for two-address chips */
-	for (i = 1; i < num_addresses; i++) {
-		optoe->client[i] = i2c_new_dummy(client->adapter,
-					client->addr + i);
-		if (!optoe->client[i]) {
-			dev_err(&client->dev, "address 0x%02x unavailable\n",
-				client->addr + i);
+	/* SFF-8472 spec requires that the second I2C address be 0x51 */
+	if (num_addresses == 2) {
+		optoe->client[1] = i2c_new_dummy(client->adapter, 0x51);
+		if (!optoe->client[1]) {
+			dev_err(&client->dev, "address 0x51 unavailable\n");
 			err = -EADDRINUSE;
 			goto err_struct;
 		}
@@ -1063,6 +1063,7 @@ static int optoe_probe(struct i2c_client *client,
 		dev_err(&client->dev, "failed to create sysfs attribute group.\n");
 		goto err_struct;
 	}
+
 #ifdef EEPROM_CLASS
 	optoe->eeprom_dev = eeprom_device_register(&client->dev,
 							chip.eeprom_data);
@@ -1081,13 +1082,10 @@ static int optoe_probe(struct i2c_client *client,
 
 	if (use_smbus == I2C_SMBUS_WORD_DATA ||
 	    use_smbus == I2C_SMBUS_BYTE_DATA) {
-		dev_notice(&client->dev, "Falling back to %s reads, "
-			   "performance will suffer\n", use_smbus ==
-			   I2C_SMBUS_WORD_DATA ? "word" : "byte");
+		dev_notice(&client->dev,
+			"Falling back to %s reads, performance will suffer\n",
+			use_smbus == I2C_SMBUS_WORD_DATA ? "word" : "byte");
 	}
-
-	if (chip.setup)
-		chip.setup(&optoe->macc, chip.context);
 
 	return 0;
 
@@ -1098,9 +1096,9 @@ err_sysfs_cleanup:
 #endif
 
 err_struct:
-	for (i = 1; i < num_addresses; i++) {
-		if (optoe->client[i])
-			i2c_unregister_device(optoe->client[i]);
+	if (num_addresses == 2) {
+		if (optoe->client[1])
+			i2c_unregister_device(optoe->client[1]);
 	}
 
 	kfree(optoe->writebuf);
