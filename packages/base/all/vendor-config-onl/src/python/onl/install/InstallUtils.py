@@ -1065,7 +1065,7 @@ class InitrdContext(SubprocessMixin):
         if "efivarfs" not in buf:
             cmd = ('modprobe', 'efivarfs',)
             try:
-                self.check_call(cmd, vmode=self.V1)
+                self.check_output(cmd, vmode=self.V1, stderr=subprocess.STDOUT)
             except subprocess.CalledProcessError:
                 pass
 
