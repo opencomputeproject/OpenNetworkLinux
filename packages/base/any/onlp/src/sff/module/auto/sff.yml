@@ -55,6 +55,8 @@ sff_module_types: &sff_module_types
     desc: "100G-CWDM4"
 - 100G_PSM4:
     desc: "100G-PSM4"
+- 100G_SWDM4:
+    desc: "100G-SWDM4"
 - 40G_BASE_CR4:
     desc: "40GBASE-CR4"
 - 40G_BASE_SR4:
