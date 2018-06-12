@@ -674,7 +674,7 @@ sff_eeprom_parse_nonstandard__(sff_eeprom_t* se, uint8_t* eeprom)
     }
 
     if (strncmp(se->info.vendor, "Amphenol", 8) == 0 &&
-        strncmp(se->info.model, "625960001", 9) == 0 &&
+        (strncmp(se->info.model, "625960001", 9) == 0 || strncmp(se->info.model, "659900001", 9) == 0) &&
         (se->eeprom[240] == 0x0f) &&
         (se->eeprom[241] == 0x10) &&
         ((se->eeprom[243] & 0xF0) == 0xE0)) {
