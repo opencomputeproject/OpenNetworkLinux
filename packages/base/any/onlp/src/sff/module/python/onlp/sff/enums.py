@@ -58,11 +58,12 @@ class SFF_MODULE_TYPE(Enumeration):
     _10G_BASE_SRL = 28
     _1G_BASE_SX = 29
     _1G_BASE_LX = 30
-    _1G_BASE_CX = 31
-    _1G_BASE_T = 32
-    _100_BASE_LX = 33
-    _100_BASE_FX = 34
-    _4X_MUX = 35
+    _1G_BASE_ZX = 31
+    _1G_BASE_CX = 32
+    _1G_BASE_T = 33
+    _100_BASE_LX = 34
+    _100_BASE_FX = 35
+    _4X_MUX = 36
 
 
 class SFF_SFP_TYPE(Enumeration):
