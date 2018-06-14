@@ -191,7 +191,6 @@ onlp_sysi_platform_manage_leds(void)
 			led_setting = ONLP_LED_MODE_OFF;
 			global_fail ++;
 		}
-		printf ("fuck 111111111111 %d led_setting=%d \n", i, led_setting);
 		onlp_ledi_mode_set (ONLP_LED_ID_CREATE (PLAT_LED_ID_5 + i), led_setting);
 	}
 
