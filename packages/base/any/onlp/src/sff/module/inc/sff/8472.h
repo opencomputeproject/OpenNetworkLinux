@@ -209,6 +209,9 @@
 #define SFF8472_MEDIA_XGE_ER(idprom)            \
     ((idprom[3] & SFF8472_CC3_XGE_BASE_ER) != 0)
 
+#define SFF8472_MEDIA_LENGTH_ZX(idprom)            \
+    (idprom[14] >= 70)
+
 /*
  * some CR cables identify as infiniband copper
  * some CR cables identify as FC twinax

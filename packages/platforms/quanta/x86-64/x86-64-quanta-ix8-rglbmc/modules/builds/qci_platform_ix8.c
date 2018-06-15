@@ -213,7 +213,7 @@ static struct pca953x_platform_data pca9698_2_data = {
 };
 //CPU Board pca9555
 static struct pca953x_platform_data pca9555_CPU_data = {
-	.gpio_base = 0x40,
+	.gpio_base = 0x48,
 };
 static struct i2c_board_info ix8_i2c_devices[] = {
 	{
