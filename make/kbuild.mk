@@ -199,7 +199,7 @@ ifdef DTS_LIST
 ifeq ($(ARCH),arm64)
 	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/freescale/*.dtb $(K_DTBS_DIR)
 else
-	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -i $(K_SOURCE_DIR)/include -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
+	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
 endif
 endif
 
