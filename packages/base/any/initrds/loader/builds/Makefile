@@ -20,17 +20,18 @@ TARGET := onl-loader-initrd-$(ARCH).cpio.gz
 .PHONY: $(TARGET)
 
 $(TARGET):
-	$(ONLPM) --copy-file onl-buildroot-initrd:$(ARCH) onl-buildroot-initrd-$(ARCH).cpio.gz .
+	$(ONLPM) --copy-file onl-rootfs-initrd:$(ARCH) rootfs-$(ARCH).cpio.gz .
 	sudo rm -rf $(ROOT) && mkdir $(ROOT)
 	$(ONLPM) --sudo --force --extract-dir onl-loader-initrd-files:all $(ROOT)
 	$(ONLPM) --sudo $(foreach p,$(PLATFORM_PACKAGES),--extract-dir $(p) $(ROOT))
 	$(MAKE) __vendor_config_data
 	$(ONLPM) --sudo --force --extract-dir onl-vendor-config-onl:all $(ROOT)
+	$(ONLPM) --sudo --force --extract-dir onl-kernel-4.14-lts-x86-64-all-modules:$(ARCH) $(ROOT)
 	$(ONL)/tools/sjson.py --kj version $(ONL)/make/versions/version-onl.json --kl platforms $(PLATFORMS) --kv arch $(ARCH) --out manifest.json
 	sudo mkdir -p $(ROOT)/etc/onl/loader && sudo cp manifest.json $(ROOT)/etc/onl/loader
 	sudo $(ONL)/tools/makedevs -d $(ROOT)/etc/rootperms $(abspath $(ROOT))
-	sudo $(ONL)/tools/cpiomod.py --cpio onl-buildroot-initrd-$(ARCH).cpio.gz --add-directory $(ROOT) --out $@
-	sudo rm -rf $(ROOT) onl-buildroot-initrd-$(ARCH).cpio.gz
+	sudo $(ONL)/tools/cpiomod.py --cpio rootfs-$(ARCH).cpio.gz --add-directory $(ROOT) --out $@
+	sudo rm -rf $(ROOT) rootfs-$(ARCH).cpio.gz
 
 __vendor_config_data:
 	set -e ;\
