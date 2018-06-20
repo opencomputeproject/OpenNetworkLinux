@@ -1,0 +1,62 @@
+############################################################
+#
+# Common Release Packages for minimal systems.
+#
+############################################################
+- base-files
+- sysvinit-core
+- locales
+- python
+- apt
+- apt-utils
+- deborphan
+- procps
+- net-tools
+- iputils-ping
+- less
+- openssh-client
+- iproute
+- resolvconf
+- vim-tiny
+##- zile
+- jove
+- nano
+##- pico
+##- lsof
+- mingetty
+- traceroute
+- realpath
+- netbase
+- bsdmainutils
+- ifupdown
+- psmisc
+- pciutils
+##- usbutils
+- mtd-utils
+##- i2c-tools
+- module-init-tools
+- isc-dhcp-client
+- wget
+- ethtool
+- localepurge
+##- telnetd
+- cpio
+- util-linux
+- dosfstools
+- u-boot-tools
+- parted
+- netplug
+- binutils
+##- file
+- realpath
+- python-parted
+- python-yaml
+- bzip2
+- xz-utils
+- unzip
+- openssl
+- strace
+- ipmitool
+- util-linux
+- squashfs-tools
+- run-parts
