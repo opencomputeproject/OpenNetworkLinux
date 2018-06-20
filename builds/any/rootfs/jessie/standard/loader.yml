@@ -1,0 +1,137 @@
+############################################################
+#
+# Minimal ONL Debian 8 Root Filesystem Configuration.
+#
+# Requires:
+#     ARCH, PLATFORM_LIST
+#
+#
+############################################################
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
+Packages: &Packages
+  - !include $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/minimal-base-packages.yml
+
+Multistrap:
+  General:
+    arch: ${ARCH}
+    cleanup: true
+    noauth: true
+    explicitsuite: false
+    unpack: true
+    debootstrap: Debian-Local Local-All Local-Arch ONL-Local
+    aptsources: Debian ONL
+
+  Debian:
+    packages: *Packages
+    source: http://${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  Debian-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}${DEBIAN_MIRROR}
+    suite: ${ONL_DEBIAN_SUITE}
+    keyring: debian-archive-keyring
+    omitdebsrc: true
+
+  ONL:
+    packages: *Packages
+    source: http://apt.opennetlinux.org/debian
+    suite: unstable
+    omitdebsrc: true
+
+  ONL-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}apt.opennetlinux.org/debian
+    suite: unstable
+    omitdebsrc: true
+
+  Local-All:
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-all
+    omitdebsrc: true
+
+  Local-Arch:
+    source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
+    omitdebsrc: true
+
+Configure:
+  overlays:
+    ##- ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/common/overlay
+    - ${ONL}/packages/base/all/initrds/loader-initrd-files/src
+
+  update-rc.d:
+    - 'motd remove'
+    - 'mountall-bootclean.sh remove'
+    - 'mountall.sh remove'
+    - 'checkfs.sh remove'
+    - 'checkroot-bootclean.sh remove'
+    - 'checkroot.sh remove'
+    - 'mountnfs-bootclean.sh remove'
+    - 'mountnfs.sh remove'
+    - 'netplug defaults'
+
+  options:
+    clean: True
+    securetty: False
+    ttys: False
+    console: True
+    PermitRootLogin: 'yes'
+
+  purge:
+    - adduser
+    - localepurge
+    - locales
+    - tzdata
+    - deborphan
+    - debian-archive-keyring
+    - sensible-utils
+    - debianutils
+    - init-system-helpers
+    - gnupg
+    - libusb*
+    - gpgv
+    - mime-support
+    - apt-utils
+    - apt
+    - "libapt-*"
+    - "*-perl"
+    - "perl*"
+    - ucf
+    - debconf-i18n
+    - apt-utils
+    - apt-get
+    - ucf
+    - debconf
+    - dpkg
+  
+  users:
+    root:
+      password: onl
+
+  manifests:
+    '/etc/onl/rootfs/manifest.json' :
+      version : $ONL/make/versions/version-onl.json
+      platforms : $PLATFORM_LIST
+
+  issue: $VERSION_STRING
+
+  files:
+
+    remove:
+      - /etc/motd
+
+    add:
+      /tmp/rfs-purge-python.py: $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/rfs-purge-python.py
+      /tmp/rfs-purge-gconv.sh: $ONL/builds/any/rootfs/$ONL_DEBIAN_SUITE/common/rfs-purge-gconv.sh
+
+  post-commands:
+    - 'sudo rm -fr %(__rfs__)s/usr/share/doc/*'
+    - 'sudo rm -fr %(__rfs__)s/usr/share/zoneinfo/*'
+    - 'sudo rm -fr %(__rfs__)s/usr/share/i18n/locales/*'
+    - 'sudo chroot %(__rfs__)s /bin/sh /tmp/rfs-purge-gconv.sh'
+    - 'sudo rm %(__rfs__)s/tmp/rfs-purge-gconv.sh'
+    - 'sudo chroot %(__rfs__)s python /tmp/rfs-purge-python.py'
+    - 'sudo rm %(__rfs__)s/tmp/rfs-purge-python.py'
