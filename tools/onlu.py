@@ -128,6 +128,44 @@ def execute(args, sudo=False, chroot=None, ex=None):
     profiler.log(args)
     return rv
 
+def capture(args, sudo=False, chroot=None, ex=None):
+
+    if type(args) is str:
+        # Must be executed through the shell
+        shell=True
+    else:
+        shell = False
+
+    if chroot and os.geteuid() != 0:
+        # Must be executed under sudo
+        sudo = True
+
+    if chroot:
+        if type(args) is str:
+            args = "chroot %s %s" % (chroot, args)
+        elif type(args) in (list,tuple):
+            args = ['chroot', chroot] + list(args)
+
+    if sudo:
+        if type(args) is str:
+            args = "sudo %s" % (args)
+        elif type(args) in (list, tuple):
+            args = [ 'sudo' ] + list(args)
+
+
+    logger.debug("Capturing:%s", args)
+
+    rv = 0
+    with Profiler() as profiler:
+        try:
+            out = subprocess.check_output(args, shell=shell)
+            rv = 0
+        except subprocess.CalledProcessError, e:
+            if ex:
+                raise ex
+            out = ""
+    profiler.log(args)
+    return out
 
 # Flatten lists if string lists
 def sflatten(coll):
