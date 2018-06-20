@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+######################################################################
+#
+# ttyinit
+#
+# continue the init process after we are a session leader
+# and have the controlling tty
+#
+######################################################################
+
+trap '' 2 3
+# ignore, but fall through syscalls
+
+flag_sigquit=
+do_sigquit() {
+  echo "Received SIGQUIT!"
+  flag_sigquit=1
+}
+trap "do_sigquit" 3
+
+flag_sigint=
+do_sigint() {
+  echo "Received SIGINT/CTRL-C!"
+  flag_sigint=1
+}
+trap "do_sigint" 2
+
+autoboot &
+autoboot_pid=$!
+
+wait $autoboot_pid
+# interrupt when e.g. /bin/boot signals us
+
+if test "$flag_sigquit"; then
+  echo "Terminating processes"
+  kill -TERM -1
+  echo "Switching to new SWI..."
+  exec /bin/switchroot
+fi
+
+if test "$flag_sigint"; then
+  echo "Terminating processes"
+  kill -TERM -1
+  echo "Running a login shell (exit to reboot)"
+  /bin/login
+else
+  echo "Autoboot failed or was killed!"
+  echo "Rebooting in 5s"
+  sleep 5
+fi
+
+trap - 2 3
+
+/bin/umount -a -r
+
+echo "Loader is now rebooting."
+reboot -f

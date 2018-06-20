@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+######################################################################
+#
+# /init script for Debian initrd
+#
+######################################################################
+
+export PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+exec 0</dev/console
+exec 1>/dev/console
+exec 2>/dev/console
+
+echo "Initializing boot-time state"
+/bin/sysinit
+
+# Initial state *should* be pid=1 pgid=0 sid=0
+set dummy $(ps -o pid= -o pgid= -o sid= $$)
+shift
+pid=$1
+shift
+pgid=$1
+shift
+sid=$1
+
+if test "$pid" != "1"; then
+  echo "Not running as init! (PID=$pid PGID=$pgid SID=$sid)"
+  exec /bin/ttyinit
+fi
+
+if test "$pid" = "$sid"; then
+  echo "Already a session leader! (PID=$pid PGID=$pgid SID=$sid)"
+  exec /bin/ttyinit
+fi
+
+# start a new session/process group in order to receive signals
+exec setsid --ctty /bin/ttyinit

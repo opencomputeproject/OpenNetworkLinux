@@ -12,6 +12,7 @@ packages:
     summary: Open Network Linux System Loader Source Files
 
     files:
+      - src/init : /init
       - src/bin : /bin
       - src/etc : /etc
       - src/lib : /lib

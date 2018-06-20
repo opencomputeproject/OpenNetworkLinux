@@ -25,3 +25,5 @@
 /bin/zcip				f	755	0	0	-	-	-	-	-
 /lib/udhcpc-script			f	755	0	0	-	-	-	-	-
 /lib/zcip-script			f	755	0	0	-	-	-	-	-
+
+/dev/console				c	666	0	0	5	1	-	-	-
