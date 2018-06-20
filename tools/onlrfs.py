@@ -14,7 +14,7 @@ import shutil
 import pprint
 import fcntl
 import subprocess
-import glob
+import glob, fnmatch
 import submodules
 import StringIO
 from collections import Iterable
@@ -476,24 +476,86 @@ rm -f /usr/sbin/policy-rc.d
                 options = Configure.get('options', {})
                 if options.get('clean', False):
                     logger.info("Cleaning Filesystem...")
-                    onlu.execute('sudo chroot %s /usr/bin/apt-get clean' % dir_)
-                    onlu.execute('sudo chroot %s /usr/sbin/localepurge' % dir_ )
-                    onlu.execute('sudo chroot %s find /usr/share/doc -type f -not -name asr.json -delete' % dir_)
-                    onlu.execute('sudo chroot %s find /usr/share/man -type f -delete' % dir_)
+                    onlu.execute('/usr/bin/apt-get clean', sudo=True, chroot=dir_)
+
+                    # fix the localepurge config file
+                    p1 = os.path.join(dir_, "etc/locale.nopurge")
+                    p2 = os.path.join(dir_, "tmp/locale.nopurge")
+                    with open(p1) as fd:
+                        l = fd.readlines()
+                    l = [x for x in l if not x.startswith('NEEDSCONFIGFIRST')]
+                    l = [x for x in l if not x.startswith('USE_DPKG')]
+                    with open(p2, "w") as fd:
+                        fd.write("".join(l))
+                    onlu.execute('cp %s %s' % (p2, p1,), sudo=True)
+                    os.unlink(p2)
+
+                    onlu.execute('/usr/sbin/localepurge', sudo=True, chroot=dir_)
+
+                    onlu.execute('find /usr/share/doc -type f -not -name asr.json -delete',
+                                 sudo=True, chroot=dir_)
+                    for root, dirs, files in os.walk(os.path.join(dir_, "usr/share/doc"), topdown=False):
+                        if not dirs and not files:
+                            onlu.execute('rmdir %s' % root, sudo=True)
+
+                    onlu.execute('find /usr/share/man -type f -delete', sudo=True, chroot=dir_)
+                    for root, dirs, files in os.walk(os.path.join(dir_, "usr/share/doc"), topdown=False):
+                        if not dirs and not files:
+                            onlu.execute('rmdir %s' % root, sudo=True)
+
+                purge = Configure.get('purge', [])
+                cmd = "dpkg --get-selections"
+                buf = onlu.capture(cmd, sudo=True, chroot=dir_)
+                allpkgs = buf.splitlines(False)
+                allpkgs = [x.split()[0] for x in allpkgs]
+                allpkgs = [x.partition(':')[0] for x in allpkgs]
+                for pat in purge:
+                    if '*' in pat:
+                        pl = [x for x in allpkgs if fnmatch.fnmatch(x, pat)]
+                    else:
+                        pl = [pat,]
+                    for pkg in pl:
+                        logger.info("Purging %s...", pkg)
+
+                        if pkg in ('dpkg', 'debconf',):
+                            cmd = "dpkg --listfiles %s" % pkg
+                            buf = onlu.capture(cmd, sudo=True, chroot=dir_)
+                            fl = buf.splitlines(False)
+                            for e in sorted(fl, reverse=True):
+                                p = os.path.join(dir_, e.lstrip('/'))
+                                if os.path.isdir(p):
+                                    cmd = "rmdir %s" % p
+                                    onlu.execute(cmd, sudo=True, ex=False)
+                                else:
+                                    cmd = "rm %s" % p
+                                    onlu.execute(cmd, sudo=True, ex=False)
+                        else:
+                            cmd = ("env DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true dpkg --purge --force-all %s"
+                                   % (pkg,))
+                            onlu.execute(cmd, sudo=True, chroot=dir_)
+
+                        if pkg == 'dpkg':
+                            cmd = "rm -fr %s/var/lib/dpkg" % dir_
+                            onlu.execute(cmd, sudo=True)
+
+                        if pkg == 'debconf':
+                            cmd = "rm -fr %s/var/cache/debconf" % dir_
+                            onlu.execute(cmd, sudo=True)
 
                 if 'PermitRootLogin' in options:
                     config = os.path.join(dir_, 'etc/ssh/sshd_config')
-                    ua.chmod('a+rw', config)
-                    lines = open(config).readlines()
-                    with open(config, "w") as f:
-                        for line in lines:
-                            if line.startswith('PermitRootLogin'):
-                                v = options['PermitRootLogin']
-                                logger.info("Setting PermitRootLogin to %s" % v)
-                                f.write('PermitRootLogin %s\n' % v)
-                            else:
-                                f.write(line)
-                    ua.chmod('644', config)
+                    if os.path.exists(config):
+                        ua.chmod('a+rw', config)
+                        lines = open(config).readlines()
+                        with open(config, "w") as f:
+                            for line in lines:
+                                if line.startswith('PermitRootLogin'):
+                                    v = options['PermitRootLogin']
+                                    logger.info("Setting PermitRootLogin to %s" % v)
+                                    f.write('PermitRootLogin %s\n' % v)
+                                else:
+                                    f.write(line)
+                        ua.chmod('644', config)
 
                 if not options.get('securetty', True):
                     f = os.path.join(dir_, 'etc/securetty')
@@ -570,7 +632,12 @@ rm -f /usr/sbin/policy-rc.d
                     onlu.execute("sudo touch %s" % dst)
                     onlu.execute("sudo chmod a+w %s" % dst)
                     if os.path.exists(v):
-                        shutil.copy(v, dst)
+                        shutil.copyfile(v, dst)
+                        try:
+                            shutil.copymode(v, dst)
+                        except OSError as ex:
+                            logger.warn("%s: cannot copy file permissions: %s",
+                                        dst, str(ex))
                     else:
                         with open(dst, "w") as f:
                             f.write("%s\n" % v)
@@ -596,6 +663,12 @@ rm -f /usr/sbin/policy-rc.d
                         f.write("%s\n" % issue)
                     onlu.execute("sudo chmod a-w %s" % fn)
 
+                for command in Configure.get('post-commands', []):
+                    if '__rfs__' in command:
+                        command = command % dict(__rfs__=dir_)
+                    logger.info("Configuration post-command '%s'..." % command)
+                    onlu.execute(command,
+                                 ex=OnlRfsError("Command '%s' failed." % command))
 
     def update(self, dir_, packages):
 
