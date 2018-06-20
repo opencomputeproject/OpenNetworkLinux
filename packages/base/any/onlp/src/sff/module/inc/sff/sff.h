@@ -103,6 +103,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_100G_BASE_LR4,
     SFF_MODULE_TYPE_100G_CWDM4,
     SFF_MODULE_TYPE_100G_PSM4,
+    SFF_MODULE_TYPE_100G_SWDM4,
     SFF_MODULE_TYPE_40G_BASE_CR4,
     SFF_MODULE_TYPE_40G_BASE_SR4,
     SFF_MODULE_TYPE_40G_BASE_LR4,
@@ -114,6 +115,8 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_40G_BASE_ER4,
     SFF_MODULE_TYPE_25G_BASE_CR,
     SFF_MODULE_TYPE_25G_BASE_SR,
+    SFF_MODULE_TYPE_25G_BASE_LR,
+    SFF_MODULE_TYPE_25G_BASE_AOC,
     SFF_MODULE_TYPE_10G_BASE_SR,
     SFF_MODULE_TYPE_10G_BASE_LR,
     SFF_MODULE_TYPE_10G_BASE_LRM,
@@ -125,6 +128,7 @@ typedef enum sff_module_type_e {
     SFF_MODULE_TYPE_10G_BASE_SRL,
     SFF_MODULE_TYPE_1G_BASE_SX,
     SFF_MODULE_TYPE_1G_BASE_LX,
+    SFF_MODULE_TYPE_1G_BASE_ZX,
     SFF_MODULE_TYPE_1G_BASE_CX,
     SFF_MODULE_TYPE_1G_BASE_T,
     SFF_MODULE_TYPE_100_BASE_LX,
@@ -144,6 +148,7 @@ typedef enum sff_module_type_e {
     "100G_BASE_LR4", \
     "100G_CWDM4", \
     "100G_PSM4", \
+    "100G_SWDM4", \
     "40G_BASE_CR4", \
     "40G_BASE_SR4", \
     "40G_BASE_LR4", \
@@ -155,6 +160,8 @@ typedef enum sff_module_type_e {
     "40G_BASE_ER4", \
     "25G_BASE_CR", \
     "25G_BASE_SR", \
+    "25G_BASE_LR", \
+    "25G_BASE_AOC", \
     "10G_BASE_SR", \
     "10G_BASE_LR", \
     "10G_BASE_LRM", \
@@ -166,6 +173,7 @@ typedef enum sff_module_type_e {
     "10G_BASE_SRL", \
     "1G_BASE_SX", \
     "1G_BASE_LX", \
+    "1G_BASE_ZX", \
     "1G_BASE_CX", \
     "1G_BASE_T", \
     "100_BASE_LX", \

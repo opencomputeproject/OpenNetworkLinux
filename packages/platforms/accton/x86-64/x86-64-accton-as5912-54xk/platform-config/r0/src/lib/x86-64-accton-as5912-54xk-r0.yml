@@ -18,7 +18,7 @@ x86-64-accton-as5912-54xk-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-3-16
+      <<: *kernel-4-14
 
     args: >-
       nopat

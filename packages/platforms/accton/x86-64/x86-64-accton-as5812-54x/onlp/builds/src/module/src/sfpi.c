@@ -24,20 +24,24 @@
  *
  ***********************************************************/
 #include <onlp/platformi/sfpi.h>
-
-#include <fcntl.h> /* For O_RDWR && open */
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
 #include <onlplib/i2c.h>
-#include "platform_lib.h"
+#include <onlplib/file.h>
+#include "x86_64_accton_as5812_54x_int.h"
+#include "x86_64_accton_as5812_54x_log.h"
 
-#define MAX_SFP_PATH 64
-static char sfp_node_path[MAX_SFP_PATH] = {0};
 #define CPLD_MUX_BUS_START_INDEX 2
 
-static int front_port_to_cpld_mux_index(int port)
+#define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define MODULE_PRESENT_FORMAT		    "/sys/bus/i2c/devices/0-00%d/module_present_%d"
+#define MODULE_RXLOS_FORMAT             "/sys/bus/i2c/devices/0-00%d/module_rx_los_%d"
+#define MODULE_TXFAULT_FORMAT           "/sys/bus/i2c/devices/0-00%d/module_tx_fault_%d"
+#define MODULE_TXDISABLE_FORMAT         "/sys/bus/i2c/devices/0-00%d/module_tx_disable_%d"
+#define MODULE_PRESENT_ALL_ATTR_CPLD2	"/sys/bus/i2c/devices/0-0061/module_present_all"
+#define MODULE_PRESENT_ALL_ATTR_CPLD3	"/sys/bus/i2c/devices/0-0062/module_present_all"
+#define MODULE_RXLOS_ALL_ATTR_CPLD2	    "/sys/bus/i2c/devices/0-0061/module_rx_los_all"
+#define MODULE_RXLOS_ALL_ATTR_CPLD3	    "/sys/bus/i2c/devices/0-0062/module_rx_los_all"
+
+static int front_port_bus_index(int port)
 {
     int rport = 0;
 
@@ -62,38 +66,6 @@ static int front_port_to_cpld_mux_index(int port)
 
     return (rport + CPLD_MUX_BUS_START_INDEX);
 }
-
-static int
-as5812_54x_sfp_node_read_int(char *node_path, int *value, int data_len)
-{
-    int ret = 0;
-    char buf[8] = {0};
-    *value = 0;
-
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), data_len);
-
-    if (ret == 0) {
-        *value = atoi(buf);
-    }
-
-    return ret;
-}
-
-static char*
-as5812_54x_sfp_get_port_path_addr(int port, int addr, char *node_name)
-{
-    sprintf(sfp_node_path, "/sys/bus/i2c/devices/%d-00%d/%s",
-                           front_port_to_cpld_mux_index(port), addr,
-                           node_name);
-    return sfp_node_path;
-}
-
-static char*
-as5812_54x_sfp_get_port_path(int port, char *node_name)
-{
-    return as5812_54x_sfp_get_port_path_addr(port, 50, node_name);
-}
-
 
 /************************************************************
  *
@@ -203,10 +175,10 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     int present;
-    char* path = as5812_54x_sfp_get_port_path(port, "sfp_is_present");
-
-    if (as5812_54x_sfp_node_read_int(path, &present, 1) != 0) {
-        AIM_LOG_INFO("Unable to read present status from port(%d)\r\n", port);
+    int addr = (port < 24) ? 61 : 62;
+    
+	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, addr, (port+1)) < 0) {
+        AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -217,29 +189,35 @@ int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     uint32_t bytes[7];
-    char* path;
     FILE* fp;
 
-    path = as5812_54x_sfp_get_port_path(0, "sfp_is_present_all");
-    fp = fopen(path, "r");
-
+    /* Read present status of port 0~23 */
+    fp = fopen(MODULE_PRESENT_ALL_ATTR_CPLD2, "r");
     if(fp == NULL) {
-        AIM_LOG_ERROR("Unable to open the sfp_is_present_all device file.");
+        AIM_LOG_ERROR("Unable to open the module_present_all device file of CPLD2.");
         return ONLP_STATUS_E_INTERNAL;
     }
-    int count = fscanf(fp, "%x %x %x %x %x %x %x",
-                       bytes+0,
-                       bytes+1,
-                       bytes+2,
-                       bytes+3,
-                       bytes+4,
-                       bytes+5,
-                       bytes+6
-                       );
+
+    int count = fscanf(fp, "%x %x %x", bytes+0, bytes+1, bytes+2);
     fclose(fp);
-    if(count != AIM_ARRAYSIZE(bytes)) {
+    if(count != 3) {
         /* Likely a CPLD read timeout. */
-        AIM_LOG_ERROR("Unable to read all fields from the sfp_is_present_all device file.");
+        AIM_LOG_ERROR("Unable to read all fields the module_present_all device file of CPLD2.");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    /* Read present status of port 24~53 */
+    fp = fopen(MODULE_PRESENT_ALL_ATTR_CPLD3, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the module_present_all device file of CPLD3.");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    count = fscanf(fp, "%x %x %x %x", bytes+3, bytes+4, bytes+5, bytes+6);
+    fclose(fp);
+    if(count != 4) {
+        /* Likely a CPLD read timeout. */
+        AIM_LOG_ERROR("Unable to read all fields the module_present_all device file of CPLD3.");
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -268,33 +246,39 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    uint32_t bytes[7];
-    char* path;
+    uint32_t bytes[6];
+    uint32_t *ptr = bytes;
     FILE* fp;
 
-    path = as5812_54x_sfp_get_port_path(0, "sfp_rx_los_all");
-    fp = fopen(path, "r");
+    /* Read present status of port 0~23 */
+    int addr, i = 0;
 
-    if(fp == NULL) {
-        AIM_LOG_ERROR("Unable to open the sfp_rx_los_all device file.");
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    int count = fscanf(fp, "%x %x %x %x %x %x",
-                       bytes+0,
-                       bytes+1,
-                       bytes+2,
-                       bytes+3,
-                       bytes+4,
-                       bytes+5
-                       );
-    fclose(fp);
-    if(count != 6) {
-        AIM_LOG_ERROR("Unable to read all fields from the sfp_rx_los_all device file.");
-        return ONLP_STATUS_E_INTERNAL;
+    for (addr = 61; addr <= 62; addr++) {
+        if (addr == 61) {
+            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD2, "r");
+        }
+        else {
+            fp = fopen(MODULE_RXLOS_ALL_ATTR_CPLD3, "r");
+        }
+
+        if(fp == NULL) {
+            AIM_LOG_ERROR("Unable to open the module_rx_los_all device file of CPLD(0x%d)", addr);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        int count = fscanf(fp, "%x %x %x", ptr+0, ptr+1, ptr+2);
+        fclose(fp);
+        if(count != 3) {
+            /* Likely a CPLD read timeout. */
+            AIM_LOG_ERROR("Unable to read all fields from the module_rx_los_all device file of CPLD(0x%d)", addr);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        ptr += count;
     }
 
     /* Convert to 64 bit integer in port order */
-    int i = 0;
+    i = 0;
     uint64_t rx_los_all = 0 ;
     for(i = 5; i >= 0; i--) {
         rx_los_all <<= 8;
@@ -315,18 +299,22 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char* path = as5812_54x_sfp_get_port_path(port, "sfp_eeprom");
-
     /*
      * Read the SFP eeprom into data[]
      *
      * Return MISSING if SFP is missing.
      * Return OK if eeprom is read
      */
+    int size = 0;
     memset(data, 0, 256);
 
-    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
-        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
+	if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, front_port_bus_index(port)) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (size != 256) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d), size is different!\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -336,11 +324,26 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
-    char* path = as5812_54x_sfp_get_port_path_addr(port, 51, "sfp_eeprom");
-    memset(data, 0, 256);
+    FILE* fp;
+    char file[64] = {0};
+    
+    sprintf(file, PORT_EEPROM_FORMAT, front_port_bus_index(port));
+    fp = fopen(file, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
 
-    if (deviceNodeReadBinary(path, (char*)data, 256, 256) != 0) {
-        AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
+    if (fseek(fp, 256, SEEK_CUR) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    int ret = fread(data, 1, 256, fp);
+    fclose(fp);
+    if (ret != 256) {
+        AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -350,28 +353,28 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = front_port_to_cpld_mux_index(port);
+    int bus = front_port_bus_index(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    int bus = front_port_to_cpld_mux_index(port);
+    int bus = front_port_bus_index(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = front_port_to_cpld_mux_index(port);
+    int bus = front_port_bus_index(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    int bus = front_port_to_cpld_mux_index(port);
+    int bus = front_port_bus_index(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
@@ -384,13 +387,13 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
+    int addr = (port < 24) ? 61 : 62;
+
     switch(control)
         {
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
-                char* path = as5812_54x_sfp_get_port_path(port, "sfp_tx_disable");
-
-                if (deviceNodeWriteInt(path, value, 0) != 0) {
+                if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, addr, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -412,19 +415,18 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int rv;
-    char* path = NULL;
 
     if (port < 0 || port >= 48) {
         return ONLP_STATUS_E_UNSUPPORTED;
     }
 
+    int addr = (port < 24) ? 61 : 62;
+
     switch(control)
         {
         case ONLP_SFP_CONTROL_RX_LOS:
             {
-                path = as5812_54x_sfp_get_port_path(port, "sfp_rx_loss");
-
-                if (as5812_54x_sfp_node_read_int(path, value, 1) != 0) {
+            	if (onlp_file_read_int(value, MODULE_RXLOS_FORMAT, addr, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to read rx_loss status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -436,9 +438,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         case ONLP_SFP_CONTROL_TX_FAULT:
             {
-                path = as5812_54x_sfp_get_port_path(port, "sfp_tx_fault");
-
-                if (as5812_54x_sfp_node_read_int(path, value, 1) != 0) {
+            	if (onlp_file_read_int(value, MODULE_TXFAULT_FORMAT, addr, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }
@@ -450,9 +450,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
-                path = as5812_54x_sfp_get_port_path(port, "sfp_tx_disable");
-
-                if (as5812_54x_sfp_node_read_int(path, value, 0) != 0) {
+            	if (onlp_file_read_int(value, MODULE_TXDISABLE_FORMAT, addr, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to read tx_disabled status from port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
                 }

@@ -33,11 +33,6 @@
 extern int as7312_54xs_cpld_read (unsigned short cpld_addr, u8 reg);
 extern int as7312_54xs_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
-extern void led_classdev_unregister(struct led_classdev *led_cdev);
-extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
-extern void led_classdev_resume(struct led_classdev *led_cdev);
-extern void led_classdev_suspend(struct led_classdev *led_cdev);
-
 #define DRVNAME "accton_as7312_54xs_led"
 
 struct accton_as7312_54xs_led_data {
