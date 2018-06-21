@@ -139,8 +139,8 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <0>;
-                sfp_eeprom@50 {
-                    compatible = "at,as4610_sfp1";
+                optoe@50 {
+                    compatible = "optoe2";
                     reg = <0x50>;
                     label = "port49";
                 };
@@ -151,8 +151,8 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <1>;
-                sfp_eeprom@50 {
-                    compatible = "accton,as4610_sfp2";
+                optoe@50 {
+                    compatible = "optoe2";
                     reg = <0x50>;
                     label = "port50";
                 };
@@ -163,8 +163,8 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <2>;
-                sfp_eeprom@50 {
-                    compatible = "accton,as4610_sfp3";
+                optoe@50 {
+                    compatible = "optoe2";
                     reg = <0x50>;
                     label = "port51";
                 };
@@ -175,8 +175,8 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <3>;
-                sfp_eeprom@50 {
-                    compatible = "accton,as4610_sfp4";
+                optoe@50 {
+                    compatible = "optoe2";
                     reg = <0x50>;
                     label = "port52";
                 };
@@ -187,9 +187,10 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <4>;
-                sfp_eeprom@50 {
-                    compatible = "accton,as4610_sfp5";
+                optoe@50 {
+                    compatible = "optoe1";
                     reg = <0x50>;
+                    label = "port53";
                 };
             };
 
@@ -198,9 +199,10 @@
                 #address-cells = <1>;
                 #size-cells = <0>;
                 reg = <5>;
-                sfp_eeprom@50 {
-                    compatible = "accton,as4610_sfp6";
+                optoe@50 {
+                    compatible = "optoe1";
                     reg = <0x50>;
+                    label = "port54";
                 };
             };
 
