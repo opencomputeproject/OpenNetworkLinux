@@ -4,7 +4,6 @@
 #
 ############################################################
 - base-files
-- sysvinit-core
 - locales
 - python
 - apt

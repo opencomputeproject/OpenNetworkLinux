@@ -1,4 +1,5 @@
-#How to Build Open Network Linux 
+How to Build Open Network Linux 
+============================================================
 
 In case you are not interested in building ONL from scratch
 (it takes a while) you can download pre-compiled binaries from
@@ -55,7 +56,8 @@ and the SWI files (if you want them) are in
 
 
 
-#Installing Docker Gotchas
+Installing Docker Gotchas
+------------------------------------------------------------
 
 Docker installer oneliner (for reference: see docker.com for details)
 
@@ -78,7 +80,7 @@ Consider enabling builds for non-privileged users with:
 - If you run as non-root without this, you will get errors like `..: dial unix /var/run/docker.sock: permission denied`
 - Building as root is fine as well (it immediately jumps into a root build shell), so this optional
     
-#Additional Build Details
+Additional Build Details
 ----------------------------------------------------------
 
 The rest of this guide talks about how to build specific 
