@@ -189,9 +189,18 @@ class OnlMultistrapConfig(object):
         self.__validate_key(general, 'arch', str, True)
         self.__validate_key(general, 'debootstrap', str, True)
 
-        for e in general['debootstrap'].split():
-            if e not in self.config:
-                raise OnlRfsError("Section '%s' is specified in the debootstrap option but does not exist in the configuration." % e)
+        for entry in [ 'debootstrap', 'aptsources' ]:
+            sectionlist = []
+            for e in general[entry].split():
+                if e not in self.config:
+                    raise OnlRfsError("Section '%s' is specified in the %s option but does not exist in the configuration." % (e, entry))
+
+                if self.config[e].get('arches', None) and general['arch'] not in self.config[e]['arches']:
+                    del self.config[e]
+                else:
+                    sectionlist.append(e)
+
+            general[entry] = " ".join(sectionlist)
 
         self.localrepos = []
 
