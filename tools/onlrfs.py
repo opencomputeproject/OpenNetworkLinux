@@ -392,6 +392,8 @@ class OnlRfsBuilder(object):
         onlu.execute('sudo cp %s %s' % (os.path.join(os.getenv('ONL'), 'tools', 'scripts', 'base-files.postinst'),
                                         os.path.join(dir_, 'var', 'lib', 'dpkg', 'info', 'base-files.postinst')));
 
+        # make sure /tmp is writable
+        OnlRfsSystemAdmin.chmod('1777', '%s/tmp' % dir_)
         script = os.path.join(dir_, "tmp/configure.sh")
         with open(script, "w") as f:
             os.chmod(script, 0700)
