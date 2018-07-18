@@ -132,7 +132,7 @@ default:
     - "bootm $onl_loadaddr#$onl_platform"
 
     mmc_bootcmds: &mmc_bootcmds
-    - mmc part 0
+    - mmc part
     - ext2load mmc 0:1 $onl_loadaddr $onl_itb
     - "bootm $onl_loadaddr#$onl_platform"
 
