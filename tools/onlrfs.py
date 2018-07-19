@@ -374,7 +374,7 @@ class OnlRfsBuilder(object):
             onlu.execute("sudo rm -rf %s" % dir_,
                          ex=OnlRfsError("Could not remove target directory."))
 
-        if onlu.execute("sudo %s -d %s -f %s" % (self.MULTISTRAP, dir_, msconfig)) == 100:
+        if onlu.execute("sudo unshare -pf --mount-proc %s -d %s -f %s" % (self.MULTISTRAP, dir_, msconfig)) == 100:
             raise OnlRfsError("Multistrap APT failure.")
 
         if os.getenv("MULTISTRAP_DEBUG"):
@@ -422,7 +422,7 @@ rm -f /usr/sbin/policy-rc.d
 
         logger.info("dpkg-configure filesystem...")
 
-        onlu.execute("sudo chroot %s /tmp/configure.sh" % dir_,
+        onlu.execute("sudo unshare -pf --mount-proc chroot %s /tmp/configure.sh" % dir_,
                      ex=OnlRfsError("Post Configuration failed."))
         os.unlink(script)
 
