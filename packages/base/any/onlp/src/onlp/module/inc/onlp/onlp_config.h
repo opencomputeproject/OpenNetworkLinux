@@ -1,29 +1,23 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
+ *
  * </bsn.cl>
- ************************************************************
- *
- *
- *
- ***********************************************************/
-
-/**************************************************************************//**
+ ********************************************************//**
  *
  * @file
  * @brief onlp Configuration Header
@@ -31,7 +25,7 @@
  * @addtogroup onlp-config
  * @{
  *
- *****************************************************************************/
+ ***********************************************************/
 #ifndef __ONLP_CONFIG_H__
 #define __ONLP_CONFIG_H__
 
@@ -135,23 +129,13 @@
 #endif
 
 /**
- * ONLP_CONFIG_INCLUDE_PLATFORM_STATIC
+ * ONLP_CONFIG_PLATFORM_NAME
  *
- * Specify the platform name directly as a compile-time option. */
+ * Static platform configuration. */
 
 
-#ifndef ONLP_CONFIG_INCLUDE_PLATFORM_STATIC
-#define ONLP_CONFIG_INCLUDE_PLATFORM_STATIC 0
-#endif
-
-/**
- * ONLP_CONFIG_PLATFORM_STATIC
- *
- * The name of the static platform if configured. */
-
-
-#ifndef ONLP_CONFIG_PLATFORM_STATIC
-#define ONLP_CONFIG_PLATFORM_STATIC "unknown"
+#ifndef ONLP_CONFIG_PLATFORM_NAME
+#define ONLP_CONFIG_PLATFORM_NAME NULL
 #endif
 
 /**

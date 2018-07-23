@@ -23,10 +23,7 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/psui.h>
-#include <onlplib/mmap.h>
-#include <stdio.h>
-#include <string.h>
+#include <onlp/platformi/base.h>
 #include "platform_lib.h"
 
 #define PSU_STATUS_PRESENT    1
@@ -35,20 +32,13 @@
 #define PSU_NODE_MAX_INT_LEN  8
 #define PSU_NODE_MAX_PATH_LEN 64
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-static int 
+static int
 psu_status_info_get(int id, char *node, int *value)
 {
     int ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -57,7 +47,7 @@ psu_status_info_get(int id, char *node, int *value)
     else if (PSU2_ID == id) {
         sprintf(node_path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
     }
-    
+
     ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
 
     if (ret == 0) {
@@ -73,7 +63,7 @@ psu_ym2651_pmbus_info_get(int id, char *node, int *value)
     int  ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1]    = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -92,19 +82,13 @@ psu_ym2651_pmbus_info_get(int id, char *node, int *value)
     return ret;
 }
 
-int
-onlp_psui_init(void)
-{
-    return ONLP_STATUS_OK;
-}
-
 static int
 psu_ym2651_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
 
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
+    if (ONLP_OID_STATUS_FLAG_IS_SET(info, FAILED)) {
         return ONLP_STATUS_OK;
     }
 
@@ -115,18 +99,18 @@ psu_ym2651_info_get(onlp_psu_info_t* info)
     /* Read voltage, current and power */
     if (psu_ym2651_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_VOUT;
     }
 
     if (psu_ym2651_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_IOUT;
     }
 
     if (psu_ym2651_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
-    } 
+        info->caps |= ONLP_PSU_CAPS_GET_POUT;
+    }
 
     psu_serial_number_get(index, info->serial, sizeof(info->serial));
 
@@ -147,9 +131,10 @@ psu_dc12v_750_info_get(onlp_psu_info_t* info)
 
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_DC12;
-    
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
+    info->caps = ONLP_PSU_CAPS_GET_TYPE;
+    info->type = ONLP_PSU_TYPE_DC12;
+
+    if (ONLP_OID_STATUS_FLAG_IS_SET(info, FAILED)) {
         return ONLP_STATUS_OK;
     }
 
@@ -160,7 +145,7 @@ psu_dc12v_750_info_get(onlp_psu_info_t* info)
 
     if ((iout_low >= 0) && (iout_high >= 0)) {
         info->miout = DC12V_750_REG_TO_CURRENT(iout_low, iout_high);
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_IOUT;
     }
 
     /* Get voltage
@@ -170,14 +155,14 @@ psu_dc12v_750_info_get(onlp_psu_info_t* info)
 
     if ((vout_low >= 0) && (vout_high >= 0)) {
         info->mvout = DC12V_750_REG_TO_VOLTAGE(vout_low, vout_high);
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_VOUT;
     }
 
     /* Get power based on current and voltage
      */
-    if ((info->caps & ONLP_PSU_CAPS_IOUT) && (info->caps & ONLP_PSU_CAPS_VOUT)) {
+    if ((info->caps & ONLP_PSU_CAPS_GET_IOUT) && (info->caps & ONLP_PSU_CAPS_GET_VOUT)) {
         info->mpout = (info->miout * info->mvout) / 1000;
-        info->caps |= ONLP_PSU_CAPS_POUT;
+        info->caps |= ONLP_PSU_CAPS_GET_POUT;
     }
 
     return ONLP_STATUS_OK;
@@ -190,12 +175,21 @@ static onlp_psu_info_t pinfo[] =
 {
     { }, /* Not used */
     {
-        { ONLP_PSU_ID_CREATE(PSU1_ID), "PSU-1", 0 },
+        { ONLP_PSU_ID_CREATE(PSU1_ID), "PSU-1", ONLP_OID_CHASSIS },
     },
     {
-        { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0 },
+        { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", ONLP_OID_CHASSIS },
     }
 };
+
+int
+onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    onlp_psu_info_t info;
+    ONLP_TRY(onlp_psui_info_get(id, &info));
+    *hdr = info.hdr;
+    return 0;
+}
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -203,11 +197,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int val   = 0;
     int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
-    psu_type_t psu_type; 
+    psu_type_t psu_type;
 
-    VALIDATE(id);
-
-    memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
     /* Get the present state */
@@ -216,11 +207,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_PRESENT) {
-        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+        ONLP_OID_STATUS_FLAG_CLR(info, PRESENT);
         return ONLP_STATUS_OK;
     }
-    info->status |= ONLP_PSU_STATUS_PRESENT;
-
+    ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
 
     /* Get power good status */
     if (psu_status_info_get(index, "psu_power_good", &val) != 0) {
@@ -228,7 +218,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
+        ONLP_OID_STATUS_FLAG_SET(info, FAILED);
     }
 
 
@@ -239,12 +229,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
-            info->caps = ONLP_PSU_CAPS_AC;
+            info->caps = ONLP_PSU_CAPS_GET_TYPE;
+            info->type = ONLP_PSU_TYPE_AC;
             ret = psu_ym2651_info_get(info);
             break;
         case PSU_TYPE_DC_48V_F2B:
         case PSU_TYPE_DC_48V_B2F:
-            info->caps = ONLP_PSU_CAPS_DC48;
+            info->caps = ONLP_PSU_CAPS_GET_TYPE;
+            info->type = ONLP_PSU_TYPE_DC48;
             ret = psu_ym2651_info_get(info);
             break;
         case PSU_TYPE_DC_12V_F2B:
@@ -253,8 +245,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             ret = psu_dc12v_750_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
-            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-            info->status &= ~ONLP_PSU_STATUS_FAILED;
+            ONLP_OID_STATUS_FLAG_SET(info, UNPLUGGED);
+            ONLP_OID_STATUS_FLAG_CLR(info, FAILED);
             ret = ONLP_STATUS_OK;
             break;
         default:
@@ -264,10 +256,3 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     return ret;
 }
-
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

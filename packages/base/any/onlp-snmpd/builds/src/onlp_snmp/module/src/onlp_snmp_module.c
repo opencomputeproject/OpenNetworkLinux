@@ -20,7 +20,7 @@ void __onlp_snmp_module_init__(void)
 {
     AIM_LOG_STRUCT_REGISTER();
     datatypes_init__();
-    onlp_init();
+    onlp_sw_init(NULL);
 }
 
 /**

@@ -1,7 +1,7 @@
 ############################################################
 # <bsn.cl fy=2014 v=onl>
 #
-#           Copyright 2014 BigSwitch Networks, Inc.
+#           Copyright 2014-2018 BigSwitch Networks, Inc.
 #
 # Licensed under the Eclipse Public License, Version 1.0 (the
 # "License"); you may not use this file except in compliance
@@ -18,29 +18,26 @@
 #
 # </bsn.cl>
 ############################################################
-#
-#
-#
-############################################################
-include $(ONL)/make/config.amd64.mk
+include $(ONL)/packages/base/any/onlp/builds/platform/common.mk
 
-.DEFAULT_GOAL := onlpdump
+.DEFAULT_GOAL := onlps
 
-MODULE := onlpdump
+MODULE := onlps
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM IOF onlp x86_64_accton_as7712_32x onlplib onlp_platform_defaults sff cjson cjson_util timer_wheel OS
+DEPENDMODULES := $(DEPENDMODULES) AIM IOF onlp onlplib $(PLATFORM_MODULE) onlp_platform_defaults sff cjson cjson_util timer_wheel OS uCli ELS
 
 include $(BUILDER)/dependmodules.mk
 
-BINARY := onlpdump
+BINARY := onlps
 $(BINARY)_LIBRARIES := $(LIBRARY_TARGETS)
 include $(BUILDER)/bin.mk
 
 GLOBAL_CFLAGS += -DAIM_CONFIG_AIM_MAIN_FUNCTION=onlpdump_main
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MODULES_INIT=1
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MAIN=1
-GLOBAL_LINK_LIBS += -lpthread -lm
+GLOBAL_CFLAGS += -DUCLI_CONFIG_INCLUDE_ELS_LOOP=1
+GLOBAL_CFLAGS += -DONLP_CONFIG_INCLUDE_UCLI=1
+GLOBAL_LINK_LIBS += -lpthread -lm -ledit
 
 include $(BUILDER)/targets.mk
-

@@ -1,0 +1,47 @@
+###############################################################################
+#
+# onlp_platform_sim Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- ONLP_PLATFORM_SIM_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- ONLP_PLATFORM_SIM_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- ONLP_PLATFORM_SIM_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- ONLP_PLATFORM_SIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- ONLP_PLATFORM_SIM_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- ONLP_PLATFORM_SIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: ONLP_PLATFORM_SIM_CONFIG_PORTING_STDLIB
+- ONLP_PLATFORM_SIM_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+
+
+definitions:
+  cdefs:
+    ONLP_PLATFORM_SIM_CONFIG_HEADER:
+      defs: *cdefs
+      basename: onlp_platform_sim_config
+
+  portingmacro:
+    ONLP_PLATFORM_SIM:
+      macros:
+        - malloc
+        - free
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen

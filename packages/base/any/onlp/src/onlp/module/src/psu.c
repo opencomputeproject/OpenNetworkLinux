@@ -30,253 +30,173 @@
 #include "onlp_int.h"
 #include "onlp_locks.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-#define VALIDATENR(_id)                         \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return;                             \
-        }                                       \
-    } while(0)
-
+static int
+onlp_psu_sw_init_locked__(void)
+{
+    return onlp_psui_sw_init();
+}
+ONLP_LOCKED_API0(onlp_psu_sw_init);
 
 static int
-onlp_psu_init_locked__(void)
+onlp_psu_hw_init_locked__(uint32_t flags)
 {
-    return onlp_psui_init();
+    return onlp_psui_hw_init(flags);
 }
-ONLP_LOCKED_API0(onlp_psu_init);
+ONLP_LOCKED_API1(onlp_psu_hw_init, uint32_t, flags);
 
 static int
-onlp_psu_info_get_locked__(onlp_oid_t id,  onlp_psu_info_t* info)
+onlp_psu_sw_denit_locked__(void)
 {
-    VALIDATE(id);
-    return onlp_psui_info_get(id, info);
+    return onlp_psui_sw_denit();
 }
-ONLP_LOCKED_API2(onlp_psu_info_get, onlp_oid_t, id, onlp_psu_info_t*, info);
+ONLP_LOCKED_API0(onlp_psu_sw_denit);
 
 static int
-onlp_psu_status_get_locked__(onlp_oid_t id, uint32_t* status)
+onlp_psu_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv = onlp_psui_status_get(id, status);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_psu_info_t pi;
-        rv = onlp_psui_info_get(id, &pi);
-        *status = pi.status;
-    }
-    return rv;
+    ONLP_OID_PSU_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(hdr);
+    return onlp_psui_hdr_get(oid, hdr);
 }
-ONLP_LOCKED_API2(onlp_psu_status_get, onlp_oid_t, id, uint32_t*, status);
+ONLP_LOCKED_API2(onlp_psu_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
 
 static int
-onlp_psu_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+onlp_psu_info_get_locked__(onlp_oid_t oid,  onlp_psu_info_t* info)
 {
-    int rv = onlp_psui_hdr_get(id, hdr);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_psu_info_t pi;
-        rv = onlp_psui_info_get(id, &pi);
-        memcpy(hdr, &pi.hdr, sizeof(pi.hdr));
-    }
-    return rv;
+    ONLP_OID_PSU_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(info);
+    return onlp_psui_info_get(oid, info);
 }
-ONLP_LOCKED_API2(onlp_psu_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
-int
-onlp_psu_vioctl_locked__(onlp_oid_t id, va_list vargs)
-{
-    return onlp_psui_ioctl(id, vargs);
-}
-ONLP_LOCKED_API2(onlp_psu_vioctl, onlp_oid_t, id, va_list, vargs);
+ONLP_LOCKED_API2(onlp_psu_info_get, onlp_oid_t, oid, onlp_psu_info_t*, info);
 
 int
-onlp_psu_ioctl(onlp_oid_t id, ...)
-{
-    va_list vargs;
-    va_start(vargs, id);
-    int rv = onlp_psu_vioctl(id, vargs);
-    va_end(vargs);
-    return rv;
-}
-
-/************************************************************
- *
- * Debug and Show Functions
- *
- ***********************************************************/
-
-void
-onlp_psu_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+onlp_psu_format(onlp_oid_t id, onlp_oid_format_t format,
+                aim_pvs_t* pvs, uint32_t flags)
 {
     int rv;
-    iof_t iof;
     onlp_psu_info_t info;
-
-    VALIDATENR(id);
-    onlp_oid_dump_iof_init_default(&iof, pvs);
-
-    iof_push(&iof, "psu @ %d", ONLP_OID_ID_GET(id));
-    rv = onlp_psu_info_get(id, &info);
-    if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+    if(ONLP_SUCCESS(rv = onlp_psu_info_get(id, &info))) {
+        rv = onlp_psu_info_format(&info, format, pvs, flags);
     }
-    else {
-        iof_iprintf(&iof, "Description: %s", info.hdr.description);
-        if(info.status & 1) {
-            /* Present */
-            iof_iprintf(&iof, "Model:  %s", info.model[0] ? info.model : "NULL");
-            iof_iprintf(&iof, "SN:     %s", info.serial[0] ? info.serial : "NULL");
-            iof_iprintf(&iof, "Status: %{onlp_psu_status_flags}", info.status);
-            iof_iprintf(&iof, "Caps:   %{onlp_psu_caps_flags}", info.caps);
-            iof_iprintf(&iof, "Vin:    %d", info.mvin);
-            iof_iprintf(&iof, "Vout:   %d", info.mvout);
-            iof_iprintf(&iof, "Iin:    %d", info.miin);
-            iof_iprintf(&iof, "Iout:   %d", info.miout);
-            iof_iprintf(&iof, "Pin:    %d", info.mpin);
-            iof_iprintf(&iof, "Pout:   %d", info.mpout);
-            if(flags & ONLP_OID_DUMP_RECURSE) {
-                onlp_oid_table_dump(info.hdr.coids, &iof.inherit, flags);
-            }
-        }
-        else {
-            iof_iprintf(&iof, "Not present.");
-        }
-    }
-    iof_pop(&iof);
+    return rv;
 }
 
-void
-onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_psu_info_format(onlp_psu_info_t* info,
+                     onlp_oid_format_t format,
+                     aim_pvs_t* pvs, uint32_t flags)
+{
+    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_psu_caps_flags}\n",
+               info, info->caps);
+    return 0;
+}
+
+int
+onlp_psu_info_to_user_json(onlp_psu_info_t* info, cJSON** cjp, uint32_t flags)
 {
     int rv;
-    iof_t iof;
-    onlp_psu_info_t pi;
-    int yaml;
+    cJSON* object;
 
-    onlp_oid_show_iof_init_default(&iof, pvs, flags);
-    rv = onlp_psu_info_get(id, &pi);
+    rv = onlp_info_to_user_json_create(&info->hdr, &object, flags);
+    if(rv > 0) {
 
-    yaml = flags & ONLP_OID_SHOW_YAML;
+        if(info->model[0]) {
+            cjson_util_add_string_to_object(object, "Model", info->model);
+        }
 
-    if(yaml) {
-        iof_push(&iof, "- ");
-        iof_iprintf(&iof, "Name: PSU %d", ONLP_OID_ID_GET(id));
-    } else {
-        iof_push(&iof, "PSU %d", ONLP_OID_ID_GET(id));
+        if(info->serial[0]) {
+            cjson_util_add_string_to_object(object, "Serial", info->serial);
+        }
+
+        if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_TYPE)) {
+            cjson_util_add_string_to_object(object, "Type", "%{onlp_psu_type}",
+                                            info->type);
+        }
+
+#define _MILLIFIELD(_cap, _name, _field)                                \
+        if(ONLP_PSU_INFO_CAP_IS_SET(info, _cap)) {                      \
+            cjson_util_add_string_to_object(object, _name, "%d.%d",     \
+                                            ONLP_MILLI_NORMAL_INTEGER_TENTHS(info->_field)); \
+        }
+
+        _MILLIFIELD(GET_VIN,  "Vin",  mvin);
+        _MILLIFIELD(GET_VOUT, "Vout", mvout);
+        _MILLIFIELD(GET_IIN,  "Iin",  miin);
+        _MILLIFIELD(GET_IOUT, "Iout", miout);
+        _MILLIFIELD(GET_PIN,  "Pin",  mpin);
+        _MILLIFIELD(GET_POUT, "Pout", mpout);
+#undef _MILLIFIELD
     }
 
-    if(rv < 0) {
-        if(yaml) {
-            iof_iprintf(&iof, "State: Error");
-            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
-        }
-        else {
-            onlp_oid_info_get_error(&iof, rv);
-        }
+    return onlp_info_to_user_json_finish(&info->hdr, object, cjp, flags);
+}
+
+int
+onlp_psu_info_to_json(onlp_psu_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    int rv;
+    cJSON* cj;
+
+    int unsupported = (flags & ONLP_OID_JSON_FLAG_UNSUPPORTED_FIELDS);
+
+    if(ONLP_FAILURE(rv = onlp_info_to_json_create(&info->hdr, &cj, flags))) {
+        return rv;
     }
-    else {
-        onlp_oid_show_description(&iof, &pi.hdr);
-        if(pi.status & 0x1) {
-            /* Present */
-            iof_iprintf(&iof, "State: Present");
-            if(pi.status & ONLP_PSU_STATUS_UNPLUGGED) {
-                iof_iprintf(&iof, "Status: Unplugged");
-            }
-            else if(pi.status & ONLP_PSU_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: Unplugged or Failed");
-            }
-            else {
-                iof_iprintf(&iof, "Status: Running");
-                if(pi.model[0]) iof_iprintf(&iof, "Model: %s", pi.model);
-                if(pi.serial[0]) iof_iprintf(&iof, "SN: %s", pi.serial);
-                if(pi.caps & ONLP_PSU_CAPS_AC) {
-                    iof_iprintf(&iof, "Type: AC");
-                }
-                else if(pi.caps & ONLP_PSU_CAPS_DC12) {
-                    iof_iprintf(&iof, "Type: DC 12V");
-                }
-                else if(pi.caps & ONLP_PSU_CAPS_DC48) {
-                    iof_iprintf(&iof, "Type: DC 48V");
-                }
-                else {
-                    iof_iprintf(&iof, "Type: Unknown");
-                }
-                if(pi.caps & ONLP_PSU_CAPS_VIN) {
-                    iof_iprintf(&iof, "Vin: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.mvin));
-                }
-                if(pi.caps & ONLP_PSU_CAPS_VOUT) {
-                    iof_iprintf(&iof, "Vout: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.mvout));
-                }
-                if(pi.caps & ONLP_PSU_CAPS_IIN) {
-                    iof_iprintf(&iof, "Iin: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.miin));
-                }
-                if(pi.caps & ONLP_PSU_CAPS_IOUT) {
-                    iof_iprintf(&iof, "Iout: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.miout));
-                }
-                if(pi.caps & ONLP_PSU_CAPS_PIN) {
-                    iof_iprintf(&iof, "Pin: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.mpin));
-                }
-                if(pi.caps & ONLP_PSU_CAPS_POUT) {
-                    iof_iprintf(&iof, "Pout: %d.%d",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(pi.mpout));
-                }
-
-                if(flags & ONLP_OID_SHOW_RECURSE) {
-                    /*
-                     * Display sub oids.
-                     *
-                     * The standard version only includes
-                     * Fans and Thermal Sensors.
-                     */
-                    onlp_oid_t* oidp;
-
-                    if(yaml) {
-                        iof_push(&iof, "Fans: ");
-                    }
-                    ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, FAN) {
-                        onlp_oid_show(*oidp, &iof.inherit, flags);
-                    }
-                    if(yaml) {
-                        iof_pop(&iof);
-                    }
-
-                    if(yaml) {
-                        iof_push(&iof, "Thermals: ");
-                    }
-                    ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, THERMAL) {
-                        onlp_oid_show(*oidp, &iof.inherit, flags);
-                    }
-                    if(yaml) {
-                        iof_pop(&iof);
-                    }
-
-                    if(flags & ONLP_OID_SHOW_EXTENDED) {
-                        /* Include all other types as well. */
-                        ONLP_OID_TABLE_ITER_TYPE(pi.hdr.coids, oidp, LED) {
-                            onlp_oid_show(*oidp, &iof.inherit, flags);
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            /* Not present */
-            onlp_oid_show_state_missing(&iof);
-        }
+    cJSON_AddItemToObject(cj, "caps", cjson_util_flag_array(info->caps,
+                                                            onlp_psu_caps_map));
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_TYPE)) {
+        cjson_util_add_string_to_object(cj, "type", "%{onlp_psu_type}",
+                                        info->type);
     }
-    iof_pop(&iof);
+
+#define _FIELD(_cap, _field)                                  \
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, _cap) || unsupported) { \
+        cJSON_AddNumberToObject(cj, #_field, info->_field);   \
+    }
+
+    _FIELD(GET_VIN, mvin);
+    _FIELD(GET_VOUT, mvout);
+    _FIELD(GET_IIN, miin);
+    _FIELD(GET_IOUT, miout);
+    _FIELD(GET_PIN, mpin);
+    _FIELD(GET_POUT, mpout);
+#undef _FIELD
+
+    return onlp_info_to_json_finish(&info->hdr, cj, cjp, flags);
+}
+
+int
+onlp_psu_info_from_json(cJSON* cj, onlp_psu_info_t* info)
+{
+    cJSON* j;
+
+    ONLP_IF_ERROR_RETURN(onlp_oid_hdr_from_json(cj, &info->hdr));
+    ONLP_IF_ERROR_RETURN(cjson_util_lookup(cj, &j, "caps"));
+    ONLP_IF_ERROR_RETURN(cjson_util_array_to_flags(j, &info->caps,
+                                                   onlp_psu_caps_map));
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_VIN)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->mvin, "mvin"));
+    }
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_VOUT)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->mvout, "mvout"));
+    }
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_IIN)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->miin, "miin"));
+    }
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_IOUT)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->miout, "miout"));
+    }
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_PIN)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->mpin, "mpin"));
+    }
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(info, GET_POUT)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->mpout, "mpout"));
+    }
+    return 0;
 }

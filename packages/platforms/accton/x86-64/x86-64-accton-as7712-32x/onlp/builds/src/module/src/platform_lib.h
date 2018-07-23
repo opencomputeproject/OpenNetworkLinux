@@ -31,6 +31,11 @@
 #define CHASSIS_FAN_COUNT     6
 #define CHASSIS_THERMAL_COUNT 5
 
+#define NUM_OF_THERMAL_ON_MAIN_BOARD  CHASSIS_THERMAL_COUNT
+#define NUM_OF_FAN_ON_MAIN_BOARD      CHASSIS_FAN_COUNT
+#define NUM_OF_PSU_ON_MAIN_BOARD      2
+#define NUM_OF_LED_ON_MAIN_BOARD      5
+
 #define PSU1_ID 1
 #define PSU2_ID 2
 
@@ -54,6 +59,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
+    PSU_TYPE_OK,
     PSU_TYPE_AC_F2B,
     PSU_TYPE_AC_B2F,
     PSU_TYPE_DC_48V_F2B,
@@ -66,13 +72,5 @@ typedef enum psu_type {
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 int psu_serial_number_get(int id, char *serial, int serial_len);
 
-#define DEBUG_MODE 0
-
-#if (DEBUG_MODE == 1)
-    #define DEBUG_PRINT(format, ...)   printf(format, __VA_ARGS__)
-#else
-    #define DEBUG_PRINT(format, ...)
-#endif
 
 #endif  /* __PLATFORM_LIB_H__ */
-

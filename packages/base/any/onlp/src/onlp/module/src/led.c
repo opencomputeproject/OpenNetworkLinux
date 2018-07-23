@@ -29,26 +29,10 @@
 #include "onlp_int.h"
 #include "onlp_locks.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_LED(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-#define VALIDATENR(_id)                         \
-    do {                                        \
-        if(!ONLP_OID_IS_LED(_id)) {             \
-            return;                             \
-        }                                       \
-    } while(0)
-
-
 static int
 onlp_led_present__(onlp_oid_t id, onlp_led_info_t* info)
 {
     int rv;
-    VALIDATE(id);
 
     /* Info retrieval required. */
     rv = onlp_ledi_info_get(id, info);
@@ -56,7 +40,7 @@ onlp_led_present__(onlp_oid_t id, onlp_led_info_t* info)
         return rv;
     }
     /* The led must be present. */
-    if((info->status & 0x1) == 0) {
+    if((info->hdr.status & 0x1) == 0) {
         return ONLP_STATUS_E_MISSING;
     }
     return ONLP_STATUS_OK;
@@ -69,66 +53,53 @@ onlp_led_present__(onlp_oid_t id, onlp_led_info_t* info)
         }                                               \
     } while(0)
 
-static int
-onlp_led_init_locked__(void)
-{
-    return onlp_ledi_init();
-}
-ONLP_LOCKED_API0(onlp_led_init);
 
 static int
-onlp_led_info_get_locked__(onlp_oid_t id, onlp_led_info_t* info)
+onlp_led_sw_init_locked__(void)
 {
-    VALIDATE(id);
-    return onlp_ledi_info_get(id, info);
+    return onlp_ledi_sw_init();
 }
-ONLP_LOCKED_API2(onlp_led_info_get, onlp_oid_t, id, onlp_led_info_t*, info);
+ONLP_LOCKED_API0(onlp_led_sw_init);
+
 
 static int
-onlp_led_status_get_locked__(onlp_oid_t id, uint32_t* status)
+onlp_led_hw_init_locked__(uint32_t flags)
 {
-    int rv = onlp_ledi_status_get(id, status);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_led_info_t li;
-        rv = onlp_ledi_info_get(id, &li);
-        *status = li.status;
-    }
-    return rv;
+    return onlp_ledi_hw_init(flags);
 }
-ONLP_LOCKED_API2(onlp_led_status_get, onlp_oid_t, id, uint32_t*, status);
+ONLP_LOCKED_API1(onlp_led_hw_init, uint32_t, flags);
 
 static int
-onlp_led_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+onlp_led_sw_denit_locked__(void)
 {
-    int rv = onlp_ledi_hdr_get(id, hdr);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_led_info_t li;
-        rv = onlp_ledi_info_get(id, &li);
-        memcpy(hdr, &li.hdr, sizeof(li.hdr));
-    }
-    return rv;
+    return onlp_ledi_sw_denit();
+}
+ONLP_LOCKED_API0(onlp_led_sw_denit);
+
+
+static int
+onlp_led_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
+{
+    ONLP_OID_LED_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(hdr);
+    return onlp_log_error(0x0,
+                          onlp_ledi_hdr_get(oid, hdr),
+                          "ledi hdr get %{onlp_oid}", oid);
 }
 ONLP_LOCKED_API2(onlp_led_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
 
+
 static int
-onlp_led_set_locked__(onlp_oid_t id, int on_or_off)
+onlp_led_info_get_locked__(onlp_oid_t oid, onlp_led_info_t* info)
 {
-    onlp_led_info_t info;
-    ONLP_LED_PRESENT_OR_RETURN(id, &info);
-    if(info.caps & ONLP_LED_CAPS_ON_OFF) {
-        return onlp_ledi_set(id, on_or_off);
-    }
-    else {
-        return ONLP_STATUS_E_UNSUPPORTED;
-    }
+    ONLP_OID_LED_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(info);
+    return onlp_log_error(0x0,
+                          onlp_ledi_info_get(oid, info),
+                          "ledi info get %{onlp_oid}", oid);
 }
-ONLP_LOCKED_API2(onlp_led_set, onlp_oid_t, id, int, on_or_off);
+ONLP_LOCKED_API2(onlp_led_info_get, onlp_oid_t, id, onlp_led_info_t*, info);
+
 
 static int
 onlp_led_mode_set_locked__(onlp_oid_t id, onlp_led_mode_t mode)
@@ -174,82 +145,82 @@ ONLP_LOCKED_API2(onlp_led_char_set, onlp_oid_t, id, char, c);
  *
  ***********************************************************/
 
-void
-onlp_led_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_led_format(onlp_oid_t oid, onlp_oid_format_t format,
+                aim_pvs_t* pvs, uint32_t flags)
 {
     int rv;
-    iof_t iof;
     onlp_led_info_t info;
 
-    VALIDATENR(id);
-    onlp_oid_dump_iof_init_default(&iof, pvs);
-    iof_push(&iof, "led @ %d", ONLP_OID_ID_GET(id));
-    rv = onlp_led_info_get(id, &info);
-    if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
+    ONLP_OID_LED_VALIDATE(oid);
+    ONLP_PTR_VALIDATE(pvs);
+
+    if(ONLP_SUCCESS(rv = onlp_led_info_get(oid, &info))) {
+        rv = onlp_led_info_format(&info, format, pvs, flags);
     }
-    else {
-        onlp_oid_show_description(&iof, &info.hdr);
-        if(info.status & 1) {
-            /* Present */
-            iof_iprintf(&iof, "Status: %{onlp_led_status_flags}", info.status);
-            iof_iprintf(&iof, "Caps:   %{onlp_led_caps_flags}", info.caps);
-            iof_iprintf(&iof, "Mode: %{onlp_led_mode}", info.mode);
-            iof_iprintf(&iof, "Char: %c", info.character);
-        }
-        else {
-            iof_iprintf(&iof, "Not present.");
-        }
-    }
-    iof_pop(&iof);
+
+    return rv;
 }
 
-void
-onlp_led_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_led_info_format(onlp_led_info_t* info, onlp_oid_format_t format,
+                     aim_pvs_t* pvs, uint32_t flags)
 {
-    int rv;
-    iof_t iof;
-    onlp_led_info_t info;
-    int yaml;
-
-    VALIDATENR(id);
-    onlp_oid_show_iof_init_default(&iof, pvs, flags);
-
-    yaml = flags & ONLP_OID_SHOW_YAML;
-
-    if(yaml) {
-        iof_push(&iof, " -");
-        iof_iprintf(&iof, "Name: LED %d", ONLP_OID_ID_GET(id));
-    }
-    else {
-        iof_push(&iof, "LED %d", ONLP_OID_ID_GET(id));
-    }
-
-    rv = onlp_led_info_get(id, &info);
-    if(rv < 0) {
-        if(yaml) {
-            iof_iprintf(&iof, "State: Error");
-            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
-        }
-        else {
-            onlp_oid_info_get_error(&iof, rv);
-        }
-    }
-    else {
-        onlp_oid_show_description(&iof, &info.hdr);
-        if(info.status & 1) {
-            /* Present */
-            iof_iprintf(&iof, "State: Present");
-            iof_iprintf(&iof, "Mode: %{onlp_led_mode}", info.mode);
-            if(info.caps & ONLP_LED_CAPS_CHAR) {
-                iof_iprintf(&iof, "Char: %c", info.character);
-            }
-        }
-        else {
-            onlp_oid_show_state_missing(&iof);
-        }
-    }
-    iof_pop(&iof);
-
+    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_led_caps_flags} mode=%{onlp_led_mode}\n",
+               info, info->caps, info->mode);
+    return 0;
 }
 
+int
+onlp_led_info_to_user_json(onlp_led_info_t* info, cJSON** cjp, uint32_t flags)
+{
+
+    int rv;
+    cJSON* cj;
+    rv = onlp_info_to_user_json_create(&info->hdr, &cj, flags);
+    if(rv > 0) {
+        cjson_util_add_string_to_object(cj, "Mode", "%{onlp_led_mode}", info->mode);
+        if(info->mode == ONLP_LED_MODE_CHAR) {
+            cjson_util_add_string_to_object(cj, "Character", "%c", info->character);
+        }
+    }
+    return onlp_info_to_user_json_finish(&info->hdr, cj, cjp, flags);
+}
+
+int
+onlp_led_info_to_json(onlp_led_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    cJSON* cj;
+
+    ONLP_IF_ERROR_RETURN(onlp_info_to_json_create(&info->hdr, &cj, flags));
+    cJSON_AddItemToObject(cj, "caps", cjson_util_flag_array(info->caps,
+                                                            onlp_led_caps_map));
+    cjson_util_add_string_to_object(cj, "mode",
+                                    "%{onlp_led_mode}", info->mode);
+
+    if(info->mode == ONLP_LED_MODE_CHAR) {
+        cjson_util_add_string_to_object(cj, "character", "%c", info->character);
+    }
+
+    return onlp_info_to_json_finish(&info->hdr, cj, cjp, flags);
+}
+
+int
+onlp_led_info_from_json(cJSON* cj, onlp_led_info_t* info)
+{
+    cJSON* j;
+    ONLP_IF_ERROR_RETURN(onlp_oid_hdr_from_json(cj, &info->hdr));
+    ONLP_IF_ERROR_RETURN(cjson_util_lookup(cj, &j, "caps"));
+    ONLP_IF_ERROR_RETURN(cjson_util_array_to_flags(j, &info->caps,
+                                                   onlp_led_caps_map));
+    char* s;
+    ONLP_IF_ERROR_RETURN(cjson_util_lookup_string(cj, &s, "mode"));
+    ONLP_IF_ERROR_RETURN(onlp_led_mode_value(s, &info->mode, 1));
+
+    if(info->mode == ONLP_LED_MODE_CHAR) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_string(cj, &s, "character"));
+        info->character = s[0];
+    }
+
+    return 0;
+}

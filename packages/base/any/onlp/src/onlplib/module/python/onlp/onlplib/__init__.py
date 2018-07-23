@@ -5,6 +5,8 @@ Module init for onlp.onlplib
 
 import ctypes
 
+from AIM import aim
+
 # properly belongs in AIM.aim_list
 
 class list_links(ctypes.Structure):
@@ -44,6 +46,8 @@ class list_head(ctypes.Structure):
         else:
             return ListIterator(self, castType=self.links_klass)
 
+# onlplib/onie.h
+
 class onlp_onie_vx(list_links):
     # NOTE that Python inheritence merges the fields
     # with the base class (ctypes-ism)
@@ -82,6 +86,24 @@ class onlp_onie_info(ctypes.Structure):
                 ("_hdr_length", ctypes.c_ubyte,),
                 ("_hdr_valid_crc", ctypes.c_ubyte,),]
 
-class onlp_platform_info(ctypes.Structure):
-    _fields_ = [("cpld_versions", ctypes.c_char_p,),
-                ("other_versions", ctypes.c_char_p,),]
+def onlplib_onie_init_prototypes(dll):
+
+    dll.onlp_onie_decode.restype = ctypes.c_int
+    dll.onlp_onie_decode.argtypes = (ctypes.POINTER(onlp_onie_info), ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int,)
+
+    dll.onlp_onie_decode_file.restype = ctypes.c_int
+    ##dll.onlp_onie_decode_file.argtypes = (ctypes.POINTER(onlp_onie_info), ctypes.c_char_p, ...)
+
+    dll.onlp_onie_info_free.restype = None
+    dll.onlp_onie_info_free.argtypes = (ctypes.POINTER(onlp_onie_info),)
+
+    dll.onlp_onie_show.restype = None
+    dll.onlp_onie_show.argtypes = (ctypes.POINTER(onlp_onie_info), ctypes.POINTER(aim.aim_pvs),)
+
+    dll.onlp_onie_show_json.restype = None
+    dll.onlp_onie_show_json = (ctypes.POINTER(onlp_onie_info), ctypes.POINTER(aim.aim_pvs),)
+
+    ##dll.onlp_onie_read_json.restype = ctypes.c_int
+    ##dll.onlp_onie_read_json.argtypes = (ctypes.POINTER(onlp_onie_info), ctypes.c_char_p,)
+    # XXX roth -- missing
+    

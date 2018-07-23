@@ -23,130 +23,44 @@
  *
  *
  ***********************************************************/
-#include <unistd.h>
-#include <fcntl.h>
-
-#include <onlplib/file.h>
-#include <onlp/platformi/sysi.h>
-#include <onlp/platformi/ledi.h>
-#include <onlp/platformi/thermali.h>
-#include <onlp/platformi/fani.h>
-#include <onlp/platformi/psui.h>
+#include <onlp/platformi/base.h>
+#include "platform_lib.h"
 
 #include "x86_64_accton_as7712_32x_int.h"
 #include "x86_64_accton_as7712_32x_log.h"
 
-#include "platform_lib.h"
-
-#define NUM_OF_THERMAL_ON_MAIN_BROAD  CHASSIS_THERMAL_COUNT
-#define NUM_OF_FAN_ON_MAIN_BROAD      CHASSIS_FAN_COUNT
-#define NUM_OF_PSU_ON_MAIN_BROAD      2
-#define NUM_OF_LED_ON_MAIN_BROAD      5
-
-#define PREFIX_PATH_ON_CPLD_DEV          "/sys/bus/i2c/devices/"
-#define NUM_OF_CPLD                      3
-static char arr_cplddev_name[NUM_OF_CPLD][10] =
-{
- "4-0060",
- "5-0062",
- "6-0064"
-};
 
 const char*
-onlp_sysi_platform_get(void)
+onlp_platformi_get(void)
 {
     return "x86-64-accton-as7712-32x-r0";
 }
 
 int
-onlp_sysi_onie_data_get(uint8_t** data, int* size)
+onlp_platformi_sw_init(void)
 {
-    uint8_t* rdata = aim_zmalloc(256);
-    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 256) {
-            *data = rdata;
-            return ONLP_STATUS_OK;
-        }
-    }
-
-    aim_free(rdata);
-    *size = 0;
-    return ONLP_STATUS_E_INTERNAL;
-}
-
-int
-onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
-{
-    int   i, v[NUM_OF_CPLD]={0};
-    for (i=0; i < NUM_OF_CPLD; i++) {
-        v[i] = 0;
-        if(onlp_file_read_int(v+i, "%s%s/version", PREFIX_PATH_ON_CPLD_DEV, arr_cplddev_name[i]) < 0) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-    pi->cpld_versions = aim_fstrdup("%d.%d.%d", v[0], v[1], v[2]);
     return 0;
 }
 
-void
-onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
-{
-    aim_free(pi->cpld_versions);
-}
-
-
-int
-onlp_sysi_oids_get(onlp_oid_t* table, int max)
-{
-    int i;
-    onlp_oid_t* e = table;
-    memset(table, 0, max*sizeof(onlp_oid_t));
-
-    /* 4 Thermal sensors on the chassis */
-    for (i = 1; i <= NUM_OF_THERMAL_ON_MAIN_BROAD; i++)
-    {
-        *e++ = ONLP_THERMAL_ID_CREATE(i);
-    }
-
-    /* 5 LEDs on the chassis */
-    for (i = 1; i <= NUM_OF_LED_ON_MAIN_BROAD; i++)
-    {
-        *e++ = ONLP_LED_ID_CREATE(i);
-    }
-
-    /* 2 PSUs on the chassis */
-    for (i = 1; i <= NUM_OF_PSU_ON_MAIN_BROAD; i++)
-    {
-        *e++ = ONLP_PSU_ID_CREATE(i);
-    }
-
-    /* 4 Fans on the chassis */
-    for (i = 1; i <= NUM_OF_FAN_ON_MAIN_BROAD; i++)
-    {
-        *e++ = ONLP_FAN_ID_CREATE(i);
-    }
-
-    return 0;
-}
 
 typedef struct fan_ctrl_policy {
-   int duty_cycle;
-   int temp_down_adjust; /* The boundary temperature to down adjust fan speed */
-   int temp_up_adjust;   /* The boundary temperature to up adjust fan speed */
+    int duty_cycle;
+    int temp_down_adjust; /* The boundary temperature to down adjust fan speed */
+    int temp_up_adjust;   /* The boundary temperature to up adjust fan speed */
 } fan_ctrl_policy_t;
 
 fan_ctrl_policy_t  fan_ctrl_policy_f2b[] = {
-{32,      0, 174000},
-{38, 170000, 182000},
-{50, 178000, 190000},
-{63, 186000,      0}
+    {32,      0, 174000},
+    {38, 170000, 182000},
+    {50, 178000, 190000},
+    {63, 186000,      0}
 };
 
 fan_ctrl_policy_t  fan_ctrl_policy_b2f[] = {
-{32,     0,  140000},
-{38, 135000, 150000},
-{50, 145000, 160000},
-{69, 155000,      0}
+    {32,     0,  140000},
+    {38, 135000, 150000},
+    {50, 145000, 160000},
+    {69, 155000,      0}
 };
 
 #define FAN_DUTY_CYCLE_MAX  100
@@ -177,7 +91,7 @@ fan_ctrl_policy_t  fan_ctrl_policy_b2f[] = {
  *		[LM75(48) + LM75(49) + LM75(4A)] < 155  => set Fan speed value from 10 to 7
  */
 int
-onlp_sysi_platform_manage_fans(void)
+onlp_platformi_manage_fans(void)
 {
     int i = 0, arr_size, temp;
     fan_ctrl_policy_t *policy;
@@ -189,8 +103,7 @@ onlp_sysi_platform_manage_fans(void)
 
     /* Get each fan status
      */
-    for (i = 1; i <= NUM_OF_FAN_ON_MAIN_BROAD; i++)
-    {
+    for (i = 1; i <= NUM_OF_FAN_ON_MAIN_BOARD; i++) {
         onlp_fan_info_t fan_info;
 
         if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
@@ -200,14 +113,14 @@ onlp_sysi_platform_manage_fans(void)
 
         /* Decision 1: Set fan as full speed if any fan is failed.
          */
-        if (fan_info.status & ONLP_FAN_STATUS_FAILED) {
+        if(ONLP_OID_STATUS_FLAG_IS_SET(&fan_info, FAILED)) {
             AIM_LOG_ERROR("Fan(%d) is not working, set the other fans as full speed\r\n", i);
             return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
 
         /* Decision 1.1: Set fan as full speed if any fan is not present.
          */
-        if (!(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
+        if(ONLP_OID_STATUS_FLAG_NOT_SET(&fan_info, PRESENT)) {
             AIM_LOG_ERROR("Fan(%d) is not present, set the other fans as full speed\r\n", i);
             return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
@@ -215,7 +128,7 @@ onlp_sysi_platform_manage_fans(void)
         /* Get fan direction (Only get the first one since all fan direction are the same)
          */
         if (i == 1) {
-            if (fan_info.status & ONLP_FAN_STATUS_F2B) {
+            if(fan_info.dir == ONLP_FAN_DIR_F2B) {
                 policy   = fan_ctrl_policy_f2b;
                 arr_size = AIM_ARRAYSIZE(fan_ctrl_policy_f2b);
             }
@@ -246,16 +159,16 @@ onlp_sysi_platform_manage_fans(void)
     /* Decision 2: If no matched fan speed is found from the policy,
      *             use FAN_DUTY_CYCLE_MIN as default speed
      */
-	for (i = 0; i < arr_size; i++) {
-	    if (policy[i].duty_cycle != cur_duty_cycle)
-		    continue;
+    for (i = 0; i < arr_size; i++) {
+        if (policy[i].duty_cycle != cur_duty_cycle)
+            continue;
 
-		break;
-	}
+        break;
+    }
 
-	if (i == arr_size) {
+    if (i == arr_size) {
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), policy[0].duty_cycle);
-	}
+    }
 
     /* Get current temperature
      */
@@ -273,23 +186,22 @@ onlp_sysi_platform_manage_fans(void)
     new_duty_cycle = cur_duty_cycle;
 
     if ((temp >= policy[i].temp_up_adjust) && (i != (arr_size-1))) {
-	    new_duty_cycle = policy[i+1].duty_cycle;
-	}
-	else if ((temp <= policy[i].temp_down_adjust) && (i != 0)) {
-	    new_duty_cycle = policy[i-1].duty_cycle;
-	}
+        new_duty_cycle = policy[i+1].duty_cycle;
+    }
+    else if ((temp <= policy[i].temp_down_adjust) && (i != 0)) {
+        new_duty_cycle = policy[i-1].duty_cycle;
+    }
 
-	if (new_duty_cycle == cur_duty_cycle) {
+    if (new_duty_cycle == cur_duty_cycle) {
         /* Duty cycle does not change, just return */
-	    return ONLP_STATUS_OK;
-	}
+        return ONLP_STATUS_OK;
+    }
 
     return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), new_duty_cycle);
 }
 
 int
-onlp_sysi_platform_manage_leds(void)
+onlp_platformi_manage_leds(void)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

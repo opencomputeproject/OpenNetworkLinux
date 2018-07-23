@@ -248,8 +248,8 @@ onlp_onie_decode(onlp_onie_info_t* rv, const uint8_t* data, int size)
     return 0;
 }
 
-int
-onlp_onie_decode_file(onlp_onie_info_t* onie, const char* file)
+static int
+onlp_onie_decode_file__(onlp_onie_info_t* onie, const char* file)
 {
     char* data;
     FILE* fp  = fopen(file, "rb");
@@ -272,6 +272,20 @@ onlp_onie_decode_file(onlp_onie_info_t* onie, const char* file)
     }
     return rv;
 }
+
+int
+onlp_onie_decode_file(onlp_onie_info_t* onie, const char* fmt, ...)
+{
+    int rv;
+    va_list vargs;
+    va_start(vargs, fmt);
+    char* fname = aim_vfstrdup(fmt, vargs);
+    va_end(vargs);
+    rv = onlp_onie_decode_file__(onie, fname);
+    aim_free(fname);
+    return rv;
+}
+
 
 /**
  *  Validate the checksum in the provided TlvInfo EEPROM data. First,
@@ -401,6 +415,18 @@ onlp_onie_show(onlp_onie_info_t* info, aim_pvs_t* pvs)
 void
 onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
 {
+    cJSON* cj;
+    if(onlp_onie_info_to_json(info, &cj)) {
+        char* out = cJSON_Print(cj);
+        aim_printf(pvs, "%s\n", out);
+        free(out);
+        cJSON_Delete(cj);
+    }
+}
+
+int
+onlp_onie_info_to_json(onlp_onie_info_t* info, cJSON** rv)
+{
     cJSON* cj = cJSON_CreateObject();
 
 #define _S(_name, _member)                                              \
@@ -440,10 +466,9 @@ onlp_onie_show_json(onlp_onie_info_t* info, aim_pvs_t* pvs)
         cJSON_AddStringToObject(cj, "CRC", crc);
         aim_free(crc);
     }
-    char* out = cJSON_Print(cj);
-    aim_printf(pvs, "%s\n", out);
-    free(out);
-    cJSON_Delete(cj);
+
+    *rv = cj;
+    return 0;
 }
 
 static char*
@@ -463,20 +488,10 @@ lookup_entry__(cJSON* cj, const char* name, int code)
 }
 
 int
-onlp_onie_read_json(onlp_onie_info_t* info, const char* fname)
+onlp_onie_info_from_json(cJSON* cj, onlp_onie_info_t* info)
 {
-    cJSON* cj;
-
     memset(info, 0, sizeof(*info));
-
     list_init(&info->vx_list);
-
-    int rv = cjson_util_parse_file(fname, &cj);
-    if(rv < 0) {
-        AIM_LOG_ERROR("Could not parse ONIE JSON file '%s' rv=%{aim_error}",
-                      fname, rv);
-        return rv;
-    }
 
 #define ONIE_TLV_ENTRY_str(_member, _name, _code)                   \
     do {                                                            \
@@ -518,8 +533,5 @@ onlp_onie_read_json(onlp_onie_info_t* info, const char* fname)
     ONIE_TLV_ENTRY_##_type(_member, _name, _code);
 
     #include <onlplib/onlplib.x>
-
-
-    cJSON_Delete(cj);
     return 0;
 }

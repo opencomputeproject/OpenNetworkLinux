@@ -23,11 +23,7 @@
  * Thermal Sensor Platform Implementation.
  *
  ***********************************************************/
-#include <unistd.h>
-#include <onlplib/mmap.h>
-#include <onlplib/file.h>
-#include <onlp/platformi/thermali.h>
-#include <fcntl.h>
+#include <onlp/platformi/base.h>
 #include "platform_lib.h"
 
 #define VALIDATE(_id)                           \
@@ -41,9 +37,10 @@ enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
-    THERMAL_1_ON_MAIN_BROAD,
-    THERMAL_2_ON_MAIN_BROAD,
-    THERMAL_3_ON_MAIN_BROAD,
+    THERMAL_1_ON_MAIN_BOARD,
+    THERMAL_2_ON_MAIN_BOARD,
+    THERMAL_3_ON_MAIN_BOARD,
+    THERMAL_4_ON_MAIN_BOARD,
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
 };
@@ -71,45 +68,43 @@ static char* cpu_coretemp_files[] =
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
-	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "Chassis Thermal Sensor 1", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "Chassis Thermal Sensor 2", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "Chassis Thermal Sensor 3", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "Chassis Thermal Sensor 4", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        }
-};
+    { }, /* Not used */
 
-/*
- * This will be called to intiialize the thermali subsystem.
- */
-int
-onlp_thermali_init(void)
-{
-    return ONLP_STATUS_OK;
-}
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", ONLP_OID_CHASSIS,
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BOARD), "Chassis Thermal Sensor 1", ONLP_OID_CHASSIS,
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BOARD), "Chassis Thermal Sensor 2", ONLP_OID_CHASSIS,
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD), "Chassis Thermal Sensor 3", ONLP_OID_CHASSIS,
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD), "Chassis Thermal Sensor 4", ONLP_OID_CHASSIS,
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID),
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID),
+        .status = ONLP_OID_STATUS_FLAG_PRESENT },
+      ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    }
+};
 
 /*
  * Retrieve the information structure for the given thermal OID.

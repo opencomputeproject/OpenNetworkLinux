@@ -3,218 +3,31 @@
 Module init for onlp.onlp
 """
 
-import ctypes
+import ctypes, ctypes.util
 
-libonlp = ctypes.cdll.LoadLibrary("libonlp.so")
-libonlp.onlp_init()
+libonlp = ctypes.cdll.LoadLibrary(ctypes.util.find_library("onlp"))
+libonlp.onlp_sw_init(None)
+libonlp.onlp_hw_init(0)
 
-import ctypes.util
 libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
 
+libjson_c = ctypes.cdll.LoadLibrary(ctypes.util.find_library("json-c"))
+
 import onlp.onlplib
-import onlp.sff
-from onlp.onlp import aim_weakref
+import sff.sff
+
+from AIM import aim, aim_weakref
+aim.libonlp = libonlp
+aim.libc = libc
+
+from BigList import biglist
+biglist.libonlp = libonlp
+
+from cjson_util import cjson_util
+cjson_util.libonlp = libonlp
+cjson_util.libjson_c = libjson_c
 
 from onlp.onlp.enums import *
-
-# AIM/aim_memory.h
-
-class aim_void_p(aim_weakref.AimPointer):
-
-    @classmethod
-    def deletePointer(cls, aimPtr):
-        libonlp.aim_free(aimPtr)
-
-class aim_char_p(aim_void_p):
-    """AIM data that is a printable string."""
-
-    def __init__(self, stringOrAddress):
-
-        if stringOrAddress is None:
-            aim_void_p.__init__(self, stringOrAddress)
-            return
-
-        if isinstance(stringOrAddress, aim_void_p):
-            aim_void_p.__init__(self, stringOrAddress)
-            return
-
-        if isinstance(stringOrAddress, basestring):
-            cs = ctypes.c_char_p(stringOrAddress)
-            ptr = libonlp.aim_malloc(len(stringOrAddress)+1)
-            libc.strcpy(ptr, ctypes.addressof(cs))
-            aim_void_p.__init__(self, ptr)
-            return
-
-        if type(stringOrAddress) == int:
-            aim_void_p.__init__(self, stringOrAddress)
-            return
-
-        raise ValueError("invalid initializer for aim_char_p: %s"
-                         % repr(stringOrAddress))
-
-    def string_at(self):
-        if self.value:
-            return ctypes.string_at(self.value)
-        else:
-            return None
-
-    def __eq__(self, other):
-        return (isinstance(other, aim_char_p)
-                and (self.string_at()==other.string_at()))
-
-    def __neq__(self, other):
-        return not self == other
-
-    def __hash__(self):
-        return hash(self.string_at())
-
-def aim_memory_init_prototypes():
-
-    libonlp.aim_malloc.restype = aim_void_p
-    libonlp.aim_malloc.argtypes = (ctypes.c_size_t,)
-
-    libonlp.aim_free.restype = None
-    libonlp.aim_free.argtypes = (aim_void_p,)
-
-# AIM/aim_object.h
-
-aim_object_dtor = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
-
-class aim_object(ctypes.Structure):
-    _fields_ = [("_id", ctypes.c_char_p,),
-                ("subtype", ctypes.c_int,),
-                ("cookie", ctypes.c_void_p,),
-                ("destructor", aim_object_dtor,),]
-
-# AIM/aim_pvs.h
-# AIM/aim_pvs_*.h
-
-aim_vprintf_f = ctypes.CFUNCTYPE(ctypes.c_int)
-
-class aim_pvs(ctypes.Structure):
-    _fields_ = [("object", aim_object,),
-                ("description", ctypes.c_char_p,),
-                ("vprintf", aim_vprintf_f,),
-                ("enabled", ctypes.c_int,),
-                ("counter", ctypes.c_uint32,),
-                ("isatty", aim_vprintf_f,),]
-
-def aim_pvs_init_prototypes():
-
-    libonlp.aim_pvs_buffer_create.restype = ctypes.POINTER(aim_pvs)
-
-    libonlp.aim_pvs_destroy.restype = None
-    libonlp.aim_pvs_destroy.argtypes = (ctypes.POINTER(aim_pvs),)
-
-    libonlp.aim_pvs_buffer_size.restype = ctypes.c_int
-    libonlp.aim_pvs_buffer_size.argtypes = (ctypes.POINTER(aim_pvs),)
-
-    libonlp.aim_pvs_buffer_get.restype = aim_char_p
-    libonlp.aim_pvs_buffer_get.argtypes = (ctypes.POINTER(aim_pvs),)
-
-    libonlp.aim_pvs_buffer_reset.restype = None
-    libonlp.aim_pvs_buffer_reset.argtypes = (ctypes.POINTER(aim_pvs),)
-
-# AIM/aim_bitmap.h
-
-aim_bitmap_word = ctypes.c_uint32
-AIM_BITMAP_BITS_PER_WORD = 32
-
-def AIM_BITMAP_WORD_COUNT(bitcount):
-    return ((bitcount // AIM_BITMAP_BITS_PER_WORD)
-            + (1 if (bitcount % AIM_BITMAP_BITS_PER_WORD) else 0))
-
-# ugh, most of aim_bitmap.h is inline C
-
-def AIM_BITMAP_HDR_WORD_GET(hdr, word):
-    """Return a specific ctypes word."""
-    return hdr.words[word]
-
-def AIM_BITMAP_HDR_BIT_WORD_GET(hdr, bit):
-    """Return the ctypes word holding this bit."""
-    return hdr.words[bit/AIM_BITMAP_BITS_PER_WORD]
-
-def AIM_BITMAP_HDR_BIT_WORD_SET(hdr, bit, word):
-    """Return the ctypes word holding this bit."""
-    hdr.words[bit/AIM_BITMAP_BITS_PER_WORD] = word
-
-def AIM_BITMAP_BIT_POS(bit):
-    return (1<<(bit % AIM_BITMAP_BITS_PER_WORD))
-
-def AIM_BITMAP_INIT(bitmap, count):
-    """Initialize a static bitmap."""
-    libc.memset(ctypes.byref(bitmap), 0, ctypes.sizeof(bitmap))
-    bitmap.hdr.maxbit = count
-    bitmap.hdr.words = ctypes.cast(ctypes.byref(bitmap.words), ctypes.POINTER(ctypes.c_uint))
-    bitmap.hdr.wordcount = AIM_BITMAP_WORD_COUNT(count)
-
-class aim_bitmap_hdr(ctypes.Structure):
-    _fields_ = [("wordcount", ctypes.c_int,),
-                ("words", ctypes.POINTER(aim_bitmap_word),),
-                ("maxbit", ctypes.c_int,),
-                ("allocated", ctypes.c_int,),]
-
-class aim_bitmap(ctypes.Structure):
-    _fields_ = [("hdr", aim_bitmap_hdr,),]
-
-class aim_bitmap_ref(aim_weakref.AimReference):
-    """Dynamically allocated aim_bitmap."""
-
-    _fields_ = aim_bitmap._fields_
-
-    def __init__(self, bitcount):
-        ptr = libonlp.aim_bitmap_alloc(None, bitcount)
-        super(aim_bitmap_ref, self).__init__(ptr)
-
-    @classmethod
-    def deleteReference(self, aimPtr):
-        libonlp.aim_free(aimPtr)
-
-class aim_bitmap256(aim_bitmap):
-    """Statically-allocated AIM bitmap."""
-    _fields_ = [("words", aim_bitmap_word * AIM_BITMAP_WORD_COUNT(256),),]
-
-    def __init__(self):
-        super(aim_bitmap256, self).__init__()
-        AIM_BITMAP_INIT(self, 255)
-
-def aim_bitmap_set(hdr, bit):
-    word = AIM_BITMAP_HDR_BIT_WORD_GET(hdr, bit)
-    word |= AIM_BITMAP_BIT_POS(bit)
-    AIM_BITMAP_HDR_BIT_WORD_SET(hdr, bit, word)
-
-def aim_bitmap_clr(hdr, bit):
-    word = AIM_BITMAP_HDR_BIT_WORD_GET(hdr, bit)
-    word &= ~(AIM_BITMAP_BIT_POS(bit))
-    AIM_BITMAP_HDR_BIT_WORD_SET(hdr, bit, word)
-
-def aim_bitmap_mod(hdr, bit, value):
-    if value:
-        aim_bitmap_set(hdr, bit)
-    else:
-        aim_bitmap_clr(hdr, bit)
-
-def aim_bitmap_get(hdr, bit):
-    val = AIM_BITMAP_HDR_BIT_WORD_GET(hdr,bit) & AIM_BITMAP_BIT_POS(bit)
-    return 1 if val else 0
-
-# Huh, these is inline too, but calls into glibc memset
-
-def aim_bitmap_set_all(hdr):
-    libc.memset(ctypes.byref(hdr.words), 0xFF, hdr.wordcount*ctypes.sizeof(aim_bitmap_word))
-
-def aim_bitmap_clr_all(hdr):
-    libc.memset(ctypes.byref(hdr.words), 0x00, hdr.wordcount*ctypes.sizeof(aim_bitmap_word))
-
-# XXX aim_bitmap_count is left out
-
-def aim_bitmap_init_prototypes():
-
-    libonlp.aim_bitmap_alloc.restype = ctypes.POINTER(aim_bitmap)
-    libonlp.aim_bitmap_alloc.argtypes = (ctypes.POINTER(aim_bitmap), ctypes.c_int,)
-
-    libonlp.aim_bitmap_free.restype = None
-    libonlp.aim_bitmap_free.argtypes = (ctypes.POINTER(aim_bitmap),)
 
 # onlp.yml
 
@@ -226,11 +39,11 @@ ONLP_CONFIG_INFO_STR_MAX = 64
 
 onlp_oid = ctypes.c_uint32
 
-ONLP_OID_SYS = (ONLP_OID_TYPE.SYS<<24) | 1
+ONLP_OID_CHASSIS = (ONLP_OID_TYPE.CHASSIS<<24) | 1
 # XXX not a config option
 
 ONLP_OID_DESC_SIZE = 128
-ONLP_OID_TABLE_SIZE = 32
+ONLP_OID_TABLE_SIZE = 256
 # XXX not a config option
 
 class OidTableIterator(object):
@@ -251,20 +64,33 @@ class OidTableIterator(object):
             raise StopIteration
         oidHdr = onlp_oid_hdr()
         libonlp.onlp_oid_hdr_get(oid, ctypes.byref(oidHdr))
+        if oid != oidHdr._id:
+            raise AssertionError("invalid coid: %d vs %s"
+                                 % (oid, oidHdr._id,))
         return oidHdr
+
+onlp_oid_format = ctypes.c_int
+onlp_oid_desc = ctypes.c_char * ONLP_OID_DESC_SIZE
+onlp_oid_table = onlp_oid * ONLP_OID_TABLE_SIZE
+
+onlp_oid_type_flags = ctypes.c_uint32
+onlp_oid_status_flags = ctypes.c_uint32
 
 class onlp_oid_hdr(ctypes.Structure):
 
     _fields_ = [("_id", onlp_oid,),
-                ("description", ctypes.c_char * ONLP_OID_DESC_SIZE,),
+                ("description", onlp_oid_desc,),
                 ("poid", onlp_oid,),
-                ("coids", onlp_oid * ONLP_OID_TABLE_SIZE,),]
+                ("coids", onlp_oid_table,),
+                ("status", onlp_oid_status_flags,),]
 
     def getType(self):
         return self._id >> 24
 
-    def isSystem(self):
-        return self.getType() == ONLP_OID_TYPE.SYS
+    def isChassis(self):
+        return self.getType() == ONLP_OID_TYPE.CHASSIS
+    def isModule(self):
+        return self.getType() == ONLP_OID_TYPE.MODULE
     def isThermal(self):
         return self.getType() == ONLP_OID_TYPE.THERMAL
     def isFan(self):
@@ -273,129 +99,335 @@ class onlp_oid_hdr(ctypes.Structure):
         return self.getType() == ONLP_OID_TYPE.PSU
     def isLed(self):
         return self.getType() == ONLP_OID_TYPE.LED
-    def isModule(self):
-        return self.getType() == ONLP_OID_TYPE.MODULE
-    def isRtc(self):
-        return self.getType() == ONLP_OID_TYPE.RTC
+    def isSfp(self):
+        return self.getType() == ONLP_OID_TYPE.SFP
+    def isGeneric(self):
+        return self.getType() == ONLP_OID_TYPE.GENERIC
 
     def children(self):
         return OidTableIterator(self)
 
+    # XXX roth -- semantics may not be correct here
+
+    def isPresent(self):
+        if self.status & ONLP_OID_STATUS_FLAG.UNPLUGGED:
+            return False
+        if self.status & ONLP_OID_STATUS_FLAG.PRESENT:
+            return True
+        return False
+
+    def isMissing(self):
+        return not self.isPresent()
+
+    def isFailed(self):
+        return self.status & ONLP_OID_STATUS_FLAG.FAILED
+
+    def isNormal(self):
+        if not self.isPresent():
+            return False
+        if self.isFailed():
+            return False
+        if self.status & ONLP_OID_STATUS_FLAG.OPERATIONAL:
+            return True
+        return False
+
+class onlp_oid_info(ctypes.Structure):
+    """Opaque stub for onlp_XXX_info."""
+    _fields_ = [("hdr", onlp_oid_hdr,),]
+
+class onlp_oid_info_ptr(aim_weakref.AimPointer):
+    """Opaque malloc-tracked pointer to populated onlp_oid_info."""
+
+    @classmethod
+    def deletePointer(cls, ptr):
+        if ptr:
+            libonlp.aim_free(ptr)
+
+    @property
+    def ptr(self):
+        return ctypes.cast(self.value, ctypes.POINTER(onlp_oid_info))
+
+    @property
+    def contents(self):
+        return self.ptr.contents
+
+    @property
+    def hnd(self):
+        return ctypes.cast(ctypes.byref(self),
+                           ctypes.POINTER(ctypes.POINTER(onlp_oid_info)))
+
+onlp_oid_handle = ctypes.POINTER(ctypes.POINTER(onlp_oid_info))
+# pointer-to-pointer typedef for receiving a new onlp_oid_info
+
 onlp_oid_iterate_f = ctypes.CFUNCTYPE(ctypes.c_int, onlp_oid, ctypes.c_void_p)
+
+class onlp_oid_info_all(aim_weakref.AimPointer):
+    """Opaque malloc-tracked pointer to a BigList of oid info."""
+
+    def __init__(self, ptr=0):
+        super(onlp_oid_info_all, self).__init__(ptr)
+
+    @classmethod
+    def deletePointer(cls, ptr):
+        if ptr:
+            libonlp.onlp_oid_get_all_free(ptr)
+
+    @property
+    def ptr(self):
+        return ctypes.cast(self.value, ctypes.POINTER(biglist.biglist))
+
+    @property
+    def hnd(self):
+        return ctypes.cast(ctypes.byref(self),
+                           ctypes.POINTER(ctypes.POINTER(biglist.biglist)))
 
 def onlp_oid_init_prototypes():
 
-    libonlp.onlp_oid_dump.restype = None
-    libonlp.onlp_oid_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_oid_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_oid_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
-    libonlp.onlp_oid_table_dump.restype = None
-    libonlp.onlp_oid_table_dump.argtypes = (ctypes.POINTER(onlp_oid), ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_oid_info_get.restype = ctypes.c_int
+    libonlp.onlp_oid_info_get.argtypes = (onlp_oid, onlp_oid_handle,)
 
-    libonlp.onlp_oid_show.restype = None
-    libonlp.onlp_oid_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_oid_to_str.restype = ctypes.c_int
+    libonlp.onlp_oid_to_str.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_char),)
 
-    libonlp.onlp_oid_table_show.restype = None
-    libonlp.onlp_oid_table_show.argtypes = (ctypes.POINTER(onlp_oid), ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_oid_to_user_str.restype = ctypes.c_int
+    libonlp.onlp_oid_to_user_str.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_char),)
+
+    libonlp.onlp_oid_table_to_json.restype = ctypes.c_int
+    libonlp.onlp_oid_table_to_json.argtypes = (onlp_oid_table, ctypes.POINTER(ctypes.POINTER(cjson_util.cJSON)),)
+
+    libonlp.onlp_oid_hdr_to_json.restype = ctypes.c_int
+    libonlp.onlp_oid_hdr_to_json.argtypes = (ctypes.POINTER(onlp_oid_hdr), ctypes.POINTER(ctypes.POINTER(cjson_util.cJSON)),
+                                             ctypes.c_uint32,)
+
+    libonlp.onlp_oid_info_to_json.restype = ctypes.c_int
+    libonlp.onlp_oid_info_to_json.argtypes = (ctypes.POINTER(onlp_oid_info), ctypes.POINTER(ctypes.POINTER(cjson_util.cJSON)),
+                                             ctypes.c_uint32,)
+
+    libonlp.onlp_oid_to_json.restype = ctypes.c_int
+    libonlp.onlp_oid_to_json.argtypes = (onlp_oid, ctypes.POINTER(ctypes.POINTER(cjson_util.cJSON)),
+                                         ctypes.c_uint32,)
+
+    libonlp.onlp_oid_to_user_json.restype = ctypes.c_int
+    libonlp.onlp_oid_to_user_json.argtypes = (onlp_oid, ctypes.POINTER(ctypes.POINTER(cjson_util.cJSON)),
+                                              ctypes.c_uint32,)
 
     libonlp.onlp_oid_iterate.restype = ctypes.c_int
-    libonlp.onlp_oid_iterate.argtypes = (onlp_oid, ctypes.c_int,
+    libonlp.onlp_oid_iterate.argtypes = (onlp_oid, onlp_oid_type_flags,
                                          onlp_oid_iterate_f, ctypes.c_void_p,)
 
-    libonlp.onlp_oid_hdr_get.restype = ctypes.c_int
-    libonlp.onlp_oid_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr,))
+    libonlp.onlp_oid_info_get_all.restype = ctypes.c_int
+    libonlp.onlp_oid_info_get_all.argtypes = (onlp_oid, onlp_oid_type_flags, ctypes.c_uint32, biglist.biglist_handle,)
 
-# onlp/sys.h
+    libonlp.onlp_oid_hdr_get_all.restype = ctypes.c_int
+    libonlp.onlp_oid_hdr_get_all.argtypes = (onlp_oid, onlp_oid_type_flags, ctypes.c_uint32, biglist.biglist_handle,)
 
-class onlp_sys_info(aim_weakref.AimStruct):
+    libonlp.onlp_oid_get_all_free.restype = ctypes.c_int
+    libonlp.onlp_oid_get_all_free.argtypes = (ctypes.POINTER(biglist.biglist),)
 
-    _fields_ = [("hdr", onlp_oid_hdr,),
-                ("onie_info", onlp.onlplib.onlp_onie_info,),
-                ("platform_info", onlp.onlplib.onlp_platform_info,),]
+# onlp/attribute.h
 
-    def __init__(self):
-        self.initialized = False
-        super(onlp_sys_info, self).__init__()
+class AttributeHandle(aim_weakref.AimPointer):
+    """Maintain a handle to an attribute object allocated from memory."""
 
-    def deleteStruct(self):
-        initialized, self.initialized = self.initialized, False
-        if initialized:
-            libonlp.onlp_sys_info_free(ctypes.byref(self))
+    def __init__(self, attr, klass=None, attrPtr=None):
+        super(AttributeHandle, self).__init__(attrPtr)
+        self.attr = attr
+        self.klass = klass
 
-def onlp_sys_init_prototypes():
+    @classmethod
+    def deletePointer(cls, attrPtr):
+        """Override this with the proper delete semantics."""
+        if attrPtr is not None and attrPtr != 0:
+            libonlp.onlp_attribute_free(onlp.onlp.ONLP_OID_CHASSIS, self.attr, self.attrPtr)
 
-    libonlp.onlp_sys_init.restype = ctypes.c_int
+    @property
+    def hnd(self):
+        return ctypes.byref(self)
 
-    libonlp.onlp_sys_info_get.restype = ctypes.c_int
-    libonlp.onlp_sys_info_get.argtypes = (ctypes.POINTER(onlp_sys_info),)
+    @property
+    def contents(self):
+        if self.value is None or self.value == 0:
+            raise ValueError("NULL pointer")
+        if self.klass is not None:
+            ptr = ctypes.cast(self.value, ctypes.POINTER(self.klass))
+            return ptr.contents
+        else:
+            raise ValueError("no class type for cast")
 
-    libonlp.onlp_sys_info_free.restype = None
-    libonlp.onlp_sys_info_get.argtypes = (ctypes.POINTER(onlp_sys_info),)
+def onlp_attribute_init_prototypes():
 
-    libonlp.onlp_sys_hdr_get.restype = ctypes.c_int
-    libonlp.onlp_sys_hdr_get.argtypes = (ctypes.POINTER(onlp_oid_hdr),)
+    libonlp.onlp_attribute_sw_init.restype = ctypes.c_int
 
-    libonlp.onlp_sys_dump.restype = None
-    libonlp.onlp_sys_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_attribute_hw_init.restype = ctypes.c_int
+    libonlp.onlp_attribute_hw_init.argtypes = (ctypes.c_uint32,)
 
-    libonlp.onlp_sys_show.restype = None
-    libonlp.onlp_sys_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_attribute_supported.restype = ctypes.c_int
+    libonlp.onlp_attribute_supported.argtypes = (onlp_oid, ctypes.c_char_p,)
 
-    libonlp.onlp_sys_ioctl.restype = ctypes.c_int
-    # leave the parameters empty (varargs)
+    libonlp.onlp_attribute_set.restype = ctypes.c_int
+    libonlp.onlp_attribute_set.argtypes = (onlp_oid, ctypes.c_char_p, ctypes.c_void_p,)
 
-    ##libonlp.onlp_sys_vioctl.restype = ctypes.c_int
-    # NOTE that ctypes cannot automatically handle va_list
+    libonlp.onlp_attribute_get.restype = ctypes.c_int
+    libonlp.onlp_attribute_get.argtypes = (onlp_oid, ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p),)
 
-    libonlp.onlp_sys_platform_manage_start.restype = ctypes.c_int
-    libonlp.onlp_sys_platform_manage_start.argtypes = (ctypes.c_int,)
+    libonlp.onlp_attribute_free.restype = ctypes.c_int
+    libonlp.onlp_attribute_free.argtypes = (onlp_oid, ctypes.c_char_p, ctypes.c_void_p,)
 
-    libonlp.onlp_sys_platform_manage_stop.restype = ctypes.c_int
-    libonlp.onlp_sys_platform_manage_stop.argtypes = (ctypes.c_int,)
+# onlp/stdattrs.h
 
-    libonlp.onlp_sys_platform_manage_join.restype = ctypes.c_int
+ONLP_ATTRIBUTE_ASSET_INFO = "onlp.asset_info"
+ONLP_ATTRIBUTE_ASSET_INFO_JSON = "onlp.asset_info_json"
+ONLP_ATTRIBUTE_ONIE_INFO = "onlp.attr.onie_info"
+ONLP_ATTRIBUTE_ONIE_INFO_JSON = "onlp.attr.onie_info_json"
 
-    libonlp.onlp_sys_platform_manage_now.restype = None
+class onlp_asset_info(ctypes.Structure):
+    _fields_ = [("oid", onlp_oid,),
+                ("manufacturer", ctypes.c_char_p,),
+                ("date", ctypes.c_char_p,),
+                ("part_number", ctypes.c_char_p,),
+                ("serial_number", ctypes.c_char_p,),
+                ("hardware_revision", ctypes.c_char_p,),
+                ("firmware_revision", ctypes.c_char_p,),
+                ("manufacture_date", ctypes.c_char_p,),
+                ("description", ctypes.c_char_p,),
+                ("additional", ctypes.c_char_p,),]
 
-    libonlp.onlp_sys_debug.restype = ctypes.c_int
-    libonlp.onlp_sys_debug.argtypes = (ctypes.POINTER(aim_pvs), ctypes.c_int,
-                                       ctypes.POINTER(ctypes.POINTER(ctypes.c_char)),)
+def onlp_stdattrs_init_prototypes():
 
+    libonlp.onlp_asset_info_show.restype = ctypes.c_int
+    libonlp.onlp_asset_info_show.argtyeps = (ctypes.POINTER(onlp_asset_info), ctypes.POINTER(aim.aim_pvs),)
+
+    libonlp.onlp_asset_info_free.restype = ctypes.c_int
+    libonlp.onlp_asset_info_free.argtypes = (ctypes.POINTER(onlp_asset_info),)
+
+# onlp/platform.h
+
+def onlp_platform_init_prototypes():
+
+    libonlp.onlp_platform_name_get.restype = ctypes.c_char_p
+
+    libonlp.onlp_platform_sw_init.restype = ctypes.c_int
+
+    libonlp.onlp_platform_hw_init.restype = ctypes.c_int
+    libonlp.onlp_platform_hw_init.argtypes = (ctypes.c_uint32,)
+
+    libonlp.onlp_platform_manager_start.restype = ctypes.c_int
+    libonlp.onlp_platform_manager_start.argtypes = (ctypes.c_int,)
+
+    libonlp.onlp_platform_manager_stop.restype = ctypes.c_int
+    libonlp.onlp_platform_manager_stop.argtypes = (ctypes.c_int,)
+
+    libonlp.onlp_platform_manager_join.restype = ctypes.c_int
+
+    ##libonlp.onlp_platform_manager_manage.restype = None
+    ### XXX roth -- missing
+
+    libonlp.onlp_platform_manager_daemon.restype = None
+    libonlp.onlp_platform_manager_daemon.argtypes = (ctypes.c_char_p, ctypes.c_char_p,
+                                                     ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p),)
+
+    ##libonlp.onlp_platform_dump.restype = None
+    ##libonlp.onlp_platform_dump.argtypes = (ctypes.POINTER(aim_pvs), ctypes.uint32,)
+    ### XXX roth -- missing
+
+    ##libonlp.onlp_platform_show.restype = None
+    ##libonlp.onlp_platform_show.argtypes = (ctypes.POINTER(aim_pvs), ctypes.uint32,)
+    ### XXX roth -- missing
+
+    ##libonlp.onlp_platform_debug.restype = ctypes.c_int
+    ##libonlp.onlp_platform_debug.argtypes = (ctypes.POINTER(aim.aim_pvs),
+    ##                                        ctypes.c_int, ctypes.POINTER(ctypes.c_char_p),)
+    ### XXX roth -- missing
+
+# onlp/module.h
+
+class onlp_module_info(onlp_oid_info):
+    pass
+
+def onlp_module_init_prototypes():
+
+    ##libonlp.onlp_module_sw_init.restype = ctypes.c_int
+    ### XXX roth -- missing
+
+    ##libonlp.onlp_module_hw_init.restype = ctypes.c_int
+    ##libonlp.onlp_module_hw_init.argtypes = (ctypes.c_uint32,)
+    ### XXX roth -- missing
+
+    libonlp.onlp_module_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_module_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_module_info_get.restype = ctypes.c_int
+    libonlp.onlp_module_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_module_info),)
+
+    libonlp.onlp_module_format.restype = ctypes.c_int
+    libonlp.onlp_module_format.argtypes = (onlp_oid, onlp_oid_format,
+                                           ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_module_info_format.restype = ctypes.c_int
+    libonlp.onlp_module_info_format.argtypes = (ctypes.POINTER(onlp_module_info), onlp_oid_format,
+                                                ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+# onlp/chassis.h
+
+class onlp_chassis_info(onlp_oid_info):
+    pass
+
+def onlp_chassis_init_prototypes():
+
+    libonlp.onlp_chassis_sw_init.restype = ctypes.c_int
+
+    libonlp.onlp_chassis_hw_init.restype = ctypes.c_int
+    libonlp.onlp_chassis_hw_init.argtypes = (ctypes.c_uint32,)
+
+    libonlp.onlp_chassis_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_chassis_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_chassis_info_get.restype = ctypes.c_int
+    libonlp.onlp_chassis_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_chassis_info),)
+
+    libonlp.onlp_chassis_format.restype = ctypes.c_int
+    libonlp.onlp_chassis_format.argtypes = (onlp_oid, onlp_oid_format,
+                                           ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_chassis_info_format.restype = ctypes.c_int
+    libonlp.onlp_chassis_info_format.argtypes = (ctypes.POINTER(onlp_chassis_info), onlp_oid_format,
+                                                 ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 # onlp/fan.h
 
-class onlp_fan_info(ctypes.Structure):
-    _fields_ = [("hdr", onlp_oid_hdr,),
-                ("status", ctypes.c_uint32,),
+onlp_fan_dir = ctypes.c_int
+onlp_fan_mode = ctypes.c_int
+
+class onlp_fan_info(onlp_oid_info):
+    _fields_ = [("dir", onlp_fan_dir,),
                 ("caps", ctypes.c_uint32,),
                 ("rpm", ctypes.c_int,),
                 ("percentage", ctypes.c_int,),
-                ("mode", ctypes.c_uint32,),
                 ("model", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
                 ("serial", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),]
 
-    def isPresent(self):
-        return self.status & ONLP_FAN_STATUS.PRESENT
-
-    def isMissing(self):
-        return not self.PRESENT()
-
-    def isFailed(self):
-        return self.status & ONLP_FAN_STATUS.FAILED
-
-    def isNormal(self):
-        return self.isPresent() and not self.isFailed()
-
 def onlp_fan_init_prototypes():
 
-    libonlp.onlp_fan_init.restype = None
+    libonlp.onlp_fan_sw_init.restype = ctypes.c_int
+
+    libonlp.onlp_fan_hw_init.restype = ctypes.c_int
+    libonlp.onlp_fan_hw_init.argtypes = (ctypes.c_uint32,)
+
+    libonlp.onlp_fan_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_fan_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
     libonlp.onlp_fan_info_get.restype = ctypes.c_int
     libonlp.onlp_fan_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_fan_info),)
 
-    libonlp.onlp_fan_status_get.restype = ctypes.c_int
-    libonlp.onlp_fan_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint32),)
+    libonlp.onlp_fan_format.restype = ctypes.c_int
+    libonlp.onlp_fan_format.argtypes = (onlp_oid, onlp_oid_format,
+                                        ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
-    libonlp.onlp_fan_hdr_get.restype = ctypes.c_int
-    libonlp.onlp_fan_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+    libonlp.onlp_fan_info_format.restype = ctypes.c_int
+    libonlp.onlp_fan_info_format.argtypes = (ctypes.POINTER(onlp_fan_info), onlp_oid_format,
+                                             ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
     libonlp.onlp_fan_rpm_set.restype = ctypes.c_int
     libonlp.onlp_fan_rpm_set.argtypes = (onlp_oid, ctypes.c_int,)
@@ -403,54 +435,44 @@ def onlp_fan_init_prototypes():
     libonlp.onlp_fan_percentage_set.restype = ctypes.c_int
     libonlp.onlp_fan_percentage_set.argtypes = (onlp_oid, ctypes.c_int,)
 
-    libonlp.onlp_fan_mode_set.restype = ctypes.c_int
-    libonlp.onlp_fan_mode_set.argtypes = (onlp_oid, ctypes.c_uint32,)
-
     libonlp.onlp_fan_dir_set.restype = ctypes.c_int
-    libonlp.onlp_fan_dir_set.argtypes = (onlp_oid, ctypes.c_uint32,)
-
-    libonlp.onlp_fan_dump.restype = None
-    libonlp.onlp_fan_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
-
-    libonlp.onlp_fan_show.restype = None
-    libonlp.onlp_fan_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+    libonlp.onlp_fan_dir_set.argtypes = (onlp_oid, onlp_fan_dir,)
 
 # onlp/led.h
 
-class onlp_led_info(ctypes.Structure):
-    _fields_ = [("hdr", onlp_oid_hdr,),
-                ("status", ctypes.c_uint32,),
-                ("caps", ctypes.c_uint32,),
-                ("mode", ctypes.c_uint32,),
+onlp_led_mode = ctypes.c_uint32
+
+class onlp_led_info(onlp_oid_info):
+    _fields_ = [("caps", ctypes.c_uint32,),
+                ("mode", onlp_led_mode,),
                 ("character", ctypes.c_char,),]
 
 def onlp_led_init_prototypes():
 
-    libonlp.onlp_led_init.restype = None
+    libonlp.onlp_led_sw_init.restype = ctypes.c_int
 
-    libonlp.onlp_led_info_get.restype = ctypes.c_int
-    libonlp.onlp_led_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_led_info),)
-
-    libonlp.onlp_led_status_get.restype = ctypes.c_int
-    libonlp.onlp_led_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint32),)
+    libonlp.onlp_led_hw_init.restype = ctypes.c_int
+    libonlp.onlp_led_hw_init.argtypes = (ctypes.c_uint32,)
 
     libonlp.onlp_led_hdr_get.restype = ctypes.c_int
     libonlp.onlp_led_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
-    libonlp.onlp_led_set.restype = ctypes.c_int
-    libonlp.onlp_led_set.argtypes = (onlp_oid, ctypes.c_int,)
+    libonlp.onlp_led_info_get.restype = ctypes.c_int
+    libonlp.onlp_led_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_led_info),)
+
+    libonlp.onlp_led_format.restype = ctypes.c_int
+    libonlp.onlp_led_format.argtypes = (onlp_oid, onlp_oid_format,
+                                        ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_led_info_format.restype = ctypes.c_int
+    libonlp.onlp_led_info_format.argtypes = (ctypes.POINTER(onlp_led_info), onlp_oid_format,
+                                             ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
     libonlp.onlp_led_mode_set.restype = ctypes.c_int
-    libonlp.onlp_led_mode_set.argtypes = (onlp_oid, ctypes.c_uint32,)
+    libonlp.onlp_led_mode_set.argtypes = (onlp_oid, onlp_led_mode,)
 
     libonlp.onlp_led_char_set.restype = ctypes.c_int
     libonlp.onlp_led_char_set.argtypes = (onlp_oid, ctypes.c_char,)
-
-    libonlp.onlp_led_dump.restype = None
-    libonlp.onlp_led_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
-
-    libonlp.onlp_led_show.restype = None
-    libonlp.onlp_led_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
 
 # onlp/onlp_config.h
 
@@ -462,51 +484,52 @@ def onlp_config_init_prototypes():
     libonlp.onlp_config_lookup.argtypes = (ctypes.c_char_p,)
 
     libonlp.onlp_config_show.restype = ctypes.c_int
-    libonlp.onlp_config_show.argtypes = (ctypes.POINTER(aim_pvs),)
+    libonlp.onlp_config_show.argtypes = (ctypes.POINTER(aim.aim_pvs),)
 
 # onlp/thermal.h
+
+ONLP_THERMAL_CAPS_ALL = 0xF
 
 class onlp_thermal_info_thresholds(ctypes.Structure):
     _fields_ = [('warning', ctypes.c_int,),
                 ('error', ctypes.c_int,),
                 ('shutdown', ctypes.c_int,),]
 
-class onlp_thermal_info(ctypes.Structure):
-    _fields_ = [('hdr', onlp_oid_hdr,),
-                ('status', ctypes.c_uint32,),
-                ('caps', ctypes.c_uint32,),
+class onlp_thermal_info(onlp_oid_info):
+    _fields_ = [('caps', ctypes.c_uint32,),
                 ('mcelcius', ctypes.c_int,),
                 ('thresholds', onlp_thermal_info_thresholds,),]
 
 def onlp_thermal_init_prototypes():
 
-    libonlp.onlp_thermal_init.restype = ctypes.c_int
+    libonlp.onlp_thermal_sw_init.restype = ctypes.c_int
 
-    libonlp.onlp_thermal_info_get.restype = ctypes.c_int
-    libonlp.onlp_thermal_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_thermal_info),)
-
-    libonlp.onlp_thermal_status_get.restype = ctypes.c_int
-    libonlp.onlp_thermal_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint32),)
+    libonlp.onlp_thermal_hw_init.restype = ctypes.c_int
+    libonlp.onlp_thermal_hw_init.argtypes = (ctypes.c_uint32,)
 
     libonlp.onlp_thermal_hdr_get.restype = ctypes.c_int
     libonlp.onlp_thermal_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
-    libonlp.onlp_thermal_ioctl.restype = ctypes.c_int
+    libonlp.onlp_thermal_info_get.restype = ctypes.c_int
+    libonlp.onlp_thermal_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_thermal_info),)
 
-    libonlp.onlp_thermal_dump.restype = None
-    libonlp.onlp_thermal_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+    libonlp.onlp_thermal_format.restype = ctypes.c_int
+    libonlp.onlp_thermal_format.argtypes = (onlp_oid, onlp_oid_format,
+                                            ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
-    libonlp.onlp_thermal_show.restype = None
-    libonlp.onlp_thermal_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+    libonlp.onlp_thermal_info_format.restype = ctypes.c_int
+    libonlp.onlp_thermal_info_format.argtypes = (ctypes.POINTER(onlp_thermal_info), onlp_oid_format,
+                                                 ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
 # onlp/psu.h
 
-class onlp_psu_info(ctypes.Structure):
-    _fields_ = [("hdr", onlp_oid_hdr,),
-                ("model", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
+onlp_psu_type = ctypes.c_int
+
+class onlp_psu_info(onlp_oid_info):
+    _fields_ = [("model", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
                 ("serial", ctypes.c_char * ONLP_CONFIG_INFO_STR_MAX,),
-                ("status", ctypes.c_uint32,),
                 ("caps", ctypes.c_uint32,),
+                ("type", onlp_psu_type,),
                 ("mvin", ctypes.c_int,),
                 ("mvout", ctypes.c_int,),
                 ("miin", ctypes.c_int,),
@@ -516,76 +539,66 @@ class onlp_psu_info(ctypes.Structure):
 
 def onlp_psu_init_prototypes():
 
-    libonlp.onlp_psu_init.restype = ctypes.c_int
+    libonlp.onlp_psu_sw_init.restype = ctypes.c_int
 
-    libonlp.onlp_psu_info_get.restype = ctypes.c_int
-    libonlp.onlp_psu_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_psu_info),)
-
-    libonlp.onlp_psu_status_get.restype = ctypes.c_int
-    libonlp.onlp_psu_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint32),)
+    libonlp.onlp_psu_hw_init.restype = ctypes.c_int
+    libonlp.onlp_psu_hw_init.argtypes = (ctypes.c_uint32,)
 
     libonlp.onlp_psu_hdr_get.restype = ctypes.c_int
     libonlp.onlp_psu_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
-    libonlp.onlp_psu_ioctl.restype = ctypes.c_int
+    libonlp.onlp_psu_info_get.restype = ctypes.c_int
+    libonlp.onlp_psu_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_psu_info),)
 
-    libonlp.onlp_psu_dump.restype = None
-    libonlp.onlp_psu_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+    libonlp.onlp_psu_format.restype = ctypes.c_int
+    libonlp.onlp_psu_format.argtypes = (onlp_oid, onlp_oid_format,
+                                        ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
-    libonlp.onlp_psu_show.restype = None
-    libonlp.onlp_psu_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs),)
+    libonlp.onlp_psu_info_format.restype = ctypes.c_int
+    libonlp.onlp_psu_info_format.argtypes = (ctypes.POINTER(onlp_psu_info), onlp_oid_format,
+                                             ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
 
-# sff/sff.h
+# onlp/sfp.h
 
-def sff_init_prototypes():
-
-    libonlp.sff_sfp_type_get.restype = onlp.sff.sff_sfp_type
-    libonlp.sff_sfp_type_get.argtypes = (ctypes.POINTER(ctypes.c_ubyte),)
-
-    libonlp.sff_module_type_get.restype = onlp.sff.sff_module_type
-    libonlp.sff_module_type_get.argtypes = (ctypes.POINTER(ctypes.c_ubyte),)
-
-    libonlp.sff_media_type_get.restype = onlp.sff.sff_media_type
-    libonlp.sff_media_type_get.argtypes = (onlp.sff.sff_module_type,)
-
-    libonlp.sff_module_caps_get.restype = ctypes.c_int
-    libonlp.sff_module_caps_get.argtypes = (onlp.sff.sff_module_type, ctypes.POINTER(ctypes.c_uint32),)
-
-    libonlp.sff_eeprom_parse.restype = ctypes.c_int
-    libonlp.sff_eeprom_parse.argtypes = (ctypes.POINTER(onlp.sff.sff_eeprom), ctypes.POINTER(ctypes.c_ubyte),)
-
-    libonlp.sff_eeprom_parse_file.restype = ctypes.c_int
-    libonlp.sff_eeprom_parse_file.argtypes = (ctypes.POINTER(onlp.sff.sff_eeprom), ctypes.c_char_p,)
-
-    libonlp.sff_eeprom_invalidate.restype = None
-    libonlp.sff_eeprom_invalidate.argtypes = (ctypes.POINTER(onlp.sff.sff_eeprom),)
-
-    libonlp.sff_eeprom_validate.restype = ctypes.c_int
-    libonlp.sff_eeprom_validate.argtypes = (ctypes.POINTER(onlp.sff.sff_eeprom), ctypes.c_int,)
-
-    libonlp.sff_info_show.restype = None
-    libonlp.sff_info_show.argtypes = (ctypes.POINTER(onlp.sff.sff_info), ctypes.POINTER(aim_pvs),)
-
-    libonlp.sff_info_init.restype = ctypes.c_int
-    libonlp.sff_info_init.argtypes = (ctypes.POINTER(onlp.sff.sff_info), onlp.sff.sff_module_type,
-                                      ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p,
-                                      ctypes.c_int,)
-
-# onlp/sff.h
-
-onlp_sfp_bitmap = aim_bitmap256
+ONLP_SFP_BLOCK_DATA_SIZE = 256
 
 onlp_sfp_control = ctypes.c_int
+onlp_sfp_type = ctypes.c_int
+onlp_sfp_bitmap = aim.aim_bitmap256
+
+class onlp_sfp_info_bytes(ctypes.Structure):
+    _fields_ = [("a0", ctypes.c_ubyte * ONLP_SFP_BLOCK_DATA_SIZE,),
+                ("a2", ctypes.c_ubyte * ONLP_SFP_BLOCK_DATA_SIZE,),]
+
+class onlp_sfp_info(onlp_oid_info):
+    _fields_ = [("type", onlp_sfp_type,),
+                ("controls", ctypes.c_uint32,),
+                ("sff", sff.sff.sff_info,),
+                ("dom", sff.sff.sff_dom_info,),
+                ("bytes", onlp_sfp_info_bytes,),]
 
 def onlp_sfp_init_prototypes():
 
-    libonlp.onlp_sfp_init.restype = ctypes.c_int
+    libonlp.onlp_sfp_sw_init.restype = ctypes.c_int
+
+    libonlp.onlp_sfp_hw_init.restype = ctypes.c_int
+    libonlp.onlp_sfp_hw_init.argtypes = (ctypes.c_uint32,)
 
     libonlp.onlp_sfp_bitmap_t_init.restype = None
     libonlp.onlp_sfp_bitmap_t_init.argtypes = (ctypes.POINTER(onlp_sfp_bitmap),)
 
     libonlp.onlp_sfp_bitmap_get.restype = ctypes.c_int
     libonlp.onlp_sfp_bitmap_get.argtypes = (ctypes.POINTER(onlp_sfp_bitmap),)
+
+    libonlp.onlp_sfp_info_get.restype = ctypes.c_int
+    libonlp.onlp_sfp_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_sfp_info),)
+
+    ##libonlp.onlp_sfp_info_dom_get.restype = ctypes.c_int
+    ##libonlp.onlp_sfp_info_dom_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_sfp_info),)
+    ### XXX roth -- missing
+
+    libonlp.onlp_sfp_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_sfp_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
 
     libonlp.onlp_sfp_port_valid.restype = ctypes.c_int
     libonlp.onlp_sfp_port_valid.argtypes = (ctypes.c_int,)
@@ -596,16 +609,16 @@ def onlp_sfp_init_prototypes():
     libonlp.onlp_sfp_presence_bitmap_get.restype = ctypes.c_int
     libonlp.onlp_sfp_presence_bitmap_get.argtypes = (ctypes.POINTER(onlp_sfp_bitmap),)
 
-    libonlp.onlp_sfp_eeprom_read.restype = ctypes.c_int
-    libonlp.onlp_sfp_eeprom_read.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte,)),)
-
-    libonlp.onlp_sfp_dom_read.restype = ctypes.c_int
-    libonlp.onlp_sfp_dom_read.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)),)
-
-    libonlp.onlp_sfp_denit.restype = ctypes.c_int
-
     libonlp.onlp_sfp_rx_los_bitmap_get.restype = ctypes.c_int
     libonlp.onlp_sfp_rx_los_bitmap_get.argtypes = (ctypes.POINTER(onlp_sfp_bitmap),)
+
+    libonlp.onlp_sfp_dev_read.restype = ctypes.c_int
+    libonlp.onlp_sfp_dev_read.argtypes = (ctypes.c_int, ctypes.c_ubyte,
+                                          ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int, ctypes.c_int)
+
+    libonlp.onlp_sfp_dev_write.restype = ctypes.c_int
+    libonlp.onlp_sfp_dev_write.argtypes = (ctypes.c_int, ctypes.c_ubyte,
+                                           ctypes.POINTER(ctypes.c_ubyte), ctypes.c_int, ctypes.c_int)
 
     libonlp.onlp_sfp_dev_readb.restype = ctypes.c_int
     libonlp.onlp_sfp_dev_readb.argtypes = (ctypes.c_int, ctypes.c_ubyte, ctypes.c_ubyte,)
@@ -619,13 +632,8 @@ def onlp_sfp_init_prototypes():
     libonlp.onlp_sfp_dev_writew.restype = ctypes.c_int
     libonlp.onlp_sfp_dev_writew.argtypes = (ctypes.c_int, ctypes.c_ubyte, ctypes.c_ubyte, ctypes.c_ushort)
 
-    libonlp.onlp_sfp_dump.restype = None
-    libonlp.onlp_sfp_dump.argtypes = (ctypes.POINTER(aim_pvs),)
-
-    libonlp.onlp_sfp_ioctl.restype = ctypes.c_int
-
     libonlp.onlp_sfp_post_insert.restype = ctypes.c_int
-    libonlp.onlp_sfp_post_insert.argtypes = (ctypes.c_int, ctypes.POINTER(onlp.sff.sff_info),)
+    libonlp.onlp_sfp_post_insert.argtypes = (ctypes.c_int, ctypes.POINTER(sff.sff.sff_info),)
 
     libonlp.onlp_sfp_control_set.restype = ctypes.c_int
     libonlp.onlp_sfp_control_set.argtypes = (ctypes.c_int, onlp_sfp_control, ctypes.c_int,)
@@ -636,14 +644,73 @@ def onlp_sfp_init_prototypes():
     libonlp.onlp_sfp_control_flags_get.restype = ctypes.c_int
     libonlp.onlp_sfp_control_flags_get.argtyeps = (ctypes.c_int, ctypes.POINTER(ctypes.c_uint32),)
 
+
+    ##libonlp.onlp_sfp_dom_info_get.restype = ctypes.c_int
+    ##libonlp.onlp_sfp_dom_info_get.argtypes = (onlp_oid, ctypes.POINTER(sff_dom_info),)
+    ### XXX roth -- not implemented
+
+    libonlp.onlp_sfp_format.restype = ctypes.c_int
+    libonlp.onlp_sfp_format.argtypes = (onlp_oid, onlp_oid_format,
+                                        ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_sfp_info_format.restype = ctypes.c_int
+    libonlp.onlp_sfp_info_format.argtypes = (ctypes.POINTER(onlp_sfp_info), onlp_oid_format,
+                                             ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    ##libonlp.onlp_sfp_sw_denit.restype = ctypes.c_int
+    ##libonlp.onlp_sfp_hw_denit.restype = ctypes.c_int
+    ### XXX roth -- not implemented
+
+# onlp/generic.h
+
+class onlp_generic_info(onlp_oid_info):
+    pass
+
+def onlp_generic_init_prototypes():
+
+    ##libonlp.onlp_generic_sw_init.restype = ctypes.c_int
+    ### XXX roth -- missing
+
+    ##libonlp.onlp_generic_hw_init.restype = ctypes.c_int
+    ##libonlp.onlp_generic_hw_init.argtypes = (ctypes.c_uint32,)
+    ### XXX roth -- missing
+
+    libonlp.onlp_generic_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_generic_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_generic_info_get.restype = ctypes.c_int
+    libonlp.onlp_generic_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_generic_info),)
+
+    libonlp.onlp_generic_format.restype = ctypes.c_int
+    libonlp.onlp_generic_format.argtypes = (onlp_oid, onlp_oid_format,
+                                            ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_generic_info_format.restype = ctypes.c_int
+    libonlp.onlp_generic_info_format.argtypes = (ctypes.POINTER(onlp_generic_info), onlp_oid_format,
+                                                 ctypes.POINTER(aim.aim_pvs), ctypes.c_uint32,)
+
 # onlp/onlp.h
 
 def init_prototypes():
-    aim_memory_init_prototypes()
-    aim_pvs_init_prototypes()
-    aim_bitmap_init_prototypes()
+
+    aim.aim_memory_init_prototypes(libonlp)
+    aim.aim_pvs_init_prototypes(libonlp)
+    aim.aim_bitmap_init_prototypes(libonlp)
+
+    biglist.biglist_init_prototypes(libonlp)
+
+    cjson_util.cjson_util_init_prototypes(libonlp, libjson_c)
+
+    onlp.onlplib.onlplib_onie_init_prototypes(libonlp)
+
     onlp_oid_init_prototypes()
-    onlp_sys_init_prototypes()
+    onlp_attribute_init_prototypes()
+    onlp_stdattrs_init_prototypes()
+
+    onlp_platform_init_prototypes()
+    onlp_module_init_prototypes()
+    onlp_chassis_init_prototypes()
+
     onlp_fan_init_prototypes()
     onlp_led_init_prototypes()
 
@@ -656,7 +723,16 @@ def init_prototypes():
 
     onlp_thermal_init_prototypes()
     onlp_psu_init_prototypes()
-    sff_init_prototypes()
+
+    sff.sff.sff_sff_init_prototypes(libonlp)
+
+    ##sff.sff.sff_dom_init_prototypes(libonlp)
+    ##sff.sff.sff_dom_8436_init_prototypes(libonlp)
+    ##sff.sff.sff_dom_8472_init_prototypes(libonlp)
+    ##sff.sff.sff_dom_8636_init_prototypes(libonlp)
+    ### XXX roth -- missing
+
     onlp_sfp_init_prototypes()
+    onlp_generic_init_prototypes()
 
 init_prototypes()

@@ -22,150 +22,59 @@
  *
  *
  ***********************************************************/
-#include <onlp/onlp.h>
-#include <onlp/oids.h>
+#include <uCli/ucli.h>
+#include <AIM/aim_thread.h>
 #include <unistd.h>
-#include <onlp/sys.h>
-#include <onlp/sfp.h>
-#include <sff/sff.h>
-#include <sff/sff_db.h>
-#include <AIM/aim_log_handler.h>
-#include <syslog.h>
-#include <onlp/platformi/sysi.h>
+#include <onlp/onlp.h>
+#include "onlp_log.h"
 
-static void platform_manager_daemon__(const char* pidfile, char** argv);
-
-/**
- * Human-readable SFP inventory.
- * This should be moved to common.
+/*
+ * Some CLI commands require the original argv vector
+ * to implement things like daemonized restart.
  */
-static void
-show_inventory__(aim_pvs_t* pvs, int database)
-{
-    int port;
-    onlp_sfp_bitmap_t bitmap;
-
-    onlp_sfp_bitmap_t_init(&bitmap);
-    onlp_sfp_bitmap_get(&bitmap);
-
-    if(AIM_BITMAP_COUNT(&bitmap) == 0) {
-        aim_printf(pvs, "No SFPs on this platform.\n");
-    }
-    else {
-        if(!database) {
-            aim_printf(pvs, "Port  Type            Media   Status  Len    Vendor            Model             S/N             \n");
-            aim_printf(pvs, "----  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
-        }
-
-        AIM_BITMAP_ITER(&bitmap, port) {
-            int rv;
-            uint8_t* data;
-
-            rv = onlp_sfp_is_present(port);
-
-            if(rv == 0) {
-                if(!database) {
-                    aim_printf(pvs, "%4d  NONE\n", port);
-                }
-                continue;
-            }
-
-            if(rv < 0) {
-                aim_printf(pvs, "%4d  Error %{onlp_status}\n", port, rv);
-                continue;
-            }
-
-            rv = onlp_sfp_eeprom_read(port, &data);
-
-            if(rv < 0) {
-                aim_printf(pvs, "%4d  Error %{onlp_status}\n", port, rv);
-                continue;
-            }
-
-            sff_eeprom_t sff;
-            char status_str[32] = {0};
-
-            sff_eeprom_parse(&sff, data);
-
-            if(!sff.identified) {
-                /* Present but unidentified. */
-                aim_printf(pvs, "%13d  UNK\n", port);
-                continue;
-            }
-
-            if(database) {
-                sff_db_entry_struct(&sff, &aim_pvs_stdout);
-                continue;
-            }
-
-            uint32_t status = 0;
-            char* cp = status_str;
-            onlp_sfp_control_flags_get(port, &status);
-            if(status & ONLP_SFP_CONTROL_FLAG_RX_LOS) {
-                *cp++ = 'R';
-            }
-            if(status & ONLP_SFP_CONTROL_FLAG_TX_FAULT) {
-                *cp++ = 'T';
-            }
-            if(status & ONLP_SFP_CONTROL_FLAG_TX_DISABLE) {
-                *cp++ = 'X';
-            }
-            if(status & ONLP_SFP_CONTROL_FLAG_LP_MODE) {
-                *cp++ = 'L';
-            }
-            aim_printf(pvs, "%4d  %-14s  %-6s  %-6.6s  %-5.5s  %-16.16s  %-16.16s  %16.16s\n",
-                       port,
-                       sff.info.module_type_name,
-                       sff.info.media_type_name,
-                       status_str,
-                       sff.info.length_desc,
-                       sff.info.vendor,
-                       sff.info.model,
-                       sff.info.serial);
-        }
-    }
-}
-
-
-static int
-iterate_oids_callback__(onlp_oid_t oid, void* cookie)
-{
-    int type = ONLP_OID_TYPE_GET(oid);
-    int id   = ONLP_OID_ID_GET(oid);
-
-    static int thermal = 1;
-    static int fan = 1;
-    static int psu = 1;
-
-    switch(type)
-        {
-        case ONLP_OID_TYPE_THERMAL:
-            printf("thermal,Thermal %d,%d\n", id, thermal++);
-            break;
-        case ONLP_OID_TYPE_FAN:
-            printf("fan,Fan %d,%d\n", id, fan++);
-            break;
-        case ONLP_OID_TYPE_PSU:
-            printf("psu,PSU %d,%d\n", id, psu++);
-            break;
-        }
-    return 0;
-}
-
-
-static void
-iterate_oids__(void)
-{
-    onlp_oid_iterate(ONLP_OID_SYS, 0,
-                     iterate_oids_callback__, NULL);
-}
-
-
-
+extern char** onlp_ucli_argv;
 
 int
 onlpdump_main(int argc, char* argv[])
 {
+
+    ucli_t* ucli = NULL;
+    char** argv_strings;
+    char** opt;
+
+    aim_thread_name_set("onlpd.main");
+    onlp_ucli_argv = argv;
+
+    extern ucli_node_t* onlp_ucli_node_create(void);
+    char hostname[128] = {0};
+    gethostname(hostname, sizeof(hostname)-1);
+    const char* prompt = aim_fstrdup("%s.onlp", hostname);
+
+    AIM_TRY_OR_DIE(onlp_sw_init(NULL));
+
+    AIM_TRY_OR_DIE(ucli_init());
+    ucli = ucli_create(prompt, NULL, onlp_ucli_node_create());
+    argv_strings = ucli_argv_to_strings(argv+1);
+    if(argv_strings) {
+        for(opt = argv_strings; *opt; opt++) {
+            if(ucli_dispatch_string(ucli, &aim_pvs_stdout, *opt) < 0) {
+                return 1;
+            }
+        }
+        ucli_argv_to_strings_free(argv_strings);
+    }
+    if(!argv_strings || !argv_strings[0]) {
+        ucli_run(ucli, prompt);
+    }
+    aim_free((char*)prompt);
+    ucli_destroy(ucli);
+
+    AIM_TRY_OR_DIE(onlp_sw_denit());
+    return 0;
+}
+
+#if TO_BE_CONVERTED_TO_UCLI
+
     int show = 0;
     uint32_t showflags = 0;
     int help = 0;
@@ -189,14 +98,9 @@ onlpdump_main(int argc, char* argv[])
     /**
      * debug trap
      */
-    if(argc > 1 && (!strcmp(argv[1], "debug") || !strcmp(argv[1], "debugi"))) {
-        if(!strcmp(argv[1], "debug")) {
-            onlp_init();
-            return onlp_sys_debug(&aim_pvs_stdout, argc-2, argv+2);
-        }
-        else {
-            return onlp_sysi_debug(&aim_pvs_stdout, argc-2, argv+2);
-        }
+    if(argc > 1 && (!strcmp(argv[1], "debug"))) {
+        onlp_sw_init(NULL);
+        return onlp_debug(&aim_pvs_stdout, argc-2, argv+2);
     }
 
     while( (c = getopt(argc, argv, "srehdojmyM:ipxlSt:O:bJ:")) != -1) {
@@ -248,6 +152,8 @@ onlpdump_main(int argc, char* argv[])
         return rv;
     }
 
+    AIM_REFERENCE(j);
+
     if(J) {
         int rv;
         onlp_onie_info_t onie;
@@ -278,7 +184,7 @@ onlpdump_main(int argc, char* argv[])
         }
     }
 
-    onlp_init();
+    onlp_sw_init(NULL);
 
     if(M) {
         platform_manager_daemon__(pidfile, argv);
@@ -344,7 +250,6 @@ onlpdump_main(int argc, char* argv[])
         onlp_sys_info_free(&si);
         return 0;
     }
-
     if(show >= 0) {
         if(show == 0) {
             /* Default to full dump */
@@ -360,10 +265,10 @@ onlpdump_main(int argc, char* argv[])
 
     if(m) {
         printf("Running the platform manager for 600 seconds...\n");
-        onlp_sys_platform_manage_start(0);
+        onlp_platform_manager_start(0);
         sleep(600);
         printf("Stopping the platform manager.\n");
-        onlp_sys_platform_manage_stop(1);
+        onlp_platform_manager_stop(1);
     }
 
     if(p) {
@@ -378,11 +283,8 @@ onlpdump_main(int argc, char* argv[])
             aim_printf(&aim_pvs_stdout, "%{aim_bitmap}\n", &presence);
         }
     }
-
     return 0;
 }
-
-#if AIM_CONFIG_INCLUDE_DAEMONIZE == 1
 
 #include <AIM/aim_daemon.h>
 #include <AIM/aim_pvs_syslog.h>
@@ -392,7 +294,7 @@ onlpdump_main(int argc, char* argv[])
 void
 sighandler__(int signal)
 {
-    onlp_sys_platform_manage_stop(0);
+    onlp_platform_manager_stop(0);
 }
 
 static void
@@ -435,21 +337,12 @@ platform_manager_daemon__(const char* pidfile, char** argv)
     signal(SIGTERM, sighandler__);
 
     /** Start and block in platform manager. */
-    onlp_sys_platform_manage_start(1);
+    onlp_platform_manager_start(1);
 
     /** Terminated via signal. Cleanup and exit. */
-    onlp_sys_platform_manage_stop(1);
+    onlp_platform_manager_stop(1);
 
     aim_log_handler_basic_denit_all();
     exit(0);
-}
-
-
-#else
-static void
-platform_manager_daemon__(const char* pidfile, char** argv)
-{
-    fprintf(stderr, "Daemon mode not supported in this build.\n");
-    exit(1);
 }
 #endif

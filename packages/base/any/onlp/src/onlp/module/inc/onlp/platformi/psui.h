@@ -1,25 +1,28 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
- * </bsn.cl>
- ************************************************************
  *
- * Power Supply Management Implementation.
+ * </bsn.cl>
+ ********************************************************//**
+ *
+ * @file
+ * @brief Power Supply Management Implementation.
+ * @addtogroup psui
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_PSUI_H__
@@ -28,37 +31,38 @@
 #include <onlp/psu.h>
 
 /**
- * @brief Initialize the PSU subsystem.
+ * @brief Software initialization of the PSU module.
  */
-int onlp_psui_init(void);
+int onlp_psui_sw_init(void);
 
 /**
- * @brief Get the information structure for the given PSU
- * @param id The PSU OID
- * @param rv [out] Receives the PSU information.
+ * @brief Hardware initialization of the PSU module.
+ * @param flags The hardware initialization flags.
  */
-int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
+int onlp_psui_hw_init(uint32_t flags);
 
 /**
- * @brief Get the PSU's operational status.
- * @param id The PSU OID.
- * @param rv [out] Receives the operational status.
+ * @brief Deinitialize the psu software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
  */
-int onlp_psui_status_get(onlp_oid_t id, uint32_t* rv);
+int onlp_psui_sw_denit(void);
 
 /**
  * @brief Get the PSU's oid header.
  * @param id The PSU OID.
- * @param rv [out] Receives the header.
+ * @param[out] rv Receives the header.
  */
 int onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 
 /**
- * @brief Generic PSU ioctl
+ * @brief Get the information structure for the given PSU
  * @param id The PSU OID
- * @param vargs The variable argument list for the ioctl call.
+ * @param[out] rv Receives the PSU information.
  */
-int onlp_psui_ioctl(onlp_oid_t pid, va_list vargs);
+int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
 
 
 #endif /* __ONLP_PSUI_H__ */
+/* @} */

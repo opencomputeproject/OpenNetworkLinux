@@ -15,8 +15,8 @@ class Enumeration(object):
 
 # <auto.start.pyenum(ALL).define>
 class ONLP_FAN_CAPS(Enumeration):
-    B2F = (1 << 0)
-    F2B = (1 << 1)
+    SET_DIR = (1 << 0)
+    GET_DIR = (1 << 1)
     SET_RPM = (1 << 2)
     SET_PERCENTAGE = (1 << 3)
     GET_RPM = (1 << 4)
@@ -24,73 +24,73 @@ class ONLP_FAN_CAPS(Enumeration):
 
 
 class ONLP_FAN_DIR(Enumeration):
-    B2F = 0
-    F2B = 1
-
-
-class ONLP_FAN_MODE(Enumeration):
-    OFF = 0
-    SLOW = 1
-    NORMAL = 2
-    FAST = 3
-    MAX = 4
-
-
-class ONLP_FAN_STATUS(Enumeration):
-    PRESENT = (1 << 0)
-    FAILED = (1 << 1)
-    B2F = (1 << 2)
-    F2B = (1 << 3)
+    UNKNOWN = 0
+    B2F = 1
+    F2B = 2
 
 
 class ONLP_LED_CAPS(Enumeration):
-    ON_OFF = (1 << 0)
-    CHAR = (1 << 1)
-    RED = (1 << 10)
-    RED_BLINKING = (1 << 11)
-    ORANGE = (1 << 12)
-    ORANGE_BLINKING = (1 << 13)
-    YELLOW = (1 << 14)
-    YELLOW_BLINKING = (1 << 15)
-    GREEN = (1 << 16)
-    GREEN_BLINKING = (1 << 17)
-    BLUE = (1 << 18)
-    BLUE_BLINKING = (1 << 19)
-    PURPLE = (1 << 20)
-    PURPLE_BLINKING = (1 << 21)
-    AUTO = (1 << 22)
-    AUTO_BLINKING = (1 << 23)
+    OFF = (1 << 0)
+    AUTO = (1 << 1)
+    AUTO_BLINKING = (1 << 2)
+    CHAR = (1 << 3)
+    RED = (1 << 4)
+    RED_BLINKING = (1 << 5)
+    ORANGE = (1 << 6)
+    ORANGE_BLINKING = (1 << 7)
+    YELLOW = (1 << 8)
+    YELLOW_BLINKING = (1 << 9)
+    GREEN = (1 << 10)
+    GREEN_BLINKING = (1 << 11)
+    BLUE = (1 << 12)
+    BLUE_BLINKING = (1 << 13)
+    PURPLE = (1 << 14)
+    PURPLE_BLINKING = (1 << 15)
 
 
 class ONLP_LED_MODE(Enumeration):
     OFF = 0
-    ON = 1
-    BLINKING = 2
-    RED = 10
-    RED_BLINKING = 11
-    ORANGE = 12
-    ORANGE_BLINKING = 13
-    YELLOW = 14
-    YELLOW_BLINKING = 15
-    GREEN = 16
-    GREEN_BLINKING = 17
-    BLUE = 18
-    BLUE_BLINKING = 19
-    PURPLE = 20
-    PURPLE_BLINKING = 21
-    AUTO = 22
-    AUTO_BLINKING = 23
+    AUTO = 1
+    AUTO_BLINKING = 2
+    CHAR = 3
+    RED = 4
+    RED_BLINKING = 5
+    ORANGE = 6
+    ORANGE_BLINKING = 7
+    YELLOW = 8
+    YELLOW_BLINKING = 9
+    GREEN = 10
+    GREEN_BLINKING = 11
+    BLUE = 12
+    BLUE_BLINKING = 13
+    PURPLE = 14
+    PURPLE_BLINKING = 15
 
 
-class ONLP_LED_STATUS(Enumeration):
-    PRESENT = (1 << 0)
-    FAILED = (1 << 1)
-    ON = (1 << 2)
+class ONLP_LOG_FLAG(Enumeration):
+    JSON = 0
 
 
 class ONLP_OID_DUMP(Enumeration):
-    RECURSE = (1 << 0)
-    EVEN_IF_ABSENT = (1 << 1)
+    RECURSE = 0
+    EVEN_IF_ABSENT = 1
+
+
+class ONLP_OID_FORMAT(Enumeration):
+    JSON = 0
+    YAML = 1
+    USER = 2
+    DEBUG = 3
+
+
+class ONLP_OID_FORMAT_FLAGS(Enumeration):
+    RECURSIVE = (1 << 0)
+    MISSING = (1 << 1)
+
+
+class ONLP_OID_JSON_FLAG(Enumeration):
+    RECURSIVE = (1 << 0)
+    UNSUPPORTED_FIELDS = (1 << 1)
 
 
 class ONLP_OID_SHOW(Enumeration):
@@ -99,32 +99,49 @@ class ONLP_OID_SHOW(Enumeration):
     YAML = (1 << 2)
 
 
+class ONLP_OID_STATUS_FLAG(Enumeration):
+    PRESENT = (1 << 0)
+    FAILED = (1 << 1)
+    OPERATIONAL = (1 << 2)
+    UNPLUGGED = (1 << 3)
+
+
 class ONLP_OID_TYPE(Enumeration):
-    SYS = 1
-    THERMAL = 2
-    FAN = 3
-    PSU = 4
-    LED = 5
-    MODULE = 6
-    RTC = 7
+    CHASSIS = 1
+    MODULE = 2
+    THERMAL = 3
+    FAN = 4
+    PSU = 5
+    LED = 6
+    SFP = 7
+    GENERIC = 8
+
+
+class ONLP_OID_TYPE_FLAG(Enumeration):
+    CHASSIS = (1 << 1)
+    MODULE = (1 << 2)
+    THERMAL = (1 << 3)
+    FAN = (1 << 4)
+    PSU = (1 << 5)
+    LED = (1 << 6)
+    SFP = (1 << 7)
+    GENERIC = (1 << 8)
 
 
 class ONLP_PSU_CAPS(Enumeration):
-    AC = (1 << 0)
-    DC12 = (1 << 1)
-    DC48 = (1 << 2)
-    VIN = (1 << 3)
-    VOUT = (1 << 4)
-    IIN = (1 << 5)
-    IOUT = (1 << 6)
-    PIN = (1 << 7)
-    POUT = (1 << 8)
+    GET_TYPE = (1 << 0)
+    GET_VIN = (1 << 1)
+    GET_VOUT = (1 << 2)
+    GET_IIN = (1 << 3)
+    GET_IOUT = (1 << 4)
+    GET_PIN = (1 << 5)
+    GET_POUT = (1 << 6)
 
 
-class ONLP_PSU_STATUS(Enumeration):
-    PRESENT = (1 << 0)
-    FAILED = (1 << 1)
-    UNPLUGGED = (1 << 2)
+class ONLP_PSU_TYPE(Enumeration):
+    AC = 0
+    DC12 = 1
+    DC48 = 2
 
 
 class ONLP_SFP_CONTROL(Enumeration):
@@ -149,6 +166,13 @@ class ONLP_SFP_CONTROL_FLAG(Enumeration):
     POWER_OVERRIDE = (1 << 7)
 
 
+class ONLP_SFP_TYPE(Enumeration):
+    SFP = 0
+    QSFP = 1
+    SFP28 = 2
+    QSFP28 = 3
+
+
 class ONLP_STATUS(Enumeration):
     OK = 0
     E_GENERIC = -1
@@ -165,11 +189,6 @@ class ONLP_THERMAL_CAPS(Enumeration):
     GET_WARNING_THRESHOLD = (1 << 1)
     GET_ERROR_THRESHOLD = (1 << 2)
     GET_SHUTDOWN_THRESHOLD = (1 << 3)
-
-
-class ONLP_THERMAL_STATUS(Enumeration):
-    PRESENT = (1 << 0)
-    FAILED = (1 << 1)
 
 
 class ONLP_THERMAL_THRESHOLD(Enumeration):

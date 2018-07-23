@@ -26,11 +26,58 @@
 #include <onlp/platformi/sfpi.h>
 #include "onlp_log.h"
 #include "onlp_locks.h"
+#include <onlp/oids.h>
+#include "onlp_int.h"
+#include <IOF/iof.h>
 
 /**
  * All port numbers will be validated before calling the SFP driver.
  */
 static onlp_sfp_bitmap_t sfpi_bitmap__;
+
+static int sfp_oid_validate__(onlp_oid_t* oid, int* pid)
+{
+    if(oid == NULL) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    int port;
+
+    if(ONLP_OID_IS_SFP(*oid)) {
+        /** OID Formatted SFP Port */
+        port = ONLP_OID_ID_GET(*oid);
+        /** Ports start from 0, OIDS start from 1 */
+        port--;
+    }
+    else if(ONLP_OID_TYPE_GET(*oid) == 0) {
+        /** Raw port number */
+        port = *oid;
+        *oid = ONLP_SFP_ID_CREATE(port+1);
+    }
+    else {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if(AIM_BITMAP_GET(&sfpi_bitmap__, port) == 0) {
+        /** Not a valid port id */
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    int rport;
+    if(ONLP_SUCCESS(onlp_sfpi_port_map(port, &rport))) {
+        port = rport;
+    }
+
+    if(pid) {
+        *pid = port;
+    }
+    return 0;
+}
+
+#define ONLP_SFP_PORT_VALIDATE_AND_MAP(_oid, _port)                     \
+    do {                                                                \
+        ONLP_IF_ERROR_RETURN(sfp_oid_validate__(_oid, _port));          \
+    } while(0)
 
 void
 onlp_sfp_bitmap_t_init(onlp_sfp_bitmap_t* bmap)
@@ -40,11 +87,11 @@ onlp_sfp_bitmap_t_init(onlp_sfp_bitmap_t* bmap)
 }
 
 static int
-onlp_sfp_init_locked__(void)
+onlp_sfp_sw_init_locked__(void)
 {
     onlp_sfp_bitmap_t_init(&sfpi_bitmap__);
 
-    int rv = onlp_sfpi_init();
+    int rv = onlp_sfpi_sw_init();
     if(rv < 0) {
         if(rv == ONLP_STATUS_E_UNSUPPORTED) {
             /*
@@ -67,9 +114,14 @@ onlp_sfp_init_locked__(void)
         return ONLP_STATUS_OK;
     }
 }
-ONLP_LOCKED_API0(onlp_sfp_init)
+ONLP_LOCKED_API0(onlp_sfp_sw_init)
 
-
+static int
+onlp_sfp_hw_init_locked__(uint32_t flags)
+{
+    return onlp_sfpi_hw_init(flags);
+}
+ONLP_LOCKED_API1(onlp_sfp_hw_init, uint32_t, flags);
 
 static int
 onlp_sfp_bitmap_get_locked__(onlp_sfp_bitmap_t* bmap)
@@ -81,31 +133,30 @@ ONLP_LOCKED_API1(onlp_sfp_bitmap_get, onlp_sfp_bitmap_t*, bmap);
 
 
 static int
-onlp_sfp_denit_locked__(void)
+onlp_sfp_sw_denit_locked__(void)
 {
-    return onlp_sfpi_denit();
+    return onlp_sfpi_sw_denit();
 }
-ONLP_LOCKED_API0(onlp_sfp_denit);
+ONLP_LOCKED_API0(onlp_sfp_sw_denit);
 
-
-#define ONLP_SFP_PORT_VALIDATE_AND_MAP(_port)            \
-    do {                                                 \
-        if(AIM_BITMAP_GET(&sfpi_bitmap__, _port) == 0) { \
-            return -1;                                   \
-        }                                                \
-        int _rport;                                      \
-        if(onlp_sfpi_port_map(_port, &_rport) >= 0) {  \
-            _port = _rport;                              \
-        }                                                \
-    } while(0)
 
 static int
-onlp_sfp_is_present_locked__(int port)
+onlp_sfp_is_present_locked__(onlp_oid_t oid)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
     return onlp_sfpi_is_present(port);
 }
-ONLP_LOCKED_API1(onlp_sfp_is_present, int, port);
+ONLP_LOCKED_API1(onlp_sfp_is_present, onlp_oid_t, port);
+
+static int
+onlp_sfp_type_get_locked__(onlp_oid_t oid, onlp_sfp_type_t* rtype)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_type_get(port, rtype);
+}
+ONLP_LOCKED_API2(onlp_sfp_type_get, onlp_oid_t, oid, onlp_sfp_type_t*, rtype);
 
 static int
 onlp_sfp_presence_bitmap_get_locked__(onlp_sfp_bitmap_t* dst)
@@ -133,128 +184,28 @@ onlp_sfp_presence_bitmap_get_locked__(onlp_sfp_bitmap_t* dst)
 ONLP_LOCKED_API1(onlp_sfp_presence_bitmap_get, onlp_sfp_bitmap_t*, dst);
 
 int
-onlp_sfp_port_valid(int port)
+onlp_sfp_port_valid(onlp_oid_t oid)
 {
-    return AIM_BITMAP_GET(&sfpi_bitmap__, port);
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, NULL);
+    return 0;
 }
 
 static int
-onlp_sfp_eeprom_read_locked__(int port, uint8_t** datap)
+onlp_sfp_post_insert_locked__(onlp_oid_t oid, sff_info_t* info)
 {
-    int rv;
-    uint8_t* data;
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-
-    data = aim_zmalloc(256);
-    if((rv = onlp_sfpi_eeprom_read(port, data)) < 0) {
-        aim_free(data);
-        data = NULL;
-    }
-    *datap = data;
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_sfp_eeprom_read, int, port, uint8_t**, rv);
-
-static int
-onlp_sfp_dom_read_locked__(int port, uint8_t** datap)
-{
-    int rv;
-    uint8_t* data;
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-
-    data = aim_zmalloc(256);
-    if((rv = onlp_sfpi_dom_read(port, data)) < 0) {
-        aim_free(data);
-        data = NULL;
-    }
-    *datap = data;
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_sfp_dom_read, int, port, uint8_t**, rv);
-
-void
-onlp_sfp_dump(aim_pvs_t* pvs)
-{
-    int p;
-    int rv;
-
-    if(AIM_BITMAP_COUNT(&sfpi_bitmap__) == 0) {
-        aim_printf(pvs, "There are no SFP capable ports.\n");
-        return;
-    }
-
-    onlp_sfp_bitmap_t bmap;
-    onlp_sfp_bitmap_t_init(&bmap);
-    rv = onlp_sfp_presence_bitmap_get(&bmap);
-    aim_printf(pvs, "  Presence Bitmap: ");
-    if(rv == 0) {
-        aim_printf(pvs, "%{aim_bitmap}\n", &bmap);
-    }
-    else {
-        aim_printf(pvs,"Error: %{onlp_status}\n", rv);
-    }
-    aim_printf(pvs, "  RX_LOS Bitmap: ");
-    rv = onlp_sfp_rx_los_bitmap_get(&bmap);
-    if(rv == 0) {
-        aim_printf(pvs, "%{aim_bitmap}\n", &bmap);
-    }
-    else {
-        aim_printf(pvs, "Error: %{onlp_status}\n", rv);
-    }
-    aim_printf(pvs, "\n");
-
-    AIM_BITMAP_ITER(&sfpi_bitmap__, p) {
-        rv = onlp_sfp_is_present(p);
-        aim_printf(pvs, "Port %.2d: ", p);
-        if(rv == 0) {
-            /* Missing, OK */
-            aim_printf(pvs, "Missing.\n");
-        }
-        else if(rv == 1) {
-            /* Present, OK */
-            int srv;
-            uint32_t flags = 0;
-            srv = onlp_sfp_control_flags_get(p, &flags);
-            if(srv >= 0) {
-                aim_printf(pvs, "Present, Status = %{onlp_sfp_control_flags}\n", flags);
-            }
-            else {
-                aim_printf(pvs, "Present, Status Unavailable [ %{onlp_status} ]\n", srv);
-            }
-        }
-        else {
-            /* Error */
-            aim_printf(pvs, "Error: %{onlp_status}\n", rv);
-        }
-        if(rv == 1) {
-            uint8_t* idprom = NULL;
-            rv = onlp_sfp_eeprom_read(p, &idprom);
-            if(rv < 0) {
-                aim_printf(pvs, "Error reading eeprom: %{onlp_status}\n");
-            }
-            else {
-                aim_printf(pvs, "eeprom:\n%{data}\n", idprom, 256);
-                aim_free(idprom);
-            }
-        }
-    }
-    return;
-}
-
-static int
-onlp_sfp_post_insert_locked__(int port, sff_info_t* info)
-{
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
     return onlp_sfpi_post_insert(port, info);
 }
-ONLP_LOCKED_API2(onlp_sfp_post_insert, int, port, sff_info_t*, info);
+ONLP_LOCKED_API2(onlp_sfp_post_insert, onlp_oid_t, port, sff_info_t*, info);
 
 static int
-onlp_sfp_control_set_locked__(int port, onlp_sfp_control_t control, int value)
+onlp_sfp_control_set_locked__(onlp_oid_t oid, onlp_sfp_control_t control, int value)
 {
+    int port;
     int supported;
 
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
 
     if(!ONLP_SFP_CONTROL_VALID(control)) {
         return ONLP_STATUS_E_PARAM;
@@ -279,13 +230,14 @@ onlp_sfp_control_set_locked__(int port, onlp_sfp_control_t control, int value)
         }
     return onlp_sfpi_control_set(port, control, value);
 }
-ONLP_LOCKED_API3(onlp_sfp_control_set, int, port, onlp_sfp_control_t, control,
+ONLP_LOCKED_API3(onlp_sfp_control_set, onlp_oid_t, port, onlp_sfp_control_t, control,
                  int, value);
 
 static int
-onlp_sfp_control_get_locked__(int port, onlp_sfp_control_t control, int* value)
+onlp_sfp_control_get_locked__(onlp_oid_t oid, onlp_sfp_control_t control, int* value)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
 
     if(!ONLP_SFP_CONTROL_VALID(control)) {
         return ONLP_STATUS_E_PARAM;
@@ -310,7 +262,7 @@ onlp_sfp_control_get_locked__(int port, onlp_sfp_control_t control, int* value)
 
     return (value) ? onlp_sfpi_control_get(port, control, value) : ONLP_STATUS_E_PARAM;
 }
-ONLP_LOCKED_API3(onlp_sfp_control_get, int, port, onlp_sfp_control_t, control,
+ONLP_LOCKED_API3(onlp_sfp_control_get, onlp_oid_t, port, onlp_sfp_control_t, control,
                  int*, value);
 
 
@@ -342,8 +294,11 @@ ONLP_LOCKED_API1(onlp_sfp_rx_los_bitmap_get, onlp_sfp_bitmap_t*, dst);
 
 
 int
-onlp_sfp_control_flags_get(int port, uint32_t* flags)
+onlp_sfp_control_flags_get(onlp_oid_t oid, uint32_t* flags)
 {
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+
     /**
      * These are the control bits queried and returned.
      */
@@ -381,52 +336,330 @@ onlp_sfp_control_flags_get(int port, uint32_t* flags)
 }
 
 int
-onlp_sfp_ioctl(int port, ...)
+onlp_sfp_dev_read_locked__(onlp_oid_t oid, int devaddr, int addr,
+                           uint8_t* dst, int len)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_read(port, devaddr, addr, dst, len);
+}
+ONLP_LOCKED_API5(onlp_sfp_dev_read, onlp_oid_t, port, int, devaddr,
+                 int, addr, uint8_t*, dst, int, len);
+
+int
+onlp_sfp_dev_write_locked__(onlp_oid_t oid, int devaddr, int addr,
+                            uint8_t* src, int len)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_write(port, devaddr, addr, src, len);
+}
+ONLP_LOCKED_API5(onlp_sfp_dev_write, onlp_oid_t, port, int, devaddr,
+                 int, addr, uint8_t*, src, int, len);
+
+int
+onlp_sfp_dev_readb_locked__(onlp_oid_t oid, int devaddr, int addr)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_readb(port, devaddr, addr);
+}
+ONLP_LOCKED_API3(onlp_sfp_dev_readb, onlp_oid_t, port, int, devaddr, int, addr);
+
+int
+onlp_sfp_dev_writeb_locked__(onlp_oid_t oid, int devaddr, int addr,
+                             uint8_t value)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_writeb(port, devaddr, addr, value);
+}
+ONLP_LOCKED_API4(onlp_sfp_dev_writeb, onlp_oid_t, port, int, devaddr, int, addr, uint8_t, value);
+
+int
+onlp_sfp_dev_readw_locked__(onlp_oid_t oid, int devaddr, int addr)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_readw(port, devaddr, addr);
+}
+ONLP_LOCKED_API3(onlp_sfp_dev_readw, onlp_oid_t, port, int, devaddr, int, addr);
+
+int
+onlp_sfp_dev_writew_locked__(onlp_oid_t oid, int devaddr, int addr, uint16_t value)
+{
+    int port;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+    return onlp_sfpi_dev_writew(port, devaddr, addr, value);
+}
+ONLP_LOCKED_API4(onlp_sfp_dev_writew, onlp_oid_t, port, int, devaddr, int, addr, uint16_t, value);
+
+int
+onlp_sfp_format(onlp_oid_t oid, onlp_oid_format_t format,
+                aim_pvs_t* pvs, uint32_t flags)
 {
     int rv;
-    va_list vargs;
-    va_start(vargs, port);
-    rv = onlp_sfp_vioctl(port, vargs);
-    va_end(vargs);
+    onlp_sfp_info_t info;
+    if(ONLP_SUCCESS(rv = onlp_sfp_info_get(oid, &info))) {
+        return onlp_sfp_info_format(&info, format, pvs, flags);
+    }
     return rv;
 }
 
 int
-onlp_sfp_vioctl_locked__(int port, va_list vargs)
+onlp_sfp_info_format(onlp_sfp_info_t* info, onlp_oid_format_t format,
+                     aim_pvs_t* pvs, uint32_t flags)
 {
-    return onlp_sfpi_ioctl(port, vargs);
-};
-ONLP_LOCKED_API2(onlp_sfp_vioctl, int, port, va_list, vargs);
+    return 0;
+}
+
+static char*
+sfp_control_str__(uint32_t controls)
+{
+    char tmp[16] = { 0 };
+    char* cp = tmp;
+
+    if(controls & ONLP_SFP_CONTROL_FLAG_RX_LOS) {
+        *cp++ = 'R';
+    }
+    if(controls & ONLP_SFP_CONTROL_FLAG_TX_FAULT) {
+        *cp++ = 'T';
+    }
+    if(controls & ONLP_SFP_CONTROL_FLAG_TX_DISABLE) {
+        *cp++ = 'X';
+    }
+    if(controls & ONLP_SFP_CONTROL_FLAG_LP_MODE) {
+        *cp++ = 'L';
+    }
+    if(controls & ONLP_SFP_CONTROL_RESET_STATE) {
+        *cp++ = '~';
+    }
+    return aim_strdup(tmp);
+}
+
+static int
+sfp_inventory_show_iter__(onlp_oid_t oid, void* cookie)
+{
+    int rv = 0;
+    onlp_sfp_info_t info;
+    char* fields[10] = { 0 };
+
+    fields[0] = aim_dfstrdup("%d", ONLP_OID_ID_GET(oid));
+
+    rv = onlp_sfp_info_get(oid, &info);
+
+    /*
+     * These fields get populated regardless of the
+     * success or failure of the call to onlp_sfp_info_get().
+     */
+    if(ONLP_SFP_TYPE_VALID(info.type)) {
+        fields[1] = aim_dfstrdup("%{onlp_sfp_type}", info.type);
+    }
+    else {
+        fields[1] = aim_strdup("");
+    }
+
+    if(ONLP_SUCCESS(rv)) {
+
+        fields[4] = sfp_control_str__(info.controls);
+
+        if(ONLP_OID_PRESENT(&info)) {
+
+            /** SFP Present. */
+            fields[6] = aim_strdup(info.sff.vendor);
+            fields[7] = aim_strdup(info.sff.model);
+            fields[8] = aim_strdup(info.sff.serial);
+
+            if(info.sff.sfp_type != SFF_SFP_TYPE_INVALID) {
+                /** SFP Identified */
+                fields[2] = aim_strdup(info.sff.module_type_name);
+                fields[3] = aim_strdup(info.sff.media_type_name);
+                fields[5] = aim_strdup(info.sff.length_desc);
+            }
+            else {
+                fields[2] = aim_strdup("Unknown");
+            }
+        }
+    }
+    else {
+        fields[2] = aim_dfstrdup("%{onlp_status}", rv);
+    }
+
+#define _NS(_string) ( (_string) ? (_string) : "")
+
+    aim_printf((aim_pvs_t*)cookie, "%4s  %-6s  %-14s  %-6s  %-6.6s  %-5.5s  %-16.16s  %-16.16s  %16.16s\n",
+               _NS(fields[0]), _NS(fields[1]), _NS(fields[2]), _NS(fields[3]),
+               _NS(fields[4]), _NS(fields[5]), _NS(fields[6]), _NS(fields[7]), _NS(fields[8]));
+
+    for(rv = 0; rv < AIM_ARRAYSIZE(fields); rv++) {
+        aim_free(fields[rv]);
+    }
+    return 0;
+}
 
 
 int
-onlp_sfp_dev_readb_locked__(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfp_inventory_show(aim_pvs_t* pvs)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-    return onlp_sfpi_dev_readb(port, devaddr, addr);
+    aim_printf(pvs, "Port  Type    Module          Media   Status  Len    Vendor            Model             S/N             \n");
+    aim_printf(pvs, "----  ------  --------------  ------  ------  -----  ----------------  ----------------  ----------------\n");
+    onlp_oid_iterate(ONLP_OID_CHASSIS, ONLP_OID_TYPE_FLAG_SFP,
+                     sfp_inventory_show_iter__, pvs);
+    return 0;
 }
-ONLP_LOCKED_API3(onlp_sfp_dev_readb, int, port, uint8_t, devaddr, uint8_t, addr);
 
 int
-onlp_sfp_dev_writeb_locked__(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+onlp_sfp_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-    return onlp_sfpi_dev_writeb(port, devaddr, addr, value);
+    int port, rv;
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, &port);
+
+    memset(hdr, 0, sizeof(*hdr));
+    ONLP_IF_ERROR_RETURN(rv = onlp_sfp_is_present(oid));
+
+    if(rv) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
+    }
+    hdr->id = oid;
+    hdr->poid = ONLP_OID_CHASSIS;
+    sprintf(hdr->description, "SFP %d", port);
+    return rv;
 }
-ONLP_LOCKED_API4(onlp_sfp_dev_writeb, int, port, uint8_t, devaddr, uint8_t, addr, uint8_t, value);
 
 int
-onlp_sfp_dev_readw_locked__(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfp_info_get(onlp_oid_t oid, onlp_sfp_info_t* info)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-    return onlp_sfpi_dev_readw(port, devaddr, addr);
+    int rv;
+
+    memset(info, 0, sizeof(*info));
+
+    ONLP_IF_ERROR_RETURN(onlp_sfp_hdr_get(oid, &info->hdr));
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(&oid, NULL);
+
+    if(ONLP_FAILURE(rv = onlp_sfp_type_get(oid, &info->type))) {
+        info->type = ONLP_SFP_TYPE_INVALID;
+    }
+
+    if(ONLP_FAILURE(rv = onlp_sfp_control_flags_get(oid, &info->controls))) {
+        AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: sfp_control_flags_get returned %{onlp_status}",
+                      oid, rv);
+        return rv;
+    }
+
+    if(ONLP_FAILURE(rv = onlp_sfp_is_present(oid))) {
+        AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: is_present returned %{onlp_status}",
+                      oid, rv);
+        return rv;
+    }
+
+    if(rv == 0) {
+        /** Module not present. */
+        ONLP_OID_STATUS_FLAG_CLR(info, PRESENT);
+        return 0;
+    }
+
+    /** Module present. */
+    ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
+
+    /** Read the IDPROM */
+    if(ONLP_FAILURE(rv = onlp_sfp_dev_read(oid, 0x50, 0, info->bytes.a0,
+                                           sizeof(info->bytes.a0)))) {
+        AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: sfp_dev_read(0x50) failed: %{onlp_status}",
+                      oid, rv);
+        return rv;
+    }
+
+    /** SFF Parsing */
+    sff_eeprom_t sffe;
+    sff_eeprom_parse(&sffe, info->bytes.a0);
+    memcpy(&info->sff, &sffe.info, sizeof(info->sff));
+    if(sffe.identified == 0) {
+        info->sff.sfp_type = SFF_SFP_TYPE_INVALID;
+        /* Nothing more to do */
+        return 0;
+    }
+
+    /** DOM Information */
+    if(ONLP_FAILURE(rv = sff_dom_spec_get(&info->sff, info->bytes.a0, &info->dom.spec))) {
+        AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: sffp_dom_spec_get failed: %{onlp_status}",
+                      oid, rv);
+        return rv;
+    }
+
+    if(info->dom.spec == SFF_DOM_SPEC_UNSUPPORTED) {
+        return 0;
+    }
+
+    if(info->dom.spec == SFF_DOM_SPEC_SFF8472) {
+        /** Need the a2 data */
+        if(ONLP_FAILURE(rv = onlp_sfp_dev_read(oid, 0x51, 0, info->bytes.a2,
+                                               sizeof(info->bytes.a2)))) {
+            AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: sfp_dev_read(0x51) failed: %{onlp_status}",
+                          oid, rv);
+            return rv;
+        }
+    }
+
+    if(ONLP_FAILURE(rv = sff_dom_info_get(&info->dom, &info->sff,
+                                          info->bytes.a0, info->bytes.a2))) {
+        AIM_LOG_ERROR("%{onlp_oid}: sfp_info_get: sfp_dom_info_get failed: %{onlp_status}",
+                      oid, rv);
+        return rv;
+    }
+
+
+    return 0;
 }
-ONLP_LOCKED_API3(onlp_sfp_dev_readw, int, port, uint8_t, devaddr, uint8_t, addr);
 
 int
-onlp_sfp_dev_writew_locked__(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+onlp_sfp_info_to_user_json(onlp_sfp_info_t* info, cJSON** cjp, uint32_t flags)
 {
-    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
-    return onlp_sfpi_dev_writew(port, devaddr, addr, value);
+    int rv;
+    cJSON* cj;
+    rv = onlp_info_to_user_json_create(&info->hdr, &cj, flags);
+    if(rv > 0) {
+        if(ONLP_OID_PRESENT(info)) {
+            if(info->sff.sfp_type != SFF_SFP_TYPE_INVALID) {
+                cjson_util_add_string_to_object(cj, "Module", info->sff.module_type_name);
+                cjson_util_add_string_to_object(cj, "Media", info->sff.media_type_name);
+                cjson_util_add_string_to_object(cj, "Vendor", info->sff.vendor);
+                cjson_util_add_string_to_object(cj, "Model", info->sff.model);
+                cjson_util_add_string_to_object(cj, "Serial", info->sff.serial);
+            }
+            else {
+                cjson_util_add_string_to_object(cj, "Module", "Unknown");
+            }
+        }
+        else {
+            cjson_util_add_string_to_object(cj, "Module", "Not Present");
+        }
+    }
+    return onlp_info_to_user_json_finish(&info->hdr, cj, cjp, flags);
 }
-ONLP_LOCKED_API4(onlp_sfp_dev_writew, int, port, uint8_t, devaddr, uint8_t, addr, uint16_t, value);
+
+int
+onlp_sfp_info_to_json(onlp_sfp_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    int rv;
+    cJSON* cj;
+
+    if(ONLP_FAILURE(rv = onlp_info_to_json_create(&info->hdr, &cj, flags))) {
+        AIM_LOG_ERROR("%{onlp_status}", rv);
+        return rv;
+    }
+
+    cjson_util_add_string_to_object(cj, "type", "%{onlp_sfp_type}", info->type);
+
+    if(ONLP_OID_PRESENT(info)) {
+        sff_info_to_json(&info->sff, &cj);
+        sff_dom_info_to_json(&info->dom, &cj);
+    }
+    *cjp = cj;
+    return 0;
+}
+
+int
+onlp_sfp_info_from_json(cJSON* cj, onlp_sfp_info_t* info)
+{
+    return 0;
+}

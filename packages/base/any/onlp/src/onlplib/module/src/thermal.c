@@ -34,12 +34,12 @@ onlplib_thermal_read_file(const char* fname, onlp_thermal_info_t* info)
 
     if(rv == ONLP_STATUS_E_MISSING) {
         /* Absent */
-        info->status = 0;
+        ONLP_OID_STATUS_FLAG_CLR(info, PRESENT);
         ret = 0;
     }
     else if(rv >= 0) {
         /* Present */
-        info->status |= 1;
+        ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
         ret = 0;
     }
     else {
@@ -48,4 +48,3 @@ onlplib_thermal_read_file(const char* fname, onlp_thermal_info_t* info)
     }
     return ret;
 }
-

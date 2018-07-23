@@ -24,7 +24,7 @@
  ***********************************************************/
 
 #include <onlp/onlp_config.h>
-
+#include <onlp/onlp.h>
 #include "onlp_log.h"
 #include <onlplib/shlocks.h>
 #include <onlp/oids.h>
@@ -33,18 +33,45 @@ static int
 onlp_aim_ts__onlp_oid(aim_datatype_context_t* dtc, aim_va_list_t* vargs,
                       const char** rv)
 {
+    char str[64];
     onlp_oid_t oid = va_arg(vargs->val, onlp_oid_t);
-    int id = ONLP_OID_ID_GET(oid);
+    if(ONLP_SUCCESS(onlp_oid_to_str(oid, str))) {
+        *rv = aim_strdup(str);
+        return AIM_DATATYPE_OK;
+    }
+    *rv = NULL;
+    return AIM_DATATYPE_ERROR;
+}
 
-    switch(ONLP_OID_TYPE_GET(oid))
+static int
+onlp_aim_fs__onlp_oid(aim_datatype_context_t* dtc,
+                      const char* arg, aim_va_list_t* vargs)
+{
+    onlp_oid_t* oidp = va_arg(vargs->val, onlp_oid_t*);
+    AIM_REFERENCE(dtc);
+
+    if(ONLP_SUCCESS(onlp_oid_from_str((char*)arg, oidp))) {
+        return AIM_DATATYPE_OK;
+    }
+
+    return AIM_DATATYPE_ERROR;
+}
+
+static int
+onlp_aim_ts__onlp_oid_hdr(aim_datatype_context_t* dtc, aim_va_list_t* vargs,
+                          const char** rv)
+{
+    onlp_oid_hdr_t* hdr = va_arg(vargs->val, onlp_oid_hdr_t*);
+    int id = ONLP_OID_ID_GET(hdr->id);
+    switch(ONLP_OID_TYPE_GET(hdr->id))
         {
-#define ONLP_OID_TYPE_ENTRY(_name, _value) \
-            case ONLP_OID_TYPE_##_name:    \
-                *rv = aim_fstrdup("%s:%d", #_name, id); \
+#define         ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)      \
+            case ONLP_OID_TYPE_##_name:                                 \
+                *rv = aim_dfstrdup(#_lower" %d %s status=%{onlp_oid_status_flags}", \
+                                   id, hdr->description, hdr->status);               \
                 break;
 #include <onlp/onlp.x>
         }
-
     return AIM_DATATYPE_OK;
 }
 
@@ -55,23 +82,24 @@ datatypes_init__(void)
 #include <onlp/onlp.x>
     aim_datatype_register(0, "onlp_oid",
                           "ONLP OID",
-                          NULL,
+                          onlp_aim_fs__onlp_oid,
                           onlp_aim_ts__onlp_oid, NULL);
+    aim_datatype_register(0, "onlp_oid_hdr",
+                          "ONLP OID Header",
+                          NULL,
+                          onlp_aim_ts__onlp_oid_hdr, NULL);
 
 
     /*
      * Register our flag maps.
      */
+    AIM_DATATYPE_FMAP_REGISTER(onlp_oid_status_flags, onlp_oid_status_flag_map, "OID Status Flags", AIM_LOG_INTERNAL);
     AIM_DATATYPE_FMAP_REGISTER(onlp_sfp_control_flags, onlp_sfp_control_flag_map, "SFP Control Flags", AIM_LOG_INTERNAL);
     AIM_DATATYPE_FMAP_REGISTER(onlp_fan_caps_flags, onlp_fan_caps_map, "FAN Capability Flags", AIM_LOG_INTERNAL);
-    AIM_DATATYPE_FMAP_REGISTER(onlp_fan_status_flags, onlp_fan_status_map, "FAN Status Flags", AIM_LOG_INTERNAL);
-    AIM_DATATYPE_FMAP_REGISTER(onlp_thermal_status_flags, onlp_thermal_status_map, "Thermal Status Flags", AIM_LOG_INTERNAL);
     AIM_DATATYPE_FMAP_REGISTER(onlp_thermal_caps_flags, onlp_thermal_caps_map, "Thermal Capability Flags", AIM_LOG_INTERNAL);
     AIM_DATATYPE_FMAP_REGISTER(onlp_led_caps_flags, onlp_led_caps_map, "LED Capability Flags", AIM_LOG_INTERNAL);
-    AIM_DATATYPE_FMAP_REGISTER(onlp_led_status_flags, onlp_led_status_map, "LED Status Flags", AIM_LOG_INTERNAL);
-    AIM_DATATYPE_FMAP_REGISTER(onlp_psu_status_flags, onlp_psu_status_map, "PSU Status Flags", AIM_LOG_INTERNAL);
     AIM_DATATYPE_FMAP_REGISTER(onlp_psu_caps_flags, onlp_psu_caps_map, "PSU Capability Flags", AIM_LOG_INTERNAL);
-
+    AIM_DATATYPE_FMAP_REGISTER(onlp_oid_type_flags, onlp_oid_type_flag_map, "ONLP OID Type Flags", AIM_LOG_INTERNAL);
 
     return 0;
 }
@@ -91,4 +119,3 @@ void __onlp_module_init__(void)
         __onlp_platform_version_default__ = __onlp_platform_version__;
     }
 }
-

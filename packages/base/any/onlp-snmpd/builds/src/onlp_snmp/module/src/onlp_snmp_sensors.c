@@ -35,6 +35,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include <onlp/oids.h>
 #include <onlp/thermal.h>
 #include <onlp/fan.h>
 #include <onlp/psu.h>
@@ -321,9 +322,9 @@ temp_status_handler__(netsnmp_request_info *req,
     }
 
     value = ONLP_SNMP_SENSOR_STATUS_MISSING;
-    if (ti->status & ONLP_THERMAL_STATUS_PRESENT) {
+    if (ONLP_OID_PRESENT(ti)) {
         value = ONLP_SNMP_SENSOR_STATUS_GOOD;
-        if (ti->status & ONLP_THERMAL_STATUS_FAILED) {
+        if (ONLP_OID_FAILED(ti)) {
             value = ONLP_SNMP_SENSOR_STATUS_FAILED;
         }
     }
@@ -346,7 +347,7 @@ temp_value_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (ti->status & ONLP_THERMAL_STATUS_PRESENT)? ti->mcelsius: 0;
+    value = ONLP_OID_PRESENT(ti) ? ti->mcelsius: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -425,9 +426,9 @@ fan_status_handler__(netsnmp_request_info *req,
     }
 
     value = ONLP_SNMP_SENSOR_STATUS_MISSING;
-    if (fi->status & ONLP_FAN_STATUS_PRESENT) {
+    if (ONLP_OID_PRESENT(fi)) {
         value = ONLP_SNMP_SENSOR_STATUS_GOOD;
-        if (fi->status & ONLP_FAN_STATUS_FAILED) {
+        if (ONLP_OID_FAILED(fi)) {
             value = ONLP_SNMP_SENSOR_STATUS_FAILED;
         }
     }
@@ -452,10 +453,10 @@ fan_flow_type_handler__(netsnmp_request_info *req,
 
     name_index = ONLP_SNMP_FAN_FLOW_TYPE_UNKNOWN;
 
-    if (fi->status & ONLP_FAN_STATUS_PRESENT) {
-        if (fi->status & ONLP_FAN_STATUS_B2F) {
+    if (ONLP_OID_PRESENT(fi)) {
+        if (fi->dir == ONLP_FAN_DIR_B2F) {
             name_index = ONLP_SNMP_FAN_FLOW_TYPE_B2F;
-        } else if (fi->status & ONLP_FAN_STATUS_F2B) {
+        } else if (fi->dir == ONLP_FAN_DIR_F2B) {
             name_index = ONLP_SNMP_FAN_FLOW_TYPE_F2B;
         } else {
             /* Unknown */
@@ -481,7 +482,7 @@ fan_rpm_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (fi->status & ONLP_FAN_STATUS_PRESENT)? fi->rpm: 0;
+    value = ONLP_OID_PRESENT(fi) ? fi->rpm: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -502,7 +503,7 @@ fan_pct_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (fi->status & ONLP_FAN_STATUS_PRESENT)? fi->percentage: 0;
+    value = ONLP_OID_PRESENT(fi) ? fi->percentage: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -522,7 +523,7 @@ fan_model_handler__(netsnmp_request_info *req,
         return;
     }
 
-    int len = (fi->status & ONLP_FAN_STATUS_PRESENT)? strlen(fi->model): 0;
+    int len = ONLP_OID_PRESENT(fi) ? strlen(fi->model): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -542,7 +543,7 @@ fan_serial_handler__(netsnmp_request_info *req,
         return;
     }
 
-    int len = (fi->status & ONLP_FAN_STATUS_PRESENT)? strlen(fi->serial): 0;
+    int len = ONLP_OID_PRESENT(fi) ? strlen(fi->serial): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -624,16 +625,16 @@ psu_status_handler__(netsnmp_request_info *req,
     }
 
     value = ONLP_SNMP_SENSOR_STATUS_MISSING;
-    if (pi->status & ONLP_PSU_STATUS_PRESENT) {
+    if (ONLP_OID_PRESENT(pi)) {
         value = ONLP_SNMP_SENSOR_STATUS_GOOD;
 
         /* failed or good is always reported */
-        if (pi->status & ONLP_PSU_STATUS_FAILED) {
+        if (ONLP_OID_FAILED(pi)) {
             value = ONLP_SNMP_SENSOR_STATUS_FAILED;
         }
 
         /* if additional unplugged status is reported */
-        if (pi->status & ONLP_PSU_STATUS_UNPLUGGED) {
+        if (ONLP_OID_STATUS_FLAG_IS_SET(pi, UNPLUGGED)) {
             value = ONLP_SNMP_SENSOR_STATUS_FAILED;
         }
 
@@ -658,15 +659,22 @@ psu_current_type_handler__(netsnmp_request_info *req,
     }
 
     name_index = ONLP_SNMP_PSU_TYPE_UNKNOWN;
-    /* These values are mutual exclusive */
-    if (pi->caps & ONLP_PSU_CAPS_AC) {
-        name_index = ONLP_SNMP_PSU_TYPE_AC;
-    } else if (pi->caps & ONLP_PSU_CAPS_DC12) {
-        name_index = ONLP_SNMP_PSU_TYPE_DC12;
-    } else if (pi->caps & ONLP_PSU_CAPS_DC48) {
-        name_index = ONLP_SNMP_PSU_TYPE_DC48;
-    } else {
-        /* Unknown type */
+
+    if(ONLP_PSU_INFO_CAP_IS_SET(pi, GET_TYPE)) {
+        switch(pi->type)
+            {
+            case ONLP_PSU_TYPE_AC:
+                name_index = ONLP_SNMP_PSU_TYPE_AC;
+                break;
+            case ONLP_PSU_TYPE_DC12:
+                name_index = ONLP_SNMP_PSU_TYPE_DC12;
+                break;
+            case ONLP_PSU_TYPE_DC48:
+                name_index = ONLP_SNMP_PSU_TYPE_DC48;
+                break;
+            default:
+                break;
+            }
     }
 
     const char* s = onlp_snmp_psu_type_name(name_index);
@@ -687,7 +695,7 @@ psu_model_handler__(netsnmp_request_info *req,
         return;
     }
 
-    int len = (pi->status & ONLP_PSU_STATUS_PRESENT)? strlen(pi->model): 0;
+    int len = ONLP_OID_PRESENT(pi) ? strlen(pi->model): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -707,7 +715,7 @@ psu_serial_handler__(netsnmp_request_info *req,
         return;
     }
 
-    int len = (pi->status & ONLP_PSU_STATUS_PRESENT)? strlen(pi->serial): 0;
+    int len = ONLP_OID_PRESENT(pi) ? strlen(pi->serial): 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_OCTET_STR,
@@ -728,7 +736,7 @@ psu_vin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mvin: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->mvin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -749,7 +757,7 @@ psu_vout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mvout: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->mvout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -770,7 +778,7 @@ psu_iin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->miin: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->miin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -791,7 +799,7 @@ psu_iout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->miout: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->miout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -812,7 +820,7 @@ psu_pin_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mpin: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->mpin: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -833,7 +841,7 @@ psu_pout_handler__(netsnmp_request_info *req,
         return;
     }
 
-    value = (pi->status & ONLP_PSU_STATUS_PRESENT)? pi->mpout: 0;
+    value = ONLP_OID_PRESENT(pi) ? pi->mpout: 0;
 
     snmp_set_var_typed_value(req->requestvb,
                              ASN_GAUGE,
@@ -1014,7 +1022,7 @@ update_tables__(void)
 
     /* discover new sensors for all tables,
      * writing validity into next_info for all sensors */
-    onlp_oid_iterate(ONLP_OID_SYS, 0, collect_sensors__, NULL);
+    onlp_oid_iterate(ONLP_OID_CHASSIS, 0, collect_sensors__, NULL);
 
     /* for each table: update all sensor info */
     for (i = ONLP_SNMP_SENSOR_TYPE_TEMP; i <= ONLP_SNMP_SENSOR_TYPE_MAX; i++) {

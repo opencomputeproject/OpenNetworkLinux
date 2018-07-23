@@ -17,12 +17,15 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * SFP Platform Implementation Interface.
- *
+ * @file
+ * @brief SFP Platform Implementation Interface.
  * This interface must be implemented and available for all
  * platforms that support SFP interfaces.
+ *
+ * @addtogroup sfpi
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_SFPI_H__
@@ -33,19 +36,41 @@
 #include <sff/sff.h>
 
 /**
- * @brief Initialize the SFPI subsystem.
+ * @brief Software initialization of the SFP module.
  */
-int onlp_sfpi_init(void);
+int onlp_sfpi_sw_init(void);
+
+/**
+ * @brief Hardware initialization of the SFP module.
+ * @param flags The hardware initialization flags.
+ */
+int onlp_sfpi_hw_init(uint32_t flags);
+
+/**
+ * @brief Deinitialize the chassis software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
+ */
+int onlp_sfpi_sw_denit(void);
+
 
 /**
  * @brief Get the bitmap of SFP-capable port numbers.
- * @param bmap [out] Receives the bitmap.
+ * @param[out] bmap Receives the bitmap.
  */
 int onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap);
 
 /**
+ * @brief Determine the SFP connector type.
+ * @param port The SFP Port ID.
+ * @param[out] Receives the connector type.
+ */
+int onlp_sfpi_type_get(int port, onlp_sfp_type_t* rtype);
+
+/**
  * @brief Determine if an SFP is present.
- * @param port The port number.
+ * @param port The SFP Port ID.
  * @returns 1 if present
  * @returns 0 if absent
  * @returns An error condition.
@@ -54,97 +79,123 @@ int onlp_sfpi_is_present(int port);
 
 /**
  * @brief Return the presence bitmap for all SFP ports.
- * @param dst Receives the presence bitmap.
+ * @param[out] dst Receives the presence bitmap.
  */
 int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst);
 
 /**
  * @brief Return the RX_LOS bitmap for all SFP ports.
- * @param dst Receives the RX_LOS bitmap.
+ * @param[out] dst Receives the RX_LOS bitmap.
  */
 int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst);
 
-/**
- * @brief Read the SFP EEPROM.
- * @param port The port number.
- * @param data Receives the SFP data.
- */
-int onlp_sfpi_eeprom_read(int port, uint8_t data[256]);
 
 /**
- * @brief Read a byte from an address on the given SFP port's bus.
- * @param port The port number.
+ * @brief Read bytes from the target device on the given SFP port.
+ * @param port The SFP Port ID.
  * @param devaddr The device address.
- * @param addr The address.
+ * @param addr Read offset.
+ * @param[out] dst Receives the data.
+ * @param len Read length.
+ * @returns The number of bytes read or ONLP_STATUS_E_* no error.
  */
-int onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr);
+int onlp_sfpi_dev_read(int port, int devaddr, int addr,
+                       uint8_t* dst, int len);
+
 
 /**
- * @brief Write a byte to an address on the given SFP port's bus.
- */
-int onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value);
-
-/**
- * @brief Read a byte from an address on the given SFP port's bus.
- * @param port The port number.
+ * @brief Write bytes to the target device on the given SFP port.
+ * @param port The SFP Port ID.
  * @param devaddr The device address.
- * @param addr The address.
- * @returns The word if successful, error otherwise.
+ * @param src The bytes to write.
+ * @param offset Write offset.
+ * @param len Write length.
  */
-int onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr);
+int onlp_sfpi_dev_write(int port, int devaddr, int addr,
+                        uint8_t* src, int len);
 
 /**
- * @brief Write a byte to an address on the given SFP port's bus.
+ * @brief Read a byte from the target device on the given SFP port.
+ * @param port The SFP Port ID.
+ * @param devaddr The device address.
+ * @param addr The read address.
+ * @returns The byte on success or ONLP_STATUS_E* on error.
  */
-int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value);
-
+int onlp_sfpi_dev_readb(int port, int devaddr, int addr);
 
 /**
- * @brief Read the SFP DOM EEPROM.
- * @param port The port number.
- * @param data Receives the SFP data.
+ * @brief Write a byte to the target device on the given SFP port.
+ * @param port The SFP Port ID.
+ * @param devaddr The device address.
+ * @param addr The write address.
+ * @param value The write value.
  */
-int onlp_sfpi_dom_read(int port, uint8_t data[256]);
+int onlp_sfpi_dev_writeb(int port, int devaddr, int addr,
+                         uint8_t value);
+
+/**
+ * @brief Read a word from the target device on the given SFP port.
+ * @param port The SFP Port ID.
+ * @param devaddr The device address.
+ * @param addr The read address.
+ * @returns The word if successful, ONLP_STATUS_E* on error.
+ */
+int onlp_sfpi_dev_readw(int port, int devaddr, int addr);
+
+/**
+ * @brief Write a word to the target device on the given SFP port.
+ * @param port The SFP Port ID.
+ * @param devaddr The device address.
+ * @param addr The write address.
+ * @param value The write value.
+ */
+int onlp_sfpi_dev_writew(int port, int devaddr, int addr,
+                         uint16_t value);
 
 /**
  * @brief Perform any actions required after an SFP is inserted.
- * @param port The port number.
+ * @param port The SFP Port ID.
  * @param info The SFF Module information structure.
- * @notes Optional
+ * @note This function is optional. If your platform must
+ * adjust equalizer or preemphasis settings internally then
+ * this function should be implemented as the trigger.
  */
 int onlp_sfpi_post_insert(int port, sff_info_t* info);
 
 /**
- * @brief Returns whether or not the given control is suppport on the given port.
- * @param port The port number.
+ * @brief Returns whether or not the given control is supported on the given port.
+ * @param port The SFP Port ID.
  * @param control The control.
- * @param rv [out] Receives 1 if supported, 0 if not supported.
+ * @param[out] rv Receives 1 if supported, 0 if not supported.
  * @note This provided for convenience and is optional.
  * If you implement this function your control_set and control_get APIs
  * will not be called on unsupported ports.
  */
-int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv);
+int onlp_sfpi_control_supported(int port,
+                                onlp_sfp_control_t control, int* rv);
 
 /**
  * @brief Set an SFP control.
- * @param port The port.
+ * @param port The SFP Port ID.
  * @param control The control.
  * @param value The value.
  */
-int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value);
+int onlp_sfpi_control_set(int port, onlp_sfp_control_t control,
+                          int value);
 
 /**
  * @brief Get an SFP control.
- * @param port The port.
+ * @param port The SFP Port ID.
  * @param control The control
- * @param [out] value Receives the current value.
+ * @param[out] value Receives the current value.
  */
-int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value);
+int onlp_sfpi_control_get(int port, onlp_sfp_control_t control,
+                          int* value);
 
 /**
  * @brief Remap SFP user SFP port numbers before calling the SFPI interface.
- * @param port The user SFP port number.
- * @param [out] rport Receives the new port.
+ * @param port The SFP Port ID.
+ * @param[out] rport Receives the new port.
  * @note This function will be called to remap the user SFP port number
  * to the number returned in rport before the SFPI functions are called.
  * This is an optional convenience for platforms with dynamic or
@@ -152,39 +203,23 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value);
  */
 int onlp_sfpi_port_map(int port, int* rport);
 
-/**
- * @brief Deinitialize the SFP driver.
- */
-int onlp_sfpi_denit(void);
 
 /**
- * @brief Generic debug status information.
- * @param port The port number.
- * @param pvs The output pvs.
- * @notes The purpose of this vector is to allow reporting of internal debug
- * status and information from the platform driver that might be used to debug
- * SFP runtime issues.
- * For example, internal equalizer settings, tuning status information, status
- * of additional signals useful for system debug but not exposed in this interface.
- *
- * @notes This is function is optional.
+ * @brief Get the SFP's OID header.
+ * @param oid The SFP oid.
+ * @param hdr Receives the header.
  */
-void onlp_sfpi_debug(int port, aim_pvs_t* pvs);
+int onlp_sfpi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rhdr);
 
 /**
- * @brief Generic ioctl
- * @param port The port number
- * @param The variable argument list of parameters.
- *
- * @notes This generic ioctl interface can be used
- * for platform-specific or driver specific features
- * that cannot or have not yet been defined in this
- * interface. It is intended as a future feature expansion
- * support mechanism.
- *
- * @notes Optional
+ * @brief GEt the SFP's info structure.
+ * @param oid The SFP oid.
+ * @param info Receives the SFP information.
+ * @note It is not normally necessary to implement this function.
+ * The upper layer implements this on behalf of the platform
+ * using the existing SFP primitives.
  */
-int onlp_sfpi_ioctl(int port, va_list vargs);
-
+int onlp_sfpi_info_get(onlp_oid_t oid, onlp_sfp_info_t* info);
 
 #endif /* __ONLP_SFPI_H__ */
+/* @} */

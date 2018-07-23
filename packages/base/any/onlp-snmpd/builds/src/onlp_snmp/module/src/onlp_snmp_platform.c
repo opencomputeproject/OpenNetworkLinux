@@ -31,7 +31,11 @@
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 #include <net-snmp/agent/net-snmp-agent-includes.h>
-#include <onlp/sys.h>
+
+#include <onlp/onlp.h>
+#include <onlp/stdattrs.h>
+#include <onlp/attribute.h>
+#include <onlplib/onie.h>
 
 #include <pthread.h>
 #include <unistd.h>
@@ -211,25 +215,26 @@ onlp_snmp_platform_init(void)
     /**
      * This is the base of the platform:general:system tree
      */
-    onlp_sys_info_t si;
-    if(onlp_sys_info_get(&si) >= 0) {
+    int rv;
+    onlp_onie_info_t* oip = NULL;
 
+    if(ONLP_SUCCESS(rv = onlp_attribute_get(ONLP_OID_CHASSIS,
+                                            ONLP_ATTRIBUTE_ONIE_INFO,
+                                            (void**)&oip))) {
 #define REGISTER_STR(_index, _field)                                    \
         do {                                                            \
-            platform_string_register(_index, #_field, (char*)si.onie_info._field); \
+            platform_string_register(_index, #_field, (char*)oip->_field); \
         } while(0)
 
 #define REGISTER_INT(_index, _field)                                    \
         do {                                                            \
-            platform_int_register(_index, #_field, si.onie_info._field); \
+            platform_int_register(_index, #_field, oip->_field);          \
         } while(0)
 
         REGISTER_STR(1, product_name);
         REGISTER_STR(2, part_number);
         REGISTER_STR(3, serial_number);
-        char* mstring = aim_fstrdup("%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
-                                    si.onie_info.mac[0], si.onie_info.mac[1], si.onie_info.mac[2],
-                                    si.onie_info.mac[3], si.onie_info.mac[4], si.onie_info.mac[5]);
+        char* mstring = aim_dfstrdup("%{mac}", oip->mac);
         platform_string_register(4, "mac", mstring);
         aim_free(mstring);
 
@@ -244,6 +249,10 @@ onlp_snmp_platform_init(void)
         REGISTER_STR(13, diag_version);
         REGISTER_STR(14, service_tag);
         REGISTER_STR(15, onie_version);
+
+        onlp_attribute_free(ONLP_OID_CHASSIS,
+                            ONLP_ATTRIBUTE_ONIE_INFO,
+                            oip);
     }
 
     resource_int_register(1, "CpuAllPercentUtilization", utilization_handler);

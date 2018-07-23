@@ -31,51 +31,46 @@
 /* <auto.start.enum(tag:led).define> */
 /** onlp_led_caps */
 typedef enum onlp_led_caps_e {
-    ONLP_LED_CAPS_ON_OFF = (1 << 0),
-    ONLP_LED_CAPS_CHAR = (1 << 1),
-    ONLP_LED_CAPS_RED = (1 << 10),
-    ONLP_LED_CAPS_RED_BLINKING = (1 << 11),
-    ONLP_LED_CAPS_ORANGE = (1 << 12),
-    ONLP_LED_CAPS_ORANGE_BLINKING = (1 << 13),
-    ONLP_LED_CAPS_YELLOW = (1 << 14),
-    ONLP_LED_CAPS_YELLOW_BLINKING = (1 << 15),
-    ONLP_LED_CAPS_GREEN = (1 << 16),
-    ONLP_LED_CAPS_GREEN_BLINKING = (1 << 17),
-    ONLP_LED_CAPS_BLUE = (1 << 18),
-    ONLP_LED_CAPS_BLUE_BLINKING = (1 << 19),
-    ONLP_LED_CAPS_PURPLE = (1 << 20),
-    ONLP_LED_CAPS_PURPLE_BLINKING = (1 << 21),
-    ONLP_LED_CAPS_AUTO = (1 << 22),
-    ONLP_LED_CAPS_AUTO_BLINKING = (1 << 23),
+    ONLP_LED_CAPS_OFF = (1 << 0),
+    ONLP_LED_CAPS_AUTO = (1 << 1),
+    ONLP_LED_CAPS_AUTO_BLINKING = (1 << 2),
+    ONLP_LED_CAPS_CHAR = (1 << 3),
+    ONLP_LED_CAPS_RED = (1 << 4),
+    ONLP_LED_CAPS_RED_BLINKING = (1 << 5),
+    ONLP_LED_CAPS_ORANGE = (1 << 6),
+    ONLP_LED_CAPS_ORANGE_BLINKING = (1 << 7),
+    ONLP_LED_CAPS_YELLOW = (1 << 8),
+    ONLP_LED_CAPS_YELLOW_BLINKING = (1 << 9),
+    ONLP_LED_CAPS_GREEN = (1 << 10),
+    ONLP_LED_CAPS_GREEN_BLINKING = (1 << 11),
+    ONLP_LED_CAPS_BLUE = (1 << 12),
+    ONLP_LED_CAPS_BLUE_BLINKING = (1 << 13),
+    ONLP_LED_CAPS_PURPLE = (1 << 14),
+    ONLP_LED_CAPS_PURPLE_BLINKING = (1 << 15),
 } onlp_led_caps_t;
 
 /** onlp_led_mode */
 typedef enum onlp_led_mode_e {
     ONLP_LED_MODE_OFF,
-    ONLP_LED_MODE_ON,
-    ONLP_LED_MODE_BLINKING,
-    ONLP_LED_MODE_RED = 10,
-    ONLP_LED_MODE_RED_BLINKING = 11,
-    ONLP_LED_MODE_ORANGE = 12,
-    ONLP_LED_MODE_ORANGE_BLINKING = 13,
-    ONLP_LED_MODE_YELLOW = 14,
-    ONLP_LED_MODE_YELLOW_BLINKING = 15,
-    ONLP_LED_MODE_GREEN = 16,
-    ONLP_LED_MODE_GREEN_BLINKING = 17,
-    ONLP_LED_MODE_BLUE = 18,
-    ONLP_LED_MODE_BLUE_BLINKING = 19,
-    ONLP_LED_MODE_PURPLE = 20,
-    ONLP_LED_MODE_PURPLE_BLINKING = 21,
-    ONLP_LED_MODE_AUTO = 22,
-    ONLP_LED_MODE_AUTO_BLINKING = 23,
+    ONLP_LED_MODE_AUTO,
+    ONLP_LED_MODE_AUTO_BLINKING,
+    ONLP_LED_MODE_CHAR,
+    ONLP_LED_MODE_RED,
+    ONLP_LED_MODE_RED_BLINKING,
+    ONLP_LED_MODE_ORANGE,
+    ONLP_LED_MODE_ORANGE_BLINKING,
+    ONLP_LED_MODE_YELLOW,
+    ONLP_LED_MODE_YELLOW_BLINKING,
+    ONLP_LED_MODE_GREEN,
+    ONLP_LED_MODE_GREEN_BLINKING,
+    ONLP_LED_MODE_BLUE,
+    ONLP_LED_MODE_BLUE_BLINKING,
+    ONLP_LED_MODE_PURPLE,
+    ONLP_LED_MODE_PURPLE_BLINKING,
+    ONLP_LED_MODE_LAST = ONLP_LED_MODE_PURPLE_BLINKING,
+    ONLP_LED_MODE_COUNT,
+    ONLP_LED_MODE_INVALID = -1,
 } onlp_led_mode_t;
-
-/** onlp_led_status */
-typedef enum onlp_led_status_e {
-    ONLP_LED_STATUS_PRESENT = (1 << 0),
-    ONLP_LED_STATUS_FAILED = (1 << 1),
-    ONLP_LED_STATUS_ON = (1 << 2),
-} onlp_led_status_t;
 /* <auto.end.enum(tag:led).define> */
 
 
@@ -85,9 +80,6 @@ typedef enum onlp_led_status_e {
 typedef struct onlp_led_info_s {
     /** Header */
     onlp_oid_hdr_t hdr;
-
-    /** Status */
-    uint32_t status;
 
     /** Capabilities */
     uint32_t caps;
@@ -101,41 +93,59 @@ typedef struct onlp_led_info_s {
 } onlp_led_info_t;
 
 /**
- * @brief Initialize the LED subsystem.
+ * @brief Software initialization of the LED module.
  */
-int onlp_led_init(void);
+int onlp_led_sw_init(void);
 
 /**
- * @brief Get LED information.
- * @param id The LED OID
- * @param rv [out] Receives the information structure.
+ * @brief Hardware initialization of the LED module.
  */
-int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
+int onlp_led_hw_init(uint32_t flags);
 
 /**
- * @brief Get the LED operational status.
- * @param id The LED OID
- * @param rv [out] Receives the operational status.
+ * @brief Deinitialize the led software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
  */
-int onlp_led_status_get(onlp_oid_t id, uint32_t* rv);
+int onlp_led_sw_denit(void);
 
 /**
  * @brief Get the LED header.
  * @param id The LED OID
- * @param rv [out] Receives the header.
+ * @param[out] rv Receives the header.
  */
 int onlp_led_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 
+
 /**
- * @brief Turn an LED on or off.
+ * @brief Get LED information.
  * @param id The LED OID
- * @param on_or_off Led on (1) or LED off (0)
- * @param Relevant if the LED has the ON_OFF capability.
- * @note For the purposes of this function the
- * interpretation of "on" for multi-mode or multi-color LEDs
- * is up to the platform implementation.
+ * @param[out] rv Receives the information structure.
  */
-int onlp_led_set(onlp_oid_t id, int on_or_off);
+int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
+
+
+/**
+ * @brief Format an LED OID.
+ * @param oid The OID.
+ * @param format The output format.
+ * @param pvs The output pvs.
+ * @param flags The output flags.
+ */
+int onlp_led_format(onlp_oid_t oid, onlp_oid_format_t format,
+                    aim_pvs_t* pvs, uint32_t flags);
+
+/**
+ * @brief Format an LED information structure.
+ * @param info The information structure.
+ * @param format The output format.
+ * @param pvs The output pvs.
+ * @param flags The output flags.
+ */
+int onlp_led_info_format(onlp_led_info_t* info, onlp_oid_format_t format,
+                         aim_pvs_t* pvs, uint32_t flags);
+
 
 /**
  * @brief Set the LED color
@@ -143,7 +153,7 @@ int onlp_led_set(onlp_oid_t id, int on_or_off);
  * @param color The color.
  * @note Only relevant if the LED supports the color capability.
  */
-int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t color);
+int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
 
 
 /**
@@ -154,24 +164,9 @@ int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t color);
  */
 int onlp_led_char_set(onlp_oid_t id, char c);
 
-/**
- * @brief LED OID debug dump
- * @param id The LED OID
- * @param pvs The output pvs
- * @param flags The output flags
- */
-void onlp_led_dump(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags);
-
-/**
- * @brief Show the given LED OID.
- * @param id The LED OID
- * @param pvs The output pvs
- * @param flags The output flags
- */
-void onlp_led_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags);
-
-
-
+int onlp_led_info_to_user_json(onlp_led_info_t* info, cJSON** rv, uint32_t flags);
+int onlp_led_info_to_json(onlp_led_info_t* info, cJSON** rv, uint32_t flags);
+int onlp_led_info_from_json(cJSON* cj, onlp_led_info_t* info);
 
 /******************************************************************************
  *
@@ -202,6 +197,26 @@ extern aim_map_si_t onlp_led_caps_map[];
 /** onlp_led_caps_desc_map table. */
 extern aim_map_si_t onlp_led_caps_desc_map[];
 
+/** Strings macro. */
+#define ONLP_LED_MODE_STRINGS \
+{\
+    "OFF", \
+    "AUTO", \
+    "AUTO_BLINKING", \
+    "CHAR", \
+    "RED", \
+    "RED_BLINKING", \
+    "ORANGE", \
+    "ORANGE_BLINKING", \
+    "YELLOW", \
+    "YELLOW_BLINKING", \
+    "GREEN", \
+    "GREEN_BLINKING", \
+    "BLUE", \
+    "BLUE_BLINKING", \
+    "PURPLE", \
+    "PURPLE_BLINKING", \
+}
 /** Enum names. */
 const char* onlp_led_mode_name(onlp_led_mode_t e);
 
@@ -211,38 +226,14 @@ int onlp_led_mode_value(const char* str, onlp_led_mode_t* e, int substr);
 /** Enum descriptions. */
 const char* onlp_led_mode_desc(onlp_led_mode_t e);
 
-/** Enum validator. */
-int onlp_led_mode_valid(onlp_led_mode_t e);
-
 /** validator */
 #define ONLP_LED_MODE_VALID(_e) \
-    (onlp_led_mode_valid((_e)))
+    ( (0 <= (_e)) && ((_e) <= ONLP_LED_MODE_PURPLE_BLINKING))
 
 /** onlp_led_mode_map table. */
 extern aim_map_si_t onlp_led_mode_map[];
 /** onlp_led_mode_desc_map table. */
 extern aim_map_si_t onlp_led_mode_desc_map[];
-
-/** Enum names. */
-const char* onlp_led_status_name(onlp_led_status_t e);
-
-/** Enum values. */
-int onlp_led_status_value(const char* str, onlp_led_status_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_led_status_desc(onlp_led_status_t e);
-
-/** Enum validator. */
-int onlp_led_status_valid(onlp_led_status_t e);
-
-/** validator */
-#define ONLP_LED_STATUS_VALID(_e) \
-    (onlp_led_status_valid((_e)))
-
-/** onlp_led_status_map table. */
-extern aim_map_si_t onlp_led_status_map[];
-/** onlp_led_status_desc_map table. */
-extern aim_map_si_t onlp_led_status_desc_map[];
 /* <auto.end.enum(tag:led).supportheader> */
 
 #endif /* __ONLP_LED_H__ */

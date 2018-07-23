@@ -30,6 +30,8 @@
 #include <IOF/iof.h>
 #include <onlp/oids.h>
 #include <cjson/cJSON.h>
+#include <cjson_util/cjson_util.h>
+#include <cjson_util/cjson_util_format.h>
 #include "onlp_json.h"
 
 /** Default IOF initializations for dump() and show() routines */
@@ -44,4 +46,37 @@ void onlp_oid_show_description(iof_t* iof, onlp_oid_hdr_t* hdr);
 /** Standard message when an OID is missing. */
 void onlp_oid_show_state_missing(iof_t* iof);
 
+#define __ONLP_PTR_VALIDATE(_ptr, _clr)         \
+    do {                                        \
+        if(!(_ptr)) {                           \
+            return ONLP_STATUS_E_PARAM;         \
+        }                                       \
+        if(_clr) {                              \
+            memset(_ptr, 0, sizeof(*_ptr));     \
+        }                                       \
+    } while(0)
+
+#define ONLP_PTR_VALIDATE_ZERO(_ptr) __ONLP_PTR_VALIDATE(_ptr, 1)
+#define ONLP_PTR_VALIDATE(_ptr) __ONLP_PTR_VALIDATE(_ptr, 0)
+
+#define ONLP_PTR_VALIDATE_NR(_ptr) {            \
+    do {                                        \
+        if(!(_ptr)) {                           \
+            return ;                            \
+        }                                       \
+    } while(0)
+
+#define ONLP_PTR_CLEAR(_ptr) memset(_ptr, 0, sizeof(*_ptr))
+
+/**
+ * Create the initial JSON object when serializing an info structure.
+ */
+int onlp_info_to_json_create(onlp_oid_hdr_t* hdr, cJSON** cjp, uint32_t flags);
+int onlp_info_to_user_json_create(onlp_oid_hdr_t* hdr, cJSON** cjp, uint32_t flags);
+int onlp_info_to_user_json_finish(onlp_oid_hdr_t* hdr, cJSON* object,
+                                  cJSON** cjp, uint32_t flags);
+int onlp_info_to_json_finish(onlp_oid_hdr_t* hdr, cJSON* object, cJSON** cjp,
+                             uint32_t flags);
+
+void onlp_oid_hdr_sort(onlp_oid_hdr_t* hdr);
 #endif /* __ONLP_INT_H__ */

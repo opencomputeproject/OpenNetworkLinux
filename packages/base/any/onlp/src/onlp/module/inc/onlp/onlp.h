@@ -54,12 +54,24 @@ typedef enum onlp_status_e {
 #define ONLP_UNSUPPORTED(_rv) \
     ((_rv) == ONLP_STATUS_E_UNSUPPORTED)
 
+#define ONLP_TRY(_expr)                                                 \
+    do {                                                                \
+        int _rv = (_expr);                                              \
+        if(ONLP_FAILURE(_rv)) {                                         \
+            AIM_LOG_ERROR("%s returned %{onlp_status}", #_expr, _rv);   \
+            return _rv;                                                 \
+        }                                                               \
+    } while(0)
+
+
 /**
  * @brief Initialize all subsystems.
  */
-int onlp_init(void);
+int onlp_sw_init(const char* platform);
 
-int onlp_denit(void);
+int onlp_hw_init(uint32_t flags);
+
+int onlp_sw_denit(void);
 
 /**
  * @brief Dump the current platform data.

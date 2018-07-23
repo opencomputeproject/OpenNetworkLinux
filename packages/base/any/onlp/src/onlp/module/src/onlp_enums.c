@@ -1,21 +1,21 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
+ *
  * </bsn.cl>
  ************************************************************
  *
@@ -32,11 +32,13 @@
 #include <onlp/psu.h>
 #include <onlp/led.h>
 
+#include "onlp_log.h"
+
 /* <auto.start.enum(ALL).source> */
 aim_map_si_t onlp_fan_caps_map[] =
 {
-    { "B2F", ONLP_FAN_CAPS_B2F },
-    { "F2B", ONLP_FAN_CAPS_F2B },
+    { "SET_DIR", ONLP_FAN_CAPS_SET_DIR },
+    { "GET_DIR", ONLP_FAN_CAPS_GET_DIR },
     { "SET_RPM", ONLP_FAN_CAPS_SET_RPM },
     { "SET_PERCENTAGE", ONLP_FAN_CAPS_SET_PERCENTAGE },
     { "GET_RPM", ONLP_FAN_CAPS_GET_RPM },
@@ -46,8 +48,8 @@ aim_map_si_t onlp_fan_caps_map[] =
 
 aim_map_si_t onlp_fan_caps_desc_map[] =
 {
-    { "None", ONLP_FAN_CAPS_B2F },
-    { "None", ONLP_FAN_CAPS_F2B },
+    { "None", ONLP_FAN_CAPS_SET_DIR },
+    { "None", ONLP_FAN_CAPS_GET_DIR },
     { "None", ONLP_FAN_CAPS_SET_RPM },
     { "None", ONLP_FAN_CAPS_SET_PERCENTAGE },
     { "None", ONLP_FAN_CAPS_GET_RPM },
@@ -103,6 +105,7 @@ onlp_fan_caps_valid(onlp_fan_caps_t e)
 
 aim_map_si_t onlp_fan_dir_map[] =
 {
+    { "UNKNOWN", ONLP_FAN_DIR_UNKNOWN },
     { "B2F", ONLP_FAN_DIR_B2F },
     { "F2B", ONLP_FAN_DIR_F2B },
     { NULL, 0 }
@@ -110,6 +113,7 @@ aim_map_si_t onlp_fan_dir_map[] =
 
 aim_map_si_t onlp_fan_dir_desc_map[] =
 {
+    { "None", ONLP_FAN_DIR_UNKNOWN },
     { "None", ONLP_FAN_DIR_B2F },
     { "None", ONLP_FAN_DIR_F2B },
     { NULL, 0 }
@@ -155,133 +159,11 @@ onlp_fan_dir_desc(onlp_fan_dir_t e)
 }
 
 
-aim_map_si_t onlp_fan_mode_map[] =
-{
-    { "OFF", ONLP_FAN_MODE_OFF },
-    { "SLOW", ONLP_FAN_MODE_SLOW },
-    { "NORMAL", ONLP_FAN_MODE_NORMAL },
-    { "FAST", ONLP_FAN_MODE_FAST },
-    { "MAX", ONLP_FAN_MODE_MAX },
-    { NULL, 0 }
-};
-
-aim_map_si_t onlp_fan_mode_desc_map[] =
-{
-    { "None", ONLP_FAN_MODE_OFF },
-    { "None", ONLP_FAN_MODE_SLOW },
-    { "None", ONLP_FAN_MODE_NORMAL },
-    { "None", ONLP_FAN_MODE_FAST },
-    { "None", ONLP_FAN_MODE_MAX },
-    { NULL, 0 }
-};
-
-const char*
-onlp_fan_mode_name(onlp_fan_mode_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_fan_mode_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_fan_mode'";
-    }
-}
-
-int
-onlp_fan_mode_value(const char* str, onlp_fan_mode_t* e, int substr)
-{
-    int i;
-    AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_fan_mode_map, 0)) {
-        /* Enum Found */
-        *e = i;
-        return 0;
-    }
-    else {
-        return -1;
-    }
-}
-
-const char*
-onlp_fan_mode_desc(onlp_fan_mode_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_fan_mode_desc_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_fan_mode'";
-    }
-}
-
-
-aim_map_si_t onlp_fan_status_map[] =
-{
-    { "PRESENT", ONLP_FAN_STATUS_PRESENT },
-    { "FAILED", ONLP_FAN_STATUS_FAILED },
-    { "B2F", ONLP_FAN_STATUS_B2F },
-    { "F2B", ONLP_FAN_STATUS_F2B },
-    { NULL, 0 }
-};
-
-aim_map_si_t onlp_fan_status_desc_map[] =
-{
-    { "None", ONLP_FAN_STATUS_PRESENT },
-    { "None", ONLP_FAN_STATUS_FAILED },
-    { "None", ONLP_FAN_STATUS_B2F },
-    { "None", ONLP_FAN_STATUS_F2B },
-    { NULL, 0 }
-};
-
-const char*
-onlp_fan_status_name(onlp_fan_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_fan_status_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_fan_status'";
-    }
-}
-
-int
-onlp_fan_status_value(const char* str, onlp_fan_status_t* e, int substr)
-{
-    int i;
-    AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_fan_status_map, 0)) {
-        /* Enum Found */
-        *e = i;
-        return 0;
-    }
-    else {
-        return -1;
-    }
-}
-
-const char*
-onlp_fan_status_desc(onlp_fan_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_fan_status_desc_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_fan_status'";
-    }
-}
-
-int
-onlp_fan_status_valid(onlp_fan_status_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_fan_status_map, 0) ? 1 : 0;
-}
-
-
 aim_map_si_t onlp_led_caps_map[] =
 {
-    { "ON_OFF", ONLP_LED_CAPS_ON_OFF },
+    { "OFF", ONLP_LED_CAPS_OFF },
+    { "AUTO", ONLP_LED_CAPS_AUTO },
+    { "AUTO_BLINKING", ONLP_LED_CAPS_AUTO_BLINKING },
     { "CHAR", ONLP_LED_CAPS_CHAR },
     { "RED", ONLP_LED_CAPS_RED },
     { "RED_BLINKING", ONLP_LED_CAPS_RED_BLINKING },
@@ -295,14 +177,14 @@ aim_map_si_t onlp_led_caps_map[] =
     { "BLUE_BLINKING", ONLP_LED_CAPS_BLUE_BLINKING },
     { "PURPLE", ONLP_LED_CAPS_PURPLE },
     { "PURPLE_BLINKING", ONLP_LED_CAPS_PURPLE_BLINKING },
-    { "AUTO", ONLP_LED_CAPS_AUTO },
-    { "AUTO_BLINKING", ONLP_LED_CAPS_AUTO_BLINKING },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_led_caps_desc_map[] =
 {
-    { "None", ONLP_LED_CAPS_ON_OFF },
+    { "None", ONLP_LED_CAPS_OFF },
+    { "None", ONLP_LED_CAPS_AUTO },
+    { "None", ONLP_LED_CAPS_AUTO_BLINKING },
     { "None", ONLP_LED_CAPS_CHAR },
     { "None", ONLP_LED_CAPS_RED },
     { "None", ONLP_LED_CAPS_RED_BLINKING },
@@ -316,8 +198,6 @@ aim_map_si_t onlp_led_caps_desc_map[] =
     { "None", ONLP_LED_CAPS_BLUE_BLINKING },
     { "None", ONLP_LED_CAPS_PURPLE },
     { "None", ONLP_LED_CAPS_PURPLE_BLINKING },
-    { "None", ONLP_LED_CAPS_AUTO },
-    { "None", ONLP_LED_CAPS_AUTO_BLINKING },
     { NULL, 0 }
 };
 
@@ -370,8 +250,9 @@ onlp_led_caps_valid(onlp_led_caps_t e)
 aim_map_si_t onlp_led_mode_map[] =
 {
     { "OFF", ONLP_LED_MODE_OFF },
-    { "ON", ONLP_LED_MODE_ON },
-    { "BLINKING", ONLP_LED_MODE_BLINKING },
+    { "AUTO", ONLP_LED_MODE_AUTO },
+    { "AUTO_BLINKING", ONLP_LED_MODE_AUTO_BLINKING },
+    { "CHAR", ONLP_LED_MODE_CHAR },
     { "RED", ONLP_LED_MODE_RED },
     { "RED_BLINKING", ONLP_LED_MODE_RED_BLINKING },
     { "ORANGE", ONLP_LED_MODE_ORANGE },
@@ -384,16 +265,15 @@ aim_map_si_t onlp_led_mode_map[] =
     { "BLUE_BLINKING", ONLP_LED_MODE_BLUE_BLINKING },
     { "PURPLE", ONLP_LED_MODE_PURPLE },
     { "PURPLE_BLINKING", ONLP_LED_MODE_PURPLE_BLINKING },
-    { "AUTO", ONLP_LED_MODE_AUTO },
-    { "AUTO_BLINKING", ONLP_LED_MODE_AUTO_BLINKING },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_led_mode_desc_map[] =
 {
     { "None", ONLP_LED_MODE_OFF },
-    { "None", ONLP_LED_MODE_ON },
-    { "None", ONLP_LED_MODE_BLINKING },
+    { "None", ONLP_LED_MODE_AUTO },
+    { "None", ONLP_LED_MODE_AUTO_BLINKING },
+    { "None", ONLP_LED_MODE_CHAR },
     { "None", ONLP_LED_MODE_RED },
     { "None", ONLP_LED_MODE_RED_BLINKING },
     { "None", ONLP_LED_MODE_ORANGE },
@@ -406,8 +286,6 @@ aim_map_si_t onlp_led_mode_desc_map[] =
     { "None", ONLP_LED_MODE_BLUE_BLINKING },
     { "None", ONLP_LED_MODE_PURPLE },
     { "None", ONLP_LED_MODE_PURPLE_BLINKING },
-    { "None", ONLP_LED_MODE_AUTO },
-    { "None", ONLP_LED_MODE_AUTO_BLINKING },
     { NULL, 0 }
 };
 
@@ -450,47 +328,37 @@ onlp_led_mode_desc(onlp_led_mode_t e)
     }
 }
 
-int
-onlp_led_mode_valid(onlp_led_mode_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_led_mode_map, 0) ? 1 : 0;
-}
 
-
-aim_map_si_t onlp_led_status_map[] =
+aim_map_si_t onlp_log_flag_map[] =
 {
-    { "PRESENT", ONLP_LED_STATUS_PRESENT },
-    { "FAILED", ONLP_LED_STATUS_FAILED },
-    { "ON", ONLP_LED_STATUS_ON },
+    { "JSON", ONLP_LOG_FLAG_JSON },
     { NULL, 0 }
 };
 
-aim_map_si_t onlp_led_status_desc_map[] =
+aim_map_si_t onlp_log_flag_desc_map[] =
 {
-    { "None", ONLP_LED_STATUS_PRESENT },
-    { "None", ONLP_LED_STATUS_FAILED },
-    { "None", ONLP_LED_STATUS_ON },
+    { "None", ONLP_LOG_FLAG_JSON },
     { NULL, 0 }
 };
 
 const char*
-onlp_led_status_name(onlp_led_status_t e)
+onlp_log_flag_name(onlp_log_flag_t e)
 {
     const char* name;
-    if(aim_map_si_i(&name, e, onlp_led_status_map, 0)) {
+    if(aim_map_si_i(&name, e, onlp_log_flag_map, 0)) {
         return name;
     }
     else {
-        return "-invalid value for enum type 'onlp_led_status'";
+        return "-invalid value for enum type 'onlp_log_flag'";
     }
 }
 
 int
-onlp_led_status_value(const char* str, onlp_led_status_t* e, int substr)
+onlp_log_flag_value(const char* str, onlp_log_flag_t* e, int substr)
 {
     int i;
     AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_led_status_map, 0)) {
+    if(aim_map_si_s(&i, str, onlp_log_flag_map, 0)) {
         /* Enum Found */
         *e = i;
         return 0;
@@ -501,21 +369,15 @@ onlp_led_status_value(const char* str, onlp_led_status_t* e, int substr)
 }
 
 const char*
-onlp_led_status_desc(onlp_led_status_t e)
+onlp_log_flag_desc(onlp_log_flag_t e)
 {
     const char* name;
-    if(aim_map_si_i(&name, e, onlp_led_status_desc_map, 0)) {
+    if(aim_map_si_i(&name, e, onlp_log_flag_desc_map, 0)) {
         return name;
     }
     else {
-        return "-invalid value for enum type 'onlp_led_status'";
+        return "-invalid value for enum type 'onlp_log_flag'";
     }
-}
-
-int
-onlp_led_status_valid(onlp_led_status_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_led_status_map, 0) ? 1 : 0;
 }
 
 
@@ -572,10 +434,182 @@ onlp_oid_dump_desc(onlp_oid_dump_t e)
     }
 }
 
-int
-onlp_oid_dump_valid(onlp_oid_dump_t e)
+
+aim_map_si_t onlp_oid_format_map[] =
 {
-    return aim_map_si_i(NULL, e, onlp_oid_dump_map, 0) ? 1 : 0;
+    { "JSON", ONLP_OID_FORMAT_JSON },
+    { "YAML", ONLP_OID_FORMAT_YAML },
+    { "USER", ONLP_OID_FORMAT_USER },
+    { "DEBUG", ONLP_OID_FORMAT_DEBUG },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_format_desc_map[] =
+{
+    { "None", ONLP_OID_FORMAT_JSON },
+    { "None", ONLP_OID_FORMAT_YAML },
+    { "None", ONLP_OID_FORMAT_USER },
+    { "None", ONLP_OID_FORMAT_DEBUG },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_format_name(onlp_oid_format_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_format_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_format'";
+    }
+}
+
+int
+onlp_oid_format_value(const char* str, onlp_oid_format_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_format_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_format_desc(onlp_oid_format_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_format_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_format'";
+    }
+}
+
+
+aim_map_si_t onlp_oid_format_flags_map[] =
+{
+    { "RECURSIVE", ONLP_OID_FORMAT_FLAGS_RECURSIVE },
+    { "MISSING", ONLP_OID_FORMAT_FLAGS_MISSING },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_format_flags_desc_map[] =
+{
+    { "None", ONLP_OID_FORMAT_FLAGS_RECURSIVE },
+    { "None", ONLP_OID_FORMAT_FLAGS_MISSING },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_format_flags_name(onlp_oid_format_flags_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_format_flags_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_format_flags'";
+    }
+}
+
+int
+onlp_oid_format_flags_value(const char* str, onlp_oid_format_flags_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_format_flags_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_format_flags_desc(onlp_oid_format_flags_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_format_flags_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_format_flags'";
+    }
+}
+
+int
+onlp_oid_format_flags_valid(onlp_oid_format_flags_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_format_flags_map, 0) ? 1 : 0;
+}
+
+
+aim_map_si_t onlp_oid_json_flag_map[] =
+{
+    { "RECURSIVE", ONLP_OID_JSON_FLAG_RECURSIVE },
+    { "UNSUPPORTED_FIELDS", ONLP_OID_JSON_FLAG_UNSUPPORTED_FIELDS },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_json_flag_desc_map[] =
+{
+    { "None", ONLP_OID_JSON_FLAG_RECURSIVE },
+    { "None", ONLP_OID_JSON_FLAG_UNSUPPORTED_FIELDS },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_json_flag_name(onlp_oid_json_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_json_flag_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_json_flag'";
+    }
+}
+
+int
+onlp_oid_json_flag_value(const char* str, onlp_oid_json_flag_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_json_flag_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_json_flag_desc(onlp_oid_json_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_json_flag_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_json_flag'";
+    }
+}
+
+int
+onlp_oid_json_flag_valid(onlp_oid_json_flag_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_json_flag_map, 0) ? 1 : 0;
 }
 
 
@@ -641,27 +675,93 @@ onlp_oid_show_valid(onlp_oid_show_t e)
 }
 
 
+aim_map_si_t onlp_oid_status_flag_map[] =
+{
+    { "PRESENT", ONLP_OID_STATUS_FLAG_PRESENT },
+    { "FAILED", ONLP_OID_STATUS_FLAG_FAILED },
+    { "OPERATIONAL", ONLP_OID_STATUS_FLAG_OPERATIONAL },
+    { "UNPLUGGED", ONLP_OID_STATUS_FLAG_UNPLUGGED },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_status_flag_desc_map[] =
+{
+    { "None", ONLP_OID_STATUS_FLAG_PRESENT },
+    { "None", ONLP_OID_STATUS_FLAG_FAILED },
+    { "None", ONLP_OID_STATUS_FLAG_OPERATIONAL },
+    { "None", ONLP_OID_STATUS_FLAG_UNPLUGGED },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_status_flag_name(onlp_oid_status_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_status_flag_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_status_flag'";
+    }
+}
+
+int
+onlp_oid_status_flag_value(const char* str, onlp_oid_status_flag_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_status_flag_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_status_flag_desc(onlp_oid_status_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_status_flag_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_status_flag'";
+    }
+}
+
+int
+onlp_oid_status_flag_valid(onlp_oid_status_flag_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_status_flag_map, 0) ? 1 : 0;
+}
+
+
 aim_map_si_t onlp_oid_type_map[] =
 {
-    { "SYS", ONLP_OID_TYPE_SYS },
+    { "CHASSIS", ONLP_OID_TYPE_CHASSIS },
+    { "MODULE", ONLP_OID_TYPE_MODULE },
     { "THERMAL", ONLP_OID_TYPE_THERMAL },
     { "FAN", ONLP_OID_TYPE_FAN },
     { "PSU", ONLP_OID_TYPE_PSU },
     { "LED", ONLP_OID_TYPE_LED },
-    { "MODULE", ONLP_OID_TYPE_MODULE },
-    { "RTC", ONLP_OID_TYPE_RTC },
+    { "SFP", ONLP_OID_TYPE_SFP },
+    { "GENERIC", ONLP_OID_TYPE_GENERIC },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_oid_type_desc_map[] =
 {
-    { "None", ONLP_OID_TYPE_SYS },
+    { "None", ONLP_OID_TYPE_CHASSIS },
+    { "None", ONLP_OID_TYPE_MODULE },
     { "None", ONLP_OID_TYPE_THERMAL },
     { "None", ONLP_OID_TYPE_FAN },
     { "None", ONLP_OID_TYPE_PSU },
     { "None", ONLP_OID_TYPE_LED },
-    { "None", ONLP_OID_TYPE_MODULE },
-    { "None", ONLP_OID_TYPE_RTC },
+    { "None", ONLP_OID_TYPE_SFP },
+    { "None", ONLP_OID_TYPE_GENERIC },
     { NULL, 0 }
 };
 
@@ -711,31 +811,99 @@ onlp_oid_type_valid(onlp_oid_type_t e)
 }
 
 
+aim_map_si_t onlp_oid_type_flag_map[] =
+{
+    { "CHASSIS", ONLP_OID_TYPE_FLAG_CHASSIS },
+    { "MODULE", ONLP_OID_TYPE_FLAG_MODULE },
+    { "THERMAL", ONLP_OID_TYPE_FLAG_THERMAL },
+    { "FAN", ONLP_OID_TYPE_FLAG_FAN },
+    { "PSU", ONLP_OID_TYPE_FLAG_PSU },
+    { "LED", ONLP_OID_TYPE_FLAG_LED },
+    { "SFP", ONLP_OID_TYPE_FLAG_SFP },
+    { "GENERIC", ONLP_OID_TYPE_FLAG_GENERIC },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_oid_type_flag_desc_map[] =
+{
+    { "None", ONLP_OID_TYPE_FLAG_CHASSIS },
+    { "None", ONLP_OID_TYPE_FLAG_MODULE },
+    { "None", ONLP_OID_TYPE_FLAG_THERMAL },
+    { "None", ONLP_OID_TYPE_FLAG_FAN },
+    { "None", ONLP_OID_TYPE_FLAG_PSU },
+    { "None", ONLP_OID_TYPE_FLAG_LED },
+    { "None", ONLP_OID_TYPE_FLAG_SFP },
+    { "None", ONLP_OID_TYPE_FLAG_GENERIC },
+    { NULL, 0 }
+};
+
+const char*
+onlp_oid_type_flag_name(onlp_oid_type_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_type_flag_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_type_flag'";
+    }
+}
+
+int
+onlp_oid_type_flag_value(const char* str, onlp_oid_type_flag_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_oid_type_flag_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_oid_type_flag_desc(onlp_oid_type_flag_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_oid_type_flag_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_oid_type_flag'";
+    }
+}
+
+int
+onlp_oid_type_flag_valid(onlp_oid_type_flag_t e)
+{
+    return aim_map_si_i(NULL, e, onlp_oid_type_flag_map, 0) ? 1 : 0;
+}
+
+
 aim_map_si_t onlp_psu_caps_map[] =
 {
-    { "AC", ONLP_PSU_CAPS_AC },
-    { "DC12", ONLP_PSU_CAPS_DC12 },
-    { "DC48", ONLP_PSU_CAPS_DC48 },
-    { "VIN", ONLP_PSU_CAPS_VIN },
-    { "VOUT", ONLP_PSU_CAPS_VOUT },
-    { "IIN", ONLP_PSU_CAPS_IIN },
-    { "IOUT", ONLP_PSU_CAPS_IOUT },
-    { "PIN", ONLP_PSU_CAPS_PIN },
-    { "POUT", ONLP_PSU_CAPS_POUT },
+    { "GET_TYPE", ONLP_PSU_CAPS_GET_TYPE },
+    { "GET_VIN", ONLP_PSU_CAPS_GET_VIN },
+    { "GET_VOUT", ONLP_PSU_CAPS_GET_VOUT },
+    { "GET_IIN", ONLP_PSU_CAPS_GET_IIN },
+    { "GET_IOUT", ONLP_PSU_CAPS_GET_IOUT },
+    { "GET_PIN", ONLP_PSU_CAPS_GET_PIN },
+    { "GET_POUT", ONLP_PSU_CAPS_GET_POUT },
     { NULL, 0 }
 };
 
 aim_map_si_t onlp_psu_caps_desc_map[] =
 {
-    { "None", ONLP_PSU_CAPS_AC },
-    { "None", ONLP_PSU_CAPS_DC12 },
-    { "None", ONLP_PSU_CAPS_DC48 },
-    { "None", ONLP_PSU_CAPS_VIN },
-    { "None", ONLP_PSU_CAPS_VOUT },
-    { "None", ONLP_PSU_CAPS_IIN },
-    { "None", ONLP_PSU_CAPS_IOUT },
-    { "None", ONLP_PSU_CAPS_PIN },
-    { "None", ONLP_PSU_CAPS_POUT },
+    { "None", ONLP_PSU_CAPS_GET_TYPE },
+    { "None", ONLP_PSU_CAPS_GET_VIN },
+    { "None", ONLP_PSU_CAPS_GET_VOUT },
+    { "None", ONLP_PSU_CAPS_GET_IIN },
+    { "None", ONLP_PSU_CAPS_GET_IOUT },
+    { "None", ONLP_PSU_CAPS_GET_PIN },
+    { "None", ONLP_PSU_CAPS_GET_POUT },
     { NULL, 0 }
 };
 
@@ -785,40 +953,40 @@ onlp_psu_caps_valid(onlp_psu_caps_t e)
 }
 
 
-aim_map_si_t onlp_psu_status_map[] =
+aim_map_si_t onlp_psu_type_map[] =
 {
-    { "PRESENT", ONLP_PSU_STATUS_PRESENT },
-    { "FAILED", ONLP_PSU_STATUS_FAILED },
-    { "UNPLUGGED", ONLP_PSU_STATUS_UNPLUGGED },
+    { "AC", ONLP_PSU_TYPE_AC },
+    { "DC12", ONLP_PSU_TYPE_DC12 },
+    { "DC48", ONLP_PSU_TYPE_DC48 },
     { NULL, 0 }
 };
 
-aim_map_si_t onlp_psu_status_desc_map[] =
+aim_map_si_t onlp_psu_type_desc_map[] =
 {
-    { "None", ONLP_PSU_STATUS_PRESENT },
-    { "None", ONLP_PSU_STATUS_FAILED },
-    { "None", ONLP_PSU_STATUS_UNPLUGGED },
+    { "None", ONLP_PSU_TYPE_AC },
+    { "None", ONLP_PSU_TYPE_DC12 },
+    { "None", ONLP_PSU_TYPE_DC48 },
     { NULL, 0 }
 };
 
 const char*
-onlp_psu_status_name(onlp_psu_status_t e)
+onlp_psu_type_name(onlp_psu_type_t e)
 {
     const char* name;
-    if(aim_map_si_i(&name, e, onlp_psu_status_map, 0)) {
+    if(aim_map_si_i(&name, e, onlp_psu_type_map, 0)) {
         return name;
     }
     else {
-        return "-invalid value for enum type 'onlp_psu_status'";
+        return "-invalid value for enum type 'onlp_psu_type'";
     }
 }
 
 int
-onlp_psu_status_value(const char* str, onlp_psu_status_t* e, int substr)
+onlp_psu_type_value(const char* str, onlp_psu_type_t* e, int substr)
 {
     int i;
     AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_psu_status_map, 0)) {
+    if(aim_map_si_s(&i, str, onlp_psu_type_map, 0)) {
         /* Enum Found */
         *e = i;
         return 0;
@@ -829,21 +997,15 @@ onlp_psu_status_value(const char* str, onlp_psu_status_t* e, int substr)
 }
 
 const char*
-onlp_psu_status_desc(onlp_psu_status_t e)
+onlp_psu_type_desc(onlp_psu_type_t e)
 {
     const char* name;
-    if(aim_map_si_i(&name, e, onlp_psu_status_desc_map, 0)) {
+    if(aim_map_si_i(&name, e, onlp_psu_type_desc_map, 0)) {
         return name;
     }
     else {
-        return "-invalid value for enum type 'onlp_psu_status'";
+        return "-invalid value for enum type 'onlp_psu_type'";
     }
-}
-
-int
-onlp_psu_status_valid(onlp_psu_status_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_psu_status_map, 0) ? 1 : 0;
 }
 
 
@@ -985,6 +1147,64 @@ onlp_sfp_control_flag_valid(onlp_sfp_control_flag_t e)
 }
 
 
+aim_map_si_t onlp_sfp_type_map[] =
+{
+    { "SFP", ONLP_SFP_TYPE_SFP },
+    { "QSFP", ONLP_SFP_TYPE_QSFP },
+    { "SFP28", ONLP_SFP_TYPE_SFP28 },
+    { "QSFP28", ONLP_SFP_TYPE_QSFP28 },
+    { NULL, 0 }
+};
+
+aim_map_si_t onlp_sfp_type_desc_map[] =
+{
+    { "None", ONLP_SFP_TYPE_SFP },
+    { "None", ONLP_SFP_TYPE_QSFP },
+    { "None", ONLP_SFP_TYPE_SFP28 },
+    { "None", ONLP_SFP_TYPE_QSFP28 },
+    { NULL, 0 }
+};
+
+const char*
+onlp_sfp_type_name(onlp_sfp_type_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_sfp_type_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_sfp_type'";
+    }
+}
+
+int
+onlp_sfp_type_value(const char* str, onlp_sfp_type_t* e, int substr)
+{
+    int i;
+    AIM_REFERENCE(substr);
+    if(aim_map_si_s(&i, str, onlp_sfp_type_map, 0)) {
+        /* Enum Found */
+        *e = i;
+        return 0;
+    }
+    else {
+        return -1;
+    }
+}
+
+const char*
+onlp_sfp_type_desc(onlp_sfp_type_t e)
+{
+    const char* name;
+    if(aim_map_si_i(&name, e, onlp_sfp_type_desc_map, 0)) {
+        return name;
+    }
+    else {
+        return "-invalid value for enum type 'onlp_sfp_type'";
+    }
+}
+
+
 aim_map_si_t onlp_status_map[] =
 {
     { "OK", ONLP_STATUS_OK },
@@ -1121,66 +1341,6 @@ onlp_thermal_caps_valid(onlp_thermal_caps_t e)
 }
 
 
-aim_map_si_t onlp_thermal_status_map[] =
-{
-    { "PRESENT", ONLP_THERMAL_STATUS_PRESENT },
-    { "FAILED", ONLP_THERMAL_STATUS_FAILED },
-    { NULL, 0 }
-};
-
-aim_map_si_t onlp_thermal_status_desc_map[] =
-{
-    { "None", ONLP_THERMAL_STATUS_PRESENT },
-    { "None", ONLP_THERMAL_STATUS_FAILED },
-    { NULL, 0 }
-};
-
-const char*
-onlp_thermal_status_name(onlp_thermal_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_thermal_status_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_thermal_status'";
-    }
-}
-
-int
-onlp_thermal_status_value(const char* str, onlp_thermal_status_t* e, int substr)
-{
-    int i;
-    AIM_REFERENCE(substr);
-    if(aim_map_si_s(&i, str, onlp_thermal_status_map, 0)) {
-        /* Enum Found */
-        *e = i;
-        return 0;
-    }
-    else {
-        return -1;
-    }
-}
-
-const char*
-onlp_thermal_status_desc(onlp_thermal_status_t e)
-{
-    const char* name;
-    if(aim_map_si_i(&name, e, onlp_thermal_status_desc_map, 0)) {
-        return name;
-    }
-    else {
-        return "-invalid value for enum type 'onlp_thermal_status'";
-    }
-}
-
-int
-onlp_thermal_status_valid(onlp_thermal_status_t e)
-{
-    return aim_map_si_i(NULL, e, onlp_thermal_status_map, 0) ? 1 : 0;
-}
-
-
 aim_map_si_t onlp_thermal_threshold_map[] =
 {
     { "WARNING_DEFAULT", ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT },
@@ -1243,4 +1403,3 @@ onlp_thermal_threshold_valid(onlp_thermal_threshold_t e)
 }
 
 /* <auto.end.enum(ALL).source> */
-

@@ -29,6 +29,7 @@
 #include <AIM/aim_pvs.h>
 #include <IOF/iof.h>
 #include <AIM/aim_list.h>
+#include <cjson/cJSON.h>
 
 /**
  * The ONIE specification defines the format of the system
@@ -83,12 +84,22 @@ typedef struct onlp_onie_vx_s {
  */
 
 int onlp_onie_decode(onlp_onie_info_t* rv, const uint8_t* data, int size);
-int onlp_onie_decode_file(onlp_onie_info_t* rv, const char* file);
+int onlp_onie_decode_file(onlp_onie_info_t* rv, const char* fmt, ...);
 
 /**
  * Free an ONIE info structure.
  */
 void onlp_onie_info_free(onlp_onie_info_t* info);
+
+/**
+ * Return the JSON representation of the given info structure.
+ */
+int onlp_onie_info_to_json(onlp_onie_info_t* info, cJSON** rv);
+
+/**
+ * Return the info structure from the JSON representation.
+ */
+int onlp_onie_info_from_json(cJSON* cj, onlp_onie_info_t* info);
 
 /**
  * Show the contents of an ONIE info structure.

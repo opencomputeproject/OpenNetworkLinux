@@ -23,10 +23,7 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/sfpi.h>
-
-#include <onlplib/i2c.h>
-#include <onlplib/file.h>
+#include <onlp/platformi/base.h>
 #include "platform_lib.h"
 
 #define MUX_START_INDEX 18
@@ -44,16 +41,11 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 #define MODULE_PRESENT_FORMAT		"/sys/bus/i2c/devices/4-0060/module_present_%d"
 #define MODULE_PRESENT_ALL_ATTR		"/sys/bus/i2c/devices/4-0060/module_present_all"
 
-/************************************************************
- *
- * SFPI Entry Points
- *
- ***********************************************************/
 int
-onlp_sfpi_init(void)
+onlp_sfpi_type_get(int port, onlp_sfp_type_t* rtype)
 {
-    /* Called at initialization time */
-    return ONLP_STATUS_OK;
+    *rtype = ONLP_SFP_TYPE_QSFP28;
+    return 0;
 }
 
 int
@@ -82,7 +74,7 @@ onlp_sfpi_is_present(int port)
      */
     int present;
 
-	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, (port+1)) < 0) {
+    if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, (port+1)) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -133,56 +125,37 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_dev_read(int port, int devaddr, int addr,
+                   uint8_t* dst, int size)
 {
-    /*
-     * Read the SFP eeprom into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
-    int size = 0;
-    memset(data, 0, 256);
-
-	if(onlp_file_read(data, 256, &size, PORT_FORMAT, PORT_BUS_INDEX(port), "eeprom") != ONLP_STATUS_OK) {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return ONLP_STATUS_OK;
+    int bus = PORT_BUS_INDEX(port);
+    return onlp_i2c_block_read(bus, devaddr, addr, size, dst, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_readb(int port, int devaddr, int addr)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+onlp_sfpi_dev_writeb(int port, int devaddr, int addr, uint8_t value)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_readw(int port, int devaddr, int addr)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+onlp_sfpi_dev_writew(int port, int devaddr, int addr, uint16_t value)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
-
-int
-onlp_sfpi_denit(void)
-{
-    return ONLP_STATUS_OK;
-}
-

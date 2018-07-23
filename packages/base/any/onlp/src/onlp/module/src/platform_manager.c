@@ -22,10 +22,9 @@
  * This file implements the Platform Management infrastructure.
  *
  ***********************************************************/
-#include <onlp/sys.h>
 #include <onlp/psu.h>
 #include <onlp/fan.h>
-#include <onlp/platformi/sysi.h>
+#include <onlp/platformi/platformi.h>
 #include <onlplib/mmap.h>
 #include <timer_wheel/timer_wheel.h>
 #include <OS/os_time.h>
@@ -97,14 +96,14 @@ static management_entry_t management_entries[] =
     {
         {
             { },
-            onlp_sysi_platform_manage_fans,
+            onlp_platformi_manage_fans,
             /* Every 10 seconds */
             10*1000*1000,
             "Fans",
         },
         {
             { },
-            onlp_sysi_platform_manage_leds,
+            onlp_platformi_manage_leds,
             /* Every 2 seconds */
             2*1000*1000,
             "LEDs",
@@ -134,7 +133,7 @@ onlp_sys_platform_manage_init(void)
         int i;
         uint64_t now = os_time_monotonic();
 
-        onlp_sysi_platform_manage_init();
+        onlp_platformi_manage_init();
         control__.tw = timer_wheel_create(4, 512, now);
 
         for(i = 0; i < AIM_ARRAYSIZE(management_entries); i++) {
@@ -229,7 +228,7 @@ onlp_sys_platform_manage_thread__(void* vctrl)
 }
 
 int
-onlp_sys_platform_manage_start(int block)
+onlp_platform_manager_start(int block)
 {
     onlp_sys_platform_manage_init();
 
@@ -252,14 +251,14 @@ onlp_sys_platform_manage_start(int block)
     }
 
     if(block) {
-        onlp_sys_platform_manage_join();
+        onlp_platform_manager_join();
     }
 
     return 0;
 }
 
 int
-onlp_sys_platform_manage_stop(int block)
+onlp_platform_manager_stop(int block)
 {
     if(control__.eventfd > 0) {
         uint64_t zero = 1;
@@ -267,14 +266,14 @@ onlp_sys_platform_manage_stop(int block)
         write(control__.eventfd, &zero, sizeof(zero));
 
         if(block) {
-            onlp_sys_platform_manage_join();
+            onlp_platform_manager_join();
         }
     }
     return 0;
 }
 
 int
-onlp_sys_platform_manage_join(void)
+onlp_platform_manager_join(void)
 {
     if(control__.eventfd > 0) {
         /* Wait for the thread to terminate */
@@ -285,205 +284,245 @@ onlp_sys_platform_manage_join(void)
     return 0;
 }
 
+static onlp_oid_hdr_t*
+oid_hdr_entry_find__(biglist_t* list, onlp_oid_t oid)
+{
+    onlp_oid_hdr_t* hdr;
+    biglist_t* ble;
+
+    BIGLIST_FOREACH_DATA(ble, list, onlp_oid_hdr_t*, hdr) {
+        if(hdr->id == oid) {
+            return hdr;
+        }
+    }
+    return NULL;
+}
 
 static int
 platform_psus_notify__(void)
 {
-    static onlp_oid_t psu_oid_table[ONLP_OID_TABLE_SIZE] = {0};
-    static onlp_psu_info_t psu_info_table[ONLP_OID_TABLE_SIZE];
-    int i = 0;
-    static int flag[ONLP_OID_TABLE_SIZE] = {0};
+    int rv;
+    static biglist_t* previous = NULL;
+    static biglist_t* current = NULL;
 
-    if(psu_oid_table[0] == 0) {
-        /* We haven't retreived the system PSU oids yet. */
-        onlp_sys_info_t si;
-        onlp_oid_t* oidp;
+    biglist_t* ble;
+    onlp_oid_hdr_t* hdr;
 
-        if(onlp_sys_info_get(&si) < 0) {
-            AIM_LOG_ERROR("onlp_sys_info_get() failed.");
-            return -1;
-        }
-        ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, PSU) {
-            psu_oid_table[i++] = *oidp;
-        }
+    if(ONLP_FAILURE(rv = onlp_oid_hdr_get_all(ONLP_OID_CHASSIS,
+                                              ONLP_OID_TYPE_FLAG_PSU, 0x0,
+                                              &current))) {
+        return rv;
     }
 
-    for(i = 0; i < AIM_ARRAYSIZE(psu_oid_table); i++) {
-        onlp_psu_info_t pi;
-        int pid = ONLP_OID_ID_GET(psu_oid_table[i]);
+    if(previous == NULL) {
+        /** Log initial states. */
+        BIGLIST_FOREACH_DATA(ble, current, onlp_oid_hdr_t*, hdr) {
+            int pid = ONLP_OID_ID_GET(hdr->id);
 
-        if(psu_oid_table[i] == 0) {
-            break;
-        }
+            if(ONLP_OID_PRESENT(hdr)) {
+                AIM_SYSLOG_INFO("PSU <id> is present.",
+                                "The given PSU is present.",
+                                "PSU %d is present.", pid);
 
-        if(onlp_psu_info_get(psu_oid_table[i], &pi) < 0) {
-            AIM_LOG_ERROR("Failure retreiving status of PSU ID %d",
-                          pid);
-            continue;
-        }
-
-        /* report initial failed state */
-        if ( !flag[i] ) {
-            if ( !(pi.status & 0x1) ) {
-                AIM_SYSLOG_WARN("PSU <id> is not present.",
+                if(ONLP_OID_FAILED(hdr)) {
+                    AIM_SYSLOG_CRIT("PSU <id> has failed.",
+                                    "The given PSU has failed.",
+                                    "PSU %d has failed.", pid);
+                }
+                else if(ONLP_OID_STATUS_FLAG_IS_SET(hdr, UNPLUGGED)) {
+                    AIM_SYSLOG_WARN("PSU <id> is unplugged.",
+                                    "The given PSU is unplugged.",
+                                    "PSU %d is unplugged.", pid);
+                }
+            }
+            else {
+                AIM_SYSLOG_INFO("PSU <id> is not present.",
                                 "The given PSU is not present.",
                                 "PSU %d is not present.", pid);
             }
-            if ( pi.status & ONLP_PSU_STATUS_FAILED ) {
-                AIM_SYSLOG_CRIT("PSU <id> has failed.",
-                                "The given PSU has failed.",
-                                "PSU %d has failed.", pid);
-            }
-            if ((pi.status & 0x01) && !(pi.status & ONLP_PSU_STATUS_FAILED) && (pi.status & ONLP_PSU_STATUS_UNPLUGGED)) {
-                AIM_SYSLOG_WARN("PSU <id> power cord not plugged.",
-                                "The given PSU does not have power cord plugged.",
-                                "PSU %d power cord not plugged.", pid);
-            }
-            flag[i] = 1;
+        }
+        previous = current;
+        current = NULL;
+        return 0;
+    }
+
+
+    BIGLIST_FOREACH_DATA(ble, current, onlp_oid_hdr_t*, hdr) {
+
+        int pid = ONLP_OID_ID_GET(hdr->id);
+        onlp_oid_hdr_t* phdr = oid_hdr_entry_find__(previous, hdr->id);
+
+        if(!phdr) {
+            /* A new PSU has popped into existance. Unlikely. */
+            AIM_SYSLOG_INFO("PSU <id> has been discovered.",
+                            "A new PSU has been discovered.",
+                            "PSU %d has been discovered.", pid);
+            continue;
         }
 
-        /*
-         * Log any presences or failure transitions.
-         */
-        if(pi.status != psu_info_table[i].status) {
-            uint32_t new = pi.status;
-            uint32_t old = psu_info_table[i].status;
+        uint32_t xor = hdr->status ^ phdr->status;
 
-            if( !(old & 0x1) && (new & 0x1) ) {
-                /* PSU Inserted */
+        if(xor & ONLP_OID_STATUS_FLAG_PRESENT) {
+            if(ONLP_OID_PRESENT(hdr)) {
                 AIM_SYSLOG_INFO("PSU <id> has been inserted.",
                                 "A PSU has been inserted in the given slot.",
                                 "PSU %d has been inserted.", pid);
             }
-            if( (old & 0x1) && !(new & 0x1) ) {
-                /* PSU Removed */
+            else {
                 AIM_SYSLOG_WARN("PSU <id> has been removed.",
                                 "A PSU has been removed from the given slot.",
                                 "PSU %d has been removed.", pid);
+                /* The remaining bits are only relevant if the PSU is present. */
+                continue;
             }
-            if( (new & 0x1) && (old & ONLP_PSU_STATUS_FAILED) && !(new & ONLP_PSU_STATUS_FAILED) ) {
-                /* PSU recovery (seems unlikely) */
-                AIM_SYSLOG_INFO("PSU <id> has recovered.",
-                                "The given PSU has recovered from a failure.",
-                                "PSU %d has recovered.", pid);
-            }
-
-            if( !(old & ONLP_PSU_STATUS_FAILED) && (new & ONLP_PSU_STATUS_FAILED) ) {
-                /* PSU Failure */
+        }
+        if(xor & ONLP_OID_STATUS_FLAG_FAILED) {
+            if(ONLP_OID_FAILED(hdr)) {
                 AIM_SYSLOG_CRIT("PSU <id> has failed.",
                                 "The given PSU has failed.",
                                 "PSU %d has failed.", pid);
             }
-
-            if(!(new & ONLP_PSU_STATUS_FAILED) && (new & ONLP_PSU_STATUS_PRESENT)) {
-                if( (old & ONLP_PSU_STATUS_UNPLUGGED) && !(new & ONLP_PSU_STATUS_UNPLUGGED)) {
-                    /* PSU has been plugged in */
-                    AIM_SYSLOG_INFO("PSU <id> has been plugged in.",
-                                    "The given PSU has been plugged in.",
-                                    "PSU %d has been plugged in.", pid);
-                }
-
-                if(!(old & ONLP_PSU_STATUS_UNPLUGGED) && (new & ONLP_PSU_STATUS_UNPLUGGED)) {
-                    /* PSU has been unplugged. */
-                    AIM_SYSLOG_WARN("PSU <id> has been unplugged.",
-                                    "The given PSU has been unplugged.",
-                                    "PSU %d has been unplugged.", pid);
-                }
+            else {
+                AIM_SYSLOG_INFO("PSU <id> has recovered.",
+                                "The given PSU has recovered from a failure.",
+                                "PSU %d has recovered.", pid);
             }
-
-            memcpy(psu_info_table+i, &pi, sizeof(pi));
+        }
+        if(xor & ONLP_OID_STATUS_FLAG_UNPLUGGED) {
+            if(ONLP_OID_STATUS_FLAG_IS_SET(hdr, UNPLUGGED)) {
+                /* PSU has been unplugged. */
+                AIM_SYSLOG_WARN("PSU <id> has been unplugged.",
+                                "The given PSU has been unplugged.",
+                                "PSU %d has been unplugged.", pid);
+            }
+            else {
+                /* PSU has been plugged in */
+                AIM_SYSLOG_INFO("PSU <id> has been plugged in.",
+                                "The given PSU has been plugged in.",
+                                "PSU %d has been plugged in.", pid);
+            }
         }
     }
+
+    BIGLIST_FOREACH_DATA(ble, previous, onlp_oid_hdr_t*, hdr) {
+        onlp_oid_hdr_t* chdr = oid_hdr_entry_find__(current, hdr->id);
+        if(!chdr) {
+            /* A PSU has disappeared. */
+            AIM_SYSLOG_INFO("PSU <id> has disappeared.",
+                            "A PSU has disappeared.",
+                            "PSU %d has disappeared.", ONLP_OID_ID_GET(hdr->id));
+        }
+    }
+
+
+    /* The previous list is deleted and the current list becomes the previous */
+    onlp_oid_get_all_free(previous);
+    previous = current;
+    current = NULL;
     return 0;
 }
 
 static int
 platform_fans_notify__(void)
 {
-    static onlp_oid_t fan_oid_table[ONLP_OID_TABLE_SIZE] = {0};
-    static onlp_fan_info_t fan_info_table[ONLP_OID_TABLE_SIZE];
-    int i = 0;
-    static int flag[ONLP_OID_TABLE_SIZE] = {0};
+    int rv;
+    static biglist_t* previous = NULL;
+    static biglist_t* current = NULL;
 
-    if(fan_oid_table[0] == 0) {
-        /* We haven't retreived the system FAN oids yet. */
-        onlp_sys_info_t si;
-        onlp_oid_t* oidp;
+    biglist_t* ble;
+    onlp_oid_hdr_t* hdr;
 
-        if(onlp_sys_info_get(&si) < 0) {
-            AIM_LOG_ERROR("onlp_sys_info_get() failed.");
-            return -1;
-        }
-        ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, FAN) {
-            fan_oid_table[i++] = *oidp;
-        }
+    if(ONLP_FAILURE(rv = onlp_oid_hdr_get_all(ONLP_OID_CHASSIS,
+                                              ONLP_OID_TYPE_FLAG_FAN, 0x0,
+                                              &current))) {
+        return rv;
     }
 
-    for(i = 0; i < AIM_ARRAYSIZE(fan_oid_table); i++) {
-        onlp_fan_info_t fi;
-        int fid = ONLP_OID_ID_GET(fan_oid_table[i]);
+    if(previous == NULL) {
+        /** Log initial states. */
+        BIGLIST_FOREACH_DATA(ble, current, onlp_oid_hdr_t*, hdr) {
+            int fid = ONLP_OID_ID_GET(hdr->id);
 
-        if(fan_oid_table[i] == 0) {
-            break;
+            if(ONLP_OID_PRESENT(hdr)) {
+                AIM_SYSLOG_INFO("Fan <id> is present.",
+                                "The given fan is present.",
+                                "Fan %d is present.", fid);
+
+                if(ONLP_OID_FAILED(hdr)) {
+                    AIM_SYSLOG_INFO("Fan <id> has failed.",
+                                    "The given fan has failed.",
+                                    "Fan %d has failed.", fid);
+                }
+            }
+            else {
+                AIM_SYSLOG_INFO("Fan <id> is not present.",
+                                "The given fan is not present.",
+                                "Fan %d is not present.", fid);
+            }
         }
+        previous = current;
+        current = NULL;
+        return 0;
+    }
 
-        if(onlp_fan_info_get(fan_oid_table[i], &fi) < 0) {
-            AIM_LOG_ERROR("Failure retreiving status of FAN ID %d",
-                          fid);
+
+    BIGLIST_FOREACH_DATA(ble, current, onlp_oid_hdr_t*, hdr) {
+
+        int fid = ONLP_OID_ID_GET(hdr->id);
+        onlp_oid_hdr_t* phdr = oid_hdr_entry_find__(previous, hdr->id);
+
+        if(!phdr) {
+            /* A new Fan has popped into existance. Unlikely. */
+            AIM_SYSLOG_INFO("Fan <id> has been discovered.",
+                            "A new fan has been discovered.",
+                            "Fan %d has been discovered.", fid);
             continue;
         }
 
-        /* report initial failed state */
-        if ( !flag[i] ) {
-            if ( !(fi.status & 0x1) ) {
-                    AIM_SYSLOG_WARN("Fan <id> is not present.",
-                                "The given Fan is not present.",
-                                "Fan %d is not present.", fid);
-            }
-            if ( fi.status & ONLP_FAN_STATUS_FAILED ) {
-                    AIM_SYSLOG_CRIT("Fan <id> has failed.",
-                                "The given fan has failed.",
-                                "Fan %d has failed.", fid);
-            }
-           flag[i] = 1;
-        }
+        uint32_t xor = hdr->status ^ phdr->status;
 
-        /*
-         * Log any presences or failure transitions.
-         */
-        if(fi.status != fan_info_table[i].status) {
-            uint32_t new = fi.status;
-            uint32_t old = fan_info_table[i].status;
-
-            if( !(old & 0x1) && (new & 0x1) ) {
-                /* FAN Inserted */
+        if(xor & ONLP_OID_STATUS_FLAG_PRESENT) {
+            if(ONLP_OID_PRESENT(hdr)) {
                 AIM_SYSLOG_INFO("Fan <id> has been inserted.",
-                                "The given Fan has been inserted.",
+                                "A fan has been inserted.",
                                 "Fan %d has been inserted.", fid);
             }
-            if( (old & 0x1) && !(new & 0x1) ) {
-                /* FAN Removed */
+            else {
                 AIM_SYSLOG_WARN("Fan <id> has been removed.",
-                                "The given Fan has been removed.",
+                                "A fan has been removed.",
                                 "Fan %d has been removed.", fid);
+                /* The remaining bits are only relevant if the Fan is present. */
+                continue;
             }
-            if( (old & ONLP_FAN_STATUS_FAILED) && !(new & ONLP_FAN_STATUS_FAILED) ) {
-                AIM_SYSLOG_INFO("Fan <id> has recovered.",
-                                "The given Fan has recovered from failure.",
-                                "Fan %d has recovered.", fid);
-            }
-
-            if( !(old & ONLP_FAN_STATUS_FAILED) && (new & ONLP_FAN_STATUS_FAILED) ) {
-                /* FAN Failure */
+        }
+        if(xor & ONLP_OID_STATUS_FLAG_FAILED) {
+            if(ONLP_OID_FAILED(hdr)) {
                 AIM_SYSLOG_CRIT("Fan <id> has failed.",
                                 "The given fan has failed.",
                                 "Fan %d has failed.", fid);
             }
-
-            memcpy(fan_info_table+i, &fi, sizeof(fi));
+            else {
+                AIM_SYSLOG_INFO("Fan <id> has recovered.",
+                                "The given fan has recovered from a failure.",
+                                "Fan %d has recovered.", fid);
+            }
         }
     }
+
+    BIGLIST_FOREACH_DATA(ble, previous, onlp_oid_hdr_t*, hdr) {
+        onlp_oid_hdr_t* chdr = oid_hdr_entry_find__(current, hdr->id);
+        if(!chdr) {
+            /* A Fan has disappeared. */
+            AIM_SYSLOG_INFO("Fan <id> has disappeared.",
+                            "A fan has disappeared.",
+                            "Fan %d has disappeared.", ONLP_OID_ID_GET(hdr->id));
+        }
+    }
+
+
+    /* The previous list is deleted and the current list becomes the previous */
+    onlp_oid_get_all_free(previous);
+    previous = current;
+    current = NULL;
     return 0;
 }
-
-

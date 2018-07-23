@@ -28,46 +28,37 @@
 #include <onlp/led.h>
 
 /**
- * @brief Initialize the LED subsystem.
+ * @brief Software initialization of the LED module.
  */
-int onlp_ledi_init(void);
+int onlp_ledi_sw_init(void);
 
 /**
- * @brief Get the information for the given LED
- * @param id The LED OID
- * @param rv [out] Receives the LED information.
+ * @brief Hardware initialization of the LED module.
+ * @param flags The hardware initialization flags.
  */
-int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv);
+int onlp_ledi_hw_init(uint32_t flags);
 
 /**
- * @brief Get the LED operational status.
- * @param id The LED OID
- * @param rv [out] Receives the operational status.
+ * @brief Deinitialize the led software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
  */
-int onlp_ledi_status_get(onlp_oid_t id, uint32_t* rv);
+int onlp_ledi_sw_denit(void);
 
 /**
  * @brief Get the LED header.
  * @param id The LED OID
- * @param rv [out] Receives the header.
+ * @param[out] rv  Receives the header.
  */
 int onlp_ledi_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 
 /**
- * @brief Turn an LED on or off
+ * @brief Get the information for the given LED
  * @param id The LED OID
- * @param on_or_off (boolean) on if 1 off if 0
- * @param This function is only relevant if the ONOFF capability is set.
- * @notes See onlp_led_set() for a description of the default behavior.
+ * @param[out] rv  Receives the LED information.
  */
-int onlp_ledi_set(onlp_oid_t id, int on_or_off);
-
-/**
- * @brief LED ioctl
- * @param id The LED OID
- * @param vargs The variable argument list for the ioctl call.
- */
-int onlp_ledi_ioctl(onlp_oid_t id, va_list vargs);
+int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv);
 
 /**
  * @brief Set the LED mode.

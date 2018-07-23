@@ -51,12 +51,9 @@ cdefs: &cdefs
 - ONLP_CONFIG_INCLUDE_SHLOCK_GLOBAL_INIT:
     doc: "Include global shlock initialization at module init time."
     default: 0
-- ONLP_CONFIG_INCLUDE_PLATFORM_STATIC:
-    doc: "Specify the platform name directly as a compile-time option."
-    default: 0
-- ONLP_CONFIG_PLATFORM_STATIC:
-    doc: "The name of the static platform if configured."
-    default: "\"unknown\""
+- ONLP_CONFIG_PLATFORM_NAME:
+    doc: "Static platform configuration."
+    default: 'NULL'
 - ONLP_CONFIG_PLATFORM_FILENAME:
     doc: "The local filename containing the current platform identifier."
     default: "\"/etc/onl/platform\""
@@ -88,6 +85,11 @@ cdefs: &cdefs
     doc: "Include API timing profiles."
     default: 0
 
+
+# Log Types
+onlp_log_types: &onlp_log_types
+- JSON
+
 # Error codes
 onlp_status: &onlp_status
 - OK : 0
@@ -101,13 +103,33 @@ onlp_status: &onlp_status
 
 # OID Types
 oid_types: &oid_types
-- SYS : 1
-- THERMAL : 2
-- FAN : 3
-- PSU : 4
-- LED : 5
-- MODULE : 6
-- RTC : 7
+- CHASSIS : 1
+- MODULE : 2
+- THERMAL : 3
+- FAN : 4
+- PSU : 5
+- LED : 6
+- SFP : 7
+- GENERIC : 8
+
+# OID Status Flags
+oid_status: &oid_status
+- PRESENT
+- FAILED
+- OPERATIONAL
+- UNPLUGGED
+
+# OID Output Format
+oid_format_types: &oid_format_types
+- JSON
+- YAML
+- USER
+- DEBUG
+
+# OID Output Flags
+oid_format_flags: &oid_format_flags
+- RECURSIVE
+- MISSING
 
 # OID dump options
 oid_dump: &oid_dump
@@ -120,8 +142,13 @@ oid_show: &oid_show
 - EXTENDED
 - YAML
 
+# OID JSON Flags
+oid_json_flags: &oid_json_flags
+- RECURSIVE
+- UNSUPPORTED_FIELDS
+
 # SFP Control
-sfp_control: &sfp_control
+sfp_control: &sfp_controls
 - RESET
 - RESET_STATE
 - RX_LOS
@@ -131,46 +158,34 @@ sfp_control: &sfp_control
 - LP_MODE
 - POWER_OVERRIDE
 
-# Fan modes
-fan_modes: &fan_modes
-- 'OFF'
-- SLOW
-- NORMAL
-- FAST
-- MAX
+# SFP Types
+sfp_types: &sfp_types
+- SFP
+- QSFP
+- SFP28
+- QSFP28
 
 # Fan Capabilities
 fan_caps: &fan_caps
-- B2F : (1 << 0)
-- F2B : (1 << 1)
-- SET_RPM : (1 << 2)
-- SET_PERCENTAGE : (1 << 3)
-- GET_RPM : (1 << 4)
-- GET_PERCENTAGE : (1 << 5)
+- SET_DIR
+- GET_DIR
+- SET_RPM
+- SET_PERCENTAGE
+- GET_RPM
+- GET_PERCENTAGE
 
 # Fan Direction
 fan_dirs: &fan_dirs
+- UNKNOWN
 - B2F
 - F2B
 
-# Fan status
-fan_status: &fan_status
-- PRESENT : (1 << 0)
-- FAILED  : (1 << 1)
-- B2F     : (1 << 2)
-- F2B     : (1 << 3)
-
-# Thermal status
-thermal_status: &thermal_status
-- PRESENT : (1 << 0)
-- FAILED  : (1 << 1)
-
 # Thermal caps
 thermal_caps: &thermal_caps
-- GET_TEMPERATURE        : (1 << 0)
-- GET_WARNING_THRESHOLD  : (1 << 1)
-- GET_ERROR_THRESHOLD    : (1 << 2)
-- GET_SHUTDOWN_THRESHOLD : (1 << 3)
+- GET_TEMPERATURE
+- GET_WARNING_THRESHOLD
+- GET_ERROR_THRESHOLD
+- GET_SHUTDOWN_THRESHOLD
 
 # Thermal threshold, in milli-celsius
 thermal_threshold: &thermal_threshold
@@ -180,78 +195,45 @@ thermal_threshold: &thermal_threshold
 
 # LED caps
 led_caps: &led_caps
-- ON_OFF            : (1 << 0)
-- CHAR              : (1 << 1)
-- RED               : (1 << 10)
-- RED_BLINKING      : (1 << 11)
-- ORANGE            : (1 << 12)
-- ORANGE_BLINKING   : (1 << 13)
-- YELLOW            : (1 << 14)
-- YELLOW_BLINKING   : (1 << 15)
-- GREEN             : (1 << 16)
-- GREEN_BLINKING    : (1 << 17)
-- BLUE              : (1 << 18)
-- BLUE_BLINKING     : (1 << 19)
-- PURPLE            : (1 << 20)
-- PURPLE_BLINKING   : (1 << 21)
-- AUTO              : (1 << 22)
-- AUTO_BLINKING     : (1 << 23)
-
-# LED status
-led_status: &led_status
-- PRESENT : (1 << 0)
-- FAILED : (1 << 1)
-- 'ON' : (1 << 2)
-
-# LED modes
-# The enumerations MUST match the CAP bit positions.
-led_mode: &led_mode
 - 'OFF'
-- 'ON'
-- 'BLINKING'
-- 'RED' : 10
-- 'RED_BLINKING' : 11
-- 'ORANGE' : 12
-- 'ORANGE_BLINKING' : 13
-- 'YELLOW' : 14
-- 'YELLOW_BLINKING' : 15
-- 'GREEN' : 16
-- 'GREEN_BLINKING' : 17
-- 'BLUE' : 18
-- 'BLUE_BLINKING' : 19
-- 'PURPLE' : 20
-- 'PURPLE_BLINKING' : 21
-- 'AUTO' : 22
-- 'AUTO_BLINKING' : 23
+- AUTO
+- AUTO_BLINKING
+- CHAR
+- RED
+- RED_BLINKING
+- ORANGE
+- ORANGE_BLINKING
+- YELLOW
+- YELLOW_BLINKING
+- GREEN
+- GREEN_BLINKING
+- BLUE
+- BLUE_BLINKING
+- PURPLE
+- PURPLE_BLINKING
 
-# PSU Status
-psu_status: &psu_status
-- PRESENT   : (1 << 0)
-- FAILED    : (1 << 1)
-- UNPLUGGED : (1 << 2)
+# PSU types
+psu_types: &psu_types
+- AC
+- DC12
+- DC48
 
 # PSU caps
 psu_caps: &psu_caps
-- AC :   (1 << 0)
-- DC12 : (1 << 1)
-- DC48 : (1 << 2)
-- VIN  : (1 << 3)
-- VOUT : (1 << 4)
-- IIN  : (1 << 5)
-- IOUT : (1 << 6)
-- PIN  : (1 << 7)
-- POUT : (1 << 8)
+- GET_TYPE
+- GET_VIN
+- GET_VOUT
+- GET_IIN
+- GET_IOUT
+- GET_PIN
+- GET_POUT
 
-# SFP Controls
-sfp_controls: &sfp_controls
-- RESET
-- RESET_STATE
-- RX_LOS
-- TX_FAULT
-- TX_DISABLE
-- TX_DISABLE_CHANNEL
-- LP_MODE
-- POWER_OVERRIDE
+
+# OID Field Masks
+oid_field_masks:
+- OID_HDR_DESCRIPTION
+- OID_HDR_POID
+- OID_HDR_COIDS
 
 definitions:
   cdefs:
@@ -259,30 +241,66 @@ definitions:
       defs: *cdefs
       basename: onlp_config
 
+  aim_custom_log_macro:
+    onlp:
+      flags: *onlp_log_types
+      prefix: ONLP_LOG_FLAG_
+
   enum: &enums
+    onlp_log_flag:
+      members: *onlp_log_types
+
     onlp_status:
       tag: onlp
       members: *onlp_status
+
     onlp_oid_type:
       tag: oid
       members: *oid_types
+
+    onlp_oid_type_flag:
+      tag: oid
+      members: *oid_types
+      flags: True
+      flag_offset: 1
+
+    onlp_oid_status_flag:
+      tag: oid
+      members: *oid_status
+      flags: True
+
+    onlp_oid_format:
+      tag: oid
+      members: *oid_format_types
+
+    onlp_oid_format_flags:
+      tag: oid
+      members: *oid_format_flags
+      flags: True
+
     onlp_oid_show:
       tag: oid
       members: *oid_show
       flags: True
+
     onlp_oid_dump:
       tag: oid
       members: *oid_dump
+
+    onlp_oid_json_flag:
+      tag: oid
+      members: *oid_json_flags
       flags: True
-    onlp_thermal_status:
-      tag: thermal
-      members: *thermal_status
+
     onlp_thermal_caps:
       tag: thermal
       members: *thermal_caps
+      flags: True
+
     onlp_thermal_threshold:
       tag: thermal
       members: *thermal_threshold
+
     onlp_sfp_control:
       tag: sfp1
       members: *sfp_controls
@@ -292,33 +310,36 @@ definitions:
       members: *sfp_controls
       flags: True
 
-    onlp_fan_mode:
-      tag: fan
-      members: *fan_modes
-    onlp_fan_status:
-      tag: fan
-      members: *fan_status
+    onlp_sfp_type:
+      tag: sfp2
+      members: *sfp_types
+
     onlp_fan_dir:
       tag: fan
       members: *fan_dirs
+
     onlp_fan_caps:
       tag: fan
       members: *fan_caps
+      flags: True
+
     onlp_led_caps:
       tag: led
       members: *led_caps
-    onlp_led_status:
-      tag: led
-      members: *led_status
+      flags: True
+
     onlp_led_mode:
       tag: led
-      members: *led_mode
-    onlp_psu_status:
+      members: *led_caps
+
+    onlp_psu_type:
       tag: psu
-      members: *psu_status
+      members: *psu_types
+
     onlp_psu_caps:
       tag: psu
       members: *psu_caps
+      flags: True
 
   pyenum: *enums
 
@@ -330,6 +351,8 @@ definitions:
         - strncpy
         - strlen
 
+
+
   xenum:
     ONLP_ENUMERATION_ENTRY:
       members: *enums
@@ -337,3 +360,19 @@ definitions:
   xmacro:
     ONLP_OID_TYPE_ENTRY:
       members: *oid_types
+      allcases: True
+
+    ONLP_ASSET_INFO_ENTRY:
+      members:
+        - manufacturer,  Manufacture,   str
+        - date,          Date,          str
+        - part_number,   Part Number,   str
+        - serial_number, Serial Number, str
+        - hardware_revision, Hardware Revision, str
+        - firmware_revision, Firmware Revision, str
+        - cpld_revision, CPLD Revision, str
+        - manufacture_date, Manufacter Date, str
+        - description, Description, str
+        - additional, Additional, str
+
+  pyenum: *enums

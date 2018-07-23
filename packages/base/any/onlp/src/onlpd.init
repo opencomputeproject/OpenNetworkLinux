@@ -7,7 +7,7 @@
 # Default-Start:   2 3 4 5
 # Default-Stop:    0 1 6
 # Short-Description: Start ONLP Platform Agent
-# Description:        ONLP PLATFORM AGENTX
+# Description:        ONLP PLATFORM AGENT
 ### END INIT INFO
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -16,7 +16,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
 DAEMON=/bin/onlpd
 PIDFILE=/var/run/onlpd.pid
-ONLP_SNMPD_OPTS="-M $PIDFILE"
+ONLP_DAEMON_OPTS="platform manager daemon onlpd /var/log/onlpd.log $PIDFILE"
 QUIET=
 
 test -x $DAEMON || exit 5
@@ -31,7 +31,7 @@ case $1 in
 			log_failure_msg "user \"$RUNASUSER\" does not exist"
 			exit 1
 		fi
-  		start-stop-daemon --start $QUIET --oknodo --pidfile $PIDFILE --startas $DAEMON -- $ONLP_SNMPD_OPTS $ONLP_SNMPD_EXTRA_OPTS
+  		start-stop-daemon --start $QUIET --oknodo --pidfile $PIDFILE --startas $DAEMON -- $ONLP_DAEMON_OPTS
 		status=$?
 		log_end_msg $status
   		;;

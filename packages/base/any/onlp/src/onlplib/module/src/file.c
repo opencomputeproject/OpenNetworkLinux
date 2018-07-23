@@ -319,7 +319,7 @@ onlp_file_vwrite(uint8_t* data, int len, const char* fmt, va_list vargs)
     int rv;
     int wlen;
 
-    if ((fd = vopen__(&fname, O_WRONLY, fmt, vargs)) < 0) {
+    if ((fd = vopen__(&fname, O_WRONLY|O_CREAT, fmt, vargs)) < 0) {
         rv = fd;
     }
     else {

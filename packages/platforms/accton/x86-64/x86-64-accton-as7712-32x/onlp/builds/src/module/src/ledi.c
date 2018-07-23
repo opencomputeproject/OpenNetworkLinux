@@ -23,24 +23,12 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/ledi.h>
-#include <sys/mman.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <onlplib/mmap.h>
-
+#include <onlp/platformi/base.h>
 #include "platform_lib.h"
 
 #define prefix_path "/sys/class/leds/accton_as7712_32x_led::"
 #define filename    "brightness"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_LED(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
 
 /* LED related data
  */
@@ -53,7 +41,7 @@ enum onlp_led_id
     LED_PSU1,
     LED_PSU2
 };
-        
+
 enum led_light_mode {
 	LED_MODE_OFF = 0,
 	LED_MODE_GREEN,
@@ -103,28 +91,28 @@ static onlp_led_info_t linfo[] =
 {
     { }, /* Not used */
     {
-        { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 1 (DIAG LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_ORANGE,
+        { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 1 (DIAG LED)", ONLP_OID_CHASSIS,
+          .status = ONLP_OID_STATUS_FLAG_PRESENT },
+        ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_ORANGE,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 2 (LOC LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_BLUE,
+        { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 2 (LOC LED)", ONLP_OID_CHASSIS,
+          .status = ONLP_OID_STATUS_FLAG_PRESENT },
+        ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_BLUE,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FAN), "Chassis LED 3 (FAN LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
+        { ONLP_LED_ID_CREATE(LED_FAN), "Chassis LED 3 (FAN LED)", ONLP_OID_CHASSIS,
+          .status = ONLP_OID_STATUS_FLAG_PRESENT},
         ONLP_LED_CAPS_AUTO,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 4 (PSU1 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
+        { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 4 (PSU1 LED)", ONLP_OID_CHASSIS,
+          .status = ONLP_OID_STATUS_FLAG_PRESENT},
         ONLP_LED_CAPS_AUTO,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_PSU2), "Chassis LED 4 (PSU2 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
+        { ONLP_LED_ID_CREATE(LED_PSU2), "Chassis LED 4 (PSU2 LED)", ONLP_OID_CHASSIS,
+          .status = ONLP_OID_STATUS_FLAG_PRESENT},
         ONLP_LED_CAPS_AUTO,
     },
 };
@@ -132,7 +120,7 @@ static onlp_led_info_t linfo[] =
 static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driver_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for (i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && driver_led_mode == led_map[i].driver_led_mode)
@@ -140,14 +128,14 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driv
             return led_map[i].onlp_led_mode;
         }
     }
-    
+
     return 0;
 }
 
 static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for(i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && onlp_led_mode == led_map[i].onlp_led_mode)
@@ -155,22 +143,15 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
             return led_map[i].driver_led_mode;
         }
     }
-    
+
     return 0;
 }
 
-/*
- * This function will be called prior to any other onlp_ledi_* functions.
- */
 int
-onlp_ledi_init(void)
+onlp_ledi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    /*
-     * Diag LED Off
-     */
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
-
-    return ONLP_STATUS_OK;
+    *hdr = linfo[ONLP_OID_ID_GET(oid)].hdr;
+    return 0;
 }
 
 int
@@ -179,52 +160,23 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     int  local_id;
 	char data[2] = {0};
     char fullpath[50] = {0};
-		
-    VALIDATE(id);
-	
+
     local_id = ONLP_OID_ID_GET(id);
-    		
+
     /* get fullpath */
     sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
-		
+
 	/* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Set LED mode */
     if (deviceNodeReadString(fullpath, data, sizeof(data), 0) != 0) {
-        DEBUG_PRINT("%s(%d)\r\n", __FUNCTION__, __LINE__);
         return ONLP_STATUS_E_INTERNAL;
     }
 
     info->mode = driver_to_onlp_led_mode(local_id, atoi(data));
 
-    /* Set the on/off status */
-    if (info->mode != ONLP_LED_MODE_OFF) {
-        info->status |= ONLP_LED_STATUS_ON;
-    }
-
     return ONLP_STATUS_OK;
-}
-
-/*
- * Turn an LED on or off.
- *
- * This function will only be called if the LED OID supports the ONOFF
- * capability.
- *
- * What 'on' means in terms of colors or modes for multimode LEDs is
- * up to the platform to decide. This is intended as baseline toggle mechanism.
- */
-int
-onlp_ledi_set(onlp_oid_t id, int on_or_off)
-{
-    VALIDATE(id);
-
-    if (!on_or_off) {
-        return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
-    }
-
-    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 /*
@@ -237,13 +189,11 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  local_id;
-    char fullpath[50] = {0};		
+    char fullpath[50] = {0};
 
-    VALIDATE(id);
-	
     local_id = ONLP_OID_ID_GET(id);
-    sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);	
-    
+    sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
+
     if (deviceNodeWriteInt(fullpath, onlp_to_driver_led_mode(local_id, mode), 0) != 0)
     {
         return ONLP_STATUS_E_INTERNAL;
@@ -251,13 +201,3 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 
     return ONLP_STATUS_OK;
 }
-
-/*
- * Generic LED ioctl interface.
- */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

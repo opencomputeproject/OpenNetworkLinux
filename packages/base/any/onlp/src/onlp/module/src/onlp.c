@@ -25,11 +25,15 @@
 #include <onlp/onlp_config.h>
 #include <onlp/onlp.h>
 
-#include <onlp/sys.h>
-#include <onlp/sfp.h>
-#include <onlp/led.h>
-#include <onlp/psu.h>
+#include <onlp/platform.h>
+
+#include <onlp/chassis.h>
 #include <onlp/fan.h>
+#include <onlp/generic.h>
+#include <onlp/led.h>
+#include <onlp/module.h>
+#include <onlp/psu.h>
+#include <onlp/sfp.h>
 #include <onlp/thermal.h>
 
 #include "onlp_int.h"
@@ -37,40 +41,44 @@
 #include "onlp_locks.h"
 
 int
-onlp_init(void)
+onlp_sw_init(const char* platform)
 {
     extern void __onlp_module_init__(void);
     __onlp_module_init__();
-
-    char* cfile;
-
-    if( (cfile=getenv(ONLP_CONFIG_CONFIGURATION_ENV)) == NULL) {
-        cfile = ONLP_CONFIG_CONFIGURATION_FILENAME;
-    }
 
 #if ONLP_CONFIG_INCLUDE_API_LOCK == 1
     onlp_api_lock_init();
 #endif
 
+    ONLP_TRY(onlp_platform_sw_init(platform));
 
-    onlp_json_init(cfile);
-    onlp_sys_init();
-    onlp_sfp_init();
-    onlp_led_init();
-    onlp_psu_init();
-    onlp_fan_init();
-    onlp_thermal_init();
+#define ONLP_OID_TYPE_ENTRY(_name, _id, _upper, _lower) \
+    ONLP_TRY(onlp_##_lower##_sw_init());
+#include <onlp/onlp.x>
+
     return 0;
 }
 
 int
-onlp_denit(void)
+onlp_hw_init(uint32_t flags)
 {
+    return 0;
+}
+
+int
+onlp_sw_denit(void)
+{
+
+#define ONLP_OID_TYPE_ENTRY(_name, _id, _upper, _lower) \
+    ONLP_TRY(onlp_##_lower##_sw_denit());
+#include <onlp/onlp.x>
+
+    ONLP_TRY(onlp_platform_sw_denit());
+
 #if ONLP_CONFIG_INCLUDE_API_LOCK == 1
     onlp_api_lock_denit();
 #endif
 
-    onlp_json_denit();
 
     return 0;
 }

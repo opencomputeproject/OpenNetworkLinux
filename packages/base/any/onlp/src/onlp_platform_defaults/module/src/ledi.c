@@ -25,11 +25,11 @@
 #include "onlp_platform_defaults_int.h"
 #include "onlp_platform_defaults_log.h"
 
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_init(void));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_status_get(onlp_oid_t id, uint32_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_init(void));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_hw_init(uint32_t flags));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_denit(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_set(onlp_oid_t id, int on_or_off));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_ioctl(onlp_oid_t id, va_list vargs));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv));
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_char_set(onlp_oid_t id, char c));

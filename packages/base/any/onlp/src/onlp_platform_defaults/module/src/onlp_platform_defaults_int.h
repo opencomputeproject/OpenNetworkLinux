@@ -1,21 +1,21 @@
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
- * 
- *        Copyright 2014, 2015 Big Switch Networks, Inc.       
- * 
+ *
+ *        Copyright 2014, 2015 Big Switch Networks, Inc.
+ *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
  * with the License. You may obtain a copy of the License at
- * 
+ *
  *        http://www.eclipse.org/legal/epl-v10.html
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
  * either express or implied. See the License for the specific
  * language governing permissions and limitations under the
  * License.
- * 
+ *
  * </bsn.cl>
  ************************************************************
  *
@@ -71,20 +71,26 @@ extern aim_map_si_t onlp_platform_defaults_log_flag_desc_map[];
 
 #define ONLP_SYSI_PLATFORM_NAME_DEFAULT "onlp-sysi-platform-default"
 
-
-#define __ONLP_DEFAULTI_IMPLEMENTATION(__f)             \
-    int __ONLP_DEFAULTI __f                             \
-    {                                                   \
-        ONLP_PLATFORM_DEFAULTS_LOG_CALLED("using default %s", __func__);     \
-        return ONLP_STATUS_E_UNSUPPORTED;               \
+#define __ONLP_DEFAULT_IMPLEMENTATION__(_f, _rc)                        \
+    int __ONLP_DEFAULTI _f                                              \
+    {                                                                   \
+        ONLP_PLATFORM_DEFAULTS_LOG_CALLED("using default %s",           \
+                                          __func__);                    \
+        return _rc;                                                     \
     }
 
-#define __ONLP_DEFAULTI_VIMPLEMENTATION(__f)             \
-    void __ONLP_DEFAULTI __f                             \
-    {                                                    \
-        ONLP_PLATFORM_DEFAULTS_LOG_CALLED("using default %s", __func__); \
-    }
+#define __ONLP_DEFAULTI_IMPLEMENTATION(_f)                              \
+    __ONLP_DEFAULT_IMPLEMENTATION__(_f, ONLP_STATUS_E_UNSUPPORTED)
 
+#define __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(_f)                     \
+    __ONLP_DEFAULT_IMPLEMENTATION__(_f, ONLP_STATUS_OK)
+
+#define __ONLP_DEFAULTI_VIMPLEMENTATION(_f)                             \
+    void __ONLP_DEFAULTI _f                                             \
+    {                                                                   \
+        ONLP_PLATFORM_DEFAULTS_LOG_CALLED("using default %s",           \
+                                          __func__);                    \
+    }
 
 
 #endif /* __ONLP_PLATFORM_DEFAULTS_INT_H__ */

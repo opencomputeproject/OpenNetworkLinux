@@ -28,89 +28,27 @@
 #include "onlp_int.h"
 #include "onlp_locks.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_THERMAL(_id)) {         \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-#define VALIDATENR(_id)                         \
-    do {                                        \
-        if(!ONLP_OID_IS_THERMAL(_id)) {         \
-            return;                             \
-        }                                       \
-    } while(0)
+static int
+onlp_thermal_sw_init_locked__(void)
+{
+    return onlp_thermali_sw_init();
+}
+ONLP_LOCKED_API0(onlp_thermal_sw_init);
 
 
 static int
-onlp_thermal_init_locked__(void)
+onlp_thermal_hw_init_locked__(uint32_t flags)
 {
-    return onlp_thermali_init();
+    return onlp_thermali_hw_init(flags);
 }
-ONLP_LOCKED_API0(onlp_thermal_init);
-
-#if ONLP_CONFIG_INCLUDE_PLATFORM_OVERRIDES == 1
+ONLP_LOCKED_API1(onlp_thermal_hw_init, uint32_t, flags)
 
 static int
-onlp_thermali_info_from_json__(cJSON* data, onlp_thermal_info_t* info, int errorcheck)
+onlp_thermal_sw_denit_locked__(void)
 {
-    int rv;
-    int t;
-
-    if(data == NULL) {
-        return (errorcheck) ? ONLP_STATUS_E_PARAM : 0;
-    }
-
-    rv = cjson_util_lookup_int(data, (int*) &info->status, "status");
-    if(rv < 0 && errorcheck) return rv;
-
-    rv = cjson_util_lookup_int(data, &t, "mcelsius");
-    if(rv < 0 && errorcheck) return rv;
-    info->mcelsius = t;
-
-    return 0;
+    return onlp_thermali_sw_denit();
 }
-
-#endif
-
-static int
-onlp_thermal_info_get_locked__(onlp_oid_t oid, onlp_thermal_info_t* info)
-{
-    int rv;
-    VALIDATE(oid);
-
-    rv = onlp_thermali_info_get(oid, info);
-    if(rv >= 0) {
-
-#if ONLP_CONFIG_INCLUDE_PLATFORM_OVERRIDES == 1
-        int id = ONLP_OID_ID_GET(oid);
-        cJSON* entry = NULL;
-
-        cjson_util_lookup(onlp_json_get(0), &entry, "overrides.thermal.%d", id);
-        onlp_thermali_info_from_json__(entry, info, 0);
-#endif
-
-    }
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_thermal_info_get, onlp_oid_t, oid, onlp_thermal_info_t*, info);
-
-static int
-onlp_thermal_status_get_locked__(onlp_oid_t id, uint32_t* status)
-{
-    int rv = onlp_thermali_status_get(id, status);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_thermal_info_t ti;
-        rv = onlp_thermali_info_get(id, &ti);
-        *status = ti.status;
-    }
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_thermal_status_get, onlp_oid_t, id, uint32_t*, status);
+ONLP_LOCKED_API0(onlp_thermal_sw_denit);
 
 static int
 onlp_thermal_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
@@ -127,138 +65,116 @@ onlp_thermal_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
     return rv;
 }
 ONLP_LOCKED_API2(onlp_thermal_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
+
+
+static int
+onlp_thermal_info_get_locked__(onlp_oid_t oid, onlp_thermal_info_t* info)
+{
+    ONLP_OID_THERMAL_VALIDATE(oid);
+    return onlp_thermali_info_get(oid, info);
+}
+ONLP_LOCKED_API2(onlp_thermal_info_get, onlp_oid_t, oid, onlp_thermal_info_t*, info);
+
+
 int
-onlp_thermal_ioctl(int code, ...)
+onlp_thermal_format(onlp_oid_t oid, onlp_oid_format_t format,
+                    aim_pvs_t* pvs, uint32_t flags)
 {
     int rv;
-    va_list vargs;
-    va_start(vargs, code);
-    rv = onlp_thermal_vioctl(code, vargs);
-    va_end(vargs);
+    onlp_thermal_info_t info;
+    if(ONLP_SUCCESS(rv = onlp_thermal_info_get(oid, &info))) {
+        return onlp_thermal_info_format(&info, format, pvs, flags);
+    }
     return rv;
 }
 
-static int
-onlp_thermal_vioctl_locked__(int code, va_list vargs)
+int
+onlp_thermal_info_format(onlp_thermal_info_t* info,
+                         onlp_oid_format_t format,
+                         aim_pvs_t* pvs, uint32_t flags)
 {
-    return onlp_thermali_ioctl(code, vargs);
-}
-ONLP_LOCKED_API2(onlp_thermal_vioctl, int, code, va_list, vargs);
-
-
-/************************************************************
- *
- * Debug and Show Functions
- *
- ***********************************************************/
-void
-onlp_thermal_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
-{
-    int rv;
-    iof_t iof;
-    onlp_thermal_info_t info;
-
-    VALIDATENR(id);
-    onlp_oid_dump_iof_init_default(&iof, pvs);
-
-    iof_push(&iof, "thermal @ %d", ONLP_OID_ID_GET(id));
-    rv = onlp_thermal_info_get(id, &info);
-    if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
-    }
-    else {
-        onlp_oid_show_description(&iof, &info.hdr);
-        if(info.status & 1) {
-            /* Present */
-            iof_iprintf(&iof, "Status: %{onlp_thermal_status_flags}", info.status);
-            iof_iprintf(&iof, "Caps:   %{onlp_thermal_caps_flags}", info.caps);
-            iof_iprintf(&iof, "Temperature: %d", info.mcelsius);
-            iof_push(&iof, "thresholds");
-            {
-                iof_iprintf(&iof, "Warning: %d", info.thresholds.warning);
-                iof_iprintf(&iof, "Error: %d", info.thresholds.error);
-                iof_iprintf(&iof, "Shutdown: %d", info.thresholds.shutdown);
-                iof_pop(&iof);
-            }
-        }
-        else {
-            iof_iprintf(&iof, "Not present.");
-        }
-    }
-    iof_pop(&iof);
+    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_thermal_caps_flags} m=%d thresholds=[ %d, %d, %d ]\n",
+               info, info->caps, info->mcelsius,
+               info->thresholds.warning, info->thresholds.error, info->thresholds.shutdown);
+    return 0;
 }
 
-void
-onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_thermal_info_to_user_json(onlp_thermal_info_t* info, cJSON** cjp, uint32_t flags)
 {
     int rv;
-    iof_t iof;
-    onlp_thermal_info_t ti;
-    VALIDATENR(id);
-    int yaml;
+    cJSON* object;
 
-    onlp_oid_show_iof_init_default(&iof, pvs, flags);
+    rv = onlp_info_to_user_json_create(&info->hdr, &object, flags);
+    if(rv > 0) {
 
+#define _MILLIFIELD(_cap, _name, _field)                                \
+        if(ONLP_THERMAL_INFO_CAP_IS_SET(info, _cap)) {                  \
+            cjson_util_add_string_to_object(object, _name, "%d.%d",     \
+                                            ONLP_MILLI_NORMAL_INTEGER_TENTHS(info->_field)); \
+        }                                                               \
 
-    rv = onlp_thermal_info_get(id, &ti);
-
-    yaml = flags & ONLP_OID_SHOW_YAML;
-
-    if(yaml) {
-        iof_push(&iof, "- ");
-        iof_iprintf(&iof, "Name: Thermal %d", ONLP_OID_ID_GET(id));
-    }
-    else {
-        iof_push(&iof, "Thermal %d", ONLP_OID_ID_GET(id));
+        _MILLIFIELD(GET_TEMPERATURE, "Temperature", mcelsius);
     }
 
-    if(rv < 0) {
-        if(yaml) {
-            iof_iprintf(&iof, "State: Error");
-            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
-        }
-        else {
-            onlp_oid_info_get_error(&iof, rv);
-        }
-    }
-    else {
-        onlp_oid_show_description(&iof, &ti.hdr);
-        if(ti.status & 0x1) {
-            /* Present */
-            if(ti.status & ONLP_THERMAL_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: Failed");
-            }
-            else {
-                iof_iprintf(&iof, "Status: Functional");
-                if(ti.caps & ONLP_THERMAL_CAPS_GET_TEMPERATURE) {
-                    iof_iprintf(&iof, "Temperature: %d.%d C",
-                                ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.mcelsius));
-                }
-#if ONLP_CONFIG_INCLUDE_THERMAL_THRESHOLDS == 1
+    return onlp_info_to_user_json_finish(&info->hdr, object, cjp, flags);
 
-                if(ti.caps & ONLP_THERMAL_CAPS_GET_ANY_THRESHOLD) {
-                    iof_push(&iof, "Thresholds:");
-                    if(ti.caps & ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD) {
-                        iof_iprintf(&iof, "Warning : %d.%d C",
-                                    ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.warning));
-                    }
-                    if(ti.caps & ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD) {
-                        iof_iprintf(&iof, "Error   : %d.%d C",
-                                    ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.error));
-                    }
-                    if(ti.caps & ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD) {
-                        iof_iprintf(&iof, "Shutdown: %d.%d C",
-                                    ONLP_MILLI_NORMAL_INTEGER_TENTHS(ti.thresholds.shutdown));
-                    }
-                    iof_pop(&iof);
-                }
-#endif
-            }
-        }
-        else {
-            /* Not present */
-            onlp_oid_show_state_missing(&iof);
-        }
+}
+
+int
+onlp_thermal_info_to_json(onlp_thermal_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    cJSON* cj;
+
+    ONLP_IF_ERROR_RETURN(onlp_info_to_json_create(&info->hdr, &cj, flags));
+    cJSON_AddItemToObject(cj, "caps", cjson_util_flag_array(info->caps,
+                                                            onlp_thermal_caps_map));
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_TEMPERATURE)) {
+        cJSON_AddNumberToObject(cj, "mcelsius", info->mcelsius);
     }
-    iof_pop(&iof);
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_WARNING_THRESHOLD)) {
+        cJSON_AddNumberToObject(cj, "warning-threshold",
+                                info->thresholds.warning);
+    }
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_ERROR_THRESHOLD)) {
+        cJSON_AddNumberToObject(cj, "error-threshold",
+                                info->thresholds.error);
+    }
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_SHUTDOWN_THRESHOLD)) {
+        cJSON_AddNumberToObject(cj, "shutdown-threshold",
+                                info->thresholds.shutdown);
+    }
+    return onlp_info_to_json_finish(&info->hdr, cj, cjp, flags);
+}
+
+int
+onlp_thermal_info_from_json(cJSON* cj, onlp_thermal_info_t* info)
+{
+    cJSON* j;
+    memset(info, 0, sizeof(*info));
+
+    ONLP_IF_ERROR_RETURN(onlp_oid_hdr_from_json(cj, &info->hdr));
+    ONLP_IF_ERROR_RETURN(cjson_util_lookup(cj, &j, "caps"));
+    ONLP_IF_ERROR_RETURN(cjson_util_array_to_flags(j, &info->caps,
+                                                   onlp_thermal_caps_map));
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_TEMPERATURE)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->mcelsius, "mcelsius"));
+    }
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_WARNING_THRESHOLD)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj,
+                                                   &info->thresholds.warning,
+                                                   "warning-threshold"));
+    }
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_ERROR_THRESHOLD)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj,
+                                                   &info->thresholds.error,
+                                                   "error-threshold"));
+    }
+    if(ONLP_THERMAL_INFO_CAP_IS_SET(info, GET_SHUTDOWN_THRESHOLD)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj,
+                                                   &info->thresholds.shutdown,
+                                                   "shutdown-threshold"));
+    }
+
+    return 0;
 }

@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * Thermal Sensor Management.
+ * @file
+ * @brief Thermal Sensor Management.
+ * @addtogroup oid-thermal
+ * @{
  *
  ************************************************************/
 #ifndef __ONLP_THERMAL_H__
@@ -37,12 +40,6 @@ typedef enum onlp_thermal_caps_e {
     ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD = (1 << 2),
     ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD = (1 << 3),
 } onlp_thermal_caps_t;
-
-/** onlp_thermal_status */
-typedef enum onlp_thermal_status_e {
-    ONLP_THERMAL_STATUS_PRESENT = (1 << 0),
-    ONLP_THERMAL_STATUS_FAILED = (1 << 1),
-} onlp_thermal_status_t;
 
 /** onlp_thermal_threshold */
 typedef enum onlp_thermal_threshold_e {
@@ -81,86 +78,87 @@ typedef struct onlp_thermal_info_s {
     /** OID Header */
     onlp_oid_hdr_t hdr;
 
-    /** Status */
-    uint32_t status;
-
     /** Capabilities */
     uint32_t caps;
 
-    /* Current temperature in milli-celsius */
+    /** Current temperature in milli-celsius */
     int mcelsius;
 
+    /** Thermal Thresholds */
     struct {
-        /* Warning temperature threshold in milli-celsius */
+        /** Warning temperature threshold in milli-celsius */
         int warning;
 
-        /* Error temperature threshold in milli-celsius */
+        /** Error temperature threshold in milli-celsius */
         int error;
 
-        /* System shutdown temperature threshold in milli-celsius */
+        /** System shutdown temperature threshold in milli-celsius */
         int shutdown;
     } thresholds;
 
 } onlp_thermal_info_t;
 
-/**
- * @brief Initialize the thermal subsystem.
- */
-int onlp_thermal_init(void);
+#define ONLP_THERMAL_INFO_CAP_IS_SET(_pinfo, _name)     \
+    ((_pinfo)->caps & ONLP_THERMAL_CAPS_##_name)
 
 /**
- * @brief Retrieve information about the given thermal id.
- * @param id The thermal oid.
- * @param rv [out] Receives the thermal information.
+ * @brief Software initialization of the thermal module.
  */
-int onlp_thermal_info_get(onlp_oid_t id, onlp_thermal_info_t* rv);
+int onlp_thermal_sw_init(void);
 
 /**
- * @brief Retrieve the thermal's operational status.
- * @param id The thermal oid.
- * @param rv [out] Receives the operational status.
+ * @brief Hardware initialization of the thermal module.
+ * @param flags The hardware initialization flags.
  */
-int onlp_thermal_status_get(onlp_oid_t id, uint32_t* rv);
+int onlp_thermal_hw_init(uint32_t flags);
+
+/**
+ * @brief Deinitialize the thermal software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
+ */
+int onlp_thermal_sw_denit(void);
 
 /**
  * @brief Retrieve the thermal's oid header.
  * @param id The thermal oid.
- * @param rv [out] Receives the header.
+ * @param[out] rv Receives the header.
  */
-int onlp_thermal_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_thermal_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rv);
 
 /**
- * @brief Thermal driver ioctl.
- * @param code Thermal ioctl code.
- * @param ... Arguments
+ * @brief Retrieve information about the given thermal id.
+ * @param id The thermal oid.
+ * @param[out] rv Receives the thermal information.
  */
-int onlp_thermal_ioctl(int code, ...);
+int onlp_thermal_info_get(onlp_oid_t oid, onlp_thermal_info_t* rv);
 
 /**
- * @brief Thermal driver ioctl.
- * @param code The thermal ioctl code.
- * @param vargs The arguments.
- */
-int onlp_thermal_vioctl(int code, va_list vargs);
-
-/**
- * @brief Thermal OID debug dump.
- * @param id The thermal id.
+ * @brief Format a thermal oid.
+ * @param oid The oid.
+ * @param format The output format.
  * @param pvs The output pvs.
- * @param flags The dump flags.
+ * @param flags The format flags.
  */
-void onlp_thermal_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags);
+int onlp_thermal_format(onlp_oid_t oid, onlp_oid_format_t format,
+                        aim_pvs_t* pvs, uint32_t flags);
 
 /**
- * @brief Show the given thermal OID.
- * @param id The Thermal OID
- * @param pvs The output pvs
- * @param flags The output flags
+ * @brief Format a thermal info structure.
+ * @param info The info structure.
+ * @param format The output format.
+ * @param pvs The output pvs.
+ * @param flags The format flags.
  */
-void onlp_thermal_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags);
+int onlp_thermal_info_format(onlp_thermal_info_t* info,
+                             onlp_oid_format_t format,
+                             aim_pvs_t* pvs, uint32_t flags);
 
 
-
+int onlp_thermal_info_to_user_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
+int onlp_thermal_info_to_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
+int onlp_thermal_info_from_json(cJSON* cj, onlp_thermal_info_t* info);
 
 /******************************************************************************
  *
@@ -192,27 +190,6 @@ extern aim_map_si_t onlp_thermal_caps_map[];
 extern aim_map_si_t onlp_thermal_caps_desc_map[];
 
 /** Enum names. */
-const char* onlp_thermal_status_name(onlp_thermal_status_t e);
-
-/** Enum values. */
-int onlp_thermal_status_value(const char* str, onlp_thermal_status_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_thermal_status_desc(onlp_thermal_status_t e);
-
-/** Enum validator. */
-int onlp_thermal_status_valid(onlp_thermal_status_t e);
-
-/** validator */
-#define ONLP_THERMAL_STATUS_VALID(_e) \
-    (onlp_thermal_status_valid((_e)))
-
-/** onlp_thermal_status_map table. */
-extern aim_map_si_t onlp_thermal_status_map[];
-/** onlp_thermal_status_desc_map table. */
-extern aim_map_si_t onlp_thermal_status_desc_map[];
-
-/** Enum names. */
 const char* onlp_thermal_threshold_name(onlp_thermal_threshold_t e);
 
 /** Enum values. */
@@ -235,3 +212,4 @@ extern aim_map_si_t onlp_thermal_threshold_desc_map[];
 /* <auto.end.enum(tag:thermal).supportheader> */
 
 #endif /* __ONLP_THERMAL_H__ */
+/* @} */

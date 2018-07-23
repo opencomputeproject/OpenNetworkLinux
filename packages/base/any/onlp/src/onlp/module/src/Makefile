@@ -25,6 +25,4 @@
 include $(ONL)/make/config.mk
 
 ucli:
-	$(SUBMODULE_BIGCODE)/tools/uclihandlers.py onlp_ucli.c
-
-
+	$(SUBMODULE_BIGCODE)/tools/uclihandlers2.py onlp_ucli.c

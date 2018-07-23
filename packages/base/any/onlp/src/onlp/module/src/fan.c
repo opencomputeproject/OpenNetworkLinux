@@ -29,159 +29,71 @@
 #include "onlp_locks.h"
 #include "onlp_log.h"
 #include "onlp_json.h"
+#include <cjson_util/cjson_util_format.h>
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_FAN(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
+/**
+ * Fan Software Init
+ */
+static int
+onlp_fan_sw_init_locked__(void)
+{
+    return onlp_fani_sw_init();
+}
+ONLP_LOCKED_API0(onlp_fan_sw_init)
 
-#define VALIDATENR(_id)                         \
-    do {                                        \
-        if(!ONLP_OID_IS_FAN(_id)) {             \
-            return;                             \
-        }                                       \
-    } while(0)
-
+/**
+ * Fan Hardware Init
+ */
+static int
+onlp_fan_hw_init_locked__(uint32_t flags)
+{
+    return onlp_fani_hw_init(flags);
+}
+ONLP_LOCKED_API1(onlp_fan_hw_init, uint32_t, flags);
 
 static int
-onlp_fan_init_locked__(void)
+onlp_fan_sw_denit_locked__(void)
 {
-    return onlp_fani_init();
+    return onlp_fani_sw_denit();
 }
-ONLP_LOCKED_API0(onlp_fan_init)
+ONLP_LOCKED_API0(onlp_fan_sw_denit);
 
-
-#if ONLP_CONFIG_INCLUDE_PLATFORM_OVERRIDES == 1
-
-static int
-onlp_fani_info_from_json__(cJSON* data, onlp_fan_info_t* fip, int errorcheck)
-{
-    int rv;
-
-    if(data == NULL) {
-        return (errorcheck) ? ONLP_STATUS_E_PARAM : 0;
-    }
-
-    rv = cjson_util_lookup_int(data, (int*) &fip->status, "status");
-    if(rv < 0 && errorcheck) return rv;
-
-    rv = cjson_util_lookup_int(data, (int*) &fip->caps, "caps");
-    if(rv < 0 && errorcheck) return rv;
-
-    rv = cjson_util_lookup_int(data, (int*) &fip->rpm, "rpm");
-    if(rv < 0 && errorcheck) return rv;
-
-    rv = cjson_util_lookup_int(data, (int*) &fip->percentage, "percentage");
-    if(rv < 0 && errorcheck) return rv;
-
-    rv = cjson_util_lookup_int(data, (int*) &fip->mode, "mode");
-    if(rv < 0 && errorcheck) return rv;
-
-    return 0;
-}
-
-#endif
-
-static int
-onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* fip)
-{
-    int rv;
-
-    VALIDATE(oid);
-
-    /* Get the information struct from the platform */
-    rv = onlp_fani_info_get(oid, fip);
-
-    if(rv >= 0) {
-
-#if ONLP_CONFIG_INCLUDE_PLATFORM_OVERRIDES == 1
-        /*
-         * Optional override from the config file.
-         * This is usually just for testing.
-         */
-        int id = ONLP_OID_ID_GET(oid);
-        cJSON* entry = NULL;
-
-
-        cjson_util_lookup(onlp_json_get(0), &entry, "overrides.fan.%d", id);
-        onlp_fani_info_from_json__(entry, fip, 0);
-#endif
-
-        if(fip->percentage && fip->rpm == 0) {
-            /* Approximate RPM based on a 10,000 RPM Maximum */
-            fip->rpm = fip->percentage * 100;
-        }
-    }
-
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_fan_info_get, onlp_oid_t, oid, onlp_fan_info_t*, fip);
-
-static int
-onlp_fan_status_get_locked__(onlp_oid_t oid, uint32_t* status)
-{
-    int rv = onlp_fani_status_get(oid, status);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_fan_info_t fi;
-        rv = onlp_fani_info_get(oid, &fi);
-        *status = fi.status;
-    }
-    return rv;
-}
-ONLP_LOCKED_API2(onlp_fan_status_get, onlp_oid_t, oid, uint32_t*, status);
-
+/**
+ * Fan Header Get
+ */
 static int
 onlp_fan_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv = onlp_fani_hdr_get(oid, hdr);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_fan_info_t fi;
-        rv = onlp_fani_info_get(oid, &fi);
-        memcpy(hdr, &fi.hdr, sizeof(fi.hdr));
-    }
-    return rv;
+    ONLP_OID_FAN_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(hdr);
+    return onlp_log_error(0,
+                          onlp_fani_hdr_get(oid, hdr),
+                          "fani hdr get %{onlp_oid}", oid);
 }
 ONLP_LOCKED_API2(onlp_fan_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
 
+/**
+ * Fan Info Get
+ */
 static int
-onlp_fan_present__(onlp_oid_t id, onlp_fan_info_t* info)
+onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* fip)
 {
-    int rv;
-    VALIDATE(id);
-
-    /* Info retrieval required. */
-    rv = onlp_fani_info_get(id, info);
-    if(rv < 0) {
-        return rv;
-    }
-    /* The fan must be present. */
-    if((info->status & 0x1) == 0) {
-        return ONLP_STATUS_E_MISSING;
-    }
-    return ONLP_STATUS_OK;
+    ONLP_OID_FAN_VALIDATE(oid);
+    ONLP_PTR_VALIDATE_ZERO(fip);
+    return onlp_log_error(0,
+                          onlp_fani_info_get(oid, fip),
+                          "fani info get %{onlp_oid}", oid);
 }
-#define ONLP_FAN_PRESENT_OR_RETURN(_id, _info)          \
-    do {                                                \
-        int _rv = onlp_fan_present__(_id, _info);       \
-        if(_rv < 0) {                                   \
-            return _rv;                                 \
-        }                                               \
-    } while(0)
-
+ONLP_LOCKED_API2(onlp_fan_info_get, onlp_oid_t, oid, onlp_fan_info_t*, fip);
 
 static int
 onlp_fan_rpm_set_locked__(onlp_oid_t id, int rpm)
 {
     onlp_fan_info_t info;
-    ONLP_FAN_PRESENT_OR_RETURN(id, &info);
+
+    ONLP_OID_FAN_VALIDATE(id);
+    ONLP_TRY(onlp_fani_info_get(id, &info));
+
     if(info.caps & ONLP_FAN_CAPS_SET_RPM) {
         return onlp_fani_rpm_set(id, rpm);
     }
@@ -195,7 +107,8 @@ static int
 onlp_fan_percentage_set_locked__(onlp_oid_t id, int p)
 {
     onlp_fan_info_t info;
-    ONLP_FAN_PRESENT_OR_RETURN(id, &info);
+    ONLP_OID_FAN_VALIDATE(id);
+    ONLP_TRY(onlp_fani_info_get(id, &info));
     if(info.caps & ONLP_FAN_CAPS_SET_PERCENTAGE) {
         return onlp_fani_percentage_set(id, p);
     }
@@ -206,21 +119,12 @@ onlp_fan_percentage_set_locked__(onlp_oid_t id, int p)
 ONLP_LOCKED_API2(onlp_fan_percentage_set, onlp_oid_t, id, int, p);
 
 static int
-onlp_fan_mode_set_locked__(onlp_oid_t id, onlp_fan_mode_t mode)
-{
-    onlp_fan_info_t info;
-    ONLP_FAN_PRESENT_OR_RETURN(id, &info);
-    return onlp_fani_mode_set(id, mode);
-}
-ONLP_LOCKED_API2(onlp_fan_mode_set, onlp_oid_t, id, onlp_fan_mode_t, mode);
-
-static int
 onlp_fan_dir_set_locked__(onlp_oid_t id, onlp_fan_dir_t dir)
 {
     onlp_fan_info_t info;
-    ONLP_FAN_PRESENT_OR_RETURN(id, &info);
-    if( (info.caps & ONLP_FAN_CAPS_B2F) &&
-        (info.caps & ONLP_FAN_CAPS_F2B) ) {
+    ONLP_OID_FAN_VALIDATE(id);
+    ONLP_TRY(onlp_fani_info_get(id, &info));
+    if(info.caps & ONLP_FAN_CAPS_SET_DIR) {
         return onlp_fani_dir_set(id, dir);
     }
     else {
@@ -230,110 +134,118 @@ onlp_fan_dir_set_locked__(onlp_oid_t id, onlp_fan_dir_t dir)
 ONLP_LOCKED_API2(onlp_fan_dir_set, onlp_oid_t, id, onlp_fan_dir_t, dir);
 
 
-/************************************************************
- *
- * Debug and Show Functions
- *
- ***********************************************************/
-
-void
-onlp_fan_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_fan_format(onlp_oid_t oid, onlp_oid_format_t format,
+                aim_pvs_t* pvs, uint32_t flags)
 {
-    int rv;
-    iof_t iof;
-    onlp_fan_info_t info;
-
-    VALIDATENR(id);
-
-    onlp_oid_dump_iof_init_default(&iof, pvs);
-    iof_push(&iof, "fan @ %d", ONLP_OID_ID_GET(id));
-    rv = onlp_fan_info_get(id, &info);
-    if(rv < 0) {
-        onlp_oid_info_get_error(&iof, rv);
-    }
-    else {
-        onlp_oid_show_description(&iof, &info.hdr);
-        if(info.status & 1) {
-            /* Present */
-            iof_iprintf(&iof, "Status: %{onlp_fan_status_flags}", info.status);
-            iof_iprintf(&iof, "Caps:   %{onlp_fan_caps_flags}", info.caps);
-            iof_iprintf(&iof, "RPM:    %d", info.rpm);
-            iof_iprintf(&iof, "Per:    %d", info.percentage);
-            iof_iprintf(&iof, "Model:  %s", info.model[0] ? info.model : "NULL");
-            iof_iprintf(&iof, "SN:     %s", info.serial[0] ? info.serial : "NULL");
-        }
-        else {
-            iof_iprintf(&iof, "Not present.");
-        }
-    }
-    iof_pop(&iof);
+    return 0;
 }
 
-void
-onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
+int
+onlp_fan_info_format(onlp_fan_info_t* info, onlp_oid_format_t format,
+                     aim_pvs_t* pvs, uint32_t flags)
 {
-    int rv;
-    iof_t iof;
-    onlp_fan_info_t fi;
-    int yaml;
-
-    onlp_oid_show_iof_init_default(&iof, pvs, flags);
-
-    rv = onlp_fan_info_get(oid, &fi);
-
-    yaml = flags & ONLP_OID_SHOW_YAML;
-
-    if(yaml) {
-        iof_push(&iof, "- ");
-        iof_iprintf(&iof, "Name: Fan %d", ONLP_OID_ID_GET(oid));
-    }
-    else {
-        iof_push(&iof, "Fan %d", ONLP_OID_ID_GET(oid));
-    }
-
-    if(rv < 0) {
-        if(yaml) {
-            iof_iprintf(&iof, "State: Error");
-            iof_iprintf(&iof, "Error: %{onlp_status}", rv);
-        } else {
-            onlp_oid_info_get_error(&iof, rv);
-        }
-    }
-    else {
-        onlp_oid_show_description(&iof, &fi.hdr);
-        if(fi.status & 0x1) {
-            /* Present */
-            iof_iprintf(&iof, "State: Present");
-            if(fi.status & ONLP_FAN_STATUS_FAILED) {
-                iof_iprintf(&iof, "Status: Failed");
-            }
-            else {
-                iof_iprintf(&iof, "Status: Running");
-                if(fi.model[0]) {
-                    iof_iprintf(&iof, "Model: %s", fi.model);
-                }
-                if(fi.serial[0]) {
-                    iof_iprintf(&iof, "SN: %s", fi.serial);
-                }
-                if(fi.caps & ONLP_FAN_CAPS_GET_RPM) {
-                    iof_iprintf(&iof, "RPM: %d", fi.rpm);
-                }
-                if(fi.caps & ONLP_FAN_CAPS_GET_PERCENTAGE) {
-                    iof_iprintf(&iof, "Speed: %d%%", fi.percentage);
-                }
-                if(fi.status & ONLP_FAN_STATUS_B2F) {
-                    iof_iprintf(&iof, "Airflow: Back-to-Front");
-                }
-                if(fi.status & ONLP_FAN_STATUS_F2B) {
-                    iof_iprintf(&iof, "Airflow: Front-to-Back");
-                }
-            }
-        }
-        else {
-            /* Not present */
-            onlp_oid_show_state_missing(&iof);
-        }
-    }
-    iof_pop(&iof);
+    aim_printf(pvs, "%{onlp_oid_hdr} dir=%{onlp_fan_dir} caps=%{onlp_fan_caps_flags} rpm=%d p=%d] model='%s' serial='%s'\n",
+               info, info->dir, info->caps, info->rpm, info->percentage, info->model, info->serial);
+    return 0;
 }
 
+
+int
+onlp_fan_info_to_user_json(onlp_fan_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    int rv;
+    cJSON* object;
+
+    rv = onlp_info_to_user_json_create(&info->hdr, &object, flags);
+
+    if(rv > 0) {
+        if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_RPM)) {
+            cjson_util_add_string_to_object(object, "RPM", "%d", info->rpm);
+        }
+        if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_PERCENTAGE)) {
+            cjson_util_add_string_to_object(object, "Speed", "%d%%", info->percentage);
+        }
+        if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_DIR)) {
+            switch(info->dir)
+                {
+                case ONLP_FAN_DIR_F2B: cjson_util_add_string_to_object(object, "Airflow", "Front-To-Back"); break;
+                case ONLP_FAN_DIR_B2F: cjson_util_add_string_to_object(object, "Airflow", "Back-To-Front"); break;
+                default: break;
+                }
+        }
+    }
+    return onlp_info_to_user_json_finish(&info->hdr, object, cjp, flags);
+}
+
+int
+onlp_fan_info_to_json(onlp_fan_info_t* info, cJSON** cjp, uint32_t flags)
+{
+    cJSON* cj;
+    int unsupported = (flags & ONLP_OID_JSON_FLAG_UNSUPPORTED_FIELDS);
+
+    ONLP_IF_ERROR_RETURN(onlp_info_to_json_create(&info->hdr, &cj, flags));
+
+    cJSON_AddItemToObject(cj, "caps", cjson_util_flag_array(info->caps,
+                                                            onlp_fan_caps_map));
+
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_DIR) || unsupported) {
+        cjson_util_add_string_to_object(cj, "dir", "%{onlp_fan_dir}",
+                                        info->dir);
+    }
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_RPM) || unsupported) {
+        cJSON_AddNumberToObject(cj, "rpm", info->rpm);
+    }
+
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_PERCENTAGE) || unsupported) {
+        cJSON_AddNumberToObject(cj, "percentage", info->percentage);
+    }
+    if(info->model[0] || unsupported) {
+        cJSON_AddStringToObject(cj, "model", info->model);
+    }
+    if(info->serial[0] || unsupported) {
+        cJSON_AddStringToObject(cj, "serial", info->serial);
+    }
+
+    return onlp_info_to_json_finish(&info->hdr, cj, cjp, flags);
+}
+
+int
+onlp_fan_info_from_json(cJSON* cj, onlp_fan_info_t* info)
+{
+    cJSON* j;
+
+    ONLP_IF_ERROR_RETURN(onlp_oid_hdr_from_json(cj, &info->hdr));
+    ONLP_IF_ERROR_RETURN(cjson_util_lookup(cj, &j, "caps"));
+    ONLP_IF_ERROR_RETURN(cjson_util_array_to_flags(j, &info->caps,
+                                                   onlp_fan_caps_map));
+
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_RPM)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->rpm, "rpm"));
+    }
+
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_PERCENTAGE)) {
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_int(cj, &info->percentage,
+                                                   "percentage"));
+    }
+
+    if(ONLP_FAN_INFO_CAP_IS_SET(info, GET_DIR)) {
+        char* dir = NULL;
+        ONLP_IF_ERROR_RETURN(cjson_util_lookup_string(cj, &dir, "dir"));
+        if(ONLP_FAILURE(onlp_fan_dir_value(dir, &info->dir, 1))) {
+            ONLP_LOG_JSON("%s: '%s' is not a valid fan direction.",
+                          __FUNCTION__, dir);
+            return ONLP_STATUS_E_PARAM;
+        }
+    }
+
+    char* s;
+    if((s = cjson_util_lookup_string_default(cj, NULL, "model"))) {
+        aim_strlcpy(info->model, s, sizeof(info->model));
+    }
+    if((s = cjson_util_lookup_string_default(cj, NULL, "serial"))) {
+        aim_strlcpy(info->serial, s, sizeof(info->model));
+    }
+
+    return 0;
+}

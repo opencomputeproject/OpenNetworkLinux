@@ -29,177 +29,158 @@
 #include <AIM/aim.h>
 #include <AIM/aim_printf.h>
 
+#include <onlp/chassis.h>
+#include <onlp/module.h>
 #include <onlp/thermal.h>
 #include <onlp/fan.h>
 #include <onlp/led.h>
 #include <onlp/psu.h>
-#include <onlp/sys.h>
+#include <onlp/sfp.h>
+#include <onlp/generic.h>
 
-#define OID_TYPE_SHOWDUMP_DEFINE(_TYPE, _type)                          \
-    static void                                                         \
-    oid_type_##_TYPE##_dump__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags) \
-    {                                                                   \
-        onlp_##_type##_dump(oid, pvs, flags);                           \
-    }                                                                   \
-    static void                                                         \
-    oid_type_##_TYPE##_show__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags) \
-    {                                                                   \
-        onlp_##_type##_show(oid, pvs, flags);                           \
-    }
+#include <cjson_util/cjson_util_format.h>
 
-#define OID_TYPE_SHOWDUMP_DEFINE_EMPTY(_TYPE, _type)                    \
-    static void                                                         \
-    oid_type_##_TYPE##_dump__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags) \
-    {                                                                   \
-    }                                                                   \
-    static void                                                         \
-    oid_type_##_TYPE##_show__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags) \
-    {                                                                   \
-    }
-
-
-OID_TYPE_SHOWDUMP_DEFINE(SYS, sys);
-OID_TYPE_SHOWDUMP_DEFINE(THERMAL, thermal);
-OID_TYPE_SHOWDUMP_DEFINE(FAN, fan);
-OID_TYPE_SHOWDUMP_DEFINE(PSU, psu);
-OID_TYPE_SHOWDUMP_DEFINE(LED, led);
-OID_TYPE_SHOWDUMP_DEFINE_EMPTY(MODULE, module);
-OID_TYPE_SHOWDUMP_DEFINE_EMPTY(RTC, rtc);
-
-static void
-oid_type_unknown_dump__(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
-{
-    iof_t iof;
-    onlp_oid_dump_iof_init_default(&iof, pvs);
-    iof_push(&iof, "invalid oid @ 0x%x", oid);
-    iof_iprintf(&iof, "type = %d", ONLP_OID_TYPE_GET(oid));
-    iof_iprintf(&iof, "  id = %d", ONLP_OID_ID_GET(oid));
-    iof_pop(&iof);
-}
-
-static int
-oid_type_SYS_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    return onlp_sys_hdr_get(hdr);
-}
-
-static int
-oid_type_THERMAL_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    return onlp_thermal_hdr_get(oid, hdr);
-}
-
-static int
-oid_type_FAN_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    return onlp_fan_hdr_get(oid, hdr);
-}
-
-static int
-oid_type_LED_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    return onlp_led_hdr_get(oid, hdr);
-}
-
-static int
-oid_type_PSU_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    return onlp_psu_hdr_get(oid, hdr);
-}
-
-static int
-oid_type_RTC_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    /* Not implemented yet */
-    AIM_LOG_MSG("RTC_coids_get: 0x%x", oid);
-    return ONLP_STATUS_E_INVALID;
-}
-
-
-static int
-oid_type_MODULE_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
-{
-    /* Not implemented yet */
-    AIM_LOG_MSG("MODULE_coids_get: 0x%x", oid);
-    return ONLP_STATUS_E_INVALID;
-}
-
-static void
-onlp_oid_showdump__(onlp_oid_t oid,
-                    /* show=1, dump=0 */
-                    int show,
-                    aim_pvs_t* pvs,
-                    uint32_t flags)
-{
-    if(oid == 0) {
-        oid = ONLP_OID_SYS;
-    }
-
-    switch(ONLP_OID_TYPE_GET(oid)) {
-        /* {dump || show} */
-#define ONLP_OID_TYPE_ENTRY(_name, _value)                              \
-        case ONLP_OID_TYPE_##_name:                                     \
-            if(show) {                                                  \
-                oid_type_##_name##_show__(oid, pvs, flags);             \
-            }                                                           \
-            else {                                                      \
-                oid_type_##_name##_dump__(oid, pvs, flags);             \
-            }                                                           \
-            return;
-
-#include <onlp/onlp.x>
-
-        /* Intentional compile time error if an OID decode is missing. */
-    }
-    oid_type_unknown_dump__(oid, pvs, flags);
-}
-
-void
-onlp_oid_dump(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
-{
-    onlp_oid_showdump__(oid, 0, pvs, flags);
-}
-
-void
-onlp_oid_table_dump(onlp_oid_table_t table, aim_pvs_t* pvs, uint32_t flags)
-{
-    onlp_oid_t* oidp;
-    ONLP_OID_TABLE_ITER(table, oidp) {
-        onlp_oid_dump(*oidp, pvs, flags);
-    }
-}
-
-void
-onlp_oid_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
-{
-    onlp_oid_showdump__(oid, 1, pvs, flags);
-}
-
-void
-onlp_oid_table_show(onlp_oid_table_t table, aim_pvs_t* pvs, uint32_t flags)
-{
-    onlp_oid_t* oidp;
-    ONLP_OID_TABLE_ITER(table, oidp) {
-        onlp_oid_show(*oidp, pvs, flags);
-    }
-}
+#include <ctype.h>
+#include <limits.h>
 
 int
 onlp_oid_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
     switch(ONLP_OID_TYPE_GET(oid))
         {
-#define ONLP_OID_TYPE_ENTRY(_name, _value)                              \
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
             case ONLP_OID_TYPE_##_name:                                 \
-                return oid_type_##_name##_hdr_get__(oid, hdr);
+                return onlp_##_lower##_hdr_get(oid, hdr);
+
 #include <onlp/onlp.x>
-            /* Intentional compile time error if an OID handler is missing. */
         }
-    return ONLP_STATUS_E_INVALID;
+
+    return ONLP_STATUS_E_PARAM;
 }
 
 int
-onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_t type,
+onlp_oid_info_get(onlp_oid_t oid, onlp_oid_hdr_t** info)
+{
+    int rv;
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                {                                                       \
+                    onlp_##_lower##_info_t* ip = aim_zmalloc(sizeof(*ip)); \
+                    if(ONLP_SUCCESS(rv = onlp_##_lower##_info_get(oid, (onlp_##_lower##_info_t*)ip))) { \
+                        *info = (onlp_oid_hdr_t*)ip;                    \
+                    }                                                   \
+                    else {                                              \
+                        aim_free(ip);                                   \
+                    }                                                   \
+                    return rv;                                          \
+                }
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_format(onlp_oid_t oid, onlp_oid_format_t format,
+                aim_pvs_t* pvs, uint32_t flags)
+{
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower) \
+            case ONLP_OID_TYPE_##_name: \
+                return onlp_##_lower##_format(oid, format, pvs, flags);
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_info_format(onlp_oid_hdr_t* info, onlp_oid_format_t format,
+                     aim_pvs_t* pvs, uint32_t flags)
+{
+    switch(ONLP_OID_TYPE_GET(info->id))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                return onlp_##_lower##_info_format((onlp_##_lower##_info_t*)info, \
+                                                   format, pvs, flags);
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_info_to_json(onlp_oid_hdr_t* info, cJSON** cj, uint32_t flags)
+{
+    switch(ONLP_OID_TYPE_GET(info->id))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower) \
+            case ONLP_OID_TYPE_##_name: \
+                return onlp_##_lower##_info_to_json((onlp_##_lower##_info_t*)info, cj, flags);
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_to_user_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
+{
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                {                                                       \
+                    int rv;                                             \
+                    onlp_##_lower##_info_t info;                        \
+                    if(ONLP_SUCCESS(rv = onlp_##_lower##_info_get(oid, &info))) { \
+                        return onlp_##_lower##_info_to_user_json(&info, cjp, flags); \
+                    }                                                   \
+                    return rv;                                          \
+                }
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+
+
+
+
+}
+
+int
+onlp_oid_to_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
+{
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                {                                                       \
+                    int rv;                                             \
+                    onlp_##_lower##_info_t info;                        \
+                    if(ONLP_SUCCESS(rv = onlp_##_lower##_info_get(oid, &info))) { \
+                        return onlp_##_lower##_info_to_json(&info, cjp, flags); \
+                    }                                                   \
+                    return rv;                                          \
+                }
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+
+int
+onlp_oid_table_format(onlp_oid_table_t table, onlp_oid_format_t format,
+                      aim_pvs_t* pvs, uint32_t flags)
+{
+    onlp_oid_t* oidp;
+    ONLP_OID_TABLE_ITER(table, oidp) {
+        onlp_oid_format(*oidp, format, pvs, flags);
+    }
+    return 0;
+}
+
+int
+onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_flags_t types,
                  onlp_oid_iterate_f itf, void* cookie)
 {
     int rv;
@@ -207,7 +188,7 @@ onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_t type,
     onlp_oid_t* oidp;
 
     if(oid == 0) {
-        oid = ONLP_OID_SYS;
+        oid = ONLP_OID_CHASSIS;
     }
 
     rv = onlp_oid_hdr_get(oid, &hdr);
@@ -215,17 +196,502 @@ onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_t type,
         return rv;
     }
 
+    /** Iterate over all top level ids */
     ONLP_OID_TABLE_ITER(hdr.coids, oidp) {
-        if(type == 0 || ONLP_OID_IS_TYPE(type, *oidp)) {
+        if(ONLP_OID_IS_TYPE_FLAGSZ(types, *oidp)) {
             int rv = itf(*oidp, cookie);
-            if(rv < 0) {
-                return rv;
-            }
-            rv = onlp_oid_iterate(*oidp, type, itf, cookie);
             if(rv < 0) {
                 return rv;
             }
         }
     }
+    ONLP_OID_TABLE_ITER(hdr.coids, oidp) {
+        rv = onlp_oid_iterate(*oidp, types, itf, cookie);
+        if(rv < 0) {
+            return rv;
+        }
+    }
     return ONLP_STATUS_OK;
 }
+
+typedef struct onlp_oid_get_all_ctrl_s {
+    biglist_t* list;
+    uint32_t flags;
+    int rv;
+} onlp_oid_get_all_ctrl_t;
+
+static int
+onlp_oid_info_get_all_iterate__(onlp_oid_t oid, void* cookie)
+{
+    int rv;
+    onlp_oid_get_all_ctrl_t* ctrl = (onlp_oid_get_all_ctrl_t*)cookie;
+    onlp_oid_hdr_t* obj;
+
+    if(ONLP_SUCCESS(rv = onlp_oid_info_get(oid, &obj))) {
+        ctrl->list = biglist_append(ctrl->list, obj);
+        return 0;
+    }
+    else {
+        ctrl->rv = rv;
+        return -1;
+    }
+}
+
+int
+onlp_oid_info_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
+                      uint32_t flags, biglist_t** list)
+{
+    onlp_oid_get_all_ctrl_t ctrl;
+
+    ctrl.list = NULL;
+    ctrl.flags = flags;
+    ctrl.rv = 0;
+
+    onlp_oid_iterate(root, types, onlp_oid_info_get_all_iterate__,
+                     &ctrl);
+    if(ONLP_SUCCESS(ctrl.rv)) {
+        *list = ctrl.list;
+    }
+    else {
+        onlp_oid_get_all_free(ctrl.list);
+    }
+
+    return ctrl.rv;
+}
+
+static int
+onlp_oid_hdr_get_all_iterate__(onlp_oid_t oid, void* cookie)
+{
+    int rv;
+    onlp_oid_get_all_ctrl_t* ctrl = (onlp_oid_get_all_ctrl_t*)cookie;
+    onlp_oid_hdr_t* obj = aim_zmalloc(sizeof(*obj));
+    if(ONLP_SUCCESS(rv = onlp_oid_hdr_get(oid, obj))) {
+        ctrl->list = biglist_append(ctrl->list, obj);
+        return 0;
+    }
+    else {
+        ctrl->rv = rv;
+        return -1;
+    }
+}
+
+
+int
+onlp_oid_hdr_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
+                     uint32_t flags, biglist_t** list)
+{
+    onlp_oid_get_all_ctrl_t ctrl;
+
+    ctrl.list = NULL;
+    ctrl.flags = flags;
+    ctrl.rv = 0;
+
+    onlp_oid_iterate(root, types, onlp_oid_hdr_get_all_iterate__,
+                     &ctrl);
+    if(ONLP_SUCCESS(ctrl.rv)) {
+        *list = ctrl.list;
+    }
+    else {
+        onlp_oid_get_all_free(ctrl.list);
+    }
+
+    return ctrl.rv;
+}
+
+int
+onlp_oid_get_all_free(biglist_t* list)
+{
+    biglist_free_all(list, aim_free);
+    return 0;
+}
+
+int
+onlp_oid_info_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
+                         uint32_t get_flags,
+                         onlp_oid_format_t format, aim_pvs_t* pvs,
+                         uint32_t format_flags)
+{
+    int rv;
+    biglist_t* list;
+    if(ONLP_SUCCESS(onlp_oid_info_get_all(root, types, get_flags, &list))) {
+        biglist_t* ble;
+        onlp_oid_hdr_t* hdr;
+        BIGLIST_FOREACH_DATA(ble, list, onlp_oid_hdr_t*, hdr) {
+            if(ONLP_FAILURE(rv = onlp_oid_info_format(hdr, ONLP_OID_TYPE_GET(hdr->id), pvs, format_flags))) {
+                break;
+            }
+        }
+        onlp_oid_get_all_free(list);
+    }
+    return rv;
+}
+
+
+int
+onlp_oid_hdr_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
+                        uint32_t get_flags,
+                        onlp_oid_format_t format, aim_pvs_t* pvs,
+                        uint32_t format_flags)
+{
+    biglist_t* list;
+    if(ONLP_SUCCESS(onlp_oid_hdr_get_all(root, types, get_flags, &list))) {
+        biglist_t* ble;
+        onlp_oid_hdr_t* hdr;
+        BIGLIST_FOREACH_DATA(ble, list, onlp_oid_hdr_t*, hdr) {
+            aim_printf(pvs, "%{onlp_oid_hdr}\n", hdr);
+        }
+        onlp_oid_get_all_free(list);
+    }
+    return 0;
+}
+
+int
+onlp_oid_to_str(onlp_oid_t oid, char* rstr)
+{
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_upper, _id, _desc, _lower)                 \
+            case _id:                                                   \
+                {                                                       \
+                    sprintf(rstr, "%s-%d", #_lower, ONLP_OID_ID_GET(oid)); \
+                    return ONLP_STATUS_OK;                              \
+                }
+#include <onlp/onlp.x>
+
+        default:
+            return ONLP_STATUS_E_PARAM;
+        }
+}
+
+int
+onlp_oid_to_user_str(onlp_oid_t oid, char* rstr)
+{
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _id, _upper, _lower)                 \
+            case _id:                                                   \
+                {                                                       \
+                    if(_id == ONLP_OID_TYPE_PSU) {                      \
+                        sprintf(rstr, "%s %d", #_upper, ONLP_OID_ID_GET(oid)); \
+                    }                                                   \
+                    else{                                               \
+                        sprintf(rstr, "%s %d", #_lower, ONLP_OID_ID_GET(oid)); \
+                        rstr[0] = toupper(rstr[0]);                     \
+                    }                                                   \
+                    return ONLP_STATUS_OK;                              \
+                }
+#include <onlp/onlp.x>
+        default:
+            return ONLP_STATUS_E_PARAM;
+        }
+}
+
+
+int
+onlp_oid_from_str(char* str, onlp_oid_t* oid)
+{
+#define ONLP_OID_TYPE_ENTRY(_upper, _tid, _desc, _lower)        \
+    do {                                                        \
+        int id;                                                 \
+        if((sscanf(str, #_lower "-%d", &id) == 1) ||            \
+           (sscanf(str, #_upper "-%d", &id) == 1)) {            \
+            *oid = ONLP_OID_TYPE_CREATE(_tid, id);              \
+            return ONLP_STATUS_OK;                              \
+        }                                                       \
+    } while(0);
+#include <onlp/onlp.x>
+    ONLP_LOG_JSON("%s : could not convert 'str' to an oid.",
+                  __FUNCTION__, str);
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_table_to_json(onlp_oid_table_t table, cJSON** cjp)
+{
+    int rv;
+    cJSON* cj = cJSON_CreateArray();
+    onlp_oid_t* oidp;
+    ONLP_OID_TABLE_ITER(table, oidp) {
+        char str[32];
+        if(ONLP_FAILURE(rv = onlp_oid_to_str(*oidp, str))) {
+            cJSON_Delete(cj);
+            return rv;
+        }
+        cJSON_AddItemToArray(cj, cJSON_CreateString(str));
+    }
+    *cjp = cj;
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_oid_table_from_json(cJSON* cj, onlp_oid_table_t table)
+{
+    int i, rv;
+
+    int s = cJSON_GetArraySize(cj);
+    if(s < 0 || s > ONLP_OID_TABLE_SIZE) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    for(i = 0; i < ONLP_OID_TABLE_SIZE; i++) {
+        cJSON* item = cJSON_GetArrayItem(cj, i);
+        if(!item) {
+            break;
+        }
+
+        if(item->type != cJSON_String) {
+            return ONLP_STATUS_E_PARAM;
+        }
+
+        if(ONLP_FAILURE(rv = onlp_oid_from_str(item->valuestring, table+i))) {
+            return rv;
+        }
+    }
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_oid_hdr_to_json(onlp_oid_hdr_t* hdr, cJSON** cjp, uint32_t flags)
+{
+    int rv;
+    char str[32];
+
+    if(ONLP_FAILURE(rv = onlp_oid_to_str(hdr->id, str))) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    cJSON* cj = cJSON_CreateObject();
+    cJSON_AddStringToObject(cj, "id", str);
+
+    if(hdr->description[0]) {
+        cJSON_AddStringToObject(cj, "description", hdr->description);
+    }
+    else {
+        cJSON_AddNullToObject(cj, "description");
+    }
+    if(hdr->poid) {
+        if(ONLP_FAILURE(rv = onlp_oid_to_str(hdr->poid, str))) {
+            goto error;
+        }
+        cJSON_AddStringToObject(cj, "poid", str);
+    }
+    else {
+        cJSON_AddNullToObject(cj, "poid");
+    }
+
+    cJSON* coids = NULL;
+    if(ONLP_FAILURE(rv = onlp_oid_table_to_json(hdr->coids, &coids))) {
+        goto error;
+    }
+
+    cJSON_AddItemToObject(cj, "coids", coids);
+    cJSON* status = cjson_util_flag_array(hdr->status, onlp_oid_status_flag_map);
+    cJSON_AddItemToObject(cj, "status", status);
+
+    *cjp = cj;
+    return ONLP_STATUS_OK;
+
+ error:
+    cJSON_Delete(cj);
+    return ONLP_STATUS_E_PARAM;
+}
+
+int
+onlp_oid_hdr_from_json(cJSON* cj, onlp_oid_hdr_t* hdr)
+{
+    int rv;
+    char* str;
+
+    memset(hdr, 0, sizeof(*hdr));
+
+    cJSON* jhdr = NULL;
+    if(ONLP_SUCCESS(cjson_util_lookup(cj, &jhdr, "hdr")) && jhdr) {
+        cj = jhdr;
+    }
+
+    if(cjson_util_lookup_string(cj, &str, "id") < 0) {
+        ONLP_LOG_JSON("%s: 'id' entry not found.", __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+    if(ONLP_FAILURE(rv = onlp_oid_from_str(str, &hdr->id))) {
+        ONLP_LOG_JSON("%s: onlp_oid_from_str failed: %{onlp_status}",
+                      __FUNCTION__, rv);
+        return rv;
+    }
+
+    if(ONLP_SUCCESS(cjson_util_lookup_string(cj, &str, "description"))) {
+        aim_strlcpy(hdr->description, str, sizeof(hdr->description));
+    }
+
+    if(ONLP_SUCCESS(cjson_util_lookup_string(cj, &str, "poid"))) {
+        if(ONLP_FAILURE(rv = onlp_oid_from_str(str, &hdr->poid))) {
+            return rv;
+        }
+    }
+    cJSON* coids = cJSON_GetObjectItem(cj, "coids");
+    if(coids) {
+        if(ONLP_FAILURE(rv = onlp_oid_table_from_json(coids, hdr->coids))) {
+            return rv;
+        }
+    }
+    cJSON* status = cJSON_GetObjectItem(cj, "status");
+    if(status) {
+        if(ONLP_FAILURE(rv = cjson_util_array_to_flags(status,
+                                                       &hdr->status,
+                                                       onlp_oid_status_flag_map))) {
+            return rv;
+        }
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_oid_from_json(cJSON* cj, onlp_oid_hdr_t** rhdr,
+                   biglist_t** all_oids_list, uint32_t flags)
+{
+    int rv;
+    onlp_oid_hdr_t hdr;
+
+    if(cj == NULL) {
+        ONLP_LOG_JSON("%s : JSON pointer is null.", __FUNCTION__);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if(flags & ONLP_OID_JSON_FLAG_RECURSIVE) {
+        if(all_oids_list == NULL) {
+            ONLP_LOG_JSON("%s : recursive selected but the return list is null.",
+                          __FUNCTION__);
+            return ONLP_STATUS_E_PARAM;
+        }
+    }
+    else {
+        if(rhdr == NULL) {
+            ONLP_LOG_JSON("%s : rhdr pointer is null.", __FUNCTION__);
+            return ONLP_STATUS_E_PARAM;
+        }
+    }
+
+    if(ONLP_FAILURE(rv = onlp_oid_hdr_from_json(cj, &hdr))) {
+        ONLP_LOG_JSON("%s: onlp_oid_hdr_from_json failed: %{onlp_status}",
+                      __FUNCTION__, rv);
+        return rv;
+    }
+
+    switch(ONLP_OID_TYPE_GET(hdr.id))
+        {
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                {                                                       \
+                    onlp_##_lower##_info_t* pinfo = aim_zmalloc(sizeof(*pinfo)); \
+                    if(ONLP_FAILURE(rv = onlp_##_lower##_info_from_json(cj, pinfo))) { \
+                        ONLP_LOG_JSON("%s: onlp_%s_info_from_json failed: %{onlp_status}", \
+                                      __FUNCTION__, #_lower, rv);                     \
+                        aim_free(pinfo);                                \
+                        return rv;                                      \
+                    }                                                   \
+                    if(flags & ONLP_OID_JSON_FLAG_RECURSIVE) {          \
+                        cJSON* children;                                \
+                        if(ONLP_SUCCESS(cjson_util_lookup(cj, &children, "coids"))) { \
+                            int i;                                      \
+                            for(i = 0; i < cJSON_GetArraySize(children); i++) { \
+                                cJSON* child = cJSON_GetArrayItem(children, i); \
+                                rv = onlp_oid_from_json(child, NULL, all_oids_list, flags); \
+                                if(ONLP_FAILURE(rv)) {                  \
+                                    aim_free(pinfo);                    \
+                                    return rv;                          \
+                                }                                       \
+                            }                                           \
+                        }                                               \
+                    }                                                   \
+                    if(rhdr) {                                          \
+                        *rhdr = (onlp_oid_hdr_t*)pinfo;                 \
+                    }                                                   \
+                    if(all_oids_list) {                                 \
+                        *all_oids_list = biglist_prepend(*all_oids_list, pinfo); \
+                    }                                                   \
+                    return 0;                                           \
+                }
+#include <onlp/onlp.x>
+        }
+    return ONLP_STATUS_E_PARAM;
+}
+
+
+int
+onlp_oid_json_verify(onlp_oid_t oid)
+{
+    int rv;
+    cJSON* cj;
+
+    switch(ONLP_OID_TYPE_GET(oid))
+        {
+
+#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
+            case ONLP_OID_TYPE_##_name:                                 \
+                {                                                       \
+                    onlp_##_lower##_info_t info1, info2;                \
+                    memset(&info1, 0, sizeof(info1));                   \
+                    memset(&info2, 0, sizeof(info2));                   \
+                    if(ONLP_FAILURE(rv = onlp_##_lower##_info_get(oid, &info1))) { \
+                        AIM_LOG_ERROR("onlp_%s_info_get)(%{onlp_oid}) failed: %{onlp_status}", \
+                                      #_lower, oid, rv);                \
+                        return rv;                                      \
+                                      }                                 \
+                                      if(ONLP_FAILURE(rv = onlp_##_lower##_info_to_json(&info1, &cj, 0))) { \
+                                      AIM_LOG_ERROR("onlp_%s_info_to_json(%{onlp_oid}) failed: %{onlp_status}", \
+                                      #_lower, oid);                    \
+                                      return rv;                        \
+                                      }                                 \
+                                      if(ONLP_FAILURE(rv = onlp_##_lower##_info_from_json(cj, &info2))) { \
+                                      AIM_LOG_ERROR("onlp_%s_info_from_json(%{onlp_oid}) failed: %{onlp_status}", \
+                                                    #_lower, oid, rv);  \
+                                      return rv;                        \
+                                                    }                   \
+                                                    if(memcmp(&info1, &info2, sizeof(info1))) { \
+                                                        AIM_LOG_ERROR("info1/info2 mismatch for %{onlp_oid}", \
+                                                        oid);           \
+                                                        cJSON* cj2;     \
+                                                        onlp_##_lower##_info_to_json(&info2, &cj2, 0); \
+                                                        AIM_LOG_ERROR("cj1: %s", cJSON_Print(cj)); \
+                                                        AIM_LOG_ERROR("cj2: %s", cJSON_Print(cj2)); \
+                                                        return -1;      \
+                                                        }               \
+                                                        return 0;       \
+                                                        }
+#include <onlp/onlp.x>
+        }
+
+
+    return -1;
+}
+
+static int oid_compare__(const void* a, const void* b)
+{
+    onlp_oid_t A = *((onlp_oid_t*) a);
+    onlp_oid_t B = *((onlp_oid_t*) b);
+
+    if(A == 0) A = UINT_MAX;
+    if(B == 0) B = UINT_MAX;
+
+    if(A < B) {
+        return -1;
+    }
+
+    if(A > B) {
+        return 1;
+    }
+
+    return 0;
+}
+
+void
+onlp_oid_hdr_sort(onlp_oid_hdr_t* hdr)
+{
+    qsort(hdr->coids, sizeof(onlp_oid_t), AIM_ARRAYSIZE(hdr->coids),
+          oid_compare__);
+}
+
+/* Local variables: */
+/* c-file-style: "cc-mode" */
+/* End: */

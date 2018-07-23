@@ -27,14 +27,29 @@
 
 
 /* <auto.start.xmacro(ALL).define> */
+#ifdef ONLP_ASSET_INFO_ENTRY
+ONLP_ASSET_INFO_ENTRY(manufacturer,  Manufacture,   str)
+ONLP_ASSET_INFO_ENTRY(date,          Date,          str)
+ONLP_ASSET_INFO_ENTRY(part_number,   Part Number,   str)
+ONLP_ASSET_INFO_ENTRY(serial_number, Serial Number, str)
+ONLP_ASSET_INFO_ENTRY(hardware_revision, Hardware Revision, str)
+ONLP_ASSET_INFO_ENTRY(firmware_revision, Firmware Revision, str)
+ONLP_ASSET_INFO_ENTRY(cpld_revision, CPLD Revision, str)
+ONLP_ASSET_INFO_ENTRY(manufacture_date, Manufacter Date, str)
+ONLP_ASSET_INFO_ENTRY(description, Description, str)
+ONLP_ASSET_INFO_ENTRY(additional, Additional, str)
+#undef ONLP_ASSET_INFO_ENTRY
+#endif
+
 #ifdef ONLP_OID_TYPE_ENTRY
-ONLP_OID_TYPE_ENTRY(SYS, 1)
-ONLP_OID_TYPE_ENTRY(THERMAL, 2)
-ONLP_OID_TYPE_ENTRY(FAN, 3)
-ONLP_OID_TYPE_ENTRY(PSU, 4)
-ONLP_OID_TYPE_ENTRY(LED, 5)
-ONLP_OID_TYPE_ENTRY(MODULE, 6)
-ONLP_OID_TYPE_ENTRY(RTC, 7)
+ONLP_OID_TYPE_ENTRY(CHASSIS, 1, CHASSIS, chassis)
+ONLP_OID_TYPE_ENTRY(MODULE, 2, MODULE, module)
+ONLP_OID_TYPE_ENTRY(THERMAL, 3, THERMAL, thermal)
+ONLP_OID_TYPE_ENTRY(FAN, 4, FAN, fan)
+ONLP_OID_TYPE_ENTRY(PSU, 5, PSU, psu)
+ONLP_OID_TYPE_ENTRY(LED, 6, LED, led)
+ONLP_OID_TYPE_ENTRY(SFP, 7, SFP, sfp)
+ONLP_OID_TYPE_ENTRY(GENERIC, 8, GENERIC, generic)
 #undef ONLP_OID_TYPE_ENTRY
 #endif
 /* <auto.end.xmacro(ALL).define> */
@@ -43,21 +58,24 @@ ONLP_OID_TYPE_ENTRY(RTC, 7)
 #ifdef ONLP_ENUMERATION_ENTRY
 ONLP_ENUMERATION_ENTRY(onlp_fan_caps, "")
 ONLP_ENUMERATION_ENTRY(onlp_fan_dir, "")
-ONLP_ENUMERATION_ENTRY(onlp_fan_mode, "")
-ONLP_ENUMERATION_ENTRY(onlp_fan_status, "")
 ONLP_ENUMERATION_ENTRY(onlp_led_caps, "")
 ONLP_ENUMERATION_ENTRY(onlp_led_mode, "")
-ONLP_ENUMERATION_ENTRY(onlp_led_status, "")
+ONLP_ENUMERATION_ENTRY(onlp_log_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_dump, "")
+ONLP_ENUMERATION_ENTRY(onlp_oid_format, "")
+ONLP_ENUMERATION_ENTRY(onlp_oid_format_flags, "")
+ONLP_ENUMERATION_ENTRY(onlp_oid_json_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_show, "")
+ONLP_ENUMERATION_ENTRY(onlp_oid_status_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_type, "")
+ONLP_ENUMERATION_ENTRY(onlp_oid_type_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_psu_caps, "")
-ONLP_ENUMERATION_ENTRY(onlp_psu_status, "")
+ONLP_ENUMERATION_ENTRY(onlp_psu_type, "")
 ONLP_ENUMERATION_ENTRY(onlp_sfp_control, "")
 ONLP_ENUMERATION_ENTRY(onlp_sfp_control_flag, "")
+ONLP_ENUMERATION_ENTRY(onlp_sfp_type, "")
 ONLP_ENUMERATION_ENTRY(onlp_status, "")
 ONLP_ENUMERATION_ENTRY(onlp_thermal_caps, "")
-ONLP_ENUMERATION_ENTRY(onlp_thermal_status, "")
 ONLP_ENUMERATION_ENTRY(onlp_thermal_threshold, "")
 #undef ONLP_ENUMERATION_ENTRY
 #endif
