@@ -431,7 +431,7 @@ rm -f /usr/sbin/policy-rc.d
     def configure(self, dir_):
 
         if not os.getenv('NO_DPKG_CONFIGURE'):
-            with OnlRfsContext(dir_, resolvconf=False):
+            with OnlRfsContext(dir_):
                 self.dpkg_configure(dir_)
 
         with OnlRfsContext(dir_):
