@@ -22,6 +22,8 @@ class OnlBootConfig(object):
     def read(self, bc=None):
         if bc:
             self._readf(bc)
+        elif os.path.exists(self.BOOT_CONFIG_DEFAULT):
+            self._readf(self.BOOT_CONFIG_DEFAULT)
         else:
             from onl.mounts import OnlMountContextReadOnly
             with OnlMountContextReadOnly("ONL-BOOT", logger=None):
