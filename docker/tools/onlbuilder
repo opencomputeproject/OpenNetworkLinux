@@ -171,7 +171,7 @@ else:
 
    g_arg_d['volume_options']  = " ".join( [ " -v %s:%s " % (v, v) for v in ops.volumes ] )
 
-   g_docker_arguments = "docker run --privileged %(interactive)s -t -e DOCKER_IMAGE=%(image)s  --name %(name)s %(ssh_options)s %(volume_options)s  " % g_arg_d
+   g_docker_arguments = "docker run --rm --privileged %(interactive)s -t -e DOCKER_IMAGE=%(image)s  --name %(name)s %(ssh_options)s %(volume_options)s  " % g_arg_d
 
    if ops.isolate is not None:
       if len(ops.isolate) is 0:
