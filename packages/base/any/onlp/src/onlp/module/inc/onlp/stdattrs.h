@@ -95,11 +95,6 @@ int onlp_asset_info_free(onlp_asset_info_t* aip);
  */
 int onlp_asset_info_to_json(onlp_asset_info_t* aip, cJSON** rv);
 
-/**
- * You can also request the JSON version representation.
- */
-#define ONLP_ATTRIBUTE_ASSET_INFO_JSON "onlp.asset_info_json"
-
 
 /**
  * @brief The ONIE Information Structure can be queried
@@ -109,11 +104,6 @@ int onlp_asset_info_to_json(onlp_asset_info_t* aip, cJSON** rv);
  * See onlplib/onie.h
  */
 #define ONLP_ATTRIBUTE_ONIE_INFO "onlp.attr.onie_info"
-
-/**
- * You can also request the JSON representation.
- */
-#define ONLP_ATTRIBUTE_ONIE_INFO_JSON "onlp.attr.onie_info_json"
 
 #endif /* __ONLP_STDATTRS_H__ */
 /* @} */

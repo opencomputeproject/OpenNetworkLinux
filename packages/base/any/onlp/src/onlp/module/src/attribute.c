@@ -55,12 +55,6 @@ ONLP_LOCKED_API1(onlp_attribute_hw_init, uint32_t, flags)
 static int
 onlp_attribute_supported_locked__(onlp_oid_t oid, const char* attribute)
 {
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ONIE_INFO_JSON)) {
-        attribute = ONLP_ATTRIBUTE_ONIE_INFO;
-    }
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ASSET_INFO_JSON)) {
-        attribute = ONLP_ATTRIBUTE_ASSET_INFO;
-    }
     return onlp_attributei_supported(oid, attribute);
 }
 ONLP_LOCKED_API2(onlp_attribute_supported, onlp_oid_t, oid, const char*, attribute)
@@ -88,11 +82,6 @@ ONLP_LOCKED_API3(onlp_attribute_set, onlp_oid_t, oid, const char*, attribute, vo
 static int
 onlp_attribute_free_locked__(onlp_oid_t oid, const char* attribute, void* value)
 {
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ONIE_INFO_JSON) ||
-       ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ASSET_INFO_JSON)) {
-        cJSON_Delete(value);
-        return 0;
-    }
     return onlp_attributei_free(oid, attribute, value);
 }
 ONLP_LOCKED_API3(onlp_attribute_free,onlp_oid_t, oid, const char*, attribute, void*, value)
@@ -108,36 +97,95 @@ static int
 onlp_attribute_get_locked__(onlp_oid_t oid, const char* attribute,
                             void** value)
 {
-    int rv;
-    const char* rattr = attribute;
-
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ONIE_INFO_JSON)) {
-        rattr = ONLP_ATTRIBUTE_ONIE_INFO;
-    }
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ASSET_INFO_JSON)) {
-        rattr = ONLP_ATTRIBUTE_ASSET_INFO;
-    }
-
-    rv = onlp_attributei_get(oid, rattr, value);
-
-    if(ONLP_FAILURE(rv)) {
-        return rv;
-    }
-
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ONIE_INFO_JSON)) {
-        cJSON* cj;
-        onlp_onie_info_to_json(*(onlp_onie_info_t**)value, &cj);
-        onlp_attribute_free_locked__(oid, rattr, *value);
-        *value = cj;
-    }
-
-    if(ONLP_ATTRIBUTE_EQUALS(attribute, ONLP_ATTRIBUTE_ASSET_INFO_JSON)) {
-        cJSON* cj;
-        onlp_asset_info_to_json(*(onlp_asset_info_t**)value, &cj);
-        onlp_attribute_free_locked__(oid, rattr, *value);
-        *value = cj;
-    }
-
-    return rv;
+    return onlp_attributei_get(oid, attribute, value);
 }
 ONLP_LOCKED_API3(onlp_attribute_get, onlp_oid_t, oid, const char*, attribute, void**, value)
+
+
+int
+onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rvp)
+{
+    return onlp_attribute_get(oid,
+                              ONLP_ATTRIBUTE_ONIE_INFO,
+                              (void**)rvp);
+}
+
+int
+onlp_attribute_onie_info_free(onlp_oid_t oid, onlp_onie_info_t* p)
+{
+    return onlp_attribute_free(oid,
+                               ONLP_ATTRIBUTE_ONIE_INFO,
+                               p);
+}
+
+int
+onlp_attribute_onie_info_get_json(onlp_oid_t oid, cJSON** rvp)
+{
+    int rv;
+    onlp_onie_info_t* onie_info;
+    if(ONLP_SUCCESS(rv = onlp_attribute_onie_info_get(oid, &onie_info))) {
+        onlp_onie_info_to_json(onie_info, rvp);
+        onlp_attribute_onie_info_free(oid, onie_info);
+    }
+    return rv;
+}
+
+int
+onlp_attribute_onie_info_show(onlp_oid_t oid, aim_pvs_t* pvs)
+{
+    int rv;
+    cJSON* cjp = NULL;
+
+    if(ONLP_SUCCESS(rv = onlp_attribute_onie_info_get_json(oid, &cjp))) {
+        cjson_util_yaml_pvs(pvs, cjp);
+        cJSON_Delete(cjp);
+    }
+    else {
+        aim_printf(pvs, "There was an error requesting the ONIE information from %{onlp_oid}: %{onlp_status}", oid, rv);
+    }
+    return rv;
+}
+
+int
+onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rvp)
+{
+    return onlp_attribute_get(oid,
+                              ONLP_ATTRIBUTE_ASSET_INFO,
+                              (void**)rvp);
+}
+
+int
+onlp_attribute_asset_info_free(onlp_oid_t oid, onlp_asset_info_t* p)
+{
+    return onlp_attribute_free(oid,
+                               ONLP_ATTRIBUTE_ASSET_INFO,
+                               p);
+}
+
+int
+onlp_attribute_asset_info_get_json(onlp_oid_t oid, cJSON** rvp)
+{
+    int rv;
+    onlp_asset_info_t* asset_info;
+    if(ONLP_SUCCESS(rv = onlp_attribute_asset_info_get(oid, &asset_info))) {
+        onlp_asset_info_to_json(asset_info, rvp);
+        onlp_attribute_asset_info_free(oid, asset_info);
+    }
+    return rv;
+}
+
+int
+onlp_attribute_asset_info_show(onlp_oid_t oid, aim_pvs_t* pvs)
+{
+    int rv;
+    cJSON* cjp = NULL;
+
+    if(ONLP_SUCCESS(rv = onlp_attribute_asset_info_get_json(oid, &cjp))) {
+        cjson_util_yaml_pvs(pvs, cjp);
+        cJSON_Delete(cjp);
+    }
+    else {
+        aim_printf(pvs, "There was an error requesting the asset information from %{onlp_oid}: %{onlp_status}", oid, rv);
+    }
+    return rv;
+}

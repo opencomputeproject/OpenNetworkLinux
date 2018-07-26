@@ -31,6 +31,8 @@
 
 #include <onlp/oids.h>
 #include <onlp/onlp.h>
+#include <onlp/stdattrs.h>
+#include <AIM/aim_pvs.h>
 
 /**
  * @brief Initialize the attribute subsystem.
@@ -74,6 +76,70 @@ int onlp_attribute_free(onlp_oid_t oid, const char* attribute, void* value);
  * @brief Attribute comparitor.
  */
 #define ONLP_ATTRIBUTE_EQUALS(_a, _b) (!strcmp(_a, _b))
+
+/******************************************************************************
+ *
+ * These functions facilitate access to standard attributes.
+ *
+ *****************************************************************************/
+
+/**
+ * @brief Request the ONIE attribute.
+ * @param oid The target OID.
+ * @param [out] rp Receives the ONIE information structure pointer.
+ */
+int onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rp);
+
+/**
+ * @brief Free an ONIE attribute pointer.
+ * @param oid The target OID.
+ * @param p The ONIE attribute pointer.
+ */
+int onlp_attribute_onie_info_free(onlp_oid_t oid, onlp_onie_info_t* p);
+
+/**
+ * @brief Request the ONIE attribute in JSON
+ * @param oid The target OID.
+ * @param [out] rp Receives the cJSON object.
+ * @note The cJSON object should be freed after use using cJSON_Delete().
+ */
+int onlp_attribute_onie_info_get_json(onlp_oid_t oid, cJSON** rp);
+
+/**
+ * @brief Show the ONIE attribute.
+ * @param oid The target OID.
+ * @param pvs The output pvs.
+ */
+int onlp_attribute_onie_info_show(onlp_oid_t oid, aim_pvs_t* pvs);
+
+/**
+ * @brief Request the asset attribute.
+ * @param oid The target oid.
+ * @param [out] rp Receives the Asset information structure pointer.
+ */
+int onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rp);
+
+/**
+ * @brief Free an asset attribute pointer.
+ * @param oid The target oid.
+ * @param p The asset attribute pointer.
+ */
+int onlp_attribute_asset_info_free(onlp_oid_t oid, onlp_asset_info_t* p);
+
+/**
+ * @brief Request the asset attribute in JSON
+ * @param oid The target oid.
+ * @param [out] rp Receives the cJSON object.
+ * @note The cJSON object should be freed after use using cJSON_Delete()
+ */
+int onlp_attribute_asset_info_get_json(onlp_oid_t oid, cJSON** rp);
+
+/**
+ * @brief Show the asset attribute.
+ * @param oid The target oid.
+ * @param pvs The output pvs.
+ */
+int onlp_attribute_asset_info_show(onlp_oid_t oid, aim_pvs_t* pvs);
 
 #endif /* __ONLP_ATTRIBUTE_H__ */
 /* @} */
