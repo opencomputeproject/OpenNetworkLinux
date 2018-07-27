@@ -741,7 +741,7 @@ if __name__ == '__main__':
         if not ops.no_multistrap and not os.getenv('NO_MULTISTRAP'):
             x.multistrap(ops.dir)
 
-        if not ops.no_configure and not os.getenv('NO_DPKG_CONFIGURE'):
+        if not ops.no_configure and not os.getenv('NO_CONFIGURE'):
             x.configure(ops.dir)
 
         if ops.update:
