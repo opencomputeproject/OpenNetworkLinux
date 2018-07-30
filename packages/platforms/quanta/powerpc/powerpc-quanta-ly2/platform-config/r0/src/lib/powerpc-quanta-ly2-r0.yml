@@ -17,17 +17,13 @@ powerpc-quanta-ly2-r0:
 
   loader:
     device: /dev/mmcblk0
-    ##partition: /dev/mmcblk0p1
-    nos_bootcmds: *mmc_bootcmds
+    nos_bootcmds:
+      - mmc part 0
+      - ext2load mmc 0:1 $onl_loadaddr $onl_itb
+      - "bootm $onl_loadaddr#$onl_platform"
 
     environment:
     - device: /dev/mtd2
       env_offset: 0x00000000
       env_size: 0x00002000
       sector_size: 0x00020000
-
-  ##network
-  ##  interfaces:
-  ##    ma1:
-  ##      name: ~
-  ##      syspath: soc.0/ffe24000.ethernet
