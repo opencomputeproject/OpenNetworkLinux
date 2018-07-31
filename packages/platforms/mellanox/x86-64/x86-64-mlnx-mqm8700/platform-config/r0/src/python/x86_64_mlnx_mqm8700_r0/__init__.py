@@ -5,7 +5,7 @@ class OnlPlatform_x86_64_mlnx_mqm8700_r0(OnlPlatformMellanox,
                                                OnlPlatformPortConfig_32x100):
     PLATFORM='x86-64-mlnx-mqm8700-r0'
     MODEL="MQM8700"
-    SYS_OBJECT_ID=".700.1"
+    SYS_OBJECT_ID=".8700.1"
 
     def baseconfig(self):
         # load modules
