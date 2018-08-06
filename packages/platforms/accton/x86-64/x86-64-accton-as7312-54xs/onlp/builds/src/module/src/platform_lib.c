@@ -109,7 +109,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     }
 
     if (modelname) {
-        strncpy(modelname, model_name, modelname_len-1);
+        strncpy(modelname, model_name, I2C_PSU_MODEL_NAME_LEN - 1);
     }
 
     node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
