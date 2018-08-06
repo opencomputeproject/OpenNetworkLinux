@@ -44,18 +44,21 @@ if [ "${NETHW}" ]; then
     ip link set dev ${NETDEV} addr ${NETHW}
 fi
 
-# Default DHCP timeout is 10 requests in 10 seconds.
-NETRETRIES_DEFAULT=10
-NETRETRIES=${NETRETRIES:-$NETRETRIES_DEFAULT}
-if [ "$NETRETRIES" = "infinite" ]; then
-    NETRETRIES=
-elif [ $(echo "$NETRETRIES" | tr -d '[:digit:]') ] || [ "$NETRETRIES" -lt 0 ]; then
-    echo "Warning: the NETRETRIES setting is currently '$NETRETRIES'. This is invalid and the default value of $NETRETRIES_DEFAULT will be used instead."
-    NETRETRIES=$NETRETRIES_DEFAULT
-fi
 case "${NETAUTO}" in
     dhcp|auto)
+        # Default DHCP timeout is 10 requests in 10 seconds.
+        NETRETRIES_DEFAULT=10
+        NETRETRIES=${NETRETRIES:-$NETRETRIES_DEFAULT}
+        if [ "$NETRETRIES" = "infinite" ]; then
+            NETRETRIES=
+        elif [ $(echo "$NETRETRIES" | tr -d '[:digit:]') ] || [ "$NETRETRIES" -lt 0 ]; then
+            echo "Warning: the NETRETRIES setting is currently '$NETRETRIES'."
+            echo "This is invalid and the default value of $NETRETRIES_DEFAULT will be used instead."
+            NETRETRIES=$NETRETRIES_DEFAULT
+        fi
+
         echo 1 >/proc/sys/net/ipv6/conf/${NETDEV}/autoconf
+
         if [ -n "${NETRETRIES}" ]; then
             if ! udhcpc --retries $NETRETRIES --now -i ${NETDEV}; then
                 echo "**********************************************************************"
