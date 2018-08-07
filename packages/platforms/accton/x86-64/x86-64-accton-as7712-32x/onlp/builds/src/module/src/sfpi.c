@@ -28,11 +28,12 @@
 
 #define MUX_START_INDEX 18
 #define NUM_OF_SFP_PORT 32
-static const int port_bus_index[NUM_OF_SFP_PORT] = {
- 4,  5,  6,  7,  9,  8, 11, 10,
- 0,  1,  2,  3, 12, 13, 14, 15,
-16, 17, 18, 19, 28, 29, 30, 31,
-20, 21, 22, 23, 24, 25, 26, 27
+
+static const onlp_oid_id_t port_bus_index[NUM_OF_SFP_PORT] = {
+    4,  5,  6,  7,  9,  8, 11, 10,
+    0,  1,  2,  3, 12, 13, 14, 15,
+    16, 17, 18, 19, 28, 29, 30, 31,
+    20, 21, 22, 23, 24, 25, 26, 27
 };
 
 #define PORT_BUS_INDEX(port) (port_bus_index[port]+MUX_START_INDEX)
@@ -42,7 +43,7 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 #define MODULE_PRESENT_ALL_ATTR		"/sys/bus/i2c/devices/4-0060/module_present_all"
 
 int
-onlp_sfpi_type_get(int port, onlp_sfp_type_t* rtype)
+onlp_sfpi_type_get(onlp_oid_id_t port, onlp_sfp_type_t* rtype)
 {
     *rtype = ONLP_SFP_TYPE_QSFP28;
     return 0;
@@ -65,7 +66,7 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 }
 
 int
-onlp_sfpi_is_present(int port)
+onlp_sfpi_is_present(onlp_oid_id_t port)
 {
     /*
      * Return 1 if present.
@@ -125,7 +126,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_dev_read(int port, int devaddr, int addr,
+onlp_sfpi_dev_read(onlp_oid_id_t port, int devaddr, int addr,
                    uint8_t* dst, int size)
 {
     int bus = PORT_BUS_INDEX(port);
@@ -133,28 +134,28 @@ onlp_sfpi_dev_read(int port, int devaddr, int addr,
 }
 
 int
-onlp_sfpi_dev_readb(int port, int devaddr, int addr)
+onlp_sfpi_dev_readb(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writeb(int port, int devaddr, int addr, uint8_t value)
+onlp_sfpi_dev_writeb(onlp_oid_id_t port, int devaddr, int addr, uint8_t value)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_readw(int port, int devaddr, int addr)
+onlp_sfpi_dev_readw(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writew(int port, int devaddr, int addr, uint16_t value)
+onlp_sfpi_dev_writew(onlp_oid_id_t port, int devaddr, int addr, uint16_t value)
 {
     int bus = PORT_BUS_INDEX(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);

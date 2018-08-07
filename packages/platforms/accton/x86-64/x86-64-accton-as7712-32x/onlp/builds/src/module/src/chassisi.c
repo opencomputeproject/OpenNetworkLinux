@@ -2,12 +2,10 @@
 #include "platform_lib.h"
 
 int
-onlp_chassisi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
+onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
 {
     int i;
     onlp_oid_t* e = hdr->coids;
-
-    hdr->id = oid;
 
     ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
     ONLP_OID_STATUS_FLAG_SET(hdr, OPERATIONAL);
@@ -44,7 +42,7 @@ onlp_chassisi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 }
 
 int
-onlp_chassisi_info_get(onlp_oid_t oid, onlp_chassis_info_t* info)
+onlp_chassisi_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info)
 {
-    return onlp_chassisi_hdr_get(oid, &info->hdr);
+    return onlp_chassisi_hdr_get(id, &info->hdr);
 }
