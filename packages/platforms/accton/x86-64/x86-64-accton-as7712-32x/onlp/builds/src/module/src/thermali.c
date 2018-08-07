@@ -82,3 +82,10 @@ onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* info)
         return onlp_file_read_int(&info->mcelsius, devfiles__[id]);
     }
 }
+
+int
+onlp_thermali_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
+{
+    *hdr = thermal_info_table__[id].hdr;
+    return 0;
+}
