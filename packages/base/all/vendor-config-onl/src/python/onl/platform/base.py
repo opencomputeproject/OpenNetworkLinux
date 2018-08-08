@@ -95,9 +95,17 @@ class OnieInfo(object):
         }
 
 
-class PlatformInfo(object):
-    CPLD_VERSIONS='CPLD Versions'
-
+class AssetInfo(object):
+    MANUFACTURER='Manufacturer'
+    DATE='Date'
+    PART_NUMBER='Part Number'
+    SERIAL_NUMBER='Serial Number'
+    HARDWARE_REVISION='Hardware Revision'
+    FIRMWARE_REVISION='Firmware Revision'
+    CPLD_REVISION='CPLD Revision'
+    MANUFACTURE_DATE='Manufacture Date'
+    DESCRIPTION='Description'
+    ADDITONAL='Additional'
 
 ############################################################
 #
@@ -114,15 +122,15 @@ class OnlPlatformBase(object):
     CONFIG_DEFAULT_UBOOT = "/lib/vendor-config/onl/platform-config-defaults-uboot.yml"
 
     def __init__(self):
-        self.add_info_json("onie_info", "%s/onie-info.json" % self.basedir_onl(), OnieInfo,
+        self.add_info_json("onie_info", "%s/chassis/onie-info.json" % self.basedir_onl(), OnieInfo,
                            required=False)
-        self.add_info_json("platform_info", "%s/platform-info.json" % self.basedir_onl(), PlatformInfo,
+        self.add_info_json("asset_info", "%s/chassis/asset-info.json" % self.basedir_onl(), AssetInfo,
                            required=False)
 
-        if hasattr(self, "platform_info"):
-            self.platform_info.update(self.dmi_versions())
+        if hasattr(self, "asset_info"):
+            self.asset_info.update(self.dmi_versions())
         else:
-            self.add_info_dict("platform_info", self.dmi_versions())
+            self.add_info_dict("asset_info", self.dmi_versions())
 
         # Find the base platform config
         if self.platform().startswith('x86-64'):
@@ -355,7 +363,7 @@ class OnlPlatformBase(object):
         return self.onie_info.ONIE_VERSION
 
     def firmware_version(self):
-        return self.platform_info.CPLD_VERSIONS
+        return self.asset_info.CPLD_REVISION
 
     def dmi_versions(self):
         rv = {}
@@ -463,7 +471,7 @@ System Information:
             self.PORT_CONFIG,
             self.sys_object_id(),
             str(self.onie_info),
-            str(self.platform_info),
+            str(self.asset_info),
             )
 
 

@@ -59,7 +59,7 @@ def baseconfig():
                 os.unlink(DEFAULT_ONLP_LIB)
             os.symlink(l, DEFAULT_ONLP_LIB)
 
-    ONLPDUMP = "%s/bin/onlpdump" % (platform.basedir_onl())
+    ONLPD = "/bin/onlpd"
 
     try:
         import dmidecode
@@ -78,10 +78,12 @@ def baseconfig():
     if not platform.baseconfig():
         msg("*** platform class baseconfig failed.\n", fatal=True)
 
-    if os.path.exists(ONLPDUMP):
-        os.system("%s -i > %s/oids" % (ONLPDUMP,platform.basedir_onl()))
-        os.system("%s -o -j > %s/onie-info.json" % (ONLPDUMP, platform.basedir_onl()))
-        os.system("%s -x -j > %s/platform-info.json" % (ONLPDUMP, platform.basedir_onl()))
+    if os.path.exists(ONLPD):
+        chassis_dir = os.path.join(platform.basedir_onl(), "chassis")
+        if not os.path.isdir(chassis_dir):
+            os.makedirs(chassis_dir)
+        os.system("%s chassis onie  json > %s/onie-info.json" % (ONLPD, chassis_dir))
+        os.system("%s chassis asset json > %s/asset-info.json" % (ONLPD, chassis_dir))
 
     msg("Setting up base platform configuration for %s: done\n" %
         platform.platform())
