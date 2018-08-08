@@ -32,24 +32,24 @@
 
 /*
 *   Initializing the SFP and ONLP modules
-*   compiler calls this function while compiling 
+*   compiler calls this function while compiling
 */
 
 void __oom_shim_module_init__(void) {
-    onlp_init();
+    onlp_sw_init(0);
 }
 
 /*Gets the portlist of the SFP ports on the switch*/
 int oom_get_portlist(oom_port_t portlist[], int listsize){
-    
+
     int port,i=0;
     oom_port_t* pptr;
-    
+
 
     onlp_sfp_bitmap_t bitmap;
     onlp_sfp_bitmap_t_init(&bitmap);
     onlp_sfp_bitmap_get(&bitmap);
-   
+
     if ((portlist == NULL) && (listsize == 0)){ /* asking # of ports */
         if(AIM_BITMAP_COUNT(&bitmap) == 0){
             return 0;
@@ -60,13 +60,13 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
 
     AIM_BITMAP_ITER(&bitmap, port){
         int rv;
-        
+
         pptr = &portlist[i];
         pptr->handle = (void *)(uintptr_t)port+1;
-        pptr->oom_class = OOM_PORT_CLASS_SFF; 
+        pptr->oom_class = OOM_PORT_CLASS_SFF;
         sprintf(pptr->name, "port%d", port+1);
         i++;
-        
+
         rv = onlp_sfp_is_present(port);
         if(rv == 0){
             /* aim_printf(&aim_pvs_stdout, "module %d is not present\n", port);*/
@@ -86,7 +86,7 @@ int oom_get_portlist(oom_port_t portlist[], int listsize){
 
 int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int len, uint8_t* data){
     int rv;
-    unsigned int port_num; 
+    unsigned int port_num;
     uint8_t* idprom = NULL;
 
     port_num = (unsigned int)(uintptr_t)port->handle;
@@ -95,15 +95,15 @@ int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int 
     if (offset >= 256)
         return -1;  /* out of range */
 
-    /** 
-     * place holder implementation until onlp_sfp_eeprom_read() 
+    /**
+     * place holder implementation until onlp_sfp_eeprom_read()
      * can be improved to handle partial page gets
      **/
 
     if (address == 0xa0) {
-        rv = onlp_sfp_eeprom_read(port_num, &idprom);
+        rv = onlp_sfp_dev_read_block(port_num, 0x50, 0, 256, &idprom);
     } else if (address == 0xa2) {
-        rv = onlp_sfp_dom_read(port_num, &idprom);
+        rv = onlp_sfp_dev_read_block(port_num, 0x51, 0, 256, &idprom);
     } else {
         aim_printf(&aim_pvs_stdout, "Error invalid address: 0x%02x\n", address);
         return -EINVAL;
@@ -113,9 +113,9 @@ int oom_get_memory_sff(oom_port_t* port, int address, int page, int offset, int 
         aim_printf(&aim_pvs_stdout, "Error reading eeprom: %{onlp_status}\n");
         return -1;
     }
-    memcpy(data, &idprom[offset], len); 
+    memcpy(data, &idprom[offset], len);
     aim_free(idprom);
-    
+
     return 0;
 }
 

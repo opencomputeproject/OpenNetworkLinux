@@ -27,10 +27,9 @@ include $(ONL)/make/any.mk
 MODULE := oom_shim
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM onlplib onlp oom_shim cjson cjson_util sff IOF timer_wheel OS
+DEPENDMODULES := AIM onlplib oom_shim cjson cjson_util IOF timer_wheel OS uCli
+DEPENDMODULE_HEADERS := onlp sff
 
-#LIBONLP_PLATFORM_DEFAULTS := ../onlp-platform-defaults/$(BUILD_DIR)/bin/libonlp-platform-defaults.so
-#LIBONLP_PLATFORM := ../onlp-platform/$(BUILD_DIR)/bin/libonlp-platform.so
 LIBONLP := $(shell $(ONLPM) --find-file onlp:$(ARCH) libonlp.so)
 
 include $(BUILDER)/dependmodules.mk
@@ -45,6 +44,8 @@ GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_CTOR_DTOR=1
 GLOBAL_CFLAGS += -DAIM_CONFIG_INCLUDE_MODULES_INIT=1
 GLOBAL_CFLAGS += -DONLP_CONFIG_API_LOCK_GLOBAL_SHARED=1
 GLOBAL_CFLAGS += -DONLP_CONFIG_INCLUDE_SHLOCK_GLOBAL_INIT=1
+GLOBAL_CFLAGS += -DUCLI_CONFIG_INCLUDE_ELS_LOOP=1
+GLOBAL_CFLAGS += -DONLP_CONFIG_INCLUDE_UCLI=1
 
 GLOBAL_CFLAGS += -fPIC
 GLOBAL_LINK_LIBS += -lpthread $(LIBONLP)

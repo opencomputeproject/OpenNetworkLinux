@@ -218,9 +218,9 @@ onlp_snmp_platform_init(void)
     int rv;
     onlp_onie_info_t* oip = NULL;
 
-    if(ONLP_SUCCESS(rv = onlp_attribute_get(ONLP_OID_CHASSIS,
-                                            ONLP_ATTRIBUTE_ONIE_INFO,
-                                            (void**)&oip))) {
+    if(ONLP_SUCCESS(rv = onlp_attribute_onie_info_get(ONLP_OID_CHASSIS,
+                                                      &oip))) {
+
 #define REGISTER_STR(_index, _field)                                    \
         do {                                                            \
             platform_string_register(_index, #_field, (char*)oip->_field); \
@@ -249,12 +249,8 @@ onlp_snmp_platform_init(void)
         REGISTER_STR(13, diag_version);
         REGISTER_STR(14, service_tag);
         REGISTER_STR(15, onie_version);
-
-        onlp_attribute_free(ONLP_OID_CHASSIS,
-                            ONLP_ATTRIBUTE_ONIE_INFO,
-                            oip);
+        onlp_attribute_onie_info_free(ONLP_OID_CHASSIS, oip);
     }
-
     resource_int_register(1, "CpuAllPercentUtilization", utilization_handler);
     resource_int_register(2, "CpuAllPercentIdle", idle_handler);
 }
