@@ -95,6 +95,9 @@ typedef struct onlp_psu_info_t {
 } onlp_psu_info_t;
 
 
+/**
+ * Determine if a PSU capability is set.
+ */
 #define ONLP_PSU_INFO_CAP_IS_SET(_pinfo, _name) \
     ((_pinfo)->caps & ONLP_PSU_CAPS_##_name)
 
@@ -132,29 +135,26 @@ int onlp_psu_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 int onlp_psu_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
 
 /**
- * @brief Format the given PSU OID.
- * @param id The PSU OID
- * @param format The output format.
- * @param pvs The output pvs
- * @param flags The output flags
+ * @brief Convert a PSU info structure to user JSON.
+ * @param info The PSU info structure
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
  */
-int onlp_psu_format(onlp_oid_t id, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags);
+int onlp_psu_info_to_user_json(onlp_psu_info_t* info, cJSON** cj, uint32_t flags);
 
 /**
- * @brief Format the given PSU information structure.
- * @param info The information structure.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
+ * @brief Convert a PSU info structure to JSON.
+ * @param info The PSU info structure
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
  */
-int onlp_psu_info_format(onlp_psu_info_t* info,
-                         onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags);
+int onlp_psu_info_to_json(onlp_psu_info_t* info, cJSON** cj, uint32_t flags);
 
-
-int onlp_psu_info_to_user_json(onlp_psu_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_psu_info_to_json(onlp_psu_info_t* info, cJSON** rv, uint32_t flags);
+/**
+ * @brief Convert a JSON object to a PSU info structure.
+ * @param cj The JSON object.
+ * @param [out] info Receives the PSU info structure.
+ */
 int onlp_psu_info_from_json(cJSON* cj, onlp_psu_info_t* info);
 
 

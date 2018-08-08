@@ -38,7 +38,7 @@ onlp_asset_info_to_json(onlp_asset_info_t* aip, cJSON** rv)
         if(aip->_field) {                                               \
             cJSON_AddStringToObject(cj, #_name, aip->_field);           \
         } else {                                                        \
-            cJSON_AddNullToObject(cj, #_name);                          \
+            /* cJSON_AddNullToObject(cj, #_name); */                    \
         }                                                               \
     } while(0);
 

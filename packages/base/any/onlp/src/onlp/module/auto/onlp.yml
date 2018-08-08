@@ -119,33 +119,11 @@ oid_status: &oid_status
 - OPERATIONAL
 - UNPLUGGED
 
-# OID Output Format
-oid_format_types: &oid_format_types
-- JSON
-- YAML
-- USER
-- DEBUG
-
-# OID Output Flags
-oid_format_flags: &oid_format_flags
-- RECURSIVE
-- MISSING
-
-# OID dump options
-oid_dump: &oid_dump
-- RECURSE
-- EVEN_IF_ABSENT
-
-# OID show options
-oid_show: &oid_show
-- RECURSE
-- EXTENDED
-- YAML
-
 # OID JSON Flags
 oid_json_flags: &oid_json_flags
 - RECURSIVE
 - UNSUPPORTED_FIELDS
+- TO_USER_JSON
 
 # SFP Control
 sfp_control: &sfp_controls
@@ -269,24 +247,6 @@ definitions:
       members: *oid_status
       flags: True
 
-    onlp_oid_format:
-      tag: oid
-      members: *oid_format_types
-
-    onlp_oid_format_flags:
-      tag: oid
-      members: *oid_format_flags
-      flags: True
-
-    onlp_oid_show:
-      tag: oid
-      members: *oid_show
-      flags: True
-
-    onlp_oid_dump:
-      tag: oid
-      members: *oid_dump
-
     onlp_oid_json_flag:
       tag: oid
       members: *oid_json_flags
@@ -364,7 +324,7 @@ definitions:
 
     ONLP_ASSET_INFO_ENTRY:
       members:
-        - manufacturer,  Manufacture,   str
+        - manufacturer,  Manufacturer,  str
         - date,          Date,          str
         - part_number,   Part Number,   str
         - serial_number, Serial Number, str

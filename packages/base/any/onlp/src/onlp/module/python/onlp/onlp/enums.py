@@ -71,32 +71,10 @@ class ONLP_LOG_FLAG(Enumeration):
     JSON = 0
 
 
-class ONLP_OID_DUMP(Enumeration):
-    RECURSE = 0
-    EVEN_IF_ABSENT = 1
-
-
-class ONLP_OID_FORMAT(Enumeration):
-    JSON = 0
-    YAML = 1
-    USER = 2
-    DEBUG = 3
-
-
-class ONLP_OID_FORMAT_FLAGS(Enumeration):
-    RECURSIVE = (1 << 0)
-    MISSING = (1 << 1)
-
-
 class ONLP_OID_JSON_FLAG(Enumeration):
     RECURSIVE = (1 << 0)
     UNSUPPORTED_FIELDS = (1 << 1)
-
-
-class ONLP_OID_SHOW(Enumeration):
-    RECURSE = (1 << 0)
-    EXTENDED = (1 << 1)
-    YAML = (1 << 2)
+    TO_USER_JSON = (1 << 2)
 
 
 class ONLP_OID_STATUS_FLAG(Enumeration):

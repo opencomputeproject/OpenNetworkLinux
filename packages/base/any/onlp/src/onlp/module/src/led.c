@@ -139,37 +139,6 @@ onlp_led_char_set_locked__(onlp_oid_t id, char c)
 }
 ONLP_LOCKED_API2(onlp_led_char_set, onlp_oid_t, id, char, c);
 
-/************************************************************
- *
- * Debug and Show Functions
- *
- ***********************************************************/
-
-int
-onlp_led_format(onlp_oid_t oid, onlp_oid_format_t format,
-                aim_pvs_t* pvs, uint32_t flags)
-{
-    int rv;
-    onlp_led_info_t info;
-
-    ONLP_OID_LED_VALIDATE(oid);
-    ONLP_PTR_VALIDATE(pvs);
-
-    if(ONLP_SUCCESS(rv = onlp_led_info_get(oid, &info))) {
-        rv = onlp_led_info_format(&info, format, pvs, flags);
-    }
-
-    return rv;
-}
-
-int
-onlp_led_info_format(onlp_led_info_t* info, onlp_oid_format_t format,
-                     aim_pvs_t* pvs, uint32_t flags)
-{
-    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_led_caps_flags} mode=%{onlp_led_mode}\n",
-               info, info->caps, info->mode);
-    return 0;
-}
 
 int
 onlp_led_info_to_user_json(onlp_led_info_t* info, cJSON** cjp, uint32_t flags)

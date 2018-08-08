@@ -70,28 +70,6 @@ onlp_psu_info_get_locked__(onlp_oid_t oid,  onlp_psu_info_t* info)
 ONLP_LOCKED_API2(onlp_psu_info_get, onlp_oid_t, oid, onlp_psu_info_t*, info);
 
 int
-onlp_psu_format(onlp_oid_t id, onlp_oid_format_t format,
-                aim_pvs_t* pvs, uint32_t flags)
-{
-    int rv;
-    onlp_psu_info_t info;
-    if(ONLP_SUCCESS(rv = onlp_psu_info_get(id, &info))) {
-        rv = onlp_psu_info_format(&info, format, pvs, flags);
-    }
-    return rv;
-}
-
-int
-onlp_psu_info_format(onlp_psu_info_t* info,
-                     onlp_oid_format_t format,
-                     aim_pvs_t* pvs, uint32_t flags)
-{
-    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_psu_caps_flags}\n",
-               info, info->caps);
-    return 0;
-}
-
-int
 onlp_psu_info_to_user_json(onlp_psu_info_t* info, cJSON** cjp, uint32_t flags)
 {
     int rv;

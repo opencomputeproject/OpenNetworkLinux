@@ -63,19 +63,19 @@ int onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap);
 
 /**
  * @brief Determine the SFP connector type.
- * @param port The SFP Port ID.
- * @param[out] Receives the connector type.
+ * @param id The SFP Port ID.
+ * @param[out] rtype Receives the connector type.
  */
-int onlp_sfpi_type_get(int port, onlp_sfp_type_t* rtype);
+int onlp_sfpi_type_get(onlp_oid_id_t id, onlp_sfp_type_t* rtype);
 
 /**
  * @brief Determine if an SFP is present.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @returns 1 if present
  * @returns 0 if absent
  * @returns An error condition.
  */
-int onlp_sfpi_is_present(int port);
+int onlp_sfpi_is_present(onlp_oid_id_t id);
 
 /**
  * @brief Return the presence bitmap for all SFP ports.
@@ -92,134 +92,124 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst);
 
 /**
  * @brief Read bytes from the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
  * @param addr Read offset.
  * @param[out] dst Receives the data.
  * @param len Read length.
  * @returns The number of bytes read or ONLP_STATUS_E_* no error.
  */
-int onlp_sfpi_dev_read(int port, int devaddr, int addr,
+int onlp_sfpi_dev_read(onlp_oid_id_t id, int devaddr, int addr,
                        uint8_t* dst, int len);
 
 
 /**
  * @brief Write bytes to the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
+ * @param addr Write offset.
  * @param src The bytes to write.
- * @param offset Write offset.
  * @param len Write length.
  */
-int onlp_sfpi_dev_write(int port, int devaddr, int addr,
+int onlp_sfpi_dev_write(onlp_oid_id_t id, int devaddr, int addr,
                         uint8_t* src, int len);
 
 /**
  * @brief Read a byte from the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
  * @param addr The read address.
  * @returns The byte on success or ONLP_STATUS_E* on error.
  */
-int onlp_sfpi_dev_readb(int port, int devaddr, int addr);
+int onlp_sfpi_dev_readb(onlp_oid_id_t id, int devaddr, int addr);
 
 /**
  * @brief Write a byte to the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
  * @param addr The write address.
  * @param value The write value.
  */
-int onlp_sfpi_dev_writeb(int port, int devaddr, int addr,
+int onlp_sfpi_dev_writeb(onlp_oid_id_t id, int devaddr, int addr,
                          uint8_t value);
 
 /**
  * @brief Read a word from the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
  * @param addr The read address.
  * @returns The word if successful, ONLP_STATUS_E* on error.
  */
-int onlp_sfpi_dev_readw(int port, int devaddr, int addr);
+int onlp_sfpi_dev_readw(onlp_oid_id_t id, int devaddr, int addr);
 
 /**
  * @brief Write a word to the target device on the given SFP port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param devaddr The device address.
  * @param addr The write address.
  * @param value The write value.
  */
-int onlp_sfpi_dev_writew(int port, int devaddr, int addr,
+int onlp_sfpi_dev_writew(onlp_oid_id_t id, int devaddr, int addr,
                          uint16_t value);
 
 /**
  * @brief Perform any actions required after an SFP is inserted.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param info The SFF Module information structure.
  * @note This function is optional. If your platform must
  * adjust equalizer or preemphasis settings internally then
  * this function should be implemented as the trigger.
  */
-int onlp_sfpi_post_insert(int port, sff_info_t* info);
+int onlp_sfpi_post_insert(onlp_oid_id_t id, sff_info_t* info);
 
 /**
  * @brief Returns whether or not the given control is supported on the given port.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param control The control.
  * @param[out] rv Receives 1 if supported, 0 if not supported.
  * @note This provided for convenience and is optional.
  * If you implement this function your control_set and control_get APIs
  * will not be called on unsupported ports.
  */
-int onlp_sfpi_control_supported(int port,
+int onlp_sfpi_control_supported(onlp_oid_id_t id,
                                 onlp_sfp_control_t control, int* rv);
 
 /**
  * @brief Set an SFP control.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param control The control.
  * @param value The value.
  */
-int onlp_sfpi_control_set(int port, onlp_sfp_control_t control,
+int onlp_sfpi_control_set(onlp_oid_id_t id, onlp_sfp_control_t control,
                           int value);
 
 /**
  * @brief Get an SFP control.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param control The control
  * @param[out] value Receives the current value.
  */
-int onlp_sfpi_control_get(int port, onlp_sfp_control_t control,
+int onlp_sfpi_control_get(onlp_oid_id_t id, onlp_sfp_control_t control,
                           int* value);
 
 /**
  * @brief Remap SFP user SFP port numbers before calling the SFPI interface.
- * @param port The SFP Port ID.
+ * @param id The SFP Port ID.
  * @param[out] rport Receives the new port.
  * @note This function will be called to remap the user SFP port number
  * to the number returned in rport before the SFPI functions are called.
  * This is an optional convenience for platforms with dynamic or
  * variant physical SFP numbering.
  */
-int onlp_sfpi_port_map(int port, int* rport);
+int onlp_sfpi_port_map(onlp_oid_id_t id, int* rport);
 
 
 /**
  * @brief Get the SFP's OID header.
- * @param oid The SFP oid.
- * @param hdr Receives the header.
+ * @param id The SFP oid.
+ * @param [out] hdr Receives the header.
  */
-int onlp_sfpi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rhdr);
-
-/**
- * @brief GEt the SFP's info structure.
- * @param oid The SFP oid.
- * @param info Receives the SFP information.
- * @note It is not normally necessary to implement this function.
- * The upper layer implements this on behalf of the platform
- * using the existing SFP primitives.
- */
-int onlp_sfpi_info_get(onlp_oid_t oid, onlp_sfp_info_t* info);
+int onlp_sfpi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr);
 
 #endif /* __ONLP_SFPI_H__ */
 /* @} */

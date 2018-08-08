@@ -88,32 +88,67 @@ int onlp_chassis_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
 int onlp_chassis_info_get(onlp_oid_t oid, onlp_chassis_info_t* info);
 
 /**
- * @brief Format a chassis oid.
- * @param oid The chassis oid.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
+ * @brief Convert a chassis info structure to user JSON.
+ * @param info The chassis info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
  */
-int onlp_chassis_format(onlp_oid_t oid, onlp_oid_format_t format,
-                        aim_pvs_t* pvs, uint32_t flags);
+int onlp_chassis_info_to_user_json(onlp_chassis_info_t* info, cJSON** cj, uint32_t flags);
+
+/**
+ * @brief Convert a chassis info structure to JSON.
+ * @param info The chassis info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
+int onlp_chassis_info_to_json(onlp_chassis_info_t* info, cJSON** cj, uint32_t flags);
+
+/**
+ * @brief Convert a JSON object to a chassis info structure.
+ * @param cj The JSON object.
+ * @param [out] info Receives the chassis info.
+ */
+int onlp_chassis_info_from_json(cJSON* cj, onlp_chassis_info_t* info);
+
+/******************************************************************************
+ *
+ * Standard Chassis Features
+ *
+ *****************************************************************************/
+
+/**
+ * @brief Get the user or full environmental json data.
+ * @param [out] cjp Receives the JSON data.
+ * @param flags Zero or ONLP_OID_JSON_FLAG_TO_USER_JSON only.
+ * @note This will provide the user view of the environmental data
+
+ * with keys in the following order:
+ *   Chassis Fans
+ *   Chassis Thermals
+ *   Chassis PSUs
+ */
+int onlp_chassis_environment_to_json(cJSON** cjp, uint32_t flags);
 
 
 /**
- * @brief Format a chassis info structure.
- * @param info The chassis info structure.
- * @param format The output format.
+ * @brief Show the environmental data.
  * @param pvs The output pvs.
- * @param flags The output flags.
+ * @param flags Zero or ONLP_OID_JSON_FLAG_TO_USER_JSON only.
+ * @note See onlp_chassis_environment_to_json()
  */
-int onlp_chassis_info_format(onlp_chassis_info_t* info, onlp_oid_format_t format,
-                             aim_pvs_t* pvs, uint32_t flags);
+int onlp_chassis_environment_show(aim_pvs_t* pvs, uint32_t flags);
 
-int onlp_chassis_info_to_user_json(onlp_chassis_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_chassis_info_to_json(onlp_chassis_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_chassis_info_from_json(cJSON* cj, onlp_chassis_info_t* info);
+/**
+ * @brief Construct the Chassis debug JSON object.
+ * @param [out] rv Receives the JSON object.
+ */
+int onlp_chassis_debug_get_json(cJSON** rv);
 
-
-int onlp_chassis_environment(aim_pvs_t* pvs);
+/**
+ * @brief Show the Chassis debug information.
+`* @param pvs The output pvs.
+ */
+int onlp_chassis_debug_show(aim_pvs_t* pvs);
 
 #endif /* __ONLP_CHASSIS_H_ */
 /* @} */

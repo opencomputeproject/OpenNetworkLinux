@@ -27,6 +27,7 @@
 #include <onlp/oids.h>
 #include "onlp_int.h"
 #include "onlp_locks.h"
+#include "onlp_log.h"
 
 static int
 onlp_thermal_sw_init_locked__(void)
@@ -51,17 +52,18 @@ onlp_thermal_sw_denit_locked__(void)
 ONLP_LOCKED_API0(onlp_thermal_sw_denit);
 
 static int
-onlp_thermal_hdr_get_locked__(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+onlp_thermal_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    int rv = onlp_thermali_hdr_get(id, hdr);
-    if(ONLP_SUCCESS(rv)) {
-        return rv;
-    }
-    if(ONLP_UNSUPPORTED(rv)) {
-        onlp_thermal_info_t ti;
-        rv = onlp_thermali_info_get(id, &ti);
-        memcpy(hdr, &ti.hdr, sizeof(ti.hdr));
-    }
+    int rv;
+    onlp_oid_id_t id;
+
+    ONLP_OID_THERMAL_VALIDATE_GET_ID(oid, id);
+    ONLP_PTR_VALIDATE_ZERO(hdr);
+
+    rv = onlp_log_error(0,
+                        onlp_thermali_hdr_get(id, hdr),
+                        "thermali hdr get %{onlp_oid}", oid);
+    hdr->id = oid;
     return rv;
 }
 ONLP_LOCKED_API2(onlp_thermal_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
@@ -70,34 +72,19 @@ ONLP_LOCKED_API2(onlp_thermal_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
 static int
 onlp_thermal_info_get_locked__(onlp_oid_t oid, onlp_thermal_info_t* info)
 {
-    ONLP_OID_THERMAL_VALIDATE(oid);
-    return onlp_thermali_info_get(oid, info);
-}
-ONLP_LOCKED_API2(onlp_thermal_info_get, onlp_oid_t, oid, onlp_thermal_info_t*, info);
-
-
-int
-onlp_thermal_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags)
-{
     int rv;
-    onlp_thermal_info_t info;
-    if(ONLP_SUCCESS(rv = onlp_thermal_info_get(oid, &info))) {
-        return onlp_thermal_info_format(&info, format, pvs, flags);
-    }
+    onlp_oid_id_t id;
+
+    ONLP_OID_THERMAL_VALIDATE_GET_ID(oid, id);
+    ONLP_PTR_VALIDATE_ZERO(info);
+
+    rv = onlp_log_error(0,
+                        onlp_thermali_info_get(id, info),
+                        "thermali info get %{onlp_oid}", oid);
+    info->hdr.id = oid;
     return rv;
 }
-
-int
-onlp_thermal_info_format(onlp_thermal_info_t* info,
-                         onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags)
-{
-    aim_printf(pvs, "%{onlp_oid_hdr} caps=%{onlp_thermal_caps_flags} m=%d thresholds=[ %d, %d, %d ]\n",
-               info, info->caps, info->mcelsius,
-               info->thresholds.warning, info->thresholds.error, info->thresholds.shutdown);
-    return 0;
-}
+ONLP_LOCKED_API2(onlp_thermal_info_get, onlp_oid_t, oid, onlp_thermal_info_t*, info);
 
 int
 onlp_thermal_info_to_user_json(onlp_thermal_info_t* info, cJSON** cjp, uint32_t flags)

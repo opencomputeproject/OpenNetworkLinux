@@ -54,14 +54,43 @@ int onlp_thermali_sw_denit(void);
  * @param id The thermal oid.
  * @param[out] rv Receives the header.
  */
-int onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_thermali_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Get the information for the given thermal OID.
  * @param id The Thermal OID
  * @param[out] rv Receives the thermal information.
  */
-int onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv);
+int onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* rv);
+
+/**
+ * This macro should be used in your implementation to declare
+ * your static chassis thermal sensors.
+ */
+#define ONLP_THERMAL_INFO_ENTRY_INIT(_id, _desc, _parent)       \
+    {                                                           \
+        {                                                       \
+            .id = ONLP_THERMAL_ID_CREATE(_id),                  \
+                .description = _desc,                           \
+                .poid = ONLP_OID_CHASSIS,                       \
+                .status = ONLP_OID_STATUS_FLAG_PRESENT,         \
+                },                                              \
+            .caps = ONLP_THERMAL_CAPS_ALL,                      \
+                 }
+
+/**
+ * This macro should be used to statically initialize a chassis
+ * thermal info structure.
+ */
+#define ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(_id, _desc)        \
+    ONLP_THERMAL_INFO_ENTRY_INIT(_id, _desc, ONLP_OID_CHASSIS)
+
+/**
+ * This macro should be used to statically initialize a PSU
+ * thermal info structure.
+ */
+#define ONLP_PSU_THERMAL_INFO_ENTRY_INIT(_id, _desc, _psu_id) \
+    ONLP_THERMAL_INFO_ENTRY_INIT(_id, _desc, ONLP_PSU_ID_CREATE(_psu_id))
 
 #endif /* __ONLP_THERMALI_H__ */
 /* @} */

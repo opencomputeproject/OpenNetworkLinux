@@ -82,35 +82,6 @@ onlp_oid_info_get(onlp_oid_t oid, onlp_oid_hdr_t** info)
 }
 
 int
-onlp_oid_format(onlp_oid_t oid, onlp_oid_format_t format,
-                aim_pvs_t* pvs, uint32_t flags)
-{
-    switch(ONLP_OID_TYPE_GET(oid))
-        {
-#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower) \
-            case ONLP_OID_TYPE_##_name: \
-                return onlp_##_lower##_format(oid, format, pvs, flags);
-#include <onlp/onlp.x>
-        }
-    return ONLP_STATUS_E_PARAM;
-}
-
-int
-onlp_oid_info_format(onlp_oid_hdr_t* info, onlp_oid_format_t format,
-                     aim_pvs_t* pvs, uint32_t flags)
-{
-    switch(ONLP_OID_TYPE_GET(info->id))
-        {
-#define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
-            case ONLP_OID_TYPE_##_name:                                 \
-                return onlp_##_lower##_info_format((onlp_##_lower##_info_t*)info, \
-                                                   format, pvs, flags);
-#include <onlp/onlp.x>
-        }
-    return ONLP_STATUS_E_PARAM;
-}
-
-int
 onlp_oid_info_to_json(onlp_oid_hdr_t* info, cJSON** cj, uint32_t flags)
 {
     switch(ONLP_OID_TYPE_GET(info->id))
@@ -150,6 +121,10 @@ onlp_oid_to_user_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
 int
 onlp_oid_to_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
 {
+    if(flags & ONLP_OID_JSON_FLAG_TO_USER_JSON) {
+        return onlp_oid_to_user_json(oid, cjp, flags);
+    }
+
     switch(ONLP_OID_TYPE_GET(oid))
         {
 #define ONLP_OID_TYPE_ENTRY(_name, _value, _upper, _lower)              \
@@ -158,7 +133,7 @@ onlp_oid_to_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
                     int rv;                                             \
                     onlp_##_lower##_info_t info;                        \
                     if(ONLP_SUCCESS(rv = onlp_##_lower##_info_get(oid, &info))) { \
-                        return onlp_##_lower##_info_to_json(&info, cjp, flags); \
+                        rv = onlp_##_lower##_info_to_json(&info, cjp, flags); \
                     }                                                   \
                     return rv;                                          \
                 }
@@ -167,17 +142,6 @@ onlp_oid_to_json(onlp_oid_t oid, cJSON** cjp, uint32_t flags)
     return ONLP_STATUS_E_PARAM;
 }
 
-
-int
-onlp_oid_table_format(onlp_oid_table_t table, onlp_oid_format_t format,
-                      aim_pvs_t* pvs, uint32_t flags)
-{
-    onlp_oid_t* oidp;
-    ONLP_OID_TABLE_ITER(table, oidp) {
-        onlp_oid_format(*oidp, format, pvs, flags);
-    }
-    return 0;
-}
 
 int
 onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_flags_t types,
@@ -302,46 +266,6 @@ int
 onlp_oid_get_all_free(biglist_t* list)
 {
     biglist_free_all(list, aim_free);
-    return 0;
-}
-
-int
-onlp_oid_info_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
-                         uint32_t get_flags,
-                         onlp_oid_format_t format, aim_pvs_t* pvs,
-                         uint32_t format_flags)
-{
-    int rv;
-    biglist_t* list;
-    if(ONLP_SUCCESS(onlp_oid_info_get_all(root, types, get_flags, &list))) {
-        biglist_t* ble;
-        onlp_oid_hdr_t* hdr;
-        BIGLIST_FOREACH_DATA(ble, list, onlp_oid_hdr_t*, hdr) {
-            if(ONLP_FAILURE(rv = onlp_oid_info_format(hdr, ONLP_OID_TYPE_GET(hdr->id), pvs, format_flags))) {
-                break;
-            }
-        }
-        onlp_oid_get_all_free(list);
-    }
-    return rv;
-}
-
-
-int
-onlp_oid_hdr_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
-                        uint32_t get_flags,
-                        onlp_oid_format_t format, aim_pvs_t* pvs,
-                        uint32_t format_flags)
-{
-    biglist_t* list;
-    if(ONLP_SUCCESS(onlp_oid_hdr_get_all(root, types, get_flags, &list))) {
-        biglist_t* ble;
-        onlp_oid_hdr_t* hdr;
-        BIGLIST_FOREACH_DATA(ble, list, onlp_oid_hdr_t*, hdr) {
-            aim_printf(pvs, "%{onlp_oid_hdr}\n", hdr);
-        }
-        onlp_oid_get_all_free(list);
-    }
     return 0;
 }
 

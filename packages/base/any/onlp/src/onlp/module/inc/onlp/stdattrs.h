@@ -73,12 +73,6 @@ typedef struct onlp_asset_info_s {
 
 } onlp_asset_info_t;
 
-/**
- * @brief This is the attribute used when referring to the
- * standard asset information structure.
- */
-
-#define ONLP_ATTRIBUTE_ASSET_INFO "onlp.asset_info"
 
 /**
  * @brief Show an asset structure.
@@ -95,15 +89,7 @@ int onlp_asset_info_free(onlp_asset_info_t* aip);
  */
 int onlp_asset_info_to_json(onlp_asset_info_t* aip, cJSON** rv);
 
-
-/**
- * @brief The ONIE Information Structure can be queried
- * using this attribute.
- *
- * This attribute returns an onlp_onie_info_t structure.
- * See onlplib/onie.h
- */
-#define ONLP_ATTRIBUTE_ONIE_INFO "onlp.attr.onie_info"
+/* See onlplib/onie.h for the onie_info versions */
 
 #endif /* __ONLP_STDATTRS_H__ */
 /* @} */

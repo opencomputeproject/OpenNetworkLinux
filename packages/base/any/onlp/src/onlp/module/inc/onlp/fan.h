@@ -82,6 +82,9 @@ typedef struct onlp_fan_info_s {
 
 } onlp_fan_info_t;
 
+/**
+ * @brief Determine if a fan capability is set.
+ */
 #define ONLP_FAN_INFO_CAP_IS_SET(_pinfo, _name) \
     ((_pinfo)->caps & ONLP_FAN_CAPS_##_name)
 
@@ -118,27 +121,6 @@ int onlp_fan_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr);
  */
 int onlp_fan_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
 
-
-/**
- * @brief Format a fan oid.
- * @param oid The fan oid.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
- */
-int onlp_fan_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags);
-
-/**
- * @brief Format a fan information structure.
- * @param info The fan information structure.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
- */
-int onlp_fan_info_format(onlp_fan_info_t* info, onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags);
-
 /**
  * @brief Set the fan speed in RPMs.
  * @param id The fan OID.
@@ -163,6 +145,31 @@ int onlp_fan_percentage_set(onlp_oid_t id, int p);
  */
 int onlp_fan_dir_set(onlp_oid_t id, onlp_fan_dir_t dir);
 
+/**
+ * @brief Convert a fan info structure to user JSON.
+ * @param info The fan info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
+int onlp_fan_info_to_user_json(onlp_fan_info_t* info, cJSON** cj,
+                               uint32_t flags);
+
+/**
+ * @brief Convert a fan info structure to JSON.
+ * @param info The fan info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
+int onlp_fan_info_to_json(onlp_fan_info_t* info, cJSON** cj, uint32_t flags);
+
+/**
+ * @brief Convert a JSON object to a fan info structure.
+ * @param cj The JSON object.
+ * @param [out] info Recieves the fan info structure.
+ */
+int onlp_fan_info_from_json(cJSON* cj, onlp_fan_info_t* info);
+
+
 /** Fan is present. */
 #define ONLP_FAN_STATUS_PRESENT(_fi) ((_fi).hdr.status & ONLP_OID_STATUS.PRESENT)
 
@@ -174,15 +181,6 @@ int onlp_fan_dir_set(onlp_oid_t id, onlp_fan_dir_t dir);
 
 /** Fan is operating normally */
 #define ONLP_FAN_STATUS_NORMAL(_fi) ( ONLP_FAN_STATUS_PRESENT(_fi) && !ONLP_FAN_STATUS_FAILED(_fi) )
-
-
-
-
-int onlp_fan_info_to_user_json(onlp_fan_info_t* info, cJSON** cj,
-                               uint32_t flags);
-
-int onlp_fan_info_to_json(onlp_fan_info_t* info, cJSON** cj, uint32_t flags);
-int onlp_fan_info_from_json(cJSON* cj, onlp_fan_info_t* info);
 
 
 /******************************************************************************

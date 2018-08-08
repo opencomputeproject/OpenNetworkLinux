@@ -28,7 +28,7 @@
 
 /* <auto.start.xmacro(ALL).define> */
 #ifdef ONLP_ASSET_INFO_ENTRY
-ONLP_ASSET_INFO_ENTRY(manufacturer,  Manufacture,   str)
+ONLP_ASSET_INFO_ENTRY(manufacturer,  Manufacturer,  str)
 ONLP_ASSET_INFO_ENTRY(date,          Date,          str)
 ONLP_ASSET_INFO_ENTRY(part_number,   Part Number,   str)
 ONLP_ASSET_INFO_ENTRY(serial_number, Serial Number, str)
@@ -61,11 +61,7 @@ ONLP_ENUMERATION_ENTRY(onlp_fan_dir, "")
 ONLP_ENUMERATION_ENTRY(onlp_led_caps, "")
 ONLP_ENUMERATION_ENTRY(onlp_led_mode, "")
 ONLP_ENUMERATION_ENTRY(onlp_log_flag, "")
-ONLP_ENUMERATION_ENTRY(onlp_oid_dump, "")
-ONLP_ENUMERATION_ENTRY(onlp_oid_format, "")
-ONLP_ENUMERATION_ENTRY(onlp_oid_format_flags, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_json_flag, "")
-ONLP_ENUMERATION_ENTRY(onlp_oid_show, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_status_flag, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_type, "")
 ONLP_ENUMERATION_ENTRY(onlp_oid_type_flag, "")

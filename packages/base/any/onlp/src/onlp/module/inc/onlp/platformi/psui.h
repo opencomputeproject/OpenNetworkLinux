@@ -54,15 +54,27 @@ int onlp_psui_sw_denit(void);
  * @param id The PSU OID.
  * @param[out] rv Receives the header.
  */
-int onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_psui_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Get the information structure for the given PSU
  * @param id The PSU OID
  * @param[out] rv Receives the PSU information.
  */
-int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
+int onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t* rv);
 
+
+/**
+ * @brief Initialize a static PSU info structure.
+ */
+#define ONLP_CHASSIS_PSU_INFO_ENTRY_INIT(_id, _desc)    \
+    {                                                   \
+        {                                               \
+            .id = _id,                                  \
+            .description = _desc,                   \
+            .poid = ONLP_OID_CHASSIS,               \
+        },                                      \
+    }
 
 #endif /* __ONLP_PSUI_H__ */
 /* @} */

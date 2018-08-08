@@ -47,46 +47,15 @@
  */
 
 typedef uint32_t onlp_oid_t;
+typedef uint32_t onlp_oid_id_t;
 
 /* <auto.start.enum(tag:oid).define> */
-/** onlp_oid_dump */
-typedef enum onlp_oid_dump_e {
-    ONLP_OID_DUMP_RECURSE,
-    ONLP_OID_DUMP_EVEN_IF_ABSENT,
-    ONLP_OID_DUMP_LAST = ONLP_OID_DUMP_EVEN_IF_ABSENT,
-    ONLP_OID_DUMP_COUNT,
-    ONLP_OID_DUMP_INVALID = -1,
-} onlp_oid_dump_t;
-
-/** onlp_oid_format */
-typedef enum onlp_oid_format_e {
-    ONLP_OID_FORMAT_JSON,
-    ONLP_OID_FORMAT_YAML,
-    ONLP_OID_FORMAT_USER,
-    ONLP_OID_FORMAT_DEBUG,
-    ONLP_OID_FORMAT_LAST = ONLP_OID_FORMAT_DEBUG,
-    ONLP_OID_FORMAT_COUNT,
-    ONLP_OID_FORMAT_INVALID = -1,
-} onlp_oid_format_t;
-
-/** onlp_oid_format_flags */
-typedef enum onlp_oid_format_flags_e {
-    ONLP_OID_FORMAT_FLAGS_RECURSIVE = (1 << 0),
-    ONLP_OID_FORMAT_FLAGS_MISSING = (1 << 1),
-} onlp_oid_format_flags_t;
-
 /** onlp_oid_json_flag */
 typedef enum onlp_oid_json_flag_e {
     ONLP_OID_JSON_FLAG_RECURSIVE = (1 << 0),
     ONLP_OID_JSON_FLAG_UNSUPPORTED_FIELDS = (1 << 1),
+    ONLP_OID_JSON_FLAG_TO_USER_JSON = (1 << 2),
 } onlp_oid_json_flag_t;
-
-/** onlp_oid_show */
-typedef enum onlp_oid_show_e {
-    ONLP_OID_SHOW_RECURSE = (1 << 0),
-    ONLP_OID_SHOW_EXTENDED = (1 << 1),
-    ONLP_OID_SHOW_YAML = (1 << 2),
-} onlp_oid_show_t;
 
 /** onlp_oid_status_flag */
 typedef enum onlp_oid_status_flag_e {
@@ -138,19 +107,31 @@ typedef uint32_t onlp_oid_status_flags_t;
 #define ONLP_OID_TYPE_CREATE(_type, _id) ( ( (_type) << 24) | (_id))
 #define ONLP_OID_IS_TYPE(_type,_id) (ONLP_OID_TYPE_GET((_id)) == _type)
 #define ONLP_OID_ID_GET(_id) (_id & 0xFFFFFF)
-#define ONLP_OID_TYPE_VALIDATE(_type, _id)      \
+#define ONLP_OID_TYPE_VALIDATE(_type, _oid)     \
     do {                                        \
-        if(!ONLP_OID_IS_TYPE(_type, _id)) {     \
+        if(!ONLP_OID_IS_TYPE(_type, _oid)) {    \
             return ONLP_STATUS_E_PARAM;         \
         }                                       \
-    } while(0)
+} while(0)
 
-#define ONLP_OID_TYPE_VALIDATE_NR(_type, _id)   \
+#define ONLP_OID_TYPE_VALIDATE_NR(_type, _oid)  \
     do {                                        \
-        if(!ONLP_OID_IS_TYPE(_type, _id)) {     \
+        if(!ONLP_OID_IS_TYPE(_type, _oid)) {    \
             return;                             \
         }                                       \
     } while(0)
+
+#define ONLP_OID_TYPE_VALIDATE_GET_ID(_type, _oid, _id) \
+    do {                                                \
+        ONLP_OID_TYPE_VALIDATE(_type, _oid);            \
+        _id = ONLP_OID_ID_GET(_oid);                    \
+    } while(0)
+
+#define ONLP_OID_TYPE_VALIDATE_GET_ID_NR(_type, _oid, _id)      \
+    do {                                                        \
+        ONLP_OID_TYPE_VALIDATE_NR(_type, _oid);                 \
+        _id = ONLP_OID_ID_GET(_oid);                            \
+    }
 
 #define ONLP_OID_IS_TYPE_FLAGS(_flags, _id) ((_flags & (1 << ONLP_OID_TYPE_GET(_id))))
 #define ONLP_OID_IS_TYPE_FLAGSZ(_flags, _id) ((_flags == 0) || ONLP_OID_IS_TYPE_FLAGS(_flags, _id))
@@ -170,6 +151,8 @@ typedef uint32_t onlp_oid_status_flags_t;
 #define ONLP_OID_IS_THERMAL(_id) ONLP_OID_IS_TYPE(ONLP_OID_TYPE_THERMAL, _id)
 #define ONLP_OID_THERMAL_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_THERMAL, _id)
 #define ONLP_OID_THERMAL_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_THERMAL, _id)
+#define ONLP_OID_THERMAL_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_THERMAL, _oid, _id)
+#define ONLP_OID_THERMAL_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_THERMAL, _oid, _id)
 
 #define ONLP_OID_IS_FAN(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_FAN, _id)
 #define ONLP_OID_FAN_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_FAN, _id)
@@ -256,14 +239,6 @@ int onlp_oid_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
  */
 int onlp_oid_info_get(onlp_oid_t oid, onlp_oid_hdr_t** info);
 
-int onlp_oid_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags);
-
-int onlp_oid_info_format(onlp_oid_hdr_t* info, onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags);
-
-int onlp_oid_table_format(onlp_oid_table_t table, onlp_oid_format_t format,
-                          aim_pvs_t* pvs, uint32_t flags);
 
 /**
  * Iterator
@@ -284,18 +259,8 @@ int onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_flags_t types,
 int onlp_oid_info_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
                           uint32_t flags, biglist_t** list);
 
-int onlp_oid_info_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
-                             uint32_t get_flags,
-                             onlp_oid_format_t format, aim_pvs_t* pvs,
-                             uint32_t format_flags);
-
 int onlp_oid_hdr_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
                          uint32_t flags, biglist_t** list);
-
-int onlp_oid_hdr_format_all(onlp_oid_t root, onlp_oid_type_flags_t types,
-                            uint32_t get_flags,
-                            onlp_oid_format_t format, aim_pvs_t* pvs,
-                            uint32_t format_flags);
 
 int onlp_oid_get_all_free(biglist_t* list);
 
@@ -308,8 +273,8 @@ int onlp_oid_get_all_free(biglist_t* list);
 #define ONLP_OID_STATUS_FLAG_GET_VALUE(_ptr, _name)                     \
     AIM_FLAG_GET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
-#define ONLP_OID_STATUS_FLAG_SET_VALUE(_ptr, _name) \
-    AIM_FLAG_SET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
+#define ONLP_OID_STATUS_FLAG_SET_VALUE(_ptr, _name, _value) \
+    AIM_FLAG_SET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name, _value)
 
 #define ONLP_OID_STATUS_FLAG_SET(_ptr, _name)                           \
     AIM_FLAG_SET(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
@@ -426,77 +391,6 @@ int onlp_oid_json_verify(onlp_oid_t oid);
  *
  *****************************************************************************/
 /* <auto.start.enum(tag:oid).supportheader> */
-/** Strings macro. */
-#define ONLP_OID_DUMP_STRINGS \
-{\
-    "RECURSE", \
-    "EVEN_IF_ABSENT", \
-}
-/** Enum names. */
-const char* onlp_oid_dump_name(onlp_oid_dump_t e);
-
-/** Enum values. */
-int onlp_oid_dump_value(const char* str, onlp_oid_dump_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_oid_dump_desc(onlp_oid_dump_t e);
-
-/** validator */
-#define ONLP_OID_DUMP_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= ONLP_OID_DUMP_EVEN_IF_ABSENT))
-
-/** onlp_oid_dump_map table. */
-extern aim_map_si_t onlp_oid_dump_map[];
-/** onlp_oid_dump_desc_map table. */
-extern aim_map_si_t onlp_oid_dump_desc_map[];
-
-/** Strings macro. */
-#define ONLP_OID_FORMAT_STRINGS \
-{\
-    "JSON", \
-    "YAML", \
-    "USER", \
-    "DEBUG", \
-}
-/** Enum names. */
-const char* onlp_oid_format_name(onlp_oid_format_t e);
-
-/** Enum values. */
-int onlp_oid_format_value(const char* str, onlp_oid_format_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_oid_format_desc(onlp_oid_format_t e);
-
-/** validator */
-#define ONLP_OID_FORMAT_VALID(_e) \
-    ( (0 <= (_e)) && ((_e) <= ONLP_OID_FORMAT_DEBUG))
-
-/** onlp_oid_format_map table. */
-extern aim_map_si_t onlp_oid_format_map[];
-/** onlp_oid_format_desc_map table. */
-extern aim_map_si_t onlp_oid_format_desc_map[];
-
-/** Enum names. */
-const char* onlp_oid_format_flags_name(onlp_oid_format_flags_t e);
-
-/** Enum values. */
-int onlp_oid_format_flags_value(const char* str, onlp_oid_format_flags_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_oid_format_flags_desc(onlp_oid_format_flags_t e);
-
-/** Enum validator. */
-int onlp_oid_format_flags_valid(onlp_oid_format_flags_t e);
-
-/** validator */
-#define ONLP_OID_FORMAT_FLAGS_VALID(_e) \
-    (onlp_oid_format_flags_valid((_e)))
-
-/** onlp_oid_format_flags_map table. */
-extern aim_map_si_t onlp_oid_format_flags_map[];
-/** onlp_oid_format_flags_desc_map table. */
-extern aim_map_si_t onlp_oid_format_flags_desc_map[];
-
 /** Enum names. */
 const char* onlp_oid_json_flag_name(onlp_oid_json_flag_t e);
 
@@ -517,27 +411,6 @@ int onlp_oid_json_flag_valid(onlp_oid_json_flag_t e);
 extern aim_map_si_t onlp_oid_json_flag_map[];
 /** onlp_oid_json_flag_desc_map table. */
 extern aim_map_si_t onlp_oid_json_flag_desc_map[];
-
-/** Enum names. */
-const char* onlp_oid_show_name(onlp_oid_show_t e);
-
-/** Enum values. */
-int onlp_oid_show_value(const char* str, onlp_oid_show_t* e, int substr);
-
-/** Enum descriptions. */
-const char* onlp_oid_show_desc(onlp_oid_show_t e);
-
-/** Enum validator. */
-int onlp_oid_show_valid(onlp_oid_show_t e);
-
-/** validator */
-#define ONLP_OID_SHOW_VALID(_e) \
-    (onlp_oid_show_valid((_e)))
-
-/** onlp_oid_show_map table. */
-extern aim_map_si_t onlp_oid_show_map[];
-/** onlp_oid_show_desc_map table. */
-extern aim_map_si_t onlp_oid_show_desc_map[];
 
 /** Enum names. */
 const char* onlp_oid_status_flag_name(onlp_oid_status_flag_t e);

@@ -67,7 +67,7 @@ int onlp_module_hw_init(uint32_t flags);
  */
 int onlp_module_sw_denit(void);
 
-/*
+/**
  * @brief Get the module header structure.
  * @param oid The Module oid.
  * @param[out] hdr Receives the header.
@@ -81,14 +81,27 @@ int onlp_module_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
  */
 int onlp_module_info_get(onlp_oid_t oid, onlp_module_info_t* info);
 
-int onlp_module_format(onlp_oid_t oid, onlp_oid_format_t format,
-                       aim_pvs_t* pvs, uint32_t flags);
-
-int onlp_module_info_format(onlp_module_info_t* info, onlp_oid_format_t format,
-                            aim_pvs_t* pvs, uint32_t flags);
-
+/**
+ * @brief Convert a module info structure to user JSON.
+ * @param info The module info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
 int onlp_module_info_to_user_json(onlp_module_info_t* info, cJSON** rv, uint32_t flags);
+
+/**
+ * @brief Convert a module info structure to JSON.
+ * @param info The module info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
 int onlp_module_info_to_json(onlp_module_info_t* info, cJSON** rv, uint32_t flags);
+
+/**
+ * @brief Convert a JSON object to a module info structure.
+ * @param cj The JSON object.
+ * @param [out] info Receives the module info structure.
+ */
 int onlp_module_info_from_json(cJSON* cj, onlp_module_info_t* info);
 
 #endif /* __ONLP_MODULE_H_ */

@@ -43,7 +43,7 @@ int onlp_attributei_hw_init(uint32_t flags);
  * @param oid The OID.
  * @param attribute The attribute name.
  */
-int onlp_attributei_supported(onlp_oid_t id, const char* attribute);
+int onlp_attributei_supported(onlp_oid_t oid, const char* attribute);
 
 /**
  * @brief Set an attribute on the given OID.
@@ -59,7 +59,7 @@ int onlp_attributei_set(onlp_oid_t oid, const char* attribute, void* value);
  * @param attribute The attribute to retrieve.
  * @param[out] value Receives the attributei's value.
  */
-int onlp_attributei_get(onlp_oid_t id, const char* attribute,
+int onlp_attributei_get(onlp_oid_t oid, const char* attribute,
                             void** value);
 
 /**
@@ -68,7 +68,26 @@ int onlp_attributei_get(onlp_oid_t id, const char* attribute,
  * @param attribute The attribute.
  * @param value The value.
  */
-int onlp_attributei_free(onlp_oid_t id, const char* attribute, void* value);
+int onlp_attributei_free(onlp_oid_t oid, const char* attribute, void* value);
 
+/**
+ * Access to standard attributes.
+ */
+
+/**
+ * @brief Get an OID's ONIE attribute.
+ * @param oid The target OID
+ * @param rv [out] Receives the ONIE information if supported.
+ * @note if rv is NULL you should only return whether the attribute is supported.
+ */
+int onlp_attributei_onie_info_get(onlp_oid_t oid, onlp_onie_info_t* rv);
+
+/**
+ * @brief Get an OID's Asset attribute.
+ * @param oid The target OID.
+ * @param rv [out] Receives the Asset information if supported.
+ * @note if rv is NULL you should only return whether the attribute is supported.
+ */
+int onlp_attributei_asset_info_get(onlp_oid_t oid, onlp_asset_info_t* rv);
 
 #endif /* __ONLP_ATTRIBUTEI_H__ */

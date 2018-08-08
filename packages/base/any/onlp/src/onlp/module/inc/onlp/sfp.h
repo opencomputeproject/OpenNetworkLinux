@@ -244,6 +244,19 @@ int onlp_sfp_dev_read(onlp_oid_t port, int devaddr, int addr,
                       uint8_t* dst, int count);
 
 /**
+ * @brief Read bytes from the target device on the given SFP port.
+ * @param port The SFP OID or Port ID.
+ * @param devaddr The device address.
+ * @param addr The start target address.
+ * @param count The number of bytes to read.
+ * @param [out] rv Receives the allocated buffer.
+ * @note The returned buffer must be freed after use.
+ */
+int onlp_sfp_dev_alloc_read(onlp_oid_t port,
+                            int devaddr, int addr, int count,
+                            uint8_t** rv);
+
+/**
  * @brief Write bytes to the target device on the given SFP port.
  * @param port The SFP OID or Port ID.
  * @param devaddr The device address.
@@ -329,14 +342,28 @@ int onlp_sfp_control_get(onlp_oid_t port, onlp_sfp_control_t control,
 int onlp_sfp_control_flags_get(onlp_oid_t port, uint32_t* flags);
 
 
-int onlp_sfp_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags);
-
-int onlp_sfp_info_format(onlp_sfp_info_t* info, onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags);
-
+/**
+ * @brief Convert an SFP info structure to user JSON.
+ * @param info The SFP info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
 int onlp_sfp_info_to_user_json(onlp_sfp_info_t* info, cJSON** rv, uint32_t flags);
+
+/**
+ * @brief Convert an SFP info structure to JSON.
+ * @param info The SFP info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
 int onlp_sfp_info_to_json(onlp_sfp_info_t* info, cJSON** rv, uint32_t flags);
+
+
+/**
+ * @brief Convert a JSON object to an SFP info structure.
+ * @param cj The JSON object.
+ * @param [out] info Receives the SFP info structure.
+ */
 int onlp_sfp_info_from_json(cJSON* cj, onlp_sfp_info_t* info);
 
 /**
@@ -348,8 +375,6 @@ int onlp_sfp_sw_denit(void);
  * @brief Hardware deinitialize the SFP subsystem.
  */
 int onlp_sfp_hw_denit(void);
-
-
 
 /**
  * @brief Show the current SFP inventory.

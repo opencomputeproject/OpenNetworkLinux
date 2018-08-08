@@ -82,28 +82,26 @@ int onlp_generic_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
 int onlp_generic_info_get(onlp_oid_t oid, onlp_generic_info_t* info);
 
 /**
- * @brief Format a Generic OID.
- * @param oid The generic oid.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
+ * @brief Convert a generic info structure to user JSON.
+ * @param info The generic info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
  */
-int onlp_generic_format(onlp_oid_t oid, onlp_oid_format_t format,
-                        aim_pvs_t* pvs, uint32_t flags);
+int onlp_generic_info_to_user_json(onlp_generic_info_t* info, cJSON** cj, uint32_t flags);
 
 /**
- * @brief Format a generic information structure.
+ * @brief Convert a generic info structure to JSON.
  * @param info The generic info structure.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
  */
-int onlp_generic_info_format(onlp_generic_info_t* info,
-                             onlp_oid_format_t format,
-                             aim_pvs_t* pvs, uint32_t flags);
+int onlp_generic_info_to_json(onlp_generic_info_t* info, cJSON** cj, uint32_t flags);
 
-int onlp_generic_info_to_user_json(onlp_generic_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_generic_info_to_json(onlp_generic_info_t* info, cJSON** rv, uint32_t flags);
+/**
+ * @brief Convert a JSON object to a generic info structure.
+ * @param cj The JSON object.
+ * @param [out] info Receives the generic info structure.
+ */
 int onlp_generic_info_from_json(cJSON* cj, onlp_generic_info_t* info);
 
 #endif /* __ONLP_GENERIC_H_ */

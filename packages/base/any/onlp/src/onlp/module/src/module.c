@@ -31,20 +31,6 @@ onlp_module_info_get(onlp_oid_t id, onlp_module_info_t* info)
 }
 
 int
-onlp_module_format(onlp_oid_t id, onlp_oid_format_t format,
-                   aim_pvs_t* pvs, uint32_t flags)
-{
-    return 0;
-}
-
-int
-onlp_module_info_format(onlp_module_info_t* info, onlp_oid_format_t format,
-                   aim_pvs_t* pvs, uint32_t flags)
-{
-    return 0;
-}
-
-int
 onlp_module_info_to_user_json(onlp_module_info_t* info, cJSON** rv, uint32_t flags)
 {
     return 0;

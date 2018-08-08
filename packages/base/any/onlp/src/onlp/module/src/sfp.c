@@ -336,6 +336,24 @@ onlp_sfp_control_flags_get(onlp_oid_t oid, uint32_t* flags)
 }
 
 int
+onlp_sfp_dev_read_alloc(onlp_oid_t port,
+                        int devaddr, int addr, int count,
+                        uint8_t** rvp)
+{
+    int rv;
+    *rvp = aim_zmalloc(count);
+
+    rv = onlp_sfp_dev_read(port, devaddr, addr, *rvp, count);
+    if(ONLP_FAILURE(rv)) {
+        aim_free(*rvp);
+        *rvp = NULL;
+    }
+    return rv;
+}
+
+
+
+int
 onlp_sfp_dev_read_locked__(onlp_oid_t oid, int devaddr, int addr,
                            uint8_t* dst, int len)
 {
@@ -393,25 +411,6 @@ onlp_sfp_dev_writew_locked__(onlp_oid_t oid, int devaddr, int addr, uint16_t val
     return onlp_sfpi_dev_writew(port, devaddr, addr, value);
 }
 ONLP_LOCKED_API4(onlp_sfp_dev_writew, onlp_oid_t, port, int, devaddr, int, addr, uint16_t, value);
-
-int
-onlp_sfp_format(onlp_oid_t oid, onlp_oid_format_t format,
-                aim_pvs_t* pvs, uint32_t flags)
-{
-    int rv;
-    onlp_sfp_info_t info;
-    if(ONLP_SUCCESS(rv = onlp_sfp_info_get(oid, &info))) {
-        return onlp_sfp_info_format(&info, format, pvs, flags);
-    }
-    return rv;
-}
-
-int
-onlp_sfp_info_format(onlp_sfp_info_t* info, onlp_oid_format_t format,
-                     aim_pvs_t* pvs, uint32_t flags)
-{
-    return 0;
-}
 
 static char*
 sfp_control_str__(uint32_t controls)
@@ -654,8 +653,7 @@ onlp_sfp_info_to_json(onlp_sfp_info_t* info, cJSON** cjp, uint32_t flags)
         sff_info_to_json(&info->sff, &cj);
         sff_dom_info_to_json(&info->dom, &cj);
     }
-    *cjp = cj;
-    return 0;
+    return onlp_info_to_json_finish(&info->hdr, cj, cjp, flags);
 }
 
 int

@@ -52,17 +52,17 @@ int onlp_chassisi_sw_denit(void);
 
 /**
  * @brief Get the chassis hdr structure.
- * @param oid The Chassis OID.
+ * @param id The Chassis OID.
  * @param[out] hdr Receives the header.
  */
-int onlp_chassisi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
+int onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr);
 
 /**
  * @brief Get the chassis info structure.
- * @param oid The Chassis OID.
+ * @param id The Chassis OID.
  * @param[out] info Receives the chassis information.
  */
-int onlp_chassisi_info_get(onlp_oid_t oid, onlp_chassis_info_t* info);
+int onlp_chassisi_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info);
 
 #endif /* __ONLP_CHASSISI_H__ */
 /* @} */

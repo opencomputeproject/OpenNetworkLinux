@@ -28,8 +28,7 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_denit(void));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv));
-
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_char_set(onlp_oid_t id, char c));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* rv));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_char_set(onlp_oid_id_t id, char c));

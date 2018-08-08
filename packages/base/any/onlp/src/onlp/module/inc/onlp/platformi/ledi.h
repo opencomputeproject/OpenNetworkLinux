@@ -51,14 +51,14 @@ int onlp_ledi_sw_denit(void);
  * @param id The LED OID
  * @param[out] rv  Receives the header.
  */
-int onlp_ledi_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Get the information for the given LED
  * @param id The LED OID
  * @param[out] rv  Receives the LED information.
  */
-int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv);
+int onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* rv);
 
 /**
  * @brief Set the LED mode.
@@ -66,7 +66,7 @@ int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* rv);
  * @param mode The new mode.
  * @notes Only called if the mode is advertised in the LED capabilities.
  */
-int onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
+int onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode);
 
 /**
  * @brief Set the LED character.
@@ -74,6 +74,23 @@ int onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
  * @param c The character..
  * @notes Only called if the char capability is set.
  */
-int onlp_ledi_char_set(onlp_oid_t id, char c);
+int onlp_ledi_char_set(onlp_oid_id_t id, char c);
+
+#define ONLP_LED_INFO_ENTRY_INIT(_id, _desc, _parent, _caps)           \
+    {                                                           \
+        {                                                       \
+            .id = ONLP_LED_ID_CREATE(_id),                  \
+            .description = _desc,                           \
+            .poid = ONLP_OID_CHASSIS,                       \
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,         \
+         },                                              \
+         .caps = _caps,                               \
+     }
+
+#define ONLP_CHASSIS_LED_INFO_ENTRY_INIT(_id, _desc, _caps) \
+    ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_OID_CHASSIS, _caps)
+
+#define ONLP_PSU_LED_INFO_ENTRY_INIT(_id, _desc, _psu_id, _caps) \
+    ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_PSU_ID_CREATE(_psu_id), _caps)
 
 #endif /* __ONLP_LED_H__ */

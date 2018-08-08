@@ -135,23 +135,6 @@ ONLP_LOCKED_API2(onlp_fan_dir_set, onlp_oid_t, id, onlp_fan_dir_t, dir);
 
 
 int
-onlp_fan_format(onlp_oid_t oid, onlp_oid_format_t format,
-                aim_pvs_t* pvs, uint32_t flags)
-{
-    return 0;
-}
-
-int
-onlp_fan_info_format(onlp_fan_info_t* info, onlp_oid_format_t format,
-                     aim_pvs_t* pvs, uint32_t flags)
-{
-    aim_printf(pvs, "%{onlp_oid_hdr} dir=%{onlp_fan_dir} caps=%{onlp_fan_caps_flags} rpm=%d p=%d] model='%s' serial='%s'\n",
-               info, info->dir, info->caps, info->rpm, info->percentage, info->model, info->serial);
-    return 0;
-}
-
-
-int
 onlp_fan_info_to_user_json(onlp_fan_info_t* info, cJSON** cjp, uint32_t flags)
 {
     int rv;

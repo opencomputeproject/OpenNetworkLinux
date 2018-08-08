@@ -33,9 +33,9 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_denit(void));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_rpm_set(onlp_oid_t id, int rpm));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_percentage_set(onlp_oid_t id, int p));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_ioctl(onlp_oid_t id, va_list vargs));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_rpm_set(onlp_oid_id_t id, int rpm));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_percentage_set(onlp_oid_id_t id, int p));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_dir_set(onlp_oid_id_t id, onlp_fan_dir_t dir));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_ioctl(onlp_oid_id_t id, va_list vargs));

@@ -31,21 +31,6 @@ onlp_generic_info_get(onlp_oid_t id, onlp_generic_info_t* info)
 }
 
 int
-onlp_generic_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
-onlp_generic_info_format(onlp_generic_info_t* info,
-                         onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
 onlp_generic_info_to_user_json(onlp_generic_info_t* info, cJSON** rv, uint32_t flags)
 {
     return 0;

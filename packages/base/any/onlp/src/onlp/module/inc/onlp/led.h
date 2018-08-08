@@ -125,28 +125,6 @@ int onlp_led_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
  */
 int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
 
-
-/**
- * @brief Format an LED OID.
- * @param oid The OID.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
- */
-int onlp_led_format(onlp_oid_t oid, onlp_oid_format_t format,
-                    aim_pvs_t* pvs, uint32_t flags);
-
-/**
- * @brief Format an LED information structure.
- * @param info The information structure.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The output flags.
- */
-int onlp_led_info_format(onlp_led_info_t* info, onlp_oid_format_t format,
-                         aim_pvs_t* pvs, uint32_t flags);
-
-
 /**
  * @brief Set the LED color
  * @param id The LED OID
@@ -164,8 +142,27 @@ int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
  */
 int onlp_led_char_set(onlp_oid_t id, char c);
 
-int onlp_led_info_to_user_json(onlp_led_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_led_info_to_json(onlp_led_info_t* info, cJSON** rv, uint32_t flags);
+/**
+ * @brief Convert an LED info structure to user JSON.
+ * @param info The LED info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
+int onlp_led_info_to_user_json(onlp_led_info_t* info, cJSON** cj, uint32_t flags);
+
+/**
+ * @brief Convert an LED info structure to JSON.
+ * @param info The LED info structure.
+ * @param [out] cj Receives the JSON object.
+ * @param flags The JSON format flags.
+ */
+int onlp_led_info_to_json(onlp_led_info_t* info, cJSON** cj, uint32_t flags);
+
+/**
+ * @brief Convert a JSON object to an LED info structure.
+ * @param cj The JSON oibject.
+ * @param [out] info Receives the LED info structure.
+ */
 int onlp_led_info_from_json(cJSON* cj, onlp_led_info_t* info);
 
 /******************************************************************************

@@ -63,126 +63,62 @@ char** onlp_ucli_argv = NULL;
     } while(0)
 
 static ucli_status_t
-onlp_ucli__chassis__attribute__onie__get__(ucli_context_t* uc)
+onlp_ucli__chassis__onie__show__(ucli_context_t* uc)
 {
     UCLI_COMMAND_INFO(uc,
-                      "get", -1,
-                      "$summary#Show the Chassis ONIE information."
-                      "$args#[yaml|json]");
-    int rv;
-    int format;
-    cJSON* cj;
-
-    UCLI_ARGPARSE_OR_RETURN(uc, "{choice:yaml}", &format,
-                            "format", 2, "yaml", "json");
-
-    if(ONLP_SUCCESS(rv = onlp_attribute_get(ONLP_OID_CHASSIS,
-                                            ONLP_ATTRIBUTE_ONIE_INFO_JSON,
-                                            (void**)&cj))) {
-        if(format) {
-            cjson_util_json_pvs(&uc->pvs, cj);
-        }
-        else {
-            cjson_util_yaml_pvs(&uc->pvs, cj);
-        }
-        onlp_attribute_free(ONLP_OID_CHASSIS, ONLP_ATTRIBUTE_ONIE_INFO_JSON,
-                            cj);
-    }
-
-    ONLP_CMD_STATUS(rv);
+                      "show", -1,
+                      "$summary#Show the chassis onie information.");
+    onlp_attribute_onie_info_show(ONLP_OID_CHASSIS, &uc->pvs);
+    return 0;
 }
 
 static ucli_status_t
-onlp_ucli__chassis__environment__(ucli_context_t* uc)
+onlp_ucli__chassis__onie__json__(ucli_context_t* uc)
 {
     UCLI_COMMAND_INFO(uc,
-                      "environment", 0,
-                      "Show environment.");
-    int rv;
-    cJSON* cj = NULL;
-    if(ONLP_SUCCESS(rv = onlp_oid_to_user_json(ONLP_OID_CHASSIS, &cj,
-                                               ONLP_OID_JSON_FLAG_RECURSIVE))) {
-        cjson_util_yaml_pvs(&uc->pvs, cj);
-        cJSON_Delete(cj);
-        return UCLI_STATUS_OK;
-    }
-    else {
-        ucli_printf(uc, "Failed: %{onlp_status}", rv);
-        return UCLI_STATUS_E_ERROR;
-    }
+                      "json", -1,
+                      "$summary#Show the chassis onie information.");
+    onlp_attribute_onie_info_show_json(ONLP_OID_CHASSIS, &uc->pvs);
+    return 0;
+}
+static ucli_status_t
+onlp_ucli__chassis__asset__show__(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "show", 0,
+                      "$summary#Show the chassis asset information.");
+    onlp_attribute_asset_info_show(ONLP_OID_CHASSIS, &uc->pvs);
+    return 0;
 }
 
 static ucli_status_t
-onlp_ucli__chassis__dump__(ucli_context_t* uc)
+onlp_ucli__chassis__asset__json__(ucli_context_t* uc)
 {
     UCLI_COMMAND_INFO(uc,
-                      "dump", 0,
+                      "json", 0,
+                      "$summary#Show the chassis asset information.");
+    onlp_attribute_asset_info_show_json(ONLP_OID_CHASSIS, &uc->pvs);
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__chassis__env__show__(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "env", 0,
+                      "$summary#Show the chassis environment information.");
+    onlp_chassis_environment_show(&uc->pvs, ONLP_OID_JSON_FLAG_TO_USER_JSON);
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__chassis__debug__show__(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "debug", 0,
                       "Dump all chassis OIDs.");
-    int rv;
-    cJSON* cj = NULL;
-    if(ONLP_SUCCESS(rv = onlp_oid_to_json(ONLP_OID_CHASSIS, &cj,
-                                          ONLP_OID_JSON_FLAG_RECURSIVE))) {
-        cjson_util_yaml_pvs(&uc->pvs, cj);
-        cJSON_Delete(cj);
-        return UCLI_STATUS_OK;
-    }
-    else {
-        ucli_printf(uc, "Failed: %{onlp_status}", rv);
-        return UCLI_STATUS_E_ERROR;
-    }
-}
-
-
-static ucli_status_t
-onlp_ucli__chassis__attribute__asset__get__(ucli_context_t* uc)
-{
-    UCLI_COMMAND_INFO(uc,
-                      "get", -1,
-                      "$summary#Show the Chassis Asset information."
-                      "$args#[yaml|json]");
-    int rv;
-    int format;
-    cJSON* cj;
-
-    UCLI_ARGPARSE_OR_RETURN(uc, "{choice:yaml}", &format,
-                            "format", 2, "yaml", "json");
-
-    if(ONLP_SUCCESS(rv = onlp_attribute_get(ONLP_OID_CHASSIS,
-                                            ONLP_ATTRIBUTE_ASSET_INFO_JSON,
-                                            (void**)&cj))) {
-        if(format) {
-            cjson_util_json_pvs(&uc->pvs, cj);
-        }
-        else {
-            cjson_util_yaml_pvs(&uc->pvs, cj);
-        }
-        onlp_attribute_free(ONLP_OID_CHASSIS,
-                            ONLP_ATTRIBUTE_ASSET_INFO_JSON, cj);
-    }
-
-    ONLP_CMD_STATUS(rv);
-}
-
-static ucli_status_t
-onlp_ucli__oid__info__all__(ucli_context_t* uc)
-{
-    onlp_oid_type_flags_t types;
-    UCLI_COMMAND_INFO(uc,
-                      "all", 1, "");
-    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type_flags}", &types);
-    onlp_oid_info_format_all(ONLP_OID_CHASSIS, types, 0x0, 0x0, &uc->pvs, 0x0);
-    return UCLI_STATUS_OK;
-}
-
-static ucli_status_t
-onlp_ucli__oid__hdr__all__(ucli_context_t* uc)
-{
-    onlp_oid_type_flags_t types;
-    UCLI_COMMAND_INFO(uc,
-                      "all", 1, "");
-    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type_flags}", &types);
-    onlp_oid_hdr_format_all(ONLP_OID_CHASSIS, types, 0x0, 0x0, &uc->pvs, 0x0);
-    return UCLI_STATUS_OK;
+    onlp_chassis_debug_show(&uc->pvs);
+    return 0;
 }
 
 static ucli_status_t
@@ -459,46 +395,61 @@ static ucli_module_t onlp_ucli__platform__manager__manager__module__ =
     NULL
 };
 ucli_node_t* onlp_ucli__chassis__node__ = NULL;
-ucli_node_t* onlp_ucli__chassis__attribute__node__ = NULL;
-ucli_node_t* onlp_ucli__chassis__attribute__onie__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__chassis__attribute__onie__onie__handlers__[] = 
+ucli_node_t* onlp_ucli__chassis__debug__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__chassis__debug__debug__handlers__[] = 
 {
-    onlp_ucli__chassis__attribute__onie__get__,
+    onlp_ucli__chassis__debug__show__,
     NULL
 };
-static ucli_module_t onlp_ucli__chassis__attribute__onie__onie__module__ = 
+static ucli_module_t onlp_ucli__chassis__debug__debug__module__ = 
+{
+    "debug",
+    NULL,
+    onlp_ucli__chassis__debug__debug__handlers__,
+    NULL,
+    NULL
+};
+ucli_node_t* onlp_ucli__chassis__onie__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__chassis__onie__onie__handlers__[] = 
+{
+    onlp_ucli__chassis__onie__show__,
+    onlp_ucli__chassis__onie__json__,
+    NULL
+};
+static ucli_module_t onlp_ucli__chassis__onie__onie__module__ = 
 {
     "onie",
     NULL,
-    onlp_ucli__chassis__attribute__onie__onie__handlers__,
+    onlp_ucli__chassis__onie__onie__handlers__,
     NULL,
     NULL
 };
-ucli_node_t* onlp_ucli__chassis__attribute__asset__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__chassis__attribute__asset__asset__handlers__[] = 
+ucli_node_t* onlp_ucli__chassis__asset__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__chassis__asset__asset__handlers__[] = 
 {
-    onlp_ucli__chassis__attribute__asset__get__,
+    onlp_ucli__chassis__asset__show__,
+    onlp_ucli__chassis__asset__json__,
     NULL
 };
-static ucli_module_t onlp_ucli__chassis__attribute__asset__asset__module__ = 
+static ucli_module_t onlp_ucli__chassis__asset__asset__module__ = 
 {
     "asset",
     NULL,
-    onlp_ucli__chassis__attribute__asset__asset__handlers__,
+    onlp_ucli__chassis__asset__asset__handlers__,
     NULL,
     NULL
 };
-static ucli_command_handler_f onlp_ucli__chassis__chassis__handlers__[] = 
+ucli_node_t* onlp_ucli__chassis__env__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__chassis__env__env__handlers__[] = 
 {
-    onlp_ucli__chassis__environment__,
-    onlp_ucli__chassis__dump__,
+    onlp_ucli__chassis__env__show__,
     NULL
 };
-static ucli_module_t onlp_ucli__chassis__chassis__module__ = 
+static ucli_module_t onlp_ucli__chassis__env__env__module__ = 
 {
-    "chassis",
+    "env",
     NULL,
-    onlp_ucli__chassis__chassis__handlers__,
+    onlp_ucli__chassis__env__env__handlers__,
     NULL,
     NULL
 };
@@ -517,20 +468,6 @@ static ucli_module_t onlp_ucli__sfp__sfp__module__ =
     NULL
 };
 ucli_node_t* onlp_ucli__oid__node__ = NULL;
-ucli_node_t* onlp_ucli__oid__info__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__oid__info__info__handlers__[] = 
-{
-    onlp_ucli__oid__info__all__,
-    NULL
-};
-static ucli_module_t onlp_ucli__oid__info__info__module__ = 
-{
-    "info",
-    NULL,
-    onlp_ucli__oid__info__info__handlers__,
-    NULL,
-    NULL
-};
 ucli_node_t* onlp_ucli__oid__hdr__node__ = NULL;
 ucli_node_t* onlp_ucli__oid__hdr__json__node__ = NULL;
 static ucli_command_handler_f onlp_ucli__oid__hdr__json__json__handlers__[] = 
@@ -544,19 +481,6 @@ static ucli_module_t onlp_ucli__oid__hdr__json__json__module__ =
     "json",
     NULL,
     onlp_ucli__oid__hdr__json__json__handlers__,
-    NULL,
-    NULL
-};
-static ucli_command_handler_f onlp_ucli__oid__hdr__hdr__handlers__[] = 
-{
-    onlp_ucli__oid__hdr__all__,
-    NULL
-};
-static ucli_module_t onlp_ucli__oid__hdr__hdr__module__ = 
-{
-    "hdr",
-    NULL,
-    onlp_ucli__oid__hdr__hdr__handlers__,
     NULL,
     NULL
 };
@@ -575,21 +499,20 @@ static ucli_node_t* __ucli_auto_init__(void)
     if(onlp_ucli__platform__manager__node__ == NULL) onlp_ucli__platform__manager__node__ = ucli_node_create("manager", NULL, NULL);
     ucli_module_init(&onlp_ucli__platform__manager__manager__module__);
     if(onlp_ucli__chassis__node__ == NULL) onlp_ucli__chassis__node__ = ucli_node_create("chassis", NULL, NULL);
-    if(onlp_ucli__chassis__attribute__node__ == NULL) onlp_ucli__chassis__attribute__node__ = ucli_node_create("attribute", NULL, NULL);
-    if(onlp_ucli__chassis__attribute__onie__node__ == NULL) onlp_ucli__chassis__attribute__onie__node__ = ucli_node_create("onie", NULL, NULL);
-    ucli_module_init(&onlp_ucli__chassis__attribute__onie__onie__module__);
-    if(onlp_ucli__chassis__attribute__asset__node__ == NULL) onlp_ucli__chassis__attribute__asset__node__ = ucli_node_create("asset", NULL, NULL);
-    ucli_module_init(&onlp_ucli__chassis__attribute__asset__asset__module__);
-    ucli_module_init(&onlp_ucli__chassis__chassis__module__);
+    if(onlp_ucli__chassis__debug__node__ == NULL) onlp_ucli__chassis__debug__node__ = ucli_node_create("debug", NULL, NULL);
+    ucli_module_init(&onlp_ucli__chassis__debug__debug__module__);
+    if(onlp_ucli__chassis__onie__node__ == NULL) onlp_ucli__chassis__onie__node__ = ucli_node_create("onie", NULL, NULL);
+    ucli_module_init(&onlp_ucli__chassis__onie__onie__module__);
+    if(onlp_ucli__chassis__asset__node__ == NULL) onlp_ucli__chassis__asset__node__ = ucli_node_create("asset", NULL, NULL);
+    ucli_module_init(&onlp_ucli__chassis__asset__asset__module__);
+    if(onlp_ucli__chassis__env__node__ == NULL) onlp_ucli__chassis__env__node__ = ucli_node_create("env", NULL, NULL);
+    ucli_module_init(&onlp_ucli__chassis__env__env__module__);
     if(onlp_ucli__sfp__node__ == NULL) onlp_ucli__sfp__node__ = ucli_node_create("sfp", NULL, NULL);
     ucli_module_init(&onlp_ucli__sfp__sfp__module__);
     if(onlp_ucli__oid__node__ == NULL) onlp_ucli__oid__node__ = ucli_node_create("oid", NULL, NULL);
-    if(onlp_ucli__oid__info__node__ == NULL) onlp_ucli__oid__info__node__ = ucli_node_create("info", NULL, NULL);
-    ucli_module_init(&onlp_ucli__oid__info__info__module__);
     if(onlp_ucli__oid__hdr__node__ == NULL) onlp_ucli__oid__hdr__node__ = ucli_node_create("hdr", NULL, NULL);
     if(onlp_ucli__oid__hdr__json__node__ == NULL) onlp_ucli__oid__hdr__json__node__ = ucli_node_create("json", NULL, NULL);
     ucli_module_init(&onlp_ucli__oid__hdr__json__json__module__);
-    ucli_module_init(&onlp_ucli__oid__hdr__hdr__module__);
     ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__debug__node__);
     ucli_node_subnode_add(onlp_ucli__debug__node__, onlp_ucli__debug__oid__node__);
     ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__verify__node__);
@@ -602,21 +525,20 @@ static ucli_node_t* __ucli_auto_init__(void)
     ucli_node_subnode_add(onlp_ucli__platform__node__, onlp_ucli__platform__manager__node__);
     ucli_node_module_add(onlp_ucli__platform__manager__node__, &onlp_ucli__platform__manager__manager__module__);
     ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__chassis__node__);
-    ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__attribute__node__);
-    ucli_node_subnode_add(onlp_ucli__chassis__attribute__node__, onlp_ucli__chassis__attribute__onie__node__);
-    ucli_node_module_add(onlp_ucli__chassis__attribute__onie__node__, &onlp_ucli__chassis__attribute__onie__onie__module__);
-    ucli_node_subnode_add(onlp_ucli__chassis__attribute__node__, onlp_ucli__chassis__attribute__asset__node__);
-    ucli_node_module_add(onlp_ucli__chassis__attribute__asset__node__, &onlp_ucli__chassis__attribute__asset__asset__module__);
-    ucli_node_module_add(onlp_ucli__chassis__node__, &onlp_ucli__chassis__chassis__module__);
+    ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__debug__node__);
+    ucli_node_module_add(onlp_ucli__chassis__debug__node__, &onlp_ucli__chassis__debug__debug__module__);
+    ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__onie__node__);
+    ucli_node_module_add(onlp_ucli__chassis__onie__node__, &onlp_ucli__chassis__onie__onie__module__);
+    ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__asset__node__);
+    ucli_node_module_add(onlp_ucli__chassis__asset__node__, &onlp_ucli__chassis__asset__asset__module__);
+    ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__env__node__);
+    ucli_node_module_add(onlp_ucli__chassis__env__node__, &onlp_ucli__chassis__env__env__module__);
     ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__sfp__node__);
     ucli_node_module_add(onlp_ucli__sfp__node__, &onlp_ucli__sfp__sfp__module__);
     ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__oid__node__);
-    ucli_node_subnode_add(onlp_ucli__oid__node__, onlp_ucli__oid__info__node__);
-    ucli_node_module_add(onlp_ucli__oid__info__node__, &onlp_ucli__oid__info__info__module__);
     ucli_node_subnode_add(onlp_ucli__oid__node__, onlp_ucli__oid__hdr__node__);
     ucli_node_subnode_add(onlp_ucli__oid__hdr__node__, onlp_ucli__oid__hdr__json__node__);
     ucli_node_module_add(onlp_ucli__oid__hdr__json__node__, &onlp_ucli__oid__hdr__json__json__module__);
-    ucli_node_module_add(onlp_ucli__oid__hdr__node__, &onlp_ucli__oid__hdr__hdr__module__);
     return onlp_ucli__node__;
 }
 /******************************************************************************/

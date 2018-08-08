@@ -54,14 +54,14 @@ int onlp_fani_sw_denit(void);
  * @param id The fan OID.
  * @param[out] hdr Receives the OID header.
  */
-int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr);
+int onlp_fani_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr);
 
 /**
  * @brief Get the information structure for the given fan OID.
  * @param id The fan OID
  * @param[out] rv Receives the fan information.
  */
-int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
+int onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* rv);
 
 /**
  * @brief Set the fan speed in RPM.
@@ -69,7 +69,7 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
  * @param rpm The new RPM
  * @note This is only relevant if the RPM capability is set.
  */
-int onlp_fani_rpm_set(onlp_oid_t id, int rpm);
+int onlp_fani_rpm_set(onlp_oid_id_t id, int rpm);
 
 
 /**
@@ -78,14 +78,14 @@ int onlp_fani_rpm_set(onlp_oid_t id, int rpm);
  * @param p The new fan speed percentage.
  * @note This is only relevant if the PERCENTAGE capability is set.
  */
-int onlp_fani_percentage_set(onlp_oid_t id, int p);
+int onlp_fani_percentage_set(onlp_oid_id_t id, int p);
 
 /**
  * @brief Set the fan direction (if supported).
  * @param id The fan OID
  * @param dir The direction.
  */
-int onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir);
+int onlp_fani_dir_set(onlp_oid_id_t id, onlp_fan_dir_t dir);
 
 
 #endif /* __ONLP_FANI_H__ */

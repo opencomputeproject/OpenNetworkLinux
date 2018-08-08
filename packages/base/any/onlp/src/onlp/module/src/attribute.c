@@ -105,17 +105,36 @@ ONLP_LOCKED_API3(onlp_attribute_get, onlp_oid_t, oid, const char*, attribute, vo
 int
 onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rvp)
 {
-    return onlp_attribute_get(oid,
-                              ONLP_ATTRIBUTE_ONIE_INFO,
-                              (void**)rvp);
+    int rv;
+    onlp_onie_info_t* rp;
+
+    rv = onlp_attributei_onie_info_get(oid, NULL);
+
+    if(ONLP_FAILURE(rv) || rvp == NULL) {
+        return rv;
+    }
+
+    rp = aim_zmalloc(sizeof(*rp));
+    rv = onlp_attributei_onie_info_get(oid, rp);
+
+    if(ONLP_FAILURE(rv)) {
+        aim_free(rp);
+        rp = NULL;
+        return rv;
+    }
+
+    *rvp = rp;
+    return rv;
 }
 
 int
 onlp_attribute_onie_info_free(onlp_oid_t oid, onlp_onie_info_t* p)
 {
-    return onlp_attribute_free(oid,
-                               ONLP_ATTRIBUTE_ONIE_INFO,
-                               p);
+    if(p) {
+        onlp_onie_info_free(p);
+        aim_free(p);
+    }
+    return 0;
 }
 
 int
@@ -147,19 +166,55 @@ onlp_attribute_onie_info_show(onlp_oid_t oid, aim_pvs_t* pvs)
 }
 
 int
+onlp_attribute_onie_info_show_json(onlp_oid_t oid, aim_pvs_t* pvs)
+{
+    int rv;
+    cJSON* cjp = NULL;
+
+    if(ONLP_SUCCESS(rv = onlp_attribute_onie_info_get_json(oid, &cjp))) {
+        cjson_util_json_pvs(pvs, cjp);
+        cJSON_Delete(cjp);
+    }
+    else {
+        aim_printf(pvs, "There was an error requesting the ONIE information from %{onlp_oid}: %{onlp_status}", oid, rv);
+    }
+    return rv;
+}
+
+
+int
 onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rvp)
 {
-    return onlp_attribute_get(oid,
-                              ONLP_ATTRIBUTE_ASSET_INFO,
-                              (void**)rvp);
+    int rv;
+    onlp_asset_info_t* rp;
+
+    rv = onlp_attributei_asset_info_get(oid, NULL);
+
+    if(ONLP_FAILURE(rv) || rvp == NULL) {
+        return rv;
+    }
+
+    rp = aim_zmalloc(sizeof(*rp));
+    rv = onlp_attributei_asset_info_get(oid, rp);
+
+    if(ONLP_FAILURE(rv)) {
+        aim_free(rp);
+        rp = NULL;
+        return rv;
+    }
+
+    *rvp = rp;
+    return rv;
 }
 
 int
 onlp_attribute_asset_info_free(onlp_oid_t oid, onlp_asset_info_t* p)
 {
-    return onlp_attribute_free(oid,
-                               ONLP_ATTRIBUTE_ASSET_INFO,
-                               p);
+    if(p) {
+        onlp_asset_info_free(p);
+        aim_free(p);
+    }
+    return 0;
 }
 
 int
@@ -182,6 +237,23 @@ onlp_attribute_asset_info_show(onlp_oid_t oid, aim_pvs_t* pvs)
 
     if(ONLP_SUCCESS(rv = onlp_attribute_asset_info_get_json(oid, &cjp))) {
         cjson_util_yaml_pvs(pvs, cjp);
+        cJSON_Delete(cjp);
+    }
+    else {
+        aim_printf(pvs, "There was an error requesting the asset information from %{onlp_oid}: %{onlp_status}", oid, rv);
+    }
+    return rv;
+}
+
+
+int
+onlp_attribute_asset_info_show_json(onlp_oid_t oid, aim_pvs_t* pvs)
+{
+    int rv;
+    cJSON* cjp = NULL;
+
+    if(ONLP_SUCCESS(rv = onlp_attribute_asset_info_get_json(oid, &cjp))) {
+        cjson_util_json_pvs(pvs, cjp);
         cJSON_Delete(cjp);
     }
     else {

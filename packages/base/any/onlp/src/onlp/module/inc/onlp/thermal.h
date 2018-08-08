@@ -98,6 +98,10 @@ typedef struct onlp_thermal_info_s {
 
 } onlp_thermal_info_t;
 
+
+/**
+ * Determine if a thermal capability is set.
+ */
 #define ONLP_THERMAL_INFO_CAP_IS_SET(_pinfo, _name)     \
     ((_pinfo)->caps & ONLP_THERMAL_CAPS_##_name)
 
@@ -122,43 +126,44 @@ int onlp_thermal_sw_denit(void);
 
 /**
  * @brief Retrieve the thermal's oid header.
- * @param id The thermal oid.
+ * @param oid The thermal oid.
  * @param[out] rv Receives the header.
  */
 int onlp_thermal_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Retrieve information about the given thermal id.
- * @param id The thermal oid.
+ * @param oid The thermal oid.
  * @param[out] rv Receives the thermal information.
  */
 int onlp_thermal_info_get(onlp_oid_t oid, onlp_thermal_info_t* rv);
 
 /**
- * @brief Format a thermal oid.
- * @param oid The oid.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The format flags.
+ * @brief Convert a thermal info structure to json.
+ * @param info The thermal info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON processing flags.
  */
-int onlp_thermal_format(onlp_oid_t oid, onlp_oid_format_t format,
-                        aim_pvs_t* pvs, uint32_t flags);
+int onlp_thermal_info_to_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
+
 
 /**
- * @brief Format a thermal info structure.
- * @param info The info structure.
- * @param format The output format.
- * @param pvs The output pvs.
- * @param flags The format flags.
+ * @brief Convert a JSON object to a thermal info structure.
+ * @param cj The JSON object representing the structure.
+ * @param [out] info Receives the thermal info.
  */
-int onlp_thermal_info_format(onlp_thermal_info_t* info,
-                             onlp_oid_format_t format,
-                             aim_pvs_t* pvs, uint32_t flags);
-
-
-int onlp_thermal_info_to_user_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
-int onlp_thermal_info_to_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
 int onlp_thermal_info_from_json(cJSON* cj, onlp_thermal_info_t* info);
+
+/**
+ * @brief Convert a thermal info structure to user json.
+ * @param info The thermal info structure.
+ * @param [out] rv Receives the JSON object.
+ * @param flags The JSON processing flags.
+ * @note The user json format contains only the fields relevant to user output.
+ */
+int onlp_thermal_info_to_user_json(onlp_thermal_info_t* info, cJSON** rv, uint32_t flags);
+
+
 
 /******************************************************************************
  *
