@@ -27,7 +27,7 @@ include $(ONL)/make/any.mk
 MODULE := oom_shim
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := AIM onlplib oom_shim cjson cjson_util IOF timer_wheel OS uCli
+DEPENDMODULES := AIM onlplib oom_shim cjson cjson_util IOF timer_wheel OS uCli ELS
 DEPENDMODULE_HEADERS := onlp sff
 
 LIBONLP := $(shell $(ONLPM) --find-file onlp:$(ARCH) libonlp.so)
