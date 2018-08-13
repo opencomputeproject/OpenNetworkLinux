@@ -127,18 +127,18 @@
 #define LED_SYS_YMASK           0x00
 
 #define LED_FAN_AND_MASK        0x9F
-#define LED_FAN_GMASK           0x60
-#define LED_FAN_YMASK           0x40
+#define LED_FAN_GMASK           0x40
+#define LED_FAN_YMASK           0x60
 #define LED_FAN_OFFMASK         0x00
 
 #define LED_PSU2_AND_MASK       0xF9
-#define LED_PSU2_GMASK          0x06
-#define LED_PSU2_YMASK          0x04
+#define LED_PSU2_GMASK          0x04
+#define LED_PSU2_YMASK          0x06
 #define LED_PSU2_OFFMASK        0x00
 
 #define LED_PSU1_AND_MASK       0xE7
-#define LED_PSU1_GMASK          0x18
-#define LED_PSU1_YMASK          0x10
+#define LED_PSU1_GMASK          0x10
+#define LED_PSU1_YMASK          0x18
 #define LED_PSU1_OFFMASK        0x00
 
 #define LED_SYS_ON_MASK         0x00
