@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH=master
 
-while getopts ":b:s:d:u:p:vVc789r:" opt; do
+while getopts ":b:s:d:u:p:l:a:vVc789r:" opt; do
     case $opt in
         7)
             ONLB_OPTIONS=--7
@@ -34,6 +34,12 @@ while getopts ":b:s:d:u:p:vVc789r:" opt; do
             ;;
         b)
             BUILD_BRANCH=$OPTARG
+            ;;
+        a)
+            ARCH=$OPTARG
+            ;;
+        l)
+            PLATFORM_LIST=$OPTARG
             ;;
         v)
             set -x
@@ -91,7 +97,12 @@ cd $ONL && git checkout $BUILD_BRANCH
 cd $ONL
 . setup.env
 
-if ! make all; then
+if [ -n "$PLATFORM_LIST" ]; then
+    export PLATFORM_LIST
+    export PLATFORMS="$(IFS=','; echo ${PLATFORM_LIST})"
+fi
+
+if ! make "${ARCH:-all}"; then
     echo Build Failed.
     exit 1
 fi
