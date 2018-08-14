@@ -97,6 +97,8 @@ cd $ONL && git checkout $BUILD_BRANCH
 cd $ONL
 . setup.env
 
+apt-cacher-ng >/dev/null 2>&1 ||:
+
 if [ -n "$PLATFORM_LIST" ]; then
     export PLATFORM_LIST
     export PLATFORMS="$(IFS=','; echo ${PLATFORM_LIST})"
