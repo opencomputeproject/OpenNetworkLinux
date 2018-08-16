@@ -173,6 +173,23 @@ class OnlPlatform_x86_64_ingrasys_s9230_64x_r0(OnlPlatformIngrasys):
         # _i2c_fan_speed_init 
         os.system("echo 120 > /sys/class/hwmon/hwmon7/device/pwm2")
 
+        # set 10gmux to cpu
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x06 0x18")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x2c 0x00")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x35 0x80")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x34 0xab")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x16 0x01")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x18 0x80")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x17 0xab")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x3a 0x00")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x41 0x00")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x43 0x80")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x42 0xab")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x24 0x01")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x26 0x80")
+        os.system("i2cset -m 0xff -y -r 13 0x67 0x25 0xab")
+        os.system("echo 0xf3 > /sys/class/i2c-dev/i2c-1/device/1-0033/cpld_10gmux_config")
+
         # turn on sys led
         os.system("i2cset -m 0x80 -y -r 10 0x76 2 0x80")
 
