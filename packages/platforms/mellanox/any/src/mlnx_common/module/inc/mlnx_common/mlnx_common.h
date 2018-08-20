@@ -60,6 +60,7 @@
 /* 1 -without eeprom, 2 - with eeprom */
 #define PSU_TYPE_1 1
 #define PSU_TYPE_2 2
+#define PSU_TYPE_3 3
 
 #define FAN_MODEL	"MEC012579"
 
