@@ -38,7 +38,7 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
-    "/sys/bus/i2c/devices/10-0048*temp1_input",
+    "/sys/bus/i2c/devices/10-004c*temp1_input",
     "/sys/bus/i2c/devices/10-0049*temp1_input",
     "/sys/bus/i2c/devices/10-004a*temp1_input",
     "/sys/bus/i2c/devices/10-004b*temp1_input",
@@ -62,7 +62,7 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },	
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1-48", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1-4C", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
