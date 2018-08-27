@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if test $# -gt 0; then
+  dir=$(realpath $1)
+else
+  dir=$(pwd)
+fi
+while test $dir != /; do
+  if test -d $dir/.git; then
+    echo $dir
+    break
+  fi
+  dir=${dir%/*}
+done
