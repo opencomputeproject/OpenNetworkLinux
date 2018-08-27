@@ -89,11 +89,11 @@ class Profiler(object):
 #
 # Log and execute system commands
 #
-def execute(args, sudo=False, chroot=None, ex=None):
+def execute(args, sudo=False, chroot=None, ex=None, env=False):
 
-    if type(args) is str:
+    if isinstance(args, basestring):
         # Must be executed through the shell
-        shell=True
+        shell = True
     else:
         shell = False
 
@@ -102,16 +102,22 @@ def execute(args, sudo=False, chroot=None, ex=None):
         sudo = True
 
     if chroot:
-        if type(args) is str:
+        if isinstance(args, basestring):
             args = "chroot %s %s" % (chroot, args)
         elif type(args) in (list,tuple):
             args = ['chroot', chroot] + list(args)
 
     if sudo:
-        if type(args) is str:
-            args = "sudo %s" % (args)
+        if isinstance(args, basestring):
+            if env:
+                args = "sudo -E %s" % (args)
+            else:
+                args = "sudo %s" % (args)
         elif type(args) in (list, tuple):
-            args = [ 'sudo' ] + list(args)
+            if env:
+                args = [ 'sudo', '-E', ] + list(args)
+            else:
+                args = [ 'sudo' ] + list(args)
 
 
     logger.debug("Executing:%s", args)
