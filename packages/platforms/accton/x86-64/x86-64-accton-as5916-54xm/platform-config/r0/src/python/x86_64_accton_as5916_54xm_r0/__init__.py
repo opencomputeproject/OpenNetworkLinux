@@ -27,7 +27,7 @@ class OnlPlatform_x86_64_accton_as5916_54xm_r0(OnlPlatformAccton,
                 ('as5916_54xm_fan', 0x66, 9),
 
                 # inititate LM75
-                ('lm75', 0x48, 10),
+                ('lm75', 0x4c, 10),
                 ('lm75', 0x49, 10),
                 ('lm75', 0x4a, 10),
                 ('lm75', 0x4b, 10),
