@@ -26,6 +26,7 @@
 #include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
 #include "platform_lib.h"
+#include <limits.h>
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -36,7 +37,8 @@
 
 
 /*Thermal 1 can be at 0x48 for R0A board, or 0x4C otherwise.*/
-static int thermal1_addr[] = {0x4c, 0x48};
+static int thermal1_addrs[] = {0x4c, 0x48};
+static int thermal1_addr = -1;
 
 static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
@@ -101,18 +103,23 @@ onlp_thermali_init(void)
     return ONLP_STATUS_OK;
 }
 
-/*check which addr of thermal1_addr[] can be read.*/
+/*check which addr of thermal1_addrs[] can be read.*/
 static int
 _get_valid_t1_addr(char *path, int *addr)
 {
-    char fname[ONLP_OID_DESC_SIZE];
+    char fname[PATH_MAX];
     int i, rv, tmp;
+    if (thermal1_addr > 0){
+        *addr = thermal1_addr;
+        return ONLP_STATUS_OK;
+    }
 
-    for (i=0; i<AIM_ARRAYSIZE(thermal1_addr); i++){
-        snprintf(fname, sizeof(fname), path, thermal1_addr[i]);
+    for (i=0; i<AIM_ARRAYSIZE(thermal1_addrs); i++){
+        snprintf(fname, sizeof(fname), path, thermal1_addrs[i]);
         rv = onlp_file_read_int(&tmp, fname);
         if (rv == ONLP_STATUS_OK){
-            *addr = thermal1_addr[i];
+            thermal1_addr = thermal1_addrs[i];
+            *addr = thermal1_addr;
             return ONLP_STATUS_OK;
         }
     }
@@ -135,7 +142,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int   tid;
     char *devfile;
-    char fname[ONLP_OID_DESC_SIZE];
+    char fname[PATH_MAX];
 
     VALIDATE(id);
 	
@@ -155,8 +162,8 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     if (tid == THERMAL_1_ON_MAIN_BROAD)
     {
         onlp_oid_desc_t *des = &info->hdr.description;
-        char tmp[ONLP_OID_DESC_SIZE];
-        int t1_addr = thermal1_addr[0];
+        char tmp[PATH_MAX];
+        int t1_addr = thermal1_addrs[0];
         int rv;
 
         rv = _get_valid_t1_addr(devfiles__[tid], &t1_addr);
