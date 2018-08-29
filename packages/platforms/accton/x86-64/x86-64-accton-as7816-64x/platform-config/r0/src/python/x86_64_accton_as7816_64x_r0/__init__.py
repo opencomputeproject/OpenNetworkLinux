@@ -124,7 +124,7 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
                 ('optoe1', 0x50, 87),
                 ('optoe1', 0x50, 88),
 
-                ('24c02', 0x56, 0),
+                #('24c02', 0x56, 0),
                 ])
 
         subprocess.call('echo port61 > /sys/bus/i2c/devices/25-0050/port_name', shell=True)
