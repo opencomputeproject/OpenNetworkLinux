@@ -110,6 +110,15 @@ ONLP_LOCKED_API1(onlp_sfp_is_present, int, port);
 static int
 onlp_sfp_presence_bitmap_get_locked__(onlp_sfp_bitmap_t* dst)
 {
+    
+    /* Initializing bit map variable to zero, before reading from port */
+    int count=0;
+    int max_size=0;
+    max_size = (sizeof(dst->words)/sizeof(dst->words[0]));
+    for(count=0;count<max_size;count++) {
+        dst->words[count]=0;
+    }
+
     int rv = onlp_sfpi_presence_bitmap_get(dst);
 
     if(rv == ONLP_STATUS_E_UNSUPPORTED) {
