@@ -16,11 +16,9 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 
-//#include "I2CHostCommunication.h"
-
 #define IMPLEMENT_IPMI_CODE 1
 int USE_IPMI=0;
-//=================================
+
 #if IMPLEMENT_IPMI_CODE
 #include <linux/mutex.h>
 #include <linux/completion.h>
@@ -54,7 +52,6 @@ static struct ipmi_recv_msg halt_recv_msg = {
         .done = dummy_recv_free
 };
 #endif
-//=================================
 
 #define USE_SMBUS    1
 
@@ -123,7 +120,6 @@ struct __attribute__ ((__packed__))  psoc_layout {
 };        
 
 /* definition */
-/* definition */
 #define PSOC_OFF(m)    offsetof(struct psoc_layout, m)
 #define PSOC_PSU_OFF(m)    offsetof(struct psoc_psu_layout, m)
 
@@ -159,17 +155,13 @@ static void msg_handler(struct ipmi_recv_msg *recv_msg,void* handler_data)
 
 int ipmi_command(char NetFn, char cmd,char *data,int data_length, char* result, int* result_length)
 {
-    int rv=0,i;
+    int rv=0;
     struct	ipmi_system_interface_addr addr;
     uint8_t	_data[data_length];
     struct	kernel_ipmi_msg msg;
     struct	completion comp;
 
     if(!mutex_trylock(&ipmi_mutex)) return 0;
-
-//    for (i=0,rv=1; i<IPMI_MAX_INTF && rv; i++) {
-//	 rv = ipmi_create_user(i, &ipmi_hndlrs, NULL, &ipmi_mh_user);
-//    }
 
     if (rv < 0) {
         mutex_unlock(&ipmi_mutex);
@@ -190,7 +182,6 @@ int ipmi_command(char NetFn, char cmd,char *data,int data_length, char* result, 
     rv = ipmi_request_supply_msgs(ipmi_mh_user, (struct ipmi_addr*)&addr, 0,&msg, &comp, &halt_smi_msg, &halt_recv_msg, 0);
 
     if (rv) {
-//        ipmi_destroy_user(ipmi_mh_user);
         mutex_unlock(&ipmi_mutex);
         return -6;
     }
@@ -203,7 +194,6 @@ int ipmi_command(char NetFn, char cmd,char *data,int data_length, char* result, 
 	memcpy(result,&halt_recv_msg.msg.data[1],halt_recv_msg.msg.data_len-1);
    }
    ipmi_free_recv_msg(&halt_recv_msg);
-//   ipmi_destroy_user(ipmi_mh_user);
    mutex_unlock(&ipmi_mutex);
    return rv;
 }
@@ -311,19 +301,6 @@ else
     return status;	
 #endif    
 }
-
-#if 0
-static u32 psoc_read32(struct i2c_client *client, u8 offset)
-{
-	u32 value = 0;
-	u8 buf[4];
-    
-    if( psoc_i2c_read(client, buf, offset, 4) == 4)
-        value = (buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]);
-    
-	return value;
-}
-#endif
 
 static u16 psoc_read16(struct i2c_client *client, u8 offset)
 {

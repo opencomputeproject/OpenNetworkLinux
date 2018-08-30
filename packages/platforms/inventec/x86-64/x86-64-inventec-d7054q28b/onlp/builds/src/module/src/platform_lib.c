@@ -1,26 +1,9 @@
 /************************************************************
- * <bsn.cl fy=2014 v=onl>
+ * platform_lib.c
  *
- *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2014 Accton Technology Corporation.
+ *           Copyright 2018 Inventec Corporation.
  *
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- *
- *        http://www.eclipse.org/legal/epl-v10.html
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the
- * License.
- *
- * </bsn.cl>
  ************************************************************
- *
- *
  *
  ***********************************************************/
 #include <sys/mman.h>
@@ -152,10 +135,14 @@ int psu_pmbus_info_get(int id, char *node, int *value)
     *value = 0;
 
     if (PSU1_ID == id) {
-        ret = onlp_file_read_int(value, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+        ret = onlp_file_read_int(value, "%s%s%d", PSU1_AC_PMBUS_PREFIX, node, PSU1_ID);
+    }
+    else
+    if (PSU2_ID == id) {
+        ret = onlp_file_read_int(value, "%s%s%d", PSU2_AC_PMBUS_PREFIX, node, PSU2_ID);
     }
     else {
-        ret = onlp_file_read_int(value, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     if (ret < 0) {
@@ -171,10 +158,10 @@ int psu_pmbus_info_set(int id, char *node, int value)
 
         switch (id) {
         case PSU1_ID:
-                sprintf(path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+                sprintf(path, "%s%s%d", PSU1_AC_PMBUS_PREFIX, node, PSU1_ID);
                 break;
         case PSU2_ID:
-                sprintf(path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+                sprintf(path, "%s%s%d", PSU2_AC_PMBUS_PREFIX, node, PSU2_ID);
                 break;
         default:
                 return ONLP_STATUS_E_UNSUPPORTED;

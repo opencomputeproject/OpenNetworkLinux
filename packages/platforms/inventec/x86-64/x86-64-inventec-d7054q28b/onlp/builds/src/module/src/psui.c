@@ -1,26 +1,9 @@
 /************************************************************
- * <bsn.cl fy=2014 v=onl>
+ * psui.c
  *
- *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2014 Accton Technology Corporation.
+ *           Copyright 2018 Inventec Technology Corporation.
  *
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- *
- *        http://www.eclipse.org/legal/epl-v10.html
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the
- * License.
- *
- * </bsn.cl>
  ************************************************************
- *
- *
  *
  ***********************************************************/
 #include <onlp/platformi/psui.h>
@@ -28,10 +11,13 @@
 #include <onlplib/file.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "platform_lib.h"
 
-#define PSU_STATUS_PRESENT    1
-#define PSU_STATUS_POWER_GOOD 1
+#define PSU_STATUS_PRESENT	0
+#define PSU_STATUS_UNPOWERED	2
+#define PSU_STATUS_FAULT	4
+#define PSU_STATUS_UNINSTALLED	7
 
 #define PSU_NODE_MAX_INT_LEN  8
 #define PSU_NODE_MAX_PATH_LEN 64
@@ -48,50 +34,31 @@ psu_status_info_get(int id, char *node, int *value)
 {
     int ret = 0;
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
+    char vstr[32], *vstrp = vstr, **vp = &vstrp;
     
     *value = 0;
 
     if (PSU1_ID == id) {
-        sprintf(node_path, "%s%s", PSU1_AC_HWMON_PREFIX, node);
+        sprintf(node_path, "%s%s0", PSU_HWMON_CPLD_PREFIX, node);
     }
     else if (PSU2_ID == id) {
-        sprintf(node_path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
+        sprintf(node_path, "%s%s1", PSU_HWMON_CPLD_PREFIX, node);
     }
     
-    ret = onlp_file_read_int(value, node_path);
+    ret = onlp_file_read_str(vp, node_path);
 
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    return ret;
+    if (!isdigit(*vstrp)) {
+	return ONLP_STATUS_E_INTERNAL;
+    }
+    *value = *vstrp - '0';
+    return ONLP_STATUS_OK;
 }
 
-static int
-psu_ym2651_pmbus_info_get(int id, char *node, int *value)
-{
-    int  ret = 0;
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
-    *value = 0;
-
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
-    }
-    else {
-        sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
-    }
-
-    ret = onlp_file_read_int(value, node_path);
-
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return ret;
-}
 
 int
 onlp_psui_init(void)
@@ -100,84 +67,101 @@ onlp_psui_init(void)
 }
 
 static int
-psu_ym2651_info_get(onlp_psu_info_t* info)
+psu_module_info_get(int id, onlp_psu_info_t* info)
 {
-    int val   = 0;
-    int index = ONLP_OID_ID_GET(info->hdr.id);
+    int ret = 0;
+    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
+    int value = 0;
 
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
-        return ONLP_STATUS_OK;
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_vout", PSU_HWMON_PSOC_PREFIX);
     }
-
-    /* Set the associated oid_table */
-    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
-
-    /* Read voltage, current and power */
-    if (psu_ym2651_pmbus_info_get(index, "psu_v_out", &val) == 0) {
-        info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_vout", PSU_HWMON_PSOC_PREFIX);
     }
-
-    if (psu_ym2651_pmbus_info_get(index, "psu_i_out", &val) == 0) {
-        info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
     }
+    info->mvout = value;
+    info->caps |= ONLP_PSU_CAPS_VOUT;
 
-    if (psu_ym2651_pmbus_info_get(index, "psu_p_out", &val) == 0) {
-        info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
-    } 
-
-    return ONLP_STATUS_OK;
-}
-
-#include <onlplib/i2c.h>
-#define DC12V_750_REG_TO_CURRENT(low, high) (((low << 4 | high >> 4) * 20 * 1000) / 754)
-#define DC12V_750_REG_TO_VOLTAGE(low, high) ((low << 4 | high >> 4) * 25)
-
-static int
-psu_dc12v_750_info_get(onlp_psu_info_t* info)
-{
-    int pid = ONLP_OID_ID_GET(info->hdr.id);
-    int bus = (PSU1_ID == pid) ? 11 : 10;
-    int iout_low, iout_high;
-    int vout_low, vout_high;
-
-    /* Set capability
-     */
-    info->caps = ONLP_PSU_CAPS_DC12;
-    
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
-        return ONLP_STATUS_OK;
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_iout", PSU_HWMON_PSOC_PREFIX);
     }
-
-    /* Get current
-     */
-    iout_low  = onlp_i2c_readb(bus, 0x6f, 0x0, ONLP_I2C_F_FORCE);
-    iout_high = onlp_i2c_readb(bus, 0x6f, 0x1, ONLP_I2C_F_FORCE);
-
-    if ((iout_low >= 0) && (iout_high >= 0)) {
-        info->miout = DC12V_750_REG_TO_CURRENT(iout_low, iout_high);
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_iout", PSU_HWMON_PSOC_PREFIX);
     }
-
-    /* Get voltage
-     */
-    vout_low  = onlp_i2c_readb(bus, 0x6f, 0x2, ONLP_I2C_F_FORCE);
-    vout_high = onlp_i2c_readb(bus, 0x6f, 0x3, ONLP_I2C_F_FORCE);
-
-    if ((vout_low >= 0) && (vout_high >= 0)) {
-        info->mvout = DC12V_750_REG_TO_VOLTAGE(vout_low, vout_high);
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
     }
+    info->miout = value;
+    info->caps |= ONLP_PSU_CAPS_IOUT;
 
-    /* Get power based on current and voltage
-     */
-    if ((info->caps & ONLP_PSU_CAPS_IOUT) && (info->caps & ONLP_PSU_CAPS_VOUT)) {
-        info->mpout = (info->miout * info->mvout) / 1000;
-        info->caps |= ONLP_PSU_CAPS_POUT;
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_pout", PSU_HWMON_PSOC_PREFIX);
     }
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_pout", PSU_HWMON_PSOC_PREFIX);
+    }
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    info->mpout = value;
+    info->caps |= ONLP_PSU_CAPS_POUT;
+
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_vin", PSU_HWMON_PSOC_PREFIX);
+    }
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_vin", PSU_HWMON_PSOC_PREFIX);
+    }
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    info->mvin = value;
+    info->caps |= ONLP_PSU_CAPS_VIN;
+
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_iin", PSU_HWMON_PSOC_PREFIX);
+    }
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_iin", PSU_HWMON_PSOC_PREFIX);
+    }
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    info->miin = value;
+    info->caps |= ONLP_PSU_CAPS_IIN;
+
+    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
+    if (PSU1_ID == id) {
+        sprintf(node_path, "%spsoc_psu1_pin", PSU_HWMON_PSOC_PREFIX);
+    }
+    else if (PSU2_ID == id) {
+        sprintf(node_path, "%spsoc_psu2_pin", PSU_HWMON_PSOC_PREFIX);
+    }
+    ret = onlp_file_read_int(&value, node_path);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    info->mpin = value;
+    info->caps |= ONLP_PSU_CAPS_PIN;
 
     return ONLP_STATUS_OK;
 }
@@ -200,9 +184,7 @@ int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
     int val   = 0;
-    int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
-    psu_type_t psu_type; 
 
     VALIDATE(id);
 
@@ -210,63 +192,32 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
     /* Get the present state */
-    if (psu_status_info_get(index, "psu_present", &val) != 0) {
+    if (psu_status_info_get(index, "psu", &val) == ONLP_STATUS_E_INTERNAL) {
         printf("Unable to read PSU(%d) node(psu_present)\r\n", index);
     }
 
-    if (val != PSU_STATUS_PRESENT) {
-        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+    if (val == PSU_STATUS_PRESENT) {
+	info->status |= ONLP_PSU_STATUS_PRESENT;
+	if (psu_module_info_get(index, info) != ONLP_STATUS_OK) {
+	    printf("Unable to read PSU(%d) module information\r\n", index);
+	}
+	return ONLP_STATUS_OK;
+    }
+
+    if (val == PSU_STATUS_UNPOWERED) {
+	info->status |= ONLP_PSU_STATUS_FAILED;
         return ONLP_STATUS_OK;
     }
-    info->status |= ONLP_PSU_STATUS_PRESENT;
 
-
-    /* Get power good status */
-    if (psu_status_info_get(index, "psu_power_good", &val) != 0) {
-        printf("Unable to read PSU(%d) node(psu_power_good)\r\n", index);
+    if (val == PSU_STATUS_FAULT) {
+	info->status |= ONLP_PSU_STATUS_FAILED;
+        return ONLP_STATUS_OK;
     }
 
-    if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
+    if (val == PSU_STATUS_UNINSTALLED) {
+	info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+        return ONLP_STATUS_OK;
     }
 
-
-    /* Get PSU type
-     */
-    psu_type = get_psu_type(index, info->model, sizeof(info->model));
-
-    switch (psu_type) {
-        case PSU_TYPE_AC_F2B:
-        case PSU_TYPE_AC_B2F:
-            info->caps = ONLP_PSU_CAPS_AC;
-            ret = psu_ym2651_info_get(info);
-            break;
-        case PSU_TYPE_DC_48V_F2B:
-        case PSU_TYPE_DC_48V_B2F:
-            info->caps = ONLP_PSU_CAPS_DC48;
-            ret = psu_ym2651_info_get(info);
-            break;
-        case PSU_TYPE_DC_12V_F2B:
-        case PSU_TYPE_DC_12V_B2F:
-        case PSU_TYPE_DC_12V_FANLESS:
-            ret = psu_dc12v_750_info_get(info);
-            break;
-        case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
-            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-            info->status &= ~ONLP_PSU_STATUS_FAILED;
-            ret = ONLP_STATUS_OK;
-            break;
-        default:
-            ret = ONLP_STATUS_E_UNSUPPORTED;
-            break;
-    }
-
-    return ret;
-}
-
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

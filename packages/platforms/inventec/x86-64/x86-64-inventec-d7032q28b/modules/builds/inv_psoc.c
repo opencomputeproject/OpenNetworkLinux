@@ -17,11 +17,8 @@
 #include <linux/delay.h>
 #include <linux/swab.h>
 
-//#include "I2CHostCommunication.h"
-
 #define USE_SMBUS    1
 
-//#define offsetof(st, m) ((size_t)(&((st *)0)->m))
 #define FAN_NUM  5 
 #define PSU_NUM  2 
 
@@ -94,7 +91,6 @@ struct __attribute__ ((__packed__))  psoc_layout {
 #define PWM_PSU_OFFSET          PSOC_OFF(pwm_psu)
 #define THERMAL_OFFSET          PSOC_OFF(temp)
 #define RPM_OFFSET              PSOC_OFF(fan)
-//#define RPM_PSU_OFFSET              PSOC_OFF(fan_psu)
 #define DIAG_FLAG_OFFSET        PSOC_OFF(ctl)
 #define FAN_LED_OFFSET          PSOC_OFF(led_grn)
 #define FAN_GPI_OFFSET          PSOC_OFF(gpi_fan)
@@ -182,17 +178,6 @@ static ssize_t psoc_i2c_write(struct i2c_client *client, char *buf, unsigned off
 #endif    
 }
 
-static u32 psoc_read32(struct i2c_client *client, u8 offset)
-{
-	u32 value = 0;
-	u8 buf[4];
-    
-    if( psoc_i2c_read(client, buf, offset, 4) == 4)
-        value = (buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]);
-    
-	return value;
-}
-
 static u16 psoc_read16(struct i2c_client *client, u8 offset)
 {
 	u16 value = 0;
@@ -214,13 +199,6 @@ static u8 psoc_read8(struct i2c_client *client, u8 offset)
     
 	return value;
 }
-
-static int psoc_write_value(struct i2c_client *client, unsigned offset, u16 value)
-{
-    //TBD
-    return 0;
-}
-
 
 //PSOC i2c bridge regsters
 #define PSOC_I2C_STATUS         PSOC_OFF(i2c_st)
@@ -497,8 +475,6 @@ static ssize_t set_switch_tmp(struct device *dev,
 	long temp = simple_strtol(buf, NULL, 10);
     u16 temp2 =  ( (temp/1000) <<8 ) & 0xFF00 ;
     
-    //printk("set_switch_tmp temp=%d, temp2=0x%x (%x,%x)\n", temp, temp2, ( ( (temp/1000) <<8 ) & 0xFF00 ),  (( (temp%1000) / 10 ) & 0xFF));
-    
 	mutex_lock(&data->update_lock);
 	psoc_i2c_write(client, (u8*)&temp2, SWITCH_TMP_OFFSET, 2);
 	mutex_unlock(&data->update_lock);
@@ -528,7 +504,6 @@ static ssize_t set_diag(struct device *dev,
 			   struct device_attribute *devattr,
 			   const char *buf, size_t count)
 {
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct psoc_data *data = i2c_get_clientdata(client);
 	u8 value = 0;
@@ -551,7 +526,6 @@ static ssize_t show_version(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
 	u16 status;
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct psoc_data *data = i2c_get_clientdata(client);
     
@@ -675,7 +649,6 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 		mutex_unlock(&data->update_lock);
 	
 		status =  value[1]<<8 | value[0];
-		//status1 =  value[1]<<8 | value[0];
 	
 		return sprintf(buf, "%ld\n", pmbus_reg2data_linear(status, (reg==PMBUS_READ_VOUT)?1:0) );
 	}
@@ -725,9 +698,6 @@ static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET
 static SENSOR_DEVICE_ATTR(pwm2, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+1);
 static SENSOR_DEVICE_ATTR(pwm3, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+2);
 static SENSOR_DEVICE_ATTR(pwm4, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+3);
-#if (FAN_NUM >= 5)
-static SENSOR_DEVICE_ATTR(pwm5, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+4);
-#endif
 static SENSOR_DEVICE_ATTR(pwm_psu1, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, PWM_PSU_OFFSET+0);
 static SENSOR_DEVICE_ATTR(pwm_psu2, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, PWM_PSU_OFFSET+1);
 
@@ -742,10 +712,6 @@ static SENSOR_DEVICE_ATTR(fan5_input, S_IRUGO,			show_rpm, 0, 4*2  + RPM_OFFSET)
 static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO,			show_rpm, 0, 5*2  + RPM_OFFSET);
 static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO,			show_rpm, 0, 6*2  + RPM_OFFSET);
 static SENSOR_DEVICE_ATTR(fan8_input, S_IRUGO,			show_rpm, 0, 7*2  + RPM_OFFSET);
-#if (FAN_NUM >= 5)
-static SENSOR_DEVICE_ATTR(fan9_input, S_IRUGO,			show_rpm, 0, 8*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan10_input, S_IRUGO,			show_rpm, 0, 9*2  + RPM_OFFSET);
-#endif
 static SENSOR_DEVICE_ATTR(rpm_psu1, S_IRUGO,		show_rpm, 0, 8*2  + RPM_OFFSET);
 static SENSOR_DEVICE_ATTR(rpm_psu2, S_IRUGO,		show_rpm, 0, 9*2  + RPM_OFFSET);
 
@@ -827,9 +793,6 @@ static struct attribute *psoc_attributes[] = {
 	&sensor_dev_attr_pwm2.dev_attr.attr,
 	&sensor_dev_attr_pwm3.dev_attr.attr,
 	&sensor_dev_attr_pwm4.dev_attr.attr,
-#if (FAN_NUM >= 5)
-	//&sensor_dev_attr_pwm5.dev_attr.attr,
-#endif
 	&sensor_dev_attr_pwm_psu1.dev_attr.attr,
 	&sensor_dev_attr_pwm_psu2.dev_attr.attr,
 	
@@ -842,10 +805,6 @@ static struct attribute *psoc_attributes[] = {
 	&sensor_dev_attr_fan6_input.dev_attr.attr,
 	&sensor_dev_attr_fan7_input.dev_attr.attr,
 	&sensor_dev_attr_fan8_input.dev_attr.attr,
-#if (FAN_NUM >= 5)
-	//&sensor_dev_attr_fan9_input.dev_attr.attr,
-	//&sensor_dev_attr_fan10_input.dev_attr.attr,
-#endif
 	
 	&sensor_dev_attr_rpm_psu1.dev_attr.attr,
 	&sensor_dev_attr_rpm_psu2.dev_attr.attr,
@@ -937,8 +896,6 @@ psoc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct psoc_data *data;
 	int status;
 
-    printk("+%s\n", __func__);
-    
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;

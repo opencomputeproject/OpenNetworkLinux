@@ -15,8 +15,6 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
-//#include "I2CHostCommunication.h"
-
 #define USE_SMBUS    1
 
 /* definition */
@@ -115,7 +113,6 @@ static ssize_t show_info(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
 	u32 status;
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 b[4];
@@ -139,7 +136,6 @@ static ssize_t show_reset(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
 	u32 status;
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 b[1];
@@ -162,7 +158,6 @@ static ssize_t set_reset(struct device *dev,
 			   struct device_attribute *devattr,
 			   const char *buf, size_t count)
 {
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 
@@ -179,7 +174,6 @@ static ssize_t show_ctl(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
 	u32 status;
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 b[1];
@@ -202,7 +196,6 @@ static ssize_t set_ctl(struct device *dev,
 			   struct device_attribute *devattr,
 			   const char *buf, size_t count)
 {
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 byte;

@@ -1,23 +1,8 @@
 /************************************************************
- * <bsn.cl fy=2014 v=onl>
+ * thermali.c
  *
- *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright 2014 Accton Technology Corporation.
+ *           Copyright 2018 Inventec Technology Corporation.
  *
- * Licensed under the Eclipse Public License, Version 1.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
- *
- *        http://www.eclipse.org/legal/epl-v10.html
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
- * either express or implied. See the License for the specific
- * language governing permissions and limitations under the
- * License.
- *
- * </bsn.cl>
  ************************************************************
  *
  * Thermal Sensor Platform Implementation.
@@ -51,23 +36,14 @@ enum onlp_thermal_id
 static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
-    NULL,                  /* CPU_CORE files */
-    "/sys/bus/i2c/devices/3-0048*temp1_input",
-    "/sys/bus/i2c/devices/3-0049*temp1_input",
-    "/sys/bus/i2c/devices/3-004a*temp1_input",
-    "/sys/bus/i2c/devices/3-004b*temp1_input",
-    "/sys/bus/i2c/devices/11-005b*psu_temp1_input",
-    "/sys/bus/i2c/devices/10-0058*psu_temp1_input",
+    "/sys/bus/i2c/devices/0-0066/temp1_input",
+    "/sys/bus/i2c/devices/0-0066/temp2_input",
+    "/sys/bus/i2c/devices/0-0066/temp3_input",
+    "/sys/bus/i2c/devices/0-0066/temp4_input",
+    "/sys/bus/i2c/devices/0-0066/temp5_input",
+    "/sys/bus/i2c/devices/0-0066/thermal_psu1",
+    "/sys/bus/i2c/devices/0-0066/thermal_psu2",
 };
-
-static char* cpu_coretemp_files[] =
-    {
-        "/sys/devices/platform/coretemp.0*temp2_input",
-        "/sys/devices/platform/coretemp.0*temp3_input",
-        "/sys/devices/platform/coretemp.0*temp4_input",
-        "/sys/devices/platform/coretemp.0*temp5_input",
-        NULL,
-    };
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
@@ -131,11 +107,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[local_id];
-
-    if(local_id == THERMAL_CPU_CORE) {
-        int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
-        return rv;
-    }
 
     return onlp_file_read_int(&info->mcelsius, devfiles__[local_id]);
 }
