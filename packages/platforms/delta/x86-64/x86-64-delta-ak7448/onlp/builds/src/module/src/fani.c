@@ -96,16 +96,13 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     mux_info_t mux_info;
     dev_info_t dev_info;
 
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = FAN_I2C_MUX_SEL_REG;
     mux_info.channel = FAN_I2C_SEL_FAN_CTRL;
-    mux_info.flags = DEFAULT_FLAG;
 
     dev_info.bus = I2C_BUS_7;
     dev_info.addr = FAN_IO_CTL;
     dev_info.offset = 0x00;
-    dev_info.flags = DEFAULT_FLAG;
+    dev_info.flags = ONLP_I2C_F_FORCE;
 
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(&mux_info, fullpath);
@@ -160,11 +157,8 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     dev_info_t dev_info;
     mux_info_t mux_info;
 
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = PSU_I2C_MUX_SEL_REG;
     mux_info.channel = PSU_I2C_SEL_PSU_EEPROM;
-    mux_info.flags = DEFAULT_FLAG;
 
     dev_info.bus = I2C_BUS_4;
     dev_info.addr = PSU_EEPROM;
@@ -291,11 +285,8 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     }
 
     sprintf(data, "%d", rpm);
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = FAN_I2C_MUX_SEL_REG;
     mux_info.channel = FAN_I2C_SEL_FAN_CTRL;
-    mux_info.flags = DEFAULT_FLAG;
 
     ret = dni_i2c_lock_write_attribute(&mux_info, data, fullpath);
     if(ret == -1){
@@ -320,10 +311,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int percentage)
     char data[10] = {0};
     char fullpath[70] = {0};
     mux_info_t mux_info;
-
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
-    mux_info.flags = DEFAULT_FLAG;
 
     VALIDATE(id);
     local_id = ONLP_OID_ID_GET(id);
