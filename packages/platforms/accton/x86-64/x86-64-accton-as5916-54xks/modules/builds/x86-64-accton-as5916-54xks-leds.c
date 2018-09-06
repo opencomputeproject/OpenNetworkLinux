@@ -35,7 +35,7 @@
 #define ACCTON_IPMI_NETFN   0x34
 #define IPMI_LED_READ_CMD   0x1A
 #define IPMI_LED_WRITE_CMD  0x1B
-#define IPMI_TIMEOUT		(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_led(struct device *dev, struct device_attribute *da,

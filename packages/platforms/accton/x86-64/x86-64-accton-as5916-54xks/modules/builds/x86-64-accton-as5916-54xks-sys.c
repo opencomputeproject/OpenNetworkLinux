@@ -36,7 +36,7 @@
 #define IPMI_TCAM_READ_CMD      0x1E
 #define IPMI_TCAM_WRITE_CMD     0x1F
 #define IPMI_SYSEEPROM_READ_CMD 0x18
-#define IPMI_TIMEOUT			(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 #define IPMI_READ_MAX_LEN       128
 
 #define EEPROM_NAME				"eeprom"

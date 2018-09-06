@@ -37,7 +37,7 @@
 #define IPMI_QSFP_WRITE_CMD     0x11
 #define IPMI_SFP_READ_CMD       0x1C
 #define IPMI_SFP_WRITE_CMD      0x1D
-#define IPMI_TIMEOUT			(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 #define IPMI_READ_MAX_LEN       128
 
 #define EEPROM_SIZE				640
@@ -1406,7 +1406,7 @@ static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom,
         goto alloc_err;
     }
 
-    sprintf(eeprom_name, EEPROM_FORMAT, port);
+    sprintf(eeprom_name, EEPROM_FORMAT, (int)port);
     sysfs_bin_attr_init(eeprom);
 	eeprom->attr.name = eeprom_name;
 	eeprom->attr.mode = S_IRUGO;

@@ -34,7 +34,7 @@
 #define DRVNAME "as5916_54xks_thermal"
 #define ACCTON_IPMI_NETFN       0x34
 #define IPMI_THERMAL_READ_CMD   0x12
-#define IPMI_TIMEOUT			(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_temp(struct device *dev, struct device_attribute *attr, char *buf);

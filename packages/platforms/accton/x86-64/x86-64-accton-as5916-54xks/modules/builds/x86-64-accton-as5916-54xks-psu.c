@@ -35,7 +35,7 @@
 #define IPMI_PSU_READ_CMD       0x16
 #define IPMI_PSU_MODEL_NAME_CMD 0x10
 #define IPMI_PSU_SERIAL_NUM_CMD 0x11
-#define IPMI_TIMEOUT			(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_psu(struct device *dev, struct device_attribute *attr, char *buf);

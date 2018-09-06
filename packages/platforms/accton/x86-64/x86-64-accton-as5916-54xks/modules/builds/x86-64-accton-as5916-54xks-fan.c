@@ -36,7 +36,7 @@
 #define ACCTON_IPMI_NETFN   0x34
 #define IPMI_FAN_READ_CMD   0x14
 #define IPMI_FAN_WRITE_CMD  0x15
-#define IPMI_TIMEOUT		(5 * HZ)
+#define IPMI_TIMEOUT		(20 * HZ)
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
