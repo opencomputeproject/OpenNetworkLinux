@@ -5,7 +5,7 @@
 ############################################################
 prerequisites:
   packages:
-    - $KERNELS
+    - ${KERNELS}:${ARCH}
     - onl-vendor-${VENDOR}-modules:$ARCH
 
 packages:

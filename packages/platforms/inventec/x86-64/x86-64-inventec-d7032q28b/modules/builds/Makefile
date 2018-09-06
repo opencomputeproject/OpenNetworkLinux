@@ -1,6 +1,6 @@
-KERNELS := onl-kernel-3.16-lts-x86-64-all:amd64
+KERNELS := onl-kernel-3.16-lts-x86-64-all
 KMODULES := src
 VENDOR := inventec
 BASENAME := x86-64-inventec-d7032q28b
-ARCH := x86_64
+ARCH := amd64
 include $(ONL)/make/kmodule.mk
