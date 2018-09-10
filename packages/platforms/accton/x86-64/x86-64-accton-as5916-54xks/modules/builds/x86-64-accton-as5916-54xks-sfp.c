@@ -1342,10 +1342,14 @@ static ssize_t sfp_eeprom_read(loff_t off, char *buf, size_t count, int port)
         goto exit;
     }
 
-    status = length; /* Read length */
+    /* Calculate return length */
+    if (count < length) {
+        length = count;
+    }
 
     memcpy(buf, data->ipmi_resp.eeprom + (off % IPMI_READ_MAX_LEN), length);
     data->ipmi_resp.eeprom_valid = 1;
+    return length;
 
 exit:
     return status;
