@@ -35,6 +35,10 @@
 #define ACCTON_IPMI_NETFN       0x34
 #define IPMI_TCAM_READ_CMD      0x1E
 #define IPMI_TCAM_WRITE_CMD     0x1F
+#define IPMI_TCAM_RESET_SUBCMD      1
+#define IPMI_TCAM_INT_SUMCMD        2
+#define IPMI_TCAM_INT_MASK_SUBCMD   3
+
 #define IPMI_SYSEEPROM_READ_CMD 0x18
 #define IPMI_TIMEOUT		(20 * HZ)
 #define IPMI_READ_MAX_LEN       128
@@ -47,6 +51,9 @@ static int as5916_54xks_sys_probe(struct platform_device *pdev);
 static int as5916_54xks_sys_remove(struct platform_device *pdev);
 static ssize_t show_sys_reset_6(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 
 struct ipmi_data {
@@ -73,13 +80,18 @@ struct as5916_54xks_sys_data {
     unsigned long    last_updated;    /* In jiffies */
     struct ipmi_data ipmi;
     unsigned char    ipmi_resp_eeprom[EEPROM_SIZE];
-    unsigned char    ipmi_resp_rst;  /* Bit0/1: Reserved 
-                                        Bit 2 : CPU_JTAG_RST
-                                        Bit 3 : RESET_SYS_CPLD
-                                        Bit 4 : RESET_MAC
-                                        Bit 5 : CPLD1_TCAM_SRST_L
-                                        Bit 6 : CPLD1_TCAM_PERST_L
-                                        Bit 7 : CPLD1_TCAM_CRST_L */  
+    unsigned char    ipmi_resp_tcam;  /* tcam reset: (CPLD register 0x51)
+                                            Bit0/1: Reserved 
+                                            Bit 2 : CPU_JTAG_RST
+                                            Bit 3 : RESET_SYS_CPLD
+                                            Bit 4 : RESET_MAC
+                                            Bit 5 : CPLD1_TCAM_SRST_L
+                                            Bit 6 : CPLD1_TCAM_PERST_L
+                                            Bit 7 : CPLD1_TCAM_CRST_L
+                                         tcam interrupt (CPLD register 0x62)
+                                         tcam interrupt mask (CPLD register 0x63)
+                                            Bit 0 : TCAM_CPLD1_GIO_L_1
+                                            Bit 1 : TCAM_CPLD1_GIO_L_0 */
     unsigned char    ipmi_tx_data[3];
     struct bin_attribute eeprom;      /* eeprom data */
 };
@@ -96,8 +108,8 @@ static struct platform_driver as5916_54xks_sys_driver = {
 };
 
 enum as5916_54xks_sys_sysfs_attrs {
-    SYS_RESET_6_BIT0,
-    SYS_RESET_6_BIT1,
+    SYS_RESET_6_BIT0, /* Not Used */
+    SYS_RESET_6_BIT1, /* Not Used */
     CPU_JTAG_RST,
     RESET_SYS_CPLD,
     RESET_MAC,
@@ -106,6 +118,8 @@ enum as5916_54xks_sys_sysfs_attrs {
     TCAM_CRST_L,
     TCAM_RST_ALL,
     SYS_RESET_6_ALL,
+    TCAM_CPLD1_GIO_L,
+    TCAM_CPLD1_GIO_L_MASK,
 };
 
 static SENSOR_DEVICE_ATTR(tcam_rst_c, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_CRST_L);
@@ -113,6 +127,8 @@ static SENSOR_DEVICE_ATTR(tcam_rst_pe, S_IWUSR | S_IRUGO, show_sys_reset_6, set_
 static SENSOR_DEVICE_ATTR(tcam_rst_s, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_SRST_L);
 static SENSOR_DEVICE_ATTR(tcam_rst_all, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_RST_ALL);
 static SENSOR_DEVICE_ATTR(sys_rst_6, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, SYS_RESET_6_ALL);
+static SENSOR_DEVICE_ATTR(tcam_int, S_IRUGO, show_interrupt_status_6, NULL, TCAM_CPLD1_GIO_L);
+static SENSOR_DEVICE_ATTR(tcam_int_msk, S_IWUSR | S_IRUGO, show_interrupt_status_6, set_interrupt_status_6_mask, TCAM_CPLD1_GIO_L_MASK);
 
 static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_tcam_rst_c.dev_attr.attr,
@@ -120,6 +136,8 @@ static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_tcam_rst_s.dev_attr.attr,
     &sensor_dev_attr_tcam_rst_all.dev_attr.attr,
     &sensor_dev_attr_sys_rst_6.dev_attr.attr,
+    &sensor_dev_attr_tcam_int.dev_attr.attr,
+    &sensor_dev_attr_tcam_int_msk.dev_attr.attr,
     NULL
 };
 
@@ -325,19 +343,16 @@ static int sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eepr
 	return 0;
 }
 
-static struct as5916_54xks_sys_data *as5916_54xks_sys_update_sys_rst6(void)
+static struct as5916_54xks_sys_data *as5916_54xks_sys_update_tcam(unsigned char subcmd)
 {
     int status = 0;
-
-    if (time_before(jiffies, data->last_updated + HZ * 1) && data->valid) {
-        return data;
-    }
 
     mutex_lock(&data->update_lock);
 
     data->valid = 0;
-    status = ipmi_send_message(&data->ipmi, IPMI_TCAM_READ_CMD, NULL, 0,
-                               &data->ipmi_resp_rst, sizeof(data->ipmi_resp_rst));
+    data->ipmi_tx_data[0] = subcmd;
+    status = ipmi_send_message(&data->ipmi, IPMI_TCAM_READ_CMD, data->ipmi_tx_data, 1,
+                               &data->ipmi_resp_tcam, sizeof(data->ipmi_resp_tcam));
     if (unlikely(status != 0)) {
         goto exit;
     }
@@ -368,7 +383,7 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
 		return status;
 	}
 
-    data = as5916_54xks_sys_update_sys_rst6();
+    data = as5916_54xks_sys_update_tcam(IPMI_TCAM_RESET_SUBCMD);
     if (!data->valid) {
         return -EIO;
     }
@@ -382,22 +397,23 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
 		case TCAM_SRST_L:
         case TCAM_PERST_L:
         case TCAM_CRST_L:
-            data->ipmi_resp_rst = reset ? (data->ipmi_resp_rst  | (1 << attr->index)): 
-                                          (data->ipmi_resp_rst & ~(1 << attr->index));
+            data->ipmi_tx_data[1] = reset ? (data->ipmi_resp_tcam  | (1 << attr->index)): 
+                                            (data->ipmi_resp_tcam & ~(1 << attr->index));
             break;
 		case TCAM_RST_ALL:
-            data->ipmi_resp_rst = (data->ipmi_resp_rst & 0x1f) | (reset << TCAM_SRST_L);
+            data->ipmi_tx_data[1] = (data->ipmi_resp_tcam & 0x1f) | (reset << TCAM_SRST_L);
             break;
         case SYS_RESET_6_ALL:
-            data->ipmi_resp_rst = reset;
+            data->ipmi_tx_data[1] = reset;
             break;
 		default:
 			return -EINVAL;
     }
 
     /* Send IPMI write command */
+    data->ipmi_tx_data[0] = IPMI_TCAM_RESET_SUBCMD;
     status = ipmi_send_message(&data->ipmi, IPMI_TCAM_WRITE_CMD,
-                               &data->ipmi_resp_rst, sizeof(data->ipmi_resp_rst), NULL, 0);
+                               data->ipmi_tx_data, 2, NULL, 0);
     if (unlikely(status != 0)) {
         return status;
     }
@@ -415,7 +431,7 @@ static ssize_t show_sys_reset_6(struct device *dev, struct device_attribute *da,
     struct as5916_54xks_sys_data *data = NULL;
     int value = 0;
 
-    data = as5916_54xks_sys_update_sys_rst6();
+    data = as5916_54xks_sys_update_tcam(IPMI_TCAM_RESET_SUBCMD);
     if (!data->valid) {
         return -EIO;
     }
@@ -429,19 +445,79 @@ static ssize_t show_sys_reset_6(struct device *dev, struct device_attribute *da,
         case TCAM_SRST_L:
         case TCAM_PERST_L:
 		case TCAM_CRST_L:
-            value = !!(data->ipmi_resp_rst & (1 << attr->index));
+            value = !!(data->ipmi_resp_tcam & (1 << attr->index));
             break;
 		case TCAM_RST_ALL:
-            value = (data->ipmi_resp_rst >> 5) & 0x7;
+            value = (data->ipmi_resp_tcam >> 5) & 0x7;
             break;
         case SYS_RESET_6_ALL:
-            value = data->ipmi_resp_rst & 0xff;
+            value = data->ipmi_resp_tcam & 0xff;
             break;
 		default:
 			return -EINVAL;
     }
 
 	return sprintf(buf, "%d\n", value);
+}
+
+static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct as5916_54xks_sys_data *data = NULL;
+    unsigned char subcmd = 0;
+    int value = 0;
+
+	switch (attr->index) {
+        case TCAM_CPLD1_GIO_L:
+            subcmd = IPMI_TCAM_INT_SUMCMD;
+            break;
+        case TCAM_CPLD1_GIO_L_MASK:
+            subcmd = IPMI_TCAM_INT_MASK_SUBCMD;
+            break;
+		default:
+			return -EINVAL;
+    }
+
+    data = as5916_54xks_sys_update_tcam(subcmd);
+    if (!data->valid) {
+        return -EIO;
+    }
+
+    value = data->ipmi_resp_tcam & 0x3;
+	return sprintf(buf, "%d\n", value);
+}
+
+static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+	long mask = 0; /* mask value to be set */
+	int status;
+    struct as5916_54xks_sys_data *data = NULL;
+
+	status = kstrtol(buf, 10, &mask);
+	if (status) {
+		return status;
+	}
+
+    data = as5916_54xks_sys_update_tcam(IPMI_TCAM_INT_MASK_SUBCMD);
+    if (!data->valid) {
+        return -EIO;
+    }
+
+    /* Send IPMI write command */
+    data->ipmi_tx_data[0] = IPMI_TCAM_INT_MASK_SUBCMD;
+    data->ipmi_tx_data[1] = (data->ipmi_resp_tcam & 0xfc) | (mask & 0x3);
+    status = ipmi_send_message(&data->ipmi, IPMI_TCAM_WRITE_CMD,
+                                data->ipmi_tx_data, 2, NULL, 0);
+    if (unlikely(status != 0)) {
+        return status;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        return -EIO;
+    }
+
+    return count;
 }
 
 static int as5916_54xks_sys_probe(struct platform_device *pdev)
@@ -525,7 +601,7 @@ static void __exit as5916_54xks_sys_exit(void)
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("AS5916 54XKS System driver");
+MODULE_DESCRIPTION("AS5916-54XKS System driver");
 MODULE_LICENSE("GPL");
 
 module_init(as5916_54xks_sys_init);
