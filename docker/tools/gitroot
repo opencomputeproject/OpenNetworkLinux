@@ -1,4 +1,13 @@
 #!/bin/sh
+#
+######################################################################
+#
+# gitroot
+#
+# Translate $1 or $PWD into the top-level workspace directory
+# containing .git
+#
+######################################################################
 
 if test $# -gt 0; then
   dir=$(realpath $1)
@@ -10,5 +19,20 @@ while test $dir != /; do
     echo $dir
     break
   fi
+  if test -f $dir/.git; then
+    ndir=$(sed -n -e 's/^gitdir: \(.*\)/\1/p' $dir/.git)
+    if test "$ndir"; then
+      ndir=$(cd $dir && cd $ndir && pwd)
+      ndir=${ndir%/.git/*}
+      if test -d "$ndir"; then
+        dir=$ndir
+        continue
+      fi
+    fi
+  fi
   dir=${dir%/*}
 done
+if test "$dir" = "/"; then
+  echo "*** cannot find git root" 1>&2
+  exit 1
+fi
