@@ -473,8 +473,9 @@ rm -f /usr/sbin/policy-rc.d
 
                 for script in Configure.get('scripts', []):
                     logger.info("Configuration script %s..." % script)
-                    onlu_execute_sudo("-E unshare -pf --mount-proc %s %s" % (script, dir_),
-                                      ex=OnlRfsError("script '%s' failed." % script))
+                    onlu_execute_sudo("unshare -pf --mount-proc %s %s" % (script, dir_),
+                                      ex=OnlRfsError("script '%s' failed." % script),
+                                      env=True)
 
 
                 for command in Configure.get('commands', []):
