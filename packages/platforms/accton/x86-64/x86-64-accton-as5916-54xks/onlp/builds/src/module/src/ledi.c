@@ -197,7 +197,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     info->mode = driver_to_onlp_led_mode(lid, value);
 
     /* Set the on/off status */
-    if (info->mode != ONLP_LED_MODE_OFF) {
+    if (info->mode != ONLP_LED_MODE_OFF && info->mode != ONLP_LED_MODE_AUTO) {
         info->status |= ONLP_LED_STATUS_ON;
     }
 
