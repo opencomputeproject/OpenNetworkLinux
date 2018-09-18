@@ -38,9 +38,10 @@
 #define IPMI_SFP_READ_CMD       0x1C
 #define IPMI_SFP_WRITE_CMD      0x1D
 #define IPMI_TIMEOUT		(20 * HZ)
-#define IPMI_READ_MAX_LEN       128
+#define IPMI_DATA_MAX_LEN       128
 
-#define EEPROM_SIZE				640
+#define SFP_EEPROM_SIZE         768
+#define QSFP_EEPROM_SIZE        640
 
 #define NUM_OF_SFP              48
 #define NUM_OF_QSFP             6
@@ -103,7 +104,7 @@ enum module_status {
 };
 
 struct ipmi_sfp_resp_data {
-    unsigned char eeprom[IPMI_READ_MAX_LEN];
+    unsigned char eeprom[IPMI_DATA_MAX_LEN];
     char          eeprom_valid;
 
     char          sfp_valid[NUM_OF_SFP_STATUS];        /* != 0 if registers are valid */
@@ -123,6 +124,11 @@ struct as5916_54xks_sfp_data {
     struct ipmi_sfp_resp_data ipmi_resp;
     unsigned char ipmi_tx_data[3];
     struct bin_attribute eeprom[NUM_OF_PORT]; /* eeprom data */
+};
+
+struct sfp_eeprom_write_data {
+    unsigned char ipmi_tx_data[4]; /* 0:port index  1:page number 2:offset 3:Data len */
+    unsigned char write_buf[IPMI_DATA_MAX_LEN];
 };
 
 struct as5916_54xks_sfp_data *data = NULL;
@@ -1304,10 +1310,11 @@ static ssize_t set_qsfp_lpmode(struct device *dev, struct device_attribute *da,
 /*************************************************************************************
 SFP:  PS: Index of SFP is 1~48
 Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 0"
-Offset 128 ~ 255: Addr 0x51 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 1"
-Offset 256 ~ 383: Addr 0x51 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 2"
-Offset 384 ~ 511: Addr 0x51 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 3"
-Offset 512 ~ 639: Addr 0x51 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 4"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 1"
+Offset 256 ~ 383: Addr 0x51 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 2"
+Offset 384 ~ 511: Addr 0x51 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 3"
+Offset 512 ~ 639: Addr 0x51 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 4"
+Offset 640 ~ 767: Addr 0x51 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 5"
 
 QSFP:  PS: index of QSFP is 1~6"
 Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 0"
@@ -1321,18 +1328,14 @@ static ssize_t sfp_eeprom_read(loff_t off, char *buf, size_t count, int port)
     int status = 0;
     unsigned char cmd           = (port <= NUM_OF_SFP) ? IPMI_SFP_READ_CMD : IPMI_QSFP_READ_CMD;
     unsigned char ipmi_port_id  = (port <= NUM_OF_SFP) ? port : (port - NUM_OF_SFP);
-    unsigned char length        = IPMI_READ_MAX_LEN - (off % IPMI_READ_MAX_LEN);
-    unsigned char ipmi_page     = off / IPMI_READ_MAX_LEN;
-                               /* Page 0: Get eeprom byte (  0~127) from ipmi 
-                                  Page 1: Get eeprom byte (128~255) from ipmi 
-                                  Page 2: Get eeprom byte (256~383) from ipmi
-                                  Page 3: Get eeprom byte (384~511) from ipmi
-                                  Page 4: Get eeprom byte (512~639) from ipmi */
+    unsigned char ipmi_page     = off / IPMI_DATA_MAX_LEN;
+    unsigned char length        = IPMI_DATA_MAX_LEN - (off % IPMI_DATA_MAX_LEN);
+
     data->ipmi_resp.eeprom_valid = 0;
     data->ipmi_tx_data[0] = ipmi_port_id;
     data->ipmi_tx_data[1] = ipmi_page; 
     status = ipmi_send_message(&data->ipmi, cmd, data->ipmi_tx_data, 2,
-                                data->ipmi_resp.eeprom, IPMI_READ_MAX_LEN);
+                                data->ipmi_resp.eeprom, IPMI_DATA_MAX_LEN);
     if (unlikely(status != 0)) {
         goto exit;
     }
@@ -1347,7 +1350,7 @@ static ssize_t sfp_eeprom_read(loff_t off, char *buf, size_t count, int port)
         length = count;
     }
 
-    memcpy(buf, data->ipmi_resp.eeprom + (off % IPMI_READ_MAX_LEN), length);
+    memcpy(buf, data->ipmi_resp.eeprom + (off % IPMI_DATA_MAX_LEN), length);
     data->ipmi_resp.eeprom_valid = 1;
     return length;
 
@@ -1356,7 +1359,7 @@ exit:
 }
 
 
-static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
+static ssize_t sfp_bin_read(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr,
 		char *buf, loff_t off, size_t count)
 {
@@ -1397,6 +1400,100 @@ static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
 
 }
 
+/*************************************************************************************
+SFP:  PS: Index of SFP is 1~48
+ipmitool raw 0x34 0x1d <index of SFP> <page number> <offset> <Data len> <Data>
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 0 offset <Data len> <Data>"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 1 offset <Data len> <Data>"
+Offset 256 ~ 383: Addr 0x51 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 2 offset <Data len> <Data>"
+Offset 384 ~ 511: Addr 0x51 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 3 offset <Data len> <Data>"
+Offset 512 ~ 639: Addr 0x51 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 4 offset <Data len> <Data>"
+Offset 640 ~ 767: Addr 0x51 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 5 offset <Data len> <Data>"
+
+QSFP:  PS: index of QSFP is 1~6"
+ipmitool raw 0x34 0x11 <index of QSFP> <page number> <offset> <Data len> <Data>
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 0 offset <Data len> <Data>"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 1 offset <Data len> <Data>"
+Offset 256 ~ 383: Addr 0x50 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 2 offset <Data len> <Data>"
+Offset 384 ~ 511: Addr 0x50 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 3 offset <Data len> <Data>"
+Offset 512 ~ 639: Addr 0x50 Offset 128~255(Page 3) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 4 offset <Data len> <Data>"
+**************************************************************************************/
+static ssize_t sfp_eeprom_write(loff_t off, char *buf, size_t count, int port)
+{
+    int status = 0;
+    unsigned char cmd           = (port <= NUM_OF_SFP) ? IPMI_SFP_WRITE_CMD : IPMI_QSFP_WRITE_CMD;
+    unsigned char ipmi_port_id  = (port <= NUM_OF_SFP) ? port : (port - NUM_OF_SFP);
+    unsigned char ipmi_page     = off / IPMI_DATA_MAX_LEN;
+    unsigned char length        = IPMI_DATA_MAX_LEN - (off % IPMI_DATA_MAX_LEN);
+    struct sfp_eeprom_write_data wdata;
+
+    /* Calculate write length */
+    if (count < length) {
+        length = count;
+    }
+
+    wdata.ipmi_tx_data[0] = ipmi_port_id;
+    wdata.ipmi_tx_data[1] = ipmi_page;
+    wdata.ipmi_tx_data[2] = (off % IPMI_DATA_MAX_LEN);
+    wdata.ipmi_tx_data[3] = length;
+    memcpy(&wdata.write_buf, buf, length);
+    status = ipmi_send_message(&data->ipmi, cmd, &wdata.ipmi_tx_data[0], 
+                                length + sizeof(wdata.ipmi_tx_data), NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    return length;
+
+exit:
+    return status;
+}
+
+static ssize_t sfp_bin_write(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+	u64 port = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+	port = (u64)(attr->private);
+
+	/*
+	 * Write data to chip, protecting against concurrent updates
+	 * from this host, but not from other I2C masters.
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sfp_eeprom_write(off, buf, count, port);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+}
+
 #define EEPROM_FORMAT "module_eeprom_%d"
 
 static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom, u64 port)
@@ -1413,10 +1510,10 @@ static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom,
     sprintf(eeprom_name, EEPROM_FORMAT, (int)port);
     sysfs_bin_attr_init(eeprom);
 	eeprom->attr.name = eeprom_name;
-	eeprom->attr.mode = S_IRUGO;
-	eeprom->read	  = sysfs_bin_read;
-	eeprom->write	  = NULL;
-	eeprom->size	  = EEPROM_SIZE;
+	eeprom->attr.mode = S_IRUGO | S_IWUSR;
+	eeprom->read	  = sfp_bin_read;
+	eeprom->write	  = sfp_bin_write;
+	eeprom->size	  = (port <= NUM_OF_SFP) ? SFP_EEPROM_SIZE : QSFP_EEPROM_SIZE;
     eeprom->private   = (void*)port;
 
 	/* Create eeprom file */
