@@ -1,18 +1,49 @@
 import subprocess
+import logging
 
 class OnlServiceMixin(object):
-    def _execute(self, cmd, root=False, ex=True):
-        self.logger.debug("Executing: %s" % cmd)
+
+    def _execute(self, cmd,
+                 root=False, ex=True,
+                 logLevel=logging.DEBUG):
+        self.logger.log(logLevel, "Executing: %s", cmd)
+
+        if isinstance(cmd, basestring):
+            shell = True
+        else:
+            shell = False
+
         if root is True and os.getuid() != 0:
-            cmd = "sudo " + cmd
+            if isinstance(cmd, basestring):
+                cmd = "sudo " + cmd
+            else:
+                cmd = ['sudo',] + list(cmd)
+
         try:
-            subprocess.check_call(cmd, shell=True)
-        except Exception, e:
+            pipe = subprocess.Popen(cmd, shell=shell,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+        except OSError as e:
             if ex:
-                self.logger.error("Command failed: %s" % e)
+                self.logger.error("Command did not start: %s (%s)",
+                                  str(e), str(e.child_traceback),)
                 raise
             else:
-                return e.returncode
+                return -1
+
+        out, _ = pipe.communicate()
+        code = pipe.wait()
+
+        lvl = logging.WARN if code else logLevel
+        out = (out or "").rstrip()
+        for line in out.splitlines(False):
+            self.logger.log(lvl, ">>> %s", line)
+
+        if ex and code:
+            self.logger.error("Command failed with code %s", code)
+            raise subprocess.CalledProcessError(code, cmd)
+
+        return code
 
     def _raise(self, msg, klass):
         self.logger.critical(msg)
