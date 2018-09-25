@@ -8,11 +8,8 @@ import sys
 import os
 import argparse
 import logging
-import tempfile
 import shutil
-import subprocess
 import tempfile
-import yaml
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
 from onl.sysconfig import sysconfig
 from onl.util import *
@@ -50,39 +47,70 @@ class OnlPki(OnlServiceMixin):
         self.init_cert(force=force)
 
     def init_key(self, force=False):
-        with OnlPkiContextReadOnly(self.logger):
-            if not os.path.exists(self.kpath) or force:
-                self.logger.info("Generating private key...")
-                cmd = "openssl genrsa -out %s %s" % (self.kpath, sysconfig.pki.key.len)
-                with OnlPkiContextReadWrite(self.logger):
-                    if not os.path.isdir(self.CONFIG_PKI_DIR):
-                        os.makedirs(self.CONFIG_PKI_DIR)
-                    self._execute(cmd)
-                self.init_cert(force=True)
-            else:
-                self.logger.info("Using existing private key.")
+        need_key = False
+        need_cert = False
+
+        if force:
+            need_key = True
+        else:
+            with OnlPkiContextReadOnly(self.logger):
+                if not os.path.exists(self.kpath):
+                    need_key = True
+
+        if need_key:
+            self.logger.info("Generating private key...")
+            cmd = ('openssl', 'genrsa',
+                   '-out', self.kpath,
+                   str(sysconfig.pki.key.len),)
+            with OnlPkiContextReadWrite(self.logger):
+                if not os.path.isdir(self.CONFIG_PKI_DIR):
+                    os.makedirs(self.CONFIG_PKI_DIR)
+                self._execute(cmd, logLevel=logging.INFO)
+            need_cert = True
+        else:
+            self.logger.info("Using existing private key.")
+
+        if need_cert:
+            self.init_cert(force=True)
 
     def init_cert(self, force=False):
-        with OnlPkiContextReadOnly(self.logger):
-            if not os.path.exists(self.cpath) or force:
-                self.logger.info("Generating self-signed certificate...")
-                csr = tempfile.NamedTemporaryFile(prefix="pki-", suffix=".csr", delete=False)
-                csr.close()
-                fields = [ "%s=%s" % (k, v) for k,v in sysconfig.pki.cert.csr.fields.iteritems() ]
-                subject = "/" + "/".join(fields)
-                self.logger.debug("Subject: '%s'", subject)
-                self.logger.debug("CSR: %s", csr.name)
-                with OnlPkiContextReadWrite(self.logger):
-                    if not os.path.isdir(self.CONFIG_PKI_DIR):
-                        os.makedirs(self.CONFIG_PKI_DIR)
-                    self._execute("""openssl req -new -batch -subj "%s" -key %s -out %s""" % (
-                            subject, self.kpath, csr.name))
-                    self._execute("""openssl x509 -req -days %s -sha256 -in %s -signkey %s -out %s""" % (
-                            sysconfig.pki.cert.csr.cdays,
-                            csr.name, self.kpath, self.cpath))
-                os.unlink(csr.name)
-            else:
-                self.logger.info("Using existing certificate.")
+        need_cert = False
+
+        if force:
+            need_cert = True
+        else:
+            with OnlPkiContextReadOnly(self.logger):
+                if not os.path.exists(self.cpath):
+                    need_cert = True
+
+        if need_cert:
+            self.logger.info("Generating self-signed certificate...")
+            csr = tempfile.NamedTemporaryFile(prefix="pki-", suffix=".csr", delete=False)
+            csr.close()
+            fields = [ "%s=%s" % (k, v) for k,v in sysconfig.pki.cert.csr.fields.iteritems() ]
+            subject = "/" + "/".join(fields)
+            self.logger.debug("Subject: '%s'", subject)
+            self.logger.debug("CSR: %s", csr.name)
+            with OnlPkiContextReadWrite(self.logger):
+                if not os.path.isdir(self.CONFIG_PKI_DIR):
+                    os.makedirs(self.CONFIG_PKI_DIR)
+                self._execute(('openssl', 'req',
+                               '-new', '-batch',
+                               '-subj', subject,
+                               '-key', self.kpath,
+                               '-out', csr.name,),
+                              logLevel=logging.INFO)
+                self._execute(('openssl', 'x509',
+                               '-req',
+                               '-days', str(sysconfig.pki.cert.csr.cdays),
+                               '-sha256',
+                               '-in', csr.name,
+                               '-signkey', self.kpath,
+                               '-out', self.cpath,),
+                              logLevel=logging.INFO)
+            os.unlink(csr.name)
+        else:
+            self.logger.info("Using existing certificate.")
 
     @staticmethod
     def main():
