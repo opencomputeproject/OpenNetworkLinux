@@ -29,7 +29,7 @@
 # Suppress console output until baud rate is set
 exec 4>&1 1>/tmp/sysinit.out 2>&1
 restoreconsole() { cat /tmp/sysinit.out 1>&4; exec 1>&4 2>&4; >/tmp/sysinit.out; }
-trap "restoreconsole; reboot -f" EXIT
+trap "restoreconsole; reboot -f" 0
 
 
 # Mount special filesystems
@@ -46,6 +46,11 @@ case "$(stat -f -c "%T" /tmp)" in
     mount -t tmpfs tmpfs /tmp
     ;;
 esac
+mount -t devtmpfs -o size=10M,mode=0755 udev /dev
+mount -t tmpfs -o "nosuid,size=20%,mode=0755" tmpfs /run
+
+# minor Jessie cleanups
+mkdir /run/resolvconf
 
 # Grab cmdline settings
 
@@ -144,7 +149,7 @@ restoreconsole
 
 # By this point PASSWORD must be set in /etc/onl/PASSWORD so /bin/login
 # can authenticate the user
-trap - EXIT
+trap - 0
 
 # Local variables:
 # sh-basic-offset: 4

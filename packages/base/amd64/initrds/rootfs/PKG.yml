@@ -1,0 +1,1 @@
+!include $ONL/packages/base/any/initrds/rootfs/APKG.yml ARCH=amd64

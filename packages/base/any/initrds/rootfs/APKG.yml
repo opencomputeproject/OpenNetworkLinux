@@ -1,0 +1,27 @@
+variables:
+  !include $ONL/make/versions/version-onl.yml
+
+prerequisites:
+  broken: true
+
+common:
+  arch: $ARCH
+  version: 0.$FNAME_RELEASE_ID
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+
+packages:
+  - name: onl-rootfs-initrd
+    summary: Open Network Linux Base Rootfs Initrd CPIO ($ARCH)
+
+    files:
+      builds/rootfs-$ARCH.cpio.gz : $$PKG_INSTALL/
+      builds/rootfs-$ARCH.sqsh : $$PKG_INSTALL/
+      builds/manifest.json : $$PKG_INSTALL/
+
+    changelog:  Change changes changes.,
+
+
+
+

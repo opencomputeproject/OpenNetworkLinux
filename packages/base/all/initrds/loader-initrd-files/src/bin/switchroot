@@ -38,7 +38,7 @@ mtab=$(mktemp /tmp/tmp.XXXXXX)
 cp /proc/mounts ${mtab}
 while read dev mount x; do
     case "${mount}" in
-	/|/proc|/sys|/dev|/newroot|/newroot/*)
+	/|/proc|/sys|/dev|/run|/newroot|/newroot/*)
 	    ;;
 	*)
             rm -f "${mount}".conf
@@ -48,6 +48,7 @@ while read dev mount x; do
 done <${mtab}
 rm -f ${mtab}
 
+mount --move /run /newroot/run
 mount --move /proc /newroot/proc
 if [ -d /sys/firmware/efi/efivars ]; then
     umount /sys/firmware/efi/efivars || :
@@ -61,9 +62,9 @@ mount --move /dev /newroot/dev
 
 # Switch to /newroot if possible, else re-execute /init
 if [ -x /newroot/sbin/init ]; then
-    exec switch_root -c /dev/console /newroot /sbin/init
+    exec switch_root /newroot /sbin/init
 elif [ -x /newroot/lib/systemd/systemd ]; then
-    exec switch_root -c /dev/console /newroot /lib/systemd/systemd
+    exec switch_root /newroot /lib/systemd/systemd
 else
     exec /init
 fi

@@ -48,8 +48,8 @@ zcip ${intf}
 rm -f /tmp/udhcpc.boot_file /tmp/udhcpc.pid
 udhcpc -i ${intf} -b -t 1 -A 3
 
-trap "exit 1" SIGINT
-trap "kill \$(cat /tmp/udhcpc.pid); ifconfig ${intf} down" EXIT
+trap "exit 1" 2
+trap "kill \$(cat /tmp/udhcpc.pid); ifconfig ${intf} down" 0
 
 macaddr=$(ifconfig ${intf} | awk '/HWaddr/ { print tolower($5) }')
 platform=$(cat /etc/onl/platform)

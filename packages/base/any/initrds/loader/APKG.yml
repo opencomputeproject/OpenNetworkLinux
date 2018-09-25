@@ -6,7 +6,7 @@
 #
 ############################################################
 prerequisites:
-  packages: [ "onl-buildroot-initrd:$ARCH", "onl-loader-initrd-files:all" ]
+  packages: [ "onl-rootfs-initrd:$ARCH", "onl-loader-initrd-files:all", "onl-kernel-4.14-lts-x86-64-all-modules:$ARCH" ]
 
 common:
   arch: $ARCH

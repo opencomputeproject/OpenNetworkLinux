@@ -25,7 +25,7 @@
 ############################################################
 
 
-trap '' SIGINT
+trap '' 2
 
 
 if (
@@ -37,8 +37,8 @@ then
 
     # Authenticated succeeded
 
-    trap - SIGINT
-    exec sh --login
+    trap - 2
+    exec sh -l
 
 else
 
