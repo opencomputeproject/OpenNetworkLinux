@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm/boot/dts/accton_as4610_54.dts
-@@ -0,0 +1,250 @@
+@@ -0,0 +1,256 @@
 +/*
 + * Accton AS4610 54 Device Tree Source
 + *
@@ -117,7 +117,7 @@
 +            cpld@1,0 {
 +                #address-cells = <1>;
 +                #size-cells = <1>;
-+                compatible = "accton,as4610-54-cpld";
++                compatible = "accton,as4610_54_cpld";
 +                label = "cpld";
 +                reg = <0x30>;
 +            };
@@ -142,8 +142,8 @@
 +                    #address-cells = <1>;
 +                    #size-cells = <0>;
 +                    reg = <0>;
-+                    sfp_eeprom@50 {
-+                        compatible = "at,24c04";
++                    optoe@50 {
++                        compatible = "optoe2";
 +                        reg = <0x50>;
 +                        label = "port49";
 +                    };
@@ -154,8 +154,8 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <1>;
-+                sfp_eeprom@50 {
-+                    compatible = "at,24c04";
++                optoe@50 {
++                    compatible = "optoe2";
 +                    reg = <0x50>;
 +                    label = "port50";
 +                };
@@ -166,8 +166,8 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <2>;
-+                sfp_eeprom@50 {
-+                    compatible = "at,24c04";
++                optoe@50 {
++                    compatible = "optoe2";
 +                    reg = <0x50>;
 +                    label = "port51";
 +                };
@@ -178,8 +178,8 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <3>;
-+                sfp_eeprom@50 {
-+                    compatible = "at,24c04";
++                optoe@50 {
++                    compatible = "optoe2";
 +                    reg = <0x50>;
 +                    label = "port52";
 +                };
@@ -190,9 +190,10 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <4>;
-+                sfp_eeprom@50 {
-+                    compatible = "at,24c04";
++                optoe@50 {
++                    compatible = "optoe1";
 +                    reg = <0x50>;
++                    label = "port53";
 +                };
 +            };
 +
@@ -201,9 +202,10 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <5>;
-+                sfp_eeprom@50 {
-+                    compatible = "at,24c04";
++                optoe@50 {
++                    compatible = "optoe1";
 +                    reg = <0x50>;
++                    label = "port54";
 +                };
 +            };
 +
@@ -212,17 +214,21 @@
 +                #address-cells = <1>;
 +                #size-cells = <0>;
 +                reg = <6>;
-+                psu_eeprom@50 {
-+                    compatible = "at,24c02";
++                psu1_eeprom@50 {
++                    compatible = "accton,as4610_psu1";
 +                    reg = <0x50>;
-+                    label = "psu1_eeprom";
-+                    read-only;
 +                };
-+                psu_eeprom@51 {
-+                    compatible = "at,24c02";
++                psu1_pmbus@58 {
++                    compatible = "3y-power,ym1921";
++                    reg = <0x58>;
++                };
++                psu2_eeprom@51 {
++                    compatible = "accton,as4610_psu2";
 +                    reg = <0x51>;
-+                    label = "psu2_eeprom";
-+                    read-only;
++                };
++                psu2_pmbus@59 {
++                    compatible = "3y-power,ym1921";
++                    reg = <0x59>;
 +                };
 +            };
 +
