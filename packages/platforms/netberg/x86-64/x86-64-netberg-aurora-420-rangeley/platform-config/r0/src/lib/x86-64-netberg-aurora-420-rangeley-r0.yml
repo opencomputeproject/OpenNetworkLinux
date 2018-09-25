@@ -1,0 +1,30 @@
+---
+
+######################################################################
+#
+# platform-config for AURORA 420
+#
+######################################################################
+
+x86-64-netberg-aurora-420-rangeley-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x2f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-3-16
+
+    args: >-
+      console=ttyS1,115200n8
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

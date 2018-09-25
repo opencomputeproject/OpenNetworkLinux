@@ -1,0 +1,119 @@
+###############################################################################
+#
+# x86_64_netberg_aurora_420_rangeley Autogeneration Definitions.
+#
+###############################################################################
+
+cdefs: &cdefs
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_INCLUDE_LOGGING:
+    doc: "Include or exclude logging."
+    default: 1
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_LOG_OPTIONS_DEFAULT:
+    doc: "Default enabled log options."
+    default: AIM_LOG_OPTIONS_DEFAULT
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_LOG_BITS_DEFAULT:
+    doc: "Default enabled log bits."
+    default: AIM_LOG_BITS_DEFAULT
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+    doc: "Default enabled custom log bits."
+    default: 0
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_PORTING_STDLIB:
+    doc: "Default all porting macros to use the C standard libraries."
+    default: 1
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+    doc: "Include standard library headers for stdlib porting macros."
+    default: X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_PORTING_STDLIB
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_INCLUDE_UCLI:
+    doc: "Include generic uCli support."
+    default: 0
+- X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_SYSFAN_RPM_FAILURE_THRESHOLD:
+    doc: "RPM Threshold at which the fan is considered to have failed."
+    default: 3000
+
+definitions:
+  cdefs:
+    X86_64_NETBERG_AURORA_420_RANGELEY_CONFIG_HEADER:
+      defs: *cdefs
+      basename: x86_64_netberg_aurora_420_rangeley_config
+
+  enum: &enums
+
+    fan_id:
+      members:
+        - FAN1 : 1
+        - FAN2 : 2
+        - FAN3 : 3
+        - FAN4 : 4
+        - FAN5 : 5
+        - FAN6 : 6
+        - FAN7 : 7
+        - FAN8 : 8
+        - FAN9 : 9
+        - FAN10 : 10
+
+    fan_oid:
+      members:
+        - FAN1 : ONLP_FAN_ID_CREATE(1)
+        - FAN2 : ONLP_FAN_ID_CREATE(2)
+        - FAN3 : ONLP_FAN_ID_CREATE(3)
+        - FAN4 : ONLP_FAN_ID_CREATE(4)
+        - FAN5 : ONLP_FAN_ID_CREATE(5)
+        - FAN6 : ONLP_FAN_ID_CREATE(6)
+        - FAN7 : ONLP_FAN_ID_CREATE(7)
+        - FAN8 : ONLP_FAN_ID_CREATE(8)
+        - FAN9 : ONLP_FAN_ID_CREATE(9)
+        - FAN10 : ONLP_FAN_ID_CREATE(10)
+
+    psu_id:
+      members:
+        - PSU1 : 1
+        - PSU2 : 2
+
+    psu_oid:
+      members:
+        - PSU1 : ONLP_PSU_ID_CREATE(1)
+        - PSU2 : ONLP_PSU_ID_CREATE(2)
+
+    thermal_id:
+      members:
+        - THERMAL1 : 1
+        - THERMAL2 : 2
+        - THERMAL3 : 3
+        - THERMAL4 : 4
+        - THERMAL5 : 5
+        - THERMAL6 : 6
+        - THERMAL7 : 7
+
+    thermal_oid:
+      members:
+        - THERMAL1 : ONLP_THERMAL_ID_CREATE(1)
+        - THERMAL2 : ONLP_THERMAL_ID_CREATE(2)
+        - THERMAL3 : ONLP_THERMAL_ID_CREATE(3)
+        - THERMAL4 : ONLP_THERMAL_ID_CREATE(4)
+        - THERMAL5 : ONLP_THERMAL_ID_CREATE(5)
+        - THERMAL6 : ONLP_THERMAL_ID_CREATE(6)
+        - THERMAL7 : ONLP_THERMAL_ID_CREATE(7)
+
+    led_id:
+      members:
+        - STAT     : 1
+        - FAN      : 2
+        - PSU1     : 3
+        - PSU2     : 4
+
+    led_oid:
+      members:
+        - STAT     : ONLP_LED_ID_CREATE(1)
+        - FAN      : ONLP_LED_ID_CREATE(2)
+        - PSU1     : ONLP_LED_ID_CREATE(3)
+        - PSU2     : ONLP_LED_ID_CREATE(4)
+
+  portingmacro:
+    X86_64_NETBERG_AURORA_420_RANGELEY:
+      macros:
+        - memset
+        - memcpy
+        - strncpy
+        - vsnprintf
+        - snprintf
+        - strlen
