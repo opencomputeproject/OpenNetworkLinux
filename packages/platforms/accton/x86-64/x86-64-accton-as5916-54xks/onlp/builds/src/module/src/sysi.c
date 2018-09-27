@@ -89,9 +89,38 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     return 0;
 }
 
+#define CPLD_VERSION_FORMAT "/sys/devices/platform/as5916_54xks_sys/%s"
+
+typedef struct cpld_version {
+    char *attr_name;
+    int   version;
+    char *description;
+} cpld_version_t;
+
 int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
+    int i, ret;
+    cpld_version_t cplds[] = { { "mb_cpld1_ver", 0, "Mainboard-CPLD#1"},
+                               { "mb_cpld2_ver", 0, "Mainboard-CPLD#2"},
+                               { "cpu_cpld_ver", 0, "CPU-CPLD"},
+                               { "fan_cpld_ver", 0, "FAN-CPLD"} };
+	/* Read CPLD version
+	 */
+    for (i = 0; i < AIM_ARRAYSIZE(cplds); i++) {
+        ret = onlp_file_read_int(&cplds[i].version, CPLD_VERSION_FORMAT, cplds[i].attr_name);
+
+        if (ret < 0) {
+            AIM_LOG_ERROR("Unable to read version from CPLD(%s)\r\n", cplds[i].attr_name);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    pi->cpld_versions = aim_fstrdup("%s:%d, %s:%d, %s:%d, %s:%d", 
+                                    cplds[0].description, cplds[0].version,
+                                    cplds[1].description, cplds[1].version,
+                                    cplds[2].description, cplds[2].version,
+                                    cplds[3].description, cplds[3].version);
     return ONLP_STATUS_OK;
 }
 

@@ -46,6 +46,12 @@
 #define EEPROM_NAME				"eeprom"
 #define EEPROM_SIZE				512	/*	512 byte eeprom */
 
+#define IPMI_GET_CPLD_VER_CMD   0x20
+#define MAINBOARD_CPLD1_ADDR    0x60
+#define MAINBOARD_CPLD2_ADDR    0x62
+#define CPU_CPLD_ADDR           0x65
+#define FAN_CPLD_ADDR           0x66
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static int as5916_54xks_sys_probe(struct platform_device *pdev);
 static int as5916_54xks_sys_remove(struct platform_device *pdev);
@@ -55,6 +61,7 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
 static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
+static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da, char *buf);
 
 struct ipmi_data {
 	struct completion   read_complete;
@@ -92,6 +99,7 @@ struct as5916_54xks_sys_data {
                                          tcam interrupt mask (CPLD register 0x63)
                                             Bit 0 : TCAM_CPLD1_GIO_L_1
                                             Bit 1 : TCAM_CPLD1_GIO_L_0 */
+    unsigned char    ipmi_resp_cpld;
     unsigned char    ipmi_tx_data[3];
     struct bin_attribute eeprom;      /* eeprom data */
 };
@@ -120,6 +128,10 @@ enum as5916_54xks_sys_sysfs_attrs {
     SYS_RESET_6_ALL,
     TCAM_CPLD1_GIO_L,
     TCAM_CPLD1_GIO_L_MASK,
+    MB_CPLD1_VER, /* mainboard cpld1 version */
+    MB_CPLD2_VER, /* mainboard cpld2 version */
+    CPU_CPLD_VER, /* CPU board CPLD version */
+    FAN_CPLD_VER, /* FAN CPLD version */
 };
 
 static SENSOR_DEVICE_ATTR(tcam_rst_c, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_CRST_L);
@@ -129,6 +141,10 @@ static SENSOR_DEVICE_ATTR(tcam_rst_all, S_IWUSR | S_IRUGO, show_sys_reset_6, set
 static SENSOR_DEVICE_ATTR(sys_rst_6, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, SYS_RESET_6_ALL);
 static SENSOR_DEVICE_ATTR(tcam_int, S_IRUGO, show_interrupt_status_6, NULL, TCAM_CPLD1_GIO_L);
 static SENSOR_DEVICE_ATTR(tcam_int_msk, S_IWUSR | S_IRUGO, show_interrupt_status_6, set_interrupt_status_6_mask, TCAM_CPLD1_GIO_L_MASK);
+static SENSOR_DEVICE_ATTR(mb_cpld1_ver, S_IRUGO, show_cpld_version, NULL, MB_CPLD1_VER);
+static SENSOR_DEVICE_ATTR(mb_cpld2_ver, S_IRUGO, show_cpld_version, NULL, MB_CPLD2_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_ver, S_IRUGO, show_cpld_version, NULL, CPU_CPLD_VER);
+static SENSOR_DEVICE_ATTR(fan_cpld_ver, S_IRUGO, show_cpld_version, NULL, FAN_CPLD_VER);
 
 static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_tcam_rst_c.dev_attr.attr,
@@ -138,6 +154,10 @@ static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_sys_rst_6.dev_attr.attr,
     &sensor_dev_attr_tcam_int.dev_attr.attr,
     &sensor_dev_attr_tcam_int_msk.dev_attr.attr,
+    &sensor_dev_attr_mb_cpld1_ver.dev_attr.attr,
+    &sensor_dev_attr_mb_cpld2_ver.dev_attr.attr,
+    &sensor_dev_attr_cpu_cpld_ver.dev_attr.attr,
+    &sensor_dev_attr_fan_cpld_ver.dev_attr.attr,
     NULL
 };
 
@@ -518,6 +538,64 @@ static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_att
     }
 
     return count;
+}
+
+static struct as5916_54xks_sys_data *as5916_54xks_sys_update_cpld_ver(unsigned char cpld_addr)
+{
+    int status = 0;
+
+    mutex_lock(&data->update_lock);
+
+    data->valid = 0;
+    data->ipmi_tx_data[0] = cpld_addr;
+    status = ipmi_send_message(&data->ipmi, IPMI_GET_CPLD_VER_CMD, data->ipmi_tx_data, 1,
+                               &data->ipmi_resp_cpld, sizeof(data->ipmi_resp_cpld));
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    data->last_updated = jiffies;
+    data->valid = 1;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return data;
+}
+
+static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct as5916_54xks_sys_data *data = NULL;
+    unsigned char cpld_addr = 0;
+
+    switch (attr->index) {
+        case MB_CPLD1_VER:
+            cpld_addr = MAINBOARD_CPLD1_ADDR;
+            break;
+        case MB_CPLD2_VER:
+            cpld_addr = MAINBOARD_CPLD2_ADDR;
+            break;
+        case CPU_CPLD_VER:
+            cpld_addr = CPU_CPLD_ADDR;
+            break;
+        case FAN_CPLD_VER:
+            cpld_addr = FAN_CPLD_ADDR;
+            break;
+        default:
+            return -EINVAL;
+    }
+
+    data = as5916_54xks_sys_update_cpld_ver(cpld_addr);
+    if (!data->valid) {
+        return -EIO;
+    }
+
+    return sprintf(buf, "%d\n", data->ipmi_resp_cpld);
 }
 
 static int as5916_54xks_sys_probe(struct platform_device *pdev)
