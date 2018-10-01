@@ -242,7 +242,6 @@ class OnieSysinfoApp(SubprocessMixin, object):
         with InitrdContext(initrd=initrd, log=self.log) as ctx:
             cmd = ['onie-sysinfo',]
             cmd.extend(self.args)
-            self.log.info("foo!")
             cmd = 'IFS=;' + " ".join(cmd)
             cmd = ('chroot', ctx.dir,
                    '/bin/sh', '-c', cmd,)
