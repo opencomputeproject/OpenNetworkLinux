@@ -12,7 +12,7 @@ x86-64-accton-csp9250-r0:
     serial: >-
       console=tty0  
     kernel:
-      <<: *kernel-3-16
+      <<: *kernel-4-14
 
     args: >-
       console=tty0,
