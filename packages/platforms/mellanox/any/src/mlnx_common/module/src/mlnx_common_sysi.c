@@ -42,7 +42,8 @@ static char arr_cplddev_name[MAX_NUM_OF_CPLD][30] =
 {
     "cpld_brd_version",
     "cpld_mgmt_version",
-    "cpld_port_version"
+    "cpld_port_version",
+    "cpld_gearbox_version",
 };
 
 mlnx_platform_info_t* get_platform_info()
@@ -80,6 +81,9 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
         pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d", v[0], v[1]);
         break;
     case 3:
+        pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d, port=%d", v[0], v[1], v[2]);
+        break;
+    case 4:
         pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d, port=%d", v[0], v[1], v[2]);
         break;
     case 0:
