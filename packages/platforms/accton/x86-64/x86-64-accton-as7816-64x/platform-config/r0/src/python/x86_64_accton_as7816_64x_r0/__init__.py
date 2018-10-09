@@ -6,10 +6,16 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
     PLATFORM='x86-64-accton-as7816-64x-r0'
     MODEL="AS7816-64x"
     SYS_OBJECT_ID=".7816.64"
+    PSU1_MODEL="/sys/bus/i2c/devices/i2c-10/10-005b/psu_mfr_model"
+    PSU2_MODEL="/sys/bus/i2c/devices/i2c-9/9-0058/psu_mfr_model"
+    PSU1_POWER="/sys/bus/i2c/devices/i2c-19/19-0060/psu1_power_good"
+    PSU2_POWER="/sys/bus/i2c/devices/i2c-19/19-0060/psu2_power_good"
+    
 
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod('ym2651y')
+        self.insmod('dps850')
         self.insmod('accton_i2c_cpld')
         for m in [ 'fan', 'cpld1', 'leds' ]:
             self.insmod("x86-64-accton-as7816-64x-%s.ko" % m)
@@ -26,11 +32,13 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
 
                 # initiate PSU-1
                 ('24c02', 0x53, 10),
-                ('ym2851', 0x5b, 10),
+                ('dps850', 0x5b, 10),
+                #('ym2851', 0x5b, 10),
 
                 # initiate PSU-2
                 ('24c02', 0x50, 9),
-                ('ym2851', 0x58, 9),
+                ('dps850', 0x58, 9),
+                #('ym2851', 0x58, 9),
 
                 # initiate chassis fan
                 ('as7816_64x_fan', 0x68, 17),
@@ -124,7 +132,7 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
                 ('optoe1', 0x50, 87),
                 ('optoe1', 0x50, 88),
 
-                ('24c02', 0x56, 0),
+                #('24c02', 0x56, 0),
                 ])
 
         subprocess.call('echo port61 > /sys/bus/i2c/devices/25-0050/port_name', shell=True)
@@ -193,4 +201,39 @@ class OnlPlatform_x86_64_accton_as7816_64x_r0(OnlPlatformAccton,
         subprocess.call('echo port51 > /sys/bus/i2c/devices/87-0050/port_name', shell=True)
         subprocess.call('echo port52 > /sys/bus/i2c/devices/88-0050/port_name', shell=True)
 
+        PSU_DELTA="DPS-850"
+        PSU_3Y= "YM-2851F"           
+        if os.path.exists(self.PSU2_POWER):
+            with open(self.PSU2_POWER, 'r') as fd:
+                val=int(fd.read())            
+                if val==1:
+                    if os.path.exists(self.PSU2_MODEL):
+                        with open(self.PSU2_MODEL, 'r') as fd:
+                            f=open(self.PSU2_MODEL)
+                            val_str=f.read()
+                            if int(val_str.find(PSU_3Y))== 0:
+                                subprocess.call('echo 0x58 > /sys/bus/i2c/devices/i2c-9/delete_device', shell=True)
+                                subprocess.call('echo 0x5b > /sys/bus/i2c/devices/i2c-10/delete_device', shell=True)
+                                self.new_i2c_devices([
+                                 ('ym2851', 0x58, 9),
+                                 ('ym2851', 0x5b, 10),
+                                ])
+                                return True
+        if os.path.exists(self.PSU1_POWER):
+            with open(self.PSU1_POWER, 'r') as fd:
+                val=int(fd.read())            
+                if val==1:
+                    if os.path.exists(self.PSU1_MODEL):
+                        with open(self.PSU1_MODEL, 'r') as fd:
+                            f=open(self.PSU1_MODEL)
+                            val_str=f.read()
+                            if int(val_str.find(PSU_3Y))== 0:
+                                subprocess.call('echo 0x58 > /sys/bus/i2c/devices/i2c-9/delete_device', shell=True)
+                                subprocess.call('echo 0x5b > /sys/bus/i2c/devices/i2c-10/delete_device', shell=True)
+                                self.new_i2c_devices([
+                                 ('ym2851', 0x58, 9),
+                                 ('ym2851', 0x5b, 10),
+                                ])
+                                return True                        
+                
         return True
