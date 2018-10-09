@@ -151,11 +151,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index];
 
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = PSU_I2C_MUX_SEL_REG;
     mux_info.channel = PSU_I2C_SEL_PSU_EEPROM;
-    mux_info.flags = DEFAULT_FLAG;
 
     dev_info.bus = I2C_BUS_4;
     dev_info.offset = 0x00; /* In EEPROM address 0x00 */

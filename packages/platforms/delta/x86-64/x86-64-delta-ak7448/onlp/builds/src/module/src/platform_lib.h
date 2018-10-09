@@ -45,9 +45,6 @@
 #define NUM_OF_PORT NUM_OF_SFP + NUM_OF_QSFP
 
 #define PREFIX_PATH "/sys/bus/i2c/devices"
-#define SYS_CPLD_PATH PREFIX_PATH "/2-0031"
-#define CPLD_A_PATH PREFIX_PATH "/5-0033"      
-#define CPLD_B_PATH PREFIX_PATH "/5-0032"   
 
 #define PSU_AC_PMBUS_PREFIX PREFIX_PATH "/4-0058/"
 #define PSU_AC_PMBUS_NODE(node) PSU_AC_PMBUS_PREFIX#node
@@ -60,16 +57,14 @@
 #define FAN3_REAR      PREFIX_PATH "/7-002d/fan1_input"
 #define IDPROM_PATH    "/sys/devices/pci0000:00/0000:00:13.0/i2c-1/i2c-2/2-0053/eeprom"
 
-#define SFP_SELECT_PORT_PATH    PREFIX_PATH "/8-0050/sfp_select_port"
-#define SFP_IS_PRESENT_PATH     PREFIX_PATH "/8-0050/sfp_is_present"
-#define SFP_IS_PRESENT_ALL_PATH PREFIX_PATH "/8-0050/sfp_is_present_all"
-#define SFP_EEPROM_PATH         PREFIX_PATH "/8-0050/sfp_eeprom"
+#define CPLD_B_PLATFORM_PATH    "/sys/devices/platform/delta-ak7448-cpld.0"
+#define PORT_EEPROM_FORMAT      "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define SFP_SELECT_PORT_PATH    "/sys/devices/platform/delta-ak7448-cpld.0/sfp_select_port"
+#define SFP_IS_PRESENT_PATH     "/sys/devices/platform/delta-ak7448-cpld.0/sfp_is_present"
+#define SFP_IS_PRESENT_ALL_PATH "/sys/devices/platform/delta-ak7448-cpld.0/sfp_is_present_all"
 
-#define QSFP_SELECT_PORT_PATH    PREFIX_PATH "/3-0050/sfp_select_port"
-#define QSFP_IS_PRESENT_PATH     PREFIX_PATH "/3-0050/sfp_is_present"
-#define QSFP_EEPROM_PATH         PREFIX_PATH "/3-0050/sfp_eeprom"
-#define QSFP_RESET_PATH          PREFIX_PATH "/3-0050/sfp_reset"
-#define QSFP_LP_MODE_PATH        PREFIX_PATH "/3-0050/sfp_lp_mode"
+#define QSFP_RESET_PATH         "/sys/devices/platform/delta-ak7448-cpld.0/sfp_reset"
+#define QSFP_LP_MODE_PATH       "/sys/devices/platform/delta-ak7448-cpld.0/sfp_lp_mode"
 
 /* BUS define */
 #define I2C_BUS_0             (0)
@@ -96,7 +91,6 @@
 #define QSFP_RESPOND_REG         (0x0b)
 #define SYS_CPLD                 (0x31)
 #define CPLD_A                   (0x33)
-#define CPLD_B                   (0x32)
 #define SYS_VERSION_REG          (0x01)
 #define CPLD_A_VERSION_REG       (0x00)
 #define CPLD_B_VERSION_REG       (0x01)

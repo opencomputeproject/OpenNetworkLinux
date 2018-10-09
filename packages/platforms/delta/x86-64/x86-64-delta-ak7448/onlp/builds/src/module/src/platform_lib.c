@@ -41,29 +41,24 @@ int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, in
     int fd;
     int len;
 
-    if ((buffer == NULL) || (buf_size < 0)) 
-    {
+    if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
     }
 
-    if ((fd = open(filename, O_RDONLY)) == -1) 
-    {
+    if ((fd = open(filename, O_RDONLY)) == -1) {
         return -1;
     }
 
-    if ((len = read(fd, buffer, buf_size)) < 0) 
-    { 
+    if ((len = read(fd, buffer, buf_size)) < 0) { 
         close(fd);
         return -1;
     }
 
-    if ((close(fd) == -1)) 
-    {
+    if ((close(fd) == -1)) {
         return -1;
     }
 
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) 
-    {
+    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
         return -1;
     }
 
@@ -93,10 +88,9 @@ int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info)
     int r_data=0;
 
     pthread_mutex_lock(&mutex);
-    if(mux_info != NULL)
-    {
+    if(mux_info != NULL){
         char cpld_path[100] = {0};
-        sprintf(cpld_path, "%s/%d-%04x", PREFIX_PATH, mux_info->bus, mux_info->addr);
+        sprintf(cpld_path, "%s", CPLD_B_PLATFORM_PATH); 
         dni_lock_cpld_write_attribute(cpld_path, mux_info->offset, mux_info->channel);
     }
     if(dev_info->size == 1)
@@ -111,19 +105,23 @@ int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info)
 int dni_i2c_lock_write( mux_info_t * mux_info, dev_info_t * dev_info)
 {
     pthread_mutex_lock(&mutex);
-    if(mux_info != NULL)
-    {
+    int ret;
+    if(mux_info != NULL){
         char cpld_path[100] = {0};
-        sprintf(cpld_path, "%s/%d-%04x", PREFIX_PATH, mux_info->bus, mux_info->addr);
+        sprintf(cpld_path, "%s", CPLD_B_PLATFORM_PATH);
         dni_lock_cpld_write_attribute(cpld_path, mux_info->offset, mux_info->channel);
     }
     /* Write size */
     if(dev_info->size == 1)
-        onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
+        ret = onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
     else
-        onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
+        ret = onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
 
     pthread_mutex_unlock(&mutex);
+    if (ret != 0)
+    {
+        return -1;
+    }
     return 0;
 }
 
@@ -133,18 +131,15 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
     char  r_data[10]   = {0};
 
     pthread_mutex_lock(&mutex);
-    if(mux_info != NULL)
-    {
+    if(mux_info != NULL){
         char cpld_path[100] = {0};
-        sprintf(cpld_path, "%s/%d-%04x", PREFIX_PATH, mux_info->bus, mux_info->addr);
+        sprintf(cpld_path, "%s", CPLD_B_PLATFORM_PATH);
         dni_lock_cpld_write_attribute(cpld_path, mux_info->offset, mux_info->channel);
     }
-    if ((fd = open(fullpath, O_RDONLY)) == -1)
-    {
+    if ((fd = open(fullpath, O_RDONLY)) == -1){
         goto ERROR;
     }
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
+    if ((len = read(fd, r_data, nbytes)) <= 0){
         goto ERROR;
     }
     close(fd);
@@ -160,21 +155,18 @@ int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullp
 {
     int fd, len, nbytes = 10;
     pthread_mutex_lock(&mutex);
-    if(mux_info!=NULL)
-    {
+    if(mux_info!=NULL){
         char cpld_path[100] = {0};
-        sprintf(cpld_path, "%s/%d-%04x", PREFIX_PATH, mux_info->bus, mux_info->addr);
+        sprintf(cpld_path, "%s", CPLD_B_PLATFORM_PATH);
         dni_lock_cpld_write_attribute(cpld_path, mux_info->offset, mux_info->channel);
     }
     /* Create output file descriptor */
     fd = open(fullpath, O_WRONLY,  0644);
-    if (fd == -1)
-    {
+    if (fd == -1){
         goto ERROR;
     }
     len = write (fd, data, (ssize_t) nbytes);
-    if (len != nbytes) 
-    {
+    if (len != nbytes){
         goto ERROR;
     }
     close(fd);
@@ -201,26 +193,22 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
 
     pthread_mutex_lock(&mutex1);
     /* Create output file descriptor */
-    fd = open(cpld_addr_path, O_WRONLY,  0644);
-    if (fd == -1)
-    {
+    fd = open(cpld_addr_path, O_WRONLY, 0644);
+    if (fd == -1){
         goto ERR_HANDLE; 
     }
 
     len = write (fd, address, 2);
-    if (len <= 0)
-    {
+    if (len <= 0){
       goto ERR_HANDLE;
     }
     close(fd);
 
-    if ((fd = open(cpld_data_path, O_RDONLY)) == -1)
-    {
+    if ((fd = open(cpld_data_path, O_RDONLY, 0644)) == -1){
         goto ERR_HANDLE;
     }
 
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
+    if ((len = read(fd, r_data, nbytes)) <= 0){
         goto ERR_HANDLE;
     }
     close(fd);
@@ -229,7 +217,7 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
     sscanf(r_data, "%x", &data);
     return data;
 
-    ERR_HANDLE:
+ERR_HANDLE:
     close(fd);
     pthread_mutex_unlock(&mutex1);
     return -1;
@@ -250,26 +238,22 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
     pthread_mutex_lock(&mutex1);
     /* Create output file descriptor */
     fd = open(cpld_addr_path, O_WRONLY,  0644);
-    if (fd == -1)
-    {
+    if (fd == -1){
         goto ERR_HANDLE;
     }
     len = write(fd, address, 2);
-    if(len <= 0)
-    {
+    if(len <= 0){
         goto ERR_HANDLE;
     }
     close(fd);
 
     fd = open(cpld_data_path, O_WRONLY,  0644);
-    if (fd == -1)
-    {
+    if (fd == -1){
         goto ERR_HANDLE;
     }
     sprintf(address, "%02x", data);
     len = write (fd, address, 2);
-    if(len <= 0)
-    {
+    if(len <= 0){
         goto ERR_HANDLE;
     }
     close(fd);
@@ -277,7 +261,7 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
 
     return 0;
 
-    ERR_HANDLE:
+ERR_HANDLE:
     close(fd);
     pthread_mutex_unlock(&mutex1);
     return -1;
@@ -288,11 +272,9 @@ int dni_fan_speed_good()
 {
     int rpm = 0, rpm1 = 0, speed_good = 0;
     mux_info_t mux_info;
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
+
     mux_info.offset = FAN_I2C_MUX_SEL_REG;
     mux_info.channel = FAN_I2C_SEL_FAN_CTRL;
-    mux_info.flags = DEFAULT_FLAG;
 
     rpm = dni_i2c_lock_read_attribute(&mux_info, FAN1_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(&mux_info, FAN1_REAR);

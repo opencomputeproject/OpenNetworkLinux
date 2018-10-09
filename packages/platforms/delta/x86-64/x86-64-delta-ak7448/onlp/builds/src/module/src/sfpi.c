@@ -30,9 +30,17 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <math.h>
+#include <onlplib/file.h>
 #include <onlplib/i2c.h>
 #include "platform_lib.h"
 /******************* Utility Function *****************************************/
+
+int sfp_map_bus[] ={30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+                    40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+                    50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+                    60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+                    70, 71, 72, 73, 74, 75, 76, 77, 20, 21,
+                    22, 23};
 
 int 
 ak7448_get_respond_val(int port){   
@@ -65,6 +73,14 @@ onlp_sfpi_init(void){
     return ONLP_STATUS_OK;
 }
 
+int
+onlp_sfpi_map_bus_index(int port)
+{
+    if(port < 0 || port > 52)
+        return ONLP_STATUS_E_INTERNAL;
+    return sfp_map_bus[port-1];
+}
+
 int  
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap){
     /*Ports {1, 52}*/
@@ -82,34 +98,19 @@ onlp_sfpi_is_present(int port){
     char port_data[2];
     int present, present_bit;
 
-    if(port > 0 && port < 49)
-    {    
-        /* Select QSFP port */
+    if(port > 0 && port < 53)
+    {
+        /* Select QSFP/SFP port */
         sprintf(port_data, "%d", port );
         if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
             AIM_LOG_ERROR("Unable to select port(%d)\r\n", port);
         }
 
-        /* Read SFP MODULE is present or not */
+        /* Read QSFP/SFP MODULE is present or not */
         present_bit = dni_i2c_lock_read_attribute(NULL, SFP_IS_PRESENT_PATH);
         if(present_bit < 0){
             AIM_LOG_ERROR("Unable to read present or not from port(%d)\r\n", port);
         }
-    }
-    else if(port > 48 && port < 53)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_ERROR("Unable to select port(%d)\r\n", port);
-        }
-
-        /* Read SFP MODULE is present or not */
-        present_bit = dni_i2c_lock_read_attribute(NULL, QSFP_IS_PRESENT_PATH);
-        if(present_bit < 0){
-            AIM_LOG_ERROR("Unable to read present or not from port(%d)\r\n", port);
-        }
-
     }
 
     /* From sfp_is_present value,
@@ -180,9 +181,9 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int  
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char port_data[2];
     int sfp_respond_reg;
     int sfp_respond_val;
+    int size = 0;
 
     
     /* Get respond register if port have it */
@@ -190,49 +191,22 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
     /* Set respond val */
     sfp_respond_val = ak7448_get_respond_val(port);
-    dni_lock_cpld_write_attribute(CPLD_B_PATH, sfp_respond_reg, sfp_respond_val);
+    dni_lock_cpld_write_attribute(CPLD_B_PLATFORM_PATH, sfp_respond_reg, sfp_respond_val);
 
-    if(port > 0 && port < 49)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
+    memset(data, 0, 256);
 
+    if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port)) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
     }
-    else if(port > 48 && port < 53)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0 ){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-   
-    memset(data, 0 ,256);
 
-    /* Read eeprom information into data[] */
-    if(port > 0 && port < 49)
-    {
-        if(dni_i2c_read_attribute_binary(SFP_EEPROM_PATH, (char *)data, 256, 256) != 0)
-        {
-            AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-    else if(port > 48 && port < 53)
-    {
-        if(dni_i2c_read_attribute_binary(QSFP_EEPROM_PATH, (char *)data, 256, 256) != 0)
-        {
-            AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
+    if (size != 256) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d), size is different!\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
     }
 
     return ONLP_STATUS_OK;
+
 }
 
 int onlp_sfpi_port_map(int port, int* rport) 
@@ -248,7 +222,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     int value_t;
     char port_data[2];
 
-    if(port > 0 && port < 49)
+    if(port > 0 && port < 53)
     {
         /* Select QSFP port */
         sprintf(port_data, "%d", port );
@@ -256,17 +230,6 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
-
-    }
-    else if(port > 48 && port < 53)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
     }
 
     switch (control) {   
@@ -315,7 +278,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
     int value_t;
     char port_data[2];
 
-    if(port > 0 && port < 49)
+    if(port > 0 && port < 53)
     {
         /* Select QSFP port */
         sprintf(port_data, "%d", port );
@@ -323,19 +286,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
-
     }
-    else if(port > 48 && port < 53)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
-    }
-
 
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
@@ -370,186 +321,51 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    char port_data[2];
-    int sfp_respond_reg, sfp_respond_val;
-    dev_info_t dev_info;
-
-    /* Get respond register if port have it */
-    sfp_respond_reg = ak7448_get_respond_reg(port);
-
-    /* Set respond val */
-    sfp_respond_val = ak7448_get_respond_val(port);
-    dni_lock_cpld_write_attribute(CPLD_B_PATH, sfp_respond_reg, sfp_respond_val);
-
-    if(port > 0 && port < 49)
-    {
-        dev_info.bus = I2C_BUS_8;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
+    int bus;
+ 
+    bus = onlp_sfpi_map_bus_index(port);
+    if(devaddr == 0x51){
+        addr += 256;
     }
-    else if(port > 48 && port < 53)
-    {
-        dev_info.bus = I2C_BUS_3;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
-    }
-
-    dev_info.addr = PORT_ADDR;
-    dev_info.offset = addr;
-    dev_info.flags = ONLP_I2C_F_FORCE;
-    dev_info.size = 1;  /* Read 1 byte */
-
-    return dni_i2c_lock_read(NULL, &dev_info);
+    return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    char port_data[2];
-    int sfp_respond_reg, sfp_respond_val;
-    dev_info_t dev_info;
+    int bus;
 
-    /* Get respond register if port have it */
-    sfp_respond_reg = ak7448_get_respond_reg(port);
-
-    /* Set respond val */
-    sfp_respond_val = ak7448_get_respond_val(port);
-    dni_lock_cpld_write_attribute(CPLD_B_PATH, sfp_respond_reg, sfp_respond_val);
-
-    if(port > 0 && port < 49)
-    {
-        dev_info.bus = I2C_BUS_8;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
+    bus = onlp_sfpi_map_bus_index(port);
+    if(devaddr == 0x51){
+        addr += 256;
     }
-    else if(port > 48 && port < 53)
-    {
-        dev_info.bus = I2C_BUS_3;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-
-    dev_info.addr = PORT_ADDR;
-    dev_info.offset = addr;
-    dev_info.flags = ONLP_I2C_F_FORCE;
-    dev_info.size = 1;  /* Write 1 byte */
-    dev_info.data_8 = value;
-
-    return dni_i2c_lock_write(NULL, &dev_info);
+    
+    return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    
 }
 
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    char port_data[2];
-    int sfp_respond_reg, sfp_respond_val;
-    dev_info_t dev_info;
+    int bus;
 
-    /* Get respond register if port have it */
-    sfp_respond_reg = ak7448_get_respond_reg(port);
-
-    /* Set respond val */
-    sfp_respond_val = ak7448_get_respond_val(port);
-    dni_lock_cpld_write_attribute(CPLD_B_PATH, sfp_respond_reg, sfp_respond_val);
-
-    if(port > 0 && port < 49)
-    {
-        dev_info.bus = I2C_BUS_8;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
+    bus = onlp_sfpi_map_bus_index(port);
+    if(devaddr == 0x51){
+        addr += 256;
     }
-    else if(port > 48 && port < 53)
-    {
-        dev_info.bus = I2C_BUS_3;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-
-    dev_info.addr = PORT_ADDR;
-    dev_info.offset = addr;
-    dev_info.flags = ONLP_I2C_F_FORCE;
-    dev_info.size = 2;  /* Read 1 byte */
-
-    return dni_i2c_lock_read(NULL, &dev_info);
+    return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    char port_data[2];
-    int sfp_respond_reg, sfp_respond_val;
-    dev_info_t dev_info;
-
-    /* Get respond register if port have it */
-    sfp_respond_reg = ak7448_get_respond_reg(port);
-
-    /* Set respond val */
-    sfp_respond_val = ak7448_get_respond_val(port);
-    dni_lock_cpld_write_attribute(CPLD_B_PATH, sfp_respond_reg, sfp_respond_val);
-
-    if(port > 0 && port < 49)
-    {
-        dev_info.bus = I2C_BUS_8;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
+    int bus;
+ 
+    bus = onlp_sfpi_map_bus_index(port);
+    if(devaddr == 0x51){
+        addr += 256;
     }
-    else if(port > 48 && port < 53)
-    {
-        dev_info.bus = I2C_BUS_3;
-
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-
-    dev_info.addr = PORT_ADDR;
-    dev_info.offset = addr;
-    dev_info.flags = ONLP_I2C_F_FORCE;
-    dev_info.size = 2;  /* Write 2 byte */
-    dev_info.data_16 = value;
-
-    return dni_i2c_lock_write(NULL, &dev_info);
+    return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
@@ -557,20 +373,11 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
     char port_data[2] ;
 
-    if(port > 0 && port < 49)
+    if(port > 0 && port < 53)
     {
         /* Select QSFP port */
         sprintf(port_data, "%d", port );
         if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
-            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-    else if(port > 48 && port < 53)
-    {
-        /* Select QSFP port */
-        sprintf(port_data, "%d", port );
-        if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_SELECT_PORT_PATH) < 0){
             AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
@@ -605,8 +412,6 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
     return ONLP_STATUS_OK;
 }
 
-
-
 int
 onlp_sfpi_denit(void)
 {
@@ -622,7 +427,30 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    FILE* fp;
+    char file[64] = {0};
+
+    sprintf(file, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port));
+    fp = fopen(file, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (fseek(fp, 256, SEEK_CUR) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    int ret = fread(data, 1, 256, fp);
+    fclose(fp);
+    if (ret != 256) {
+        AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
 }
 
 int
