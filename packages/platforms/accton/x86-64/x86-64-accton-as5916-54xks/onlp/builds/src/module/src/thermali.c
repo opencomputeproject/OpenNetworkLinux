@@ -34,16 +34,16 @@
         }                                       \
     } while(0)
 
-static char* devfiles__[] =  /* must map with onlp_thermal_id */
+static char* ipmi_devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
-    "/sys/bus/i2c/devices/10-0048*temp1_input",
-    "/sys/bus/i2c/devices/10-0049*temp1_input",
-    "/sys/bus/i2c/devices/10-004a*temp1_input",
-    "/sys/bus/i2c/devices/10-004b*temp1_input",
-    "/sys/bus/i2c/devices/18-005b*psu_temp1_input",
-    "/sys/bus/i2c/devices/17-0058*psu_temp1_input",	
+    "/sys/devices/platform/as5916_54xks_thermal/temp1_input",
+    "/sys/devices/platform/as5916_54xks_thermal/temp2_input",
+    "/sys/devices/platform/as5916_54xks_thermal/temp3_input",
+    "/sys/devices/platform/as5916_54xks_thermal/temp4_input",
+    "/sys/devices/platform/as5916_54xks_psu/psu1_temp1_input",
+    "/sys/devices/platform/as5916_54xks_psu/psu2_temp1_input",
 };
 
 static char* cpu_coretemp_files[] =
@@ -62,19 +62,19 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },	
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1-48", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2-49", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-3-4A", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-3", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BROAD), "LM75-3-4B", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BROAD), "LM75-4", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
@@ -123,6 +123,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         return rv;
     }
 
-    return onlp_file_read_int(&info->mcelsius, devfiles__[tid]);
+    return onlp_file_read_int(&info->mcelsius, ipmi_devfiles__[tid]);
+                            
 }
 

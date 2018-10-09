@@ -36,22 +36,9 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/18-005b/"
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/17-0058/"
-
-#define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
-#define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
-
-#define PSU1_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/18-0053/"
-#define PSU2_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/17-0050/"
-
-#define PSU1_AC_EEPROM_NODE(node) PSU1_AC_EEPROM_PREFIX#node
-#define PSU2_AC_EEPROM_NODE(node) PSU2_AC_EEPROM_PREFIX#node
-
-#define FAN_BOARD_PATH	"/sys/bus/i2c/devices/9-0066/"
-#define FAN_NODE(node)	FAN_BOARD_PATH#node
-
-#define IDPROM_PATH "/sys/bus/i2c/devices/0-0056/eeprom"
+#define PSU_SYSFS_PATH  "/sys/devices/platform/as5916_54xks_psu/"
+#define FAN_BOARD_PATH	"/sys/devices/platform/as5916_54xks_fan/"
+#define IDPROM_PATH     "/sys/devices/platform/as5916_54xks_sys/eeprom"
 
 enum onlp_thermal_id
 {
@@ -65,16 +52,6 @@ enum onlp_thermal_id
     THERMAL_1_ON_PSU2,
 };
 
-typedef enum psu_type {
-    PSU_TYPE_UNKNOWN,
-    PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
-} psu_type_t;
-
-psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
-int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
-int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
-
 #define DEBUG_MODE 0
 
 #if (DEBUG_MODE == 1)
@@ -85,5 +62,4 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 #endif
 
 #endif  /* __PLATFORM_LIB_H__ */
-
 
