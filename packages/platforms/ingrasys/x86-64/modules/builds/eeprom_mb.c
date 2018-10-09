@@ -16,6 +16,9 @@
  * GNU General Public License for more details.
  */
 
+/* enable dev_dbg print out */
+//#define DEBUG 
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -25,12 +28,11 @@
 #include <linux/mutex.h>
 
 /* Addresses to scan */
-static const unsigned short normal_i2c[] = { /* 0x50, 0x51, 0x52, 0x53, 0x54,
-					0x55, 0x56, 0x57, */ I2C_CLIENT_END };
-
+static const unsigned short normal_i2c[] = { /*0x50, 0x51, 0x52, 0x53, 0x54,
+					0x55, 0x56, 0x57,*/ I2C_CLIENT_END };
 
 /* Size of EEPROM in bytes */
-#define EEPROM_SIZE		256
+#define EEPROM_SIZE		512
 
 #define SLICE_BITS		(6)
 #define SLICE_SIZE		(1 << SLICE_BITS)
@@ -60,7 +62,7 @@ static void mb_eeprom_update_client(struct i2c_client *client, u8 slice)
 
 		addr = slice << SLICE_BITS;
 
-		ret = i2c_smbus_write_byte_data(client, ((u8)addr >> 8) & 0xFF, (u8)addr & 0xFF);
+		ret = i2c_smbus_write_byte_data(client, (u8)((addr >> 8) & 0xFF), (u8)(addr & 0xFF));
 		/* select the eeprom address */
 		if (ret < 0) {
 			dev_err(&client->dev, "address set failed\n");
@@ -119,13 +121,66 @@ static ssize_t mb_eeprom_read(struct file *filp, struct kobject *kobj,
 	return count;
 }
 
+static ssize_t mb_eeprom_write(struct file *filp, struct kobject *kobj,
+                       struct bin_attribute *bin_attr,
+                       char *buf, loff_t off, size_t count)
+{
+    struct i2c_client *client = to_i2c_client(container_of(kobj, struct device, kobj));
+    struct eeprom_data *data = i2c_get_clientdata(client);
+    int ret;
+    int i;
+    u8 cmd;
+    u16 value16;
+
+    dev_dbg(&client->dev, "mb_eeprom_write off=%d, count=%d\n", (int)off, (int)count);
+
+    if (off > EEPROM_SIZE) {
+        return 0;
+    }
+    if (off + count > EEPROM_SIZE) {
+        count = EEPROM_SIZE - off;
+    }
+    if (count == 0) {
+        return 0;
+    }
+
+    mutex_lock(&data->update_lock);
+
+    for(i=0; i < count; i++) {
+        /* write command */
+        cmd = (off >> 8) & 0xff;
+        value16 = off & 0xff;
+        value16 |= buf[i] << 8;
+        ret = i2c_smbus_write_word_data(client, cmd, value16);
+
+        if (ret < 0) {
+            dev_err(&client->dev, "write address failed at %d \n", (int)off);
+            goto exit;
+        }
+
+        off++;
+        
+        /* need to wait for write complete */
+        udelay(10000);
+    }
+exit:
+    mutex_unlock(&data->update_lock);
+    /* force to update client when reading */
+    for(i=0; i < SLICE_NUM; i++) {
+        data->last_updated[i] = 0;
+    }
+
+    return count;
+}
+
 static struct bin_attribute mb_eeprom_attr = {
 	.attr = {
 		.name = "eeprom",
-		.mode = S_IRUGO,
+		.mode = S_IRUGO | S_IWUSR,
 	},
 	.size = EEPROM_SIZE,
 	.read = mb_eeprom_read,
+	.write = mb_eeprom_write,
 };
 
 /* Return 0 if detection is successful, -ENODEV otherwise */
@@ -134,9 +189,9 @@ static int mb_eeprom_detect(struct i2c_client *client, struct i2c_board_info *in
 	struct i2c_adapter *adapter = client->adapter;
 
 	/* EDID EEPROMs are often 24C00 EEPROMs, which answer to all
-	   addresses 0x50-0x57, but we only care about 0x50. So decline
-	   attaching to addresses >= 0x51 on DDC buses */
-	if (!(adapter->class & I2C_CLASS_SPD) && client->addr >= 0x51) {
+	   addresses 0x50-0x57, but we only care about 0x51 and 0x55. So decline
+	   attaching to addresses >= 0x56 on DDC buses */
+	if (!(adapter->class & I2C_CLASS_SPD) && client->addr >= 0x56) {
 		return -ENODEV;
 	}
 
@@ -208,5 +263,5 @@ static struct i2c_driver mb_eeprom_driver = {
 module_i2c_driver(mb_eeprom_driver);
 
 MODULE_AUTHOR("Wade <wade.ce.he@@ingrasys.com>");
-MODULE_DESCRIPTION("Ingrasys S9100 Mother Borad EEPROM driver");
+MODULE_DESCRIPTION("Ingrasys Mother Borad EEPROM driver");
 MODULE_LICENSE("GPL");
