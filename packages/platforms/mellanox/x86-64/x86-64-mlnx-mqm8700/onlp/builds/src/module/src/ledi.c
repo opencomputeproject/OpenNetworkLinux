@@ -40,7 +40,9 @@ static char* file_names[] =  /* must map with onlp_led_id */
     "fan2",
     "fan3",
     "fan4",
-    "psu"
+    "fan5",
+    "fan6",
+    "psu",
 };
 
 /*
@@ -53,43 +55,61 @@ static onlp_led_info_t linfo[] =
         { ONLP_LED_ID_CREATE(LED_SYSTEM), "Chassis LED 1 (SYSTEM LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
+		ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
     },
     {
         { ONLP_LED_ID_CREATE(LED_FAN1), "Chassis LED 2 (FAN1 (1-2) )", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
     },
     {
         { ONLP_LED_ID_CREATE(LED_FAN2), "Chassis LED 3 (FAN2 (3-4) )", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FAN3), "Chassis LED 4 (FAN3 (4-6) )", 0 },
+        { ONLP_LED_ID_CREATE(LED_FAN3), "Chassis LED 4 (FAN3 (5-6) )", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FAN4), "Chassis LED 5 (FAN4 (7-8) )", 0 },
+        { ONLP_LED_ID_CREATE(LED_FAN4), "Chassis LED 5 (FAN5 (7-8) )", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
     },
     {
-        { ONLP_LED_ID_CREATE(LED_PSU), "Chassis LED 6 (PSU LED)", 0 },
+        { ONLP_LED_ID_CREATE(LED_FAN5), "Chassis LED 6 (FAN5 (9-10) )", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED | ONLP_LED_CAPS_RED_BLINKING | ONLP_LED_CAPS_AUTO,
-    }
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { ONLP_LED_ID_CREATE(LED_FAN6), "Chassis LED 7 (FAN6 (11-12) )", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
+    },
+    {
+        { ONLP_LED_ID_CREATE(LED_PSU_T3), "Chassis LED 8 (PSU LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING |
+        ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_AUTO,
+    },
 };
 
+/*
+ * This function will be called prior to any other onlp_ledi_* functions.
+ */
 int
 onlp_ledi_init(void)
 {
+    /*
+     * ONLPD calls it too early before all BSP insfrastructure is set
+     */
     mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
     mlnx_platform_info->linfo = linfo;
     mlnx_platform_info->led_fnames = file_names;
