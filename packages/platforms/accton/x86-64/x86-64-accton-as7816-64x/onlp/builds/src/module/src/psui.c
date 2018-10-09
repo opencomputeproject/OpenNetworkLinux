@@ -188,7 +188,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Get PSU type
      */
     psu_type = psu_type_get(index, info->model, sizeof(info->model));
-
     switch (psu_type) {
         case PSU_TYPE_AC_DPS850_F2B:
         case PSU_TYPE_AC_DPS850_B2F:
