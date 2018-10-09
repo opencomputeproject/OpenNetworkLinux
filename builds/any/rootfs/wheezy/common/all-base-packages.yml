@@ -7,6 +7,8 @@
 - python
 - apt
 - apt-utils
+- debconf
+- dialog
 - procps
 - net-tools
 - iputils-ping
