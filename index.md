@@ -1,2 +1,2 @@
 # ONLP
-[ONLP Documentation] {{ site.baseurl }}{% link onlp/index.md %}
+[ONLP Documentation]({{ site.baseurl }}{% link onlp/index.md %})
