@@ -7,6 +7,6 @@ The goal of the ONLP APIs is to both standardize access to these objects at a fu
 
 ## ONLP APIs For Applications
 
-The ONLP API documentation for Application, System, and Dataplane developers is available [here]({{ site.baseurl }}{% link onlp/applications.md %})
+The ONLP API documentation for Application, System, and Dataplane developers is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications)
 
-The ONLP API documentation for Platform developers who which to implement support for their platform is available [here]({{ site.baseurl }}{% link onlp/implementors.md %})
+The ONLP API documentation for Platform developers who which to implement support for their platform is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors)
