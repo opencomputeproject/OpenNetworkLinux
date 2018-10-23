@@ -10,7 +10,7 @@ A dataplane application typically needs to ask the following platform-dependent 
 * Is an SFP present or absent?
 * If an SFP is present how can I determine its type, capabilities, and make operational decisions? Is it a 100G LR4 module or 1G Copper SFP connected through an MSA adapter?
 * How can I communicate with the specific hardware once I have identified it? If its a 1G Copper SFP containing a Marvell PHY how do I enable or disable autonegotiation?
-* How can I access any Digital Optical Monitoring information that may be present in the module that affects the L1 quality of a port or ports?
+* How can I access any Digital Optical Monitoring information that may be present in the module that reportst he L1 quality of a port or ports?
 
 An NMS agent typically needs to ask the following platform-dependent questions:
 
@@ -38,3 +38,5 @@ IPMI deals with the Fans, PSUs, and Thermals, and running the thermal plan for t
 Likewise there are other proposals for communicating to system software through interfaces like APCI but these are not standardized either.
 
 ONLP is the standard for all platforms supported by Open Network Linux and Open Network Linux support is required for all platforms accepted by the Open Compute Project.
+
+[Next: ONLP API Concepts](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/concepts)
