@@ -5,8 +5,10 @@ The Open Network Linux Platform APIs provide a common, consistent abstraction in
 All Open Networking platforms contain some subset of these objects but the programming requirements to access them are highly dependent upon the hardware design and knowledge thereof.
 The goal of the ONLP APIs is to both standardize access to these objects at a functional level for system applications and provide a common implementation framework for hardware developers.
 
-## ONLP APIs For Applications
+## ONLP APIs for Applications
 
-The ONLP API documentation for Application, System, and Dataplane developers is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications)
+The ONLP API documentation for Application, System, and Dataplane developers is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications).
 
-The ONLP API documentation for Platform developers who which to implement support for their platform is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors)
+## ONLP APIs for Platform Developers
+
+The ONLP API documentation for Platform developers who which to implement support for their platform is available [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors).
