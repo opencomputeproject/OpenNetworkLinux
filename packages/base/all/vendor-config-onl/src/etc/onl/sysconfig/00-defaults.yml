@@ -31,7 +31,7 @@ upgrade:
       dir: /lib/platform-config/current/onl/upgrade/firmware
 
   loader:
-    auto: force
+    auto: advisory
     versions: /etc/onl/loader/versions.json
     package:
       dir: /etc/onl/upgrade/$PARCH
