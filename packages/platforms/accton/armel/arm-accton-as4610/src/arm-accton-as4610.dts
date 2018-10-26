@@ -1,0 +1,144 @@
+/*
+ * Accton AS4610 54 Device Tree Source
+ *
+ * Copyright 2015, Cumulus Networks, Inc.
+ *
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
+ */
+/dts-v1/;
+#include "dts/bcm-helix4.dtsi"
+
+/ {
+    model = "accton,as4610_54";
+    compatible = "accton,as4610_54","brcm,helix4";
+
+    aliases {
+        serial0 = &uart1;
+        serial1 = &uart2;
+        ethernet0 = &gmac0;
+        i2c-controller0 = &i2c0;
+        i2c-controller1 = &i2c1;
+    };
+
+    memory {
+        reg = <0x61000000 0x7f000000>;
+    };
+
+    localbus@1c000000 {
+        #address-cells = <0x2>;
+        #size-cells = <0x1>;
+        /* NAND Flash */
+        ranges = <
+            0x0 0x0 0x0 0x1c000000 0x00120000
+            0x1 0x0 0x0 0x1c120000 0x00040000
+        >;
+
+        flash@0,0 {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            compatible = "cfi-flash";
+            reg = <0x0 0x0 0x02000000>;
+            byteswap;
+
+            partition@0 {
+                /* uboot */
+                reg = <0x00000000 0x00100000>;
+                label = "uboot";
+            };
+            partition@1 {
+                /* uboot-env */
+                reg = <0x00100000 0x00100000>;
+                label = "uboot-env";
+                env_size = <0x2000>;
+            };
+            partition@2 {
+                /* board_eeprom */
+                reg = <0x00200000 0x00100000>;
+                label = "board_eeprom";
+            };
+            partition@3 {
+                /* shmoo */
+                reg = <0x00300000 0x00100000>;
+                label = "shmoo";
+            };
+            partition@4 {
+                /* onie */
+                reg = <0x00400000 0x00800000>;
+                label = "onie";
+            };
+            partition@5 {
+                /* open */
+                reg = <0x00c00000 0x03c00000>;
+                label = "open";
+            };
+            partition@6 {
+                /* open2 */
+                reg = <0x04800000 0x7d000000>;
+                label = "open2";
+            };
+            partition@7 {
+                /* diag */
+                reg = <0xfec00000 0x01000000>;
+                label = "diag";
+            };
+        };
+    };
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&gmac0 {
+	status = "okay";
+	phy-mode = "sgmii"; /* "gmii-id", "gmii-rxid", "sgmii" */
+};
+
+&ehci0 {
+	status = "okay";
+};
+
+&gpio_cca {
+          status = "disabled";
+};
+
+&usbphy0 {
+        status = "okay";
+};
+
+&usbd {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+        clock-frequency = <400000>;
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+&hwrng {
+	status = "okay";
+};
+
+&iproc_wdt {
+	status = "okay";
+};
+
+&dmac0 {
+	status = "okay";
+};
+
+&iproc_cmicd {
+	status = "okay";
+};
