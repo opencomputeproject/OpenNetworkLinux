@@ -28,8 +28,8 @@
 
 #include "arm_accton_as4610_log.h"
 
-#define CHASSIS_THERMAL_COUNT 1 
-#define CHASSIS_PSU_COUNT     2 
+#define CHASSIS_THERMAL_COUNT 1
+#define CHASSIS_PSU_COUNT     2
 
 #define PSU1_ID 1
 #define PSU2_ID 2
@@ -46,7 +46,7 @@
 #define PSU1_AC_EEPROM_NODE(node) PSU1_AC_EEPROM_PREFIX#node
 #define PSU2_AC_EEPROM_NODE(node) PSU2_AC_EEPROM_PREFIX#node
 
-#define IDPROM_PATH "/sys/devices/1803b000.i2c/i2c-1/i2c-9/9-0050/eeprom"
+#define IDPROM_PATH "/sys/devices/platform/axi/1803b000.i2c/i2c-1/i2c-9/9-0050/eeprom"
 
 int deviceNodeWriteInt(char *filename, int value, int data_len);
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len);
@@ -97,4 +97,3 @@ typedef enum platform_id_e {
 extern platform_id_t platform_id;
 
 #endif  /* __PLATFORM_LIB_H__ */
-
