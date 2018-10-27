@@ -188,6 +188,6 @@ static struct i2c_driver inv_eeprom_driver = {
 module_i2c_driver(inv_eeprom_driver);
 
 MODULE_AUTHOR("Inventec");
-MODULE_DESCRIPTION("Inventec D7032 Mother Board EEPROM driver");
+MODULE_DESCRIPTION("Inventec Switch Mother Board EEPROM driver");
 MODULE_LICENSE("GPL");
 

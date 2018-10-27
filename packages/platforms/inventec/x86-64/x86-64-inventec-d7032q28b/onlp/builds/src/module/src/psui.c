@@ -14,13 +14,10 @@
 #include <ctype.h>
 #include "platform_lib.h"
 
-#define PSU_STATUS_PRESENT	0
-#define PSU_STATUS_UNPOWERED	2
-#define PSU_STATUS_FAULT	4
-#define PSU_STATUS_UNINSTALLED	7
-
-#define PSU_NODE_MAX_INT_LEN  8
-#define PSU_NODE_MAX_PATH_LEN 64
+#define PSU_STATUS_PRESENT	(0)
+#define PSU_STATUS_UNPOWERED	(2)
+#define PSU_STATUS_FAULT	(4)
+#define PSU_STATUS_UNINSTALLED	(7)
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -29,20 +26,34 @@
         }                                       \
     } while(0)
 
+static char* status_devfiles__[CHASSIS_PSU_COUNT+1] =  /* must map with onlp_psu_id */
+{
+    "reserved",
+    INV_CPLD_PREFIX"/psu0",
+    INV_CPLD_PREFIX"/psu1",
+};
+
+static char* module_devfiles__[CHASSIS_PSU_COUNT+1] =  /* must map with onlp_psu_id */
+{
+    "reserved",
+    INV_PSOC_PREFIX"/psoc_psu1_%s",
+    INV_PSOC_PREFIX"/psoc_psu2_%s",
+};
+
 static int 
 psu_status_info_get(int id, char *node, int *value)
 {
     int ret = 0;
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
+    char node_path[ONLP_NODE_MAX_PATH_LEN] = {0};
     char vstr[32], *vstrp = vstr, **vp = &vstrp;
     
     *value = 0;
 
     if (PSU1_ID == id) {
-        sprintf(node_path, "%s%s0", PSU_HWMON_CPLD_PREFIX, node);
+	sprintf(node_path, status_devfiles__[id]);
     }
     else if (PSU2_ID == id) {
-        sprintf(node_path, "%s%s1", PSU_HWMON_CPLD_PREFIX, node);
+	sprintf(node_path, status_devfiles__[id]);
     }
     
     ret = onlp_file_read_str(vp, node_path);
@@ -70,16 +81,11 @@ static int
 psu_module_info_get(int id, onlp_psu_info_t* info)
 {
     int ret = 0;
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
+    char node_path[ONLP_NODE_MAX_PATH_LEN] = {0};
     int value = 0;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_vout", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_vout", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "vout");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
@@ -88,13 +94,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     info->mvout = value;
     info->caps |= ONLP_PSU_CAPS_VOUT;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_iout", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_iout", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "iout");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
@@ -103,13 +104,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     info->miout = value;
     info->caps |= ONLP_PSU_CAPS_IOUT;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_pout", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_pout", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "pout");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
@@ -118,13 +114,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     info->mpout = value;
     info->caps |= ONLP_PSU_CAPS_POUT;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_vin", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_vin", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "vin");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
@@ -133,13 +124,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     info->mvin = value;
     info->caps |= ONLP_PSU_CAPS_VIN;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_iin", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_iin", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "iin");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);
@@ -148,13 +134,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     info->miin = value;
     info->caps |= ONLP_PSU_CAPS_IIN;
 
-    memset(node_path, 0, PSU_NODE_MAX_PATH_LEN);
-    if (PSU1_ID == id) {
-        sprintf(node_path, "%spsu2_pin", PSU_HWMON_PSOC_PREFIX);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(node_path, "%spsu1_pin", PSU_HWMON_PSOC_PREFIX);
-    }
+    memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
+    sprintf(node_path, module_devfiles__[id], "pin");
     ret = onlp_file_read_int(&value, node_path);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", node_path);

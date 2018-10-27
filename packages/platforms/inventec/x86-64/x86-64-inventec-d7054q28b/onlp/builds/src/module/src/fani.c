@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include "platform_lib.h"
 
-#define PREFIX_PATH_ON_MAIN_BOARD	PSU_HWMON_PSOC_PREFIX
+#define FAN_GPI_ON_MAIN_BOARD	INV_PSOC_PREFIX"/fan_gpi"
 
 #define MAX_FAN_SPEED     18000
 #define MAX_PSU_FAN_SPEED 25500
@@ -23,35 +23,34 @@
 #define PROJECT_NAME
 #define LEN_FILE_NAME 80
 
-
 enum fan_id {
-        FAN_1_ON_FAN_BOARD = 1,
-        FAN_2_ON_FAN_BOARD,
-        FAN_3_ON_FAN_BOARD,
-        FAN_4_ON_FAN_BOARD,
-        FAN_5_ON_FAN_BOARD,
-        FAN_6_ON_FAN_BOARD,
-        FAN_7_ON_FAN_BOARD,
-        FAN_8_ON_FAN_BOARD,
-        FAN_1_ON_PSU_1,
-        FAN_1_ON_PSU_2,
+	FAN_RESERVED,
+	FAN_1_ON_MAIN_BOARD,
+	FAN_2_ON_MAIN_BOARD,
+	FAN_3_ON_MAIN_BOARD,
+	FAN_4_ON_MAIN_BOARD,
+	FAN_5_ON_MAIN_BOARD,
+	FAN_6_ON_MAIN_BOARD,
+	FAN_7_ON_MAIN_BOARD,
+	FAN_8_ON_MAIN_BOARD,
+	FAN_1_ON_PSU1,
+	FAN_1_ON_PSU2,
 };
 
-#define FAN_RESERVED		0
-#define FAN_1_ON_MAIN_BOARD	FAN_1_ON_FAN_BOARD
-#define FAN_2_ON_MAIN_BOARD	FAN_2_ON_FAN_BOARD
-#define FAN_3_ON_MAIN_BOARD	FAN_3_ON_FAN_BOARD
-#define FAN_4_ON_MAIN_BOARD	FAN_4_ON_FAN_BOARD
-#define FAN_5_ON_MAIN_BOARD	FAN_5_ON_FAN_BOARD
-#define FAN_6_ON_MAIN_BOARD	FAN_6_ON_FAN_BOARD
-#define FAN_7_ON_MAIN_BOARD	FAN_7_ON_FAN_BOARD
-#define FAN_8_ON_MAIN_BOARD	FAN_8_ON_FAN_BOARD
-
-#define FAN_1_ON_PSU1_ID	1
-#define FAN_1_ON_PSU2_ID	2
-
-#define FAN_1_ON_PSU1       FAN_1_ON_PSU_1
-#define FAN_1_ON_PSU2       FAN_1_ON_PSU_2
+static char* devfiles__[CHASSIS_FAN_COUNT+1] =  /* must map with onlp_thermal_id */
+{
+    "reserved",
+    INV_PSOC_PREFIX"/fan1_input",
+    INV_PSOC_PREFIX"/fan2_input",
+    INV_PSOC_PREFIX"/fan3_input",
+    INV_PSOC_PREFIX"/fan4_input",
+    INV_PSOC_PREFIX"/fan5_input",
+    INV_PSOC_PREFIX"/fan6_input",
+    INV_PSOC_PREFIX"/fan7_input",
+    INV_PSOC_PREFIX"/fan8_input",
+    INV_PSOC_PREFIX"/rpm_psu1",
+    INV_PSOC_PREFIX"/rpm_psu2",
+};
 
 #define MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(id) \
     { \
@@ -95,7 +94,6 @@ onlp_fan_info_t linfo[] = {
         }                                       \
     } while(0)
 
-
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
@@ -104,7 +102,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     memset(vstr, 0, 32);
     /* get fan present status */
-    ret = onlp_file_read_str(vp, "%s""fan_gpi", PREFIX_PATH_ON_MAIN_BOARD);
+    ret = onlp_file_read_str(vp, FAN_GPI_ON_MAIN_BOARD);
     if (ret < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -118,7 +116,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get front fan speed */
     memset(vstr, 0, 32);
-    ret = onlp_file_read_str(vp, "%s""fan%d_input", PREFIX_PATH_ON_MAIN_BOARD, fid);
+    ret = onlp_file_read_str(vp, devfiles__[fid]);
     if (ret < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -159,22 +157,27 @@ _onlp_get_fan_direction_on_psu(void)
 
 
 static int
-_onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
+_onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
 {
-    int val = 0;
+    int   value, ret;
+    char  vstr[32], *vstrp = vstr, **vp = &vstrp;
+
 
     info->status |= ONLP_FAN_STATUS_PRESENT;
 
     /* get fan direction */
     info->status |= _onlp_get_fan_direction_on_psu();
 
-    /* get fan speed and fault status */
-    if (psu_pmbus_info_get(pid, "rpm_psu", &val) == ONLP_STATUS_OK) {
-        info->rpm = val;
-        info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
-        info->status |= (val == 0) ? ONLP_FAN_STATUS_FAILED : 0;
+    /* get front fan speed */
+    memset(vstr, 0, 32);
+    ret = onlp_file_read_str(vp, devfiles__[fid]);
+    if (ret < 0) {
+        return ONLP_STATUS_E_INTERNAL;
     }
-
+    sscanf(*vp, "%d", &value);
+    info->rpm = value;
+    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
+    info->status |= (value == 0) ? ONLP_FAN_STATUS_FAILED : 0;
     return ONLP_STATUS_OK;
 }
 
@@ -201,10 +204,8 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     switch (local_id)
     {
 	case FAN_1_ON_PSU1:
-            rc = _onlp_fani_info_get_fan_on_psu(FAN_1_ON_PSU1_ID, info);
-            break;
         case FAN_1_ON_PSU2:
-            rc = _onlp_fani_info_get_fan_on_psu(FAN_1_ON_PSU2_ID, info);
+            rc = _onlp_fani_info_get_fan_on_psu(local_id, info);
             break;
         case FAN_1_ON_MAIN_BOARD:
         case FAN_2_ON_MAIN_BOARD:
@@ -249,9 +250,9 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
     switch (fid)
         {
-        case FAN_1_ON_PSU_1:
+        case FAN_1_ON_PSU1:
                         return psu_pmbus_info_set(PSU1_ID, "rpm_psu", p);
-        case FAN_1_ON_PSU_2:
+        case FAN_1_ON_PSU2:
                         return psu_pmbus_info_set(PSU2_ID, "rpm_psu", p);
         case FAN_1_ON_MAIN_BOARD:
         case FAN_2_ON_MAIN_BOARD:

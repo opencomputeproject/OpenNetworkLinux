@@ -8,10 +8,13 @@ class OnlPlatform_x86_64_inventec_d7054q28b_r0(OnlPlatformInventec,
     SYS_OBJECT_ID="7054.28"
 
     def baseconfig(self):
-        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko gpiobase=0")
+        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko")
         self.insmod('inv_platform')
         self.insmod('inv_psoc')
         self.insmod('inv_cpld')
-        os.system("echo inv_eeprom 0x53 > /sys/bus/i2c/devices/i2c-0/new_device")
+	self.new_i2c_device('inv_eeprom', 0x53, 0)
         self.insmod('inv_eeprom')
+        self.insmod('swps')
+        self.insmod('vpd')
+        self.insmod('inv_pthread')
         return True
