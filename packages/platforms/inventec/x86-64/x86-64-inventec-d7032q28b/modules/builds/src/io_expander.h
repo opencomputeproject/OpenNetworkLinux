@@ -1,3 +1,19 @@
+/*************************************************************************
+ * 
+ *  io_expander.h
+ *
+ *  2018 Inventec Corporation
+ *  All Rights Reserved.
+ * 
+ * NOTICE:  All information contained herein is, and remains
+ * the property of Inventec Corp. and its suppliers,
+ * if any.  The intellectual and technical concepts contained
+ * herein are proprietary to Inventec Corporation and its suppliers 
+ * and may be covered by U.S. and Foreign Patents, patents in process, 
+ * and are protected by trade secret or copyright law.
+ *
+ ************************************************************************/
+
 #ifndef IO_EXPANDER_H
 #define IO_EXPANDER_H
 
