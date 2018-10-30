@@ -493,8 +493,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_present(void)
         return data;
     }
 
-    mutex_lock(&data->update_lock);
-
     data->ipmi_resp.sfp_valid[SFP_PRESENT] = 0;
 
     /* Get status from ipmi */
@@ -516,7 +514,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_present(void)
     data->ipmi_resp.sfp_valid[SFP_PRESENT] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -528,8 +525,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_txdisable(void)
         data->ipmi_resp.sfp_valid[SFP_TXDISABLE]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.sfp_valid[SFP_TXDISABLE] = 0;
 
@@ -552,7 +547,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_txdisable(void)
     data->ipmi_resp.sfp_valid[SFP_TXDISABLE] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -564,8 +558,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_txfault(void)
         data->ipmi_resp.sfp_valid[SFP_TXFAULT]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.sfp_valid[SFP_TXFAULT] = 0;
 
@@ -588,7 +580,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_txfault(void)
     data->ipmi_resp.sfp_valid[SFP_TXFAULT] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -600,8 +591,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_rxlos(void)
         data->ipmi_resp.sfp_valid[SFP_RXLOS]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.sfp_valid[SFP_RXLOS] = 0;
 
@@ -624,7 +613,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_sfp_update_rxlos(void)
     data->ipmi_resp.sfp_valid[SFP_RXLOS] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -636,8 +624,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_present(void)
         data->ipmi_resp.qsfp_valid[QSFP_PRESENT]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.qsfp_valid[QSFP_PRESENT] = 0;
 
@@ -660,7 +646,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_present(void)
     data->ipmi_resp.qsfp_valid[QSFP_PRESENT] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -672,8 +657,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_txdisable(void)
         data->ipmi_resp.qsfp_valid[QSFP_TXDISABLE]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.qsfp_valid[QSFP_TXDISABLE] = 0;
 
@@ -696,7 +679,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_txdisable(void)
     data->ipmi_resp.qsfp_valid[QSFP_TXDISABLE] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -708,8 +690,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_reset(void)
         data->ipmi_resp.qsfp_valid[QSFP_RESET]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.qsfp_valid[QSFP_RESET] = 0;
 
@@ -732,7 +712,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_reset(void)
     data->ipmi_resp.qsfp_valid[QSFP_RESET] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -744,8 +723,6 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_lpmode(void)
         data->ipmi_resp.qsfp_valid[QSFP_LPMODE]) {
         return data;
     }
-
-    mutex_lock(&data->update_lock);
 
     data->ipmi_resp.qsfp_valid[QSFP_LPMODE] = 0;
 
@@ -768,27 +745,29 @@ static struct as5916_54xks_sfp_data *as5916_54xks_qsfp_update_lpmode(void)
     data->ipmi_resp.qsfp_valid[QSFP_LPMODE] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
 static ssize_t show_all(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_sfp_data *data = NULL;
     u64 values = 0;
     int i;
 
 	switch (attr->index) {
 		case PRESENT_ALL:
         {
+            mutex_lock(&data->update_lock);
+            
             data = as5916_54xks_sfp_update_present();
             if (!data->ipmi_resp.sfp_valid[SFP_PRESENT]) {
+                mutex_unlock(&data->update_lock);
                 return -EIO;
             }
 
             data = as5916_54xks_qsfp_update_present();
             if (!data->ipmi_resp.qsfp_valid[QSFP_PRESENT]) {
+                mutex_unlock(&data->update_lock);
                 return -EIO;
             }
 
@@ -803,6 +782,8 @@ static ssize_t show_all(struct device *dev, struct device_attribute *da, char *b
                 values <<= 1;
                 values |= (data->ipmi_resp.sfp_resp[SFP_PRESENT][i] & 0x1);
             }
+            
+            mutex_unlock(&data->update_lock);
 
             /* Return values 1 -> 54 in order */
             return sprintf(buf, "%.2x %.2x %.2x %.2x %.2x %.2x %.2x\n",
@@ -816,8 +797,11 @@ static ssize_t show_all(struct device *dev, struct device_attribute *da, char *b
         }
 		case RXLOS_ALL:
         {
+            mutex_lock(&data->update_lock);
+
             data = as5916_54xks_sfp_update_rxlos();
             if (!data->ipmi_resp.sfp_valid[SFP_RXLOS]) {
+                mutex_unlock(&data->update_lock);
                 return -EIO;
             }
 
@@ -826,6 +810,8 @@ static ssize_t show_all(struct device *dev, struct device_attribute *da, char *b
                 values <<= 1;
                 values |= !(data->ipmi_resp.sfp_resp[SFP_RXLOS][i] & 0x1);
             }
+
+            mutex_unlock(&data->update_lock);
 
             /* Return values 1 -> 48 in order */
             return sprintf(buf, "%.2x %.2x %.2x %.2x %.2x %.2x\n",
@@ -847,8 +833,10 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_SFP_ATTR; /* port id, 0 based */
-    struct as5916_54xks_sfp_data *data = NULL;
     int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
 	switch (attr->index) {
 		case SFP1_PRESENT:
@@ -902,7 +890,8 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
         {
             data = as5916_54xks_sfp_update_present();
             if (!data->ipmi_resp.sfp_valid[SFP_PRESENT]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = data->ipmi_resp.sfp_resp[SFP_PRESENT][pid];
@@ -959,7 +948,8 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
         {
             data = as5916_54xks_sfp_update_txdisable();
             if (!data->ipmi_resp.sfp_valid[SFP_TXDISABLE]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = !data->ipmi_resp.sfp_resp[SFP_TXDISABLE][pid];
@@ -1016,7 +1006,8 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
         {
             data = as5916_54xks_sfp_update_txfault();
             if (!data->ipmi_resp.sfp_valid[SFP_TXFAULT]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = data->ipmi_resp.sfp_resp[SFP_TXFAULT][pid];
@@ -1073,17 +1064,24 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
         {
             data = as5916_54xks_sfp_update_rxlos();
             if (!data->ipmi_resp.sfp_valid[SFP_RXLOS]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = !data->ipmi_resp.sfp_resp[SFP_RXLOS][pid];
             break;
         }
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
 	}
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
@@ -1101,6 +1099,8 @@ static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
 
     disable = !disable; /* the IPMI cmd is 0 for tx-disable and 1 for tx-enable */
 
+    mutex_lock(&data->update_lock);
+
     /* Send IPMI write command */
     data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x01;
@@ -1108,25 +1108,31 @@ static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
     status = ipmi_send_message(&data->ipmi, IPMI_SFP_WRITE_CMD,
                                 data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Update to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp.sfp_resp[SFP_TXDISABLE][pid] = disable;
+    status = count;
 
-    return count;
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_QSFP_ATTR; /* port id, 0 based */
-    struct as5916_54xks_sfp_data *data = NULL;
     int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
 	switch (attr->index) {
 		case QSFP49_PRESENT:
@@ -1138,7 +1144,8 @@ static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *
         {
             data = as5916_54xks_qsfp_update_present();
             if (!data->ipmi_resp.qsfp_valid[QSFP_PRESENT]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = data->ipmi_resp.qsfp_resp[QSFP_PRESENT][pid];
@@ -1153,7 +1160,8 @@ static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *
         {
             data = as5916_54xks_qsfp_update_txdisable();
             if (!data->ipmi_resp.qsfp_valid[QSFP_TXDISABLE]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = !!data->ipmi_resp.qsfp_resp[QSFP_TXDISABLE][pid];
@@ -1168,7 +1176,8 @@ static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *
         {
             data = as5916_54xks_qsfp_update_reset();
             if (!data->ipmi_resp.qsfp_valid[QSFP_RESET]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = !data->ipmi_resp.qsfp_resp[QSFP_RESET][pid];
@@ -1183,17 +1192,24 @@ static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *
         {
             data = as5916_54xks_qsfp_update_lpmode();
             if (!data->ipmi_resp.qsfp_valid[QSFP_LPMODE]) {
-                return -EIO;
+                error = -EIO;
+                goto exit;
             }
 
             value = data->ipmi_resp.qsfp_resp[QSFP_LPMODE][pid];
 			break;
         }        
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
 	}
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *da,
@@ -1203,20 +1219,23 @@ static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *d
 	int status;
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_QSFP_ATTR; /* port id, 0 based */
-    struct as5916_54xks_sfp_data *data = NULL;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_54xks_qsfp_update_present();
     if (!data->ipmi_resp.qsfp_valid[QSFP_PRESENT]) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
     
     if (!data->ipmi_resp.qsfp_resp[QSFP_PRESENT][pid]) {
-        return -ENXIO;
+        status = -ENXIO;
+        goto exit;
     }
     
 	status = kstrtol(buf, 10, &disable);
 	if (status) {
-		return status;
+		goto exit;
 	}
 
     /* Send IPMI write command */
@@ -1226,17 +1245,21 @@ static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *d
     status = ipmi_send_message(&data->ipmi, IPMI_QSFP_WRITE_CMD,
                                 data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Update to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp.qsfp_resp[QSFP_TXDISABLE][pid] = disable;
+    status = count;
 
-    return count;
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
@@ -1254,6 +1277,8 @@ static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
 
     reset = !reset; /* the IPMI cmd is 0 for reset and 1 for out of reset */
 
+    mutex_lock(&data->update_lock);
+
     /* Send IPMI write command */
     data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x11;
@@ -1261,17 +1286,21 @@ static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
     status = ipmi_send_message(&data->ipmi, IPMI_QSFP_WRITE_CMD,
                                 data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Update to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp.qsfp_resp[QSFP_RESET][pid] = reset;
-
-    return count;
+    status = count;
+    
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t set_qsfp_lpmode(struct device *dev, struct device_attribute *da,
@@ -1287,6 +1316,8 @@ static ssize_t set_qsfp_lpmode(struct device *dev, struct device_attribute *da,
 		return status;
 	}
 
+    mutex_lock(&data->update_lock);
+
     /* Send IPMI write command */
     data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x12;
@@ -1294,17 +1325,21 @@ static ssize_t set_qsfp_lpmode(struct device *dev, struct device_attribute *da,
     status = ipmi_send_message(&data->ipmi, IPMI_QSFP_WRITE_CMD,
                                 data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Update to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp.qsfp_resp[QSFP_LPMODE][pid] = lpmode;
-
-    return count;
+    status = count;
+    
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 /*************************************************************************************

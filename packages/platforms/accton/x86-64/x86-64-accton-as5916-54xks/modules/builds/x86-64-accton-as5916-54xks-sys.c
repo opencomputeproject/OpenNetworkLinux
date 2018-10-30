@@ -52,6 +52,9 @@
 #define CPU_CPLD_ADDR           0x65
 #define FAN_CPLD_ADDR           0x66
 
+#define IPMI_CPLD_READ_CMD      0x22
+#define IPMI_CPLD_WRITE_CMD     0x23
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static int as5916_54xks_sys_probe(struct platform_device *pdev);
 static int as5916_54xks_sys_remove(struct platform_device *pdev);
@@ -62,6 +65,9 @@ static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribu
 static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_watchdog(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t set_watchdog(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
 
 struct ipmi_data {
 	struct completion   read_complete;
@@ -132,6 +138,11 @@ enum as5916_54xks_sys_sysfs_attrs {
     MB_CPLD2_VER, /* mainboard cpld2 version */
     CPU_CPLD_VER, /* CPU board CPLD version */
     FAN_CPLD_VER, /* FAN CPLD version */
+    CPU_CPLD_WDS1,/* CPU board CPLD Offset 0x02 Watch Dog Status_1 */
+    CPU_CPLD_WDS2,/* CPU board CPLD Offset 0x03 Watch Dog Status_2 */
+    CPU_CPLD_SR,  /* CPU board CPLD Offset 0x04 System Reset */
+    CPU_CPLD_LRS, /* CPU board CPLD Offset 0x24 Last Reset Reason Register */
+    MB_CPLD_SR1,  /* main board CPLD Offset 0x08 System Reset-1 */
 };
 
 static SENSOR_DEVICE_ATTR(tcam_rst_c, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_CRST_L);
@@ -145,6 +156,12 @@ static SENSOR_DEVICE_ATTR(mb_cpld1_ver, S_IRUGO, show_cpld_version, NULL, MB_CPL
 static SENSOR_DEVICE_ATTR(mb_cpld2_ver, S_IRUGO, show_cpld_version, NULL, MB_CPLD2_VER);
 static SENSOR_DEVICE_ATTR(cpu_cpld_ver, S_IRUGO, show_cpld_version, NULL, CPU_CPLD_VER);
 static SENSOR_DEVICE_ATTR(fan_cpld_ver, S_IRUGO, show_cpld_version, NULL, FAN_CPLD_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_wds1, S_IWUSR | S_IRUGO, show_watchdog, set_watchdog, CPU_CPLD_WDS1);
+static SENSOR_DEVICE_ATTR(cpu_cpld_wds2, S_IWUSR | S_IRUGO, show_watchdog, set_watchdog, CPU_CPLD_WDS2);
+static SENSOR_DEVICE_ATTR(cpu_cpld_system_reset, S_IWUSR | S_IRUGO, show_watchdog, set_watchdog, CPU_CPLD_SR);
+static SENSOR_DEVICE_ATTR(cpu_cpld_last_reset_reson, S_IRUGO, show_watchdog, NULL, CPU_CPLD_LRS);
+static SENSOR_DEVICE_ATTR(mb_cpld1_system_reset1, S_IWUSR | S_IRUGO, show_watchdog, set_watchdog, MB_CPLD_SR1);
+
 
 static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_tcam_rst_c.dev_attr.attr,
@@ -158,6 +175,11 @@ static struct attribute *as5916_54xks_sys_attributes[] = {
     &sensor_dev_attr_mb_cpld2_ver.dev_attr.attr,
     &sensor_dev_attr_cpu_cpld_ver.dev_attr.attr,
     &sensor_dev_attr_fan_cpld_ver.dev_attr.attr,
+    &sensor_dev_attr_cpu_cpld_wds1.dev_attr.attr,
+    &sensor_dev_attr_cpu_cpld_wds2.dev_attr.attr,
+    &sensor_dev_attr_cpu_cpld_system_reset.dev_attr.attr,
+    &sensor_dev_attr_cpu_cpld_last_reset_reson.dev_attr.attr,
+    &sensor_dev_attr_mb_cpld1_system_reset1.dev_attr.attr,
     NULL
 };
 
@@ -367,8 +389,6 @@ static struct as5916_54xks_sys_data *as5916_54xks_sys_update_tcam(unsigned char 
 {
     int status = 0;
 
-    mutex_lock(&data->update_lock);
-
     data->valid = 0;
     data->ipmi_tx_data[0] = subcmd;
     status = ipmi_send_message(&data->ipmi, IPMI_TCAM_READ_CMD, data->ipmi_tx_data, 1,
@@ -386,7 +406,6 @@ static struct as5916_54xks_sys_data *as5916_54xks_sys_update_tcam(unsigned char 
     data->valid = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -396,16 +415,18 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
 	long reset; /* reset value to be set */
 	int status;
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_sys_data *data = NULL;
 
 	status = kstrtol(buf, 10, &reset);
 	if (status) {
 		return status;
 	}
 
+    mutex_lock(&data->update_lock);
+
     data = as5916_54xks_sys_update_tcam(IPMI_TCAM_RESET_SUBCMD);
     if (!data->valid) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     switch (attr->index) {
@@ -427,7 +448,8 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
             data->ipmi_tx_data[1] = reset;
             break;
 		default:
-			return -EINVAL;
+			status = -EINVAL;
+            goto exit;
     }
 
     /* Send IPMI write command */
@@ -435,25 +457,33 @@ static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
     status = ipmi_send_message(&data->ipmi, IPMI_TCAM_WRITE_CMD,
                                data->ipmi_tx_data, 2, NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
-    return count;
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t show_sys_reset_6(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_sys_data *data = NULL;
     int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_54xks_sys_update_tcam(IPMI_TCAM_RESET_SUBCMD);
     if (!data->valid) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -474,18 +504,24 @@ static ssize_t show_sys_reset_6(struct device *dev, struct device_attribute *da,
             value = data->ipmi_resp_tcam & 0xff;
             break;
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_sys_data *data = NULL;
     unsigned char subcmd = 0;
     int value = 0;
+    int error = 0;
 
 	switch (attr->index) {
         case TCAM_CPLD1_GIO_L:
@@ -498,13 +534,21 @@ static ssize_t show_interrupt_status_6(struct device *dev, struct device_attribu
 			return -EINVAL;
     }
 
+    mutex_lock(&data->update_lock);
+
     data = as5916_54xks_sys_update_tcam(subcmd);
     if (!data->valid) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
     value = data->ipmi_resp_tcam & 0x3;
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_attribute *da,
@@ -512,16 +556,18 @@ static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_att
 {
 	long mask = 0; /* mask value to be set */
 	int status;
-    struct as5916_54xks_sys_data *data = NULL;
 
 	status = kstrtol(buf, 10, &mask);
 	if (status) {
 		return status;
 	}
 
+    mutex_lock(&data->update_lock);
+
     data = as5916_54xks_sys_update_tcam(IPMI_TCAM_INT_MASK_SUBCMD);
     if (!data->valid) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Send IPMI write command */
@@ -530,21 +576,24 @@ static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_att
     status = ipmi_send_message(&data->ipmi, IPMI_TCAM_WRITE_CMD,
                                 data->ipmi_tx_data, 2, NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
-    return count;
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static struct as5916_54xks_sys_data *as5916_54xks_sys_update_cpld_ver(unsigned char cpld_addr)
 {
     int status = 0;
-
-    mutex_lock(&data->update_lock);
 
     data->valid = 0;
     data->ipmi_tx_data[0] = cpld_addr;
@@ -563,15 +612,14 @@ static struct as5916_54xks_sys_data *as5916_54xks_sys_update_cpld_ver(unsigned c
     data->valid = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
 static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_sys_data *data = NULL;
-    unsigned char cpld_addr = 0;
+    unsigned char cpld_addr = 0, value = 0;
+    int error = 0;
 
     switch (attr->index) {
         case MB_CPLD1_VER:
@@ -590,12 +638,165 @@ static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da
             return -EINVAL;
     }
 
+    mutex_lock(&data->update_lock);
+
     data = as5916_54xks_sys_update_cpld_ver(cpld_addr);
     if (!data->valid) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
-    return sprintf(buf, "%d\n", data->ipmi_resp_cpld);
+    value = data->ipmi_resp_cpld;
+    mutex_unlock(&data->update_lock);
+    return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;    
+}
+
+static struct as5916_54xks_sys_data *as5916_54xks_sys_update_watchdog(unsigned char cpld_addr, 
+                                                                                    unsigned char reg)
+{
+    int status = 0;
+
+    data->valid = 0;
+    data->ipmi_tx_data[0] = cpld_addr;
+    data->ipmi_tx_data[1] = reg;
+    status = ipmi_send_message(&data->ipmi, IPMI_CPLD_READ_CMD, data->ipmi_tx_data, 2,
+                               &data->ipmi_resp_cpld, sizeof(data->ipmi_resp_cpld));
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    data->last_updated = jiffies;
+    data->valid = 1;
+
+exit:
+    return data;
+}
+
+/* Get CPLD¡¦s Offset Value
+ * ipmitool raw 0x34 0x22 <I2CAddress of CPLD > <Offset>
+ * # ipmitool raw 0x34 0x22 0x65 0x02
+ * # ipmitool raw 0x34 0x22 0x65 0x03
+ * # ipmitool raw 0x34 0x22 0x65 0x04
+ * # ipmitool raw 0x34 0x22 0x65 0x24
+ * # ipmitool raw 0x34 0x22 0x60 0x08
+ */
+static ssize_t show_watchdog(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char cpld_addr = 0, reg = 0, value = 0;
+    int error = 0;
+
+	switch (attr->index) {
+        case CPU_CPLD_WDS1:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x2;
+            break;
+        case CPU_CPLD_WDS2:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x3;
+            break;
+        case CPU_CPLD_SR:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x4;
+            break;
+        case CPU_CPLD_LRS:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x24;
+            break;
+        case MB_CPLD_SR1:
+            cpld_addr = MAINBOARD_CPLD1_ADDR;
+            reg       = 0x8;
+            break;
+		default:
+			return -EINVAL;
+    }
+
+    mutex_lock(&data->update_lock);
+    
+    data = as5916_54xks_sys_update_watchdog(cpld_addr, reg);
+    if (!data->valid) {
+        error = -EIO;
+        goto exit;
+    }
+
+    value = data->ipmi_resp_cpld;
+    mutex_unlock(&data->update_lock);
+	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
+}
+
+/* Set CPLDValue
+ * # ipmitool raw 0x34 0x23 <I2CAddress of CPLD > <Offset> <Value>
+ * # ipmitool raw 0x34 0x23 0x65 0x03 0x08
+ */
+static ssize_t set_watchdog(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+	long value = 0; /* cpld value to be set */
+	int status;
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char cpld_addr = 0, reg = 0;
+
+	status = kstrtol(buf, 10, &value);
+	if (status) {
+		return status;
+	}
+
+	switch (attr->index) {
+        case CPU_CPLD_WDS1:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x2;
+            break;
+        case CPU_CPLD_WDS2:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x3;
+            break;
+        case CPU_CPLD_SR:
+            cpld_addr = CPU_CPLD_ADDR;
+            reg       = 0x4;
+            break;
+        case MB_CPLD_SR1:
+            cpld_addr = MAINBOARD_CPLD1_ADDR;
+            reg       = 0x8;
+            break;
+		default:
+			return -EINVAL;
+    }
+
+    mutex_lock(&data->update_lock);
+
+   /* Send IPMI write command */
+    data->ipmi_tx_data[0] = cpld_addr;
+    data->ipmi_tx_data[1] = reg;
+    data->ipmi_tx_data[2] = value;
+    status = ipmi_send_message(&data->ipmi, IPMI_CPLD_WRITE_CMD,
+                                data->ipmi_tx_data, 3, NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static int as5916_54xks_sys_probe(struct platform_device *pdev)
