@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * LED Management
+ * @file
+ * @brief LED Management.
+ * @addtogroup oid-led
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_LED_H__
@@ -120,15 +123,15 @@ int onlp_led_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Get LED information.
- * @param id The LED OID
+ * @param id The LED OID.
  * @param[out] rv Receives the information structure.
  */
 int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
 
 /**
- * @brief Set the LED color
- * @param id The LED OID
- * @param color The color.
+ * @brief Set the LED mode.
+ * @param id The LED OID.
+ * @param mode The mode. .
  * @note Only relevant if the LED supports the color capability.
  */
 int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
@@ -234,3 +237,4 @@ extern aim_map_si_t onlp_led_mode_desc_map[];
 /* <auto.end.enum(tag:led).supportheader> */
 
 #endif /* __ONLP_LED_H__ */
+/* @} */

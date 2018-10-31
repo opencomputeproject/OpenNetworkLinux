@@ -41,6 +41,12 @@ Foobar2
   @defgroup onlp-appication ONLP Application Interfaces
   @{
 
+    @defgroup system-interfaces General System Interfaces
+    These are general system interfaces.
+    @{
+      @defgroup platform Platform Initialization and Management
+      @defgroup stdattrs Standard Attribute Structures
+    @}
     @defgroup oid-interfaces General OID Interfaces
     These interfaces are available on all OIDs.
     @{
@@ -58,6 +64,7 @@ Foobar2
       @defgroup oid-fan Fans
       @defgroup oid-psu PSUs
       @defgroup oid-sfp SFPs
+      @defgroup oid-led LEDs
       @defgroup oid-generic Generics
     @}
   @}

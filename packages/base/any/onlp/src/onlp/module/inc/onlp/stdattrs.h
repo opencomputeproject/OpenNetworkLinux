@@ -89,7 +89,7 @@ int onlp_asset_info_free(onlp_asset_info_t* aip);
  */
 int onlp_asset_info_to_json(onlp_asset_info_t* aip, cJSON** rv);
 
-/* See onlplib/onie.h for the onie_info versions */
+/** See onlplib/onie.h for the onie_info versions */
 
 #endif /* __ONLP_STDATTRS_H__ */
 /* @} */
