@@ -67,8 +67,9 @@ if [ -z "$REMOTE_PASS" ]; then
     exit 1
 fi
 
+cd "$ONL"
 
-. $ONL/make/versions/version-onl.sh
+. ./make/versions/version-onl.sh
 REMOTE_DIR="$REMOTE_BASE_DIR/$BUILD_BRANCH/$FNAME_BUILD_ID"
 
 workdir=$(mktemp -d -t update-XXXXXX)
@@ -89,6 +90,6 @@ _rsync() {
 }
 
 sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER mkdir -p $REMOTE_DIR
-_rsync $ONL/RELEASE $REMOTE_SERVER:$REMOTE_DIR
-_rsync $ONL/REPO $REMOTE_SERVER:$REMOTE_DIR
+_rsync RELEASE $REMOTE_SERVER:$REMOTE_DIR
+_rsync REPO $REMOTE_SERVER:$REMOTE_DIR
 sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER "$REMOTE_BASE_DIR/.tools/update-latest.py" --dir "$REMOTE_BASE_DIR/$BUILD_BRANCH" || true

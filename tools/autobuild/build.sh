@@ -83,19 +83,18 @@ fi
 
 echo "Now running under $DOCKER_IMAGE..."
 
+cd "$ONL"
 
 # The expectation is that we will already be on the required branch.
 # This is to normalize environments where the checkout might instead
 # be in a detached head (like jenkins)
 echo "Switching to branch $BUILD_BRANCH..."
-cd $ONL && git checkout $BUILD_BRANCH
-
+git checkout $BUILD_BRANCH
 
 #
 # Full build
 #
-cd $ONL
-. setup.env
+. ./setup.env
 
 apt-cacher-ng >/dev/null 2>&1 ||:
 
@@ -109,12 +108,10 @@ if ! make "${ARCH:-all}"; then
     exit 1
 fi
 
-make -C $ONL/REPO build-clean
+make -C REPO build-clean
 
 # Remove all installer/rootfs/swi packages from the repo. These do not need to be kept and take significant
 # amounts of time to transfer.
-find $ONL/REPO -name "*-installer_0.*" -delete
-find $ONL/REPO -name "*-rootfs_0.*" -delete
-find $ONL/REPO -name "*-swi_0*" -delete
+find REPO \( -name "*-installer_0.*" -o -name "*-rootfs_0.*" -o -name "*-swi_0.*" \) -a -delete
 
 echo Build Succeeded.
