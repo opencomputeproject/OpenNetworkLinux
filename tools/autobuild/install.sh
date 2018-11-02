@@ -1,9 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 ############################################################
-set -e
 
-ONL="$(realpath $(dirname $BASH_SOURCE[0])/../../)"
-
+# Default build branch
 BUILD_BRANCH="${BUILD_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
 
 #
@@ -42,9 +40,15 @@ while getopts ':s:d:u:p:b:t:v' opt; do
             BUILD_BRANCH="$OPTARG"
             ;;
         v)
-            set -x
+            BUILD_VERBOSE=1
+            ;;
     esac
 done
+
+set -e ${BUILD_VERBOSE:+-x}
+
+AUTOBUILD_SCRIPT="$(readlink -e "$0")" || exit
+ONL="${AUTOBUILD_SCRIPT%/*/*/*}"
 
 
 if [ -z "$REMOTE_SERVER" ]; then
@@ -77,7 +81,7 @@ do_cleanup() {
     cd /tmp
     /bin/rm -fr "$workdir"
 }
-trap 'do_cleanup' 0 1
+trap 'do_cleanup' EXIT
 
 RSYNC="${RSYNC:-rsync}"
 RSYNC_OPTS="${RSYNC_OPTS:+$RSYNC_OPTS }\

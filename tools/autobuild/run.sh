@@ -1,8 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 ############################################################
 set -e
 
-PARENT_DIR="$(realpath $(dirname $BASH_SOURCE[0]))"
+AUTOBUILD_SCRIPT="$(readlink -e "$0")" || exit
+PARENT_DIR="${AUTOBUILD_SCRIPT%/*}"
+
 cd "$PARENT_DIR"
 
 ./build.sh "$@"

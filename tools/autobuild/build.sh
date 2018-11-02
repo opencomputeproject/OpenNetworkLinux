@@ -1,10 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 ############################################################
-set -e
-
-AUTOBUILD_SCRIPT="$(realpath ${BASH_SOURCE[0]})"
-ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
-
 
 # Default build branch
 BUILD_BRANCH='master'
@@ -42,7 +37,7 @@ while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
             PLATFORM_LIST="$OPTARG"
             ;;
         v)
-            set -x
+            BUILD_VERBOSE=1
             ;;
         V)
             export VERBOSE=1
@@ -54,6 +49,11 @@ while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
             ;;
     esac
 done
+
+set -e ${BUILD_VERBOSE:+-x}
+
+AUTOBUILD_SCRIPT="$(readlink -e "$0")" || exit
+ONL="${AUTOBUILD_SCRIPT%/*/*/*}"
 
 if [ -z "$ONLB_OPTIONS" ]; then
     # Build both 8 and 9
