@@ -79,10 +79,9 @@ do_cleanup() {
 }
 trap "do_cleanup" 0 1
 
-RSYNC_OPTS=${RSYNC_OPTS}${RSYNC_OPTS:+" "}"--exclude-from=$workdir/git.exclude"
-
-RSYNC=rsync
-RSYNC_OPTS=" -v --copy-links --delete -a --exclude-from=$workdir/git.exclude --exclude .lock"
+RSYNC="${RSYNC:-rsync}"
+RSYNC_OPTS="${RSYNC_OPTS:+$RSYNC_OPTS }\
+-v --copy-links --delete -a --exclude-from=$workdir/git.exclude --exclude .lock"
 
 _rsync() {
     cd $1 && git ls-files --cached > $workdir/git.exclude
