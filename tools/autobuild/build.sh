@@ -7,39 +7,39 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 
 
 # Default build branch
-BUILD_BRANCH=master
+BUILD_BRANCH='master'
 
-while getopts ":b:s:d:u:p:l:a:vVc789r:" opt; do
-    case $opt in
+while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
+    case "$opt" in
         7)
-            ONLB_OPTIONS=--7
+            ONLB_OPTIONS='--7'
             if [ -z "$DOCKER_IMAGE" ]; then
-                echo "Selecting Debian 7 build..."
+                echo 'Selecting Debian 7 build...'
             fi
             ;;
         8)
-            ONLB_OPTIONS=--8
+            ONLB_OPTIONS='--8'
             if [ -z "$DOCKER_IMAGE" ]; then
-                echo "Selecting Debian 8 build..."
+                echo 'Selecting Debian 8 build...'
             fi
             ;;
         9)
-            ONLB_OPTIONS=--9
+            ONLB_OPTIONS='--9'
             if [ -z "$DOCKER_IMAGE" ]; then
-                echo "Selecting Debian 9 build..."
+                echo 'Selecting Debian 9 build...'
             fi
             ;;
         c)
             BUILD_CLOSED=1
             ;;
         b)
-            BUILD_BRANCH=$OPTARG
+            BUILD_BRANCH="$OPTARG"
             ;;
         a)
-            ARCH=$OPTARG
+            ARCH="$OPTARG"
             ;;
         l)
-            PLATFORM_LIST=$OPTARG
+            PLATFORM_LIST="$OPTARG"
             ;;
         v)
             set -x
@@ -48,7 +48,7 @@ while getopts ":b:s:d:u:p:l:a:vVc789r:" opt; do
             export VERBOSE=1
             ;;
         r)
-            export BUILDROOTMIRROR=$OPTARG
+            export BUILDROOTMIRROR="$OPTARG"
             ;;
         *)
             ;;
@@ -57,8 +57,8 @@ done
 
 if [ -z "$ONLB_OPTIONS" ]; then
     # Build both 8 and 9
-    $AUTOBUILD_SCRIPT --8 $@
-    $AUTOBUILD_SCRIPT --9 $@
+    "$AUTOBUILD_SCRIPT" --8 "$@"
+    "$AUTOBUILD_SCRIPT" --9 "$@"
     exit $?
 fi
 
@@ -71,12 +71,12 @@ fi
 #
 if [ -z "$DOCKER_IMAGE" ]; then
     # Execute ourselves under the builder
-    ONLB=$ONL/docker/tools/onlbuilder
-    if [ -x $ONLB ]; then
-        $ONLB $ONLB_OPTIONS --volumes $ONL --non-interactive -c $AUTOBUILD_SCRIPT $@
+    ONLB="$ONL/docker/tools/onlbuilder"
+    if [ -x "$ONLB" ]; then
+        "$ONLB" $ONLB_OPTIONS --volumes "$ONL" --non-interactive -c "$AUTOBUILD_SCRIPT" "$@"
         exit $?
     else
-        echo "Not running in a docker workspace and the onlbuilder script is not available."
+        echo 'Not running in a docker workspace and the onlbuilder script is not available.'
         exit 1
     fi
 fi
@@ -89,7 +89,7 @@ cd "$ONL"
 # This is to normalize environments where the checkout might instead
 # be in a detached head (like jenkins)
 echo "Switching to branch $BUILD_BRANCH..."
-git checkout $BUILD_BRANCH
+git checkout "$BUILD_BRANCH"
 
 # Fetch closed platforms submodules when requested
 [ -z "$BUILD_CLOSED" ] ||
@@ -108,7 +108,7 @@ if [ -n "$PLATFORM_LIST" ]; then
 fi
 
 if ! make "${ARCH:-all}"; then
-    echo Build Failed.
+    echo 'Build Failed.'
     exit 1
 fi
 
@@ -116,6 +116,6 @@ make -C REPO build-clean
 
 # Remove all installer/rootfs/swi packages from the repo. These do not need to be kept and take significant
 # amounts of time to transfer.
-find REPO \( -name "*-installer_0.*" -o -name "*-rootfs_0.*" -o -name "*-swi_0.*" \) -a -delete
+find REPO \( -name '*-installer_0.*' -o -name '*-rootfs_0.*' -o -name '*-swi_0.*' \) -a -delete
 
-echo Build Succeeded.
+echo 'Build Succeeded.'
