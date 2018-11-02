@@ -83,12 +83,15 @@ RSYNC="${RSYNC:-rsync}"
 RSYNC_OPTS="${RSYNC_OPTS:+$RSYNC_OPTS }\
 -v --copy-links --delete -a --exclude-from=$workdir/git.exclude --exclude .lock"
 
+RSH="sshpass -p $REMOTE_PASS \
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER"
+
 _rsync() {
     cd $1 && git ls-files --cached > $workdir/git.exclude
-    $RSYNC $RSYNC_OPTS --rsh="sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER" $1 $2
+    $RSYNC $RSYNC_OPTS --rsh="$RSH" "$1" "$2"
 }
 
-sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER mkdir -p $REMOTE_DIR
+$RSH $REMOTE_SERVER mkdir -p $REMOTE_DIR
 _rsync RELEASE $REMOTE_SERVER:$REMOTE_DIR
 _rsync REPO $REMOTE_SERVER:$REMOTE_DIR
-sshpass -p $REMOTE_PASS ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -l $REMOTE_USER $REMOTE_SERVER "$REMOTE_BASE_DIR/.tools/update-latest.py" --dir "$REMOTE_BASE_DIR/$BUILD_BRANCH" || true
+$RSH $REMOTE_SERVER "$REMOTE_BASE_DIR/.tools/update-latest.py" --dir "$REMOTE_BASE_DIR/$BUILD_BRANCH" || :
