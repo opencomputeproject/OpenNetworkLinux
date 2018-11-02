@@ -9,7 +9,7 @@ ONL="$(realpath $(dirname $AUTOBUILD_SCRIPT)/../../)"
 # Default build branch
 BUILD_BRANCH='master'
 
-while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
+while getopts ':b:s:d:u:p:l:a:nvVc789r:' opt; do
     case "$opt" in
         7)
             ONLB_OPTIONS='--7'
@@ -34,6 +34,9 @@ while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
             ;;
         b)
             BUILD_BRANCH="$OPTARG"
+            ;;
+        n)
+            BUILD_BRANCH=
             ;;
         a)
             ARCH="$OPTARG"
@@ -87,8 +90,10 @@ cd "$ONL"
 # The expectation is that we will already be on the required branch.
 # This is to normalize environments where the checkout might instead
 # be in a detached head (like jenkins)
-echo "Switching to branch $BUILD_BRANCH..."
-git checkout "$BUILD_BRANCH"
+if [ -n "$BUILD_BRANCH" ]; then
+    echo "Switching to branch $BUILD_BRANCH..."
+    git checkout "$BUILD_BRANCH"
+fi
 
 # Fetch closed platforms submodules when requested
 [ -z "$BUILD_CLOSED" ] ||
