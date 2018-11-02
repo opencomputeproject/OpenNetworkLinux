@@ -30,7 +30,7 @@ while getopts ":b:s:d:u:p:l:a:vVc789r:" opt; do
             fi
             ;;
         c)
-            cd $ONL && git submodule update --init --recursive packages/platforms-closed
+            BUILD_CLOSED=1
             ;;
         b)
             BUILD_BRANCH=$OPTARG
@@ -90,6 +90,10 @@ cd "$ONL"
 # be in a detached head (like jenkins)
 echo "Switching to branch $BUILD_BRANCH..."
 git checkout $BUILD_BRANCH
+
+# Fetch closed platforms submodules when requested
+[ -z "$BUILD_CLOSED" ] ||
+    git submodule update --init --recursive packages/platforms-closed
 
 #
 # Full build
