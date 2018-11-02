@@ -55,16 +55,15 @@ while getopts ':b:s:d:u:p:l:a:vVc789r:' opt; do
     esac
 done
 
+#
+# Restart with correct build options
+#
 if [ -z "$ONLB_OPTIONS" ]; then
     # Build both 8 and 9
     "$AUTOBUILD_SCRIPT" --8 "$@"
     "$AUTOBUILD_SCRIPT" --9 "$@"
     exit $?
 fi
-
-
-
-
 
 #
 # Restart under correct builder environment.
@@ -112,9 +111,13 @@ if ! make "${ARCH:-all}"; then
     exit 1
 fi
 
+#
+# Cleanup
+#
 make -C REPO build-clean
 
-# Remove all installer/rootfs/swi packages from the repo. These do not need to be kept and take significant
+# Remove all installer/rootfs/swi packages from the repo.
+# These do not need to be kept and take significant
 # amounts of time to transfer.
 find REPO \( -name '*-installer_0.*' -o -name '*-rootfs_0.*' -o -name '*-swi_0.*' \) -a -delete
 
