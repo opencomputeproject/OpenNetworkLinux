@@ -23,7 +23,7 @@ if ONL is None:
     sys.exit(1)
 
 class InstallerShar(object):
-    def __init__(self, arch, template=None, work_dir=None):
+    def __init__(self, onl_version, arch, template=None, work_dir=None):
         self.ONL = ONL
 
         if template is None:
@@ -59,6 +59,8 @@ class InstallerShar(object):
             self.setvar("ARCH", 'x86_64')
         else:
             self.setvar("ARCH", self.arch)
+
+        self.setvar("ONLVERSION", onl_version)
 
     def abort(self, msg):
         logger.error(msg)
@@ -174,6 +176,7 @@ class InstallerShar(object):
 if __name__ == '__main__':
 
     ap = argparse.ArgumentParser(NAME)
+    ap.add_argument("--onl-version", help="Installer ONL Version.", required=True)
     ap.add_argument("--arch", help="Installer Architecture.", required=True,
                     choices = ['amd64', 'powerpc', 'armel', 'arm64'])
     ap.add_argument("--initrd", nargs=2, help="The system initrd.")
@@ -195,7 +198,7 @@ if __name__ == '__main__':
                     help="Specify a Python plugin (runs from within the installer chroot)")
 
     ops = ap.parse_args()
-    installer = InstallerShar(ops.arch, ops.work_dir)
+    installer = InstallerShar(ops.onl_version, ops.arch, ops.work_dir)
 
     if ops.arch == 'amd64':
         if ops.initrd is None:
