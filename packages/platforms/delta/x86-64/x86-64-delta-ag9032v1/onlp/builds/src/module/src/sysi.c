@@ -212,7 +212,7 @@ onlp_sysi_platform_manage_leds(void)
     /* Set front lights: fan, power supply 1, 2 
      */
     int  rpm, rpm1,i=0,count=0, state;
-    uint8_t present_bit = 0x00, bit=0x00;
+    uint8_t present_bit = 0x00;
     uint8_t power_state;
     mux_info_t mux_info;
     dev_info_t dev_info;
@@ -228,13 +228,10 @@ onlp_sysi_platform_manage_leds(void)
     dev_info.size = 1;
 
     present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
-        char echoDebug[50]={0};
-    sprintf(echoDebug, "echo \"[DEBUG ] present_bit=0x%x  \" > /dev/console",present_bit);
-    system(echoDebug); 
     /* Fan tray 1 */
     rpm = dni_i2c_lock_read_attribute(NULL, FAN5_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN5_REAR);
-    if((present_bit & ((bit+1) << 4)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 4)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_GREEN);
@@ -246,10 +243,9 @@ onlp_sysi_platform_manage_leds(void)
     }
 
     /* Fan tray 2 */
-    bit=0x00;
     rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
-    if((present_bit & ((bit+1) << 3)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 3)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_GREEN);
@@ -261,10 +257,9 @@ onlp_sysi_platform_manage_leds(void)
     }
 
     /* Fan tray 3 */
-    bit=0x00;
     rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
-    if((present_bit & ((bit+1) << 2)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 2)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_GREEN);
@@ -276,10 +271,9 @@ onlp_sysi_platform_manage_leds(void)
     }
 
     /* Fan tray 4 */
-    bit=0x00;
     rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
-    if((present_bit & ((bit+1) << 1)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 1)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4),ONLP_LED_MODE_GREEN);
@@ -291,10 +285,9 @@ onlp_sysi_platform_manage_leds(void)
     }
 
     /* Fan tray 5 */
-    bit=0x00;
     rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
-    if((present_bit & (bit+1)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & 1) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_5),ONLP_LED_MODE_GREEN);
@@ -312,9 +305,8 @@ onlp_sysi_platform_manage_leds(void)
         //dev_info.addr = FAN_TRAY_1 + i;
         //fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
        	//	if( fantray_present >= 0)
-        bit=0x00;
         present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
-        if( (present_bit & (bit+1) << i) == 0)
+        if( (present_bit & (1 << i)) == 0)
             count++;
     }
                 /* Set front light of FAN */

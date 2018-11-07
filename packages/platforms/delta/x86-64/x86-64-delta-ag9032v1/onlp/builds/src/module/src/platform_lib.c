@@ -173,54 +173,42 @@ int dni_i2c_lock_write( mux_info_t * mux_info, dev_info_t * dev_info)
 
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
 {
-    int fd, len, nbytes = 10;
+    int fd, len, nbytes = 10,rv = -1;
     char  r_data[10]   = {0};
 
     DNI_BUS_LOCK();
     if(mux_info != NULL)
         dni_swpld_write_attribute(mux_info->offset, mux_info->channel,BUS_LOCKED);   
-    if ((fd = open(fullpath, O_RDONLY)) == -1)
+    if ((fd = open(fullpath, O_RDONLY)) >= 0)
     {
-        goto ERROR;
-    }
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
-        goto ERROR;
+        if ((len = read(fd, r_data, nbytes)) > 0)
+        {
+            rv=atoi(r_data);
+        }
     }
     close(fd);
     DNI_BUS_UNLOCK();
-    return atoi(r_data);
-ERROR:
-    close(fd);
-    DNI_BUS_UNLOCK();
-    return -1;
+    return rv;
 }
 
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath)
 {
-    int fd, len, nbytes = 10;
+    int fd, nbytes = 10, rv = -1;
     DNI_BUS_LOCK();
     if(mux_info!=NULL)
         dni_swpld_write_attribute(mux_info->offset, mux_info->channel,BUS_LOCKED);
     /* Create output file descriptor */
-    fd = open(fullpath, O_WRONLY,  0644);
-    if (fd == -1)
+    if((fd = open(fullpath, O_WRONLY,  0644)) >= 0)
     {
-        goto ERROR;
+        if(write(fd, data, (ssize_t) nbytes) > 0)
+        {
+            fsync(fd);
+            rv = 0;
+        }
     }
-    len = write (fd, data, (ssize_t) nbytes);
-    if (len != nbytes) 
-    {
-        goto ERROR;
-    }
-    fsync(fd);
     close(fd);
     DNI_BUS_UNLOCK();
-    return 0;
-ERROR:
-    close(fd);
-    DNI_BUS_UNLOCK();
-    return -1;
+    return rv;
 }
 
 
@@ -228,86 +216,63 @@ ERROR:
     Use this function to select address & read the data.          */
 int dni_lock_swpld_read_attribute(int addr)
 {
-    int fd, len, nbytes = 10,data = 0;
+    int fd , fd1, nbytes = 10,data = 0, rv=-1;
     char r_data[10]   = {0};
     char address[10] = {0};
     sprintf(address, "%02x", addr);
     DNI_BUS_LOCK();
     /* Create output file descriptor */
-    fd = open(SWPLD_ADDR_PATH, O_WRONLY,  0644);
-    if (fd == -1)
+    if((fd = open(SWPLD_ADDR_PATH, O_WRONLY,  0644)) >=0)
     {
-        goto ERROR;
+        if(write (fd, address, 2) >0)
+        {
+            fsync(fd);
+            if ((fd1 = open(SWPLD_DATA_PATH, O_RDONLY,0644)) >= 0)
+            {
+                if ((read(fd1, r_data, nbytes)) > 0)
+                {
+                    sscanf( r_data, "%x", &data);
+                    rv=data;
+                }
+            }
+            close(fd1);
+        }
     }
-    len = write (fd, address, 2);
-    if(len <= 0)
-    {
-        goto ERROR;
-    }
-    close(fd);    
-    if ((fd = open(SWPLD_DATA_PATH, O_RDONLY,0644)) == -1)
-    {
-        goto ERROR;
-    }
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
-        goto ERROR;
-    }
-    sscanf( r_data, "%x", & data);
     close(fd);
     DNI_BUS_UNLOCK();
-    return data;
-ERROR:
-    close(fd);
-    DNI_BUS_UNLOCK();
-    return -1;
-    
+    return rv;
 }
 
 /*  SWPLD modulize in AG9032v1 platform at bus 6 on address 0x31.
     Use this function to select address the & write the data.     */
 int dni_swpld_write_attribute(int addr, int data,int bus_lock)
 {
-    int fd, len;
+    int fd,fd1,rv = -1;
     char address[10] = {0};
     sprintf(address, "%02x", addr);
     if(bus_lock == BUS_LOCK)
         DNI_BUS_LOCK();
     /* Create output file descriptor */
-    fd = open(SWPLD_ADDR_PATH, O_WRONLY,  0644);
-    if (fd == -1)
+    if((fd= open(SWPLD_ADDR_PATH, O_WRONLY,  0644)) >= 0)
     {
-        goto ERROR;
+        if( write(fd, address, 2) > 0)
+        {
+            fsync(fd);
+            if((fd1 = open(SWPLD_DATA_PATH, O_WRONLY,  0644)) >= 0)
+            {
+                sprintf(address, "%02x", data);
+                if( write (fd1, address, 2) >0 )
+                {
+                    rv=0;
+                    fsync(fd1);
+                }
+            }
+            close(fd1);
+        }
     }
-    len = write(fd, address, 2);
-    if(len <= 0)
-    {
-        goto ERROR;
-    }
-    fsync(fd);
-    close(fd);
-    fd = open(SWPLD_DATA_PATH, O_WRONLY,  0644);
-    if (fd == -1)
-    {
-        goto ERROR;
-    }
-    sprintf(address, "%02x", data);
-    len = write (fd, address, 2);
-    if(len <= 0)
-    {
-        goto ERROR;
-    }
-    fsync(fd);
     close(fd);
     if(bus_lock == BUS_LOCK)
         DNI_BUS_UNLOCK();
-    return 0;
-
-ERROR:
-    close(fd);
-    if(bus_lock == BUS_LOCK)
-        DNI_BUS_UNLOCK();
-    return -1;
-    
+    return rv;
 }
 
