@@ -245,6 +245,7 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 int
 onlp_fani_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 

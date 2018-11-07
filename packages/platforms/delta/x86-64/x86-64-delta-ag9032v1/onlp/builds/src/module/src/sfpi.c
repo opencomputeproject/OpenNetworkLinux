@@ -102,6 +102,7 @@ int
 onlp_sfpi_init(void)
 {
     /* Called at initialization time */
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 
@@ -225,7 +226,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     /* Select qsfp port to response mode */
     backup_response_data = dni_lock_swpld_read_attribute(sfp_response_reg);
     backup_response_data &= ~(1 << (7 - (port % 8)));
-    dni_lock_swpld_write_attribute(sfp_response_reg, backup_response_data);
+    dni_swpld_write_attribute(sfp_response_reg, backup_response_data,BUS_LOCK);
 
     /* Select QSFP port */
     sprintf(port_data, "%d", port + 1);
@@ -272,7 +273,7 @@ int onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
     /* Select qsfp port to response mode */
     backup_response_data = dni_lock_swpld_read_attribute(sfp_response_reg);
     backup_response_data &= ~(1 << (7 - (port % 8)));
-    dni_lock_swpld_write_attribute(sfp_response_reg, backup_response_data);
+    dni_swpld_write_attribute(sfp_response_reg, backup_response_data,BUS_LOCK);
 
     channel = port_sel_channel;
 
@@ -311,7 +312,7 @@ int onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
     /* Select qsfp port to response mode */
     backup_response_data = dni_lock_swpld_read_attribute(sfp_response_reg);
     backup_response_data &= ~(1 << (7 - (port % 8)));
-    dni_lock_swpld_write_attribute(sfp_response_reg, backup_response_data);
+    dni_swpld_write_attribute(sfp_response_reg, backup_response_data,BUS_LOCK);
 
     channel = port_sel_channel;
 
@@ -352,7 +353,7 @@ int onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
     /* Select qsfp port to response mode */
     backup_response_data = dni_lock_swpld_read_attribute(sfp_response_reg);
     backup_response_data &= ~(1 << (7 - (port % 8)));
-    dni_lock_swpld_write_attribute(sfp_response_reg, backup_response_data);
+    dni_swpld_write_attribute(sfp_response_reg, backup_response_data,BUS_LOCK);
 
     channel = port_sel_channel;
 
@@ -392,7 +393,7 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
     /* Select qsfp port to response mode */
     backup_response_data = dni_lock_swpld_read_attribute(sfp_response_reg);
     backup_response_data &= ~(1 << (7 - (port % 8)));
-    dni_lock_swpld_write_attribute(sfp_response_reg, backup_response_data);
+    dni_swpld_write_attribute(sfp_response_reg, backup_response_data,BUS_LOCK);
 
     channel = port_sel_channel;
 
