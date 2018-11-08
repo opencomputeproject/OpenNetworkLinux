@@ -253,22 +253,38 @@ int psu_ym2401_pmbus_info_set(int id, char *node, int value)
 
 #define PSU_SERIAL_NUMBER_LEN	18
 
-int psu_serial_number_get(int id, int is_ac, char *serial, int serial_len)
+int psu_serial_number_get(int id, psu_type_t psu_type, char *serial, int serial_len)
 {
     int   size = 0;
     int   ret  = ONLP_STATUS_OK; 
     char *prefix = NULL;
+    char *filename = NULL;
 
     if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
         return ONLP_STATUS_E_PARAM;
     }
     
     memset((void *)serial, 0x0, serial_len);
-    if(is_ac)
-        prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
-    else
-        prefix = (id == PSU1_ID) ? PSU1_DC_EEPROM_PREFIX : PSU2_DC_EEPROM_PREFIX;
-    ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_serial");
+    switch (psu_type) {
+        case PSU_TYPE_AC_COMPUWARE_F2B:
+        case PSU_TYPE_AC_COMPUWARE_B2F:
+            filename = "psu_serial";
+            prefix = (id == PSU1_ID) ? PSU1_AC_EEPROM_PREFIX : PSU2_AC_EEPROM_PREFIX;
+            break;
+        case PSU_TYPE_AC_3YPOWER_F2B:
+        case PSU_TYPE_AC_3YPOWER_B2F:
+            filename = "psu_mfr_serial";
+            prefix = (id == PSU1_ID) ? PSU1_AC_3YPOWER_PMBUS_PREFIX : PSU2_AC_3YPOWER_PMBUS_PREFIX;
+            break;
+        case PSU_TYPE_DC_48V_F2B:
+        case PSU_TYPE_DC_48V_B2F:
+        /* fall through */
+        default:
+            serial[0] = '\0';
+            return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, filename);
     if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
 		return ONLP_STATUS_E_INTERNAL;
 
