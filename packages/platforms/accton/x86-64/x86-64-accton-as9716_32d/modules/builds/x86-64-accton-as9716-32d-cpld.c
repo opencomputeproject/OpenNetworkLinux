@@ -476,6 +476,7 @@ static int as9716_32d_cpld_probe(struct i2c_client *client,
 	struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
 	struct as9716_32d_cpld_data *data;
 	int ret = -ENODEV;
+	int status;	
 	const struct attribute_group *group = NULL;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
@@ -499,9 +500,17 @@ static int as9716_32d_cpld_probe(struct i2c_client *client,
     case as9716_32d_cpld2:
         group = &as9716_32d_cpld2_group;
          break;
-	case as9716_32d_cpld3:
+     case as9716_32d_cpld3:
          group = &as9716_32d_cpld3_group;
         break;
+     case as9716_32d_cpld_cpu:
+         /* Disable CPLD reset to avoid DUT will be reset.
+          */
+         status=as9716_32d_cpld_write_internal(client, 0x3, 0x0); 
+         if (status < 0)
+         {
+            dev_dbg(&client->dev, "cpu_cpld reg 0x65 err %d\n", status);            
+         }      
     default:
         break;
     }
