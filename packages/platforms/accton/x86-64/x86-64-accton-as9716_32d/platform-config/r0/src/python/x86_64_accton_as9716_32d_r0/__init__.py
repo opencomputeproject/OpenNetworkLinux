@@ -41,6 +41,7 @@ class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
             ('as9716_32d_cpld1', 0x60, 19),            
             ('as9716_32d_cpld2', 0x61, 20),
             ('as9716_32d_cpld3', 0x62, 21),
+            ('as9716_32d_cpld_cpu', 0x65, 0),
             ])
         self.new_i2c_devices([
             # initiate fan
