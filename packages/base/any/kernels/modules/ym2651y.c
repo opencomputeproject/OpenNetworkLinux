@@ -110,6 +110,7 @@ enum ym2651y_sysfs_attributes {
 	PSU_V_OUT,
 	PSU_I_OUT,
 	PSU_P_OUT,
+	PSU_P_OUT_UV,     /*In Unit of microVolt, instead of mini.*/
 	PSU_TEMP1_INPUT,
 	PSU_FAN1_SPEED,
 	PSU_FAN1_DUTY_CYCLE,
@@ -156,6 +157,14 @@ static SENSOR_DEVICE_ATTR(psu_mfr_iout_max,	S_IRUGO, show_linear, NULL, PSU_MFR_
 static SENSOR_DEVICE_ATTR(psu_mfr_pin_max,	S_IRUGO, show_linear, NULL, PSU_MFR_PIN_MAX);
 static SENSOR_DEVICE_ATTR(psu_mfr_pout_max,	S_IRUGO, show_linear, NULL, PSU_MFR_POUT_MAX);
 
+/*Duplicate nodes for lm-sensors.*/
+static SENSOR_DEVICE_ATTR(in2_input,    S_IRUGO, show_linear,    NULL, PSU_V_OUT);
+static SENSOR_DEVICE_ATTR(curr2_input,  S_IRUGO, show_linear,    NULL, PSU_I_OUT);
+static SENSOR_DEVICE_ATTR(power2_input, S_IRUGO, show_linear,    NULL, PSU_P_OUT_UV);
+static SENSOR_DEVICE_ATTR(temp1_input,  S_IRUGO, show_linear,    NULL, PSU_TEMP1_INPUT);
+static SENSOR_DEVICE_ATTR(fan1_input,   S_IRUGO, show_linear,    NULL, PSU_FAN1_SPEED);
+static SENSOR_DEVICE_ATTR(temp1_fault,  S_IRUGO, show_word,      NULL, PSU_TEMP_FAULT);
+
 static struct attribute *ym2651y_attributes[] = {
 	&sensor_dev_attr_psu_power_on.dev_attr.attr,
 	&sensor_dev_attr_psu_temp_fault.dev_attr.attr,
@@ -182,6 +191,13 @@ static struct attribute *ym2651y_attributes[] = {
 	&sensor_dev_attr_psu_mfr_vout_min.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_vout_max.dev_attr.attr,
 	&sensor_dev_attr_psu_mfr_iout_max.dev_attr.attr,
+	/*Duplicate nodes for lm-sensors.*/
+	&sensor_dev_attr_curr2_input.dev_attr.attr,
+	&sensor_dev_attr_in2_input.dev_attr.attr,
+	&sensor_dev_attr_power2_input.dev_attr.attr,
+	&sensor_dev_attr_temp1_input.dev_attr.attr,
+	&sensor_dev_attr_fan1_input.dev_attr.attr,
+	&sensor_dev_attr_temp1_fault.dev_attr.attr,
 	NULL
 };
 
@@ -279,6 +295,9 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
 	case PSU_I_OUT:
 		value = data->i_out;
 		break;
+	case PSU_P_OUT_UV:
+		multiplier = 1000000;  /*For lm-sensors, unit is micro-Volt.*/
+		/*Passing through*/
 	case PSU_P_OUT:
 		value = data->p_out;
 		break;
