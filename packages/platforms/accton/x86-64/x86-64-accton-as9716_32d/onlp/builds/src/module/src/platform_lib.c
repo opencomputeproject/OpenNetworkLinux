@@ -96,20 +96,7 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {    
     char *node = NULL;
-    char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
-    //char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
-    
-    /*
-    
-    psu2
-/sys/bus/i2c/drivers/as9716_32d_psu/9-0050
-
-
-ps1
-/sys/bus/i2c/drivers/as9716_32d_psu/10-0053
-    
-    */
-    
+    char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};   
 
     /* Check AC model name */
     //node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_mfr_model) : PSU2_AC_PMBUS_NODE(psu_mfr_model);
@@ -207,21 +194,21 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
     return ONLP_STATUS_OK;
 }
 
-#define PSU_SERIAL_NUMBER_LEN	18
+#define PSU_SERIAL_NUMBER_LEN	19
 
 int psu_serial_number_get(int id, char *serial, int serial_len)
 {
-	int   size = 0;
-	int   ret  = ONLP_STATUS_OK; 
-	char *prefix = NULL;
+    int   size = 0;
+    int   ret  = ONLP_STATUS_OK; 
+    char *prefix = NULL;
 
-	if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
-		return ONLP_STATUS_E_PARAM;
-	}
+    if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
+        return ONLP_STATUS_E_PARAM;
+    }
 
-	prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+    prefix = (id == PSU1_ID) ? PSU1_AC_HWMON_PREFIX : PSU2_AC_HWMON_PREFIX;
 
-	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
+    ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
     if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
 		return ONLP_STATUS_E_INTERNAL;
 
