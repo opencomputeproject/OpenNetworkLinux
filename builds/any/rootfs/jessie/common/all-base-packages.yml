@@ -80,3 +80,4 @@
 - strace
 - sysstat
 - ipmitool
+- lm-sensors
