@@ -112,7 +112,7 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
 
 
 static int
-psu_cpr_4011_info_get(onlp_psu_info_t* info)
+psu_data_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
@@ -130,36 +130,37 @@ psu_cpr_4011_info_get(onlp_psu_info_t* info)
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
 
     /* Read voltage, current and power */
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
         info->caps |= ONLP_PSU_CAPS_VOUT;
     }
 
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_v_in", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_v_in", &val) == 0) {
         info->mvin = val;
         info->caps |= ONLP_PSU_CAPS_VIN;
     }
 
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
     
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_i_in", &val) == 0) {
         info->miin = val;
         info->caps |= ONLP_PSU_CAPS_IIN;
     }
 
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
     }   
 
-    if (psu_cpr_4011_pmbus_info_get(index, "psu_p_in", &val) == 0) {
+    if (psu_pmbus_info_get(index, "psu_p_in", &val) == 0) {
         info->mpin = val;
         info->caps |= ONLP_PSU_CAPS_PIN;
     }  
-
+    psu_serial_number_get(index, info->serial, sizeof(info->serial));
+	
     return ONLP_STATUS_OK;
 }
 
@@ -218,7 +219,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     
     switch (psu_type) {
         case PSU_TYPE_ACBEL:            
-            ret = psu_cpr_4011_info_get(info);
+            ret = psu_data_info_get(info);
             break;
         case PSU_TYPE_YM2651Y:
             ret = psu_ym2651y_info_get(info);
