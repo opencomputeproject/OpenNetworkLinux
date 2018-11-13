@@ -119,12 +119,12 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    uint32_t bytes[4];
+    uint32_t bytes[5];
     int i = 0;
     uint64_t rx_los_all = 0;
     
-    bytes[0]=bytes[1]=bytes[2]=0x0;
-    bytes[3]=0x30;
+    bytes[0]=bytes[1]=bytes[2]=bytes[3]=0x0;
+    bytes[4]=0x03;
     for(i = AIM_ARRAYSIZE(bytes)-1; i >= 0; i--) {
         rx_los_all <<= 8;
         rx_los_all |= bytes[i];
