@@ -125,7 +125,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     return PSU_TYPE_UNKNOWN;
 }
 int 
-psu_cpr_4011_pmbus_info_get(int id, char *node, int *value)
+psu_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
     char path[PSU_NODE_MAX_PATH_LEN] = {0};
