@@ -64,7 +64,7 @@ int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);
 int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len);
 
-int psu_cpr_4011_pmbus_info_get(int id, char *node, int *value);
+int psu_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 
