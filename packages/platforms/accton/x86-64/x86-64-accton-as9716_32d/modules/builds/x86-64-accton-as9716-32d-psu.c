@@ -34,14 +34,17 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
+#define MAX_MODEL_NAME          16
+#define MAX_SERIAL_NUMBER       19
+
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
 static int as9716_32d_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
 extern int as9716_32d_cpld_read(unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned
  */
-static const unsigned short normal_i2c[] = { 0x50, 0x53, I2C_CLIENT_END };
+static const unsigned short normal_i2c[] = { 0x50, 0x51, I2C_CLIENT_END };
 
 /* Each client has this additional data
  */
@@ -52,7 +55,8 @@ struct as9716_32d_psu_data {
     unsigned long       last_updated;    /* In jiffies */
     u8  index;           /* PSU index */
     u8  status;          /* Status(present/power_good) register read from CPLD */
-    char model_name[9]; /* Model name, read from eeprom */
+    char model_name[MAX_MODEL_NAME]; /* Model name, read from eeprom */
+    char serial_number[MAX_SERIAL_NUMBER];
 };
 
 static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *dev);
@@ -60,19 +64,23 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
 enum as9716_32d_psu_sysfs_attributes {
     PSU_PRESENT,
     PSU_MODEL_NAME,
-    PSU_POWER_GOOD
+    PSU_POWER_GOOD,
+    PSU_SERIAL_NUMBER
 };
 
 /* sysfs attributes for hwmon
  */
 static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status,    NULL, PSU_PRESENT);
-static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
+static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_string,    NULL, PSU_MODEL_NAME);
 static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,    NULL, PSU_POWER_GOOD);
+static SENSOR_DEVICE_ATTR(psu_serial_number, S_IRUGO, show_string, NULL, PSU_SERIAL_NUMBER);
+
 
 static struct attribute *as9716_32d_psu_attributes[] = {
     &sensor_dev_attr_psu_present.dev_attr.attr,
     &sensor_dev_attr_psu_model_name.dev_attr.attr,
     &sensor_dev_attr_psu_power_good.dev_attr.attr,
+    &sensor_dev_attr_psu_serial_number.dev_attr.attr,
     NULL
 };
 
@@ -93,12 +101,29 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     return sprintf(buf, "%d\n", status);
 }
 
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
+static ssize_t show_string(struct device *dev, struct device_attribute *da,
                                char *buf)
 {
+   struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct as9716_32d_psu_data *data = as9716_32d_psu_update_device(dev);
+    char *ptr = NULL;
 
-    return sprintf(buf, "%s\n", data->model_name);
+    if (!data->valid) {
+        return -EIO;
+    }
+
+	switch (attr->index) {
+	case PSU_MODEL_NAME:
+		ptr = data->model_name;
+		break;
+	case PSU_SERIAL_NUMBER:
+		ptr = data->serial_number;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+    return sprintf(buf, "%s\n", ptr);
 }
 
 static const struct attribute_group as9716_32d_psu_group = {
@@ -258,6 +283,14 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
                 data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
                 
             }
+             /* Read from offset 0x2e ~ 0x3d (16 bytes) */
+            status = as9716_32d_psu_read_block(client, 0x2e,data->serial_number, MAX_SERIAL_NUMBER);
+            if (status < 0)
+            {
+                data->serial_number[0] = '\0';
+                dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x2e)\n", client->addr);
+            }
+            data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
         }
 
         data->last_updated = jiffies;
