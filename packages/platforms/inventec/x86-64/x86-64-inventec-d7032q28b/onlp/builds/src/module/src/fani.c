@@ -56,7 +56,7 @@ static char* devfiles__[CHASSIS_FAN_COUNT+1] =  /* must map with onlp_thermal_id
     { \
         { ONLP_FAN_ID_CREATE(FAN_##id##_ON_MAIN_BOARD), "Chassis Fan "#id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        (ONLP_FAN_CAPS_F2B | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -66,7 +66,7 @@ static char* devfiles__[CHASSIS_FAN_COUNT+1] =  /* must map with onlp_thermal_id
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
         0x0, \
-        (ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        (ONLP_FAN_CAPS_F2B | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
         0, \
         0, \
         ONLP_FAN_MODE_INVALID, \
@@ -112,6 +112,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     }
     else {
 	info->status |= ONLP_FAN_STATUS_PRESENT;
+	info->status |= ONLP_FAN_STATUS_F2B;
     }
 
     /* get front fan speed */
@@ -123,6 +124,9 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     sscanf(*vp, "%d", &value);
     info->rpm = value;
     info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
+
+    snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "NA");
+    snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "NA");
 
     return ONLP_STATUS_OK;
 }
@@ -162,8 +166,8 @@ _onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
     int   value, ret;
     char  vstr[32], *vstrp = vstr, **vp = &vstrp;
 
-
     info->status |= ONLP_FAN_STATUS_PRESENT;
+    info->status |= ONLP_FAN_STATUS_F2B;
 
     /* get fan direction */
     info->status |= _onlp_get_fan_direction_on_psu();

@@ -148,4 +148,3 @@ bool tlvinfo_find_tlv(u_int8_t *eeprom, u_int8_t tcode, int *eeprom_index);
 bool tlvinfo_delete_tlv(u_int8_t * eeprom, u_int8_t code);
 bool tlvinfo_add_tlv(u_int8_t * eeprom, int tcode, char * strval);
 bool tlvinfo_decode_tlv(u_int8_t *eeprom, u_int8_t tcode, char* value);
-//int  find_vpd_data(u_int8_t *eeprom, int i_offset, char *c_buf);

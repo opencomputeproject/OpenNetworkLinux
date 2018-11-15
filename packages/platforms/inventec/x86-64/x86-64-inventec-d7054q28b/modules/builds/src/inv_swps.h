@@ -36,6 +36,8 @@
 #define SWP_VERSION           "4.2.3"
 #define SWP_LICENSE           "GPL"
 
+#define SWPS_KERN_VER_AF_3_10 (1)
+
 /* Module status define */
 #define SWP_STATE_NORMAL      (0)
 #define SWP_STATE_I2C_DIE     (-91)

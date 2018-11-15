@@ -15,6 +15,7 @@
 #include "platform_lib.h"
 
 #define PSU_STATUS_PRESENT	(0)
+#define PSU_STATUS_POWER_GOOD	(1)
 #define PSU_STATUS_UNPOWERED	(2)
 #define PSU_STATUS_FAULT	(4)
 #define PSU_STATUS_UNINSTALLED	(7)
@@ -83,6 +84,8 @@ psu_module_info_get(int id, onlp_psu_info_t* info)
     int ret = 0;
     char node_path[ONLP_NODE_MAX_PATH_LEN] = {0};
     int value = 0;
+
+    info->caps |= ONLP_PSU_CAPS_DC12;
 
     memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
     sprintf(node_path, module_devfiles__[id], "vout");
@@ -165,6 +168,7 @@ int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
     int val   = 0;
+    int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
 
     VALIDATE(id);
@@ -173,32 +177,27 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
     /* Get the present state */
-    if (psu_status_info_get(index, "psu", &val) == ONLP_STATUS_E_INTERNAL) {
+    if ((ret = psu_status_info_get(index, "psu", &val)) == ONLP_STATUS_E_INTERNAL) {
         printf("Unable to read PSU(%d) node(psu_present)\r\n", index);
+	return ret;
     }
 
-    if (val == PSU_STATUS_PRESENT) {
-	info->status |= ONLP_PSU_STATUS_PRESENT;
-	if (psu_module_info_get(index, info) != ONLP_STATUS_OK) {
-	    printf("Unable to read PSU(%d) module information\r\n", index);
-	}
-	return ONLP_STATUS_OK;
+    if (val == 0) {
+	info->status = ONLP_PSU_STATUS_PRESENT;
+    }
+    else
+    if (val == 1) {
+	info->status = ONLP_PSU_STATUS_UNPLUGGED;
+	return ret;
+    }
+    else {
+	info->status = ONLP_PSU_STATUS_FAILED;
+	return ret;
     }
 
-    if (val == PSU_STATUS_UNPOWERED) {
-	info->status |= ONLP_PSU_STATUS_FAILED;
-        return ONLP_STATUS_OK;
+    if ((ret = psu_module_info_get(index, info)) != ONLP_STATUS_OK) {
+	printf("Unable to read PSU(%d) module information\r\n", index);
     }
 
-    if (val == PSU_STATUS_FAULT) {
-	info->status |= ONLP_PSU_STATUS_FAILED;
-        return ONLP_STATUS_OK;
-    }
-
-    if (val == PSU_STATUS_UNINSTALLED) {
-	info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-        return ONLP_STATUS_OK;
-    }
-
-    return ONLP_STATUS_E_UNSUPPORTED;
+    return ret;
 }

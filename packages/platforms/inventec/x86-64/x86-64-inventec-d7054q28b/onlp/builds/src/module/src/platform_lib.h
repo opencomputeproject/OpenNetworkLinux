@@ -11,6 +11,8 @@
 
 #include "x86_64_inventec_d7054q28b_log.h"
 
+#define SWPS_CYPRESS_GA2	(1)
+
 #define ONLP_NODE_MAX_INT_LEN	(8)
 #define ONLP_NODE_MAX_PATH_LEN	(64)
 

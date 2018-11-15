@@ -233,7 +233,6 @@ struct eeprom_map_s {
     int addr_ext_id;       int page_ext_id;       int offset_ext_id;       int length_ext_id;
     int addr_id;           int page_id;           int offset_id;           int length_id;
     int addr_eeprom;       int page_eeprom;       int offset_eeprom;       int length_eeprom;
-    int addr_uppage;       int page_uppage;       int offset_uppage;       int length_uppage;
     int addr_len_sm;       int page_len_sm;       int offset_len_sm;       int length_len_sm;
     int addr_len_smf;      int page_len_smf;      int offset_len_smf;      int length_len_smf;
     int addr_len_om1;      int page_len_om1;      int offset_len_om1;      int length_len_om1;
@@ -668,7 +667,7 @@ struct transvr_obj_s {
      */
     uint8_t option[3];
 
-    uint8_t eeprom[128];
+    uint8_t eeprom[256];
 
     /* ========== Object private property ==========
      */
@@ -698,7 +697,6 @@ struct transvr_obj_s {
      */
     int  (*get_id)(struct transvr_obj_s *self);
     int  (*get_eeprom)(struct transvr_obj_s *self, char *buf_p);
-    int  (*get_uppage)(struct transvr_obj_s *self, char *buf_p);
     int  (*get_ext_id)(struct transvr_obj_s *self);
     int  (*get_connector)(struct transvr_obj_s *self);
     int  (*get_vendor_name)(struct transvr_obj_s *self, char *buf_p);
