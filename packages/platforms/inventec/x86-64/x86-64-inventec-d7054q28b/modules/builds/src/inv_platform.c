@@ -1,5 +1,4 @@
 #include <linux/i2c.h>
-//#include <linux/i2c-algo-bit.h>
 #include <linux/i2c-gpio.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -7,12 +6,6 @@
 #include <linux/platform_device.h>
 
 #include <linux/i2c/pca954x.h>
-//#include <linux/i2c/pca953x.h>
-//#include <linux/i2c/at24.h>
-
-//#include <asm/gpio.h>
-//#define IO_EXPAND_BASE    64
-//#define IO_EXPAND_NGPIO   16
 
 struct inv_i2c_board_info {
     int ch;
@@ -75,9 +68,6 @@ static struct pca954x_platform_mode mux_modes_0_6[] = {
     {.adap_id = bus_id(62),},    {.adap_id = bus_id(63),},
     {.adap_id = bus_id(64),},    {.adap_id = bus_id(65),},
 };
-
-//no i2c device driver attach to mux 7
-
 
 static struct pca954x_platform_data mux_data_0 = {
         .modes          = mux_modes_0,
@@ -154,24 +144,6 @@ static struct inv_i2c_board_info i2cdev_list[] = {
     
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////
-#if 0
-static struct 	i2c_gpio_platform_data 	i2c_gpio_platdata0 = {
-	.scl_pin = 58,
-	.sda_pin = 75,
-    
-	.udelay  = 5, //5:100kHz
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.scl_is_output_only = 0
-};
-
-static struct 	platform_device 	device_i2c_gpio0 = {
-	.name 	= "i2c-gpio",
-	.id  	= 0, // adapter number
-	.dev.platform_data = &i2c_gpio_platdata0,
-};
-#endif
 static int __init inv_platform_init(void)
 {
     struct i2c_adapter *adap = NULL;
@@ -181,18 +153,6 @@ static int __init inv_platform_init(void)
 
     printk("%s  \n", __func__);
 
-#if 0
-    //use i2c-gpio    
-    //register i2c gpio
-    //config gpio58,75 to gpio function 58=32+3*8+2 75=32*2+8*1+3
-    outl( inl(0x533) | (1<<2), 0x533);
-    outl( inl(0x541) | (1<<3), 0x541);
-    
-	ret = platform_device_register(&device_i2c_gpio0);
-	if (ret) {
-		printk(KERN_ERR "i2c-gpio: device_i2c_gpio0 register fail %d\n", ret);
-	}
- #endif 
     for(i=0; i<ARRAY_SIZE(i2cdev_list); i++) {
         
         adap = i2c_get_adapter( i2cdev_list[i].ch );
@@ -212,7 +172,6 @@ static int __init inv_platform_init(void)
 }
 
 module_init(inv_platform_init);
-//arch_initcall(inv_platform_init);
 
 MODULE_AUTHOR("Inventec");
 MODULE_DESCRIPTION("Cypess Platform devices");
