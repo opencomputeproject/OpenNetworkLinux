@@ -104,6 +104,7 @@ static onlp_thermal_info_t linfo[] = {
 int
 onlp_thermali_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
@@ -146,15 +147,15 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             case THERMAL_3_ON_MAIN_BOARD:
             case THERMAL_4_ON_CPU_BOARD:
                 sprintf(device_buf, "Sensor_Temp_%d", local_id);
-                rv = dni_get_bmc_data(device_buf, &u4Data, multiplier);
+                rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier);
                 break;
             case THERMAL_5_ON_PSU1:
                 sprintf(device_buf, "PSU1_Temp_1");
-                rv = dni_get_bmc_data(device_buf, &u4Data, multiplier);
+                rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier);
                 break;
             case THERMAL_6_ON_PSU2:
                 sprintf(device_buf, "PSU2_Temp_1");
-                rv = dni_get_bmc_data(device_buf, &u4Data, multiplier);
+                rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier);
                 break;
             default:
                 AIM_LOG_ERROR("Invalid Thermal ID!!\n");

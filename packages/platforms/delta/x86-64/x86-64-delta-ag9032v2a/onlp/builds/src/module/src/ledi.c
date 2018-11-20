@@ -96,6 +96,7 @@ static onlp_led_info_t linfo[] =
 int
 onlp_ledi_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 

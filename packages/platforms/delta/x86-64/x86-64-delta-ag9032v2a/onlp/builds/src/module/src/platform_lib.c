@@ -37,9 +37,32 @@
 #include "platform_lib.h"
 #include <onlplib/i2c.h>
 #include <onlplib/mmap.h>
-#include <pthread.h>
 
-int dni_get_bmc_data(char *device_name, UINT4 *num, UINT4 multiplier)
+static onlp_shlock_t* dni_lock = NULL;
+
+#define DNI_BUS_LOCK() \
+    do{ \
+        onlp_shlock_take(dni_lock); \
+    }while(0)
+
+#define DNI_BUS_UNLOCK() \
+    do{ \
+        onlp_shlock_give(dni_lock); \
+    }while(0)
+
+#define DNILOCK_MAGIC 0xA6D2B4E8
+
+void lockinit()
+{
+    static int sem_inited = 0;
+    if(!sem_inited)
+    {   
+        onlp_shlock_create(DNILOCK_MAGIC, &dni_lock, "bus-lock");
+        sem_inited = 1;
+    }   
+}
+
+int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier)
 {
     FILE *fpRead;
     char Buf[ 10 ]={0};
@@ -71,21 +94,16 @@ dni_bmc_check()
     fptr = popen(cmd, "r");
     if(fptr != NULL)
     {
-        if(fgets(str_data, sizeof(str_data), fptr) !=NULL)
-        {
+        if(fgets(str_data, sizeof(str_data), fptr) != NULL)
             rv = strtol(str_data, NULL, 16);
-        }
-        if( rv == 1)
+        if(rv == 1)
             rv = BMC_OFF;
         else
             rv = BMC_ON;
-        pclose(fptr);
     }
     else
-    {
-        pclose(fptr);
         rv = ONLP_STATUS_E_INVALID;
-    }
+    pclose(fptr);
 
     return rv;
 }
@@ -102,19 +120,14 @@ dni_bmc_data_get(int bus, int addr, int reg, int len, int *r_data)
     fptr = popen(cmd, "r");
     if(fptr != NULL)
     {
-        if(fgets(rdata, sizeof(rdata), fptr) != NULL){
+        if(fgets(rdata, sizeof(rdata), fptr) != NULL)
             *r_data = strtol(rdata, NULL, 16);
-        }
-        else{
+        else
            rv = ONLP_STATUS_E_INVALID;
-        }
-        pclose(fptr);
     }
     else
-    {
-        pclose(fptr);
         rv = ONLP_STATUS_E_INVALID;
-    }
+    pclose(fptr);
 
     return rv;
 }
@@ -135,29 +148,29 @@ dni_bmc_fanpresent_info_get(int *r_data)
             *r_data = strtol(str_data, NULL, 16);
         else
            rv = ONLP_STATUS_E_INVALID;
-        pclose(fptr);
     }
     else
-    {
-        pclose(fptr);
         rv = ONLP_STATUS_E_INVALID;
-    }
-
+    pclose(fptr);
     return rv;
 }
 
-int hex_to_int(char hex_input){
-        int first = hex_input / 16 - 3;
-        int second = hex_input % 16;
-        int result = first*10 + second;
-        if(result > 9) result--;
+int hex_to_int(char hex_input)
+{
+    int first = hex_input / 16 - 3;
+    int second = hex_input % 16;
+    int result = first * 10 + second;
+
+    if(result > 9) result--;
         return result;
 }
 
-int hex_to_ascii(char hex_high, char hex_low){
-        int high = hex_to_int(hex_high) * 16;
-        int low = hex_to_int(hex_low);
-        return high+low;
+int hex_to_ascii(char hex_high, char hex_low)
+{
+    int high = hex_to_int(hex_high) * 16;
+    int low = hex_to_int(hex_low);
+
+    return high + low;
 }
 int dni_psu_present(int *r_data)
 {
@@ -173,13 +186,10 @@ int dni_psu_present(int *r_data)
             *r_data = strtol(str_data, NULL, 16);
         else
            rv = ONLP_STATUS_E_INVALID;
-        pclose(fptr);
     }
     else
-    {
-        pclose(fptr);
         rv = ONLP_STATUS_E_INVALID;
-    }
+    pclose(fptr);
     return rv;
 }
 
@@ -195,18 +205,19 @@ dni_psui_eeprom_info_get(char * r_data,char *device_name,int number)
     char* renewCh; 
     sprintf(cmd, "ipmitool fru print %d | grep '%s'  | awk -F':' '{print $2}'",number,device_name);
     fptr = popen(cmd, "r");
-    while( (buf = fgetc(fptr)) != EOF) {
-            if( buf != ' '){
+    while((buf = fgetc(fptr)) != EOF)
+    {
+            if( buf != ' ')
+            {
                 str_data[i] = buf;
                 i++;
             }
     }
     for(i = 0; i < PSU_NUM_LENGTH; i++)
-    {
         r_data[i] = str_data[i];
-    }
     pclose(fptr);
-    renewCh=strstr(r_data,"\n");
+
+    renewCh = strstr(r_data,"\n");
     if(renewCh)
         *renewCh= '\0';
 
@@ -217,124 +228,99 @@ dni_psui_eeprom_info_get(char * r_data,char *device_name,int number)
 int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info)
 {
     int r_data=0;
-    pthread_mutex_lock(&mutex);
-
+    DNI_BUS_LOCK();
     if(dev_info->size == 1)
         r_data = onlp_i2c_readb(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
     else
         r_data = onlp_i2c_readw(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
 
-    pthread_mutex_unlock(&mutex);
+    DNI_BUS_UNLOCK();
     return r_data;
 }
 
 int dni_i2c_lock_write( mux_info_t * mux_info, dev_info_t * dev_info)
 {
-    pthread_mutex_lock(&mutex);
+    DNI_BUS_LOCK();
     /* Write size */
     if(dev_info->size == 1)
         onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
     else
         onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
 
-    pthread_mutex_unlock(&mutex);
+    DNI_BUS_UNLOCK();
     return 0;
 }
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
 {
-    int fd, len, nbytes = 10;
-    char  r_data[10]   = {0};
 
-    pthread_mutex_lock(&mutex);
-    if ((fd = open(fullpath, O_RDONLY)) == -1)
+    int fd, nbytes = 10, rv = -1;
+    char r_data[10] = {0};
+
+    DNI_BUS_LOCK();
+    if ((fd = open(fullpath, O_RDONLY)) >= 0)
     {
-        goto ERROR;
-    }
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
-        goto ERROR;
+        if ((read(fd, r_data, nbytes)) > 0)
+            rv = atoi(r_data);
     }
     close(fd);
-    pthread_mutex_unlock(&mutex);
-    return atoi(r_data);
-ERROR:
-    close(fd);
-    pthread_mutex_unlock(&mutex);
-    return -1;
+    DNI_BUS_UNLOCK();
+    return rv;
 }
 
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath)
 {
-    int fd, len, nbytes = 10;
-    pthread_mutex_lock(&mutex);
+    int fd, nbytes = 10, rv = -1;
+    DNI_BUS_LOCK();
     /* Create output file descriptor */
-    fd = open(fullpath, O_WRONLY,  0644);
-    if (fd == -1)
+    if ((fd = open(fullpath, O_WRONLY, 0644)) >= 0)
     {
-        goto ERROR;
-    }
-    len = write (fd, data, (ssize_t) nbytes);
-    if (len != nbytes)
-    {
-        goto ERROR;
+        if (write(fd, data, (ssize_t)nbytes) > 0)
+        {
+            fsync(fd);
+            rv = 0;
+        }
     }
     close(fd);
-    pthread_mutex_unlock(&mutex);
-    return 0;
-ERROR:
-    close(fd);
-    pthread_mutex_unlock(&mutex);
-    return -1;
+    DNI_BUS_UNLOCK();
+    return rv;
 }
 /* Use this function to select MUX and read data on CPLD */
 int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
 {
-    int fd, len, nbytes = 10,data = 0;
-    char r_data[10]   = {0};
+    int fd, fd1, nbytes = 10, data = 0, rv = -1;
+    char r_data[10]  = {0};
     char address[10] = {0};
     char cpld_data_path[100] = {0};
     char cpld_addr_path[100] = {0};
     sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
     sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
     sprintf(address, "0x%02x", addr);
-    pthread_mutex_lock(&mutex1);
+    DNI_BUS_LOCK();
     /* Create output file descriptor */
-    fd = open(cpld_addr_path, O_WRONLY,  0644);
-    if (fd == -1)
+    if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
-        goto ERR_HANDLE;
-    }
-
-    len = write (fd, address, 4);
-    if (len <= 0)
-    {
-      goto ERR_HANDLE;
-    }
-    close(fd);
-
-    if ((fd = open(cpld_data_path, O_RDONLY)) == -1)
-    {
-        goto ERR_HANDLE;
-    }
-
-    if ((len = read(fd, r_data, nbytes)) <= 0)
-    {
-        goto ERR_HANDLE;
+        if (write(fd, address, 4) > 0)
+        {
+            fsync(fd);
+            if ((fd1 = open(cpld_data_path, O_RDONLY, 0644)) >= 0)
+            {
+                if ((read(fd1, r_data, nbytes)) > 0)
+                {
+                    sscanf(r_data, "%x", &data);
+                    rv = data;
+                }
+            }
+            close(fd1);
+        }
     }
     close(fd);
-    pthread_mutex_unlock(&mutex1);
-    sscanf(r_data, "%x", &data);
-    return data;
-
-    ERR_HANDLE:
-    close(fd);
-    pthread_mutex_unlock(&mutex1);
-    return -1;
+    DNI_BUS_UNLOCK();
+    return rv;
 }
 /* Use this function to select MUX and write data on CPLD */
 int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
 {
-    int fd, len;
+    int fd, fd1, rv = -1;
     char address[10] = {0};
     char datas[10] = {0};
     char cpld_data_path[100] = {0};
@@ -343,40 +329,28 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
     sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
     sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
     sprintf(address, "0x%02x", addr);
-    pthread_mutex_lock(&mutex1);
+    DNI_BUS_LOCK();
     /* Create output file descriptor */
-    fd = open(cpld_addr_path, O_WRONLY,  0644);
-    if (fd == -1)
+    if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
-        goto ERR_HANDLE;
-    }
-    len = write(fd, address, 4);
-    if(len <= 0)
-    {
-        goto ERR_HANDLE;
-    }
-    close(fd);
-
-    fd = open(cpld_data_path, O_WRONLY,  0644);
-    if (fd == -1)
-    {
-        goto ERR_HANDLE;
-    }
-    sprintf(datas, "0x%02x", data);
-    len = write (fd, datas, 4);
-    if(len <= 0)
-    {
-        goto ERR_HANDLE;
+        if ((write(fd, address, 4)) > 0)
+        {
+            fsync(fd);
+            if ((fd1 = open(cpld_data_path, O_WRONLY, 0644)) >= 0)
+            {
+                sprintf(datas, "0x%02x", data);
+                if (write(fd1, datas, 4) > 0)
+                {
+                    fsync(fd1);
+                    rv = 0;
+                }
+            }
+            close(fd1);
+          }
     }
     close(fd);
-    pthread_mutex_unlock(&mutex1);
-
-    return 0;
-
-    ERR_HANDLE:
-    close(fd);
-    pthread_mutex_unlock(&mutex1);
-    return -1;
+    DNI_BUS_UNLOCK();
+    return rv;
 }
 
 int
@@ -399,14 +373,12 @@ dni_fanpresent_info_get(int *r_data)
         {
            rv = ONLP_STATUS_E_INVALID;
         }
-        pclose(fptr);
     }
     else
     {
-        pclose(fptr);
         rv = ONLP_STATUS_E_INVALID;
     }
-
+    pclose(fptr);
     return rv;
 }
 int
@@ -415,7 +387,6 @@ dni_fan_present(int id){
     dev_info_t dev_info;
     int bit_data = 0;
     int data = 0;
-    uint8_t bit = 0x00;
     uint8_t present_bit = 0x00;
     int fantray_present = 0;
 
@@ -426,15 +397,14 @@ dni_fan_present(int id){
         if(rv == ONLP_STATUS_OK)
         {
             present_bit = bit_data;
-            data = (present_bit & ((bit+1) << -(id - 9)));
+            data = (present_bit & (1 << -(id - 9)));
             if(data == 0)
                 rv = ONLP_STATUS_OK;
             else
                 rv = ONLP_STATUS_E_INVALID;
         }
-        else{
+        else
            rv = ONLP_STATUS_E_INVALID;
-        }
     }
     else if(dni_bmc_check() == BMC_OFF){
         switch(id){
@@ -465,9 +435,9 @@ dni_fan_present(int id){
         else
             rv = ONLP_STATUS_E_INVALID;
     }
-    else{
+    else
         rv =  ONLP_STATUS_E_INVALID;
-    }
+
     return rv;
 }
 int dni_fan_speed_good()
@@ -500,46 +470,48 @@ int dni_fan_speed_good()
 
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len)
 {
-    int fd;
-    int len;
-
+    int fd,len,rv=0;
+    DNI_BUS_LOCK();
     if ((buffer == NULL) || (buf_size < 0)) {
-        return -1;
+        rv = -1;
+        goto ERROR;
     }
 
     if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;
+        rv = -1;
+        goto ERROR;
     }
 
     if ((len = read(fd, buffer, buf_size)) < 0) {
         close(fd);
-        return -1;
+        rv = -1;
+        goto ERROR;
     }
 
     if ((close(fd) == -1)) {
-        return -1;
+        rv = -1;
+        goto ERROR;
     }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
-        return -1;
+        rv = -1;
+        goto ERROR;
     }
-
-    return 0;
+ERROR:
+    DNI_BUS_UNLOCK();
+    return rv;
 }
 
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len)
 {
     int ret;
 
-    if (data_len >= buf_size) {
-            return -1;
-    }
+    if (data_len >= buf_size)
+        return -1;
 
     ret = dni_i2c_read_attribute_binary(filename, buffer, buf_size-1, data_len);
-
-    if (ret == 0) {
+    if (ret == 0)
         buffer[buf_size-1] = '\0';
-    }
 
     return ret;
 }

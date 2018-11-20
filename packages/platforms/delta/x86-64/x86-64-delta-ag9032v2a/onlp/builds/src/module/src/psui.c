@@ -76,6 +76,7 @@ dni_psu_pmbus_info_get(int id, char *node, int *value)
 int
 onlp_psui_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
@@ -106,7 +107,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     {   
         /*get psu Pin/Pout*/
         sprintf(device_name, "PSU%d_Pin",local_id);
-        if(dni_get_bmc_data(device_name, &u4Data, multiplier) == 0){
+        if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == 0){
             if (u4Data==0)
             {
                 info->status = ONLP_PSU_STATUS_FAILED;
@@ -121,7 +122,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             }
     
             sprintf(device_name, "PSU%d_Pout",local_id);
-            if(dni_get_bmc_data(device_name, &u4Data, multiplier) == 0){
+            if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == 0){
                 info->mpout  = u4Data ;
                 info->status = ONLP_PSU_STATUS_PRESENT;
                 info->caps |= ONLP_PSU_CAPS_POUT;
@@ -131,7 +132,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             }    
             //get psu Iin/Iout
             sprintf(device_name, "PSU%d_Iin",local_id);
-            if(dni_get_bmc_data(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
+            if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
                 info->miin   = u4Data ;
                 info->status = ONLP_PSU_STATUS_PRESENT;
                 info->caps |= ONLP_PSU_CAPS_IIN;
@@ -140,7 +141,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
                 info->caps |= ONLP_PSU_STATUS_UNPLUGGED;
             }
             sprintf(device_name, "PSU%d_Iout",local_id);
-            if(dni_get_bmc_data(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
+            if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
                 info->miout  = u4Data;
                 info->status = ONLP_PSU_STATUS_PRESENT;
                 info->caps |= ONLP_PSU_CAPS_IOUT;
@@ -150,7 +151,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             }
             //get psu Vin/Vout
             sprintf(device_name, "PSU%d_Vin",local_id);
-            if(dni_get_bmc_data(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
+            if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
                 info->mvin   = u4Data;
                 info->status = ONLP_PSU_STATUS_PRESENT;
                 info->caps |= ONLP_PSU_CAPS_VIN;
@@ -159,7 +160,7 @@ dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
                 info->caps |= ONLP_PSU_STATUS_UNPLUGGED;
             }    
             sprintf(device_name, "PSU%d_Vout",local_id);
-            if(dni_get_bmc_data(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
+            if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == ONLP_STATUS_OK){
                 info->mvout  = u4Data;
                 info->status = ONLP_PSU_STATUS_PRESENT;
                 info->caps |= ONLP_PSU_CAPS_VOUT;
@@ -239,6 +240,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int ret   = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
     dev_info_t dev_info;
+    char device_name[10] = {0};
+    UINT4 u4Data = 0;
+    UINT4 multiplier = 1000;
 
     VALIDATE(id);
 
@@ -257,33 +261,51 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         break;
     }
 
-    dev_info.addr = PSU_EEPROM;
-    dev_info.offset = 0x00;     /* In EEPROM address 0x00 */
-    dev_info.flags = DEFAULT_FLAG;
-
-
-    /* Check PSU have voltage input or not */
-    dni_psu_pmbus_info_get(index, "psu_v_in", &val);
-
-    /* Check PSU is PRESENT or not
-     * Read PSU EEPROM 1 byte from adress 0x00
-     * if not present, return Negative value.
-     */
-    if(val == 0 && dni_i2c_lock_read(NULL, &dev_info) < 0)
+    if(dni_bmc_check() == BMC_ON)
     {
-        /* Unable to read PSU EEPROM */
-        /* Able to read PSU VIN(psu_power_not_good) */
-        info->status |= ONLP_PSU_STATUS_FAILED;
-        return ONLP_STATUS_OK;
+        /* Check PSU have voltage input or not */
+        sprintf(device_name, "PSU%d_Vin", index);
+        if(dni_bmc_sensor_read(device_name, &u4Data, multiplier) == ONLP_STATUS_OK)
+        {
+            if(u4Data == 0)
+            {
+                info->status = ONLP_PSU_STATUS_FAILED;
+                return ret;
+            }
+            info->mpin = u4Data;
+            info->status = ONLP_PSU_STATUS_PRESENT;
+            info->caps |= ONLP_PSU_CAPS_VIN;
+        }
     }
-    else if(val == 0){
-        /* Unable to read PSU VIN(psu_power_good) */
-        info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-    }
-    else {
-        info->status |= ONLP_PSU_STATUS_PRESENT;
-    }
+    else
+    {
+            dev_info.addr = PSU_EEPROM;
+            dev_info.offset = 0x00; /* In EEPROM address 0x00 */
+            dev_info.flags = DEFAULT_FLAG;
 
+
+        /* Check PSU have voltage input or not */
+        dni_psu_pmbus_info_get(index, "psu_v_in", &val);
+
+        /* Check PSU is PRESENT or not
+         * Read PSU EEPROM 1 byte from adress 0x00
+         * if not present, return Negative value.
+         */
+        if(val == 0 && dni_i2c_lock_read(NULL, &dev_info) < 0)
+        {
+            /* Unable to read PSU EEPROM */
+            /* Able to read PSU VIN(psu_power_not_good) */
+            info->status |= ONLP_PSU_STATUS_FAILED;
+            return ONLP_STATUS_OK;
+        }
+        else if(val == 0){
+            /* Unable to read PSU VIN(psu_power_good) */
+            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+        }
+        else {
+            info->status |= ONLP_PSU_STATUS_PRESENT;
+        }
+    }
     ret = dni_psu_info_get(id,info);
     return ret;
 

@@ -86,6 +86,7 @@ onlp_sysi_platform_get(void)
 int
 onlp_sysi_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
@@ -166,6 +167,10 @@ onlp_sysi_platform_manage_fans(void)
     int i, new_percentage, highest_temp = 0;
     onlp_thermal_info_t thermal;
 
+    // if BMC is working, do not control fan
+    if(dni_bmc_check() == BMC_ON)
+        return ONLP_STATUS_OK;
+    
     /* Get all thermal current temperature and decide fan percentage */
     for(i = 1; i <= NUM_OF_THERMAL; ++i)
     {

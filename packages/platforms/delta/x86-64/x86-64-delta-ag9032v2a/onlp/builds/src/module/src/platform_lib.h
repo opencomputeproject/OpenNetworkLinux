@@ -27,7 +27,8 @@
 #define __PLATFORM_LIB_H__
 
 #include "x86_64_delta_ag9032v2a_log.h"
-
+#include <onlp/onlp.h>
+#include <onlplib/shlocks.h>
 typedef unsigned int    UINT4;
 
 /* CPLD numbrt & peripherals */
@@ -103,8 +104,6 @@ typedef unsigned int    UINT4;
 #define SFP_RESPOND_3     (0x0C)
 #define SFP_RESPOND_4     (0x0D)
 
-pthread_mutex_t mutex;
-pthread_mutex_t mutex1;
 
 typedef struct mux_info_s
 {
@@ -134,7 +133,7 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr);
 int dni_fan_present(int id);
 int dni_fan_speed_good();
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
-int dni_get_bmc_data(char *device_name, UINT4 *num, UINT4 multiplier);
+int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier);
 int dni_psui_eeprom_info_get(char *r_data,char *device_name,int number);
 int dni_bmc_check();
 int dni_bmc_fanpresent_info_get(int *r_data);
@@ -143,7 +142,7 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_psu_present(int *r_data);
 int dni_bmc_data_get(int bus, int addr, int reg, int len, int *r_data);
-
+void lockinit();
 char dev_name[50][32];
 float dev_sensor[50];
 

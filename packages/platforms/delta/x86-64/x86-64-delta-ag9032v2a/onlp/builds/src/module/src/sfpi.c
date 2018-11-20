@@ -87,6 +87,7 @@ ag9032v2a_get_respond_reg(int port){
 int  
 onlp_sfpi_init(void){
     /* Called at initialization time */
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
