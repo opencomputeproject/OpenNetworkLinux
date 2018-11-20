@@ -214,8 +214,8 @@ sfpi_eeprom_read(int port, uint8_t devaddr, uint8_t data[256])
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        data[i]   = val & 0xff;
-        data[i+1] = (val >> 8) & 0xff;
+        data[i*2]   = val & 0xff;
+        data[(i*2)+1] = (val >> 8) & 0xff;
     }
 
     return ONLP_STATUS_OK;

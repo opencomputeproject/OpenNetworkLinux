@@ -13,3 +13,4 @@ driver-support-intel-igb-bcm5461-phy.patch
 0012-i2c-busses-Add-capabilities-to-i2c-mlxcpld.patch
 driver-i2c-i2c-core.patch
 driver-add-the-support-max6620.patch
+0013-Mellanox-backport-patchwork-from-kernels-4.17-4.19.patch
