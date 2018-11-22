@@ -191,7 +191,7 @@ static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, cha
         switch(local_id)
         {
             case FAN_1_ON_PSU1:
-                if((psu_present & 0x80) != 0x80)
+                if((psu_present & 0x01) != 0x01)
                 {
                     info->rpm = rpm_data;
                     info->percentage = (info->rpm * 100) / MAX_FRONT_FAN_SPEED;
@@ -204,7 +204,7 @@ static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, cha
                 }
                 break;
             case FAN_1_ON_PSU2:
-                if((psu_present & 0x08) != 0x08)
+                if((psu_present & 0x02) != 0x02)
                 {
                     info->rpm = rpm_data;
                     info->percentage = (info->rpm * 100) / MAX_FRONT_FAN_SPEED;

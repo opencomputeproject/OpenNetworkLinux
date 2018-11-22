@@ -180,7 +180,7 @@ int dni_psu_present(int *r_data)
     char cmd[35] = {0};
     char str_data[50] = {0};
 
-    sprintf(cmd, "ipmitool raw 0x38 0x2 3 0x6a 0x03 1");
+    sprintf(cmd, "ipmitool raw 0x38 0x2 2 0x6a 0x0d 1");
     fptr = popen(cmd, "r");
     if(fptr != NULL)
     {
