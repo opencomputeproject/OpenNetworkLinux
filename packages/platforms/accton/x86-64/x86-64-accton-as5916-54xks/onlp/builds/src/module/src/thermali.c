@@ -66,7 +66,7 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {45000, 56000, 69000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2  U50", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2 U50", 0}, 
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {45000, 55000, 68000}
         },
