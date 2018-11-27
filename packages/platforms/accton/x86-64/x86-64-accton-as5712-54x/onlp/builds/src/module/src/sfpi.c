@@ -41,6 +41,32 @@
 #define MODULE_RXLOS_ALL_ATTR_CPLD2	    "/sys/bus/i2c/devices/0-0061/module_rx_los_all"
 #define MODULE_RXLOS_ALL_ATTR_CPLD3	    "/sys/bus/i2c/devices/0-0062/module_rx_los_all"
 
+static int front_port_to_driver_port(int port)
+{
+    int rport = 0;
+
+    switch (port)
+    {
+        case 49:
+            rport = 51;
+            break;
+        case 50:
+            rport = 53;
+            break;
+        case 51:
+            rport = 50;
+            break;
+        case 52:
+            rport = 52;
+            break;
+        default:
+            rport = (port + 1);
+            break;
+    }
+    
+    return rport;
+}
+
 static int front_port_bus_index(int port)
 {
     int rport = 0;
@@ -48,23 +74,23 @@ static int front_port_bus_index(int port)
     switch (port)
     {
         case 49:
-            rport = 50;
+            rport = 54;
             break;
         case 50:
-            rport = 52;
+            rport = 53;
             break;
         case 51:
-            rport = 49;
+            rport = 52;
             break;
         case 52:
             rport = 51;
             break;
         default:
-            rport = port;
+            rport = port + 2;
             break;
     }
-
-    return (rport + CPLD_MUX_BUS_START_INDEX);
+    
+    return rport;
 }
 
 /************************************************************
@@ -177,7 +203,7 @@ onlp_sfpi_is_present(int port)
     int present;
     int addr = (port < 24) ? 61 : 62;
     
-	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, addr, (port+1)) < 0) {
+	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, addr, front_port_to_driver_port(port)) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
