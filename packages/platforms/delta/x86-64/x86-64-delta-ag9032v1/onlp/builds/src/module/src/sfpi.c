@@ -38,7 +38,7 @@
 static inline int ag9032v1_sfp_get_lp_mode_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			/* port 0-7 */
-        reg_offset = SFP_LP_MODE_1;	
+        reg_offset = SFP_LP_MODE_1;
     else if (port > 7 && port < 16)	/* port 8-15 */
         reg_offset = SFP_LP_MODE_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -52,7 +52,7 @@ static inline int ag9032v1_sfp_get_lp_mode_reg(int port) {
 static inline int ag9032v1_sfp_get_reset_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			/* port 0-7 */
-        reg_offset = SFP_RESET_1;	
+        reg_offset = SFP_RESET_1;
     else if (port > 7 && port < 16)	/* port 8-15 */
         reg_offset = SFP_RESET_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -66,7 +66,7 @@ static inline int ag9032v1_sfp_get_reset_reg(int port) {
 static inline int ag9032v1_sfp_get_respond_reg(int port) {
     uint8_t reg_offset = 0x00;
     if (port < 8)			/* port 0-7 */
-        reg_offset = SFP_RESPOND_1;	
+        reg_offset = SFP_RESPOND_1;
     else if (port > 7 && port < 16)	/* port 8-15 */
         reg_offset = SFP_RESPOND_2;
     else if (port > 15 && port < 24)	/* port 16-23 */
@@ -125,7 +125,7 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 int
 onlp_sfpi_is_present(int port)
 {
-    char port_data[2] = {'\0'};
+    char port_data[3] = {'\0'};
     uint8_t present = 0;
     uint8_t present_bit = 0;
 
@@ -144,9 +144,8 @@ onlp_sfpi_is_present(int port)
         present = 1;
     } else if (present_bit == 1) {
         present = 0;
-        AIM_LOG_ERROR("Unble to present status from port(%d)\r\n", port);
     } else {
-	/* Port range over 0-31, return -1 */
+        /* Port range over 0-31, return -1 */
         AIM_LOG_ERROR("Error to present status from port(%d)\r\n", port);
         present = -1;
     }
@@ -163,7 +162,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     uint8_t bytes[4];
     int count = 0;
 
-    /* Read presence bitmap from SWPLD QSFP28 Presence Register 
+    /* Read presence bitmap from SWPLD QSFP28 Presence Register
      * if only port 0 is present, return 7F FF FF FF
      * if only port 0 and 1 present, return 3F FF FF FF
      */
@@ -171,11 +170,11 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 					 sizeof(present_all_data), 0) < 0) {
 	return -1;
     }
-	
+
     /* String split */
     r_byte = strtok(present_all_data, " ");
     while (r_byte != NULL) {
-	r_array[count++] = r_byte; 
+	r_array[count++] = r_byte;
 	r_byte = strtok(NULL, " ");
     }
 
@@ -218,7 +217,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     uint8_t sfp_response_reg = 0x00;
     uint8_t backup_response_data = 0x00;
-    char port_data[2] = {'\0'};
+    char port_data[3] = {'\0'};
 
     /* Get port respond register offset */
     sfp_response_reg = ag9032v1_sfp_get_respond_reg(port);
@@ -235,7 +234,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     memset(data, 0, 256);
 
     /* Read qsfp eeprom information into data[] */
-    if (dni_i2c_read_attribute_binary(SFP_EEPROM_PATH, 
+    if (dni_i2c_read_attribute_binary(SFP_EEPROM_PATH,
 						(char *)data, 256, 256) != 0) {
 	AIM_LOG_INFO("Unable to read eeprom from port(%d)\r\n", port);
 	return ONLP_STATUS_E_INTERNAL;
@@ -414,7 +413,7 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 int
 onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
-    char port_data[2] = {'\0'};
+    char port_data[3] = {'\0'};
 
     /* Select QSFP port */
     sprintf(port_data, "%d", port + 1);
@@ -425,13 +424,13 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 	*rv = 1;
 	break;
     case ONLP_SFP_CONTROL_RX_LOS:
-	*rv = 0; 
+	*rv = 0;
 	break;
     case ONLP_SFP_CONTROL_TX_DISABLE:
 	*rv = 0;
 	break;
     case ONLP_SFP_CONTROL_LP_MODE:
-	*rv = 1; 
+	*rv = 1;
 	break;
     default:
 	return ONLP_STATUS_OK;
@@ -444,7 +443,7 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     uint8_t value_t = 0;
-    char port_data[2] = {'\0'};
+    char port_data[3] = {'\0'};
 
     /* Select QSFP port */
     sprintf(port_data, "%d", port + 1);
@@ -479,7 +478,7 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     uint8_t value_t = 0;
-    char port_data[2] = {'\0'};
+    char port_data[3] = {'\0'};
 
     /* Select QSFP port */
     sprintf(port_data, "%d", port + 1);
@@ -493,10 +492,10 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
       	 * return 1 = The module is NOT in Reset
      	 */
 	if (*value == 0)
-	    *value = 1;			
+	    *value = 1;
 	else if (*value == 1)
-	    *value = 0;		
-	
+	    *value = 0;
+
 	value_t = ONLP_STATUS_OK;
 	break;
     case ONLP_SFP_CONTROL_RX_LOS:
