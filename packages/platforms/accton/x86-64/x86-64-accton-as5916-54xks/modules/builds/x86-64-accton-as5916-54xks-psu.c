@@ -302,8 +302,6 @@ static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct devic
         return data;
     }
 
-    mutex_lock(&data->update_lock);
-
     data->valid[pid] = 0;
 
     /* Get status from ipmi */
@@ -349,7 +347,6 @@ static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct devic
     data->valid[pid] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -364,12 +361,15 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
-    struct as5916_54xks_psu_data *data = NULL;
     int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_54xks_psu_update_device(da);
     if (!data->valid[pid]) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -385,50 +385,59 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 		case PSU1_VOUT:
 		case PSU2_VOUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_VOUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_VOUT1] << 8) * 1000;
+			value = ((u32)data->ipmi_resp[pid].status[PSU_VOUT0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_VOUT1] << 8) * 1000;
 			break;
 		case PSU1_IOUT:
 		case PSU2_IOUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_IOUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_IOUT1] << 8) * 1000;
+			value = ((u32)data->ipmi_resp[pid].status[PSU_IOUT0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_IOUT1] << 8) * 1000;
 			break;
 		case PSU1_POUT:
 		case PSU2_POUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_POUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_POUT1] << 8) * 1000;
+			value = ((u32)data->ipmi_resp[pid].status[PSU_POUT0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_POUT1] << 8) * 1000;
 			break;
 		case PSU1_TEMP_INPUT:
 		case PSU2_TEMP_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_TEMP0] |
-                     (int)data->ipmi_resp[pid].status[PSU_TEMP1] << 8) * 1000;
+			value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_TEMP1] << 8) * 1000;
 			break;
 		case PSU1_FAN_INPUT:
 		case PSU2_FAN_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_FAN0] |
-                     (int)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
+			value = ((u32)data->ipmi_resp[pid].status[PSU_FAN0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
 			break; 
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
 	}
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
-    struct as5916_54xks_psu_data *data;
     char *str = NULL;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_54xks_psu_update_device(da);
     if (!data->valid[pid]) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -443,10 +452,16 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
             str = data->ipmi_resp[pid].serial;
 			break;
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%s\n", str);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static int as5916_54xks_psu_probe(struct platform_device *pdev)
