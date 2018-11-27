@@ -105,7 +105,7 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
     int rpm = 0;
     char fullpath[100] = {0};
-    uint8_t present_bit=0x00, bit=0x00;
+    uint8_t present_bit=0x00;
 
     mux_info_t mux_info;
     mux_info.offset = SWPLD_PSU_FAN_I2C_MUX_REG;
@@ -135,35 +135,35 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     {
         case FAN_1_ON_FAN_BOARD:
         case FAN_6_ON_FAN_BOARD:
-            if((present_bit & (bit+1)) == 0)
+            if((present_bit & 1) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_2_ON_FAN_BOARD:
         case FAN_7_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<1)) == 0)
+            if((present_bit & (1<<1)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_3_ON_FAN_BOARD:
         case FAN_8_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<2)) == 0)
+            if((present_bit & (1<<2)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_4_ON_FAN_BOARD:
         case FAN_9_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<3)) == 0)
+            if((present_bit & (1<<3)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_5_ON_FAN_BOARD:
         case FAN_10_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<4)) == 0)
+            if((present_bit & (1<<4)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
@@ -245,6 +245,7 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 int
 onlp_fani_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 
