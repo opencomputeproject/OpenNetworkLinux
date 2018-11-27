@@ -15,8 +15,6 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
-//#include "I2CHostCommunication.h"
-
 #define USE_SMBUS    1
 
 /* definition */
@@ -162,7 +160,6 @@ static ssize_t set_ctl(struct device *dev,
 			   struct device_attribute *devattr,
 			   const char *buf, size_t count)
 {
-	//struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 byte;
@@ -329,8 +326,6 @@ cpld_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct cpld_data *data;
 	int status;
 
-    printk("+%s\n", __func__);
-    
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;

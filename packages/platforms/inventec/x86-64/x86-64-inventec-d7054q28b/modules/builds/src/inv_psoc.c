@@ -15,14 +15,47 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 #include <linux/delay.h>
-#include <linux/swab.h>
 
-//#include "I2CHostCommunication.h"
+#define IMPLEMENT_IPMI_CODE 1
+int USE_IPMI=0;
+
+#if IMPLEMENT_IPMI_CODE
+#include <linux/mutex.h>
+#include <linux/completion.h>
+#include <linux/ipmi.h>
+#include <linux/ipmi_smi.h>
+
+#define IPMI_MAX_INTF            (4)
+#define NETFN_OEM 0x30
+#define CMD_GETDATA 0x31
+#define CMD_SETDATA 0x32
+
+struct mutex ipmi_mutex;
+
+static void msg_handler(struct ipmi_recv_msg *msg,void* handler_data);
+static ipmi_user_t ipmi_mh_user = NULL;
+static struct ipmi_user_hndl ipmi_hndlrs = {   .ipmi_recv_hndl = msg_handler,};
+
+static atomic_t dummy_count = ATOMIC_INIT(0);
+static void dummy_smi_free(struct ipmi_smi_msg *msg)
+{
+        atomic_dec(&dummy_count);
+}
+static void dummy_recv_free(struct ipmi_recv_msg *msg)
+{
+        atomic_dec(&dummy_count);
+}
+static struct ipmi_smi_msg halt_smi_msg = {
+        .done = dummy_smi_free
+};
+static struct ipmi_recv_msg halt_recv_msg = {
+        .done = dummy_recv_free
+};
+#endif
 
 #define USE_SMBUS    1
 
-//#define offsetof(st, m) ((size_t)(&((st *)0)->m))
-#define FAN_NUM  5 
+#define FAN_NUM  4 
 #define PSU_NUM  2 
 
 struct __attribute__ ((__packed__))  psoc_psu_layout {
@@ -45,7 +78,7 @@ struct __attribute__ ((__packed__))  psoc_psu_layout {
 struct __attribute__ ((__packed__))  psoc_layout {
     u8 ctl;                 //offset: 0
     u16 switch_temp;        //offset: 1
-    u8 reserve1;            //offset: 3
+    u8 reserve0;            //offset: 3
 
     u8 fw_upgrade;          //offset: 4
 
@@ -53,55 +86,53 @@ struct __attribute__ ((__packed__))  psoc_layout {
     u8 i2c_st;              //offset: 5
     u8 i2c_ctl;             //offset: 6
     u8 i2c_addr;            //offset: 7
-    u8 i2c_data[0x20];      //offset: 8
+    u8 i2c_data[0x20];      //offset: 8 
 
     //gpo
-    u8 led_grn;             //offset: 28
-    u8 led_red;             //offset: 29
+    u8 led_ctl;             //offset: 28
+
+    u8 gpio;                //offset: 29
 
     //pwm duty
     u8 pwm[FAN_NUM];        //offset: 2a
-    u8 pwm_psu[PSU_NUM];    //offset: 2f
+    u8 pwm_psu[PSU_NUM];    //offset: 2e
 
     //fan rpm
-    u16 fan[FAN_NUM*2];     //offset: 31
-    //u16 fan_psu[PSU_NUM];
+    u16 fan[FAN_NUM*2];     //offset: 30
+    
+    u8  reserve1[4];        //offset: 40
 
     //gpi 
-    u8 gpi_fan;             //offset: 45
+    u8 gpi_fan;             //offset: 44 
 
     //psu state
-    u8 psu_state;           //offset: 46
+    u8 psu_state;           //offset: 45
 
     //temperature
-    u16 temp[5];            //offset: 47
-    u16 temp_psu[PSU_NUM];  //offset: 51
+    u16 temp[5];            //offset: 46
+    u16 temp_psu[PSU_NUM];  //offset: 50
 
     //version
-    u8 version[2];          //offset: 55
+    u8 version[2];          //offset: 54
     
-    u8  reserve2[3];        //offset: 57
+    u8  reserve2[4];        //offset: 56
     struct psoc_psu_layout psu_info;      //offset: 5a
 };        
-
 
 /* definition */
 #define PSOC_OFF(m)    offsetof(struct psoc_layout, m)
 #define PSOC_PSU_OFF(m)    offsetof(struct psoc_psu_layout, m)
 
-#define SWITCH_TMP_OFFSET       PSOC_OFF(switch_temp) //0x01
+#define SWITCH_TMP_OFFSET       PSOC_OFF(switch_temp)
 #define PWM_OFFSET              PSOC_OFF(pwm)
-#define PWM_PSU_OFFSET          PSOC_OFF(pwm_psu)
 #define THERMAL_OFFSET          PSOC_OFF(temp)
 #define RPM_OFFSET              PSOC_OFF(fan)
-//#define RPM_PSU_OFFSET              PSOC_OFF(fan_psu)
 #define DIAG_FLAG_OFFSET        PSOC_OFF(ctl)
-#define FAN_LED_OFFSET          PSOC_OFF(led_grn)
+#define FAN_LED_OFFSET          PSOC_OFF(led_ctl)
 #define FAN_GPI_OFFSET          PSOC_OFF(gpi_fan)
 #define PSOC_PSU_OFFSET         PSOC_OFF(psu_state)
 #define VERSION_OFFSET          PSOC_OFF(version)
 #define PSU_INFO_OFFSET         PSOC_OFF(psu_info)
-
 
 /* Each client has this additional data */
 struct psoc_data {
@@ -111,16 +142,90 @@ struct psoc_data {
 };
 
 /*-----------------------------------------------------------------------*/
+#if IMPLEMENT_IPMI_CODE
+static void msg_handler(struct ipmi_recv_msg *recv_msg,void* handler_data)
+{
+    struct completion *comp = recv_msg->user_msg_data;
+    if (comp)
+         complete(comp);
+    else
+        ipmi_free_recv_msg(recv_msg);
+    return;
+}
+
+int ipmi_command(char NetFn, char cmd,char *data,int data_length, char* result, int* result_length)
+{
+    int rv=0;
+    struct	ipmi_system_interface_addr addr;
+    uint8_t	_data[data_length];
+    struct	kernel_ipmi_msg msg;
+    struct	completion comp;
+
+    if(!mutex_trylock(&ipmi_mutex)) return 0;
+
+    if (rv < 0) {
+        mutex_unlock(&ipmi_mutex);
+        return rv;
+    }
+
+    addr.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE; 
+    addr.channel = IPMI_BMC_CHANNEL;  
+    addr.lun = 0;
+
+    memcpy(_data,data,data_length);
+    msg.netfn = NetFn;
+    msg.cmd = cmd;
+    msg.data = _data;
+    msg.data_len = data_length;
+
+    init_completion(&comp);
+    rv = ipmi_request_supply_msgs(ipmi_mh_user, (struct ipmi_addr*)&addr, 0,&msg, &comp, &halt_smi_msg, &halt_recv_msg, 0);
+
+    if (rv) {
+        mutex_unlock(&ipmi_mutex);
+        return -6;
+    }
+
+   wait_for_completion(&comp);
+   
+   rv=halt_recv_msg.msg.data[0];
+   if(rv==0) {
+        *result_length=halt_recv_msg.msg.data_len-1;
+	memcpy(result,&halt_recv_msg.msg.data[1],halt_recv_msg.msg.data_len-1);
+   }
+   ipmi_free_recv_msg(&halt_recv_msg);
+   mutex_unlock(&ipmi_mutex);
+   return rv;
+}
+#endif
 
 static ssize_t psoc_i2c_read(struct i2c_client *client, u8 *buf, u8 offset, size_t count)
 {
 #if USE_SMBUS    
-	int i;
+if (USE_IPMI==0)
+{
+    int i;
 	
     for(i=0; i<count; i++) {
         buf[i] = i2c_smbus_read_byte_data(client, offset+i);
     }	
     return count;
+}
+#if IMPLEMENT_IPMI_CODE
+else
+{
+    uint8_t data[2];
+    int result_len=0;
+    int rv;
+
+    data[0] = offset;
+    data[1] = count;
+
+    rv=ipmi_command(NETFN_OEM, CMD_GETDATA,data,2, buf, &result_len);
+
+    return result_len;
+}
+#endif
 #else
 	struct i2c_msg msg[2];
 	char msgbuf[2];
@@ -151,12 +256,27 @@ static ssize_t psoc_i2c_read(struct i2c_client *client, u8 *buf, u8 offset, size
 static ssize_t psoc_i2c_write(struct i2c_client *client, char *buf, unsigned offset, size_t count)
 {
 #if USE_SMBUS    
-	int i;
+if(USE_IPMI==0)
+{
+    int i;
 	
     for(i=0; i<count; i++) {
         i2c_smbus_write_byte_data(client, offset+i, buf[i]);
     }	
     return count;
+}
+#if IMPLEMENT_IPMI_CODE
+else
+{
+    uint8_t data[count+1],result[1];
+    int result_len;
+    data[0] = offset;
+    memcpy(&data[1],buf,count);
+
+    ipmi_command(NETFN_OEM, CMD_SETDATA,data,count+1, result, &result_len);	
+    return count;
+}
+#endif
 #else
 	struct i2c_msg msg;
 	int status;
@@ -182,17 +302,6 @@ static ssize_t psoc_i2c_write(struct i2c_client *client, char *buf, unsigned off
 #endif    
 }
 
-static u32 psoc_read32(struct i2c_client *client, u8 offset)
-{
-	u32 value = 0;
-	u8 buf[4];
-    
-    if( psoc_i2c_read(client, buf, offset, 4) == 4)
-        value = (buf[0]<<24 | buf[1]<<16 | buf[2]<<8 | buf[3]);
-    
-	return value;
-}
-
 static u16 psoc_read16(struct i2c_client *client, u8 offset)
 {
 	u16 value = 0;
@@ -215,18 +324,11 @@ static u8 psoc_read8(struct i2c_client *client, u8 offset)
 	return value;
 }
 
-static int psoc_write_value(struct i2c_client *client, unsigned offset, u16 value)
-{
-    //TBD
-    return 0;
-}
-
-
 //PSOC i2c bridge regsters
-#define PSOC_I2C_STATUS         PSOC_OFF(i2c_st)
-#define PSOC_I2C_CNTRL          PSOC_OFF(i2c_ctl)
-#define PSOC_I2C_ADDR           PSOC_OFF(i2c_addr)
-#define PSOC_I2C_DATA           PSOC_OFF(i2c_data)
+#define PSOC_I2C_STATUS         0x05
+#define PSOC_I2C_CNTRL          0x06
+#define PSOC_I2C_ADDR           0x07
+#define PSOC_I2C_DATA           0x08
 
 //status bit definition
 #define PSOC_I2C_START          (1 << 0)
@@ -242,74 +344,6 @@ static int psoc_write_value(struct i2c_client *client, unsigned offset, u16 valu
 #define PMBUS_READ_IOUT                 (0x8C)
 #define PMBUS_READ_POUT                 (0x96)
 #define PMBUS_READ_PIN                  (0x97)
-
-#define PMBUS_MFR_ID                    (0x99)
-#define PMBUS_MFR_MODEL                 (0x9A)
-#define PMBUS_MFR_REVISION              (0x9B)
-#define PMBUS_MFR_DATE                  (0x9D)
-#define PMBUS_MFR_SERIAL                (0x9E)
-
-static int psoc_i2c_bridge_read(struct i2c_client *client,
-                                unsigned char bus, 
-                                unsigned char chip, 
-                                char *addr,          int alen, 
-                                unsigned char *data, int len )
-{
-    unsigned char txdata[28], rxdata[28];
-    int index, timeout;
-    
-	txdata[PSOC_I2C_STATUS] = 0;		/* the status */
-	txdata[PSOC_I2C_CNTRL] = ((alen & 3) << 5) | (len & 0x1f);	/* the sizes */
-	txdata[PSOC_I2C_ADDR] = (chip << 1) | PSOC_I2C_READ;		/* read address */
-	for(index = 0; index < alen; index++)
-		txdata[PSOC_I2C_DATA + index] = addr[index];		/* the chip address */
-	for(; index < alen+len; index++)
-		txdata[PSOC_I2C_DATA + index] = 0;		/* clear the chip data */
-		
-    psoc_i2c_write(client, &txdata[PSOC_I2C_CNTRL], PSOC_I2C_CNTRL, 2 + alen + len);
-    
-    //delay a while ???
-    //---------------------------------------------------------------------
-    //start write
-    txdata[PSOC_I2C_STATUS] = PSOC_I2C_START;       /* the start bit*/
-    if(bus)
-        txdata[PSOC_I2C_STATUS] |= PSOC_PMB_SEL;/* bus id */
-    psoc_i2c_write(client, &txdata[PSOC_I2C_STATUS], PSOC_I2C_STATUS, 1);
-    
-    //delay a while
-    timeout = 40; //40*20==>800 ms
-    do {
-        psoc_i2c_read(client, &rxdata[PSOC_I2C_STATUS], PSOC_I2C_STATUS, 1);
-        
-        //check rxdata[5] error bit(1) and complete bit(0) ,TBD
-		if((rxdata[PSOC_I2C_STATUS] & 0x2) == 0x2) {
-		    //printk("i2c bridge fail!!!\n");
-			timeout = 0;
-			break;
-		}
-		if((rxdata[PSOC_I2C_STATUS] & PSOC_I2C_START) == 0) {
-		    /* comand complete */
-            psoc_i2c_read(client, &rxdata[PSOC_I2C_DATA+alen], PSOC_I2C_DATA+alen, len);
-			break;	
-		}
-		
-        //delay
-        msleep(20);
-    } while(timeout--);
-
- 	if(timeout <= 0) {
- 	    return -1;
- 	}
-    
-    //---------------------------------------------------------------------
-    
-    for(index=0; index < len; index++) {
-        data[index] = rxdata[PSOC_I2C_DATA + alen + index];
-    }
-    
-    return 0;
-}
-
 
 /*
 CPLD report the PSU0 status
@@ -357,6 +391,78 @@ static ssize_t show_psu_st(struct device *dev, struct device_attribute *da,
 /*-----------------------------------------------------------------------*/
 
 /* sysfs attributes for hwmon */
+#define PSU1		0x5800
+#define PSU2		0x5900
+#define BMC_I2cBus	3   //BMC's I2C-1
+#define PMBus_Vender	0x99
+#define PMBus_Serial	0x9E
+#define PMBus_Temp2 	0x8E
+#define PMBus_Version	0x9B
+#define MaxLeng_Result	0x20
+#define MaxLog
+static long pmbus_reg2data_linear(int data, int linear16);
+
+
+static ssize_t show_ipmi_i2c(struct device *dev, struct device_attribute *da,
+                         char *buf)
+{
+        struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	uint8_t data[4],result[MaxLeng_Result];
+	int result_len;
+
+	data[0] = BMC_I2cBus;
+	data[1] = (attr->index & 0xFF00 ) >>7;
+	data[3] = attr->index & 0xff;
+	if(data[3]==PMBus_Temp2) 
+		data[2]=2;
+	else
+		data[2]=MaxLeng_Result;
+
+	if(ipmi_command(0x06, 0x52,data,4, result, &result_len)==0)
+	{
+		if(data[3]==PMBus_Temp2)
+		{
+  			return sprintf(buf, "%ld \n", pmbus_reg2data_linear(result[0] | (result[1]<<8), 0 ));
+		}
+		result[result[0]+1]='\0';
+	
+	        return sprintf(buf, "%s\n",&result[1] );
+	}
+	else
+		return 0;
+}
+
+static ssize_t show_ipmi_sollog(struct device *dev, struct device_attribute *da,
+                         char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+        uint8_t data[5],result[256];
+	int result_len;
+	uint32_t i;
+
+	for(i=0;i<0xffffff;i+=255)
+	{
+       		data[0] = attr->index;
+       	 	data[1] = (i & 0x0000ff);
+      	  	data[2] = (i & 0x00ff00)>>8;
+        	data[3] = (i & 0xff0000)>>16;
+		data[4] = 0;
+
+		result_len=0;
+
+       	 	if(ipmi_command(0x32, 0xFE, data, 5, result, &result_len)==0)
+		{
+			if(result_len==0) break;
+			result[result_len+1]='\0';
+	 		printk("%s",result);
+		}
+		else break;
+
+		if(result_len==0) break;
+	}
+
+	return 0;
+}
 
 static ssize_t show_thermal(struct device *dev, struct device_attribute *da,
 			 char *buf)
@@ -370,13 +476,13 @@ static ssize_t show_thermal(struct device *dev, struct device_attribute *da,
 	mutex_lock(&data->update_lock);
 	
 	status = psoc_read16(client, offset);
-	status = __swab16(status);
 	
 	mutex_unlock(&data->update_lock);
 	
 	return sprintf(buf, "%d\n",
 		       (s8)(status>>8) * 1000  );
 }
+
 
 
 static ssize_t show_pwm(struct device *dev, struct device_attribute *da,
@@ -386,7 +492,7 @@ static ssize_t show_pwm(struct device *dev, struct device_attribute *da,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct psoc_data *data = i2c_get_clientdata(client);
-	u8 offset = attr->index;
+	u8 offset = attr->index  + PWM_OFFSET;
     
 	mutex_lock(&data->update_lock);
 	
@@ -405,7 +511,7 @@ static ssize_t set_pwm(struct device *dev,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct psoc_data *data = i2c_get_clientdata(client);
-	u8 offset = attr->index;
+	u8 offset = attr->index  + PWM_OFFSET;
 
 	u8 pwm = simple_strtol(buf, NULL, 10);
 	if(pwm > 255) pwm = 255;
@@ -427,45 +533,16 @@ static ssize_t show_rpm(struct device *dev, struct device_attribute *da,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct psoc_data *data = i2c_get_clientdata(client);
-	u8 offset = attr->index;
+	u8 offset = attr->index*2  + RPM_OFFSET;
     
 	mutex_lock(&data->update_lock);
 	
 	status = psoc_read16(client, offset);
-	status = __swab16(status);
 	
 	mutex_unlock(&data->update_lock);
 	
 	return sprintf(buf, "%d\n",
 		       status);
-}
-static ssize_t show_fan_type(struct device *dev, struct device_attribute *da,
-			 char *buf)
-{
-	u8 status;
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	struct i2c_client *client = to_i2c_client(dev);
-	struct psoc_data *data = i2c_get_clientdata(client);
-	u8 index = attr->index;
-	int type = -1;
-    
-	mutex_lock(&data->update_lock);
-	status = psoc_read8(client, FAN_GPI_OFFSET);
-	mutex_unlock(&data->update_lock);
-
-	if( (status & 1<<index) == 0) {
-	    if( (status & 1<<(index+4) ) == 0) {
-	        type = 1;//NORMAL FAN
-	    }
-	    else {
-	        type = 2;//REVERSAL FAN
-	    }
-	}
-	else {
-	    type = 0;//UNPLUGGED
-	}
-	
-	return sprintf(buf, "%d\n", type);
 }
 
 static ssize_t show_switch_tmp(struct device *dev, struct device_attribute *da,
@@ -478,7 +555,6 @@ static ssize_t show_switch_tmp(struct device *dev, struct device_attribute *da,
     
 	mutex_lock(&data->update_lock);
     status = psoc_i2c_read(client, (u8*)&temp, SWITCH_TMP_OFFSET, 2);
-	status = __swab16(status);
 	mutex_unlock(&data->update_lock);
 	
 	status = sprintf (buf, "%d\n",  (s8)(temp>>8) * 1000  );
@@ -534,7 +610,7 @@ static ssize_t set_diag(struct device *dev,
 	u8 value = 0;
 	u8 diag = simple_strtol(buf, NULL, 10);
 	
-	diag = diag?1:0;
+    diag = diag?1:0;
 	data->diag = diag;
 	    
 	mutex_lock(&data->update_lock);
@@ -655,47 +731,6 @@ static long pmbus_reg2data_linear(int data, int linear16)
     return val;
 }
 
-static ssize_t show_psu(struct device *dev, struct device_attribute *da,
-			 char *buf)
-{
-	int status;
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	struct i2c_client *client = to_i2c_client(dev);
-	struct psoc_data *data = i2c_get_clientdata(client);
-	u8 reg  = attr->index & 0xFF;
-    u8 len  = ((attr->index & 0xFF00) >> 8);
-	u8 chip = (attr->index >> 16)? 0x59:0x58;
-	u8 bus  = 1;
-	unsigned char value[2] = {0,0};;    
-
-	if (len == 2)
-	{
-		mutex_lock(&data->update_lock);
-		psoc_i2c_bridge_read(client, bus, chip, &reg, 1, value, 2);
-		mutex_unlock(&data->update_lock);
-	
-		status =  value[1]<<8 | value[0];
-		//status1 =  value[1]<<8 | value[0];
-	
-		return sprintf(buf, "%ld\n", pmbus_reg2data_linear(status, (reg==PMBUS_READ_VOUT)?1:0) );
-	}
-	else
-	{	//len is not defined.
-        u8 tmpbuf[32];
-		mutex_lock(&data->update_lock);
-        //length of block read
-		psoc_i2c_bridge_read(client, bus, chip, &reg, 1, &len, 1);
-        //data included length
-		psoc_i2c_bridge_read(client, bus, chip, &reg, 1, tmpbuf, len+1); 
-		mutex_unlock(&data->update_lock);
-
-		memcpy(buf, tmpbuf+1, len);	
-		buf[len]='\n';
-
-		return len+1;
-	}
-}
-
 static ssize_t show_psu_psoc(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
@@ -713,6 +748,7 @@ static ssize_t show_psu_psoc(struct device *dev, struct device_attribute *da,
 }
 
 
+
 static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO,			show_thermal, 0, 0);
 static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO,			show_thermal, 0, 1);
 static SENSOR_DEVICE_ATTR(temp3_input, S_IRUGO,			show_thermal, 0, 2);
@@ -721,33 +757,26 @@ static SENSOR_DEVICE_ATTR(temp5_input, S_IRUGO,			show_thermal, 0, 4);
 static SENSOR_DEVICE_ATTR(thermal_psu1, S_IRUGO,		show_thermal, 0, 5);
 static SENSOR_DEVICE_ATTR(thermal_psu2, S_IRUGO,		show_thermal, 0, 6);
 
-static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+0);
-static SENSOR_DEVICE_ATTR(pwm2, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+1);
-static SENSOR_DEVICE_ATTR(pwm3, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+2);
-static SENSOR_DEVICE_ATTR(pwm4, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+3);
-#if (FAN_NUM >= 5)
-static SENSOR_DEVICE_ATTR(pwm5, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, PWM_OFFSET+4);
-#endif
-static SENSOR_DEVICE_ATTR(pwm_psu1, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, PWM_PSU_OFFSET+0);
-static SENSOR_DEVICE_ATTR(pwm_psu2, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, PWM_PSU_OFFSET+1);
+static SENSOR_DEVICE_ATTR(pwm1, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, 0);
+static SENSOR_DEVICE_ATTR(pwm2, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, 1);
+static SENSOR_DEVICE_ATTR(pwm3, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, 2);
+static SENSOR_DEVICE_ATTR(pwm4, S_IWUSR|S_IRUGO,			show_pwm, set_pwm, 3);
+static SENSOR_DEVICE_ATTR(pwm_psu1, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, 4);
+static SENSOR_DEVICE_ATTR(pwm_psu2, S_IWUSR|S_IRUGO,		show_pwm, set_pwm, 5);
 
 static SENSOR_DEVICE_ATTR(psu0,  S_IRUGO,			        show_psu_st, 0, 0);
 static SENSOR_DEVICE_ATTR(psu1,  S_IRUGO,			        show_psu_st, 0, 1);
 
-static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO,			show_rpm, 0, 0*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan2_input, S_IRUGO,			show_rpm, 0, 1*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan3_input, S_IRUGO,			show_rpm, 0, 2*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan4_input, S_IRUGO,			show_rpm, 0, 3*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan5_input, S_IRUGO,			show_rpm, 0, 4*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO,			show_rpm, 0, 5*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO,			show_rpm, 0, 6*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan8_input, S_IRUGO,			show_rpm, 0, 7*2  + RPM_OFFSET);
-#if (FAN_NUM >= 5)
-static SENSOR_DEVICE_ATTR(fan9_input, S_IRUGO,			show_rpm, 0, 8*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(fan10_input, S_IRUGO,			show_rpm, 0, 9*2  + RPM_OFFSET);
-#endif
-static SENSOR_DEVICE_ATTR(rpm_psu1, S_IRUGO,		show_rpm, 0, 8*2  + RPM_OFFSET);
-static SENSOR_DEVICE_ATTR(rpm_psu2, S_IRUGO,		show_rpm, 0, 9*2  + RPM_OFFSET);
+static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO,			show_rpm, 0, 0);
+static SENSOR_DEVICE_ATTR(fan2_input, S_IRUGO,			show_rpm, 0, 1);
+static SENSOR_DEVICE_ATTR(fan3_input, S_IRUGO,			show_rpm, 0, 2);
+static SENSOR_DEVICE_ATTR(fan4_input, S_IRUGO,			show_rpm, 0, 3);
+static SENSOR_DEVICE_ATTR(fan5_input, S_IRUGO,			show_rpm, 0, 4);
+static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO,			show_rpm, 0, 5);
+static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO,			show_rpm, 0, 6);
+static SENSOR_DEVICE_ATTR(fan8_input, S_IRUGO,			show_rpm, 0, 7);
+static SENSOR_DEVICE_ATTR(rpm_psu1, S_IRUGO,		show_rpm, 0, 8);
+static SENSOR_DEVICE_ATTR(rpm_psu2, S_IRUGO,		show_rpm, 0, 9);
 
 static SENSOR_DEVICE_ATTR(switch_tmp, S_IWUSR|S_IRUGO,			show_switch_tmp, set_switch_tmp, 0);
 
@@ -764,38 +793,7 @@ static SENSOR_DEVICE_ATTR(fan_led_red3, S_IWUSR|S_IRUGO,			show_fan_led, set_fan
 static SENSOR_DEVICE_ATTR(fan_led_red4, S_IWUSR|S_IRUGO,			show_fan_led, set_fan_led, 7);
 
 static SENSOR_DEVICE_ATTR(fan_gpi,      S_IRUGO,			        show_value8,  0,           FAN_GPI_OFFSET);
-static SENSOR_DEVICE_ATTR(fan1_type, S_IRUGO,			show_fan_type, 0, 0);
-static SENSOR_DEVICE_ATTR(fan2_type, S_IRUGO,			show_fan_type, 0, 1);
-static SENSOR_DEVICE_ATTR(fan3_type, S_IRUGO,			show_fan_type, 0, 2);
-static SENSOR_DEVICE_ATTR(fan4_type, S_IRUGO,			show_fan_type, 0, 3);
-
-static SENSOR_DEVICE_ATTR(psu1_vin,      S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_VIN);
-static SENSOR_DEVICE_ATTR(psu1_vout,     S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_VOUT);
-static SENSOR_DEVICE_ATTR(psu1_iin,      S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_IIN);
-static SENSOR_DEVICE_ATTR(psu1_iout,     S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_IOUT);
-static SENSOR_DEVICE_ATTR(psu1_pin,      S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_PIN);
-static SENSOR_DEVICE_ATTR(psu1_pout,     S_IRUGO,			        show_psu,  0,           (0<<16) | (2<<8) | PMBUS_READ_POUT);
-
-static SENSOR_DEVICE_ATTR(psu1_vendor,   S_IRUGO,			        show_psu,  0,           (0<<16) | (0<<8) | PMBUS_MFR_ID);
-static SENSOR_DEVICE_ATTR(psu1_model,    S_IRUGO,			        show_psu,  0,           (0<<16) | (0<<8) | PMBUS_MFR_MODEL);
-static SENSOR_DEVICE_ATTR(psu1_version,  S_IRUGO,			        show_psu,  0,           (0<<16) | (0<<8) | PMBUS_MFR_REVISION);
-static SENSOR_DEVICE_ATTR(psu1_date,     S_IRUGO,			        show_psu,  0,           (0<<16) | (0<<8) | PMBUS_MFR_DATE);
-static SENSOR_DEVICE_ATTR(psu1_sn,       S_IRUGO,			        show_psu,  0,           (0<<16) | (0<<8) | PMBUS_MFR_SERIAL);
-
-static SENSOR_DEVICE_ATTR(psu2_vin,      S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_VIN);
-static SENSOR_DEVICE_ATTR(psu2_vout,     S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_VOUT);
-static SENSOR_DEVICE_ATTR(psu2_iin,      S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_IIN);
-static SENSOR_DEVICE_ATTR(psu2_iout,     S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_IOUT);
-static SENSOR_DEVICE_ATTR(psu2_pin,      S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_PIN);
-static SENSOR_DEVICE_ATTR(psu2_pout,     S_IRUGO,			        show_psu,  0,           (1<<16) | (2<<8) | PMBUS_READ_POUT);
-
-static SENSOR_DEVICE_ATTR(psu2_vendor,   S_IRUGO,			        show_psu,  0,           (1<<16) | (0<<8) | PMBUS_MFR_ID);
-static SENSOR_DEVICE_ATTR(psu2_model,    S_IRUGO,			        show_psu,  0,           (1<<16) | (0<<8) | PMBUS_MFR_MODEL);
-static SENSOR_DEVICE_ATTR(psu2_version,  S_IRUGO,			        show_psu,  0,           (1<<16) | (0<<8) | PMBUS_MFR_REVISION);
-static SENSOR_DEVICE_ATTR(psu2_date,     S_IRUGO,			        show_psu,  0,           (1<<16) | (0<<8) | PMBUS_MFR_DATE);
-static SENSOR_DEVICE_ATTR(psu2_sn,       S_IRUGO,			        show_psu,  0,           (1<<16) | (0<<8) | PMBUS_MFR_SERIAL);
-		
-static SENSOR_DEVICE_ATTR(psoc_psu1_vin,      S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu1_vin));
+static SENSOR_DEVICE_ATTR(psoc_psu1_vin,      S_IRUGO,                          show_psu_psoc,  0,           PSOC_PSU_OFF(psu1_vin));
 static SENSOR_DEVICE_ATTR(psoc_psu1_vout,     S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu1_vout));
 static SENSOR_DEVICE_ATTR(psoc_psu1_iin,      S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu1_iin));
 static SENSOR_DEVICE_ATTR(psoc_psu1_iout,     S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu1_iout));
@@ -809,7 +807,21 @@ static SENSOR_DEVICE_ATTR(psoc_psu2_iin,      S_IRUGO,			        show_psu_psoc, 
 static SENSOR_DEVICE_ATTR(psoc_psu2_iout,     S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu2_iout));
 static SENSOR_DEVICE_ATTR(psoc_psu2_pin,      S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu2_pin)); 
 static SENSOR_DEVICE_ATTR(psoc_psu2_pout,     S_IRUGO,			        show_psu_psoc,  0,           PSOC_PSU_OFF(psu2_pout));
-			
+
+//IPMI
+static SENSOR_DEVICE_ATTR(thermal2_psu1,	S_IRUGO,                show_ipmi_i2c, 0, PSU1 | PMBus_Temp2);
+static SENSOR_DEVICE_ATTR(psoc_psu1_vender,	S_IRUGO,                show_ipmi_i2c, 0, PSU1 | PMBus_Vender);
+static SENSOR_DEVICE_ATTR(psoc_psu1_serial,	S_IRUGO,                show_ipmi_i2c, 0, PSU1 | PMBus_Serial);
+static SENSOR_DEVICE_ATTR(psoc_psu1_version,	S_IRUGO,                show_ipmi_i2c, 0, PSU1 | PMBus_Version);
+
+static SENSOR_DEVICE_ATTR(thermal2_psu2,        S_IRUGO,                show_ipmi_i2c, 0, PSU2 | PMBus_Temp2);
+static SENSOR_DEVICE_ATTR(psoc_psu2_vender,     S_IRUGO,                show_ipmi_i2c, 0, PSU2 | PMBus_Vender);
+static SENSOR_DEVICE_ATTR(psoc_psu2_serial,     S_IRUGO,                show_ipmi_i2c, 0, PSU2 | PMBus_Serial);
+static SENSOR_DEVICE_ATTR(psoc_psu2_version,    S_IRUGO,                show_ipmi_i2c, 0, PSU2 | PMBus_Version);
+
+static SENSOR_DEVICE_ATTR(sollog1,     S_IRUGO,                show_ipmi_sollog, 0, 1);
+static SENSOR_DEVICE_ATTR(sollog2,     S_IRUGO,                show_ipmi_sollog, 0, 2);
+ 
 static struct attribute *psoc_attributes[] = {
     //thermal
 	&sensor_dev_attr_temp1_input.dev_attr.attr,
@@ -827,9 +839,6 @@ static struct attribute *psoc_attributes[] = {
 	&sensor_dev_attr_pwm2.dev_attr.attr,
 	&sensor_dev_attr_pwm3.dev_attr.attr,
 	&sensor_dev_attr_pwm4.dev_attr.attr,
-#if (FAN_NUM >= 5)
-	//&sensor_dev_attr_pwm5.dev_attr.attr,
-#endif
 	&sensor_dev_attr_pwm_psu1.dev_attr.attr,
 	&sensor_dev_attr_pwm_psu2.dev_attr.attr,
 	
@@ -842,10 +851,6 @@ static struct attribute *psoc_attributes[] = {
 	&sensor_dev_attr_fan6_input.dev_attr.attr,
 	&sensor_dev_attr_fan7_input.dev_attr.attr,
 	&sensor_dev_attr_fan8_input.dev_attr.attr,
-#if (FAN_NUM >= 5)
-	//&sensor_dev_attr_fan9_input.dev_attr.attr,
-	//&sensor_dev_attr_fan10_input.dev_attr.attr,
-#endif
 	
 	&sensor_dev_attr_rpm_psu1.dev_attr.attr,
 	&sensor_dev_attr_rpm_psu2.dev_attr.attr,
@@ -871,40 +876,9 @@ static struct attribute *psoc_attributes[] = {
 
 	//fan GPI 
 	&sensor_dev_attr_fan_gpi.dev_attr.attr,
-
-	//fan type
-	&sensor_dev_attr_fan1_type.dev_attr.attr,
-	&sensor_dev_attr_fan2_type.dev_attr.attr,
-	&sensor_dev_attr_fan3_type.dev_attr.attr,
-	&sensor_dev_attr_fan4_type.dev_attr.attr,
-	
-	//psu
-	&sensor_dev_attr_psu1_vin.dev_attr.attr,
-	&sensor_dev_attr_psu1_vout.dev_attr.attr,
-	&sensor_dev_attr_psu1_iin.dev_attr.attr,
-	&sensor_dev_attr_psu1_iout.dev_attr.attr,
-	&sensor_dev_attr_psu1_pin.dev_attr.attr,
-	&sensor_dev_attr_psu1_pout.dev_attr.attr,
-	&sensor_dev_attr_psu2_vin.dev_attr.attr,
-	&sensor_dev_attr_psu2_vout.dev_attr.attr,
-	&sensor_dev_attr_psu2_iin.dev_attr.attr,
-	&sensor_dev_attr_psu2_iout.dev_attr.attr,
-	&sensor_dev_attr_psu2_pin.dev_attr.attr,
-	&sensor_dev_attr_psu2_pout.dev_attr.attr,
-
-	&sensor_dev_attr_psu1_vendor.dev_attr.attr,
-	&sensor_dev_attr_psu1_model.dev_attr.attr,
-	&sensor_dev_attr_psu1_version.dev_attr.attr,
-	&sensor_dev_attr_psu1_date.dev_attr.attr,
-	&sensor_dev_attr_psu1_sn.dev_attr.attr,
-	&sensor_dev_attr_psu2_vendor.dev_attr.attr,
-	&sensor_dev_attr_psu2_model.dev_attr.attr,
-	&sensor_dev_attr_psu2_version.dev_attr.attr,
-	&sensor_dev_attr_psu2_date.dev_attr.attr,
-	&sensor_dev_attr_psu2_sn.dev_attr.attr,
-
 	&sensor_dev_attr_psu0.dev_attr.attr,
 	&sensor_dev_attr_psu1.dev_attr.attr,
+
 
 	//psu_psoc, new added on psoc 1.9
 	&sensor_dev_attr_psoc_psu1_vin.dev_attr.attr,
@@ -919,6 +893,20 @@ static struct attribute *psoc_attributes[] = {
 	&sensor_dev_attr_psoc_psu2_iout.dev_attr.attr,
 	&sensor_dev_attr_psoc_psu2_pin.dev_attr.attr,
 	&sensor_dev_attr_psoc_psu2_pout.dev_attr.attr,
+
+	//ipmi_command
+	&sensor_dev_attr_thermal2_psu1.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu1_vender.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu1_serial.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu1_version.dev_attr.attr,
+
+	&sensor_dev_attr_thermal2_psu2.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu2_vender.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu2_serial.dev_attr.attr,
+	&sensor_dev_attr_psoc_psu2_version.dev_attr.attr,
+
+        &sensor_dev_attr_sollog1.dev_attr.attr,
+        &sensor_dev_attr_sollog2.dev_attr.attr,
 
 	NULL
 };
@@ -935,7 +923,7 @@ static int
 psoc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct psoc_data *data;
-	int status;
+	int status,i,rv;
 
     printk("+%s\n", __func__);
     
@@ -951,6 +939,17 @@ psoc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	mutex_init(&data->update_lock);
 	data->diag    = 0;
 	
+#if IMPLEMENT_IPMI_CODE
+        for (i=0,rv=1; i<IPMI_MAX_INTF && rv; i++) {
+             rv = ipmi_create_user(i, &ipmi_hndlrs, NULL, &ipmi_mh_user);
+        }
+        if(rv==0) {
+                USE_IPMI=1;
+               // ipmi_destroy_user(ipmi_mh_user);
+                printk(" Enable IPMI PSoC protocol.\n");
+		mutex_init(&ipmi_mutex);
+        }
+#endif
 	/* Register sysfs hooks */
 	status = sysfs_create_group(&client->dev.kobj, &psoc_group);
 	if (status)

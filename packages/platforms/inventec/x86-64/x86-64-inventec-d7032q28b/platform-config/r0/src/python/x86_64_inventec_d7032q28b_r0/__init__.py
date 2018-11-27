@@ -12,4 +12,9 @@ class OnlPlatform_x86_64_inventec_d7032q28b_r0(OnlPlatformInventec,
         self.insmod('inv_platform')
         self.insmod('inv_psoc')
         self.insmod('inv_cpld')
+	self.new_i2c_device('inv_eeprom', 0x53, 0)
+        self.insmod('inv_eeprom')
+        self.insmod('swps')
+        self.insmod('vpd')
+        self.insmod('inv_pthread')
         return True
