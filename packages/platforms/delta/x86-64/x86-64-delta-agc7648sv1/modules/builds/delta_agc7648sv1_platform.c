@@ -2752,7 +2752,7 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
     ret = dni_bmc_exist_check();
 
     if ( mux->data.base_nr == BUS2_QSFP_BASE_NUM ){
-        /* QSFP module selection */
+        /* Set QSFP module respond */
         swpld1_qsfp_modsel_val = SWPLD1_QSFP_MODSEL_VAL & (~(1 << chan));
         if (ret == 0) //BMC monitor on
         {
@@ -2779,6 +2779,24 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
         swpld3_mux_val = chan;
     }
     else if ( mux->data.base_nr == BUS2_SFP_BASE_NUM ){
+        /* Disable all QSFP modules respond */
+        swpld1_qsfp_modsel_val |= SWPLD1_QSFP_MODSEL_VAL;
+        if (ret == 0) //BMC monitor on
+        {
+            set_cmd = CMD_SETDATA;
+            cmd_data[0] = BMC_SWPLD_BUS;
+            cmd_data[1] = SWPLD1_ADDR;
+            cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
+            cmd_data[3] = swpld1_qsfp_modsel_val;
+            cmd_data_len = sizeof(cmd_data);
+			dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        }
+        else //BMC monitor off or BMC is not exist
+        {
+            if (cpld_reg_write_byte(pdata[swpld1].client, SWPLD1_QSFP_MODSEL_REG, swpld1_qsfp_modsel_val) < 0)
+                return -EIO;
+        }
+
         /* SFP port 51-59, 9 ports, chan 0-8 */
         if ( chan < SWPLD3_SFP_PORT_9 ){
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH1_EN << 4;
