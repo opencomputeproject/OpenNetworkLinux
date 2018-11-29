@@ -797,13 +797,25 @@ static struct i2c_device_platform_data agc7648sv1_i2c_device_platform_data[] = {
         .client = NULL,
     },
     {
-        // PSU 1
+        // PSU 1 eeprom
+        .parent = 31,
+        .info = { I2C_BOARD_INFO("24c02", 0x50) },
+        .client = NULL,
+    },
+    {
+        // PSU 2 eeprom
+        .parent = 32,
+        .info = { I2C_BOARD_INFO("24c02", 0x50) },
+        .client = NULL,
+    },
+    {
+        // PSU 1 control
         .parent = 31,
         .info = { I2C_BOARD_INFO("dni_agc7648sv1_psu", 0x58) },
         .client = NULL,
     },
     {
-        // PSU 2
+        // PSU 2 control
         .parent = 32,
         .info = { I2C_BOARD_INFO("dni_agc7648sv1_psu", 0x58) },
         .client = NULL,
@@ -1200,6 +1212,8 @@ static struct platform_device agc7648sv1_i2c_device[] = {
     agc7648sv1_i2c_device_num(62),
     agc7648sv1_i2c_device_num(63),
     agc7648sv1_i2c_device_num(64),
+    agc7648sv1_i2c_device_num(65),
+    agc7648sv1_i2c_device_num(66),
 };
 /* ---------------- I2C device - end ------------- */
 
