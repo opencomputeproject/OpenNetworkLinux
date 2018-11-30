@@ -452,6 +452,7 @@ class OnlPlatformBase(object):
         s = """Model: %s
 Manufacturer: %s
 Ports: %s (%s)
+Platform Revision: %s
 System Object Id: %s
 System Information:
 %s
@@ -461,6 +462,7 @@ System Information:
             self.MANUFACTURER,
             self.PORT_COUNT,
             self.PORT_CONFIG,
+            self.PLATFORM.split('-')[-1],
             self.sys_object_id(),
             str(self.onie_info),
             str(self.platform_info),
