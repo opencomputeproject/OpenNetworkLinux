@@ -96,6 +96,10 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
         return PSU_TYPE_AC_YM2851_F2B;
     }
 
+    if (strncmp(model, "YM-2851J", strlen("YM-2851J")) == 0) {
+        return PSU_TYPE_AC_YM2851_F2B;
+    }
+
     return PSU_TYPE_UNKNOWN;
 }
 
