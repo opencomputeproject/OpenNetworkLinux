@@ -22,26 +22,7 @@
         }                                       \
     } while(0)
 
-enum onlp_thermal_id
-{
-    THERMAL_RESERVED = 0,
-    THERMAL_CPU_CORE_FIRST,
-    THERMAL_CPU_CORE_2,
-    THERMAL_CPU_CORE_3,
-    THERMAL_CPU_CORE_4,
-    THERMAL_CPU_CORE_LAST,
-    THERMAL_1_ON_MAIN_BROAD,
-    THERMAL_2_ON_MAIN_BROAD,
-    THERMAL_3_ON_MAIN_BROAD,
-    THERMAL_4_ON_MAIN_BROAD,
-    THERMAL_5_ON_MAIN_BROAD,
-    THERMAL_1_ON_PSU1,
-    THERMAL_1_ON_PSU2,
-    THERMAL_2_ON_PSU1,
-    THERMAL_2_ON_PSU2,
-};
-
-static char* devfiles__[CHASSIS_THERMAL_COUNT+1] =  /* must map with onlp_thermal_id */
+static char* devfiles__[THERMAL_MAX] =  /* must map with onlp_thermal_id */
 {
     "reserved",
     INV_CTMP_PREFIX"/temp1_%s",
@@ -55,13 +36,13 @@ static char* devfiles__[CHASSIS_THERMAL_COUNT+1] =  /* must map with onlp_therma
     INV_PSOC_PREFIX"/temp4_input",
     INV_PSOC_PREFIX"/temp5_input",
     INV_PSOC_PREFIX"/thermal_psu1",
-    INV_PSOC_PREFIX"/thermal_psu2",
     INV_PSOC_PREFIX"/thermal2_psu1",
+    INV_PSOC_PREFIX"/thermal_psu2",
     INV_PSOC_PREFIX"/thermal2_psu2",
 };
 
 /* Static values */
-static onlp_thermal_info_t linfo[CHASSIS_THERMAL_COUNT+1] = {
+static onlp_thermal_info_t linfo[THERMAL_MAX] = {
 	{ }, /* Not used */
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE_FIRST), "Physical id 0", 0},
             ONLP_THERMAL_STATUS_PRESENT,
@@ -107,11 +88,11 @@ static onlp_thermal_info_t linfo[CHASSIS_THERMAL_COUNT+1] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID)},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID)},
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },

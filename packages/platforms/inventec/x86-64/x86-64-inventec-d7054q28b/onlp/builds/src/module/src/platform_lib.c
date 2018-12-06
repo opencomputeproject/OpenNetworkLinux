@@ -45,8 +45,8 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define I2C_PSU_MODEL_NAME_LEN 11
-#define I2C_PSU_FAN_DIR_LEN    3
+#define I2C_PSU_MODEL_NAME_LEN 32
+#define I2C_PSU_FAN_DIR_LEN    8
 #include <ctype.h>
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
@@ -62,7 +62,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     }
 
     if(isspace(model_name[strlen(model_name)-1])) {
-        model_name[strlen(model_name)-1] = 0;
+        model_name[strlen(model_name)] = 0;
     }
 
     if (strncmp(model_name, "YM-2651Y", 8) == 0) {
@@ -125,6 +125,14 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	        return PSU_TYPE_DC_12V_FANLESS;
 	    }
 	}
+
+	if (strncmp(model_name, "DPS-150AB-10", 12) == 0) {
+	    if (modelname) {
+			strncpy(modelname, model_name, 12);
+	    }
+
+	    return PSU_TYPE_DC_12V_F2B;
+        }
 
     return PSU_TYPE_UNKNOWN;
 }

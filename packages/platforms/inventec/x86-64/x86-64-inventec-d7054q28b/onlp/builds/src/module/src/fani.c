@@ -23,21 +23,7 @@
 #define PROJECT_NAME
 #define LEN_FILE_NAME 80
 
-enum fan_id {
-	FAN_RESERVED,
-	FAN_1_ON_MAIN_BOARD,
-	FAN_2_ON_MAIN_BOARD,
-	FAN_3_ON_MAIN_BOARD,
-	FAN_4_ON_MAIN_BOARD,
-	FAN_5_ON_MAIN_BOARD,
-	FAN_6_ON_MAIN_BOARD,
-	FAN_7_ON_MAIN_BOARD,
-	FAN_8_ON_MAIN_BOARD,
-	FAN_1_ON_PSU1,
-	FAN_1_ON_PSU2,
-};
-
-static char* devfiles__[CHASSIS_FAN_COUNT+1] =  /* must map with onlp_thermal_id */
+static char* devfiles__[FAN_MAX] =  /* must map with onlp_thermal_id */
 {
     "reserved",
     INV_PSOC_PREFIX"/fan1_input",
@@ -73,7 +59,7 @@ static char* devfiles__[CHASSIS_FAN_COUNT+1] =  /* must map with onlp_thermal_id
     }
 
 /* Static fan information */
-onlp_fan_info_t linfo[] = {
+onlp_fan_info_t linfo[FAN_MAX] = {
     { }, /* Not used */
     MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(1),
     MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(2),
@@ -163,7 +149,7 @@ _onlp_get_fan_direction_on_psu(void)
 static int
 _onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
 {
-    int   value, ret;
+    int   value, ret, index;
     char  vstr[32], *vstrp = vstr, **vp = &vstrp;
 
     info->status |= ONLP_FAN_STATUS_PRESENT;
@@ -172,6 +158,12 @@ _onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
     /* get fan direction */
     info->status |= _onlp_get_fan_direction_on_psu();
 
+    if (info->status & ONLP_FAN_STATUS_FAILED) {
+	return ONLP_STATUS_OK;
+    }
+
+    index = ONLP_OID_ID_GET(info->hdr.id);
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
     /* get front fan speed */
     memset(vstr, 0, 32);
     ret = onlp_file_read_str(vp, devfiles__[fid]);
@@ -188,7 +180,6 @@ _onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
 
     return ONLP_STATUS_OK;
 }
-
 
 /*
  * This function will be called prior to all of onlp_fani_* functions.
@@ -208,7 +199,6 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     local_id = ONLP_OID_ID_GET(id);
     *info = linfo[local_id];
-
     switch (local_id)
     {
 	case FAN_1_ON_PSU1:
@@ -259,9 +249,9 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     switch (fid)
         {
         case FAN_1_ON_PSU1:
-                        return psu_pmbus_info_set(PSU1_ID, "rpm_psu", p);
+                        return psu_pmbus_info_set(PSU1_ID, "rpm_psu1", p);
         case FAN_1_ON_PSU2:
-                        return psu_pmbus_info_set(PSU2_ID, "rpm_psu", p);
+                        return psu_pmbus_info_set(PSU2_ID, "rpm_psu2", p);
         case FAN_1_ON_MAIN_BOARD:
         case FAN_2_ON_MAIN_BOARD:
         case FAN_3_ON_MAIN_BOARD:

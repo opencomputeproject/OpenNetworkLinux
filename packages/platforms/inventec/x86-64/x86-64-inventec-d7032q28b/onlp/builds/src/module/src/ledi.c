@@ -25,18 +25,7 @@
         }                                       \
     } while(0)
 
-/* LED related data */
-enum onlp_led_id
-{
-    LED_RESERVED = 0,
-    LED_SYS,
-    LED_FAN1,
-    LED_FAN2,
-    LED_FAN3,
-    LED_FAN4
-};
-        
-static char* devfiles__[CHASSIS_LED_COUNT+1] =  /* must map with onlp_thermal_id */
+static char* devfiles__[LED_MAX] =  /* must map with onlp_thermal_id */
 {
     "reserved",
     INV_CPLD_PREFIX"/%s_led",
@@ -90,7 +79,7 @@ static char last_path[][10] =  /* must map with onlp_led_id */
 /*
  * Get the information for the given LED OID.
  */
-static onlp_led_info_t linfo[] =
+static onlp_led_info_t linfo[LED_MAX] =
 {
     { }, /* Not used */
     {
