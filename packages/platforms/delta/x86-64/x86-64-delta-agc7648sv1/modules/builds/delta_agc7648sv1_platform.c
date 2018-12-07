@@ -797,6 +797,12 @@ static struct i2c_device_platform_data agc7648sv1_i2c_device_platform_data[] = {
         .client = NULL,
     },
     {
+        // fan IO CTRL
+        .parent = 27,
+        .info = { I2C_BOARD_INFO("pca9555", 0x27) },
+        .client = NULL,
+    },
+    {
         // PSU 1 eeprom
         .parent = 31,
         .info = { I2C_BOARD_INFO("24c02", 0x50) },

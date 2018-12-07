@@ -363,11 +363,10 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
 int dni_fan_present(int id)
 {
     int rv;
-    dev_info_t dev_info;
     int bit_data = 0;
     int data = 0;
     uint8_t present_bit = 0x00;
-    int fantray_present = 0;
+    int fantray_present = -1;
 
     if(dni_bmc_check() == BMC_ON)
     {
@@ -386,30 +385,23 @@ int dni_fan_present(int id)
     }
     else if(dni_bmc_check() == BMC_OFF)
     {
-        dev_info.offset = 0x00;
-        dev_info.flags = DEFAULT_FLAG;
         switch(id) {
             case LED_REAR_FAN_TRAY_1:
-                dev_info.addr = FAN_TRAY_1;
-                dev_info.bus = I2C_BUS_21;
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
                 break;
             case LED_REAR_FAN_TRAY_2:
-                dev_info.addr = FAN_TRAY_2;
-                dev_info.bus = I2C_BUS_22;
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
                 break;
             case LED_REAR_FAN_TRAY_3:
-                dev_info.addr = FAN_TRAY_3;
-                dev_info.bus = I2C_BUS_23;
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
                 break;
             case LED_REAR_FAN_TRAY_4:
-                dev_info.addr = FAN_TRAY_4;
-                dev_info.bus = I2C_BUS_24;
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
                 break;
         }
-        fantray_present = dni_i2c_lock_read(NULL, &dev_info);
-        if(fantray_present >= 0)
+        if(fantray_present == 0)
             rv = ONLP_STATUS_OK;
-        else
+        else if(fantray_present == 1)
             rv = ONLP_STATUS_E_INVALID;
     }
     else

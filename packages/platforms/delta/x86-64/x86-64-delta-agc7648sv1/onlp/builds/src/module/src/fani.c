@@ -100,7 +100,8 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
     uint8_t present_bit = 0x00;
     UINT4 multiplier = 1;
     UINT4 u4Data = 0;
-    
+    int fantray_present = -1;
+
     if(dni_bmc_check() == BMC_ON)
     {
         if(dni_bmc_sensor_read(dev_name, &u4Data, multiplier) == ONLP_STATUS_OK)
@@ -114,15 +115,40 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
             present_bit = bit_data;
         else
             rv = ONLP_STATUS_E_INVALID;
+
+        switch(local_id) {
+            case FAN_4_ON_FAN_BOARD:
+            case FAN_8_ON_FAN_BOARD:
+                if((present_bit & 1) == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_3_ON_FAN_BOARD:
+            case FAN_7_ON_FAN_BOARD:
+                if((present_bit & (1 << 1)) == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_2_ON_FAN_BOARD:
+            case FAN_6_ON_FAN_BOARD:
+                if((present_bit & (1 << 2)) == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_1_ON_FAN_BOARD:
+            case FAN_5_ON_FAN_BOARD:
+                if((present_bit & (1 << 3)) == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+        }
     }
     else
     {
-        dev_info_t dev_info;
-        dev_info.bus = I2C_BUS_27;
-        dev_info.addr = FAN_IO_CTL;
-        dev_info.offset = 0x00;
-        dev_info.flags = DEFAULT_FLAG;
-        
         sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
         rpm = dni_i2c_lock_read_attribute(NULL, fullpath);
         info->rpm = rpm;
@@ -133,38 +159,41 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
 
         /* get speed percentage from rpm */
         info->percentage = (info->rpm * 100)/MAX_FRONT_FAN_SPEED;
-        present_bit = dni_i2c_lock_read(NULL, &dev_info);
-    }
 
-    switch(local_id) {
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_8_ON_FAN_BOARD:
-            if((present_bit & 1) == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_7_ON_FAN_BOARD:
-            if((present_bit & (1 << 1)) == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_6_ON_FAN_BOARD:
-            if((present_bit & (1 << 2)) == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_5_ON_FAN_BOARD:
-            if((present_bit & (1 << 3)) == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
+        switch(local_id) {
+            case FAN_4_ON_FAN_BOARD:
+            case FAN_8_ON_FAN_BOARD:
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
+                if(fantray_present == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_3_ON_FAN_BOARD:
+            case FAN_7_ON_FAN_BOARD:
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
+                if(fantray_present == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_2_ON_FAN_BOARD:
+            case FAN_6_ON_FAN_BOARD:
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
+                if(fantray_present == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+            case FAN_1_ON_FAN_BOARD:
+            case FAN_5_ON_FAN_BOARD:
+                fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
+                if(fantray_present == 0)
+                    info->status |= ONLP_FAN_STATUS_PRESENT;
+                else
+                    info->status |= ONLP_FAN_STATUS_FAILED;
+                break;
+        }
     }
 
     return rv;

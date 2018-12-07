@@ -83,6 +83,10 @@ typedef unsigned int    UINT4;
 #define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/31-0058/"
 #define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/32-0058/"
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
+#define FAN1_PRESENT_PATH "/sys/class/gpio/gpio499/value"
+#define FAN2_PRESENT_PATH "/sys/class/gpio/gpio498/value"
+#define FAN3_PRESENT_PATH "/sys/class/gpio/gpio497/value"
+#define FAN4_PRESENT_PATH "/sys/class/gpio/gpio496/value"
 
 /* REG define */
 #define SWPLD_1_ADDR (0x6A)

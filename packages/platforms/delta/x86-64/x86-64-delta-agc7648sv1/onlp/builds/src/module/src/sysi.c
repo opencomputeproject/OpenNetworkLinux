@@ -202,31 +202,31 @@ int onlp_sysi_platform_manage_fans(void)
 int onlp_sysi_platform_manage_leds(void)
 {
     int rpm = 0, rpm1 = 0, count = 0;
-    uint8_t present_bit = 0x00;
     int rv;
     int fantray_count;
+    char fantray_count_str[2];
     uint8_t psu_state;
     int psu_pwr_status = 0;
     int psu_pwr_int = 0;
     dev_info_t dev_info;
+    int fantray_present = -1;
+    char fullpath[50] = {'\0'};
 
     if(dni_bmc_check() == BMC_ON)
     {
         rv = ONLP_STATUS_OK;
     }
-    else{
+    else {
         dev_info.offset = 0x00;
         dev_info.flags = DEFAULT_FLAG;
-        dev_info.addr = FAN_IO_CTL;
-        dev_info.bus = I2C_BUS_27;
         dev_info.size = 1;
 
-        present_bit = dni_i2c_lock_read(NULL, &dev_info);
         /* Fan tray 1 */
+        fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
         rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
         rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
 
-        if((present_bit & (1 << 3)) == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
+        if(fantray_present == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
@@ -240,10 +240,11 @@ int onlp_sysi_platform_manage_leds(void)
         }
 
         /* Fan tray 2 */
+        fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
         rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
         rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
 
-        if((present_bit & (1 << 2)) == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
+        if(fantray_present == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
@@ -257,10 +258,11 @@ int onlp_sysi_platform_manage_leds(void)
         }
 
         /* Fan tray 3 */
+        fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
         rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
         rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
 
-        if((present_bit & (1 << 1)) == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
+        if(fantray_present == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
@@ -274,10 +276,11 @@ int onlp_sysi_platform_manage_leds(void)
         }
 
         /* Fan tray 4 */
+        fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
         rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
         rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
 
-        if((present_bit & 1) == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
+        if(fantray_present == 0 && rpm != FAN_ZERO_RPM && rpm != 0 && rpm1 != FAN_ZERO_RPM && rpm1 != 0 )
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4),ONLP_LED_MODE_GREEN) != ONLP_STATUS_OK)
@@ -291,10 +294,12 @@ int onlp_sysi_platform_manage_leds(void)
         }
 
         /* FRONT FAN & SYS LED */
-        for(fantray_count = 0; fantray_count < 4; fantray_count++)
+        for(fantray_count = 9; fantray_count > 5 ; fantray_count--)
         {
-            present_bit = dni_i2c_lock_read(NULL, &dev_info);
-            if((present_bit & (1 << fantray_count)) == 0)
+            sprintf(fantray_count_str, "%d", fantray_count);
+            sprintf(fullpath, "/sys/class/gpio/gpio49%s/value", fantray_count_str);
+            fantray_present = dni_i2c_lock_read_attribute(NULL, fullpath);
+            if(fantray_present == 0)
                 count++;
         }
 
