@@ -1,6 +1,14 @@
 from onl.platform.base import *
 from onl.platform.ingrasys import *
 import os
+import sys
+import subprocess
+
+def msg(s, fatal=False):
+    sys.stderr.write(s)
+    sys.stderr.flush()
+    if fatal:
+        sys.exit(1)
 
 class OnlPlatform_x86_64_ingrasys_s9180_32x_r0(OnlPlatformIngrasys):
     PLATFORM='x86-64-ingrasys-s9180-32x-r0'
@@ -9,6 +17,11 @@ class OnlPlatform_x86_64_ingrasys_s9180_32x_r0(OnlPlatformIngrasys):
 
     def baseconfig(self):
                 
+        # vid to mac vdd value mapping 
+        vdd_val_array=( 0.85,  0.82,  0.77,  0.87,  0.74,  0.84,  0.79,  0.89 )
+        # vid to rov reg value mapping 
+        rov_reg_array=( 0x24,  0x21,  0x1C,  0x26,  0x19, 0x23, 0x1E, 0x28 )
+           
         self.insmod("eeprom_mb")        
         # init SYS EEPROM devices
         self.new_i2c_device('mb_eeprom', 0x55, 0)
@@ -275,6 +288,16 @@ class OnlPlatform_x86_64_ingrasys_s9180_32x_r0(OnlPlatformIngrasys):
         self.new_i2c_device('eeprom', 0x50, 57)
         self.new_i2c_device('eeprom', 0x50, 58)
 
+        # _mac_vdd_init
+        reg_val_str = subprocess.check_output("""i2cget -y 44 0x33 0x42 2>/dev/null""", shell=True)
+        reg_val = int(reg_val_str, 16)
+        vid = reg_val & 0x7
+        mac_vdd_val = vdd_val_array[vid]
+        rov_reg = rov_reg_array[vid]
+        
+        msg("Setting mac vdd %1.2f with rov register value 0x%x\n" % (mac_vdd_val, rov_reg) ) 
+        os.system("i2cset -y -r 55 0x22 0x21 0x%x w" % rov_reg)
+        
         # init SYS LED
         os.system("i2cset -y -r 50 0x75 2 0x01")
         os.system("i2cset -y -r 50 0x75 4 0x00")
