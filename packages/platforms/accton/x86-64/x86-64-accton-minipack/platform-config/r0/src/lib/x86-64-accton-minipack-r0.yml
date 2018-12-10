@@ -1,0 +1,35 @@
+---
+
+######################################################################
+#
+# platform-config for MiniPack
+#
+######################################################################
+
+x86-64-accton-minipack-r0:
+
+  grub:
+
+    serial: >-
+      --unit=0
+      --speed=9600
+      --word=8
+      --parity=0
+      --stop=1
+
+    kernel: 
+      <<: *kernel-4-14
+
+    args: >-
+      nopat
+      console=ttyS0,9600n8
+      rd_NO_MD
+      rd_NO_LUKS
+      intel_iommu=off
+      noapic
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
