@@ -87,6 +87,8 @@ typedef unsigned int    UINT4;
 #define FAN2_PRESENT_PATH "/sys/class/gpio/gpio498/value"
 #define FAN3_PRESENT_PATH "/sys/class/gpio/gpio497/value"
 #define FAN4_PRESENT_PATH "/sys/class/gpio/gpio496/value"
+#define PSU1_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu1_present"
+#define PSU2_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu2_present"
 
 /* REG define */
 #define SWPLD_1_ADDR (0x6A)

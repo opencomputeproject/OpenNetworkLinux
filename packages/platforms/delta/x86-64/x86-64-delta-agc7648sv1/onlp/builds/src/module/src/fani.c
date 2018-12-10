@@ -249,29 +249,19 @@ static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, cha
     }
     else
     {
-        dev_info_t dev_info;
-        dev_info.addr = PSU_EEPROM;
-        dev_info.offset = 0x00;     /* In EEPROM address 0x00 */
-        dev_info.flags = DEFAULT_FLAG; 
-        switch(local_id)
-        {
+        switch(local_id) {
             case FAN_1_ON_PSU1:
-                dev_info.bus = I2C_BUS_31;
-                sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].status);
+                psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
                 break;
             case FAN_1_ON_PSU2:
-                dev_info.bus = I2C_BUS_32;
-                sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].status);
+                psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
                 break;
             default:
                 break;
         }
-        if(dni_i2c_lock_read(NULL, &dev_info) >= 0)
+        if(psu_present == 0)
             info->status |= ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F;
-       
-        sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].status);
-        r_data = dni_i2c_lock_read_attribute(NULL, fullpath);
-        if (r_data == 1)
+        else if(psu_present == 1)
             info->status |= ONLP_FAN_STATUS_FAILED;
 
         /* Read PSU FAN speed from psu_fan1_speed_rpm */

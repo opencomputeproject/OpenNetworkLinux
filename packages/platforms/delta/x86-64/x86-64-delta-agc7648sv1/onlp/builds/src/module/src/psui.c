@@ -244,10 +244,10 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int val = 0;
     int ret = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
-    dev_info_t dev_info;
     char device_name[10] = {0};
     UINT4 u4Data = 0;
     UINT4 multiplier = 1000;
+    int psu_present = -1;
 
     VALIDATE(id);
 
@@ -257,10 +257,10 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     switch (index) {
         case PSU1_ID:
-            dev_info.bus = I2C_BUS_31;
+            psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
             break;
         case PSU2_ID:
-            dev_info.bus = I2C_BUS_32;
+            psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
             break;
         default:
             break;
@@ -284,30 +284,24 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     else
     {
-        dev_info.addr = PSU_EEPROM;
-        dev_info.offset = 0x00; /* In EEPROM address 0x00 */
-        dev_info.flags = DEFAULT_FLAG;
-
         /* Check PSU have voltage input or not */
         dni_psu_pmbus_info_get(index, "psu_v_in", &val);
 
-        /* Check PSU is PRESENT or not
-         * Read PSU EEPROM 1 byte from adress 0x00
-         * if not present, return negative value. */
-        if(val == 0 && dni_i2c_lock_read(NULL, &dev_info) < 0)
+        /* Check PSU is PRESENT or not */
+        if(psu_present == 0)
+            info->status |= ONLP_PSU_STATUS_PRESENT;
+        else if(val == 0 && psu_present == 1)
         {
-            /* Unable to read PSU EEPROM */
+            /* PSU is not PRESENT */
             /* Able to read PSU VIN(psu_power_not_good) */
             info->status |= ONLP_PSU_STATUS_FAILED;
             return ret;
         }
-        else if(val == 0)
+        else
         {
             /* Unable to read PSU VIN(psu_power_good) */
             info->status |= ONLP_PSU_STATUS_UNPLUGGED;
         }
-        else
-            info->status |= ONLP_PSU_STATUS_PRESENT;
     }
 
     ret = dni_psu_info_get(id, info);

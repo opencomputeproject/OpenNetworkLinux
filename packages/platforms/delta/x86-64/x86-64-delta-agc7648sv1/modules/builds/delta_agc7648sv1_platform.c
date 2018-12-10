@@ -1220,6 +1220,7 @@ static struct platform_device agc7648sv1_i2c_device[] = {
     agc7648sv1_i2c_device_num(64),
     agc7648sv1_i2c_device_num(65),
     agc7648sv1_i2c_device_num(66),
+    agc7648sv1_i2c_device_num(67),
 };
 /* ---------------- I2C device - end ------------- */
 

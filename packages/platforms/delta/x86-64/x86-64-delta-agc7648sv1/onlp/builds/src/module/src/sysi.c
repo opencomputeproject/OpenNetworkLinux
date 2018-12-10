@@ -208,7 +208,6 @@ int onlp_sysi_platform_manage_leds(void)
     uint8_t psu_state;
     int psu_pwr_status = 0;
     int psu_pwr_int = 0;
-    dev_info_t dev_info;
     int fantray_present = -1;
     char fullpath[50] = {'\0'};
 
@@ -217,10 +216,6 @@ int onlp_sysi_platform_manage_leds(void)
         rv = ONLP_STATUS_OK;
     }
     else {
-        dev_info.offset = 0x00;
-        dev_info.flags = DEFAULT_FLAG;
-        dev_info.size = 1;
-
         /* Fan tray 1 */
         fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
         rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
@@ -319,13 +314,11 @@ int onlp_sysi_platform_manage_leds(void)
         }
 
         /* Set front light of PWR */
-        dev_info.bus = I2C_BUS_31; // PSU1
-        dev_info.addr = PSU_EEPROM;
-        psu_state = dni_i2c_lock_read(NULL, &dev_info);
+        psu_state = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
         psu_pwr_status = dni_lock_cpld_read_attribute(SWPLD1_PATH,POWER_STATUS_REGISTER);
         psu_pwr_int = dni_lock_cpld_read_attribute(SWPLD1_PATH,POWER_INT_REGISTER);
 
-        if(psu_state == 1 && (psu_pwr_status & 0x80) == 0x80 && (psu_pwr_int & 0x10) == 0x10)
+        if(psu_state == 0 && (psu_pwr_status & 0x80) == 0x80 && (psu_pwr_int & 0x10) == 0x10)
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR),ONLP_LED_MODE_GREEN) !=  ONLP_STATUS_OK)
@@ -338,10 +331,9 @@ int onlp_sysi_platform_manage_leds(void)
                 rv = ONLP_STATUS_E_INTERNAL;
         }
 
-        dev_info.bus = I2C_BUS_32; // PSU2
-        psu_state = dni_i2c_lock_read(NULL, &dev_info);
+        psu_state = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
 
-        if(psu_state == 1 && (psu_pwr_status & 0x40) == 0x40 && (psu_pwr_int & 0x20) == 0x20)
+        if(psu_state == 0 && (psu_pwr_status & 0x40) == 0x40 && (psu_pwr_int & 0x20) == 0x20)
         {
             /* Green */
             if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR),ONLP_LED_MODE_GREEN) !=  ONLP_STATUS_OK)
