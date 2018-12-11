@@ -272,13 +272,13 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
 
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath)
 {
-    int fd, nbytes = 10, rv = -1;
+    int fd, rv = -1;
 
     DNI_BUS_LOCK();
     /* Create output file descriptor */
     if ((fd = open(fullpath, O_WRONLY, 0644)) >= 0)
     {
-        if (write(fd, data, (ssize_t)nbytes) > 0)
+        if (write(fd, data, strlen(data)) > 0)
         {
             fsync(fd);
             rv = 0;
@@ -305,7 +305,7 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
     /* Create output file descriptor */
     if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
-        if (write(fd, address, 4) > 0)
+        if (write(fd, address, strlen(address)) > 0)
         {
             fsync(fd);
             if ((fd1 = open(cpld_data_path, O_RDONLY, 0644)) >= 0)
@@ -340,13 +340,13 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
     /* Create output file descriptor */
     if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
-        if ((write(fd, address, 4)) > 0)
+        if ((write(fd, address, strlen(address))) > 0)
         {
             fsync(fd);
             if ((fd1 = open(cpld_data_path, O_WRONLY, 0644)) >= 0)
             {
                 sprintf(datas, "0x%02x", data);
-                if (write(fd1, datas, 4) > 0)
+                if (write(fd1, datas, strlen(datas)) > 0)
                 {
                     fsync(fd1);
                     rv = 0;
