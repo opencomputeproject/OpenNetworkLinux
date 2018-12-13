@@ -204,7 +204,7 @@ int onlp_sysi_platform_manage_leds(void)
     int rpm = 0, rpm1 = 0, count = 0;
     int rv;
     int fantray_count;
-    char fantray_count_str[2];
+    char fantray_count_str[2] = {'\0'};
     uint8_t psu_state;
     int psu_pwr_status = 0;
     int psu_pwr_int = 0;

@@ -1299,7 +1299,6 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
     u8 reg_t = 0x00;
     int values[7] = {'\0'};
     int bit_t = 0x00;
-    int i;
     mutex_lock(&dni_lock);
 
     switch (attr->index) {

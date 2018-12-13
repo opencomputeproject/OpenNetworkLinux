@@ -77,7 +77,7 @@ int onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
   
 int onlp_sfpi_is_present(int port)
 {
-    char port_data[2];
+    char port_data[3] = {'\0'};
     int present, present_bit;
 
     if(port > 0 && port < 55)
@@ -116,7 +116,7 @@ int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     char present_all_data[21] = {'\0'};
     char *r_byte;
     char *r_array[7];
-    uint8_t bytes[7];
+    uint8_t bytes[7] = {0};
     int count = 0;
 
     /* Read presence bitmap from SWPLD2 SFP+ and SWPLD1 QSFP28 Presence Register
@@ -189,7 +189,7 @@ int onlp_sfpi_port_map(int port, int* rport)
 int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int value_t;
-    char port_data[2];
+    char port_data[3] = {'\0'};
 
     if(port > 0 && port < 55)
     {
@@ -255,7 +255,7 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int value_t;
-    char port_data[2];
+    char port_data[3] = {'\0'};
 
     if(port > 0 && port < 55)
     {
@@ -340,7 +340,7 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 
 int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
-    char port_data[2] ;
+    char port_data[3] = {'\0'};
 
     if(port > 0 && port < 55)
     {
@@ -399,7 +399,7 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     char rxlos_all_data[18] = {'\0'};
     char *r_byte;
     char *r_array[6];
-    uint8_t bytes[6];
+    uint8_t bytes[6] = {0};
     int count = 0;
 
     /* Read rx_los bitmap from SWPLD2 SFP+ LOSS Register
