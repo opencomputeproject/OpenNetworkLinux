@@ -12,7 +12,7 @@ x86-64-accton-minipack-r0:
 
     serial: >-
       --unit=0
-      --speed=9600
+      --speed=57600
       --word=8
       --parity=0
       --stop=1
@@ -22,7 +22,7 @@ x86-64-accton-minipack-r0:
 
     args: >-
       nopat
-      console=ttyS0,9600n8
+      console=ttyS0,57600n8
       rd_NO_MD
       rd_NO_LUKS
       intel_iommu=off

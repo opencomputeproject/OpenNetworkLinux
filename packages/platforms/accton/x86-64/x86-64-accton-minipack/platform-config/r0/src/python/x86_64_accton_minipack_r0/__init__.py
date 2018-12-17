@@ -13,12 +13,12 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
         ########### initialize I2C bus 1 ###########
         # initialize level 1 multiplexer (PCA9548)
         self.new_i2c_devices([
-                ('pca9548', 0x70, 0),
+                ('pca9548', 0x70, 1),
                 ('24c64', 0x57, 0),
                 ])
                 
         # initialize multiplexer for 8 PIMs
-        for pim in range(1, 9):
+        for pim in range(2, 10):
             self.new_i2c_devices([
                 ('pca9548', 0x72, pim),
                 ('pca9548', 0x71, pim),
@@ -27,7 +27,7 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
         # Initialize QSFP devices
         for port in range(1, 129):
             self.new_i2c_device('optoe1', 0x50, port+8)
-            base = ((port-1)/8*8) + 9
+            base = ((port-1)/8*8) + 10
             index = (port - 1) % 8
             index = 7 - index
             if (index%2):
