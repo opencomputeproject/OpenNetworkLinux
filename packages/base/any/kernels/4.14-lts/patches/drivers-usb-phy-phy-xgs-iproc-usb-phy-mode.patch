@@ -1,0 +1,26 @@
+diff -urpN a/drivers/usb/phy/phy-xgs-iproc.c b/drivers/usb/phy/phy-xgs-iproc.c
+--- a/drivers/usb/phy/phy-xgs-iproc.c	2018-12-17 14:49:55.121649311 +0000
++++ b/drivers/usb/phy/phy-xgs-iproc.c	2018-12-17 14:50:06.529412019 +0000
+@@ -161,12 +161,22 @@ static int xgs_iproc_usb_phy_mode(struct
+ 	int usb_mode = IPROC_USB_MODE_HOST;
+ 	u32 __maybe_unused val;
+ 	int __maybe_unused gpio_pin, ret;
++        const char *phy_mode_str;
+ 
+ 	if (!wrap_base)
+ 		dev_warn(dev, "no wrap base addr");
+ 
+ 	if (of_device_is_compatible(dn, "brcm,usb-phy-hx4") ||
+ 		of_device_is_compatible(dn, "brcm,usb-phy-kt2")) {
++
++                /* Edge-core patch: use "usb-phy-mode" in dts to decide host/device mode */
++                if (!of_property_read_string(dn, "usb-phy-mode", &phy_mode_str)) {
++                        if (!strcasecmp(phy_mode_str, "host"))
++                                return IPROC_USB_MODE_HOST;
++                        if (!strcasecmp(phy_mode_str, "device"))
++                                return IPROC_USB_MODE_DEVICE;
++                }
++
+ 		/* gpio pin 4 to control host/device mode */
+ 		gpio_pin = of_get_named_gpio(dev->of_node, "usbdev-gpio", 0);
+ 

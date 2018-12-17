@@ -1,3 +1,5 @@
 brcm-iproc-4.14.patch
+drivers-usb-phy-phy-xgs-iproc-usb-phy-mode.patch
+drivers-i2c-busses-xgs_iproc_smbus-clk-freq.patch
 0001-drivers-i2c-muxes-pca954x-deselect-on-exit.patch
 0002-driver-support-intel-igb-bcm5461S-phy.patch
