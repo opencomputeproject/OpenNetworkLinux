@@ -68,10 +68,12 @@ static onlp_thermal_info_t tinfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_PACK), "CPU Pack", 0},
+
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_PACK), "CPU pack", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
+
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_ASIC), "Asic Thermal Sensor", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ASIC_THERMAL_THRESHOLD_INIT_DEFAULTS
@@ -105,4 +107,3 @@ onlp_thermali_init(void)
     mlnx_platform_info->thermal_fnames=thermal_fnames;
     return ONLP_STATUS_OK;
 }
-
