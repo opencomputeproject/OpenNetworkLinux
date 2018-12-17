@@ -38,7 +38,7 @@ enum onlp_thermal_id
     THERMAL_CPU_CORE_1,
     THERMAL_CPU_PACK,
     THERMAL_ASIC,
-    THERMAL_BOAR_AMB,
+    THERMAL_BOARD_AMB,
     THERMAL_PORT,
     THERMAL_ON_PSU1,
     THERMAL_ON_PSU2,
@@ -51,7 +51,7 @@ static char* thermal_fnames[] =  /* must map with onlp_thermal_id */
     "cpu_core1",
     "cpu_pack",
     "asic",
-    "board_amb",
+    "fan_amb",
     "port_amb",
     "psu1",
     "psu2"
@@ -76,7 +76,7 @@ static onlp_thermal_info_t tinfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ASIC_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_BOAR_AMB), "Board AMB Thermal Sensor", 0},
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_BOARD_AMB), "Board AMB Thermal Sensor", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, {0,0,0}
         },
