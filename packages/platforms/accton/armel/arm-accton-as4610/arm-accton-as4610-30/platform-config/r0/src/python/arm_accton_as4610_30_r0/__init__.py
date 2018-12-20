@@ -6,3 +6,13 @@ class OnlPlatform_arm_accton_as4610_30_r0(OnlPlatformAccton,
     PLATFORM='arm-accton-as4610-30-r0'
     MODEL="AS4610-30"
     SYS_OBJECT_ID=".4610.30"
+
+    def baseconfig(self):
+        self.insmod("accton_i2c_cpld")
+        self.new_i2c_device("as4610_30_cpld", 0x30, 0)
+        self.insmod("accton_as4610_sfp")
+        self.insmod("accton_as4610_psu")
+        self.insmod("accton_as4610_fan")
+        self.insmod("accton_as4610_leds")
+        self.insmod("ym2651y")
+        return True
