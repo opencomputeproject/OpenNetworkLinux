@@ -86,6 +86,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         *e++ = ONLP_FAN_ID_CREATE(i);
     }
 
+    bmc_tty_init();
     return 0;
 }
 

@@ -362,9 +362,14 @@ class OnlPackage(object):
             if os.path.exists(src):
                 OnlPackage.copyf(src, dst, root)
 
-        for (link,src) in self.pkg.get('links', {}).iteritems():
+        for (link, src) in self.pkg.get('links', {}).iteritems():
             logger.info("Linking %s -> %s..." % (link, src))
-            link = os.path.join(root, link)
+            # The source must be relative to the existing root directory.
+            if link.startswith('/'):
+                link = "%s%s" % (root, link)
+            else:
+                link = "%s/%s" % (root, link)
+            # The link must be relative or absolute to the final filesystem.
             os.symlink(src, link)
 
         #

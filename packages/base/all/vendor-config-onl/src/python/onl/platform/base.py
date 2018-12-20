@@ -452,6 +452,7 @@ class OnlPlatformBase(object):
         s = """Model: %s
 Manufacturer: %s
 Ports: %s (%s)
+Platform Revision: %s
 System Object Id: %s
 System Information:
 %s
@@ -461,6 +462,7 @@ System Information:
             self.MANUFACTURER,
             self.PORT_COUNT,
             self.PORT_CONFIG,
+            self.PLATFORM.split('-')[-1],
             self.sys_object_id(),
             str(self.onie_info),
             str(self.platform_info),
@@ -504,6 +506,10 @@ class OnlPlatformPortConfig_48x25_8x100(object):
     PORT_COUNT=56
     PORT_CONFIG="48x25 + 8x100"
 
+class OnlPlatformPortConfig_48x25_4x100_2x200(object):
+    PORT_COUNT=54
+    PORT_CONFIG="48x25 + 4x100 + 2x200"
+
 class OnlPlatformPortConfig_32x40(object):
     PORT_COUNT=32
     PORT_CONFIG="32x40"
@@ -535,3 +541,7 @@ class OnlPlatformPortConfig_48x10_6x100(object):
 class OnlPlatformPortConfig_12x10_3x100(object):
     PORT_COUNT=15
     PORT_CONFIG="12x10 + 3x100"
+
+class OnlPlatformPortConfig_24x10_2x100(object):
+    PORT_COUNT=26
+    PORT_CONFIG="24x10 + 2x100"

@@ -206,7 +206,7 @@ void onlp_api_unlock(void);
         ONLP_API_T1(_name);                                             \
         ONLP_LOCKED_API_NAME(_name) (_v1, _v2, _v3);                    \
         ONLP_API_UNLOCK();                                              \
-        ONLP_API_T2_(name);                                             \
+        ONLP_API_T2(name);                                              \
     }
 
 #define ONLP_LOCKED_VAPI4(_name, _t1, _v1, _t2, _v2, _t3, _v3, _t4, _v4) \

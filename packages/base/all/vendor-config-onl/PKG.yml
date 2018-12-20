@@ -3,7 +3,7 @@ prerequisites:
 
 packages:
   - name: onl-vendor-config-onl
-    depends: [ python-yaml, onl-bootd, python-dmidecode ]
+    depends: [ python-yaml, onl-bootd, python-dmidecode, python-netaddr ]
     version: 1.0.0
     arch: all
     copyright: Copyright 2013, 2014, 2015 Big Switch Networks

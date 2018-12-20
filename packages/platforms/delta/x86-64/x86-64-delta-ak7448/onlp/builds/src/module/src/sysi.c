@@ -55,33 +55,27 @@ decide_percentage(int *percentage, int temper)
 {
     int level;
 
-    if(temper <= 50)
-    {
+    if(temper <= 50){
         *percentage = 50;
         level = 1;
     }
-    else if(temper > 50 && temper <= 55)
-    {
+    else if(temper > 50 && temper <= 55){
         *percentage = 58;
         level = 2;
     }
-    else if(temper > 55 && temper <= 60)
-    {
+    else if(temper > 55 && temper <= 60){
         *percentage = 65;
         level = 3;
     }
-    else if(temper > 60 && temper <= 65)
-    {
+    else if(temper > 60 && temper <= 65){
         *percentage = 80;
         level = 4;
     }
-     else if(temper > 65)
-    {
+     else if(temper > 65){
         *percentage = 100;
         level = 5;
     }
-    else
-    {
+    else{
         *percentage = 100;
         level = 6;
     }
@@ -117,11 +111,24 @@ onlp_sysi_onie_data_free(uint8_t* data)
 int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
+    dev_info_t dev_info;
     int sys_cpld_version = 0, cpld_a_version = 0, cpld_b_version = 0;
 
-    sys_cpld_version = dni_lock_cpld_read_attribute(SYS_CPLD_PATH,SYS_VERSION_REG);
-    cpld_a_version = dni_lock_cpld_read_attribute(CPLD_A_PATH,CPLD_A_VERSION_REG);
-    cpld_b_version = (dni_lock_cpld_read_attribute(CPLD_B_PATH,CPLD_B_VERSION_REG) & 0x7);
+    dev_info.bus = I2C_BUS_5;
+    dev_info.addr = CPLD_A;
+    dev_info.offset = CPLD_A_VERSION_REG;
+    dev_info.size = 1;    
+    dev_info.flags = ONLP_I2C_F_FORCE;
+    cpld_a_version = dni_i2c_lock_read(NULL, &dev_info);
+
+    dev_info.bus = I2C_BUS_2;
+    dev_info.addr = SYS_CPLD;
+    dev_info.offset = SYS_VERSION_REG;
+    dev_info.size = 1;
+    dev_info.flags = DEFAULT_FLAG;
+    sys_cpld_version = dni_i2c_lock_read(NULL, &dev_info);
+
+    cpld_b_version = (dni_lock_cpld_read_attribute(CPLD_B_PLATFORM_PATH,CPLD_B_VERSION_REG) & 0x7);
 
     pi->cpld_versions = aim_fstrdup("SYSTEM-CPLD = %d, CPLD-A = %d, CPLD-B = %d", sys_cpld_version, cpld_a_version, cpld_b_version);
 
@@ -245,10 +252,7 @@ onlp_sysi_platform_manage_leds(void)
     mux_info_t mux_info;
     dev_info_t dev_info;
 
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = FAN_I2C_MUX_SEL_REG;
-    mux_info.flags = DEFAULT_FLAG;
 
     dev_info.bus = I2C_BUS_7;
     dev_info.offset = 0x00;
@@ -343,11 +347,8 @@ onlp_sysi_platform_manage_leds(void)
     }
 
     /* Set front light of PWR */
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = PSU_I2C_MUX_SEL_REG;
     mux_info.channel = PSU_I2C_SEL_PSU_EEPROM;
-    mux_info.flags = DEFAULT_FLAG;
 
     dev_info.bus = I2C_BUS_4;
     dev_info.offset = 0x00;

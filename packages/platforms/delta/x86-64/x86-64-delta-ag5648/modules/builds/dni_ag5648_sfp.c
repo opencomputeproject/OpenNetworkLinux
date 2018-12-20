@@ -308,8 +308,9 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
   u8 cpld_addr_t = 0x00;
   int values[8] = {'\0'};
   int bit_t = 0x00;
-	
-  switch (attr->index) 
+  int offset = 0;
+
+  switch (attr->index)
   {
   case SFP_IS_PRESENT:
     port_t = sfp_port_data;
@@ -343,8 +344,9 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
     { /* SFP Port 37-44 */
       cpld_addr_t = MASTER_CPLD;
       reg_t = SFP_PRESENCE_6;
-    } 
-    else if (port_t > 44 && port_t < 49) 
+      offset = 4;
+    }
+    else if (port_t > 44 && port_t < 49)
     { /* SFP Port 45-48 */
       cpld_addr_t = MASTER_CPLD;
       reg_t = SFP_PRESENCE_7;
@@ -364,7 +366,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
 		      				cpld_addr_t, reg_t), 0);
 
 	        /* SWPLD QSFP module respond */
-    bit_t = 1 << ((port_t - 1) % 8);
+    bit_t = 1 << ((port_t - offset - 1) % 8);
     values[0] = values[0] & bit_t;
     values[0] = values[0] / bit_t;
 

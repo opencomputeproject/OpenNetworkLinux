@@ -31,7 +31,7 @@ packages:
       ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/onlp: ${PY_INSTALL}/onlp/onlp
       ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/test: ${PY_INSTALL}/onlp/test
       ${ONL}/packages/base/any/onlp/src/onlplib/module/python/onlp/onlplib: ${PY_INSTALL}/onlp/onlplib
-      ${ONL}/packages/base/any/onlp/src/sff/module/python/onlp/sff: ${PY_INSTALL}/onlp/sff
+      ${ONL}/sm/bigcode/modules/sff/module/python/sff: ${PY_INSTALL}/onlp/sff
 
     init: $ONL/packages/base/any/onlp/src/onlpd.init
 

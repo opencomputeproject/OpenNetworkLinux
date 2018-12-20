@@ -71,6 +71,7 @@ onlp_fani_init(void)
     mlnx_platform_info->finfo = finfo;
     mlnx_platform_info->fan_fnames = fan_path;
     mlnx_platform_info->fan_type = FAN_TYPE_NO_EEPROM;
+    mlnx_platform_info->fan_per_module = 1;
     mlnx_platform_info->first_psu_fan_id = FIRST_PSU_FAN_ID;
     return ONLP_STATUS_OK;
 }

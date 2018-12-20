@@ -31,9 +31,9 @@
 
 #define TTY_DEVICE                      "/dev/ttyACM0"
 #define TTY_PROMPT                      "@bmc:"
-#define TTY_I2C_TIMEOUT                 800000
+#define TTY_I2C_TIMEOUT                 55000
 #define TTY_BMC_LOGIN_TIMEOUT            1000000
-#define TTY_RETRY                        10
+#define TTY_RETRY                       3 
 #define MAXIMUM_TTY_BUFFER_LENGTH       1024
 #define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 
@@ -86,6 +86,7 @@ static int tty_exec_buf(unsigned long udelay, const char *str)
 
     write(tty_fd, tty_buf, strlen(tty_buf)+1);
     usleep(udelay);
+    memset(tty_buf, 0, MAXIMUM_TTY_BUFFER_LENGTH);
     read(tty_fd, tty_buf, MAXIMUM_TTY_BUFFER_LENGTH);
     return (strstr(tty_buf, str) != NULL) ? 0 : -1;
 }
@@ -118,26 +119,51 @@ static int tty_login(void)
     return -1;
 }
 
+int bmc_tty_init(void)
+{
+    int i;
+    if (tty_fd >= 0){
+        return 0;
+    }
+
+    for (i = 1; i <= TTY_RETRY; i++) {
+        if (tty_open() != 0) {
+            AIM_LOG_ERROR("ERROR: Cannot open TTY device\n");
+            continue;
+        }
+        if (tty_login() != 0) {
+            AIM_LOG_ERROR("ERROR: Cannot login TTY device\n");
+            tty_close();
+            continue;
+        }
+
+        return 0;
+    }
+
+    AIM_LOG_ERROR("Unable to init bmc tty\r\n");
+    return -1;
+}
+
+int bmc_tty_deinit(void)
+{
+        if( tty_fd != -1 ){
+                tty_close();
+        }
+        else{
+                AIM_LOG_ERROR("ERROR: TTY not open\n");
+        }
+        return 0;
+}
+
 int bmc_send_command(char *cmd)
 {
     int i, ret = 0;
     
     for (i = 1; i <= TTY_RETRY; i++) {
-        if (tty_open() != 0) {
-            printf("ERROR: Cannot open TTY device\n");
-            continue;
-        }
-        if (tty_login() != 0) {
-            //printf("ERROR: Cannot login TTY device\n");
-            tty_close();
-            continue;
-        }
-
-            snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "%s", cmd);
-        ret = tty_exec_buf(TTY_I2C_TIMEOUT * i, TTY_PROMPT);
-        tty_close();
+        snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "%s", cmd);
+        ret = tty_exec_buf(TTY_I2C_TIMEOUT, TTY_PROMPT);
         if (ret != 0) {
-            printf("ERROR: bmc_send_command timed out\n");
+//            AIM_LOG_ERROR("ERROR: bmc_send_command(%s) timed out\n", cmd);
             continue;
         }
 
@@ -146,6 +172,63 @@ int bmc_send_command(char *cmd)
 
     AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
     return -1;
+}
+
+int chk_numeric_char(char *data, int base)
+{
+    int len, i, orig = 0;
+    if( *data == '\0' ){
+        return 0;
+    }
+    len = (int) strlen(data);
+    if( base == 10 ){
+        for( i=0; i<len; i++ ){
+            if( i && ( *(data+i) == 0xd ) ){
+                break;
+            }
+            if( i && ( *(data+i) == 0xa ) ){
+                break;
+            }
+            if( *(data+i) < '0' ){
+                return 0;
+            }
+            if( *(data+i) > '9' ){
+                return 0;
+            }
+        }
+        return 1;
+    }
+    else if( base == 16 ){
+        if( !memcmp(data, "0x", 2) ){
+            if( len <= 2 ){
+                return 0;
+            }
+            orig = 2;
+        }
+        else if( !memcmp(data, "0X", 2) ){
+            if( len <= 2 ){
+                return 0;
+            }
+            orig = 2;
+        }
+        for( i=orig; i<len; i++ ){
+            if( (i > orig) && ( *(data+i) == 0xd ) ){
+                break;
+            }
+            if( (i > orig) && ( *(data+i) == 0xa ) ){
+                break;
+            }
+            if( !( ( (*(data+i) >= '0') && (*(data+i) <= '9') ) ||
+                   ( (*(data+i) >= 'A') && (*(data+i) <= 'F') ) ||
+                   ( (*(data+i) >= 'a') && (*(data+i) <= 'f') )
+                 )
+              ){
+                return 0;
+            }
+        }
+        return 1;
+    }
+    return 0;
 }
 
 int
@@ -166,6 +249,9 @@ bmc_command_read_int(int* value, char *cmd, int base)
     for (i = 1; i <= TTY_RETRY; i++) {
         current_str = strstr(prev_str + len, cmd);
         if(current_str == NULL) {
+            if( !chk_numeric_char(prev_str + len, base) ){
+                return -1;
+            }
             *value = strtoul(prev_str + len, NULL, base);
             break;
         }else {

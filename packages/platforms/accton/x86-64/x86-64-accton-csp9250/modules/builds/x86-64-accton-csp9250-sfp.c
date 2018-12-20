@@ -1005,9 +1005,8 @@ static ssize_t sfp_port_read(struct sfp_port_data *data,
                              char *buf, loff_t off, size_t count)
 {
     ssize_t retval = 0;
-    printk("acc trace %s:%d\n", __FUNCTION__, __LINE__);
+    
     if (unlikely(!count)) {
-        printk("acc trace %s:%d\n", __FUNCTION__, __LINE__);
         DEBUG_PRINT("Count = 0, return");
         return count;
     }
@@ -1017,7 +1016,6 @@ static ssize_t sfp_port_read(struct sfp_port_data *data,
      * from this host, but not from other I2C masters.
      */
     mutex_lock(&data->update_lock);
-    printk("acc trace %s:%d, off=0x%x,data->client->addr=0x%x\n", __FUNCTION__, __LINE__, off,data->client->addr);
     while (count) {
         ssize_t status;
 
@@ -1026,7 +1024,6 @@ static ssize_t sfp_port_read(struct sfp_port_data *data,
             if (retval == 0) {
                 retval = status;
             }
-            printk("acc trace %s:%d\n", __FUNCTION__, __LINE__);
             break;
         }
 
@@ -1049,13 +1046,10 @@ static ssize_t sfp_bin_read(struct file *filp, struct kobject *kobj,
     struct sfp_port_data *data;
     DEBUG_PRINT("offset = (%d), count = (%d)", off, count);
     data = dev_get_drvdata(container_of(kobj, struct device, kobj));
-    printk("acc trace %s:%d, data->port=%d\n", __FUNCTION__, __LINE__, data->port);
-    printk("offset = (%d), count = (%d)", off, count);
     present = sfp_is_port_present(data->client, data->port);
     if (IS_ERR_VALUE(present)) {
         return present;
     }
-    printk("Acc trace %s:%d, present=%d\n", __FUNCTION__, __LINE__, present);
     if (present == 0) {
         /* port is not present */
         return -ENODEV;
@@ -1331,11 +1325,6 @@ static struct i2c_driver sfp_driver = {
 
 static int __init csp9250_sfp_init(void)
 {
-    //extern int platform_accton_csp9250(void);
-    //if(!platform_accton_csp9250()) {
-     //   return -ENODEV;
-    //}
-    printk("Acc trace %s\n", __FUNCTION__);
     return i2c_add_driver(&sfp_driver);
 }
 

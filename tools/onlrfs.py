@@ -389,8 +389,7 @@ class OnlRfsBuilder(object):
         script = os.path.join(dir_, "tmp/configure.sh")
         with open(script, "w") as f:
             os.chmod(script, 0700)
-            f.write("""
-#!/bin/bash -ex
+            f.write("""#!/bin/bash -ex
 /bin/echo -e "#!/bin/sh\\nexit 101" >/usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
 export DEBIAN_FRONTEND=noninteractive

@@ -27,6 +27,8 @@
 #define __PLATFORM_LIB_H__
 
 #include "x86_64_delta_ag9032v1_log.h"
+#include <onlp/onlp.h>
+#include <onlplib/shlocks.h>
 
 /* CPLD numbrt & peripherals */
 #define NUM_OF_THERMAL_ON_BOARDS  6
@@ -136,6 +138,8 @@
 #define SFP_RESET_3     (0x3E)
 #define SFP_RESET_4     (0x3F)
 
+#define BUS_LOCK    1
+#define BUS_LOCKED    0
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len);
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
 
@@ -160,16 +164,14 @@ typedef struct mux_info_s
 
 }mux_info_t;
 
-pthread_mutex_t mutex;
-pthread_mutex_t mutex1;
 int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_write(mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_lock_swpld_read_attribute(int addr);
-int dni_lock_swpld_write_attribute(int addr, int addr1);
+int dni_swpld_write_attribute(int addr, int data,int bus_lock);
 int dni_fan_speed_good();
-
+void lockinit();
 
 typedef enum
 {
