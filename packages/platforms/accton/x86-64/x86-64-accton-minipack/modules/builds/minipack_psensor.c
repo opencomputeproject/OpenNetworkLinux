@@ -1,5 +1,5 @@
 /*
- * A hwmon driver for the Wedeg100bf-32x/64x
+ * A hwmon driver for the minipack. 
  *
  * Copyright (C) 2018 Accton Technology Corporation.
  * Roy Lee <roy_lee@accton.com>
@@ -22,8 +22,7 @@
 /*
  * This driver retrieves sensors' data through uart interface by opening
  * an user-space tty device node.
- * Designed pariticular for ethernet switch with BMC, and verified
- * at model accton_wedge100bf_65x and accton_wedge100bf_32x.
+ * Designed pariticular for ethernet switch with BMC.
  */
 
 #include <linux/kernel.h>
@@ -51,36 +50,24 @@
 #define DEBUG_LEX(fmt, ...)	    do { } while (0)
 
 
-#define DRVNAME "wedge_psensor"     /*Platform Sensor*/
-enum mtype {
-    MTYPE_BF100_65X = 0,
-    MTYPE_BF100_32X = 1,
-    MTYPE_MAX,
-};
+#define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
 #define SENSOR_DATA_UPDATE_INTERVAL     (5*HZ)
-#define MAX_THERMAL_COUNT (7)
-#define MAX_FAN_COUNT     (10)
-#define CHASSIS_PSU_CHAR_COUNT     (2)    /*2 for input and output.*/
-#define CHASSIS_LED_COUNT     (2)
-#define CHASSIS_PSU_VOUT_COUNT     (1)    /*V output only.*/
-#define CHASSIS_PSU_VOUT_INDEX     (1)    /*V output start index.*/
-
-#define BF100_65X_THERMAL_COUNT  MAX_THERMAL_COUNT
-#define BF100_65X_FAN_COUNT      MAX_FAN_COUNT
-
-#define BF100_32X_THERMAL_COUNT  (7)
-#define BF100_32X_FAN_COUNT      MAX_FAN_COUNT
-
+#define MAX_THERMAL_COUNT           (7)
+#define MAX_FAN_COUNT               (8)
+#define CHASSIS_PSU_CHAR_COUNT      (2)    /*2 for input and output.*/
+#define CHASSIS_LED_COUNT           (2)
+#define CHASSIS_PSU_VOUT_COUNT      (1)    /*V output only.*/
+#define CHASSIS_PSU_VOUT_INDEX      (1)    /*V output start index.*/
 
 
 #define ATTR_ALLOC_EXTRA	        1   /*For last attribute which is NUll.*/
 #define ATTR_NAME_SIZE		        24
 #define ATTR_NAME_OUTFIT_SIZE		12
-#define ATTR_MAX_LIST   		    8
+#define ATTR_MAX_LIST   		8
 
 #define TTY_DEVICE                      "/dev/ttyACM0"
-#define TTY_PROMPT                      "@bmc"
+#define TTY_PROMPT                      "@bmc-oob"
 #define TTY_USER                        "root"
 #define TTY_PASSWORD                    "0penBmc"
 #define TTY_BAUDRATE                    (57600)
@@ -171,13 +158,13 @@ enum sysfs_attributes_index {
     INDEX_PSU2_START    = 500,
 };
 
-struct wedge_sensor {
-    struct wedge_sensor *next;
+struct psensor {
+    struct psensor *next;
     char name[ATTR_NAME_SIZE+1];	/* sysfs sensor name */
     struct sensor_device_attribute sensor_dev_attr;
 };
 
-struct wedge100_data {
+struct minipack_data {
     struct platform_device *pdev;
     struct device	    *dev;
     struct device	    *hwmon_dev;
@@ -218,7 +205,7 @@ static ssize_t show_psu_vout_min(struct device *dev, struct device_attribute *da
                                  char *buf);
 static ssize_t show_psu_vout_max(struct device *dev, struct device_attribute *da,
                                  char *buf);
-static int add_attr2group(struct wedge100_data *data, struct attribute *attr);
+static int add_attr2group(struct minipack_data *data, struct attribute *attr);
 
 
 struct attr_pattern {
@@ -240,52 +227,52 @@ struct sensor_set {
     struct attr_pattern ptn[MAX_ATTR_PATTERN];
 };
 
-struct sensor_set ss_w100_65x[SENSOR_TYPE_MAX] =
+struct sensor_set q16[SENSOR_TYPE_MAX] =
 {
     [SENSOR_TYPE_THERMAL_IN] = {
-        BF100_65X_THERMAL_COUNT, INDEX_THRM_IN_START,
+        MAX_THERMAL_COUNT, INDEX_THRM_IN_START,
         1,
-        {   [0] = {BF100_65X_THERMAL_COUNT, 0, "temp","_input",
+        {   [0] = {MAX_THERMAL_COUNT, 0, "temp","_input",
                 S_IRUGO, show_thermal, NULL
             },
         }
     },
     [SENSOR_TYPE_THERMAL_MAX] = {
-        BF100_65X_THERMAL_COUNT, INDEX_THRM_MAX_START,
+        MAX_THERMAL_COUNT, INDEX_THRM_MAX_START,
         1,
-        {   [0] = {BF100_65X_THERMAL_COUNT, 0, "temp","_max",
+        {   [0] = {MAX_THERMAL_COUNT, 0, "temp","_max",
                 S_IRUGO, show_thermal_max, NULL
             },
         }
     },
     [SENSOR_TYPE_THERMAL_MAX_HYST] = {
-        BF100_65X_THERMAL_COUNT, INDEX_THRM_MAX_HYST_START,
+        MAX_THERMAL_COUNT, INDEX_THRM_MAX_HYST_START,
         1,
-        {   [0] = {BF100_65X_THERMAL_COUNT, 0, "temp","_max_hyst",
+        {   [0] = {MAX_THERMAL_COUNT, 0, "temp","_max_hyst",
                 S_IRUGO, show_thermal_max_hyst, NULL
             },
         }
     },
     [SENSOR_TYPE_FAN_RPM] = {
-        BF100_65X_FAN_COUNT, INDEX_FAN_RPM_START,
+        MAX_FAN_COUNT, INDEX_FAN_RPM_START,
         2,
-        {   [0] = {BF100_65X_FAN_COUNT, 0, "fan","_input",
+        {   [0] = {MAX_FAN_COUNT, 0, "fan","_input",
                 S_IRUGO, show_fan, NULL
             },
             [1] = {
-                BF100_65X_FAN_COUNT, 0, "fan","_min",
+                MAX_FAN_COUNT, 0, "fan","_min",
                 S_IRUGO, show_fan_min, NULL
             },
         }
     },
     [SENSOR_TYPE_FAN_RPM_DOWN] = {
-        BF100_65X_FAN_COUNT, INDEX_FAN_RPM_START_DN,
+        MAX_FAN_COUNT, INDEX_FAN_RPM_START_DN,
         2,
-        {   [0] = {BF100_65X_FAN_COUNT, MAX_FAN_COUNT, "fan","_input",
+        {   [0] = {MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_input",
                 S_IRUGO, show_fan_dn, NULL
             },
             [1] = {
-                BF100_65X_FAN_COUNT, MAX_FAN_COUNT, "fan","_min",
+                MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_min",
                 S_IRUGO, show_fan_min, NULL
             },
         }
@@ -342,120 +329,23 @@ struct sensor_set ss_w100_65x[SENSOR_TYPE_MAX] =
     },
 };
 
-struct sensor_set ss_w100_32x[SENSOR_TYPE_MAX] =
-{
-    [SENSOR_TYPE_THERMAL_IN] = {
-        BF100_32X_THERMAL_COUNT, INDEX_THRM_IN_START,
-        1,
-        {   [0] = {BF100_32X_THERMAL_COUNT, 0, "temp","_input",
-                S_IRUGO, show_thermal, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_THERMAL_MAX] = {
-        BF100_65X_THERMAL_COUNT, INDEX_THRM_MAX_START,
-        1,
-        {   [0] = {BF100_65X_THERMAL_COUNT, 0, "temp","_max",
-                S_IRUGO, show_thermal_max, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_THERMAL_MAX_HYST] = {
-        BF100_65X_THERMAL_COUNT, INDEX_THRM_MAX_HYST_START,
-        1,
-        {   [0] = {BF100_65X_THERMAL_COUNT, 0, "temp","_max_hyst",
-                S_IRUGO, show_thermal_max_hyst, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_FAN_RPM] = {
-        BF100_32X_FAN_COUNT, INDEX_FAN_RPM_START,
-        2,
-        {   [0] = {BF100_32X_FAN_COUNT, 0, "fan","_input",
-                S_IRUGO, show_fan, NULL
-            },
-            [1] = {
-                BF100_65X_FAN_COUNT, 0, "fan","_min",
-                S_IRUGO, show_fan_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_FAN_RPM_DOWN] = {0},
-    [SENSOR_TYPE_PSU1] = {
-        PSU_DATA_MAX, INDEX_PSU1_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, 0, "in","_input",
-                S_IRUGO, show_psu1, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, 0, "curr","_input",
-                S_IRUGO, show_psu1, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, 0, "power","_input",
-                S_IRUGO, show_psu1, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT, CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT, CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_PSU2] = {
-        PSU_DATA_MAX, INDEX_PSU2_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "in","_input",
-                S_IRUGO, show_psu2, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "curr","_input",
-                S_IRUGO, show_psu2, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "power","_input",
-                S_IRUGO, show_psu2, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT+CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT+CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-};
-
-struct sensor_set *model_ssets[SENSOR_TYPE_MAX] = {ss_w100_65x, ss_w100_32x};
+struct sensor_set *model_ssets = q16;
 
 static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
-    "cat /sys/bus/i2c/devices/[38]-004*/temp1_input\r\n",
-    "cat /sys/bus/i2c/devices/[38]-004*/temp1_max\r\n",
-    "cat /sys/bus/i2c/devices/[38]-004*/temp1_max_hyst\r\n",
-    "ls -v /sys/bus/i2c/devices/8-0033/fan*_input | xargs cat\r\n",
-    "ls -v /sys/bus/i2c/devices/9-0033/fan*_input | xargs cat\r\n",
-    "i2cset -y -f 7 0x70 0 2; i2cdump -y -f -r "\
+    "cat /sys/class/hwmon/hwmon*/temp1_input\r\n",
+    "cat /sys/class/hwmon/hwmon*/temp1_max\r\n",
+    "cat /sys/class/hwmon/hwmon*/temp1_max_hyst\r\n",
+    "ls -v /sys/bus/i2c/devices/64-0033/fan*_input | xargs cat\r\n",
+    "ls -v /sys/bus/i2c/devices/72-0033/fan*_input | xargs cat\r\n",
+    "i2cdump -y -f -r "\
     __stringify(PMBUS_REG_START)"-" __stringify(PMBUS_REG_END)\
-    " 7 0x59 w\r\n",
-    "i2cset -y -f 7 0x70 0 1; i2cdump -y -f -r "\
+    " 49 0x59 w\r\n",
+    "i2cdump -y -f -r "\
     __stringify(PMBUS_REG_START)"-" __stringify(PMBUS_REG_END)\
-    " 7 0x5a w\r\n",
+    " 56 0x58 w\r\n",
 };
 
-static struct wedge100_data *wedge_data = NULL;
-
-
-/* Specify which model_id is engaged. Default is BF100_65X. */
-static int model_id = MTYPE_BF100_65X;
-module_param(model_id, uint, S_IRUGO);
-MODULE_PARM_DESC(model_id, "Default is BF100_65X.");
+static struct minipack_data *mp_data = NULL;
 
 static int _tty_wait(struct file *tty_fd, int mdelay) {
     msleep(mdelay);
@@ -480,7 +370,7 @@ static int _tty_open(struct file **fd)
         return -ENOENT;
     } else {
         tty = ((struct tty_file_private *)tty_fd ->private_data)->tty;
-        wedge_data->old_ktermios = (tty->termios);
+        mp_data->old_ktermios = (tty->termios);
 
         kt = tty->termios;
         tty_termios_encode_baud_rate(&kt, baudrate, baudrate);
@@ -494,7 +384,7 @@ static int _tty_open(struct file **fd)
         kt.c_cc[VTIME] = 0;
         tty_set_termios(tty, &kt);
 
-        wedge_data->tty = tty ;
+        mp_data->tty = tty ;
         *fd = tty_fd;
         return 0;
     }
@@ -617,7 +507,7 @@ static int _tty_writeNread(struct file *tty_fd,
 exit:
     set_fs(old_fs);
     if(rc < 0) {
-        dev_err(wedge_data->dev, "Failed on %s ret:%d\n", __func__, rc);
+        dev_err(mp_data->dev, "Failed on %s ret:%d\n", __func__, rc);
     }
     return rc;
 }
@@ -676,7 +566,7 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
         msleep(TTY_RETRY_INTERVAL);
     }
 
-    dev_err(wedge_data->dev, "Failed on %s ret:%d\n", __func__, ret);
+    dev_err(mp_data->dev, "Failed on %s ret:%d\n", __func__, ret);
     return -EAGAIN;
 }
 
@@ -705,7 +595,7 @@ bmc_transaction(char *cmd, char* resp, int max)
 
     _tty_clear_rxbuf(tty_fd, buf, buf_size);
     if (_tty_login(tty_fd, buf, buf_size) != 0) {
-        dev_err(wedge_data->dev, "Failed to login TTY device\n");
+        dev_err(mp_data->dev, "Failed to login TTY device\n");
         _tty_close(&tty_fd);
         ret = -ENOENT;
         goto exit;
@@ -720,7 +610,7 @@ bmc_transaction(char *cmd, char* resp, int max)
         i++;
     } while(strstr(buf, TTY_PROMPT) == NULL && i <= TTY_CMD_RETRY);
     if (i > TTY_CMD_RETRY) {
-        dev_err(wedge_data->dev, "Failed on tty_transaction\n");
+        dev_err(mp_data->dev, "Failed on tty_transaction\n");
         ret = -ENOENT;
         goto exit;
     }
@@ -745,12 +635,12 @@ static void dev_attr_init(struct device_attribute *dev_attr,
 }
 
 /*Allowcat sensor_device_attributes and adds them to a group.*/
-static int attributs_init(struct wedge100_data *data)
+static int attributs_init(struct minipack_data *data)
 {
-    struct sensor_set *model = model_ssets[model_id];
+    struct sensor_set *model = model_ssets;
     char name[64] = {0};
     int start, pi, si, ai, num, ret, acc;
-    struct wedge_sensor *sensor;
+    struct psensor *sensor;
     struct sensor_device_attribute *sensor_dattr;
     struct device_attribute *dev_attr;
 
@@ -807,7 +697,7 @@ static int attributs_init(struct wedge100_data *data)
 
     return 0 ;
 }
-static void wedge_data_init(struct wedge100_data *data)
+static void mp_data_init(struct minipack_data *data)
 {
 
 }
@@ -984,7 +874,7 @@ static int get_type_data (
     struct sensor_data *data, enum sensor_type type, int index,
     int **out, int *count)
 {
-    struct sensor_set *model = model_ssets[model_id];
+    struct sensor_set *model = model_ssets;
 
     switch (type) {
     case SENSOR_TYPE_THERMAL_IN:
@@ -1017,7 +907,7 @@ static int get_type_data (
 
 static struct sensor_data*
 update_data(struct device *dev, enum sensor_type type) {
-    struct wedge100_data *data = wedge_data;
+    struct minipack_data *data = mp_data;
     bool			*valid = &data->valid[type];
     unsigned long   *last_updated = &data->last_updated[type];
     struct sensor_data* ret = NULL;
@@ -1144,7 +1034,7 @@ static ssize_t show_psu_vout_min(struct device *dev, struct device_attribute *da
     return sprintf(buf, "%d\n",  MIN_PSU_VOUT);
 }
 
-static int add_attr2group(struct wedge100_data *data, struct attribute *attr)
+static int add_attr2group(struct minipack_data *data, struct attribute *attr)
 {
     int new_max_attrs = ++data->num_attributes + ATTR_ALLOC_EXTRA;
     void *new_attrs = krealloc(data->group.attrs,
@@ -1162,52 +1052,52 @@ static int add_attr2group(struct wedge100_data *data, struct attribute *attr)
     return 0;
 }
 
-static int wedge100_probe(struct platform_device *pdev)
+static int minipack_probe(struct platform_device *pdev)
 {
     int status = -1;
 
-    wedge_data->dev = &pdev->dev;
-    status = attributs_init(wedge_data);
+    mp_data->dev = &pdev->dev;
+    status = attributs_init(mp_data);
     DEBUG_INTR("%s-%d, status:%d\n", __func__, __LINE__, status);
     if (status) {
         goto exit;
     }
 
     /* Register sysfs hooks */
-    status = sysfs_create_group(&pdev->dev.kobj, &wedge_data->group);
+    status = sysfs_create_group(&pdev->dev.kobj, &mp_data->group);
     DEBUG_INTR("%s-%d, status:%d\n", __func__, __LINE__, status);
 
     if (status) {
         goto exit_kfree;
     }
 
-    wedge_data->hwmon_dev = hwmon_device_register(&pdev->dev);
-    if (IS_ERR(wedge_data->hwmon_dev)) {
-        status = PTR_ERR(wedge_data->hwmon_dev);
+    mp_data->hwmon_dev = hwmon_device_register(&pdev->dev);
+    if (IS_ERR(mp_data->hwmon_dev)) {
+        status = PTR_ERR(mp_data->hwmon_dev);
         goto exit_remove;
     }
-    dev_info(&pdev->dev, "wedge100bf sensors found\n");
+    dev_info(&pdev->dev, "minipackbf sensors found\n");
     return 0;
 
 exit_remove:
-    sysfs_remove_group(&pdev->dev.kobj, &wedge_data->group);
+    sysfs_remove_group(&pdev->dev.kobj, &mp_data->group);
 exit_kfree:
-    kfree(wedge_data->group.attrs);
+    kfree(mp_data->group.attrs);
 exit:
     return status;
 }
 
-static int wedge100_remove(struct platform_device *pdev)
+static int minipack_remove(struct platform_device *pdev)
 {
-    hwmon_device_unregister(wedge_data->hwmon_dev);
-    sysfs_remove_group(&pdev->dev.kobj, &wedge_data->group);
-    kfree(wedge_data->group.attrs);
+    hwmon_device_unregister(mp_data->hwmon_dev);
+    sysfs_remove_group(&pdev->dev.kobj, &mp_data->group);
+    kfree(mp_data->group.attrs);
     return 0;
 }
 
-static struct platform_driver wedge100_driver = {
-    .probe		= wedge100_probe,
-    .remove		= wedge100_remove,
+static struct platform_driver minipack_driver = {
+    .probe		= minipack_probe,
+    .remove		= minipack_remove,
     .driver		= {
         .name	= DRVNAME,
         .owner	= THIS_MODULE,
@@ -1215,47 +1105,47 @@ static struct platform_driver wedge100_driver = {
 };
 
 
-static int __init wedge100_init(void)
+static int __init minipack_init(void)
 {
     int ret;
 
-    ret = platform_driver_register(&wedge100_driver);
+    ret = platform_driver_register(&minipack_driver);
     if (ret < 0) {
         goto exit;
     }
-    wedge_data = kzalloc(sizeof(struct wedge100_data), GFP_KERNEL);
-    if (!wedge_data) {
+    mp_data = kzalloc(sizeof(struct minipack_data), GFP_KERNEL);
+    if (!mp_data) {
         ret = -ENOMEM;
-        platform_driver_unregister(&wedge100_driver);
+        platform_driver_unregister(&minipack_driver);
         goto exit;
     }
-    mutex_init(&wedge_data->update_lock);
-    wedge_data_init(wedge_data);
+    mutex_init(&mp_data->update_lock);
+    mp_data_init(mp_data);
 
-    wedge_data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-    if (IS_ERR(wedge_data->pdev)) {
-        ret = PTR_ERR(wedge_data->pdev);
-        platform_driver_unregister(&wedge100_driver);
-        kfree(wedge_data);
+    mp_data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+    if (IS_ERR(mp_data->pdev)) {
+        ret = PTR_ERR(mp_data->pdev);
+        platform_driver_unregister(&minipack_driver);
+        kfree(mp_data);
         goto exit;
     }
 exit:
     return ret;
 }
 
-static void __exit wedge100_exit(void)
+static void __exit minipack_exit(void)
 {
-    if (!wedge_data) {
+    if (!mp_data) {
         return;
     }
-    platform_device_unregister(wedge_data->pdev);
-    platform_driver_unregister(&wedge100_driver);
-    kfree(wedge_data);
+    platform_device_unregister(mp_data->pdev);
+    platform_driver_unregister(&minipack_driver);
+    kfree(mp_data);
 }
 
-module_init(wedge100_init);
-module_exit(wedge100_exit);
+module_init(minipack_init);
+module_exit(minipack_exit);
 
 MODULE_AUTHOR("Roy Lee <roy_lee@accton.com>");
-MODULE_DESCRIPTION("wedge100bf platform sensors driver");
+MODULE_DESCRIPTION("Minipack platform sensors driver");
 MODULE_LICENSE("GPL");

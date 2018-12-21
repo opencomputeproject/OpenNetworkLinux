@@ -9,12 +9,13 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
 
     def baseconfig(self):
         self.insmod('optoe')
+        self.insmod_platform()
         
         ########### initialize I2C bus 1 ###########
         # initialize level 1 multiplexer (PCA9548)
         self.new_i2c_devices([
                 ('pca9548', 0x70, 1),
-                ('24c64', 0x57, 0),
+                ('24c64', 0x57, 1),
                 ])
                 
         # initialize multiplexer for 8 PIMs
@@ -24,9 +25,9 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
                 ('pca9548', 0x71, pim),
                 ])
 
+        return True
         # Initialize QSFP devices
         for port in range(1, 129):
-            self.new_i2c_device('optoe1', 0x50, port+8)
             base = ((port-1)/8*8) + 10
             index = (port - 1) % 8
             index = 7 - index
@@ -35,6 +36,7 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
             else:
                 index = index +1 
             bus = base + index 
+            self.new_i2c_device('optoe1', 0x50, bus)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus), shell=True)
 
         return True
