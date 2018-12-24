@@ -12,4 +12,4 @@ setup::
 	onlpm --link-dir onl-kernel-4.14-lts-arm-iproc-all:armel /usr/share/onl/packages/armel/onl-kernel-4.14-lts-arm-iproc-all/mbuilds/include include
 
 setup-clean::
-	#rm -rf dts include
+	rm -f dts include
