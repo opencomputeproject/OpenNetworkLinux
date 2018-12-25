@@ -334,7 +334,7 @@ class OnlRfsBuilder(object):
             if not os.path.exists(self.QEMU_PPC):
                 raise OnlRfsError("%s is missing." % self.QEMU_PPC)
 
-        if self.arch == 'armel':
+        if self.arch in [ 'armel', 'armhf' ]:
             if not os.path.exists(self.QEMU_ARM):
                 raise OnlRfsError("%s is missing." % self.QEMU_ARM)
 
@@ -378,7 +378,7 @@ class OnlRfsBuilder(object):
     def dpkg_configure(self, dir_):
         if self.arch == 'powerpc':
             onlu.execute('sudo cp %s %s' % (self.QEMU_PPC, os.path.join(dir_, 'usr/bin')))
-        if self.arch == 'armel':
+        if self.arch in [ 'armel', 'armhf' ]:
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM, os.path.join(dir_, 'usr/bin')))
         if self.arch == 'arm64':
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM64, os.path.join(dir_, 'usr/bin')))
