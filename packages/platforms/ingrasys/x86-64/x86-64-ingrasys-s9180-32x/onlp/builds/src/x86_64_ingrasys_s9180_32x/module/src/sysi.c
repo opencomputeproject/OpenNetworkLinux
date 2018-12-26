@@ -51,9 +51,9 @@ onlp_sysi_init(void)
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
-    uint8_t* rdata = aim_zmalloc(256);
-    if(onlp_file_read(rdata, 256, size, SYS_EEPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 256) {
+    uint8_t* rdata = aim_zmalloc(SYS_EEPROM_SIZE);
+    if(onlp_file_read(rdata, SYS_EEPROM_SIZE, size, SYS_EEPROM_PATH) == ONLP_STATUS_OK) {
+        if(*size == SYS_EEPROM_SIZE) {
             *data = rdata;
             return ONLP_STATUS_OK;
         }

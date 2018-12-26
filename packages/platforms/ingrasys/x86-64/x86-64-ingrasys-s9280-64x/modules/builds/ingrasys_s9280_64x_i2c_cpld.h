@@ -79,6 +79,7 @@ enum LED_GREEN {
 #define CPLD_QSFP_LED_BASE_REG          0x80
 #define CPLD_QSFP_LED_BLINK_BASE_REG    0x90
 #define CPLD_RTMR_RESET_REG    0x4B
+#define CPLD_ROV_STATUS_REG    0x4C
 
 /* bit definition for register value */
 enum CPLD_QSFP_PORT_STATUS_BITS {
