@@ -1,4 +1,4 @@
-############################################################
+###########################################################
 # <bsn.cl fy=2015 v=onl>
 #
 #           Copyright 2015 Big Switch Networks, Inc.
@@ -18,9 +18,25 @@
 #
 # </bsn.cl>
 ############################################################
+
 THIS_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-K_MAJOR_VERSION := 4
-K_PATCH_LEVEL := 4
-K_SUB_LEVEL := 39
-K_SUFFIX :=
+include $(ONL)/make/config.mk
+
+ifndef K_TARGET_DIR
+K_TARGET_DIR := $(THIS_DIR)
+endif
+
 K_PATCH_DIR := $(THIS_DIR)/patches
+
+include ../../kconfig.mk
+K_CONFIG := armel-iproc-all.config
+K_BUILD_TARGET := Image
+K_COPY_SRC := arch/arm/boot/Image
+K_COPY_GZIP := 1
+ifndef K_COPY_DST
+K_COPY_DST := kernel-4.14-lts-armel-iproc-all.bin.gz
+endif
+
+export ARCH=arm
+
+include $(ONL)/make/kbuild.mk

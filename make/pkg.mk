@@ -14,7 +14,7 @@ include $(ONL)/make/config.mk
 # directory tree.
 #
 ifndef ARCHES
-ARCHES := amd64 powerpc armel arm64 all
+ARCHES := amd64 powerpc armel armhf arm64 all
 endif
 
 ONLPM_ENVIRONMENT	= \

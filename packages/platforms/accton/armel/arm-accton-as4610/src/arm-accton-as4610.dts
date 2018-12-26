@@ -1,0 +1,286 @@
+/*
+ * Accton AS4610 54 Device Tree Source
+ *
+ * Copyright 2015, Cumulus Networks, Inc.
+ *
+ * This program is free software; you can redistribute  it and/or modify it
+ * under  the terms of  the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
+ */
+/dts-v1/;
+#include "dts/bcm-helix4.dtsi"
+
+/ {
+    model = "accton,as4610_54";
+    compatible = "accton,as4610_54","brcm,helix4";
+
+    aliases {
+        serial0 = &uart1;
+        serial1 = &uart2;
+        ethernet0 = &gmac0;
+        i2c-controller0 = &i2c0;
+        i2c-controller1 = &i2c1;
+    };
+/*
+    chosen {
+	bootargs = "console=ttyS0,115200n8 maxcpus=2 mem=2000M";
+    };
+*/
+    memory {
+        reg = <0x61000000 0x7f000000>;
+    };
+
+    localbus@1c000000 {
+        #address-cells = <0x2>;
+        #size-cells = <0x1>;
+        /* NAND Flash */
+        ranges = <
+            0x0 0x0 0x0 0x1c000000 0x00120000
+            0x1 0x0 0x0 0x1c120000 0x00040000
+        >;
+
+        flash@0,0 {
+            #address-cells = <1>;
+            #size-cells = <1>;
+            compatible = "cfi-flash";
+            reg = <0x0 0x0 0x02000000>;
+            byteswap;
+
+            partition@0 {
+                /* uboot */
+                reg = <0x00000000 0x00100000>;
+                label = "uboot";
+            };
+            partition@1 {
+                /* uboot-env */
+                reg = <0x00100000 0x00100000>;
+                label = "uboot-env";
+                env_size = <0x2000>;
+            };
+            partition@2 {
+                /* board_eeprom */
+                reg = <0x00200000 0x00100000>;
+                label = "board_eeprom";
+            };
+            partition@3 {
+                /* shmoo */
+                reg = <0x00300000 0x00100000>;
+                label = "shmoo";
+            };
+            partition@4 {
+                /* onie */
+                reg = <0x00400000 0x00800000>;
+                label = "onie";
+            };
+            partition@5 {
+                /* open */
+                reg = <0x00c00000 0x03c00000>;
+                label = "open";
+            };
+            partition@6 {
+                /* open2 */
+                reg = <0x04800000 0x7d000000>;
+                label = "open2";
+            };
+            partition@7 {
+                /* diag */
+                reg = <0xfec00000 0x01000000>;
+                label = "diag";
+            };
+        };
+    };
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&gmac0 {
+	status = "okay";
+	phy-mode = "sgmii"; /* "gmii-id", "gmii-rxid", "sgmii" */
+};
+
+&usbphy0 {
+    status = "okay";
+    usb-phy-mode = "host"; /* "host", "device" */
+/*	mdio-phy-handle = <&usb_phy>;
+*/
+};
+
+&ehci0 {
+	status = "okay";
+};
+
+&gpio_cca {
+       status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+        clock-frequency = <400000>;
+        cpld@30 {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "accton,as4610_54_cpld";
+        label = "cpld";
+        reg = <0x30>;
+    };	
+};
+
+&i2c1 {
+	status = "okay";
+        mux@70 {
+            compatible = "ti,pca9548";
+            reg = <0x70>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+            deselect-on-exit;
+
+        // SFP+ 1
+        i2c@0 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <0>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp1";
+                reg = <0x50>;
+                label = "port49";
+            };
+        };
+
+        // SFP+ 2
+        i2c@1 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <1>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp2";
+                reg = <0x50>;
+                label = "port50";
+            };
+        };
+
+        // SFP+ 3
+        i2c@2 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <2>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp3";
+                reg = <0x50>;
+                label = "port51";
+            };
+        };
+
+        // SFP+ 4
+        i2c@3 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <3>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp4";
+                reg = <0x50>;
+                label = "port52";
+            };
+        };
+
+        // QSFP+ STK1
+        i2c@4 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <4>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp5";
+                reg = <0x50>;
+            };
+        };
+
+        // QSFP+ STK2
+        i2c@5 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <5>;
+            sfp_eeprom@50 {
+                compatible = "accton,as4610_sfp6";
+                reg = <0x50>;
+            };
+        };
+
+        // PSU EEPROM
+        i2c@6 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <6>;
+            psu1_eeprom@50 {
+                compatible = "accton,as4610_psu1";
+                reg = <0x50>;
+            };
+            psu1_pmbus@58 {
+                compatible = "3y-power,ym1921";
+                reg = <0x58>;
+            };
+            psu2_eeprom@51 {
+                compatible = "accton,as4610_psu2";
+                reg = <0x51>;
+            };
+            psu2_pmbus@59 {
+                compatible = "3y-power,ym1921";
+                reg = <0x59>;
+            };
+        };
+
+        i2c@7 {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            reg = <7>;
+
+            temp@48 {
+                compatible = "nxp,lm77";
+                reg = <0x48>;
+            };
+
+            rtc@68 {
+                /* Actually M41T11 */
+                compatible = "dallas,ds1307";
+                reg = <0x68>;
+            };
+
+            board_eeprom@50 {
+                compatible = "at,24c04";
+                reg = <0x50>;
+                label = "board_eeprom";
+            };
+        };
+    };	
+};
+
+/*
+&mdio_int {
+    status = "okay";
+    usb_phy: usb_phy@0 {
+        reg = <6>;
+    };
+};
+*/
+
+&hwrng {
+	status = "okay";
+};
+
+&iproc_wdt {
+	status = "okay";
+};
+
+&dmac0 {
+	status = "okay";
+};
+
+&iproc_cmicd {
+	status = "okay";
+};
