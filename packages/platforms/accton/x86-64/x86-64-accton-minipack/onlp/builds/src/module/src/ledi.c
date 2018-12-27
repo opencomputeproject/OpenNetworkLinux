@@ -28,6 +28,7 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
+
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_LED(_id)) {             \
@@ -40,8 +41,8 @@
 enum onlp_led_id
 {
     LED_RESERVED = 0,
-    LED_SYS1,
-    LED_SYS2
+    LED_SYS,
+    LED_ACT
 };
 
 typedef struct led_address_s {
@@ -59,21 +60,38 @@ typedef struct led_mode_info_s {
 static led_address_t led_addr[] = 
 {
     { }, /* Not used */
-    {LED_SYS1, 1, 0x32, 0x3e},
-    {LED_SYS2, 1, 0x32, 0x3f},
+    {LED_SYS, 50, 0x20, 3},
+    {LED_ACT, 50, 0x20, 3},
 };
 
-static led_mode_info_t led_mode_info[] = 
-{
-    {ONLP_LED_MODE_OFF, 0x0},
-    {ONLP_LED_MODE_OFF, 0x8},
-    {ONLP_LED_MODE_BLUE, 0x1},
-    {ONLP_LED_MODE_BLUE_BLINKING, 0x9},
-    {ONLP_LED_MODE_GREEN, 0x2},
-    {ONLP_LED_MODE_GREEN_BLINKING, 0xa},
-    {ONLP_LED_MODE_RED, 0x4},
-    {ONLP_LED_MODE_RED_BLINKING, 0xc},
+struct led_type_mode {
+    enum onlp_led_id type;
+    onlp_led_mode_t mode;
+    int  reg_bit_mask;
+    int  mode_value;
 };
+
+#define LED_TYPE_SYS_REG_MASK           (0x07)
+#define LED_MODE_SYS_OFF_VALUE          (0x07)
+#define LED_TYPE_ACT_REG_MASK           (0x38)
+#define LED_MODE_ACT_OFF_VALUE          (0x38)
+
+static struct led_type_mode led_type_mode_data[] = {
+    {LED_SYS,  ONLP_LED_MODE_OFF,        LED_TYPE_SYS_REG_MASK,   LED_MODE_SYS_OFF_VALUE},
+    {LED_SYS,  ONLP_LED_MODE_RED,        LED_TYPE_SYS_REG_MASK,   0x06},
+    {LED_SYS,  ONLP_LED_MODE_GREEN,	     LED_TYPE_SYS_REG_MASK,   0x05},
+    {LED_SYS,  ONLP_LED_MODE_BLUE,       LED_TYPE_SYS_REG_MASK,   0x03},
+    {LED_SYS,  ONLP_LED_MODE_YELLOW,	 LED_TYPE_SYS_REG_MASK,   0x04},
+    {LED_SYS,  ONLP_LED_MODE_PURPLE,     LED_TYPE_SYS_REG_MASK,   0x02},
+
+    {LED_ACT,  ONLP_LED_MODE_OFF,        LED_TYPE_ACT_REG_MASK,   LED_MODE_ACT_OFF_VALUE},
+    {LED_ACT,  ONLP_LED_MODE_RED,        LED_TYPE_ACT_REG_MASK,   0x30},
+    {LED_ACT,  ONLP_LED_MODE_GREEN,      LED_TYPE_ACT_REG_MASK,   0x28},
+    {LED_ACT,  ONLP_LED_MODE_BLUE,       LED_TYPE_ACT_REG_MASK,   0x18},
+    {LED_ACT,  ONLP_LED_MODE_YELLOW,	 LED_TYPE_ACT_REG_MASK,   0x20},
+    {LED_ACT,  ONLP_LED_MODE_PURPLE,     LED_TYPE_ACT_REG_MASK,   0x10},
+};
+
 
 /*
  * Get the information for the given LED OID.
@@ -82,20 +100,20 @@ static onlp_led_info_t linfo[] =
 {
     { }, /* Not used */
     {
-        { ONLP_LED_ID_CREATE(LED_SYS1), "Chassis LED 1 (SYS LED 1)", 0 },
+        { ONLP_LED_ID_CREATE(LED_SYS), "SIM LED 1 (SYS LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF |
-        ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_RED_BLINKING   |
-        ONLP_LED_CAPS_BLUE   | ONLP_LED_CAPS_BLUE_BLINKING,
+        ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_PURPLE |
+        ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_YELLOW |
+        ONLP_LED_CAPS_BLUE   
     },
     {
-        { ONLP_LED_ID_CREATE(LED_SYS2), "Chassis LED 1 (SYS LED 2)", 0 },
+        { ONLP_LED_ID_CREATE(LED_ACT), "SIM LED 2 (ACT LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF |
-        ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_GREEN_BLINKING |
-        ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_RED_BLINKING   |
-        ONLP_LED_CAPS_BLUE   | ONLP_LED_CAPS_BLUE_BLINKING,
+        ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_PURPLE |
+        ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_YELLOW |
+        ONLP_LED_CAPS_BLUE   
     },
 };
 
@@ -108,37 +126,43 @@ onlp_ledi_init(void)
     return ONLP_STATUS_OK;
 }
 
-static int
-reg_value_to_onlp_led_mode(enum onlp_led_id id, int value)
-{
+static int reg_value_to_onlp_led_mode(enum onlp_led_id type, uint8_t reg_val) {
     int i;
 
-    for (i = 0; i < AIM_ARRAYSIZE(led_mode_info); i++) {
-        if (value != led_mode_info[i].regval) {
+    for (i = 0; i < AIM_ARRAYSIZE(led_type_mode_data); i++) {
+
+        if (type != led_type_mode_data[i].type)
             continue;
+
+        if ((led_type_mode_data[i].reg_bit_mask & reg_val) ==
+                led_type_mode_data[i].mode_value)
+        {
+            return led_type_mode_data[i].mode;
         }
-
-        return led_mode_info[i].mode;
-    }
-
-    return ONLP_LED_MODE_AUTO;
-}
-
-static int
-onlp_led_mode_to_reg_value(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
-{
-    int i;
-
-    for (i = 0; i < AIM_ARRAYSIZE(led_mode_info); i++) {
-        if (onlp_led_mode != led_mode_info[i].mode) {
-            continue;
-        }
-
-        return led_mode_info[i].regval;
     }
 
     return 0;
 }
+
+static uint8_t onlp_led_mode_to_reg_value(enum onlp_led_id type,
+                                    onlp_led_mode_t mode, uint8_t reg_val) {
+    int i;
+
+    for (i = 0; i < AIM_ARRAYSIZE(led_type_mode_data); i++) {
+        if (type != led_type_mode_data[i].type)
+            continue;
+
+        if (mode != led_type_mode_data[i].mode)
+            continue;
+
+        reg_val = led_type_mode_data[i].mode_value |
+                  (reg_val & (~led_type_mode_data[i].reg_bit_mask));
+        break;
+    }
+
+    return reg_val;
+}
+
 
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
@@ -151,13 +175,12 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
-    value = onlp_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset, ONLP_I2C_F_FORCE);
+    value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset);
     if (value < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
     info->mode = reg_value_to_onlp_led_mode(lid, value);
-
     /* Set the on/off status */
     if (info->mode != ONLP_LED_MODE_OFF) {
         info->status |= ONLP_LED_STATUS_ON;
@@ -196,17 +219,28 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    int  lid, value;    
+    int  lid, value, i;    
 
     VALIDATE(id);
     lid = ONLP_OID_ID_GET(id);
 
-    value = onlp_led_mode_to_reg_value(lid, mode);
-    if (onlp_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset, value, ONLP_I2C_F_FORCE) < 0) {
-        return ONLP_STATUS_E_INTERNAL;
+    for (i = 1; i <= PLATFOTM_H_TTY_RETRY; i++) {    
+        value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, 
+                        led_addr[lid].offset);
+        if (value < 0) {
+            continue;
+        }
+        value = onlp_led_mode_to_reg_value(lid, mode, value);
+        if (bmc_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr, 
+                        led_addr[lid].offset, value) < 0) {
+            continue;
+        } else {
+            return ONLP_STATUS_OK;
+        }
     }
 
-    return ONLP_STATUS_OK;
+    return ONLP_STATUS_E_INTERNAL;
+
 }
 
 /*

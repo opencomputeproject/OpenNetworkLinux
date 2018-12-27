@@ -31,18 +31,20 @@
 #define DEBUG_MODE 0
 
 #if (DEBUG_MODE == 1)
-    #define DEBUG_PRINT(fmt, args...)                                        \
+#define DEBUG_PRINT(fmt, args...)                                        \
         printf("%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)
 #else
-    #define DEBUG_PRINT(fmt, args...)
+#define DEBUG_PRINT(fmt, args...)
 #endif
 
-#define CHASSIS_FAN_COUNT     5
+#define CHASSIS_FAN_COUNT     8
 #define CHASSIS_THERMAL_COUNT 8
 #define CHASSIS_LED_COUNT     2
-#define CHASSIS_PSU_COUNT     2
+#define CHASSIS_PSU_COUNT     4
 
-#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-40/40-0050/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/1-0057/eeprom"
+#define PLATFOTM_H_TTY_RETRY  (5)
+
 
 enum onlp_thermal_id
 {

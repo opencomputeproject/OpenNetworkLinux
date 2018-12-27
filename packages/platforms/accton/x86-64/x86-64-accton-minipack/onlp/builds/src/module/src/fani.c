@@ -43,9 +43,15 @@ enum fan_id {
     FAN_3_ON_FAN_BOARD,
     FAN_4_ON_FAN_BOARD,
     FAN_5_ON_FAN_BOARD,
+    FAN_6_ON_FAN_BOARD,
+    FAN_7_ON_FAN_BOARD,
+    FAN_8_ON_FAN_BOARD,    
 };
 
-#define FAN_BOARD_PATH    "/sys/bus/i2c/devices/8-0033/"
+#define FCM_TOP_BOARD_PATH    "/sys/bus/i2c/devices/64-0033/fantray%d_present| head -1"
+#define FCM_BOT_BOARD_PATH    "/sys/bus/i2c/devices/72-0033/fantray%d_present| head -1"
+#define FAN_BOARD_PATH        "/sys/bus/platform/devices/minipack_psensor/"
+
 
 #define CHASSIS_FAN_INFO(fid)        \
     { \
@@ -64,7 +70,10 @@ onlp_fan_info_t finfo[] = {
     CHASSIS_FAN_INFO(2),
     CHASSIS_FAN_INFO(3),
     CHASSIS_FAN_INFO(4),
-    CHASSIS_FAN_INFO(5)
+    CHASSIS_FAN_INFO(5),
+    CHASSIS_FAN_INFO(6),
+    CHASSIS_FAN_INFO(7),
+    CHASSIS_FAN_INFO(8)
 };
 
 /*
@@ -79,8 +88,9 @@ onlp_fani_init(void)
 int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
-    int  value = 0, fid;
-    char path[64] = {0};
+    int  value = 0, fid, board_id;
+    char path[128]= {0};
+    char *fantray_path[2] = {FCM_TOP_BOARD_PATH, FCM_BOT_BOARD_PATH};
     VALIDATE(id);
 
     fid = ONLP_OID_ID_GET(id);
@@ -88,14 +98,14 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get fan present status
      */
-    sprintf(path, "%s""fantray_present", FAN_BOARD_PATH);
-
+    board_id = (fid-1)/(CHASSIS_FAN_COUNT/2);
+    sprintf(path, fantray_path[board_id], ((fid-1)/2)+1);
     if (bmc_file_read_int(&value, path, 16) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    if (value & BIT(fid-1)) {
+    if (value) {
         return ONLP_STATUS_OK;
     }
     info->status |= ONLP_FAN_STATUS_PRESENT;
@@ -104,21 +114,19 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     /* get front fan rpm
      */
     sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2 - 1);
-
-    if (bmc_file_read_int(&value, path, 10) < 0) {
+    if (onlp_file_read_int(&value, path) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
-    }    
+    } 
     info->rpm = value;
 
     /* get rear fan rpm
      */
     sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2);
-
-    if (bmc_file_read_int(&value, path, 10) < 0) {
+    if (onlp_file_read_int(&value, path) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
-    }
+    } 
 
     /* take the min value from front/rear fan speed
      */

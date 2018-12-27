@@ -34,20 +34,20 @@
         }                                       \
     } while(0)
 
-#define THERMAL_PATH_FORMAT "/sys/bus/i2c/drivers/lm75/%s/temp1_input"
-#define THERMAL_CPU_CORE_PATH_FORMAT "/sys/bus/i2c/drivers/com_e_driver/%s/temp2_input"
+#define THERMAL_CPU_CORE_PATH_FORMAT "/sys/class/hwmon/hwmon0/temp1_input"
+#define THERMAL_PATH_FORMAT "/sys/bus/platform/devices/minipack_psensor/temp%s_input"
 
 static char* directory[] =  /* must map with onlp_thermal_id */
 {
     NULL,
-    "4-0033",                  /* CPU_CORE files */
-    "3-0048",
-    "3-0049",
-    "3-004a",
-    "3-004b",
-    "3-004c",
-    "8-0048",
-    "8-0049",
+    "",                  /* CPU_CORE files */
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
 };
 
 /* Static values */
@@ -120,12 +120,12 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     
     /* get path */
     if (THERMAL_CPU_CORE == tid) {
-        sprintf(path, THERMAL_CPU_CORE_PATH_FORMAT, directory[tid]);
+        sprintf(path, THERMAL_CPU_CORE_PATH_FORMAT);
     }else {
         sprintf(path, THERMAL_PATH_FORMAT, directory[tid]);
     }
-    
-    if (bmc_file_read_int(&info->mcelsius, path, 10) < 0) {
+
+    if (onlp_file_read_int(&info->mcelsius, path) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }

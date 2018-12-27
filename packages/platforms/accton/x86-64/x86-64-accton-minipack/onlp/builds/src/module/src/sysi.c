@@ -47,13 +47,44 @@ int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
     uint8_t* rdata = aim_zmalloc(256);
-    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 256) {
+
+
+#if 1 
+/* Temporary solution. 
+ * The very start part of eeprom is in FB format.
+ * Real TLV info locates at 0x1800.
+ */
+#define TLV_START_OFFSET (0x1800)
+
+    FILE* fp;
+    fp = fopen(IDPROM_PATH, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open file of (%s)", IDPROM_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (fseek(fp, TLV_START_OFFSET, SEEK_CUR) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to open file of (%s)", IDPROM_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    *size = fread(rdata, 1, 256, fp);
+    fclose(fp);
+    if(*size == 256) {
+        *data = rdata;
+        return ONLP_STATUS_OK;
+    }
+#undef TLV_START_OFFSET     
+#else
+
+    if(onlp_file_read(rdata, 0x1000, size, IDPROM_PATH) == ONLP_STATUS_OK) {
+        if(*size == 0x4000) {
             *data = rdata;
             return ONLP_STATUS_OK;
         }
     }
-
+#endif
     aim_free(rdata);
     *size = 0;
     return ONLP_STATUS_E_INTERNAL;
@@ -65,7 +96,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     int i;
     onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
-    
+
     /* 8 Thermal sensors on the chassis */
     for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
         *e++ = ONLP_THERMAL_ID_CREATE(i);
