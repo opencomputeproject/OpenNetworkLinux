@@ -31,66 +31,6 @@
     memory {
         reg = <0x61000000 0x7f000000>;
     };
-
-    localbus@1c000000 {
-        #address-cells = <0x2>;
-        #size-cells = <0x1>;
-        /* NAND Flash */
-        ranges = <
-            0x0 0x0 0x0 0x1c000000 0x00120000
-            0x1 0x0 0x0 0x1c120000 0x00040000
-        >;
-
-        flash@0,0 {
-            #address-cells = <1>;
-            #size-cells = <1>;
-            compatible = "cfi-flash";
-            reg = <0x0 0x0 0x02000000>;
-            byteswap;
-
-            partition@0 {
-                /* uboot */
-                reg = <0x00000000 0x00100000>;
-                label = "uboot";
-            };
-            partition@1 {
-                /* uboot-env */
-                reg = <0x00100000 0x00100000>;
-                label = "uboot-env";
-                env_size = <0x2000>;
-            };
-            partition@2 {
-                /* board_eeprom */
-                reg = <0x00200000 0x00100000>;
-                label = "board_eeprom";
-            };
-            partition@3 {
-                /* shmoo */
-                reg = <0x00300000 0x00100000>;
-                label = "shmoo";
-            };
-            partition@4 {
-                /* onie */
-                reg = <0x00400000 0x00800000>;
-                label = "onie";
-            };
-            partition@5 {
-                /* open */
-                reg = <0x00c00000 0x03c00000>;
-                label = "open";
-            };
-            partition@6 {
-                /* open2 */
-                reg = <0x04800000 0x7d000000>;
-                label = "open2";
-            };
-            partition@7 {
-                /* diag */
-                reg = <0xfec00000 0x01000000>;
-                label = "diag";
-            };
-        };
-    };
 };
 
 &uart1 {
@@ -130,7 +70,7 @@
         compatible = "accton,as4610_54_cpld";
         label = "cpld";
         reg = <0x30>;
-    };	
+    };
 };
 
 &i2c1 {
@@ -257,17 +197,8 @@
                 label = "board_eeprom";
             };
         };
-    };	
-};
-
-/*
-&mdio_int {
-    status = "okay";
-    usb_phy: usb_phy@0 {
-        reg = <6>;
     };
 };
-*/
 
 &hwrng {
 	status = "okay";
@@ -283,4 +214,33 @@
 
 &iproc_cmicd {
 	status = "okay";
+};
+
+&qspi {
+    status = "okay";
+    flash: m25p80@0 {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "m25p80";
+        m25p,fast-read = <1>;
+        spi-max-frequency = <62500000>;
+        reg = <0x0>;
+        partition@0 {
+            label = "uboot";
+            reg = <0x00000000 0x000e0000>;
+            /*read-only;*/
+        };
+        partition@1 {
+            label = "shmoo";
+            reg = <0x000e0000 0x00010000>;
+        };
+        partition@2 {
+            label = "uboot-env";
+            reg = <0x000f0000 0x00010000>;
+        };
+        partition@3 {
+            label = "onie";
+            reg = <0x00100000 0x00700000>;
+        };
+    };
 };
