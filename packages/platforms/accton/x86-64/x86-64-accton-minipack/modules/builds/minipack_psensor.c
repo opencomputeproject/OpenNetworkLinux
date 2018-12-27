@@ -53,8 +53,9 @@
 #define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
 #define SENSOR_DATA_UPDATE_INTERVAL     (5*HZ)
-#define MAX_THERMAL_COUNT           (7)
+#define MAX_THERMAL_COUNT           (15)
 #define MAX_FAN_COUNT               (8)
+#define MAX_PSU_COUNT               (4)
 #define CHASSIS_PSU_CHAR_COUNT      (2)    /*2 for input and output.*/
 #define CHASSIS_LED_COUNT           (2)
 #define CHASSIS_PSU_VOUT_COUNT      (1)    /*V output only.*/
@@ -89,16 +90,33 @@
 #define MAX_PSU_VOUT            (12000*1005/1000) /*12 + 0.5%*/
 #define MIN_PSU_VOUT            (12000*995/1000)    /*12 - 0.5%*/
 
-enum sensor_type {
-    SENSOR_TYPE_THERMAL_IN = 0,
+enum sensor_type_e {
+    SENSOR_TYPE_THERMAL_IN,
     SENSOR_TYPE_THERMAL_MAX,
     SENSOR_TYPE_THERMAL_MAX_HYST,
     SENSOR_TYPE_FAN_RPM,
     SENSOR_TYPE_FAN_RPM_DOWN,
     SENSOR_TYPE_PSU1,
     SENSOR_TYPE_PSU2,
+    SENSOR_TYPE_PSU3,
+    SENSOR_TYPE_PSU4,
     SENSOR_TYPE_MAX,
 };
+
+enum sysfs_attributes_index {
+    INDEX_NAME              = 0,
+    INDEX_THRM_IN_START     = 100,
+    INDEX_THRM_MAX_START    = 200,
+    INDEX_THRM_MAX_HYST_START = 300,
+    INDEX_FAN_RPM_START     = 400,
+    INDEX_FAN_RPM_START_DN  = 500,
+    INDEX_PSU1_START        = 600,
+    INDEX_PSU2_START        = 700,
+    INDEX_PSU3_START        = 800,
+    INDEX_PSU4_START        = 900,
+};
+
+
 
 
 /* Pmbus reg defines are copied from drivers/hwmon/pmbus/pmbus.h*/
@@ -112,7 +130,7 @@ enum sensor_type {
 #define PMBUS_REG_START  PMBUS_READ_VIN
 #define PMBUS_REG_END    PMBUS_READ_PIN
 
-enum psu_data {
+enum psu_data_e {
     PSU_DATA_VIN = 0,
     PSU_DATA_VOUT,
     PSU_DATA_IIN,
@@ -122,7 +140,7 @@ enum psu_data {
     PSU_DATA_MAX,
 };
 
-struct pmbus_reg {
+struct pmbus_reg_t {
     u8   addr;
     bool power;     /*power attribute is in unit of uW instead of mW.*/
 } pmbus_regs[] = {
@@ -141,21 +159,8 @@ struct sensor_data {
     int lm75_max_hyst[MAX_THERMAL_COUNT];
     int fan_rpm[MAX_FAN_COUNT];
     int fan_rpm_dn[MAX_FAN_COUNT];
-    int psu1_data [PSU_DATA_MAX];
-    int psu2_data [PSU_DATA_MAX];
+    int psu_data [MAX_PSU_COUNT][PSU_DATA_MAX];
     int led_bright[CHASSIS_LED_COUNT];
-};
-
-enum sysfs_attributes_index {
-    INDEX_VERSION,
-    INDEX_NAME,
-    INDEX_THRM_IN_START = 100,
-    INDEX_THRM_MAX_START = 150,
-    INDEX_THRM_MAX_HYST_START = 170,
-    INDEX_FAN_RPM_START = 200,
-    INDEX_FAN_RPM_START_DN  = 300,
-    INDEX_PSU1_START    = 400,
-    INDEX_PSU2_START    = 500,
 };
 
 struct psensor {
@@ -327,6 +332,38 @@ struct sensor_set q16[SENSOR_TYPE_MAX] =
             },
         }
     },
+    [SENSOR_TYPE_PSU3] = {
+        PSU_DATA_MAX, INDEX_PSU3_START,
+        3,
+        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "in","_input",
+                S_IRUGO, show_psu2, NULL
+            },
+            [1] ={
+                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "curr","_input",
+                S_IRUGO, show_psu2, NULL
+            },
+            [2] ={
+                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "power","_input",
+                S_IRUGO, show_psu2, NULL
+            }
+        }
+    },
+    [SENSOR_TYPE_PSU4] = {
+        PSU_DATA_MAX, INDEX_PSU3_START,
+        3,
+        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "in","_input",
+                S_IRUGO, show_psu2, NULL
+            },
+            [1] ={
+                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "curr","_input",
+                S_IRUGO, show_psu2, NULL
+            },
+            [2] ={
+                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "power","_input",
+                S_IRUGO, show_psu2, NULL
+            }
+        }
+    },     
 };
 
 struct sensor_set *model_ssets = q16;
@@ -343,6 +380,12 @@ static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
     "i2cdump -y -f -r "\
     __stringify(PMBUS_REG_START)"-" __stringify(PMBUS_REG_END)\
     " 56 0x58 w\r\n",
+    "i2cdump -y -f -r "\
+    __stringify(PMBUS_REG_START)"-" __stringify(PMBUS_REG_END)\
+    " 48 0x58 w\r\n",
+    "i2cdump -y -f -r "\
+    __stringify(PMBUS_REG_START)"-" __stringify(PMBUS_REG_END)\
+    " 57 0x59 w\r\n",
 };
 
 static struct minipack_data *mp_data = NULL;
@@ -821,7 +864,7 @@ static int get_pmbus_regs_partial(int *in, int in_cnt, int *out, int *out_cnt)
 }
 
 
-static int comm2BMC(enum sensor_type type, int *out, int out_cnt)
+static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
 {
     char cmd[TTY_CMD_MAX_LEN], resp[TTY_READ_MAX_LEN];
     char *ptr;
@@ -855,6 +898,8 @@ static int comm2BMC(enum sensor_type type, int *out, int out_cnt)
         break;
     case SENSOR_TYPE_PSU1:
     case SENSOR_TYPE_PSU2:
+    case SENSOR_TYPE_PSU3:
+    case SENSOR_TYPE_PSU4:
     {
         int reg[(PMBUS_REG_END - PMBUS_REG_START) +1];
         int total = (PMBUS_REG_END - PMBUS_REG_START) +1;
@@ -871,7 +916,7 @@ static int comm2BMC(enum sensor_type type, int *out, int out_cnt)
 }
 
 static int get_type_data (
-    struct sensor_data *data, enum sensor_type type, int index,
+    struct sensor_data *data, enum sensor_type_e type, int index,
     int **out, int *count)
 {
     struct sensor_set *model = model_ssets;
@@ -893,10 +938,10 @@ static int get_type_data (
         *out = &data->fan_rpm_dn[index];
         break;
     case SENSOR_TYPE_PSU1:
-        *out = &data->psu1_data[index];
-        break;
     case SENSOR_TYPE_PSU2:
-        *out = &data->psu2_data[index];
+    case SENSOR_TYPE_PSU3:
+    case SENSOR_TYPE_PSU4:
+        *out = &data->psu_data[type-SENSOR_TYPE_PSU1][index];
         break;
     default:
         return -EINVAL;
@@ -906,7 +951,7 @@ static int get_type_data (
 }
 
 static struct sensor_data*
-update_data(struct device *dev, enum sensor_type type) {
+update_data(struct device *dev, enum sensor_type_e type) {
     struct minipack_data *data = mp_data;
     bool			*valid = &data->valid[type];
     unsigned long   *last_updated = &data->last_updated[type];
@@ -947,7 +992,7 @@ static ssize_t show_name(struct device *dev, struct device_attribute *da,
 }
 
 static ssize_t _attr_show(struct device *dev, struct device_attribute *da,
-                          char *buf, enum sensor_type type,  int index_start)
+                          char *buf, enum sensor_type_e type,  int index_start)
 {
     int index, count, rc;
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
@@ -1020,6 +1065,20 @@ static ssize_t show_psu2(struct device *dev, struct device_attribute *da,
 {
     return _attr_show(dev, da, buf,
                       SENSOR_TYPE_PSU2, INDEX_PSU2_START);
+}
+
+static ssize_t show_psu3(struct device *dev, struct device_attribute *da,
+                         char *buf)
+{
+    return _attr_show(dev, da, buf,
+                      SENSOR_TYPE_PSU3, INDEX_PSU1_START);
+}
+
+static ssize_t show_psu4(struct device *dev, struct device_attribute *da,
+                         char *buf)
+{
+    return _attr_show(dev, da, buf,
+                      SENSOR_TYPE_PSU4, INDEX_PSU2_START);
 }
 
 static ssize_t show_psu_vout_max(struct device *dev, struct device_attribute *da,
