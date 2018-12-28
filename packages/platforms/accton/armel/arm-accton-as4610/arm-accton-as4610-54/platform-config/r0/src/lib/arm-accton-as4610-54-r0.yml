@@ -15,7 +15,7 @@ arm-accton-as4610-54-r0:
       package: onl-platform-build-arm-accton-as4610-54-r0:armel
 
     itb:
-      <<: *arm-itb
+      <<: *armel-itb
 
   loader:
     device: /dev/sda
