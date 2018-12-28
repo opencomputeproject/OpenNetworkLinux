@@ -1,7 +1,7 @@
 INCLUDES=include .
 KERNEL := onl-kernel-4.14-lts-armel-iproc-all:armel
 DTS_LIST := arm-accton-as4610.dts
-VPATH := ../../../../../src
+VPATH := $(ONL)/packages/platforms/accton/armxx/arm-accton-as4610
 include $(ONL)/make/dtbs.mk
 
 #

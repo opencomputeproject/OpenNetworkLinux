@@ -1,0 +1,3 @@
+NETDEV=ma1
+BOOTMODE=SWI
+SWI=images::latest
