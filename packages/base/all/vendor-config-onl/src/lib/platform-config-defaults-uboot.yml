@@ -53,6 +53,13 @@ default:
       =: kernel-4.14-lts-armel-iproc-all.bin.gz
       <<: *armel-iproc-4-14-kernel-package
 
+    armhf-iproc-4-14-kernel-package: &armhf-iproc-4-14-kernel-package
+      package: onl-kernel-4.14-lts-armhf-iproc-all:armhf
+
+    armhf-iproc-4-14-kernel: &armhf-iproc-4-14-kernel
+      =: kernel-4.14-lts-armhf-iproc-all.bin.gz
+      <<: *armhf-iproc-4-14-kernel-package
+
     arm64-kernel-package: &arm64-kernel-package
       package: onl-kernel-4.9-lts-arm64-all:arm64
 
@@ -85,9 +92,13 @@ default:
       =: onl-loader-fit.itb
       package: onl-loader-fit:powerpc
 
-    arm-itb: &arm-itb
+    armel-itb: &armel-itb
       =: onl-loader-fit.itb
       package: onl-loader-fit:armel
+
+    armhf-itb: &armhf-itb
+      =: onl-loader-fit.itb
+      package: onl-loader-fit:armhf
 
     arm64-itb: &arm64-itb
       =: onl-loader-fit.itb
