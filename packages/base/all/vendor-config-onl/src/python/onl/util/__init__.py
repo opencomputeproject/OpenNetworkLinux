@@ -148,3 +148,6 @@ def wget(url, directory=None, temp_directory=None, extension=None):
         return (None, filename, directory)
     except subprocess.CalledProcessError, e:
         return (e, None, None)
+
+def dpkg_architecture():
+    return subprocess.check_output("dpkg --print-architecture", shell=True).strip()

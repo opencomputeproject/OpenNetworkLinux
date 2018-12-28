@@ -15,6 +15,7 @@ import string
 import argparse
 import yaml
 from time import sleep
+import onl.util
 
 from onl.platform.current import OnlPlatform, OnlPlatformName
 from onl.mounts import OnlMountManager, OnlMountContextReadOnly, OnlMountContextReadWrite
@@ -37,7 +38,7 @@ class BaseUpgrade(object):
         self.init_argparser()
         self.load_config()
         self.arch = pp.machine()
-        self.parch = dict(ppc='powerpc', x86_64='amd64', armv7l='armel', aarch64='arm64')[self.arch]
+        self.parch = onl.util.dpkg_architecture()
         self.platform = OnlPlatform()
         self.init()
 
