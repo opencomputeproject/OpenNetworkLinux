@@ -150,4 +150,7 @@ def wget(url, directory=None, temp_directory=None, extension=None):
         return (e, None, None)
 
 def dpkg_architecture():
-    return subprocess.check_output("dpkg --print-architecture", shell=True).strip()
+    try:
+        return subprocess.check_output(['/usr/bin/dpkg', '--print-architecture']).strip()
+    except (subprocess.CalledProcessError, OSError):
+        return None
