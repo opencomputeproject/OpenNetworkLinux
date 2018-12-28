@@ -5,7 +5,7 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
                                                 OnlPlatformPortConfig_128x100):
     MODEL="Minipack"
     PLATFORM="x86-64-accton-minipack-r0"
-    SYS_OBJECT_ID=".100.128.2"
+    SYS_OBJECT_ID=".7628.3.168"
 
     def baseconfig(self):
         self.insmod('optoe')
