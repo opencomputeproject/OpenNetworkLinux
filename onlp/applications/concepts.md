@@ -115,4 +115,5 @@ int onlp_<type>_info_to_user_json (onlp_<type>_info_t*, cJSON **, uint32_t flags
 
 There is no ```from_user_json``` as the representation is not sufficient to reconstruct the information structure.
 
+---
 [Next: APIs](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/apis)

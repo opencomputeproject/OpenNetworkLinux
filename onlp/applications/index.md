@@ -39,4 +39,5 @@ Likewise there are other proposals for communicating to system software through 
 
 ONLP is the standard for all platforms supported by Open Network Linux and Open Network Linux support is required for all platforms accepted by the Open Compute Project.
 
+---
 [Next: ONLP API Concepts](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/concepts)
