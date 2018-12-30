@@ -21,7 +21,7 @@ At a minimum this is supported by the Chassis OID to return the system identific
 Any OID that has an ONIE identifier (for example a pluggable module) should also support this attribute.
 
 ### The Asset Attribute
-The ONIE information structure is defined by the available TLV values defined in the ONIE [specification](https://opencomputeproject.github.io/onie/design-spec/hw_requirements.html)
+The ONIE information structure is defined by the available TLV values defined in the [ONIE specification](https://opencomputeproject.github.io/onie/design-spec/hw_requirements.html)
 
 The fields of the ```onlp_asset_info_t``` structure are defined by the ONLP API and evolve over time.
 This attribute should be implemented at a minimum by the Chassis OID to return important system information (like firmware revisions).

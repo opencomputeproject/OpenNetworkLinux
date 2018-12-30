@@ -18,10 +18,10 @@ There are several useful fields in this structure:
 While calling ```onlp_sfp_info_get``` is sufficient to identify the inserted module there are several operational APIs provided to manage it.
 
 * Change the control signal status
-** Enable TX_DISABLE
-** Disable LP_MODE
+  Enable TX_DISABLE
+  Disable LP_MODE
 * Generic Read/Write Operations
-** Perform I2C byte and word reads on the given module (any device address).
+  Perform I2C byte and word reads on the given module (any device address).
 
 ## SFP Documentation
 
