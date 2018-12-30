@@ -8,7 +8,8 @@ The ONLP Application API manages the following types of platform objects:
 * PSUs
 * Thermals Sensors
 * LEDs
-* Other Customized Platform Entities
+* Hot Swapped Modules
+* Private/Custom features.
 
 Platform objects in the ONLP API are represented as handles called Object IDs (OIDs). OIDs have both common and type-specific status, capabilities, and attributes.
 
@@ -23,7 +24,7 @@ There are functionality-specific APIs defined for each OID subtype.
 
 ## OID Representation
 
-OIDs are just 32 bit integer handles. The most significant byte of the OID encodes the type (SFP, FAN, PSU, etc). The remaining 3 bytes are a unique id referencing a platform-defined object (like Fan 1, Fan 2, Fan 3, etc).
+OIDs are just 32 bit integer handles. The most significant byte of the OID encodes the type (SFP, FAN, PSU, etc). The remaining 3 bytes are a unique id referencing a platform-defined object (like Fan 1, Fan 2, Fan 3).
 The code that defines and manipulates OIDs can be found [here](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/oids.h)
 
 

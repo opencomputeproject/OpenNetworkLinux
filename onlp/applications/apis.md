@@ -14,4 +14,3 @@
 
 ## System APIs
 * [Platform Management](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/platform)
-* [Debug](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/debug)
