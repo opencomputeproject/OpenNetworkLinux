@@ -16,13 +16,16 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
         self.new_i2c_devices([
                 ('pca9548', 0x70, 1),
                 ('24c64', 0x57, 1),
-                ('optoe1', 0x50, 1)
                 ])
                 
         for pim in range(0, 32):
             self.new_i2c_devices([
-                ('optoe1', 0x50, 1),
+                ('optoe1', 0x50, 0),
                 ('optoe1', 0x50, 199),
                 ])
-            
+
+        self.new_i2c_devices([
+                ('optoe1', 0x50, 1),
+                ])
+
         return True
