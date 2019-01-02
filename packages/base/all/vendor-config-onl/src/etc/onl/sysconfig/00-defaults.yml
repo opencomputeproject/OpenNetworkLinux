@@ -10,7 +10,7 @@ installer:
   os_name: Open Network Linux
   grub:
     - $PLATFORM.cpio.gz
-    - onl-loader-initrd-$PARCH.cpio.gz
+    - onl-loader-initrd-amd64.cpio.gz
 
   fit:
     - $PLATFORM.itb
