@@ -484,7 +484,7 @@ index d8fa4be..11388c5 100644
  			}
  			/* Validate that conf parameters are not zeros. */
 -			if (!data->mask || !data->bit) {
-+			if (!data->mask || !data->bit || !data->capability) {
++			if (!data->mask && !data->bit && !data->capability) {
  				dev_err(fan->dev, "invalid conf entry params: %s\n",
  					data->label);
  				return -EINVAL;
