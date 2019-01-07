@@ -30,6 +30,7 @@
 #include <onlp/onlp.h>
 #include <onlplib/shlocks.h>
 
+
 /* CPLD numbrt & peripherals */
 #define NUM_OF_THERMAL_ON_BOARDS  6
 #define NUM_OF_FAN_ON_FAN_BOARD   10
@@ -87,9 +88,10 @@
 #define PSU_STATUS_PRESENT    (1)
 #define PSU_NODE_MAX_PATH_LEN (64)
 #define FAN_SPEED_NORMALLY (5)
-#define SPEED_25_PERCENTAGE (25)
-#define SPEED_50_PERCENTAGE (50)
-#define SPEED_75_PERCENTAGE (75)
+#define SPEED_30_PERCENTAGE (30)
+#define SPEED_40_PERCENTAGE (40)
+#define SPEED_60_PERCENTAGE (60)
+#define SPEED_80_PERCENTAGE (80)
 #define SPEED_100_PERCENTAGE (100)
 #define FAN_ZERO_TACH (960)
 
@@ -177,11 +179,11 @@ typedef enum
 {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
-    THERMAL_1_ON_CPU_BOARD,
-    THERMAL_2_ON_FAN_BOARD,
-    THERMAL_3_ON_SW_BOARD,
-    THERMAL_4_ON_SW_BOARD,
-    THERMAL_5_ON_SW_BOARD,
+    THERMAL_1_ON_CPU_BOARD,  //U57
+    THERMAL_2_ON_FAN_BOARD,  //U334
+    THERMAL_3_ON_SW_BOARD,   //U38
+    THERMAL_4_ON_SW_BOARD,   //U40
+    THERMAL_5_ON_SW_BOARD,   //U240
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
 } onlp_thermal_id;
@@ -217,5 +219,23 @@ typedef enum
     LED_REAR_FAN_TRAY_5
 }onlp_led_id;
 
+typedef enum
+{
+    LEVEL_1=0,    //worse zone
+    LEVEL_2,
+    LEVEL_3,
+    LEVEL_4,
+    LEVEL_5,
+    LEVEL_6     // good and save zone
+}thermal_level_t;
+
+typedef struct thermal_fan_s
+{
+        int temp_H[6]; //high tmp LV1_LV6
+        int temp_L[6]; //low tmp LV1_LV6
+        int current_lv;
+}thermal_fan_t;
+
+ 
 #endif  /* __PLATFORM_LIB_H__ */
 
