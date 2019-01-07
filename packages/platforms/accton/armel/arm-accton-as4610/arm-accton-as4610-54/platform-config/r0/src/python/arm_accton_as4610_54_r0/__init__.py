@@ -8,13 +8,20 @@ class OnlPlatform_arm_accton_as4610_54_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".4610.54"
 
     def baseconfig(self):
-        self.insmod("accton_i2c_cpld")
-        self.new_i2c_device("as4610_54_cpld", 0x30, 0)
-        self.insmod("accton_as4610_sfp")
+        self.insmod("accton_as4610_cpld")
         self.insmod("accton_as4610_psu")
         self.insmod("accton_as4610_fan")
         self.insmod("accton_as4610_leds")
         self.insmod("ym2651y")
+        self.insmod("optoe")
+
+        subprocess.call('echo port49 > /sys/bus/i2c/devices/2-0050/port_name', shell=True)
+        subprocess.call('echo port50 > /sys/bus/i2c/devices/3-0050/port_name', shell=True)
+        subprocess.call('echo port51 > /sys/bus/i2c/devices/4-0050/port_name', shell=True)
+        subprocess.call('echo port52 > /sys/bus/i2c/devices/5-0050/port_name', shell=True)
+        subprocess.call('echo port53 > /sys/bus/i2c/devices/6-0050/port_name', shell=True)
+        subprocess.call('echo port54 > /sys/bus/i2c/devices/7-0050/port_name', shell=True)
+
 #        self.new_i2c_devices(
 #            [
 #                ("pca9548",        0x70, 1),

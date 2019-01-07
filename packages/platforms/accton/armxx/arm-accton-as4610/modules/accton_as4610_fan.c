@@ -29,15 +29,16 @@
 #include <linux/sysfs.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
-#include "accton_i2c_cpld.h"
 
 #define DRVNAME "as4610_fan"
-
 
 static struct as4610_fan_data *as4610_fan_update_device(struct device *dev);
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
+extern int as4610_54_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as4610_54_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as4610_product_id(void);
 
 /* fan related data, the index should match sysfs_fan_attributes
  */
@@ -72,6 +73,16 @@ enum sysfs_fan_attributes {
 	FAN_FAULT,
 	FAN1_FAULT,
 	FAN2_FAULT
+};
+
+enum as4610_product_id_e {
+	PID_AS4610_30T,
+	PID_AS4610_30P,
+	PID_AS4610_54T,
+	PID_AS4610_54P,
+	PID_RESERVED,
+	PID_AS4610_54T_B,
+	PID_UNKNOWN
 };
 
 /* Define attributes
@@ -113,12 +124,12 @@ static struct attribute *as4610_fan_attributes[] = {
 
 static int as4610_fan_read_value(u8 reg)
 {
-	return accton_i2c_cpld_read(AS4610_CPLD_SLAVE_ADDR, reg);
+	return as4610_54_cpld_read(0x30, reg);
 }
 
 static int as4610_fan_write_value(u8 reg, u8 value)
 {
-	return accton_i2c_cpld_write(AS4610_CPLD_SLAVE_ADDR, reg, value);
+	return as4610_54_cpld_write(0x30, reg, value);
 }
 
 /* fan utility functions
@@ -290,6 +301,27 @@ static struct platform_driver as4610_fan_driver = {
 	},
 };
 
+static int as4610_number_of_system_fan(void)
+{
+	int nFan = 0;
+	int pid = as4610_product_id();
+
+	switch (pid) {
+	case PID_AS4610_30P:
+	case PID_AS4610_54P:
+		nFan = 1;
+		break;
+	case PID_AS4610_54T_B:
+		nFan = 2;
+		break;
+	default:
+		nFan = 0;
+		break;
+	}
+
+	return nFan;
+}
+
 static int __init as4610_fan_init(void)
 {
 	int ret;
@@ -342,3 +374,4 @@ module_exit(as4610_fan_exit);
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as4610_fan driver");
 MODULE_LICENSE("GPL");
+
