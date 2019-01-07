@@ -1733,14 +1733,6 @@ common_get_eeprom(struct transvr_obj_s *self, char *buf){
 
     int err = DEBUG_TRANSVR_INT_VAL;
 
-    if (self->state == STATE_TRANSVR_CONNECTED &&
-        self->mode == TRANSVR_MODE_POLLING &&
-        TRANSVR_INFO_CACHE_ENABLE) {
-	memset(buf, 0, self->eeprom_map_p->length_eeprom+1);
-	memcpy(buf, self->eeprom, self->eeprom_map_p->length_eeprom);
-	*(buf+self->eeprom_map_p->length_eeprom) = '\n';
-	return self->eeprom_map_p->length_eeprom+1;
-    }
     err = _check_by_mode(self, &_common_update_attr_eeprom,
                          "common_get_eeprom");
     if (err < 0){

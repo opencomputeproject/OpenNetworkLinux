@@ -5,7 +5,7 @@ class OnlPlatform_x86_64_inventec_d7054q28b_r0(OnlPlatformInventec,
                                               OnlPlatformPortConfig_48x25_6x100):
     PLATFORM='x86-64-inventec-d7054q28b-r0'
     MODEL="X86-D7054Q28B"
-    SYS_OBJECT_ID="7054.28"
+    SYS_OBJECT_ID=".7054.1"
 
     def baseconfig(self):
         os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko")
@@ -16,5 +16,5 @@ class OnlPlatform_x86_64_inventec_d7054q28b_r0(OnlPlatformInventec,
         self.insmod('inv_eeprom')
         self.insmod('swps')
         self.insmod('vpd')
-        self.insmod('inv_pthread')
+        # self.insmod('inv_pthread')
         return True

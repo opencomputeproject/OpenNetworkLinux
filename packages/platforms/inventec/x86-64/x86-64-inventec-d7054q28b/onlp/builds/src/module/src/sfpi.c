@@ -170,6 +170,17 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
+#if 1
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+
+    memset(data, 0, 256);
+    /* Read eeprom information into data[] */
+    if (onlp_i2c_read(bus, 0x50, 0x00, 256, data, 0) != 0)
+    {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+#else
     char* path;
     int len = 0;
     /*
@@ -184,6 +195,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
+#endif
     return ONLP_STATUS_OK;
 }
 
