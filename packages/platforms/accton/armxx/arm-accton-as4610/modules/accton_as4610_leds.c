@@ -29,10 +29,10 @@
 #include <linux/leds.h>
 #include <linux/slab.h>
 #include <linux/bitops.h>
-#include "accton_i2c_cpld.h"
 
-//extern void led_classdev_unregister(struct led_classdev *led_cdev);
-//extern int led_classdev_register(struct device *parent, struct led_classdev *led_cdev);
+extern int as4610_54_cpld_read (unsigned short cpld_addr, u8 reg);
+extern int as4610_54_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int as4610_product_id(void);
 
 #define DRVNAME "as4610_led"
 
@@ -93,6 +93,16 @@ static const u8 led_reg[] = {
 	0x33, /* STK1-2/Fan/PoE/Alarm LED */
 };
 
+enum as4610_product_id_e {
+	PID_AS4610_30T,
+	PID_AS4610_30P,
+	PID_AS4610_54T,
+	PID_AS4610_54P,
+	PID_RESERVED,
+	PID_AS4610_54T_B,
+	PID_UNKNOWN
+};
+
 enum led_type {
 	LED_TYPE_SYS,
 	LED_TYPE_PRI,
@@ -145,12 +155,12 @@ enum led_light_mode {
 
 static int as4610_led_read_value(u8 reg)
 {
-	return accton_i2c_cpld_read(0x30, reg);
+	return as4610_54_cpld_read(0x30, reg);
 }
 
 static int as4610_led_write_value(u8 reg, u8 value)
 {
-	return accton_i2c_cpld_write(0x30, reg, value);
+	return as4610_54_cpld_write(0x30, reg, value);
 }
 
 static void as4610_led_update(void)
@@ -672,3 +682,4 @@ module_exit(as4610_led_exit);
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as4610_led driver");
 MODULE_LICENSE("GPL");
+

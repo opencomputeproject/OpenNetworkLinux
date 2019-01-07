@@ -37,7 +37,7 @@
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
 static int as4610_psu_read_data(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
+extern int as4610_54_cpld_read(unsigned short cpld_addr, u8 reg);
 
 /* Addresses scanned
  */
@@ -227,7 +227,7 @@ static struct as4610_psu_data *as4610_psu_update_device(struct device *dev)
 		dev_dbg(&client->dev, "Starting as4610 update\n");
 
 		/* Read psu status */
-		status = accton_i2c_cpld_read(0x30, 0x11);
+		status = as4610_54_cpld_read(0x30, 0x11);
 
 		if (status < 0) {
 			dev_dbg(&client->dev, "cpld reg 0x30 err %d\n", status);
