@@ -40,9 +40,3 @@ onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
     }
     return 0;
 }
-
-int
-onlp_chassisi_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info)
-{
-    return onlp_chassisi_hdr_get(id, &info->hdr);
-}
