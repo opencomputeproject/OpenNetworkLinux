@@ -7,7 +7,7 @@ The ONL software architecture is designed to support multiple platforms with the
 ## ONLP Architecture
 
 The ONLP Common Application API (collectively defined [here](https://github.com/opencomputeproject/OpenNetworkLinux/tree/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp)) is used by system applications and provides common middleware for each system and is the gateway to your implementation.
-You implementation libraries contain similar, but reduced functionality necessary to support the features needed by the platform and the upper layer software.
+Your implementation libraries contain similar, but reduced, functionality necessary to support the features needed by the platform and the upper layer software.
 
 ### Platform Shared Libraries
 
@@ -23,7 +23,7 @@ Your APIs are a similar subset of the functionality defined in the application l
 All APIs for the platform implementor are defined [here](https://github.com/opencomputeproject/OpenNetworkLinux/tree/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi).
 The following sections will go into more detail on the requires for each subsystem.
 
-### A Note on API Exclusion
+### API Exclusion
 
 The ONLP common layer provides complete exclusion between all calls to the platform implementation across the entire system. This removes the need to manage any concurrency or reentrance issues in your into your code.
 You can be guaranteed that no other thread or process in the entire system is accessing your ONLP driver calls at the same time.
@@ -32,14 +32,14 @@ This has high value for platform drivers that wish to implement some or all of t
 
 **You do no need and in general should not add additional locking mechanisms to your code.**
 
-### A Note on OIDs and API Parameters
+### OIDs and API Parameters
 
 While the signatures of your entry points are roughly equivalent to the upper layer which proxies it for you it is important to note that the upper layer cleans the incoming OID (of type ```onlp_oid_t```) and sends you only the ID (of type ```onlp_oid_id_t```) as a convenience. No need to extract the ID from the OID.
 The upper layer never calls your code until after it has validated that the OID passed to the API is of the correct type.
 
 You should however verify that the ID passed to you refers to a valid object where necessary. Objects may become invalid before the caller has learned it.
 
-### A Note on Required and Optional Functions
+### Required and Optional Functions
 
 The ONLP API represents a union of all defined functionality. Not all features will be available on all platforms.
 
@@ -50,7 +50,7 @@ This architecture allows new functions to be added to the API without requiring 
 
 **Please do not put empty stubs in your implementation and rely instead on the stubs you automatically inherit. It makes the code cleaner, smaller, and more obvious.***
 
-### A Note about Hardware and Software Initialization
+### Hardware vs Software Initialization
 
 Every subsystem supports the concept of Hardware and Software Initialization. The distinction is important and should be note by the platform implementor:
 
