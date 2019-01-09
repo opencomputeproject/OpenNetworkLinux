@@ -1,10 +1,14 @@
 var searchData=
 [
-  ['this_20is_20the_20main_20page_2e',['This is the main page.',['../index.html',1,'']]],
-  ['thermals',['Thermals',['../group__oid-thermal.html',1,'']]],
-  ['thermal_2eh',['thermal.h',['../thermal_8h.html',1,'']]],
-  ['thermals',['Thermals',['../group__thermali.html',1,'']]],
-  ['thermali_2eh',['thermali.h',['../thermali_8h.html',1,'']]],
-  ['thresholds',['thresholds',['../structonlp__thermal__info__s.html#a27cf1ef766f2b8c400df5f003809bca4',1,'onlp_thermal_info_s']]],
-  ['type',['type',['../structonlp__psu__info__t.html#a15b4df62bdd73343b54573d21bdcfbb7',1,'onlp_psu_info_t::type()'],['../structonlp__sfp__info__t.html#a96a4b86f10e7f6621680896cf6ef8857',1,'onlp_sfp_info_t::type()']]]
+  ['sfps',['SFPs',['../group__oid-sfp.html',1,'']]],
+  ['serial',['serial',['../structonlp__fan__info__s.html#ad89c58b7f96020916c35797446d60984',1,'onlp_fan_info_s::serial()'],['../structonlp__psu__info__t.html#a77b47bcf3c2205d14850c44a14d0dcf1',1,'onlp_psu_info_t::serial()']]],
+  ['serial_5fnumber',['serial_number',['../structonlp__asset__info__s.html#ae14e986b2d61b2c034cec866d6a365bd',1,'onlp_asset_info_s']]],
+  ['sff',['sff',['../structonlp__sfp__info__t.html#a59d9b00fccb625554fb38002dceaf826',1,'onlp_sfp_info_t']]],
+  ['sfp_2eh',['sfp.h',['../sfp_8h.html',1,'']]],
+  ['sfpi',['sfpi',['../group__sfpi.html',1,'']]],
+  ['sfpi_2eh',['sfpi.h',['../sfpi_8h.html',1,'']]],
+  ['shutdown',['shutdown',['../structonlp__thermal__info__s.html#ac62a266c2f6aab142789a421581f416b',1,'onlp_thermal_info_s']]],
+  ['status',['status',['../structonlp__oid__hdr__s.html#af205439944b6fbfbb0f7aea60707d6c6',1,'onlp_oid_hdr_s']]],
+  ['standard_20attribute_20structures',['Standard Attribute Structures',['../group__stdattrs.html',1,'']]],
+  ['stdattrs_2eh',['stdattrs.h',['../stdattrs_8h.html',1,'']]]
 ];

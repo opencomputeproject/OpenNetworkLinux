@@ -114,7 +114,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="preprocessor">#include &lt;<a class="code" href="onlp__config_8h.html">onlp/onlp_config.h</a>&gt;</span></div>
 <div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="preprocessor">#include &lt;onlp/onlp.h&gt;</span></div>
-<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="preprocessor">#include &lt;onlp/oids.h&gt;</span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;<span class="preprocessor">#include &lt;<a class="code" href="oids_8h.html">onlp/oids.h</a>&gt;</span></div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;<span class="comment">/* &lt;auto.start.enum(tag:thermal).define&gt; */</span></div>
 <div class="line"><a name="l00037"></a><span class="lineno"><a class="line" href="group__oid-thermal.html#gad0fff3493dbbf447fa8f9250f6fdea28">   37</a></span>&#160;<span class="keyword">typedef</span> <span class="keyword">enum</span> <a class="code" href="group__oid-thermal.html#gad0fff3493dbbf447fa8f9250f6fdea28">onlp_thermal_caps_e</a> {</div>
@@ -171,9 +171,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;</div>
 <div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#ga021b8766d4c07b1e465b5d7ed544d8ff">onlp_thermal_sw_denit</a>(<span class="keywordtype">void</span>);</div>
 <div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;</div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#gaab0f9b7b4beee33b04621cb2c908b09b">onlp_thermal_hdr_get</a>(onlp_oid_t oid, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#gaab0f9b7b4beee33b04621cb2c908b09b">onlp_thermal_hdr_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
 <div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;</div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#ga4ae826e9345713b891c7f37fdaf14d1a">onlp_thermal_info_get</a>(onlp_oid_t oid, <a class="code" href="structonlp__thermal__info__s.html">onlp_thermal_info_t</a>* rv);</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#ga4ae826e9345713b891c7f37fdaf14d1a">onlp_thermal_info_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__thermal__info__s.html">onlp_thermal_info_t</a>* rv);</div>
 <div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;</div>
 <div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-thermal.html#ga39e4d7f466d8bb5a20d9930467ab9bba">onlp_thermal_info_to_json</a>(<a class="code" href="structonlp__thermal__info__s.html">onlp_thermal_info_t</a>* info, cJSON** rv, uint32_t flags);</div>
 <div class="line"><a name="l00148"></a><span class="lineno">  148</span>&#160;</div>
@@ -231,6 +231,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="structonlp__thermal__info__s_html_a3d64d9695a41a8607a04fb468c9bd273"><div class="ttname"><a href="structonlp__thermal__info__s.html#a3d64d9695a41a8607a04fb468c9bd273">onlp_thermal_info_s::warning</a></div><div class="ttdeci">int warning</div><div class="ttdef"><b>Definition:</b> thermal.h:90</div></div>
 <div class="ttc" id="group__oid-thermal_html_gace07bcb9e15e48c1a19dc83212cca354"><div class="ttname"><a href="group__oid-thermal.html#gace07bcb9e15e48c1a19dc83212cca354">onlp_thermal_caps_map</a></div><div class="ttdeci">aim_map_si_t onlp_thermal_caps_map[]</div></div>
 <div class="ttc" id="structonlp__thermal__info__s_html_a27cf1ef766f2b8c400df5f003809bca4"><div class="ttname"><a href="structonlp__thermal__info__s.html#a27cf1ef766f2b8c400df5f003809bca4">onlp_thermal_info_s::thresholds</a></div><div class="ttdeci">struct onlp_thermal_info_s::@1 thresholds</div></div>
+<div class="ttc" id="oids_8h_html"><div class="ttname"><a href="oids_8h.html">oids.h</a></div><div class="ttdoc">Object Identifiers. </div></div>
+<div class="ttc" id="group__oid_html_gae6a6c9be0f593051fa446ce33afcf98f"><div class="ttname"><a href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a></div><div class="ttdeci">uint32_t onlp_oid_t</div><div class="ttdef"><b>Definition:</b> oids.h:52</div></div>
 <div class="ttc" id="group__oid-thermal_html_ga021b8766d4c07b1e465b5d7ed544d8ff"><div class="ttname"><a href="group__oid-thermal.html#ga021b8766d4c07b1e465b5d7ed544d8ff">onlp_thermal_sw_denit</a></div><div class="ttdeci">int onlp_thermal_sw_denit(void)</div><div class="ttdoc">Deinitialize the thermal software module. </div></div>
 <div class="ttc" id="structonlp__thermal__info__s_html_a9d22f9cfb0df50dddc3ed39f9e108069"><div class="ttname"><a href="structonlp__thermal__info__s.html#a9d22f9cfb0df50dddc3ed39f9e108069">onlp_thermal_info_s::error</a></div><div class="ttdeci">int error</div><div class="ttdef"><b>Definition:</b> thermal.h:93</div></div>
 <div class="ttc" id="structonlp__thermal__info__s_html_ac056371edd6343e41b340e4958a65166"><div class="ttname"><a href="structonlp__thermal__info__s.html#ac056371edd6343e41b340e4958a65166">onlp_thermal_info_s::caps</a></div><div class="ttdeci">uint32_t caps</div><div class="ttdef"><b>Definition:</b> thermal.h:82</div></div>
@@ -254,14 +256,14 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="group__oid-thermal_html_ga2fee06677b8479ea51f5c249d65af439"><div class="ttname"><a href="group__oid-thermal.html#ga2fee06677b8479ea51f5c249d65af439">onlp_thermal_caps_desc</a></div><div class="ttdeci">const char * onlp_thermal_caps_desc(onlp_thermal_caps_t e)</div></div>
 <div class="ttc" id="structonlp__thermal__info__s_html_a1aaba0b2764aaaf88a58314e8c076efc"><div class="ttname"><a href="structonlp__thermal__info__s.html#a1aaba0b2764aaaf88a58314e8c076efc">onlp_thermal_info_s::mcelsius</a></div><div class="ttdeci">int mcelsius</div><div class="ttdef"><b>Definition:</b> thermal.h:85</div></div>
 <div class="ttc" id="group__oid-thermal_html_ga669136096981abfb4bdf7aa0a489b28c"><div class="ttname"><a href="group__oid-thermal.html#ga669136096981abfb4bdf7aa0a489b28c">onlp_thermal_threshold_value</a></div><div class="ttdeci">int onlp_thermal_threshold_value(const char *str, onlp_thermal_threshold_t *e, int substr)</div></div>
-<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:212</div></div>
+<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:244</div></div>
 <div class="ttc" id="group__oid-thermal_html_ga6de44a610c9ac2709df9fcb533aad686"><div class="ttname"><a href="group__oid-thermal.html#ga6de44a610c9ac2709df9fcb533aad686">onlp_thermal_threshold_map</a></div><div class="ttdeci">aim_map_si_t onlp_thermal_threshold_map[]</div></div>
 <div class="ttc" id="group__oid-thermal_html_ga46219356cfb26892b8efa4e6b0c0d88b"><div class="ttname"><a href="group__oid-thermal.html#ga46219356cfb26892b8efa4e6b0c0d88b">onlp_thermal_info_from_json</a></div><div class="ttdeci">int onlp_thermal_info_from_json(cJSON *cj, onlp_thermal_info_t *info)</div><div class="ttdoc">Convert a JSON object to a thermal info structure. </div></div>
 <div class="ttc" id="group__oid-thermal_html_gab80fcba63d439f3cfff302db54796564"><div class="ttname"><a href="group__oid-thermal.html#gab80fcba63d439f3cfff302db54796564">onlp_thermal_caps_desc_map</a></div><div class="ttdeci">aim_map_si_t onlp_thermal_caps_desc_map[]</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Aug 7 2018 17:12:36 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jan 8 2019 17:10:51 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>

@@ -113,7 +113,7 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="preprocessor">#define __ONLP_PSU_H__</span></div>
 <div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
 <div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="preprocessor">#include &lt;onlp/onlp.h&gt;</span></div>
-<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="preprocessor">#include &lt;onlp/oids.h&gt;</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="preprocessor">#include &lt;<a class="code" href="oids_8h.html">onlp/oids.h</a>&gt;</span></div>
 <div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="comment">/* &lt;auto.start.enum(tag:psu).define&gt; */</span></div>
 <div class="line"><a name="l00036"></a><span class="lineno"><a class="line" href="group__oid-psu.html#ga7e0491598e576f7c49c0e3ff06bf4db2">   36</a></span>&#160;<span class="keyword">typedef</span> <span class="keyword">enum</span> <a class="code" href="group__oid-psu.html#ga7e0491598e576f7c49c0e3ff06bf4db2">onlp_psu_caps_e</a> {</div>
@@ -172,9 +172,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;</div>
 <div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#ga129a21fa7eb314964c2db4fd8d660572">onlp_psu_sw_denit</a>(<span class="keywordtype">void</span>);</div>
 <div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;</div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#ga92999b5dea1b92e35941bf9ac2acfa9d">onlp_psu_hdr_get</a>(onlp_oid_t <span class="keywordtype">id</span>, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
+<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#ga92999b5dea1b92e35941bf9ac2acfa9d">onlp_psu_hdr_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> <span class="keywordtype">id</span>, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
 <div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#ga8677e4a71d8a4438606110c2ef9fc60e">onlp_psu_info_get</a>(onlp_oid_t <span class="keywordtype">id</span>, <a class="code" href="structonlp__psu__info__t.html">onlp_psu_info_t</a>* rv);</div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#ga8677e4a71d8a4438606110c2ef9fc60e">onlp_psu_info_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> <span class="keywordtype">id</span>, <a class="code" href="structonlp__psu__info__t.html">onlp_psu_info_t</a>* rv);</div>
 <div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;</div>
 <div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-psu.html#gac3450d83ebaedba241c43000ce860d97">onlp_psu_info_to_user_json</a>(<a class="code" href="structonlp__psu__info__t.html">onlp_psu_info_t</a>* info, cJSON** cj, uint32_t flags);</div>
 <div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;</div>
@@ -244,6 +244,8 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="group__oid-psu_html_ga129a21fa7eb314964c2db4fd8d660572"><div class="ttname"><a href="group__oid-psu.html#ga129a21fa7eb314964c2db4fd8d660572">onlp_psu_sw_denit</a></div><div class="ttdeci">int onlp_psu_sw_denit(void)</div><div class="ttdoc">Deinitialize the psu software module. </div></div>
 <div class="ttc" id="structonlp__psu__info__t_html_a77b47bcf3c2205d14850c44a14d0dcf1"><div class="ttname"><a href="structonlp__psu__info__t.html#a77b47bcf3c2205d14850c44a14d0dcf1">onlp_psu_info_t::serial</a></div><div class="ttdeci">char serial[ONLP_CONFIG_INFO_STR_MAX]</div><div class="ttdef"><b>Definition:</b> psu.h:69</div></div>
 <div class="ttc" id="group__oid-psu_html_ga7e0491598e576f7c49c0e3ff06bf4db2"><div class="ttname"><a href="group__oid-psu.html#ga7e0491598e576f7c49c0e3ff06bf4db2">onlp_psu_caps_e</a></div><div class="ttdeci">onlp_psu_caps_e</div><div class="ttdef"><b>Definition:</b> psu.h:36</div></div>
+<div class="ttc" id="oids_8h_html"><div class="ttname"><a href="oids_8h.html">oids.h</a></div><div class="ttdoc">Object Identifiers. </div></div>
+<div class="ttc" id="group__oid_html_gae6a6c9be0f593051fa446ce33afcf98f"><div class="ttname"><a href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a></div><div class="ttdeci">uint32_t onlp_oid_t</div><div class="ttdef"><b>Definition:</b> oids.h:52</div></div>
 <div class="ttc" id="structonlp__psu__info__t_html_a28e3036f4eba2162b72c9293395f6e35"><div class="ttname"><a href="structonlp__psu__info__t.html#a28e3036f4eba2162b72c9293395f6e35">onlp_psu_info_t::caps</a></div><div class="ttdeci">uint32_t caps</div><div class="ttdef"><b>Definition:</b> psu.h:72</div></div>
 <div class="ttc" id="group__oid-psu_html_gacda088bcdd290bd1a6ab4fbe38f92e30"><div class="ttname"><a href="group__oid-psu.html#gacda088bcdd290bd1a6ab4fbe38f92e30">onlp_psu_type_t</a></div><div class="ttdeci">enum onlp_psu_type_e onlp_psu_type_t</div></div>
 <div class="ttc" id="structonlp__psu__info__t_html_af213d7ec94b6dbcc467fa64d35bfc1ab"><div class="ttname"><a href="structonlp__psu__info__t.html#af213d7ec94b6dbcc467fa64d35bfc1ab">onlp_psu_info_t::mpin</a></div><div class="ttdeci">int mpin</div><div class="ttdef"><b>Definition:</b> psu.h:90</div></div>
@@ -270,13 +272,13 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="group__oid-psu_html_ga0db5f2ef0e61d2af19a093da16cfdac1"><div class="ttname"><a href="group__oid-psu.html#ga0db5f2ef0e61d2af19a093da16cfdac1">onlp_psu_caps_desc_map</a></div><div class="ttdeci">aim_map_si_t onlp_psu_caps_desc_map[]</div></div>
 <div class="ttc" id="group__oid-psu_html_ga870991253d44f35ef9c6c395c3bc7451"><div class="ttname"><a href="group__oid-psu.html#ga870991253d44f35ef9c6c395c3bc7451">onlp_psu_info_from_json</a></div><div class="ttdeci">int onlp_psu_info_from_json(cJSON *cj, onlp_psu_info_t *info)</div><div class="ttdoc">Convert a JSON object to a PSU info structure. </div></div>
 <div class="ttc" id="group__oid-psu_html_gae30575ab2613a0f513c4d9eb87ce6648"><div class="ttname"><a href="group__oid-psu.html#gae30575ab2613a0f513c4d9eb87ce6648">onlp_psu_type_desc_map</a></div><div class="ttdeci">aim_map_si_t onlp_psu_type_desc_map[]</div></div>
-<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:212</div></div>
+<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:244</div></div>
 <div class="ttc" id="structonlp__psu__info__t_html_a8d451eee04df036384110d6891b65af9"><div class="ttname"><a href="structonlp__psu__info__t.html#a8d451eee04df036384110d6891b65af9">onlp_psu_info_t::model</a></div><div class="ttdeci">char model[ONLP_CONFIG_INFO_STR_MAX]</div><div class="ttdef"><b>Definition:</b> psu.h:66</div></div>
 <div class="ttc" id="structonlp__psu__info__t_html_ae477a0f4b80d4073632b641fb4efdd4d"><div class="ttname"><a href="structonlp__psu__info__t.html#ae477a0f4b80d4073632b641fb4efdd4d">onlp_psu_info_t::mpout</a></div><div class="ttdeci">int mpout</div><div class="ttdef"><b>Definition:</b> psu.h:93</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Aug 7 2018 17:12:36 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jan 8 2019 17:10:51 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>

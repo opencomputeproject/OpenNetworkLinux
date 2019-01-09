@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * ONLP Platform Object Identifiers.
+ * @file
+ * @brief Object Identifiers
+ * @addtogroup oid
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_OID_H__
@@ -47,6 +50,8 @@
  */
 
 typedef uint32_t onlp_oid_t;
+
+/** The object id value */
 typedef uint32_t onlp_oid_id_t;
 
 /* <auto.start.enum(tag:oid).define> */
@@ -100,20 +105,22 @@ typedef uint32_t onlp_oid_type_flags_t;
  */
 typedef uint32_t onlp_oid_status_flags_t;
 
-/**
- * Get the or set the type of an OID
- */
+/** Get the type from an OID */
 #define ONLP_OID_TYPE_GET(_id) ( ( (_id) >> 24) )
+/** Create an OID of the given type */
 #define ONLP_OID_TYPE_CREATE(_type, _id) ( ( (_type) << 24) | (_id))
+/** Determine if an OID is of the given type */
 #define ONLP_OID_IS_TYPE(_type,_id) (ONLP_OID_TYPE_GET((_id)) == _type)
+/** Get the ID from an OID */
 #define ONLP_OID_ID_GET(_id) (_id & 0xFFFFFF)
+/** Return an error if the given OID is not of the given type */
 #define ONLP_OID_TYPE_VALIDATE(_type, _oid)     \
     do {                                        \
         if(!ONLP_OID_IS_TYPE(_type, _oid)) {    \
             return ONLP_STATUS_E_PARAM;         \
         }                                       \
 } while(0)
-
+/** Return if the given OID is not of the given type */
 #define ONLP_OID_TYPE_VALIDATE_NR(_type, _oid)  \
     do {                                        \
         if(!ONLP_OID_IS_TYPE(_type, _oid)) {    \
@@ -121,45 +128,70 @@ typedef uint32_t onlp_oid_status_flags_t;
         }                                       \
     } while(0)
 
+/** Validate that the given OID is of the given type and retreive the ID */
 #define ONLP_OID_TYPE_VALIDATE_GET_ID(_type, _oid, _id) \
     do {                                                \
         ONLP_OID_TYPE_VALIDATE(_type, _oid);            \
         _id = ONLP_OID_ID_GET(_oid);                    \
     } while(0)
-
+/** Validate that the given OID is of the given type and retreive the ID */
 #define ONLP_OID_TYPE_VALIDATE_GET_ID_NR(_type, _oid, _id)      \
     do {                                                        \
         ONLP_OID_TYPE_VALIDATE_NR(_type, _oid);                 \
         _id = ONLP_OID_ID_GET(_oid);                            \
     }
 
+/** Is the OID type present in the flag bitmap? */
 #define ONLP_OID_IS_TYPE_FLAGS(_flags, _id) ((_flags & (1 << ONLP_OID_TYPE_GET(_id))))
+
+/** Is the OID type present in the flag bitmap or are the flags zero? */
 #define ONLP_OID_IS_TYPE_FLAGSZ(_flags, _id) ((_flags == 0) || ONLP_OID_IS_TYPE_FLAGS(_flags, _id))
 
+/** Create a Chassis OID */
 #define ONLP_CHASSIS_ID_CREATE(_id) ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_CHASSIS, _id)
+/** Create a Thermal OID */
 #define ONLP_THERMAL_ID_CREATE(_id) ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_THERMAL, _id)
+/** Create a Fan OID */
 #define ONLP_FAN_ID_CREATE(_id)     ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_FAN, _id)
+/** Create a PSU OID */
 #define ONLP_PSU_ID_CREATE(_id)     ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_PSU, _id)
+/** Create an LED OID */
 #define ONLP_LED_ID_CREATE(_id)     ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, _id)
+/** Create an SFP OID */
 #define ONLP_SFP_ID_CREATE(_id)     ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_SFP, _id)
+/** Create a Module OID */
 #define ONLP_MODULE_ID_CREATE(_id)  ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_MODULE, _id)
 
+/** Is the given OID a Chassis ? */
 #define ONLP_OID_IS_CHASSIS(_id) ONLP_OID_IS_TYPE(ONLP_OID_TYPE_CHASSIS, _id)
+/** Validate that the given OID is a Chassis */
 #define ONLP_OID_CHASSIS_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_CHASSIS, _id)
+/** Validate that the given OID is a Chassis */
 #define ONLP_OID_CHASSIS_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_CHASSIS, _id)
 
+/** Is the given OID a Thermal? */
 #define ONLP_OID_IS_THERMAL(_id) ONLP_OID_IS_TYPE(ONLP_OID_TYPE_THERMAL, _id)
+/** Validate that the given OID is a Thermal */
 #define ONLP_OID_THERMAL_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_THERMAL, _id)
+/** Validate that the given OID is a Thermal */
 #define ONLP_OID_THERMAL_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_THERMAL, _id)
+/** Validate and retrieve a Thermal ID */
 #define ONLP_OID_THERMAL_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_THERMAL, _oid, _id)
+/** Validate and retrieve a Thermal ID */
 #define ONLP_OID_THERMAL_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_THERMAL, _oid, _id)
 
+/** Is the given OID a Fan? */
 #define ONLP_OID_IS_FAN(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_FAN, _id)
+/** Validate that the given OID is a Fan */
 #define ONLP_OID_FAN_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_FAN, _id)
+/** Validate that the given OID is a Fan */
 #define ONLP_OID_FAN_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_FAN, _id)
 
+/** Is the given OID a PSU? */
 #define ONLP_OID_IS_PSU(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_PSU, _id)
+/** Validate that the given OID is a PSU */
 #define ONLP_OID_PSU_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_PSU, _id)
+/** Validate that the given OID is a PSU */
 #define ONLP_OID_PSU_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_PSU, _id)
 
 #define ONLP_OID_IS_LED(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_LED, _id)
@@ -477,3 +509,4 @@ extern aim_map_si_t onlp_oid_type_flag_desc_map[];
 /* <auto.end.enum(tag:oid).supportheader> */
 
 #endif /* __ONLP_OID_H__ */
+/* @} */

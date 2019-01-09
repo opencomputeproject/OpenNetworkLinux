@@ -89,42 +89,72 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="title">platform.h</div>  </div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">/**************************************************************************/</span></div>
-<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="preprocessor">#ifndef __ONLP_PLATFORM_H__</span></div>
-<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="preprocessor">#define __ONLP_PLATFORM_H__</span></div>
-<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;</div>
-<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="preprocessor">#include &lt;<a class="code" href="onlp__config_8h.html">onlp/onlp_config.h</a>&gt;</span></div>
-<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="preprocessor">#include &lt;onlp/onlp.h&gt;</span></div>
-<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;</div>
-<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#include &lt;AIM/aim_pvs.h&gt;</span></div>
-<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;</div>
-<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="keywordtype">char</span>* onlp_platform_name_get(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="keywordtype">int</span> onlp_platform_sw_init(<span class="keyword">const</span> <span class="keywordtype">char</span>* platform);</div>
-<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;</div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="keywordtype">int</span> onlp_platform_hw_init(uint32_t flags);</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;<span class="keywordtype">int</span> onlp_platform_sw_denit(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;</div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;<span class="keywordtype">int</span> onlp_platform_manager_start(<span class="keywordtype">int</span> block);</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;<span class="keywordtype">int</span> onlp_platform_manager_stop(<span class="keywordtype">int</span> block);</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;</div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="keywordtype">int</span> onlp_platform_manager_join(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;<span class="keywordtype">void</span> onlp_platform_manager_manage(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;<span class="keywordtype">void</span></div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;onlp_platform_manager_daemon(<span class="keyword">const</span> <span class="keywordtype">char</span>* name, <span class="keyword">const</span> <span class="keywordtype">char</span>* logfile,</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;                             <span class="keyword">const</span> <span class="keywordtype">char</span>* pidfile, <span class="keywordtype">char</span>** argv);</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;<span class="keywordtype">int</span> onlp_platform_debug(aim_pvs_t* pvs, <span class="keywordtype">int</span> argc, <span class="keywordtype">char</span>** argv);</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* __ONLP_PLATFORM_H__ */</span><span class="preprocessor"></span></div>
+<a href="platform_8h.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a name="l00001"></a><span class="lineno">    1</span>&#160;<span class="comment">/************************************************************</span></div>
+<div class="line"><a name="l00002"></a><span class="lineno">    2</span>&#160;<span class="comment"> * &lt;bsn.cl fy=2017 v=onl&gt;</span></div>
+<div class="line"><a name="l00003"></a><span class="lineno">    3</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00004"></a><span class="lineno">    4</span>&#160;<span class="comment"> *        Copyright 2017 Big Switch Networks, Inc.</span></div>
+<div class="line"><a name="l00005"></a><span class="lineno">    5</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00006"></a><span class="lineno">    6</span>&#160;<span class="comment"> * Licensed under the Eclipse Public License, Version 1.0 (the</span></div>
+<div class="line"><a name="l00007"></a><span class="lineno">    7</span>&#160;<span class="comment"> * &quot;License&quot;); you may not use this file except in compliance</span></div>
+<div class="line"><a name="l00008"></a><span class="lineno">    8</span>&#160;<span class="comment"> * with the License. You may obtain a copy of the License at</span></div>
+<div class="line"><a name="l00009"></a><span class="lineno">    9</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00010"></a><span class="lineno">   10</span>&#160;<span class="comment"> *        http://www.eclipse.org/legal/epl-v10.html</span></div>
+<div class="line"><a name="l00011"></a><span class="lineno">   11</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="comment"> * Unless required by applicable law or agreed to in writing,</span></div>
+<div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="comment"> * software distributed under the License is distributed on an</span></div>
+<div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="comment"> * &quot;AS IS&quot; BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,</span></div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="comment"> * either express or implied. See the License for the specific</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160;<span class="comment"> * language governing permissions and limitations under the</span></div>
+<div class="line"><a name="l00017"></a><span class="lineno">   17</span>&#160;<span class="comment"> * License.</span></div>
+<div class="line"><a name="l00018"></a><span class="lineno">   18</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="comment"> * &lt;/bsn.cl&gt;</span></div>
+<div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;<span class="comment"> ********************************************************/</span></div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;<span class="preprocessor">#ifndef __ONLP_PLATFORM_H__</span></div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;<span class="preprocessor">#define __ONLP_PLATFORM_H__</span></div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;</div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;<span class="preprocessor">#include &lt;<a class="code" href="onlp__config_8h.html">onlp/onlp_config.h</a>&gt;</span></div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;<span class="preprocessor">#include &lt;onlp/onlp.h&gt;</span></div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;</div>
+<div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;<span class="preprocessor">#include &lt;AIM/aim_pvs.h&gt;</span></div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;</div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;<span class="keywordtype">char</span>* <a class="code" href="group__platform.html#gab9348712282242c2b232930e1f27804e">onlp_platform_name_get</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#gafb130dc1086c4fc528280915e2400933">onlp_platform_sw_init</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* platform);</div>
+<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;</div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#ga39e51ad20f6c6119bce7e24ff67f5967">onlp_platform_hw_init</a>(uint32_t flags);</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#ga0751b3edb27df40cb8567ebff99e16de">onlp_platform_sw_denit</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#ga43cc01e64cba0f44e049fc86441da19b">onlp_platform_manager_start</a>(<span class="keywordtype">int</span> block);</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#ga39843476251f7f078c2ca1676fbd56a1">onlp_platform_manager_stop</a>(<span class="keywordtype">int</span> block);</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#ga7e72ec3c911e93f6f08e34a1064190fc">onlp_platform_manager_join</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;<span class="keywordtype">void</span> <a class="code" href="group__platform.html#ga5b164a8b195926d42106c791d9f4b3b7">onlp_platform_manager_manage</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;<span class="keywordtype">void</span></div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<a class="code" href="group__platform.html#ga2bdc0d49f4151a53538199f1983bc626">onlp_platform_manager_daemon</a>(<span class="keyword">const</span> <span class="keywordtype">char</span>* name, <span class="keyword">const</span> <span class="keywordtype">char</span>* logfile,</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;                             <span class="keyword">const</span> <span class="keywordtype">char</span>* pidfile, <span class="keywordtype">char</span>** argv);</div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__platform.html#gadad2d8488cbcf82766d8f00d564a6c7e">onlp_platform_debug</a>(aim_pvs_t* pvs, <span class="keywordtype">int</span> argc, <span class="keywordtype">char</span>** argv);</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;</div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* __ONLP_PLATFORM_H__ */</span><span class="preprocessor"></span></div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="comment">/* @} */</span></div>
 <div class="ttc" id="onlp__config_8h_html"><div class="ttname"><a href="onlp__config_8h.html">onlp_config.h</a></div><div class="ttdoc">onlp Configuration Header </div></div>
+<div class="ttc" id="group__platform_html_ga39e51ad20f6c6119bce7e24ff67f5967"><div class="ttname"><a href="group__platform.html#ga39e51ad20f6c6119bce7e24ff67f5967">onlp_platform_hw_init</a></div><div class="ttdeci">int onlp_platform_hw_init(uint32_t flags)</div><div class="ttdoc">Platform Hardware init. </div></div>
+<div class="ttc" id="group__platform_html_gafb130dc1086c4fc528280915e2400933"><div class="ttname"><a href="group__platform.html#gafb130dc1086c4fc528280915e2400933">onlp_platform_sw_init</a></div><div class="ttdeci">int onlp_platform_sw_init(const char *platform)</div><div class="ttdoc">Platform software init. </div></div>
+<div class="ttc" id="group__platform_html_ga0751b3edb27df40cb8567ebff99e16de"><div class="ttname"><a href="group__platform.html#ga0751b3edb27df40cb8567ebff99e16de">onlp_platform_sw_denit</a></div><div class="ttdeci">int onlp_platform_sw_denit(void)</div><div class="ttdoc">Deinitialize the chassis software module. </div></div>
+<div class="ttc" id="group__platform_html_gab9348712282242c2b232930e1f27804e"><div class="ttname"><a href="group__platform.html#gab9348712282242c2b232930e1f27804e">onlp_platform_name_get</a></div><div class="ttdeci">char * onlp_platform_name_get(void)</div><div class="ttdoc">Get the current ONL platform name. </div></div>
+<div class="ttc" id="group__platform_html_ga43cc01e64cba0f44e049fc86441da19b"><div class="ttname"><a href="group__platform.html#ga43cc01e64cba0f44e049fc86441da19b">onlp_platform_manager_start</a></div><div class="ttdeci">int onlp_platform_manager_start(int block)</div><div class="ttdoc">Start the platform management thread. </div></div>
+<div class="ttc" id="group__platform_html_ga39843476251f7f078c2ca1676fbd56a1"><div class="ttname"><a href="group__platform.html#ga39843476251f7f078c2ca1676fbd56a1">onlp_platform_manager_stop</a></div><div class="ttdeci">int onlp_platform_manager_stop(int block)</div><div class="ttdoc">Stop the platform management thread. </div></div>
+<div class="ttc" id="group__platform_html_ga7e72ec3c911e93f6f08e34a1064190fc"><div class="ttname"><a href="group__platform.html#ga7e72ec3c911e93f6f08e34a1064190fc">onlp_platform_manager_join</a></div><div class="ttdeci">int onlp_platform_manager_join(void)</div><div class="ttdoc">Join the platform management thread. </div></div>
+<div class="ttc" id="group__platform_html_gadad2d8488cbcf82766d8f00d564a6c7e"><div class="ttname"><a href="group__platform.html#gadad2d8488cbcf82766d8f00d564a6c7e">onlp_platform_debug</a></div><div class="ttdeci">int onlp_platform_debug(aim_pvs_t *pvs, int argc, char **argv)</div><div class="ttdoc">Call the platform debug hook. </div></div>
+<div class="ttc" id="group__platform_html_ga5b164a8b195926d42106c791d9f4b3b7"><div class="ttname"><a href="group__platform.html#ga5b164a8b195926d42106c791d9f4b3b7">onlp_platform_manager_manage</a></div><div class="ttdeci">void onlp_platform_manager_manage(void)</div><div class="ttdoc">Perform any pending platform management activities. </div></div>
+<div class="ttc" id="group__platform_html_ga2bdc0d49f4151a53538199f1983bc626"><div class="ttname"><a href="group__platform.html#ga2bdc0d49f4151a53538199f1983bc626">onlp_platform_manager_daemon</a></div><div class="ttdeci">void onlp_platform_manager_daemon(const char *name, const char *logfile, const char *pidfile, char **argv)</div><div class="ttdoc">Run in platform manager dameon mode. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Aug 7 2018 17:12:36 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jan 8 2019 17:10:51 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>

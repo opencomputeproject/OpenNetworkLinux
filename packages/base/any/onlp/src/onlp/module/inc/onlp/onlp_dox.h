@@ -50,9 +50,8 @@ Foobar2
     @defgroup oid-interfaces General OID Interfaces
     These interfaces are available on all OIDs.
     @{
+      @defgroup oid OID General Interfaces
       @defgroup attributes Attribute Interface
-      @defgroup assets Asset Interface
-      @defgroup onie   ONIE Interface
     @}
 
     @defgroup oid-types OID Types
@@ -72,12 +71,15 @@ Foobar2
   @defgroup onlp-platform Platform Implementation Interfaces
   These document the requires for implementing the platform interfaces.
   @{
-     @defgroup chassisi Chassis
-     @defgroup modulei  Modules
-     @defgroup thermali Thermals
-     @defgroup fani     Fans
-     @defgroup psui     PSUs
-     @defgroup sfpi     SFPs
+     @defgroup chassisi chassisi
+     @defgroup modulei  modulei
+     @defgroup thermali thermali
+     @defgroup fani     fani
+     @defgroup psui     psui
+     @defgroup sfpi     sfpi
+     @defgroup ledi     ledi
+     @defgroup generici generici
+     @defgroup attributei attributei
   @}
 
   @defgroup module-interfaces Module Documentation

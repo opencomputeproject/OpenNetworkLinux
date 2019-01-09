@@ -120,9 +120,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;</div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__psui.html#ga69f99c6a90fbb5d1c03349b47970fa98">onlp_psui_sw_denit</a>(<span class="keywordtype">void</span>);</div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;</div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__psui.html#gabfc93ced2b1436db99357b22c9c1ef61">onlp_psui_hdr_get</a>(onlp_oid_id_t <span class="keywordtype">id</span>, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__psui.html#gabfc93ced2b1436db99357b22c9c1ef61">onlp_psui_hdr_get</a>(<a class="code" href="group__oid.html#gafeead7b8b6e6434d56d2ee5a66c02f71">onlp_oid_id_t</a> <span class="keywordtype">id</span>, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* rv);</div>
 <div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;</div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__psui.html#gaf5fbee43118662c54cb80de997c68361">onlp_psui_info_get</a>(onlp_oid_id_t <span class="keywordtype">id</span>, <a class="code" href="structonlp__psu__info__t.html">onlp_psu_info_t</a>* rv);</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__psui.html#gaf5fbee43118662c54cb80de997c68361">onlp_psui_info_get</a>(<a class="code" href="group__oid.html#gafeead7b8b6e6434d56d2ee5a66c02f71">onlp_oid_id_t</a> <span class="keywordtype">id</span>, <a class="code" href="structonlp__psu__info__t.html">onlp_psu_info_t</a>* rv);</div>
 <div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;</div>
 <div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;</div>
 <div class="line"><a name="l00070"></a><span class="lineno"><a class="line" href="group__psui.html#gaba33f5e3da076bc11c4b0a107ea5bfd6">   70</a></span>&#160;<span class="preprocessor">#define ONLP_CHASSIS_PSU_INFO_ENTRY_INIT(_id, _desc)    \</span></div>
@@ -140,14 +140,15 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="group__psui_html_gabfc93ced2b1436db99357b22c9c1ef61"><div class="ttname"><a href="group__psui.html#gabfc93ced2b1436db99357b22c9c1ef61">onlp_psui_hdr_get</a></div><div class="ttdeci">int onlp_psui_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t *rv)</div><div class="ttdoc">Get the PSU&#39;s oid header. </div></div>
 <div class="ttc" id="group__psui_html_ga48757edc28f58f1602c4cc7ca2e9ef9c"><div class="ttname"><a href="group__psui.html#ga48757edc28f58f1602c4cc7ca2e9ef9c">onlp_psui_hw_init</a></div><div class="ttdeci">int onlp_psui_hw_init(uint32_t flags)</div><div class="ttdoc">Hardware initialization of the PSU module. </div></div>
 <div class="ttc" id="group__psui_html_ga69f99c6a90fbb5d1c03349b47970fa98"><div class="ttname"><a href="group__psui.html#ga69f99c6a90fbb5d1c03349b47970fa98">onlp_psui_sw_denit</a></div><div class="ttdeci">int onlp_psui_sw_denit(void)</div><div class="ttdoc">Deinitialize the psu software module. </div></div>
+<div class="ttc" id="group__oid_html_gafeead7b8b6e6434d56d2ee5a66c02f71"><div class="ttname"><a href="group__oid.html#gafeead7b8b6e6434d56d2ee5a66c02f71">onlp_oid_id_t</a></div><div class="ttdeci">uint32_t onlp_oid_id_t</div><div class="ttdef"><b>Definition:</b> oids.h:55</div></div>
 <div class="ttc" id="psu_8h_html"><div class="ttname"><a href="psu_8h.html">psu.h</a></div><div class="ttdoc">Power Supply Management. </div></div>
 <div class="ttc" id="group__psui_html_gaf5fbee43118662c54cb80de997c68361"><div class="ttname"><a href="group__psui.html#gaf5fbee43118662c54cb80de997c68361">onlp_psui_info_get</a></div><div class="ttdeci">int onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t *rv)</div><div class="ttdoc">Get the information structure for the given PSU. </div></div>
 <div class="ttc" id="structonlp__psu__info__t_html"><div class="ttname"><a href="structonlp__psu__info__t.html">onlp_psu_info_t</a></div><div class="ttdef"><b>Definition:</b> psu.h:61</div></div>
-<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:212</div></div>
+<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:244</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Tue Aug 7 2018 17:12:36 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Tue Jan 8 2019 17:10:51 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>
