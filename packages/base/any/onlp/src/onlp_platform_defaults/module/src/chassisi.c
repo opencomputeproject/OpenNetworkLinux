@@ -29,4 +29,13 @@ __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_chassisi_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_chassisi_sw_denit(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_chassisi_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_chassisi_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info));
+
+/*
+ * There are no fields defined in the chassis info structure. As a result
+ * we provide a default implementation which populates the OID header.
+ */
+int __ONLP_DEFAULTI
+onlp_chassis_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info)
+{
+    return onlp_chassisi_hdr_get(id, &info->hdr);
+};
