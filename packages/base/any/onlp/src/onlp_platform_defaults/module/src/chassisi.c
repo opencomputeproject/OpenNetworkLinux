@@ -35,7 +35,7 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_
  * we provide a default implementation which populates the OID header.
  */
 int __ONLP_DEFAULTI
-onlp_chassis_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info)
+onlp_chassisi_info_get(onlp_oid_id_t id, onlp_chassis_info_t* info)
 {
     return onlp_chassisi_hdr_get(id, &info->hdr);
 };
