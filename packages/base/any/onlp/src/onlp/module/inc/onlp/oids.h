@@ -318,7 +318,7 @@ typedef int (*onlp_oid_iterate_f)(onlp_oid_t oid, void* cookie);
 /**
  * @brief Iterate over all platform OIDs.
  * @param oid The root OID.
- * @param type The OID type filter (optional)
+ * @param types The OID types filter (optional)
  * @param itf The iterator function.
  * @param cookie The cookie.
  */
@@ -415,7 +415,7 @@ int onlp_oid_from_str(char* str, onlp_oid_t* roid);
 /**
  * @brief OID Table -> JSON
  * @param table The table.
- * @param[out] Receives the JSON array object.
+ * @param[out] cjp Receives the JSON array object.
  */
 int onlp_oid_table_to_json(onlp_oid_table_t table, cJSON** cjp);
 
@@ -430,6 +430,7 @@ int onlp_oid_table_from_json(cJSON* cj, onlp_oid_table_t table);
  * @brief OID Header -> JSON
  * @param hdr The header
  * @param[out] cj Receives the JSON representation.
+ * @param flags The JSON conversion flags.
  */
 int onlp_oid_hdr_to_json(onlp_oid_hdr_t* hdr, cJSON** cj, uint32_t flags);
 
@@ -440,7 +441,14 @@ int onlp_oid_hdr_to_json(onlp_oid_hdr_t* hdr, cJSON** cj, uint32_t flags);
  */
 int onlp_oid_hdr_from_json(cJSON* cj, onlp_oid_hdr_t* hdr);
 
+/**
+ * @brief OID Info Structure -> JSON
+ * @param info The pointer to the OID's info structure.
+ * @param [out] cj Receives the JSON representation.
+ * @param flags The JSON conversion flags.
+ */
 int onlp_oid_info_to_json(onlp_oid_hdr_t* info, cJSON** cj, uint32_t flags);
+
 /**
  * @brief OID -> JSON
  */

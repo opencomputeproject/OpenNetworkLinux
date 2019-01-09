@@ -10,6 +10,7 @@ var searchData=
   ['module_20documentation',['Module Documentation',['../group__module-interfaces.html',1,'']]],
   ['module_2eh',['module.h',['../module_8h.html',1,'']]],
   ['modulei',['modulei',['../group__modulei.html',1,'']]],
+  ['modulei_2eh',['modulei.h',['../modulei_8h.html',1,'']]],
   ['mpin',['mpin',['../structonlp__psu__info__t.html#af213d7ec94b6dbcc467fa64d35bfc1ab',1,'onlp_psu_info_t']]],
   ['mpout',['mpout',['../structonlp__psu__info__t.html#ae477a0f4b80d4073632b641fb4efdd4d',1,'onlp_psu_info_t']]],
   ['mvin',['mvin',['../structonlp__psu__info__t.html#a0a255c38ff5f8cdb6272c9dcde64a1b8',1,'onlp_psu_info_t']]],
