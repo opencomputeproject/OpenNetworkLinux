@@ -38,4 +38,3 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_inf
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_rpm_set(onlp_oid_id_t id, int rpm));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_percentage_set(onlp_oid_id_t id, int p));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_dir_set(onlp_oid_id_t id, onlp_fan_dir_t dir));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_ioctl(onlp_oid_id_t id, va_list vargs));

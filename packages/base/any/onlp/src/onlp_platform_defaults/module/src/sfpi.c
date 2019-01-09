@@ -36,8 +36,6 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* ds
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_post_insert(onlp_oid_id_t id, sff_info_t* sff_info));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_port_map(onlp_oid_id_t id, int* rport));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_denit(void));
-__ONLP_DEFAULTI_VIMPLEMENTATION(onlp_sfpi_debug(onlp_oid_id_t id, aim_pvs_t* pvs));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_ioctl(onlp_oid_id_t id, va_list vargs));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_control_supported(onlp_oid_id_t id, onlp_sfp_control_t control, int* rv));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_control_set(onlp_oid_id_t id, onlp_sfp_control_t control, int value));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_control_get(onlp_oid_id_t id, onlp_sfp_control_t control, int* value));
@@ -48,4 +46,3 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_writeb(onlp_oid_id_t id, int devadd
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_readw(onlp_oid_id_t id, int devaddr, int addr));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_writew(onlp_oid_id_t id, int devaddr, int addr, uint16_t value));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_info_get(onlp_oid_id_t id, onlp_sfp_info_t* info));

@@ -55,7 +55,6 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_sw_denit(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_set(const char* p));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_vioctl(int id, va_list vargs));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_manage_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_manage_fans(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_platformi_manage_leds(void));
