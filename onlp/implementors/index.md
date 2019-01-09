@@ -69,4 +69,4 @@ ONLP Applications do not and should not typically call this routine but leave it
 As ONLP Applications are allowed to spawn as multiple processes at any time and in any number the separation of initialization of the local software state and of the platform hardware itself must be cleanly maintained.
 
 ---
-[Next: Getting Started](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/getting_started)
+[Next: Getting Started](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/getting_started)
