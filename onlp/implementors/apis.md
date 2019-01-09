@@ -10,7 +10,7 @@
 * [ledi](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/ledi)
 * [modulei](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/modulei)
 * [generici](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/generici)
-* [attributei](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/attributesi)
+* [attributei](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/attributei)
 
 ## System APIs
 * [platformi](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/implementors/platformi)
