@@ -161,6 +161,8 @@ typedef uint32_t onlp_oid_status_flags_t;
 #define ONLP_SFP_ID_CREATE(_id)     ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_SFP, _id)
 /** Create a Module OID */
 #define ONLP_MODULE_ID_CREATE(_id)  ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_MODULE, _id)
+/** Create a Generic OID */
+#define ONLP_GENERIC_ID_CREATE(_id) ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_GENERIC, _id)
 
 /** Is the given OID a Chassis ? */
 #define ONLP_OID_IS_CHASSIS(_id) ONLP_OID_IS_TYPE(ONLP_OID_TYPE_CHASSIS, _id)
@@ -186,6 +188,10 @@ typedef uint32_t onlp_oid_status_flags_t;
 #define ONLP_OID_FAN_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_FAN, _id)
 /** Validate that the given OID is a Fan */
 #define ONLP_OID_FAN_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_FAN, _id)
+/** Validate and retrieve a Fan ID */
+#define ONLP_OID_FAN_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_FAN, _oid, _id)
+/** Validate and retrieve a Fan ID */
+#define ONLP_OID_FAN_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_FAN, _oid, _id)
 
 /** Is the given OID a PSU? */
 #define ONLP_OID_IS_PSU(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_PSU, _id)
@@ -193,23 +199,55 @@ typedef uint32_t onlp_oid_status_flags_t;
 #define ONLP_OID_PSU_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_PSU, _id)
 /** Validate that the given OID is a PSU */
 #define ONLP_OID_PSU_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_PSU, _id)
+/** Validate and retrieve a PSU ID */
+#define ONLP_OID_PSU_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_PSU, _oid, _id)
+/** Validate and retrieve a PSU ID */
+#define ONLP_OID_PSU_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_PSU, _oid, _id)
 
+/** Is the given OID an LED? */
 #define ONLP_OID_IS_LED(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_LED, _id)
+/** Validate that the given OID is an LED */
 #define ONLP_OID_LED_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_LED, _id)
+/** Validate that the given OID is an LED */
 #define ONLP_OID_LED_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_LED, _id)
+/** Validate and retrieve an LED ID */
+#define ONLP_OID_LED_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_LED, _oid, _id)
+/** Validate and retrieve an LED ID */
+#define ONLP_OID_LED_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_LED, _oid, _id)
 
+
+/** Is the given OID an SFP? */
 #define ONLP_OID_IS_SFP(_id)     ONLP_OID_IS_TYPE(ONLP_OID_TYPE_SFP, _id)
+/** Validate that the given OID is an SFP */
 #define ONLP_OID_SFP_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_SFP, _id)
+/** Validate that the given OID is an SFP */
 #define ONLP_OID_SFP_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_SFP, _id)
+/** Validate and retrieve a SFP ID */
+#define ONLP_OID_SFP_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_SFP, _oid, _id)
+/** Validate and retrieve a SFP ID */
+#define ONLP_OID_SFP_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_SFP, _oid, _id)
 
+/** Is the given OID a Module? */
 #define ONLP_OID_IS_MODULE(_id)  ONLP_OID_IS_TYPE(ONLP_OID_TYPE_MODULE, _id)
+/** Validate that the given OID is a Module */
 #define ONLP_OID_MODULE_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_MODULE, _id)
+/** Validate that the given OID is a Module */
 #define ONLP_OID_MODULE_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_MODULE, _id)
+/** Validate and retrieve a Module ID */
+#define ONLP_OID_MODULE_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_MODULE, _oid, _id)
+/** Validate and retrieve a Module ID */
+#define ONLP_OID_MODULE_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_MODULE, _oid, _id)
 
+/** Is the given OID a Generic? */
 #define ONLP_OID_IS_GENERIC(_id) ONLP_OID_IS_TYPE(ONLP_OID_TYPE_GENERIC, _id)
+/** Validate that the given OID is a Generic */
 #define ONLP_OID_GENERIC_VALIDATE(_id) ONLP_OID_TYPE_VALIDATE(ONLP_OID_TYPE_GENERIC, _id)
+/** Validate that the given OID is a Generic */
 #define ONLP_OID_GENERIC_VALIDATE_NR(_id) ONLP_OID_TYPE_VALIDATE_NR(ONLP_OID_TYPE_GENERIC, _id)
-
+/** Validate and retrieve a Generic ID */
+#define ONLP_OID_GENERIC_VALIDATE_GET_ID(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID(ONLP_OID_TYPE_GENERIC, _oid, _id)
+/** Validate and retrieve a Generic ID */
+#define ONLP_OID_GENERIC_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_GENERIC, _oid, _id)
 
 /**
  * There is only one Chassis OID. This value should be used.
