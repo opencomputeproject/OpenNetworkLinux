@@ -34,8 +34,8 @@
         }                                       \
     } while(0)
 
-#define MAX_FAN_SPEED    15400
-#define BIT(i)            (1 << (i))
+/*From minipack_system_spec, max RPM is 12000+10%.*/
+#define MAX_FAN_SPEED     (13200)
 
 enum fan_id {
     FAN_1_ON_FAN_BOARD = 1,
@@ -45,11 +45,14 @@ enum fan_id {
     FAN_5_ON_FAN_BOARD,
     FAN_6_ON_FAN_BOARD,
     FAN_7_ON_FAN_BOARD,
-    FAN_8_ON_FAN_BOARD,    
+    FAN_8_ON_FAN_BOARD,
 };
 
-#define FCM_TOP_BOARD_PATH    "/sys/bus/i2c/devices/64-0033/fantray%d_present| head -1"
-#define FCM_BOT_BOARD_PATH    "/sys/bus/i2c/devices/72-0033/fantray%d_present| head -1"
+/* Depent on RPM to judge if fan is present.*/
+/*
+#define FCM_TOP_BOARD_PATH    "/sys/bus/i2c/devices/72-0033/fantray%d_present| head -1"
+#define FCM_BOT_BOARD_PATH    "/sys/bus/i2c/devices/64-0033/fantray%d_present| head -1"
+*/
 #define FAN_BOARD_PATH        "/sys/bus/platform/devices/minipack_psensor/"
 
 
@@ -88,9 +91,8 @@ onlp_fani_init(void)
 int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
-    int  value = 0, fid, board_id;
+    int  value = 0, fid, fan_input;
     char path[128]= {0};
-    char *fantray_path[2] = {FCM_TOP_BOARD_PATH, FCM_BOT_BOARD_PATH};
     VALIDATE(id);
 
     fid = ONLP_OID_ID_GET(id);
@@ -98,42 +100,39 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get fan present status
      */
-    board_id = (fid-1)/(CHASSIS_FAN_COUNT/2);
-    sprintf(path, fantray_path[board_id], ((fid-1)/2)+1);
-    if (bmc_file_read_int(&value, path, 16) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    if (value) {
-        return ONLP_STATUS_OK;
-    }
     info->status |= ONLP_FAN_STATUS_PRESENT;
-
 
     /* get front fan rpm
      */
-    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2 - 1);
+    fan_input = ((fid-1) % 2)*CHASSIS_FAN_COUNT;
+    fan_input += (fid) + (fid%2);
+
+    DEBUG_PRINT("fan%d_input: for fid:%d\n",fan_input, fid);
+    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH,  fan_input - 1);
     if (onlp_file_read_int(&value, path) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
-    } 
+    }
     info->rpm = value;
 
     /* get rear fan rpm
      */
-    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2);
+    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fan_input);
     if (onlp_file_read_int(&value, path) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
-    } 
+    }
+
+    if (info->rpm == 0 &&  value == 0) {
+        info->status = info->status & ~ONLP_FAN_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
 
     /* take the min value from front/rear fan speed
      */
     if (info->rpm > value) {
         info->rpm = value;
     }
-
 
     /* set fan status based on rpm
      */
@@ -142,8 +141,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
         return ONLP_STATUS_OK;
     }
 
-
-    /* get speed percentage from rpm 
+    /* get speed percentage from rpm
      */
     info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
 
@@ -180,10 +178,11 @@ int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
     char cmd[32] = {0};
+    char resp[256];
 
     sprintf(cmd, "set_fan_speed.sh %d", p);
 
-    if (bmc_send_command(cmd) < 0) {
+    if (bmc_reply(cmd, resp, sizeof(resp)) < 0) {
         AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
         return ONLP_STATUS_E_INTERNAL;
     }

@@ -24,6 +24,8 @@
  ***********************************************************/
 #include <termios.h>
 #include <unistd.h>
+#include <sys/file.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <onlplib/file.h>
 #include <onlp/onlp.h>
@@ -31,150 +33,209 @@
 
 #define TTY_DEVICE                      "/dev/ttyACM0"
 #define TTY_PROMPT                      "@bmc-oob:"
-#define TTY_I2C_TIMEOUT                 55000
+#define TTY_USER                        "root"
+#define TTY_I2C_TIMEOUT                 100000
 #define TTY_BMC_LOGIN_TIMEOUT           1000000
+#define TTY_LOGIN_RETRY                 (8)
 #define TTY_RETRY                       PLATFOTM_H_TTY_RETRY
-#define MAXIMUM_TTY_BUFFER_LENGTH       1024
-#define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 
-static int  tty_fd = -1;
-static char tty_buf[MAXIMUM_TTY_BUFFER_LENGTH] = {0};
-
-static int tty_open(void)
+static int tty_open(int *fd)
 {
+    int ret;
     int i = 20;
     struct termios attr;
 
-    if (tty_fd > -1) {
-        return 0;
+    if (*fd > -1) {
+        return ONLP_STATUS_OK;
     }
 
     do {
-        if ((tty_fd = open(TTY_DEVICE, O_RDWR | O_NOCTTY | O_NDELAY)) > -1) {
-            tcgetattr(tty_fd, &attr);
-            attr.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
-            attr.c_iflag = IGNPAR;
-            attr.c_oflag = 0;
-            attr.c_lflag = 0;
-            attr.c_cc[VMIN] = (unsigned char)
-                              ((MAXIMUM_TTY_STRING_LENGTH > 0xFF) ?  0xFF : MAXIMUM_TTY_STRING_LENGTH);
-            attr.c_cc[VTIME] = 0;
-            cfsetospeed(&attr, B57600);
-            cfsetispeed(&attr, B57600);
-            tcsetattr(tty_fd, TCSANOW, &attr);
-            return 0;
+        if ((*fd = open(TTY_DEVICE, O_RDWR | O_NOCTTY | O_NDELAY)) > -1) {
+            ret = flock(*fd, LOCK_EX | LOCK_NB);
+            if (ret == -1 && errno != EWOULDBLOCK) {
+                AIM_LOG_ERROR("ERROR: Cannot flock TTY device\n");
+                return ONLP_STATUS_E_INTERNAL;
+            } else {
+                tcgetattr(*fd, &attr);
+                attr.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
+                attr.c_iflag = IGNPAR;
+                attr.c_oflag = 0;
+                attr.c_lflag = 0;
+                attr.c_cc[VMIN] = (unsigned char)
+                                  ((MAXIMUM_TTY_STRING_LENGTH > 0xFF) ?  0xFF : MAXIMUM_TTY_STRING_LENGTH);
+                attr.c_cc[VTIME] = 0;
+                cfsetospeed(&attr, B57600);
+                cfsetispeed(&attr, B57600);
+                tcsetattr(*fd, TCSANOW, &attr);
+                return ONLP_STATUS_OK;
+            }
         }
 
         i--;
         usleep(100000);
     } while (i > 0);
-
-    return -1;
+    return ONLP_STATUS_E_GENERIC;
 }
 
-static int tty_close(void)
+static int tty_close(int *fd)
 {
-    close(tty_fd);
-    tty_fd = -1;
+    if (flock(*fd, LOCK_UN) == -1) {
+        AIM_LOG_ERROR("ERROR: Cannot unlock TTY device file\n");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    close(*fd);
+    *fd = -1;
     return 0;
 }
 
-static int tty_exec_buf(unsigned long udelay, const char *str)
-{
-    if (tty_fd < 0)
-        return -1;
+static int tty_clear_rxbuf(int fd, char* buf, int max_size) {
+    int ret;
 
-    write(tty_fd, tty_buf, strlen(tty_buf)+1);
-    usleep(udelay);
-    usleep(50000);
-    memset(tty_buf, 0, MAXIMUM_TTY_BUFFER_LENGTH);
-    read(tty_fd, tty_buf, MAXIMUM_TTY_BUFFER_LENGTH);
-    return (strstr(tty_buf, str) != NULL) ? 0 : -1;
+    if (!buf) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if (fd < 0) {
+        return -1;
+    }
+
+    do {
+        usleep(100000);
+        ret = read(fd, buf, max_size);
+        if (ret > 0)
+            DEBUG_PRINT("clear %d bytes, \"%s\"\n", ret,  buf);
+
+        memset(buf, 0, max_size);
+    } while (ret > 0);
+
+    return ret;
 }
 
-static int tty_login(void)
+static int tty_write_and_read( int fd, const char *cmd,
+                               unsigned long udelay, char *buf, int buf_size)
+{
+    int ret, len, retry;
+    if (fd < 0 || !cmd) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    tty_clear_rxbuf(fd, buf, buf_size);
+    retry = 0;
+    len = strlen(cmd)+1;
+    do {
+        ret = write(fd, cmd, len);
+        retry++ ;
+    } while(ret != len && retry<5 && usleep(100000*retry));
+
+    DEBUG_PRINT("sent cmd:%s\n",cmd);
+    usleep(udelay);
+    usleep(100000);
+    memset(buf, 0, buf_size);
+    ret = read(fd, buf, buf_size);
+    DEBUG_PRINT("Read %d bytes, \"%s\", \n", ret, buf);
+    return ret;
+}
+
+static int tty_access_and_match( int fd, const char *cmd,
+                                 unsigned long udelay, const char *keywd)
+{
+    int num;
+    char resp[256] = {0};
+
+    num = tty_write_and_read(fd, cmd, udelay, resp, sizeof(resp));
+    if (num <= 0) {
+        return ONLP_STATUS_E_GENERIC;
+    }
+    return (strstr(resp, keywd) != NULL) ?
+           ONLP_STATUS_OK : ONLP_STATUS_E_GENERIC;
+}
+
+static bool is_logged_in(int fd, char *resp, int max_size)
+{
+    int num;
+
+    num = tty_write_and_read(fd, "\r\r", TTY_I2C_TIMEOUT, resp, sizeof(resp));
+    if (num <= 0) {
+        return ONLP_STATUS_E_GENERIC;
+    }
+    return (strstr(resp, TTY_PROMPT) != NULL) ?
+           ONLP_STATUS_OK : ONLP_STATUS_E_GENERIC;
+}
+
+static int tty_login(int fd)
 {
     int i;
+    char resp[256];
 
-    for (i = 1; i <= TTY_RETRY; i++) {
-        snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "\r\r");
-        if (!tty_exec_buf(0, TTY_PROMPT)) {
-            return 0;
+    for (i = 0; i < TTY_LOGIN_RETRY; i++) {
+        if (is_logged_in(fd, resp, sizeof(resp))) {
+            DEBUG_PRINT("Been logged in!\n");
+            return ONLP_STATUS_OK;
         }
-        if (strstr(tty_buf, "bmc-oob login:") != NULL)
+
+        DEBUG_PRINT("Try to login!\n");
+        if (strstr(resp, "bmc") != NULL &&
+                (strstr(resp, "login:") != NULL))
         {
-            snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "root\r");
-            if (!tty_exec_buf(TTY_BMC_LOGIN_TIMEOUT, "Password:")) {
-                snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "0penBmc\r");
-                if (!tty_exec_buf(TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
-                    return 0;
+            if (!tty_access_and_match(fd, TTY_USER"\r",TTY_BMC_LOGIN_TIMEOUT, "Password:")) {
+                if (!tty_access_and_match(fd, "0penBmc\r", TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
+                    return ONLP_STATUS_OK;
                 }
 
             }
         }
-        usleep(50000);
+        usleep(50000*i);
     }
-
-    return -1;
+    return ONLP_STATUS_E_GENERIC;
 }
 
-int bmc_tty_init(void)
+static int tty_transaction(const char *cmd, unsigned long udelay, char *resp, int max_size)
 {
-    int i;
-    if (tty_fd >= 0) {
-        return 0;
+    int  i;
+    char *buf;
+    int  tty_fd = -1;
+    int  num, ret = ONLP_STATUS_OK;
+    int  buf_size = MAXIMUM_TTY_BUFFER_LENGTH;
+
+    if (!cmd || !resp || !max_size)
+        return ONLP_STATUS_E_PARAM;
+
+    if (tty_open(&tty_fd) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("ERROR: Cannot open TTY device\n");
+        return ONLP_STATUS_E_GENERIC;
     }
 
-    for (i = 1; i <= TTY_RETRY; i++) {
-        if (tty_open() != 0) {
-            AIM_LOG_ERROR("ERROR: Cannot open TTY device\n");
-            continue;
+    /*Tried to login.*/
+    for (i = 0; i < TTY_RETRY; i++) {
+        if (tty_login(tty_fd) == ONLP_STATUS_OK) {
+            break;
         }
-
-        if (tty_login() != 0) {
-            AIM_LOG_ERROR("ERROR: Cannot login TTY device\n");
-            tty_close();
-            continue;
-        }
-
-        return 0;
     }
-
-    AIM_LOG_ERROR("Unable to init bmc tty\r\n");
-    return -1;
+    if(i == TTY_RETRY) {
+        AIM_LOG_ERROR("ERROR: Cannot login TTY device\n");
+        return ONLP_STATUS_E_GENERIC;
+    }
+    buf = (char *)calloc(buf_size, sizeof(char));
+    if (buf == NULL)
+    {
+        AIM_LOG_ERROR("ERROR: Cannot allocate memory\n");
+        goto exit;
+    }
+    num = tty_write_and_read(tty_fd, cmd, udelay, buf, buf_size);
+    if (num <= 0)
+    {
+        AIM_LOG_ERROR("ERROR: Cannot read/write TTY device\n");
+        goto exit;
+    }
+    strncpy(resp, buf, max_size);
+    DEBUG_PRINT("Resp:\"%s\", \n", resp);
+exit:
+    free(buf);
+    tty_close(&tty_fd);
+    return ret;
 }
 
-int bmc_tty_deinit(void)
-{
-    if( tty_fd != -1 ) {
-        tty_close();
-    }
-    else {
-        AIM_LOG_ERROR("ERROR: TTY not open\n");
-    }
-    return 0;
-}
-
-int bmc_send_command(char *cmd)
-{
-    int i, ret = 0;
-
-    bmc_tty_init();
-    memset(tty_buf, 0, MAXIMUM_TTY_BUFFER_LENGTH);
-    for (i = 1; i <= TTY_RETRY; i++) {
-        snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "%s", cmd);
-        ret = tty_exec_buf(TTY_I2C_TIMEOUT, TTY_PROMPT);
-        if (ret != 0) {
-//            AIM_LOG_ERROR("ERROR: bmc_send_command(%s) timed out\n", cmd);
-            continue;
-        }
-        return 0;
-    }
-    AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
-    return -1;
-}
-
-int chk_numeric_char(char *data, int base)
+static int chk_numeric_char(char *data, int base)
 {
     int len, i, orig = 0;
 
@@ -232,19 +293,79 @@ int chk_numeric_char(char *data, int base)
     return 0;
 }
 
+static int strip_off_prompt(char *buf, int max_size)
+{
+    char *p;
+
+    p = strstr(buf, TTY_USER TTY_PROMPT);
+    if (p != NULL && p < (buf+max_size)) {
+        *p = '\0';
+    }
+    return  ONLP_STATUS_OK;
+}
+
+int bmc_reply_pure(char *cmd, unsigned long udelay, char *resp, int max_size)
+{
+    int i, ret = 0;
+    char *p;
+    char cmdr[128];
+
+    /*In case, caller forgets put the "enter" at the very end of cmd.*/
+    snprintf(cmdr, sizeof(cmdr), "%s%s", cmd, "\r");
+
+    for (i = 1; i <= TTY_RETRY; i++) {
+        ret = tty_transaction(cmdr, udelay, resp, max_size);
+        if (ret != ONLP_STATUS_OK) {
+            usleep(100000*i);
+            continue;
+        }
+
+        strip_off_prompt(resp, max_size);
+        /*Find if cmd is inside the response.*/
+        p = strstr(resp, cmd);
+        if (p != NULL) {
+            memcpy(resp, p+strlen(cmd), max_size);
+            return ONLP_STATUS_OK;
+        }
+        DEBUG_PRINT("Resp: [%s]\n", resp);
+    }
+    AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+    return ONLP_STATUS_E_GENERIC;
+}
+
+int bmc_reply(char *cmd, char *resp, int max_size)
+{
+    int i, ret = 0;
+
+    for (i = 1; i <= TTY_RETRY; i++) {
+        ret = tty_transaction(cmd, TTY_I2C_TIMEOUT, resp, max_size);
+        if (ret != ONLP_STATUS_OK) {
+            continue;
+        }
+        if (strstr(resp, TTY_PROMPT) == NULL) {
+            continue;
+        }
+        return ONLP_STATUS_OK;
+    }
+    AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+    return ONLP_STATUS_E_GENERIC;
+}
+
 int
 bmc_command_read_int(int* value, char *cmd, int base)
 {
     int len;
     int i;
+    char resp[256];
     char *prev_str = NULL;
     char *current_str= NULL;
 
-    if (bmc_send_command(cmd) < 0) {
+    if (bmc_reply(cmd, resp, sizeof(resp)) < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
+
     len = (int)strlen(cmd);
-    prev_str = strstr(tty_buf, cmd);
+    prev_str = strstr(resp, cmd);
     if (prev_str == NULL) {
         return -1;
     }
@@ -294,19 +415,21 @@ int
 bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
     char cmd[128] = {0};
+    char resp[128];
     snprintf(cmd, sizeof(cmd), "i2cset -f -y %d 0x%x 0x%02x 0x%x\r\n", bus, devaddr, addr, value);
-    return bmc_send_command(cmd);
+    return bmc_reply(cmd, resp, sizeof(resp));
 }
 
 int
-bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr)
+bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr, uint16_t *data)
 {
     int ret = 0, value;
     char cmd[128] = {0};
 
     snprintf(cmd, sizeof(cmd), "i2cget -f -y %d 0x%x 0x%02x w\r\n", bus, devaddr, addr);
     ret = bmc_command_read_int(&value, cmd, 16);
-    return (ret < 0) ? ret : value;
+    *data = value;
+    return ret;
 }
 
 int
@@ -314,15 +437,16 @@ bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data
 {
     int data_len, i = 0;
     char cmd[128] = {0};
+    char resp[256];
     char *str = NULL;
     snprintf(cmd, sizeof(cmd), "i2craw -w 0x%x -r 0 %d 0x%02x\r\n", addr, bus, devaddr);
 
-    if (bmc_send_command(cmd) < 0) {
+    if (bmc_reply(cmd, resp, sizeof(resp)) < 0) {
         AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    str = strstr(tty_buf, "Received:\r\n  ");
+    str = strstr(resp, "Received:\r\n  ");
     if (str == NULL) {
         return -1;
     }

@@ -43,20 +43,18 @@ onlp_sysi_platform_get(void)
     return "x86-64-accton-minipack-r0";
 }
 
+#define TLV_START_OFFSET (512)
+
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
-    uint8_t* rdata = aim_zmalloc(256);
-
-
-#if 1 
-/* Temporary solution. 
- * The very start part of eeprom is in FB format.
- * Real TLV info locates at 0x1800.
- */
-#define TLV_START_OFFSET (0x1800)
-
     FILE* fp;
+    uint8_t* rdata = aim_zmalloc(512);
+
+    /* Temporary solution.
+     * The very start part of eeprom is in FB format.
+     * Real TLV info locates at where else.
+     */
     fp = fopen(IDPROM_PATH, "r");
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open file of (%s)", IDPROM_PATH);
@@ -75,16 +73,7 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
         *data = rdata;
         return ONLP_STATUS_OK;
     }
-#undef TLV_START_OFFSET     
-#else
 
-    if(onlp_file_read(rdata, 0x1000, size, IDPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 0x4000) {
-            *data = rdata;
-            return ONLP_STATUS_OK;
-        }
-    }
-#endif
     aim_free(rdata);
     *size = 0;
     return ONLP_STATUS_E_INTERNAL;
@@ -117,7 +106,6 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
         *e++ = ONLP_FAN_ID_CREATE(i);
     }
 
-    bmc_tty_init();
     return 0;
 }
 

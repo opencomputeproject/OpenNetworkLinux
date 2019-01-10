@@ -37,10 +37,10 @@
     } while(0)
 
 enum {
-    PSU1_ID = 1,    /*Left-upper*/
-    PSU2_ID,        /*Left-lower*/
-    PSU3_ID,        /*Right-upper*/
-    PSU4_ID,        /*Right-lower*/
+    PSU1_ID = 1,    /*At the left-upper of the front view.*/
+    PSU2_ID,        /*At the left-lower of the front view.*/
+    PSU3_ID,        /*At the right-upper of the front view.*/
+    PSU4_ID,        /*At the right-lower of the front view.*/
 };
 
 /*
@@ -52,7 +52,7 @@ static onlp_psu_info_t pinfo[] =
     { {ONLP_PSU_ID_CREATE(PSU1_ID), "PSU-1", 0}, },
     { {ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0}, },
     { {ONLP_PSU_ID_CREATE(PSU3_ID), "PSU-3", 0}, },
-    { {ONLP_PSU_ID_CREATE(PSU4_ID), "PSU-4", 0}, },    
+    { {ONLP_PSU_ID_CREATE(PSU4_ID), "PSU-4", 0}, },
 };
 
 int
@@ -60,30 +60,78 @@ onlp_psui_init(void)
 {
     return ONLP_STATUS_OK;
 }
-/*
-static int
-twos_complement_to_int(uint16_t data, uint8_t valid_bit, int mask)
-{
-    uint16_t valid_data = data & mask;
-    bool is_negative = valid_data >> (valid_bit - 1);
 
-    return is_negative ? (-(((~valid_data) & mask) + 1)) : valid_data;
+#define PMBUS_PATH_FORMAT "/sys/bus/platform/devices/minipack_psensor/%s%d_input"
+
+static int
+onlp_psui_rm_special_char(char* in, char* out, int max)
+{
+    int i, j;
+    char c;
+
+    DEBUG_PRINT("Before strip: [%s]\n", in);
+    j = 0;
+    for (i = 0; in[i]; i++) {
+        c = in[i];
+        if((c >= '0' && c <= '9') || (c >= 'A' && c <= 'z')) {
+            out[j]=in[i];
+            j++;
+        }
+        if (j == max)
+            break;
+    }
+    out[j] = '\0';
+    DEBUG_PRINT("After strip: [%s]\n", out);
+    return j;
 }
 
 
 static int
-pmbus_parse_literal_format(uint16_t value)
+onlp_psui_get_BMC_info(int pid, onlp_psu_info_t* info)
 {
-    int exponent, mantissa, multiplier = 1000;
+    char cmd[128] = {0};
+    char resp[128] = {0};
 
-    exponent = twos_complement_to_int(value >> 11, 5, 0x1f);
-    mantissa = twos_complement_to_int(value & 0x7ff, 11, 0x7ff);
+    int i2c_addr[][2] = {{49, 0x59},{48, 0x58},{57, 0x59},{56, 0x58}};
+    int model  = 0x9a;
+    int serial = 0x9e;
+    int bus, addr, offset;
+    char *bcmd = "i2cdump -y -f %d 0x%x s 0x%x|tail -n +2|cut -c56-";
 
-    return (exponent >= 0) ? (mantissa << exponent) * multiplier :
-                             (mantissa * multiplier) / (1 << -exponent);
-}*/
+    bus = i2c_addr[pid-1][0];
+    addr = i2c_addr[pid-1][1];
 
-#define PMBUS_PATH_FORMAT "/sys/bus/platform/devices/minipack_psensor/%s%d_input"
+    /* PSU is present if its model name can be retrieved.*/
+    offset = model;
+    sprintf(cmd, bcmd, bus, addr, offset);
+    memset(info->model, 0, sizeof(info->model));
+    if (bmc_reply_pure(cmd, 200000, resp, sizeof(resp)) < 0) {
+        AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
+
+    /*i2cdump return "failed" when slave is not present.*/
+    if (strstr(resp, "failed") != NULL) {
+        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
+
+    info->status |= ONLP_PSU_STATUS_PRESENT;
+    info->caps = ONLP_PSU_CAPS_AC;
+    onlp_psui_rm_special_char(resp, info->model, sizeof(info->model)-1);
+
+    offset = serial;
+    sprintf(cmd, bcmd, bus, addr, offset);
+    memset(info->serial, 0, sizeof(info->serial));
+    if (bmc_reply_pure(cmd, 200000, resp, sizeof(resp)) < 0) {
+        AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
+    onlp_psui_rm_special_char(resp, info->serial, sizeof(info->serial)-1);
+    return ONLP_STATUS_OK;
+}
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -92,53 +140,24 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char  path[64] = {0};
 
     VALIDATE(id);
-
     pid  = ONLP_OID_ID_GET(id);
     *info = pinfo[pid]; /* Set the onlp_oid_hdr_t */
 
     /* Get the present status
      */
-#if 0     
-    uint8_t mask = 0;
-    mask = 1 << ((pid-1) * 4);
-    value = onlp_i2c_readb(1, 0x32, 0x10, ONLP_I2C_F_FORCE);
-    if (value < 0) {
+
+    if (onlp_psui_get_BMC_info(pid, info) != ONLP_STATUS_OK)
+    {
         return ONLP_STATUS_E_INTERNAL;
     }
-
-    if (value & mask) {
-        info->status &= ~ONLP_PSU_STATUS_PRESENT;
-        return ONLP_STATUS_OK;
-    }
-    info->status |= ONLP_PSU_STATUS_PRESENT;
-    info->caps = ONLP_PSU_CAPS_AC; 
-
-    /* Get power good status 
-     */
-    mask = 1 << ((pid-1) * 4 + 1);
-    if (!(value & mask)) {
-        info->status |= ONLP_PSU_STATUS_FAILED;
+    if (!(info->status & ONLP_PSU_STATUS_PRESENT)) {
         return ONLP_STATUS_OK;
     }
 
-
-    /* Get input output power status
-     */
-    value = (pid == PSU1_ID) ? 0x2 : 0x1; /* mux channel for psu */
-    if (bmc_i2c_writeb(7, 0x70, 0, value) < 0) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    usleep(1200);
-#else
-
-    info->status |= ONLP_PSU_STATUS_PRESENT;
-    info->caps = ONLP_PSU_CAPS_AC; 
-#endif
     pid_in  = (pid * 2) - 1;
     pid_out = pid * 2;
 
-
-
+    DEBUG_PRINT("in%d_input: for pid:%d\n",pid_in, pid);
     /* Read vin */
     sprintf(path, PMBUS_PATH_FORMAT, "in", pid_in);
     if (onlp_file_read_int(&value, path) < 0) {
@@ -179,8 +198,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         return ONLP_STATUS_E_INTERNAL;
     }
     if (value >= 0) {
-            info->mvout = value;
-            info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->mvout = value;
+        info->caps |= ONLP_PSU_CAPS_VOUT;
     }
 
     /* Read iout */
@@ -204,14 +223,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->mpout = value/1000;  /*power is in unit of microWatts.*/;
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
-
-    /* Get model name */
-    //bmc_i2c_readraw(7, addr, 0x9a, info->model, sizeof(info->model));
-    info->model[0] = '0';
-    /* Get serial number */
-    //bmc_i2c_readraw(7, addr, 0x9e, info->serial, sizeof(info->serial));
-    info->serial[0] = '0';
-    
     return 0;
 }
 

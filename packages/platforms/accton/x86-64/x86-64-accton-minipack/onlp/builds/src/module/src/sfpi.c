@@ -28,10 +28,8 @@
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/file.h>
 #include "platform_lib.h"
-
 #include "x86_64_accton_minipack_log.h"
 
-#define BIT(i)          (1 << (i))
 #define NUM_OF_PIM              (8)
 #define TYPES_OF_PIM            (2)
 #define NUM_OF_SFP_PORT         (128)
@@ -146,6 +144,8 @@ onlp_pim_is_present(int pim)
         present = bmc_i2c_readb(bus, addr, offset);
         if (present < 0) {
             ps.pim.valid = 0;
+            ps.pim.present = 0xff;  /*1 means absent*/
+            present = 0xff;
             return ONLP_STATUS_E_INTERNAL;
         }
         ps.pim.valid = 1;
@@ -158,10 +158,20 @@ onlp_pim_is_present(int pim)
     return !(present & BIT(pim % NUM_OF_PIM));
 }
 
+static int update_ports(present_status_t *ports, uint32_t present) {
+    ports->valid = 1;
+    ports->present = present;
+    ports->last_poll = time (NULL);
+    return ONLP_STATUS_OK;
+}
+
+
+/*bit_array is the present bitmap of a PIM, not all ports of PIMs.*/
 static int
-get_port_present_bmap(int port, uint32_t *bit_array)
+get_pim_port_present_bmap(int port, uint32_t *bit_array)
 {
     time_t cur, elapse;
+    int    ret;
     uint32_t present, pim;
     present_status_t *ports;
     int bus[NUM_OF_PIM] = {80, 88, 96, 104, 112, 120, 128, 136};
@@ -169,20 +179,26 @@ get_port_present_bmap(int port, uint32_t *bit_array)
     int offset = 0x12;
 
     pim = port/SFP_PORT_PER_PIM;
-
     ports = &ps.port_at_pim[pim];
+
+    /*If PIM not present, set all 1's to pbmap.*/
+    if(onlp_pim_is_present(pim) == 0) {
+        update_ports(ports, 0xffff);
+        *bit_array = onlp_sfpi_reg_val_to_port_sequence(ports->present, 0);
+        return ONLP_STATUS_OK;
+    }
+
     cur = time (NULL);
     elapse = cur - ports->last_poll;
-
     if (!ports->valid || (elapse > PORT_POLL_INTERVAL)) {
-        present = bmc_i2c_readw(bus[pim], addr[0], offset);
-        if (present < 0) {
+        ret = bmc_i2c_readw(bus[pim], addr[0], offset, (uint16_t*)&present);
+        if (ret < 0) {
             ports->valid = 0;
+            ports->present = 0xffff;    /*No needs to flip in port order.*/
+            *bit_array = 0xffff;        /*No needs to flip in port order.*/
             return ONLP_STATUS_E_INTERNAL;
         }
-        ports->valid = 1;
-        ports->present = present;
-        ports->last_poll = time (NULL);
+        update_ports(ports, present);
     } else {
         present = ports->present;
     }
@@ -190,7 +206,6 @@ get_port_present_bmap(int port, uint32_t *bit_array)
     *bit_array = onlp_sfpi_reg_val_to_port_sequence(present, 0);
     return ONLP_STATUS_OK;
 }
-
 
 int
 onlp_sfpi_is_present(int port)
@@ -206,20 +221,21 @@ onlp_sfpi_is_present(int port)
     pim = port/SFP_PORT_PER_PIM;
     present = onlp_pim_is_present(pim);
     if (present < 0) {
-        return ONLP_STATUS_E_INTERNAL;
+        return present;
     }
     if (!present) {
+        update_ports(&ps.port_at_pim[pim], 0xff);
         return 0;
     }
 
-    ret = get_port_present_bmap(port, &bit_array);
+    ret = get_pim_port_present_bmap(port, &bit_array);
     if (ret < 0) {
         return ret;
     }
 
-
     return !(bit_array & BIT(port % SFP_PORT_PER_PIM));
 }
+
 
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
@@ -231,7 +247,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     /*Get present bitmap per PIM.*/
     for (i = 0; i < NUM_OF_PIM; i++) {
         port = i*SFP_PORT_PER_PIM;
-        ret = get_port_present_bmap(port, &bmap_pim[i]);
+        ret = get_pim_port_present_bmap(port, &bmap_pim[i]);
         if (ret < 0)
             return ret;
     }
@@ -266,10 +282,9 @@ sfpi_eeprom_close_all_channels(void)
     int channels = 8;
 
     for (i = 0; i < channels; i++) {
-        /* Skip checking if PIM is plugged. Cuz BMC traffic may not be ready at init.
         if (onlp_pim_is_present(i) != 1)
-             continue;
-        */
+            continue;
+
         value = 1<<i;
         /*Open only 1 channel of level-1 mux*/
         if (onlp_i2c_writeb(I2C_BUS, mux_1st, offset, value, ONLP_I2C_F_FORCE) < 0) {

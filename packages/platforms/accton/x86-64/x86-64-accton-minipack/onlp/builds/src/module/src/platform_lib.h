@@ -32,10 +32,12 @@
 
 #if (DEBUG_MODE == 1)
 #define DEBUG_PRINT(fmt, args...)                                        \
-        printf("%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)
+        printf("%s#%d: " fmt "\r\n", __FUNCTION__, __LINE__, ##args)
 #else
 #define DEBUG_PRINT(fmt, args...)
 #endif
+
+#define BIT(i)            (1 << (i))
 
 #define CHASSIS_FAN_COUNT     8
 #define CHASSIS_THERMAL_COUNT 8
@@ -45,6 +47,8 @@
 #define IDPROM_PATH "/sys/bus/i2c/devices/1-0057/eeprom"
 #define PLATFOTM_H_TTY_RETRY  (5)
 
+#define MAXIMUM_TTY_BUFFER_LENGTH       1024
+#define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 
 enum onlp_thermal_id
 {
@@ -59,16 +63,13 @@ enum onlp_thermal_id
     THERMAL_7_ON_MAIN_BROAD,
 };
 
-int bmc_send_command(char *cmd);
+int bmc_reply_pure(char *cmd, unsigned long udelay, char *resp, int max_size);
+int bmc_reply(char *cmd, char *resp, int max_size);
 int bmc_file_read_int(int* value, char *file, int base);
 int bmc_i2c_readb(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value);
-int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr);
+int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr, uint16_t *data);
 int bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data_size);
-
-int bmc_tty_init(void);
-int bmc_tty_deinit(void);
-
 #endif  /* __PLATFORM_LIB_H__ */
 
 
