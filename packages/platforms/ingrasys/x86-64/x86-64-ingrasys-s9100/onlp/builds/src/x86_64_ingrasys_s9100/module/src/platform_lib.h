@@ -39,6 +39,7 @@
 #define SYS_CORE_TEMP_PREFIX "/sys/class/hwmon/hwmon0/device/hwmon/hwmon0/"
 #define SYS_FAN_PREFIX "/sys/class/hwmon/hwmon1/device/"
 #define SYS_EEPROM_PATH "/sys/bus/i2c/devices/9-0054/eeprom"
+#define SYS_EEPROM_SIZE 512
 #define PSU1_EEPROM_PATH "/sys/bus/i2c/devices/8-0050/eeprom"
 #define PSU2_EEPROM_PATH "/sys/bus/i2c/devices/9-0050/eeprom"
 #define PSU_STATUS_PRESENT    1

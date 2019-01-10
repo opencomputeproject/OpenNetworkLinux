@@ -24,10 +24,19 @@ class OnlPlatform_x86_64_ingrasys_s9180_32x_r0(OnlPlatformIngrasys):
            
         self.insmod("eeprom_mb")        
         # init SYS EEPROM devices
-        self.new_i2c_device('mb_eeprom', 0x55, 0)
+        self.new_i2c_devices(
+            [
+                #  on main board
+                ('mb_eeprom', 0x55, 0),
+                #  on cpu board
+                ('mb_eeprom', 0x51, 0),
+            ]
+        )
         
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
+        os.system("modprobe gpio_pca953x")
+        os.system("modprobe sff_8436_eeprom")
         
         ########### initialize I2C bus 0 ###########
         # init PCA9548

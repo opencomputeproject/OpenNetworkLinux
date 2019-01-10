@@ -29,6 +29,8 @@ class OnlPlatform_x86_64_ingrasys_s9230_64x_r0(OnlPlatformIngrasys):
         
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
+        os.system("modprobe gpio_pca953x")
+        os.system("modprobe sff_8436_eeprom")
         
         ########### initialize I2C bus 0 ###########
         # init PCA9548
