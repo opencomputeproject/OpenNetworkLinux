@@ -14,7 +14,7 @@ The current status of a module is queried using ```onlp_module_info_get``` to po
 There are no module-specific fields in this structure as it is just a dynamic container for child OIDs. Those children can then be inspected and enumerated recursively.
 
 ## Module Documentation
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__oid-module.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-module.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/module.h)
 
 ---

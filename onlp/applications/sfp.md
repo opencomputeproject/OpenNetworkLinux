@@ -25,7 +25,7 @@ While calling ```onlp_sfp_info_get``` is sufficient to identify the inserted mod
 
 ## SFP Documentation
 
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__oid-sfp.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-sfp.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/sfp.h)
 
 ---

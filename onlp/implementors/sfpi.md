@@ -25,7 +25,7 @@ The MSA SFF decode for both identification and DOM information is parsed in the 
 Supporting all relevant SFP controls, status bitmaps, and read/write operations is required to provide rich access to all required SFP features.
 
 ## SFPi Documentation
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__sfpi.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__sfpi.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/sfpi.h)
 * [Example Implementation](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/platforms/accton/x86-64/as7712-32x/onlp/builds/x86_64_accton_as7712_32x/module/src/sfpi.c)
 

@@ -7,7 +7,7 @@ The current status and capabilities of a PSU are queried using ```onlp_psu_info_
 PSU features include things like voltage, power, current, and type (AC or DC).
 
 ## PSU Documentation
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__oid-psu.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-psu.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/psu.h)
 
 ---

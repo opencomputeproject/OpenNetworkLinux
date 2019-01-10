@@ -27,5 +27,5 @@ The fields of the ```onlp_asset_info_t``` structure are defined by the ONLP API 
 This attribute should be implemented at a minimum by the Chassis OID to return important system information (like firmware revisions).
 
 ## Attribute Documentation
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__attributes.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__attributes.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/attribute.h)

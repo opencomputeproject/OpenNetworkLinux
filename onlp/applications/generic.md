@@ -11,7 +11,7 @@ The current status of a generic oid is queried using ```onlp_generic_info_get```
 There are no fields defined in the information structure. Custom interaction with a Generic OID must be done through the OID Attribute APIs.
 
 ## Generic Documentation
-* [Doxygen](https://htmlpreview.github.io/?https://raw.githubusercontent.com/opencomputeproject/OpenNetworkLinux/ONLPv2/packages/base/any/onlp/src/onlp/doc/html/group__oid-generic.html)
+* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-generic.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/generic.h)
 
 ---
