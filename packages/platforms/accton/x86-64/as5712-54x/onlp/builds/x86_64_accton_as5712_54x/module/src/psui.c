@@ -41,13 +41,13 @@
         }                                       \
     } while(0)
 
-static int 
+static int
 psu_status_info_get(int id, int is_ac, char *node, int *value)
 {
     int ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -66,13 +66,13 @@ psu_status_info_get(int id, int is_ac, char *node, int *value)
     return ret;
 }
 
-static int 
+static int
 psu_cpr_4011_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
     char buf[PSU_NODE_MAX_INT_LEN + 1]    = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -91,25 +91,19 @@ psu_cpr_4011_pmbus_info_get(int id, char *node, int *value)
     return ret;
 }
 
-int
-onlp_psui_init(void)
-{
-    return ONLP_STATUS_OK;
-}
-
 static int
 psu_cpr_4011_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
-    
+
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
-	if (info->status & ONLP_PSU_STATUS_FAILED) {
-	    return ONLP_STATUS_OK;
-	}
+    info->type = ONLP_PSU_TYPE_AC;
+
+    if (ONLP_OID_FAILED(info)) {
+        return ONLP_STATUS_OK;
+    }
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
@@ -118,33 +112,33 @@ psu_cpr_4011_info_get(onlp_psu_info_t* info)
     /* Read voltage, current and power */
     if (psu_cpr_4011_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_VOUT;
     }
 
     if (psu_cpr_4011_pmbus_info_get(index, "psu_v_in", &val) == 0) {
         info->mvin = val;
-        info->caps |= ONLP_PSU_CAPS_VIN;
+        info->caps |= ONLP_PSU_CAPS_GET_VIN;
     }
 
     if (psu_cpr_4011_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_IOUT;
     }
-    
+
     if (psu_cpr_4011_pmbus_info_get(index, "psu_i_in", &val) == 0) {
         info->miin = val;
-        info->caps |= ONLP_PSU_CAPS_IIN;
+        info->caps |= ONLP_PSU_CAPS_GET_IIN;
     }
 
     if (psu_cpr_4011_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
-    }   
+        info->caps |= ONLP_PSU_CAPS_GET_POUT;
+    }
 
     if (psu_cpr_4011_pmbus_info_get(index, "psu_p_in", &val) == 0) {
         info->mpin = val;
-        info->caps |= ONLP_PSU_CAPS_PIN;
-    }  
+        info->caps |= ONLP_PSU_CAPS_GET_PIN;
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -156,9 +150,9 @@ psu_um400d_info_get(onlp_psu_info_t* info)
 
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_DC48;
+    info->type = ONLP_PSU_TYPE_DC48;
 
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
+    if (ONLP_OID_FAILED(info)) {
         return ONLP_STATUS_OK;
     }
 
@@ -173,12 +167,12 @@ psu_ym2401_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
-    
+
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
+    info->type = ONLP_PSU_TYPE_AC;
+
+    if (ONLP_OID_FAILED(info)) {
         return ONLP_STATUS_OK;
     }
 
@@ -189,18 +183,18 @@ psu_ym2401_info_get(onlp_psu_info_t* info)
     /* Read voltage, current and power */
     if (psu_ym2401_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_VOUT;
     }
 
     if (psu_ym2401_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_IOUT;
     }
 
     if (psu_ym2401_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
-    } 
+        info->caps |= ONLP_PSU_CAPS_GET_POUT;
+    }
 
     return ONLP_STATUS_OK;
 }
@@ -211,12 +205,8 @@ psu_ym2401_info_get(onlp_psu_info_t* info)
 static onlp_psu_info_t pinfo[] =
 {
     { }, /* Not used */
-    {
-        { ONLP_PSU_ID_CREATE(PSU1_ID), "PSU-1", 0 },
-    },
-    {
-        { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0 },
-    }
+    ONLP_CHASSIS_PSU_INFO_ENTRY_INIT(PSU1_ID, "PSU-1"),
+    ONLP_CHASSIS_PSU_INFO_ENTRY_INIT(PSU2_ID, "PSU-2"),
 };
 
 int
@@ -225,7 +215,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int val   = 0;
     int   ret = ONLP_STATUS_OK;
     int index = ONLP_OID_ID_GET(id);
-    psu_type_t psu_type; 
+    psu_type_t psu_type;
 
     VALIDATE(id);
 
@@ -238,11 +228,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_PRESENT) {
-        info->status &= ~ONLP_PSU_STATUS_PRESENT;
+        ONLP_OID_STATUS_FLAG_CLR(info, PRESENT);
         return ONLP_STATUS_OK;
     }
-    info->status |= ONLP_PSU_STATUS_PRESENT;
-    
+    ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
+
 
     /* Get power good status */
     if (psu_status_info_get(index, 1, "psu_power_good", &val) != 0) {
@@ -250,7 +240,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
+        ONLP_OID_STATUS_FLAG_SET(info, FAILED);
         return 0;
     }
 
@@ -279,10 +269,3 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     return ret;
 }
-
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

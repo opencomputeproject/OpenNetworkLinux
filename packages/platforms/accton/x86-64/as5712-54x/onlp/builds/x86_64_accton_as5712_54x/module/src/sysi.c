@@ -23,6 +23,8 @@
  *
  *
  ***********************************************************/
+#if 0
+
 #include <onlp/platformi/sysi.h>
 #include <onlp/platformi/ledi.h>
 #include <onlp/platformi/thermali.h>
@@ -120,7 +122,7 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
     int i;
-    
+
     /* 2 PSUs */
     *e++ = ONLP_PSU_ID_CREATE(1);
     *e++ = ONLP_PSU_ID_CREATE(2);
@@ -272,3 +274,4 @@ onlp_sysi_platform_manage_leds(void)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
+#endif

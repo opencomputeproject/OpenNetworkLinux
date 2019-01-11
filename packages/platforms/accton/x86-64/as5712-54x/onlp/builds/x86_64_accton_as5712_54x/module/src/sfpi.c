@@ -67,18 +67,6 @@ static int front_port_bus_index(int port)
     return (rport + CPLD_MUX_BUS_START_INDEX);
 }
 
-/************************************************************
- *
- * SFPI Entry Points
- *
- ***********************************************************/
-int
-onlp_sfpi_init(void)
-{
-    /* Called at initialization time */
-    return ONLP_STATUS_OK;
-}
-
 int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
@@ -95,7 +83,7 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 }
 
 int
-onlp_sfpi_port_map(int port, int* rport)
+onlp_sfpi_port_map(onlp_oid_id_t port, int* rport)
 {
     /*
      * The QSFP port numbering on the powerpc-as5712-54x-r0b platform
@@ -152,7 +140,7 @@ onlp_sfpi_port_map(int port, int* rport)
  * values directly, however, we need to apply the correct mapping from R0B -> R0.
  */
 static void
-port_qsfp_cpld_map__(int port, int* rport)
+port_qsfp_cpld_map__(onlp_oid_id_t port, int* rport)
 {
     switch(port)
     {
@@ -167,7 +155,7 @@ port_qsfp_cpld_map__(int port, int* rport)
 }
 
 int
-onlp_sfpi_is_present(int port)
+onlp_sfpi_is_present(onlp_oid_id_t port)
 {
     /*
      * Return 1 if present.
@@ -176,7 +164,7 @@ onlp_sfpi_is_present(int port)
      */
     int present;
     int addr = (port < 24) ? 61 : 62;
-    
+
 	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, addr, (port+1)) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
@@ -297,7 +285,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+onlp_sfpi_eeprom_read(onlp_oid_id_t port, uint8_t data[256])
 {
     /*
      * Read the SFP eeprom into data[]
@@ -322,11 +310,11 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 }
 
 int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
+onlp_sfpi_dom_read(onlp_oid_id_t port, uint8_t data[256])
 {
     FILE* fp;
     char file[64] = {0};
-    
+
     sprintf(file, PORT_EEPROM_FORMAT, front_port_bus_index(port));
     fp = fopen(file, "r");
     if(fp == NULL) {
@@ -351,35 +339,43 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
 }
 
 int
-onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_read(onlp_oid_id_t port, int devaddr, int addr,
+                   uint8_t* dst, int size)
+{
+    int bus = front_port_bus_index(port);
+    return onlp_i2c_block_read(bus, devaddr, addr, size, dst, ONLP_I2C_F_FORCE);
+}
+
+int
+onlp_sfpi_dev_readb(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = front_port_bus_index(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+onlp_sfpi_dev_writeb(onlp_oid_id_t port, int devaddr, int addr, uint8_t value)
 {
     int bus = front_port_bus_index(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_readw(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = front_port_bus_index(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+onlp_sfpi_dev_writew(onlp_oid_id_t port, int devaddr, int addr, uint16_t value)
 {
     int bus = front_port_bus_index(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
+onlp_sfpi_control_set(onlp_oid_id_t port, onlp_sfp_control_t control, int value)
 {
     int rv;
 
@@ -412,7 +408,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 }
 
 int
-onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
+onlp_sfpi_control_get(onlp_oid_id_t port, onlp_sfp_control_t control, int* value)
 {
     int rv;
 
@@ -466,10 +462,3 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
     return rv;
 }
-
-int
-onlp_sfpi_denit(void)
-{
-    return ONLP_STATUS_OK;
-}
-
