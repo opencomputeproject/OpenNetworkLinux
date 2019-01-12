@@ -1088,13 +1088,20 @@ class OnlPackageManager(object):
 
     def list_platforms(self, arch):
         platforms = []
+        whitelist = None
+
+        if os.environ.get('ONLPM_OPTION_PLATFORM_WHITELIST'):
+            whitelist = os.environ.get('ONLPM_OPTION_PLATFORM_WHITELIST').split()
+
         for pg in self.package_groups:
             for p in pg.packages:
                 (name, pkgArch) = OnlPackage.idparse(p.id())
                 m = re.match(r'onl-platform-config-(?P<platform>.*)', name)
                 if m:
+                    platform = m.groups('platform')[0]
                     if arch in [ pkgArch, "all", None ]:
-                        platforms.append(m.groups('platform')[0])
+                        if ops.force or whitelist is None or platform in whitelist:
+                            platforms.append(m.groups('platform')[0])
         return platforms
 
 def defaultPm():
