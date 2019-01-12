@@ -54,18 +54,33 @@ ONLP_LOCKED_API0(onlp_psu_sw_denit);
 static int
 onlp_psu_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    ONLP_OID_PSU_VALIDATE(oid);
+    int rv;
+    onlp_oid_id_t id;
+
+    ONLP_OID_PSU_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(hdr);
-    return onlp_psui_hdr_get(oid, hdr);
+
+    rv = onlp_log_error(0,
+                        onlp_psui_hdr_get(id, hdr),
+                        "psui hdr get %{onlp_oid}", oid);
+    hdr->id = oid;
+    return rv;
 }
 ONLP_LOCKED_API2(onlp_psu_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
 
 static int
 onlp_psu_info_get_locked__(onlp_oid_t oid,  onlp_psu_info_t* info)
 {
-    ONLP_OID_PSU_VALIDATE(oid);
+    int rv;
+    onlp_oid_id_t id;
+
+    ONLP_OID_PSU_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(info);
-    return onlp_psui_info_get(oid, info);
+    rv = onlp_log_error(0,
+                        onlp_psui_info_get(id, info),
+                        "psui info get %{onlp_oid}", oid);
+    info->hdr.id = oid;
+    return rv;
 }
 ONLP_LOCKED_API2(onlp_psu_info_get, onlp_oid_t, oid, onlp_psu_info_t*, info);
 

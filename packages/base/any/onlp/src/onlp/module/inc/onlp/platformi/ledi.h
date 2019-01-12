@@ -61,6 +61,13 @@ int onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv);
 int onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* rv);
 
 /**
+ * @brief Get the caps for the given LED
+ * @param id The LED ID
+ * @param[out] rv Receives the caps.
+ */
+int onlp_ledi_caps_get(onlp_oid_id_t id, uint32_t* rv);
+
+/**
  * @brief Set the LED mode.
  * @param id The LED OID
  * @param mode The new mode.

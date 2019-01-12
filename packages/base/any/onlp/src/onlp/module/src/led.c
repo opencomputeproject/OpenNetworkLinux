@@ -30,31 +30,6 @@
 #include "onlp_locks.h"
 
 static int
-onlp_led_present__(onlp_oid_t id, onlp_led_info_t* info)
-{
-    int rv;
-
-    /* Info retrieval required. */
-    rv = onlp_ledi_info_get(id, info);
-    if(rv < 0) {
-        return rv;
-    }
-    /* The led must be present. */
-    if((info->hdr.status & 0x1) == 0) {
-        return ONLP_STATUS_E_MISSING;
-    }
-    return ONLP_STATUS_OK;
-}
-#define ONLP_LED_PRESENT_OR_RETURN(_id, _info)          \
-    do {                                                \
-        int _rv = onlp_led_present__(_id, _info);       \
-        if(_rv < 0) {                                   \
-            return _rv;                                 \
-        }                                               \
-    } while(0)
-
-
-static int
 onlp_led_sw_init_locked__(void)
 {
     return onlp_ledi_sw_init();
@@ -102,16 +77,34 @@ ONLP_LOCKED_API2(onlp_led_info_get, onlp_oid_t, id, onlp_led_info_t*, info);
 
 
 static int
-onlp_led_mode_set_locked__(onlp_oid_t id, onlp_led_mode_t mode)
+onlp_led_caps_get_locked__(onlp_oid_t oid, uint32_t* rv)
 {
-    onlp_led_info_t info;
-    ONLP_LED_PRESENT_OR_RETURN(id, &info);
+    onlp_oid_id_t id;
 
-    /*
-     * The mode enumeration values always match
-     * the capability bit positions.
-     */
-    if(info.caps & (1 << mode)) {
+    ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
+    ONLP_PTR_VALIDATE_ZERO(rv);
+
+    return onlp_log_error(0,
+                          onlp_ledi_caps_get(id, rv),
+                          "ledi caps get %{onlp_oid}", oid);
+}
+ONLP_LOCKED_API2(onlp_led_caps_get, onlp_oid_t, oid, uint32_t*, rv);
+
+
+static int
+onlp_led_mode_set_locked__(onlp_oid_t oid, onlp_led_mode_t mode)
+{
+    uint32_t caps = 0;
+    onlp_oid_id_t id;
+
+    ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
+
+    ONLP_TRY(onlp_log_error(0,
+                            onlp_led_caps_get_locked__(oid, &caps),
+                            "led mode set %{onlp_oid} %{onlp_led_mode}: could not get led caps.",
+                            oid, mode));
+
+    if(caps & (1 << mode)) {
         return onlp_ledi_mode_set(id, mode);
     }
     else {
@@ -121,16 +114,19 @@ onlp_led_mode_set_locked__(onlp_oid_t id, onlp_led_mode_t mode)
 ONLP_LOCKED_API2(onlp_led_mode_set, onlp_oid_t, id, onlp_led_mode_t, mode);
 
 static int
-onlp_led_char_set_locked__(onlp_oid_t id, char c)
+onlp_led_char_set_locked__(onlp_oid_t oid, char c)
 {
-    onlp_led_info_t info;
-    ONLP_LED_PRESENT_OR_RETURN(id, &info);
+    uint32_t caps = 0;
+    onlp_oid_id_t id;
 
-    /*
-     * The mode enumeration values always match
-     * the capability bit positions.
-     */
-    if(info.caps & ONLP_LED_CAPS_CHAR) {
+    ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
+
+    ONLP_TRY(onlp_log_error(0,
+                            onlp_led_caps_get_locked__(oid, &caps),
+                            "led char set %{onlp_oid} %c: could not get led caps.",
+                            oid, c));
+
+    if(caps & ONLP_LED_CAPS_CHAR) {
         return onlp_ledi_char_set(id, c);
     }
     else {

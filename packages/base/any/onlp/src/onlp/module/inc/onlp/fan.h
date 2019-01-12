@@ -112,14 +112,21 @@ int onlp_fan_sw_denit(void);
  * @param id The fan OID.
  * @param[out] hdr Receives the OID header.
  */
-int onlp_fan_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr);
+int onlp_fan_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
 
 /**
  * @brief Retrieve fan information.
  * @param id The fan OID.
  * @param[out] rv Receives the fan information.
  */
-int onlp_fan_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
+int onlp_fan_info_get(onlp_oid_t oid, onlp_fan_info_t* rv);
+
+/**
+ * @brief Retrieve the fan capabilities.
+ * @param id The fan OID.
+ * @param[out] rv Receives the fan capabilities.
+ */
+int onlp_fan_caps_get(onlp_oid_t oid, uint32_t* caps);
 
 /**
  * @brief Set the fan speed in RPMs.
@@ -127,7 +134,7 @@ int onlp_fan_info_get(onlp_oid_t id, onlp_fan_info_t* rv);
  * @param rpm The new RPM.
  * @note Only valid if the fan has the SET_RPM capability.
  */
-int onlp_fan_rpm_set(onlp_oid_t id, int rpm);
+int onlp_fan_rpm_set(onlp_oid_t oid, int rpm);
 
 /**
  * @brief Set the fan speed in percentage.
@@ -135,7 +142,7 @@ int onlp_fan_rpm_set(onlp_oid_t id, int rpm);
  * @param p The percentage.
  * @note Only valid if the fan has the SET_PERCENTAGE capability.
  */
-int onlp_fan_percentage_set(onlp_oid_t id, int p);
+int onlp_fan_percentage_set(onlp_oid_t oid, int p);
 
 /**
  * @brief Set the fan direction.
@@ -143,7 +150,7 @@ int onlp_fan_percentage_set(onlp_oid_t id, int p);
  * @param dir The fan direction (B2F or F2B)
  * @note Only called if both capabilities are set.
  */
-int onlp_fan_dir_set(onlp_oid_t id, onlp_fan_dir_t dir);
+int onlp_fan_dir_set(onlp_oid_t oid, onlp_fan_dir_t dir);
 
 /**
  * @brief Convert a fan info structure to user JSON.

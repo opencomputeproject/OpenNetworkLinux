@@ -121,6 +121,15 @@ int onlp_file_read_int(int* value, const char* fmt, ...);
  */
 int onlp_file_read_int_max(int* value, char** files);
 
+
+/**
+ * @brief Join the contents of the given files.
+ * @param[out] Receives the joined string.
+ * @param string The join string.
+ * @param files The source files.
+ */
+int onlp_file_join_files(char** rv, const char* string, char** files);
+
 /**
  * @brief Write data to the given file.
  * @param data The data to write.

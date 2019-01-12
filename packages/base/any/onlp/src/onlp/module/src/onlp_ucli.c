@@ -115,7 +115,7 @@ static ucli_status_t
 onlp_ucli__chassis__debug__show__(ucli_context_t* uc)
 {
     UCLI_COMMAND_INFO(uc,
-                      "debug", 0,
+                      "show", 0,
                       "Dump all chassis OIDs.");
     onlp_chassis_debug_show(&uc->pvs);
     return 0;
@@ -281,6 +281,149 @@ onlp_ucli__sfp__inventory__(ucli_context_t* uc)
 }
 
 static ucli_status_t
+onlp_ucli__sfp__dev__read__(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "read", 4,
+                      "$summary#Read bytes from the given addresses.");
+    int rv;
+    onlp_oid_t port;
+    int devaddr;
+    int addr; int size;
+    uint8_t* data;
+
+    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type}iii",
+                            &port, ONLP_OID_TYPE_SFP, &devaddr, &addr, &size);
+    if(ONLP_SUCCESS(rv = onlp_sfp_dev_alloc_read(port, devaddr, addr, size, &data))) {
+        ucli_printf(uc, "%{data}\n", data, size);
+        aim_free(data);
+    }
+    else {
+        ucli_printf(uc, "%{onlp_status}\n", rv);
+    }
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__sfp__bitmaps__(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "bitmaps", 0,
+                      "$summary#Show SFP Presence and RX_LOS bitmaps.");
+
+    int rv;
+    onlp_sfp_bitmap_t bmap;
+
+    ucli_printf(uc, "Presence: ");
+    if(ONLP_SUCCESS(rv = onlp_sfp_presence_bitmap_get(&bmap))) {
+        ucli_printf(uc, "%{aim_bitmap}\n", &bmap);
+    }
+    else {
+        ucli_printf(uc, "%{onlp_status}\n", rv);
+    }
+
+    ucli_printf(uc, "RX_LOS: ");
+    if(ONLP_SUCCESS(rv = onlp_sfp_rx_los_bitmap_get(&bmap))) {
+        ucli_printf(uc, "%{aim_bitmap}\n", &bmap);
+    }
+    else {
+        ucli_printf(uc, "%{onlp_status}\n", rv);
+    }
+    return 0;
+}
+
+
+static ucli_status_t
+onlp_ucli__fan__rpm__get(ucli_context_t* uc)
+{
+
+    UCLI_COMMAND_INFO(uc,
+                      "get", 1,
+                      "$summary#Show the RPM for the given fan.");
+
+    int rv;
+    onlp_oid_t oid;
+    onlp_fan_info_t info;
+
+    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type}", &oid, ONLP_OID_TYPE_FAN);
+
+    if(ONLP_SUCCESS(rv = onlp_fan_info_get(oid, &info))) {
+        if(info.caps & ONLP_FAN_CAPS_GET_RPM) {
+            ucli_printf(uc, "%{onlp_oid} rpm = %d\n", oid, info.rpm);
+        }
+        else {
+            ucli_printf(uc, "%{onlp_oid} does not support rpm.\n", oid);
+        }
+    }
+    else {
+        ucli_printf(uc, "%{onlp_status}\n", rv);
+    }
+
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__fan__rpm__set(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "set", 2,
+                      "$summary#Set the RPM for the given fan.");
+
+    int rpm;
+    onlp_oid_t oid;
+
+    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type}i", &oid, ONLP_OID_TYPE_FAN, &rpm);
+    ucli_printf(uc, "%{onlp_status}\n",
+                onlp_fan_rpm_set(oid, rpm));
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__fan__percentage__get(ucli_context_t* uc)
+{
+
+    UCLI_COMMAND_INFO(uc,
+                      "get", 1,
+                      "$summary#Show the speed percentage for the given fan.");
+
+    int rv;
+    onlp_oid_t oid;
+    onlp_fan_info_t info;
+
+    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type}", &oid, ONLP_OID_TYPE_FAN);
+
+    if(ONLP_SUCCESS(rv = onlp_fan_info_get(oid, &info))) {
+        if(info.caps & ONLP_FAN_CAPS_GET_PERCENTAGE) {
+            ucli_printf(uc, "%{onlp_oid} percentage = %d\n", oid, info.percentage);
+        }
+        else {
+            ucli_printf(uc, "%{onlp_oid} does not support percentage.\n", oid);
+        }
+    }
+    else {
+        ucli_printf(uc, "%{onlp_status}\n", rv);
+    }
+
+    return 0;
+}
+
+static ucli_status_t
+onlp_ucli__fan__percentage__set(ucli_context_t* uc)
+{
+    UCLI_COMMAND_INFO(uc,
+                      "set", 2,
+                      "$summary#Set the speed percentage for the given fan.");
+
+    int p;
+    onlp_oid_t oid;
+
+    UCLI_ARGPARSE_OR_RETURN(uc, "{onlp_oid_type}i", &oid, ONLP_OID_TYPE_FAN, &p);
+    ucli_printf(uc, "%{onlp_status}\n",
+                onlp_fan_percentage_set(oid, p));
+    return 0;
+}
+
+static ucli_status_t
 onlp_ucli__platform__manager__run__(ucli_context_t* uc)
 {
     UCLI_COMMAND_INFO(uc,
@@ -334,47 +477,49 @@ onlp_ucli__platform__manager__daemon__(ucli_context_t* uc)
  *
  *****************************************************************************/
 ucli_node_t* onlp_ucli__node__ = NULL;
-ucli_node_t* onlp_ucli__debug__node__ = NULL;
-ucli_node_t* onlp_ucli__debug__oid__node__ = NULL;
-ucli_node_t* onlp_ucli__debug__oid__verify__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__debug__oid__verify__verify__handlers__[] = 
+ucli_node_t* onlp_ucli__oid__node__ = NULL;
+ucli_node_t* onlp_ucli__oid__hdr__node__ = NULL;
+ucli_node_t* onlp_ucli__oid__hdr__json__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__oid__hdr__json__json__handlers__[] = 
 {
-    onlp_ucli__debug__oid__verify__json__,
+    onlp_ucli__oid__hdr__json__id__,
+    onlp_ucli__oid__hdr__json__file__,
     NULL
 };
-static ucli_module_t onlp_ucli__debug__oid__verify__verify__module__ = 
+static ucli_module_t onlp_ucli__oid__hdr__json__json__module__ = 
 {
-    "verify",
+    "json",
     NULL,
-    onlp_ucli__debug__oid__verify__verify__handlers__,
-    NULL,
-    NULL
-};
-ucli_node_t* onlp_ucli__debug__oid__from__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__debug__oid__from__from__handlers__[] = 
-{
-    onlp_ucli__debug__oid__from__json__,
-    NULL
-};
-static ucli_module_t onlp_ucli__debug__oid__from__from__module__ = 
-{
-    "from",
-    NULL,
-    onlp_ucli__debug__oid__from__from__handlers__,
+    onlp_ucli__oid__hdr__json__json__handlers__,
     NULL,
     NULL
 };
-ucli_node_t* onlp_ucli__debug__oid__to__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__debug__oid__to__to__handlers__[] = 
+ucli_node_t* onlp_ucli__sfp__node__ = NULL;
+ucli_node_t* onlp_ucli__sfp__dev__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__sfp__dev__dev__handlers__[] = 
 {
-    onlp_ucli__debug__oid__to__json__,
+    onlp_ucli__sfp__dev__read__,
     NULL
 };
-static ucli_module_t onlp_ucli__debug__oid__to__to__module__ = 
+static ucli_module_t onlp_ucli__sfp__dev__dev__module__ = 
 {
-    "to",
+    "dev",
     NULL,
-    onlp_ucli__debug__oid__to__to__handlers__,
+    onlp_ucli__sfp__dev__dev__handlers__,
+    NULL,
+    NULL
+};
+static ucli_command_handler_f onlp_ucli__sfp__sfp__handlers__[] = 
+{
+    onlp_ucli__sfp__inventory__,
+    onlp_ucli__sfp__bitmaps__,
+    NULL
+};
+static ucli_module_t onlp_ucli__sfp__sfp__module__ = 
+{
+    "sfp",
+    NULL,
+    onlp_ucli__sfp__sfp__handlers__,
     NULL,
     NULL
 };
@@ -453,48 +598,92 @@ static ucli_module_t onlp_ucli__chassis__env__env__module__ =
     NULL,
     NULL
 };
-ucli_node_t* onlp_ucli__sfp__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__sfp__sfp__handlers__[] = 
+ucli_node_t* onlp_ucli__fan__node__ = NULL;
+ucli_node_t* onlp_ucli__fan__percentage__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__fan__percentage__percentage__handlers__[] = 
 {
-    onlp_ucli__sfp__inventory__,
+    onlp_ucli__fan__percentage__get,
+    onlp_ucli__fan__percentage__set,
     NULL
 };
-static ucli_module_t onlp_ucli__sfp__sfp__module__ = 
+static ucli_module_t onlp_ucli__fan__percentage__percentage__module__ = 
 {
-    "sfp",
+    "percentage",
     NULL,
-    onlp_ucli__sfp__sfp__handlers__,
+    onlp_ucli__fan__percentage__percentage__handlers__,
     NULL,
     NULL
 };
-ucli_node_t* onlp_ucli__oid__node__ = NULL;
-ucli_node_t* onlp_ucli__oid__hdr__node__ = NULL;
-ucli_node_t* onlp_ucli__oid__hdr__json__node__ = NULL;
-static ucli_command_handler_f onlp_ucli__oid__hdr__json__json__handlers__[] = 
+ucli_node_t* onlp_ucli__fan__rpm__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__fan__rpm__rpm__handlers__[] = 
 {
-    onlp_ucli__oid__hdr__json__id__,
-    onlp_ucli__oid__hdr__json__file__,
+    onlp_ucli__fan__rpm__get,
+    onlp_ucli__fan__rpm__set,
     NULL
 };
-static ucli_module_t onlp_ucli__oid__hdr__json__json__module__ = 
+static ucli_module_t onlp_ucli__fan__rpm__rpm__module__ = 
 {
-    "json",
+    "rpm",
     NULL,
-    onlp_ucli__oid__hdr__json__json__handlers__,
+    onlp_ucli__fan__rpm__rpm__handlers__,
+    NULL,
+    NULL
+};
+ucli_node_t* onlp_ucli__debug__node__ = NULL;
+ucli_node_t* onlp_ucli__debug__oid__node__ = NULL;
+ucli_node_t* onlp_ucli__debug__oid__verify__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__debug__oid__verify__verify__handlers__[] = 
+{
+    onlp_ucli__debug__oid__verify__json__,
+    NULL
+};
+static ucli_module_t onlp_ucli__debug__oid__verify__verify__module__ = 
+{
+    "verify",
+    NULL,
+    onlp_ucli__debug__oid__verify__verify__handlers__,
+    NULL,
+    NULL
+};
+ucli_node_t* onlp_ucli__debug__oid__from__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__debug__oid__from__from__handlers__[] = 
+{
+    onlp_ucli__debug__oid__from__json__,
+    NULL
+};
+static ucli_module_t onlp_ucli__debug__oid__from__from__module__ = 
+{
+    "from",
+    NULL,
+    onlp_ucli__debug__oid__from__from__handlers__,
+    NULL,
+    NULL
+};
+ucli_node_t* onlp_ucli__debug__oid__to__node__ = NULL;
+static ucli_command_handler_f onlp_ucli__debug__oid__to__to__handlers__[] = 
+{
+    onlp_ucli__debug__oid__to__json__,
+    NULL
+};
+static ucli_module_t onlp_ucli__debug__oid__to__to__module__ = 
+{
+    "to",
+    NULL,
+    onlp_ucli__debug__oid__to__to__handlers__,
     NULL,
     NULL
 };
 static ucli_node_t* __ucli_auto_init__(void)
 {
     if(onlp_ucli__node__ == NULL) onlp_ucli__node__ = ucli_node_create("onlp", NULL, NULL);
-    if(onlp_ucli__debug__node__ == NULL) onlp_ucli__debug__node__ = ucli_node_create("debug", NULL, NULL);
-    if(onlp_ucli__debug__oid__node__ == NULL) onlp_ucli__debug__oid__node__ = ucli_node_create("oid", NULL, NULL);
-    if(onlp_ucli__debug__oid__verify__node__ == NULL) onlp_ucli__debug__oid__verify__node__ = ucli_node_create("verify", NULL, NULL);
-    ucli_module_init(&onlp_ucli__debug__oid__verify__verify__module__);
-    if(onlp_ucli__debug__oid__from__node__ == NULL) onlp_ucli__debug__oid__from__node__ = ucli_node_create("from", NULL, NULL);
-    ucli_module_init(&onlp_ucli__debug__oid__from__from__module__);
-    if(onlp_ucli__debug__oid__to__node__ == NULL) onlp_ucli__debug__oid__to__node__ = ucli_node_create("to", NULL, NULL);
-    ucli_module_init(&onlp_ucli__debug__oid__to__to__module__);
+    if(onlp_ucli__oid__node__ == NULL) onlp_ucli__oid__node__ = ucli_node_create("oid", NULL, NULL);
+    if(onlp_ucli__oid__hdr__node__ == NULL) onlp_ucli__oid__hdr__node__ = ucli_node_create("hdr", NULL, NULL);
+    if(onlp_ucli__oid__hdr__json__node__ == NULL) onlp_ucli__oid__hdr__json__node__ = ucli_node_create("json", NULL, NULL);
+    ucli_module_init(&onlp_ucli__oid__hdr__json__json__module__);
+    if(onlp_ucli__sfp__node__ == NULL) onlp_ucli__sfp__node__ = ucli_node_create("sfp", NULL, NULL);
+    if(onlp_ucli__sfp__dev__node__ == NULL) onlp_ucli__sfp__dev__node__ = ucli_node_create("dev", NULL, NULL);
+    ucli_module_init(&onlp_ucli__sfp__dev__dev__module__);
+    ucli_module_init(&onlp_ucli__sfp__sfp__module__);
     if(onlp_ucli__platform__node__ == NULL) onlp_ucli__platform__node__ = ucli_node_create("platform", NULL, NULL);
     if(onlp_ucli__platform__manager__node__ == NULL) onlp_ucli__platform__manager__node__ = ucli_node_create("manager", NULL, NULL);
     ucli_module_init(&onlp_ucli__platform__manager__manager__module__);
@@ -507,20 +696,27 @@ static ucli_node_t* __ucli_auto_init__(void)
     ucli_module_init(&onlp_ucli__chassis__asset__asset__module__);
     if(onlp_ucli__chassis__env__node__ == NULL) onlp_ucli__chassis__env__node__ = ucli_node_create("env", NULL, NULL);
     ucli_module_init(&onlp_ucli__chassis__env__env__module__);
-    if(onlp_ucli__sfp__node__ == NULL) onlp_ucli__sfp__node__ = ucli_node_create("sfp", NULL, NULL);
-    ucli_module_init(&onlp_ucli__sfp__sfp__module__);
-    if(onlp_ucli__oid__node__ == NULL) onlp_ucli__oid__node__ = ucli_node_create("oid", NULL, NULL);
-    if(onlp_ucli__oid__hdr__node__ == NULL) onlp_ucli__oid__hdr__node__ = ucli_node_create("hdr", NULL, NULL);
-    if(onlp_ucli__oid__hdr__json__node__ == NULL) onlp_ucli__oid__hdr__json__node__ = ucli_node_create("json", NULL, NULL);
-    ucli_module_init(&onlp_ucli__oid__hdr__json__json__module__);
-    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__debug__node__);
-    ucli_node_subnode_add(onlp_ucli__debug__node__, onlp_ucli__debug__oid__node__);
-    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__verify__node__);
-    ucli_node_module_add(onlp_ucli__debug__oid__verify__node__, &onlp_ucli__debug__oid__verify__verify__module__);
-    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__from__node__);
-    ucli_node_module_add(onlp_ucli__debug__oid__from__node__, &onlp_ucli__debug__oid__from__from__module__);
-    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__to__node__);
-    ucli_node_module_add(onlp_ucli__debug__oid__to__node__, &onlp_ucli__debug__oid__to__to__module__);
+    if(onlp_ucli__fan__node__ == NULL) onlp_ucli__fan__node__ = ucli_node_create("fan", NULL, NULL);
+    if(onlp_ucli__fan__percentage__node__ == NULL) onlp_ucli__fan__percentage__node__ = ucli_node_create("percentage", NULL, NULL);
+    ucli_module_init(&onlp_ucli__fan__percentage__percentage__module__);
+    if(onlp_ucli__fan__rpm__node__ == NULL) onlp_ucli__fan__rpm__node__ = ucli_node_create("rpm", NULL, NULL);
+    ucli_module_init(&onlp_ucli__fan__rpm__rpm__module__);
+    if(onlp_ucli__debug__node__ == NULL) onlp_ucli__debug__node__ = ucli_node_create("debug", NULL, NULL);
+    if(onlp_ucli__debug__oid__node__ == NULL) onlp_ucli__debug__oid__node__ = ucli_node_create("oid", NULL, NULL);
+    if(onlp_ucli__debug__oid__verify__node__ == NULL) onlp_ucli__debug__oid__verify__node__ = ucli_node_create("verify", NULL, NULL);
+    ucli_module_init(&onlp_ucli__debug__oid__verify__verify__module__);
+    if(onlp_ucli__debug__oid__from__node__ == NULL) onlp_ucli__debug__oid__from__node__ = ucli_node_create("from", NULL, NULL);
+    ucli_module_init(&onlp_ucli__debug__oid__from__from__module__);
+    if(onlp_ucli__debug__oid__to__node__ == NULL) onlp_ucli__debug__oid__to__node__ = ucli_node_create("to", NULL, NULL);
+    ucli_module_init(&onlp_ucli__debug__oid__to__to__module__);
+    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__oid__node__);
+    ucli_node_subnode_add(onlp_ucli__oid__node__, onlp_ucli__oid__hdr__node__);
+    ucli_node_subnode_add(onlp_ucli__oid__hdr__node__, onlp_ucli__oid__hdr__json__node__);
+    ucli_node_module_add(onlp_ucli__oid__hdr__json__node__, &onlp_ucli__oid__hdr__json__json__module__);
+    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__sfp__node__);
+    ucli_node_subnode_add(onlp_ucli__sfp__node__, onlp_ucli__sfp__dev__node__);
+    ucli_node_module_add(onlp_ucli__sfp__dev__node__, &onlp_ucli__sfp__dev__dev__module__);
+    ucli_node_module_add(onlp_ucli__sfp__node__, &onlp_ucli__sfp__sfp__module__);
     ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__platform__node__);
     ucli_node_subnode_add(onlp_ucli__platform__node__, onlp_ucli__platform__manager__node__);
     ucli_node_module_add(onlp_ucli__platform__manager__node__, &onlp_ucli__platform__manager__manager__module__);
@@ -533,12 +729,19 @@ static ucli_node_t* __ucli_auto_init__(void)
     ucli_node_module_add(onlp_ucli__chassis__asset__node__, &onlp_ucli__chassis__asset__asset__module__);
     ucli_node_subnode_add(onlp_ucli__chassis__node__, onlp_ucli__chassis__env__node__);
     ucli_node_module_add(onlp_ucli__chassis__env__node__, &onlp_ucli__chassis__env__env__module__);
-    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__sfp__node__);
-    ucli_node_module_add(onlp_ucli__sfp__node__, &onlp_ucli__sfp__sfp__module__);
-    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__oid__node__);
-    ucli_node_subnode_add(onlp_ucli__oid__node__, onlp_ucli__oid__hdr__node__);
-    ucli_node_subnode_add(onlp_ucli__oid__hdr__node__, onlp_ucli__oid__hdr__json__node__);
-    ucli_node_module_add(onlp_ucli__oid__hdr__json__node__, &onlp_ucli__oid__hdr__json__json__module__);
+    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__fan__node__);
+    ucli_node_subnode_add(onlp_ucli__fan__node__, onlp_ucli__fan__percentage__node__);
+    ucli_node_module_add(onlp_ucli__fan__percentage__node__, &onlp_ucli__fan__percentage__percentage__module__);
+    ucli_node_subnode_add(onlp_ucli__fan__node__, onlp_ucli__fan__rpm__node__);
+    ucli_node_module_add(onlp_ucli__fan__rpm__node__, &onlp_ucli__fan__rpm__rpm__module__);
+    ucli_node_subnode_add(onlp_ucli__node__, onlp_ucli__debug__node__);
+    ucli_node_subnode_add(onlp_ucli__debug__node__, onlp_ucli__debug__oid__node__);
+    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__verify__node__);
+    ucli_node_module_add(onlp_ucli__debug__oid__verify__node__, &onlp_ucli__debug__oid__verify__verify__module__);
+    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__from__node__);
+    ucli_node_module_add(onlp_ucli__debug__oid__from__node__, &onlp_ucli__debug__oid__from__from__module__);
+    ucli_node_subnode_add(onlp_ucli__debug__oid__node__, onlp_ucli__debug__oid__to__node__);
+    ucli_node_module_add(onlp_ucli__debug__oid__to__node__, &onlp_ucli__debug__oid__to__to__module__);
     return onlp_ucli__node__;
 }
 /******************************************************************************/

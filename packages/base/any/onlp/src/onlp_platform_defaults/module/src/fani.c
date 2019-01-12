@@ -33,8 +33,34 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_denit(void));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info));
+
+/**
+ * Simulate hdr_get for older platforms which don't support it.
+ * This is inefficient.
+ */
+int __ONLP_DEFAULTI
+onlp_fani_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
+{
+    onlp_fan_info_t info;
+    ONLP_TRY(onlp_fani_info_get(id, &info));
+    *hdr = info.hdr;
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * Simulate caps_get for older platforms which don't support it.
+ * This is inefficient.
+ */
+int __ONLP_DEFAULTI
+onlp_fani_caps_get(onlp_oid_id_t id, uint32_t* rv)
+{
+    onlp_fan_info_t info;
+    ONLP_TRY(onlp_fani_info_get(id, &info));
+    *rv = info.caps;
+    return ONLP_STATUS_OK;
+}
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_rpm_set(onlp_oid_id_t id, int rpm));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_percentage_set(onlp_oid_id_t id, int p));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_dir_set(onlp_oid_id_t id, onlp_fan_dir_t dir));

@@ -64,11 +64,17 @@ ONLP_LOCKED_API0(onlp_fan_sw_denit);
 static int
 onlp_fan_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    ONLP_OID_FAN_VALIDATE(oid);
+    int rv;
+    onlp_oid_id_t id;
+
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(hdr);
-    return onlp_log_error(0,
-                          onlp_fani_hdr_get(oid, hdr),
-                          "fani hdr get %{onlp_oid}", oid);
+
+    rv = onlp_log_error(0,
+                        onlp_fani_hdr_get(id, hdr),
+                        "fani hdr get %{onlp_oid}", oid);
+    hdr->id = oid;
+    return rv;
 }
 ONLP_LOCKED_API2(onlp_fan_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
 
@@ -76,26 +82,59 @@ ONLP_LOCKED_API2(onlp_fan_hdr_get, onlp_oid_t, oid, onlp_oid_hdr_t*, hdr);
  * Fan Info Get
  */
 static int
-onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* fip)
+onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* info)
 {
-    ONLP_OID_FAN_VALIDATE(oid);
-    ONLP_PTR_VALIDATE_ZERO(fip);
-    return onlp_log_error(0,
-                          onlp_fani_info_get(oid, fip),
-                          "fani info get %{onlp_oid}", oid);
+    int rv;
+    onlp_oid_id_t id;
+
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+    ONLP_PTR_VALIDATE_ZERO(info);
+
+    rv = onlp_log_error(0,
+                        onlp_fani_info_get(id, info),
+                        "fani info get %{onlp_oid}", oid);
+
+    info->hdr.id = oid;
+    return rv;
 }
-ONLP_LOCKED_API2(onlp_fan_info_get, onlp_oid_t, oid, onlp_fan_info_t*, fip);
+ONLP_LOCKED_API2(onlp_fan_info_get, onlp_oid_t, oid, onlp_fan_info_t*, info);
+
+/**
+ * Fan Caps Get
+ */
+static int
+onlp_fan_caps_get_locked__(onlp_oid_t oid, uint32_t* rv)
+{
+    onlp_oid_id_t id;
+
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+    ONLP_PTR_VALIDATE_ZERO(rv);
+
+    return onlp_log_error(0,
+                          onlp_fani_caps_get(id, rv),
+                          "fani caps get %{onlp_oid}", oid);
+}
+ONLP_LOCKED_API2(onlp_fan_caps_get, onlp_oid_t, oid, uint32_t*, rv);
+
 
 static int
-onlp_fan_rpm_set_locked__(onlp_oid_t id, int rpm)
+onlp_fan_rpm_set_locked__(onlp_oid_t oid, int rpm)
 {
-    onlp_fan_info_t info;
+    uint32_t caps = 0;
+    onlp_oid_id_t id;
 
-    ONLP_OID_FAN_VALIDATE(id);
-    ONLP_TRY(onlp_fani_info_get(id, &info));
 
-    if(info.caps & ONLP_FAN_CAPS_SET_RPM) {
-        return onlp_fani_rpm_set(id, rpm);
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+
+    ONLP_TRY(onlp_log_error(0,
+                            onlp_fan_caps_get_locked__(oid, &caps),
+                            "fan rpm set %{onlp_oid} %d: could not get fan caps",
+                            oid, rpm));
+
+    if(caps & ONLP_FAN_CAPS_SET_RPM) {
+        return onlp_log_error(0,
+                              onlp_fani_rpm_set(id, rpm),
+                              "fani rpm set %{onlp_oid} %d", oid, rpm);
     }
     else {
         return ONLP_STATUS_E_UNSUPPORTED;
@@ -104,12 +143,19 @@ onlp_fan_rpm_set_locked__(onlp_oid_t id, int rpm)
 ONLP_LOCKED_API2(onlp_fan_rpm_set, onlp_oid_t, id, int, rpm);
 
 static int
-onlp_fan_percentage_set_locked__(onlp_oid_t id, int p)
+onlp_fan_percentage_set_locked__(onlp_oid_t oid, int p)
 {
-    onlp_fan_info_t info;
-    ONLP_OID_FAN_VALIDATE(id);
-    ONLP_TRY(onlp_fani_info_get(id, &info));
-    if(info.caps & ONLP_FAN_CAPS_SET_PERCENTAGE) {
+    uint32_t caps = 0;
+    onlp_oid_id_t id;
+
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+
+    ONLP_TRY(onlp_log_error(0,
+                            onlp_fan_caps_get_locked__(oid, &caps),
+                            "fan percentage set %{onlp_oid} %d: could not get fan caps",
+                            oid, p));
+
+    if(caps & ONLP_FAN_CAPS_SET_PERCENTAGE) {
         return onlp_fani_percentage_set(id, p);
     }
     else {
@@ -119,12 +165,19 @@ onlp_fan_percentage_set_locked__(onlp_oid_t id, int p)
 ONLP_LOCKED_API2(onlp_fan_percentage_set, onlp_oid_t, id, int, p);
 
 static int
-onlp_fan_dir_set_locked__(onlp_oid_t id, onlp_fan_dir_t dir)
+onlp_fan_dir_set_locked__(onlp_oid_t oid, onlp_fan_dir_t dir)
 {
-    onlp_fan_info_t info;
-    ONLP_OID_FAN_VALIDATE(id);
-    ONLP_TRY(onlp_fani_info_get(id, &info));
-    if(info.caps & ONLP_FAN_CAPS_SET_DIR) {
+    onlp_oid_id_t id;
+    uint32_t caps = 0;
+
+    ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+
+    ONLP_TRY(onlp_log_error(0,
+                            onlp_fani_caps_get(id, &caps),
+                            "fan dir set %{onlp_oid} %{onlp_fan_dir}: could not get fan caps",
+                            oid, dir));
+
+    if(caps & ONLP_FAN_CAPS_SET_DIR) {
         return onlp_fani_dir_set(id, dir);
     }
     else {

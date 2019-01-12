@@ -30,4 +30,16 @@ __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_thermali_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_thermali_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_thermali_sw_denit(void));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* rv));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_thermali_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv));
+
+/**
+ * simulate hdr_get for older platforms which don't support it.
+ * This is inefficient.
+ */
+int __ONLP_DEFAULTI
+onlp_thermali_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv)
+{
+    onlp_thermal_info_t info;
+    ONLP_TRY(onlp_thermali_info_get(id, &info));
+    *rv = info.hdr;
+    return ONLP_STATUS_OK;
+}

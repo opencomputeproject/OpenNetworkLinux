@@ -108,11 +108,8 @@ onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rvp)
     int rv;
     onlp_onie_info_t* rp;
 
-    rv = onlp_attributei_onie_info_get(oid, NULL);
-
-    if(ONLP_FAILURE(rv) || rvp == NULL) {
-        return rv;
-    }
+    ONLP_PTR_VALIDATE_ZERO(rvp);
+    ONLP_TRY(onlp_attributei_onie_info_get(oid, NULL));
 
     rp = aim_zmalloc(sizeof(*rp));
     rv = onlp_attributei_onie_info_get(oid, rp);
@@ -188,11 +185,8 @@ onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rvp)
     int rv;
     onlp_asset_info_t* rp;
 
-    rv = onlp_attributei_asset_info_get(oid, NULL);
-
-    if(ONLP_FAILURE(rv) || rvp == NULL) {
-        return rv;
-    }
+    ONLP_PTR_VALIDATE_ZERO(rvp);
+    ONLP_TRY(onlp_attributei_asset_info_get(oid, NULL));
 
     rp = aim_zmalloc(sizeof(*rp));
     rv = onlp_attributei_asset_info_get(oid, rp);

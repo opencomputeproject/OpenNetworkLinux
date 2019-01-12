@@ -58,6 +58,25 @@ onlp_aim_fs__onlp_oid(aim_datatype_context_t* dtc,
 }
 
 static int
+onlp_aim_fs__onlp_oid_type(aim_datatype_context_t* dtc,
+                           const char* arg, aim_va_list_t* vargs)
+{
+    onlp_oid_t* oidp = va_arg(vargs->val, onlp_oid_t*);
+    onlp_oid_type_t oid_type = va_arg(vargs->val, onlp_oid_type_t);
+
+    AIM_REFERENCE(dtc);
+
+    if(ONLP_SUCCESS(onlp_oid_from_str((char*)arg, oidp))) {
+        /** Full formed OID */
+        return AIM_DATATYPE_OK;
+    }
+
+    /** Use the given default */
+    *oidp = ONLP_OID_TYPE_CREATE(oid_type, atoi(arg));
+    return AIM_DATATYPE_OK;
+}
+
+static int
 onlp_aim_ts__onlp_oid_hdr(aim_datatype_context_t* dtc, aim_va_list_t* vargs,
                           const char** rv)
 {
@@ -88,6 +107,10 @@ datatypes_init__(void)
                           "ONLP OID Header",
                           NULL,
                           onlp_aim_ts__onlp_oid_hdr, NULL);
+    aim_datatype_register(0, "onlp_oid_type",
+                          "ONLP OID",
+                          onlp_aim_fs__onlp_oid_type,
+                          NULL, NULL);
 
 
     /*

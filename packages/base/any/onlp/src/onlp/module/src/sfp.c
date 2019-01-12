@@ -161,6 +161,9 @@ ONLP_LOCKED_API2(onlp_sfp_type_get, onlp_oid_t, oid, onlp_sfp_type_t*, rtype);
 static int
 onlp_sfp_presence_bitmap_get_locked__(onlp_sfp_bitmap_t* dst)
 {
+    ONLP_PTR_VALIDATE_ZERO(dst);
+    onlp_sfp_bitmap_t_init(dst);
+
     int rv = onlp_sfpi_presence_bitmap_get(dst);
 
     if(rv == ONLP_STATUS_E_UNSUPPORTED) {
@@ -270,6 +273,9 @@ ONLP_LOCKED_API3(onlp_sfp_control_get, onlp_oid_t, port, onlp_sfp_control_t, con
 static int
 onlp_sfp_rx_los_bitmap_get_locked__(onlp_sfp_bitmap_t* dst)
 {
+    ONLP_PTR_VALIDATE_ZERO(dst);
+    onlp_sfp_bitmap_t_init(dst);
+
     int rv = onlp_sfpi_rx_los_bitmap_get(dst);
 
     if(rv == ONLP_STATUS_E_UNSUPPORTED) {
@@ -336,7 +342,7 @@ onlp_sfp_control_flags_get(onlp_oid_t oid, uint32_t* flags)
 }
 
 int
-onlp_sfp_dev_read_alloc(onlp_oid_t port,
+onlp_sfp_dev_alloc_read(onlp_oid_t port,
                         int devaddr, int addr, int count,
                         uint8_t** rvp)
 {

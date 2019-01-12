@@ -312,6 +312,37 @@ onlp_file_read_int_max(int* value, char** files)
 }
 
 int
+onlp_file_join_files(char** rv, const char* string, char** files)
+{
+    int i;
+
+    if(rv == NULL || files == NULL || string == NULL) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    for(i = 0; files[i]; i++);
+
+    if(i == 0) {
+        *rv = aim_strdup("");
+        return 0;
+    }
+
+    const char** strings = aim_zmalloc(sizeof(*strings)*i);
+    for(i = 0; files[i]; i++) {
+        onlp_file_read_str((char**)strings+i, files[i]);
+    }
+
+    *rv = aim_strjoin(string, strings, i);
+
+    for(i = 0; files[i]; i++) {
+        aim_free((char*)strings[i]);
+    }
+    aim_free(strings);
+
+    return 0;
+}
+
+int
 onlp_file_vwrite(uint8_t* data, int len, const char* fmt, va_list vargs)
 {
     int fd;

@@ -28,7 +28,33 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_denit(void));
-__ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* rv));
+
+/**
+ * simulate hdr_get for older platforms which don't support it.
+ * This is inefficient.
+ */
+int __ONLP_DEFAULTI
+onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv)
+{
+    onlp_led_info_t info;
+    ONLP_TRY(onlp_ledi_info_get(id, &info));
+    *rv = info.hdr;
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * Simulate caps_get for older platforms which don't support it.
+ * This is inefficient.
+ */
+int __ONLP_DEFAULTI
+onlp_ledi_caps_get(onlp_oid_id_t id, uint32_t* rv)
+{
+    onlp_led_info_t info;
+    ONLP_TRY(onlp_ledi_info_get(id, &info));
+    *rv = info.caps;
+    return ONLP_STATUS_OK;
+}
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_char_set(onlp_oid_id_t id, char c));
