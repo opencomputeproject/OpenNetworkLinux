@@ -55,10 +55,13 @@ ONLP_LOCKED_API0(onlp_led_sw_denit);
 static int
 onlp_led_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    ONLP_OID_LED_VALIDATE(oid);
+    int id;
+    ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(hdr);
+    ONLP_IF_ERROR_RETURN(onlp_ledi_id_validate(id));
+
     return onlp_log_error(0x0,
-                          onlp_ledi_hdr_get(oid, hdr),
+                          onlp_ledi_hdr_get(id, hdr),
                           "ledi hdr get %{onlp_oid}", oid);
 }
 ONLP_LOCKED_API2(onlp_led_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
@@ -67,10 +70,13 @@ ONLP_LOCKED_API2(onlp_led_hdr_get, onlp_oid_t, id, onlp_oid_hdr_t*, hdr);
 static int
 onlp_led_info_get_locked__(onlp_oid_t oid, onlp_led_info_t* info)
 {
-    ONLP_OID_LED_VALIDATE(oid);
+    int id;
+    ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(info);
+    ONLP_IF_ERROR_RETURN(onlp_ledi_id_validate(id));
+
     return onlp_log_error(0x0,
-                          onlp_ledi_info_get(oid, info),
+                          onlp_ledi_info_get(id, info),
                           "ledi info get %{onlp_oid}", oid);
 }
 ONLP_LOCKED_API2(onlp_led_info_get, onlp_oid_t, id, onlp_led_info_t*, info);
@@ -98,6 +104,7 @@ onlp_led_mode_set_locked__(onlp_oid_t oid, onlp_led_mode_t mode)
     onlp_oid_id_t id;
 
     ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
+    ONLP_IF_ERROR_RETURN(onlp_ledi_id_validate(id));
 
     ONLP_TRY(onlp_log_error(0,
                             onlp_led_caps_get_locked__(oid, &caps),
@@ -120,6 +127,7 @@ onlp_led_char_set_locked__(onlp_oid_t oid, char c)
     onlp_oid_id_t id;
 
     ONLP_OID_LED_VALIDATE_GET_ID(oid, id);
+    ONLP_IF_ERROR_RETURN(onlp_ledi_id_validate(id));
 
     ONLP_TRY(onlp_log_error(0,
                             onlp_led_caps_get_locked__(oid, &caps),

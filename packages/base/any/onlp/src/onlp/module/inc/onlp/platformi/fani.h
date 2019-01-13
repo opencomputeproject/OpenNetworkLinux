@@ -50,6 +50,12 @@ int onlp_fani_hw_init(uint32_t flags);
 int onlp_fani_sw_denit(void);
 
 /**
+ * @brief Validate a fan id.
+ * @param id The fan id.
+ */
+int onlp_fani_id_validate(onlp_oid_id_t id);
+
+/**
  * @brief Retrieve the fan's OID hdr.
  * @param id The fan id.
  * @param[out] hdr Receives the OID header.

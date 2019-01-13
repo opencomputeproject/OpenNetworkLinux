@@ -33,6 +33,8 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_sw_denit(void));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_fani_id_validate(onlp_oid_id_t id));
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info));
 
 /**

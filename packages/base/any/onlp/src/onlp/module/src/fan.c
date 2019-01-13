@@ -69,6 +69,7 @@ onlp_fan_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(hdr);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     rv = onlp_log_error(0,
                         onlp_fani_hdr_get(id, hdr),
@@ -89,6 +90,7 @@ onlp_fan_info_get_locked__(onlp_oid_t oid, onlp_fan_info_t* info)
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(info);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     rv = onlp_log_error(0,
                         onlp_fani_info_get(id, info),
@@ -109,6 +111,7 @@ onlp_fan_caps_get_locked__(onlp_oid_t oid, uint32_t* rv)
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(rv);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     return onlp_log_error(0,
                           onlp_fani_caps_get(id, rv),
@@ -125,6 +128,7 @@ onlp_fan_rpm_set_locked__(onlp_oid_t oid, int rpm)
 
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     ONLP_TRY(onlp_log_error(0,
                             onlp_fan_caps_get_locked__(oid, &caps),
@@ -149,6 +153,7 @@ onlp_fan_percentage_set_locked__(onlp_oid_t oid, int p)
     onlp_oid_id_t id;
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     ONLP_TRY(onlp_log_error(0,
                             onlp_fan_caps_get_locked__(oid, &caps),
@@ -171,6 +176,7 @@ onlp_fan_dir_set_locked__(onlp_oid_t oid, onlp_fan_dir_t dir)
     uint32_t caps = 0;
 
     ONLP_OID_FAN_VALIDATE_GET_ID(oid, id);
+    ONLP_IF_ERROR_RETURN(onlp_fani_id_validate(id));
 
     ONLP_TRY(onlp_log_error(0,
                             onlp_fani_caps_get(id, &caps),

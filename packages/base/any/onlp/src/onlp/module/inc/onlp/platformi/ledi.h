@@ -47,6 +47,12 @@ int onlp_ledi_hw_init(uint32_t flags);
 int onlp_ledi_sw_denit(void);
 
 /**
+ * @brief Validate an LED id.
+ * @param id The id.
+ */
+int onlp_ledi_id_validate(onlp_oid_id_t id);
+
+/**
  * @brief Get the LED header.
  * @param id The LED OID
  * @param[out] rv  Receives the header.

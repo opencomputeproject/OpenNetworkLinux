@@ -59,6 +59,7 @@ onlp_thermal_hdr_get_locked__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 
     ONLP_OID_THERMAL_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(hdr);
+    ONLP_IF_ERROR_RETURN(onlp_thermali_id_validate(id));
 
     rv = onlp_log_error(0,
                         onlp_thermali_hdr_get(id, hdr),
@@ -77,6 +78,7 @@ onlp_thermal_info_get_locked__(onlp_oid_t oid, onlp_thermal_info_t* info)
 
     ONLP_OID_THERMAL_VALIDATE_GET_ID(oid, id);
     ONLP_PTR_VALIDATE_ZERO(info);
+    ONLP_IF_ERROR_RETURN(onlp_thermali_id_validate(id));
 
     rv = onlp_log_error(0,
                         onlp_thermali_info_get(id, info),
