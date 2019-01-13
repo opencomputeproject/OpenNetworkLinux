@@ -41,17 +41,12 @@
 #define NUM_OF_SFP_PORT 48
 #define NUM_OF_QSFP_PORT 6
 #define NUM_OF_ALL_PORT (NUM_OF_SFP_PORT+NUM_OF_QSFP_PORT)
+
 /************************************************************
  *
  * SFPI Entry Points
  *
  ***********************************************************/
-int
-onlp_sfpi_init(void)
-{
-    /* Called at initialization time */
-    return ONLP_STATUS_OK;
-}
 
 int
 onlp_sfpi_port_is_valid(int port){
@@ -130,7 +125,7 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 }
 
 int
-onlp_sfpi_is_present(int port)
+onlp_sfpi_is_present(onlp_oid_id_t port)
 {
     /*
      * Return 1 if present.
@@ -180,7 +175,7 @@ onlp_sfpi_is_rx_los(int port)
 
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
-{   
+{
     AIM_BITMAP_CLR_ALL(dst);
     int port=MUX_START_INDEX;
     for(port=MUX_START_INDEX;port<=NUM_OF_ALL_PORT;port++){
@@ -191,67 +186,44 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 }
 
 int
-onlp_sfpi_dom_read(int port, uint8_t data[256])
+onlp_sfpi_dev_read(onlp_oid_id_t port, int devaddr, int addr,
+                   uint8_t* dst, int len)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int bus = onlp_sfpi_port2chan(port);
+    /* Can this be block_read? */
+    return onlp_i2c_read(bus, devaddr, addr, len, dst, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_post_insert(int port, sff_info_t* info)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-int
-onlp_sfpi_eeprom_read(int port, uint8_t data[256])
-{
-    /*
-     * Read the SFP eeprom into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
-    memset(data, 0, 256);
-    
-    int byte = -1;
-    byte = onlp_i2c_read(onlp_sfpi_port2chan(port), 0x50, 0, 256, data, 0);
-    if(byte < 0){
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_readb(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = onlp_sfpi_port2chan(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+onlp_sfpi_dev_writeb(onlp_oid_id_t port, int devaddr, int addr, uint8_t value)
 {
     int bus = onlp_sfpi_port2chan(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+onlp_sfpi_dev_readw(onlp_oid_id_t port, int devaddr, int addr)
 {
     int bus = onlp_sfpi_port2chan(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+onlp_sfpi_dev_writew(onlp_oid_id_t port, int devaddr, int addr, uint16_t value)
 {
     int bus = onlp_sfpi_port2chan(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
-onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
+onlp_sfpi_control_supported(onlp_oid_id_t port, onlp_sfp_control_t control, int* rv)
 {
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
@@ -289,7 +261,7 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 }
 
 int
-onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
+onlp_sfpi_control_set(onlp_oid_id_t port, onlp_sfp_control_t control, int value)
 {
     int ret_val = 0;
     int err = 0;
@@ -329,11 +301,11 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 }
 
 int
-onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
+onlp_sfpi_control_get(onlp_oid_id_t port, onlp_sfp_control_t control, int* value)
 {
     int ret_val = 0;
     int err = 0;
-    
+
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
             err = onlp_sfpi_get_file_byte(port, "reset");
@@ -385,16 +357,4 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             break;
     }
     return ret_val;
-}
-
-int
-onlp_sfpi_denit(void)
-{
-    return ONLP_STATUS_OK;
-}
-
-void
-onlp_sfpi_debug(int port, aim_pvs_t* pvs)
-{
-    aim_printf(pvs, "Debug data for port %d goes here.", port);
 }

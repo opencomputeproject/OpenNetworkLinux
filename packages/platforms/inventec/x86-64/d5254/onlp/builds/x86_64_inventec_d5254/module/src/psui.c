@@ -29,15 +29,8 @@
 #include <onlp/platformi/psui.h>
 #include <onlplib/file.h>
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
 
 #define PSUI_PLATFORM_PSU_MODEL "DPS-800AB-37D"
-
 
 typedef enum psoc_psu_state_e {
     PSOC_PSU_NORMAL = 0,
@@ -97,155 +90,94 @@ static psui_info_t __info_list[ONLP_PSU_COUNT] = {
 static onlp_psu_info_t __onlp_psu_info[ONLP_PSU_COUNT] = {
     { }, /* Not used */
     {
-        {
-            ONLP_PSU_ID_CREATE(ONLP_PSU_1), "PSU-1", 0,
-            {
+        .hdr = {
+            .id = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
+            .description = "PSU-1",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_PSU1),
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_PSU1),
                 ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_1)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        "","",ONLP_PSU_STATUS_PRESENT,
-        ONLP_PSU_CAPS_DC12|ONLP_PSU_CAPS_VIN|ONLP_PSU_CAPS_VOUT|ONLP_PSU_CAPS_IIN|ONLP_PSU_CAPS_IOUT|ONLP_PSU_CAPS_PIN|ONLP_PSU_CAPS_POUT
+        .model = "",
+        .serial = "",
+        .caps = ONLP_PSU_CAPS_GET_VIN|ONLP_PSU_CAPS_GET_VOUT|ONLP_PSU_CAPS_GET_IIN|ONLP_PSU_CAPS_GET_IOUT|ONLP_PSU_CAPS_GET_PIN|ONLP_PSU_CAPS_GET_POUT,
+        .type = ONLP_PSU_TYPE_DC12,
     },
     {
-        {
-            ONLP_PSU_ID_CREATE(ONLP_PSU_2), "PSU-2", 0,
-            {
+        .hdr = {
+            .id = ONLP_PSU_ID_CREATE(ONLP_PSU_2),
+            .description = "PSU-2",
+            .coids = {
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_PSU2),
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_PSU2),
                 ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_2)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        "","",ONLP_PSU_STATUS_PRESENT,
-        ONLP_PSU_CAPS_DC12|ONLP_PSU_CAPS_VIN|ONLP_PSU_CAPS_VOUT|ONLP_PSU_CAPS_IIN|ONLP_PSU_CAPS_IOUT|ONLP_PSU_CAPS_PIN|ONLP_PSU_CAPS_POUT
+        .model = "",
+        .serial = "",
+        .caps = ONLP_PSU_CAPS_GET_VIN|ONLP_PSU_CAPS_GET_VOUT|ONLP_PSU_CAPS_GET_IIN|ONLP_PSU_CAPS_GET_IOUT|ONLP_PSU_CAPS_GET_PIN|ONLP_PSU_CAPS_GET_POUT,
+        .type = ONLP_PSU_TYPE_DC12,
     }
 };
 
 
 int
-onlp_psui_init(void)
+onlp_psui_id_validate(onlp_oid_id_t id)
 {
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, ONLP_PSU_MAX-1);
+}
+
+
+int
+onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    psoc_psu_state_t psoc_state;
+
+    *hdr =  __onlp_psu_info[id].hdr;
+
+    ONLP_TRY(onlp_file_read_int((int*)&psoc_state, __info_list[id].state));
+
+    if( PSOC_PSU_UNPOWERED == psoc_state) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
+        ONLP_OID_STATUS_FLAG_SET(hdr, UNPLUGGED);
+    } else if ( PSOC_PSU_NORMAL == psoc_state) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
+    } else if( PSOC_PSU_FAULT == psoc_state) {
+        ONLP_OID_STATUS_FLAG_SET(hdr, PRESENT);
+        ONLP_OID_STATUS_FLAG_SET(hdr, FAILED);
+    } else {
+        ONLP_OID_STATUS_FLAGS_CLR(hdr);
+    }
+
     return ONLP_STATUS_OK;
 }
 
-
 int
-onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
+onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t* info)
 {
-    int ret   = ONLP_STATUS_OK;
-    int len;
-    int local_id = ONLP_OID_ID_GET(id);
-    uint8_t temp[ONLP_CONFIG_INFO_STR_MAX] = {0};
-    psoc_psu_state_t psoc_state;
+    ONLP_TRY(onlp_psui_hdr_get(id, &info->hdr));
 
-    VALIDATE(id);
+    /* model */
+    ONLP_TRY(onlp_file_read_str_dst(info->model, sizeof(info->model), __info_list[id].vendor));
 
-    if(local_id >= ONLP_PSU_MAX) {
-        return ONLP_STATUS_E_INVALID;
-    }
-
-
-    *info = __onlp_psu_info[local_id]; /* Set the onlp_oid_hdr_t */
-
-    ret = onlp_file_read(temp, ONLP_CONFIG_INFO_STR_MAX, &len, __info_list[local_id].vendor);
-    /*remove the '\n'*/
-    temp[strlen((char*)temp)-1] = 0;
-    snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "%s", temp);
-
-
-    memset(temp, 0, ONLP_CONFIG_INFO_STR_MAX);
-    ret = onlp_file_read(temp, ONLP_CONFIG_INFO_STR_MAX, &len,__info_list[local_id].serial);
-    /*remove the '\n'*/
-    temp[strlen((char*)temp)-1] = 0;
-    snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "%s", temp);
-
-
-    ret = onlp_file_read_int((int*)&psoc_state, __info_list[local_id].state);
-
-    if( PSOC_PSU_UNPOWERED == psoc_state) {
-        info->status = ONLP_PSU_STATUS_PRESENT|ONLP_PSU_STATUS_UNPLUGGED;
-    } else if ( PSOC_PSU_NORMAL == psoc_state) {
-        info->status = ONLP_PSU_STATUS_PRESENT;
-    } else if( PSOC_PSU_FAULT == psoc_state) {
-        info->status = ONLP_PSU_STATUS_PRESENT|ONLP_PSU_STATUS_FAILED;
-    } else {
-        info->status = 0;
-    }
+    /* serial */
+    ONLP_TRY(onlp_file_read_str_dst(info->serial, sizeof(info->serial), __info_list[id].serial));
 
     /*millivolts*/
-    ret = onlp_file_read_int(&info->mvin, __info_list[local_id].vin);
-    ret = onlp_file_read_int(&info->mvout, __info_list[local_id].vout);
+    ONLP_TRY(onlp_file_read_int(&info->mvin, __info_list[id].vin));
+    ONLP_TRY(onlp_file_read_int(&info->mvout, __info_list[id].vout));
 
     /* milliamps */
-    ret = onlp_file_read_int(&info->miin, __info_list[local_id].iin);
-    ret = onlp_file_read_int(&info->miout, __info_list[local_id].iout);
+    ONLP_TRY(onlp_file_read_int(&info->miin, __info_list[id].iin));
+    ONLP_TRY(onlp_file_read_int(&info->miout, __info_list[id].iout));
 
     /* milliwatts */
-    ret = onlp_file_read_int(&info->mpin, __info_list[local_id].pin);
-    ret = onlp_file_read_int(&info->mpout, __info_list[local_id].pout);
+    ONLP_TRY(onlp_file_read_int(&info->mpin, __info_list[id].pin));
+    ONLP_TRY(onlp_file_read_int(&info->mpout, __info_list[id].pout));
 
-    return ret;
+    return ONLP_STATUS_OK;
 }
-
-
-/**
- * @brief Get the PSU's operational status.
- * @param id The PSU OID.
- * @param rv [out] Receives the operational status.
- */
-int onlp_psui_status_get(onlp_oid_t id, uint32_t* rv)
-{
-    int result = ONLP_STATUS_OK;
-    psoc_psu_state_t psoc_state;
-    int local_id;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_PSU_MAX) {
-        result = ONLP_STATUS_E_INVALID;
-    } else {
-        result = onlp_file_read_int((int*)&psoc_state, __info_list[local_id].state);
-
-        if( PSOC_PSU_UNPOWERED == psoc_state) {
-            *rv = ONLP_PSU_STATUS_PRESENT|ONLP_PSU_STATUS_UNPLUGGED;
-        } else if ( PSOC_PSU_NORMAL == psoc_state) {
-            *rv = ONLP_PSU_STATUS_PRESENT;
-        } else if( PSOC_PSU_FAULT == psoc_state) {
-            *rv = ONLP_PSU_STATUS_PRESENT|ONLP_PSU_STATUS_FAILED;
-        } else {
-            *rv = 0;
-        }
-    }
-    return result;
-}
-
-/**
- * @brief Get the PSU's oid header.
- * @param id The PSU OID.
- * @param rv [out] Receives the header.
- */
-int onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv)
-{
-    int result = ONLP_STATUS_OK;
-    onlp_psu_info_t* info;
-    int local_id;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_PSU_MAX) {
-        result = ONLP_STATUS_E_INVALID;
-    } else {
-        info = &__onlp_psu_info[local_id];
-        *rv = info->hdr;
-    }
-    return result;
-}
-
-
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-

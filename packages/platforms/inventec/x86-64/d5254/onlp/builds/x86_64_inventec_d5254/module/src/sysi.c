@@ -1,3 +1,4 @@
+#if 0
 /************************************************************
  * <bsn.cl fy=2014 v=onl>
  *
@@ -1171,3 +1172,4 @@ onlp_sysi_platform_manage_leds(void)
     return ONLP_STATUS_OK;
 }
 
+#endif

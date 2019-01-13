@@ -29,14 +29,6 @@
 #include <fcntl.h>
 #include "platform_lib.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_THERMAL(_id)) {         \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-
 typedef struct thermali_info_s {
     char file[ONLP_CONFIG_INFO_STR_MAX];
 } thermali_info_t;
@@ -63,141 +55,38 @@ static thermali_info_t __info_list[ONLP_THERMAL_COUNT] = {
 /* Static values */
 static onlp_thermal_info_t __onlp_thermal_info[ONLP_THERMAL_COUNT] = {
     { }, /* Not used */
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_PHY), "CPU Physical", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_CORE0), "CPU Core0", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_CORE1), "CPU Core1", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_CORE2), "CPU Core2", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_CORE3), "CPU Core3", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_MAIN_BROAD), "Thermal Sensor 1", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_MAIN_BROAD), "Thermal Sensor 2", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_3_ON_MAIN_BROAD), "Thermal Sensor 3", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_4_ON_MAIN_BROAD), "Thermal Sensor 4", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_5_ON_MAIN_BROAD), "Thermal Sensor 5", 0},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(ONLP_PSU_1)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(ONLP_PSU_1)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(ONLP_PSU_2)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_PSU2), "PSU-2 Thermal Sensor 2", ONLP_PSU_ID_CREATE(ONLP_PSU_2)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    }
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_CPU_PHY, "CPU Physical"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_CPU_CORE0, "CPU Core0"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_CPU_CORE1, "CPU Core1"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_CPU_CORE2, "CPU Core2"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_CPU_CORE3, "CPU Core3"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_1_ON_MAIN_BROAD, "Thermal Sensor 1"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_2_ON_MAIN_BROAD, "Thermal Sensor 2"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_3_ON_MAIN_BROAD, "Thermal Sensor 3"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_4_ON_MAIN_BROAD, "Thermal Sensor 4"),
+    ONLP_CHASSIS_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_5_ON_MAIN_BROAD, "Thermal Sensor 5"),
+    ONLP_PSU_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_1_ON_PSU1, "PSU-1 Thermal Sensor 1", ONLP_PSU_1),
+    ONLP_PSU_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_2_ON_PSU1, "PSU-1 Thermal Sensor 2", ONLP_PSU_1),
+    ONLP_PSU_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_1_ON_PSU2, "PSU-2 Thermal Sensor 1", ONLP_PSU_2),
+    ONLP_PSU_THERMAL_INFO_ENTRY_INIT(ONLP_THERMAL_2_ON_PSU2, "PSU-2 Thermal Sensor 2", ONLP_PSU_2),
 };
 
-/*
- * This will be called to intiialize the thermali subsystem.
- */
 int
-onlp_thermali_init(void)
+onlp_thermali_id_validate(onlp_oid_id_t id)
 {
-    return ONLP_STATUS_OK;
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, ONLP_THERMAL_MAX-1);
 }
 
-/*
- * Retrieve the information structure for the given thermal OID.
- *
- * If the OID is invalid, return ONLP_E_STATUS_INVALID.
- * If an unexpected error occurs, return ONLP_E_STATUS_INTERNAL.
- * Otherwise, return ONLP_STATUS_OK with the OID's information.
- *
- * Note -- it is expected that you fill out the information
- * structure even if the sensor described by the OID is not present.
- */
 int
-onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
+onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
 {
-    int local_id;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_THERMAL_MAX) {
-        return ONLP_STATUS_E_INVALID;
-    }
-
-    /* Set the onlp_oid_hdr_t and capabilities */
-    *info = __onlp_thermal_info[local_id];
-    return onlp_file_read_int(&info->mcelsius, __info_list[local_id].file);
-}
-
-
-/**
- * @brief Retrieve the thermal's operational status.
- * @param id The thermal oid.
- * @param rv [out] Receives the operational status.
- */
-int onlp_thermali_status_get(onlp_oid_t id, uint32_t* rv)
-{
-    int local_id;
-
-    onlp_thermal_info_t* info;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_THERMAL_MAX) {
-        return ONLP_STATUS_E_INVALID;
-    }
-    info = &__onlp_thermal_info[local_id];
-
-    *rv = info->status;
-
+    *hdr = __onlp_thermal_info[id].hdr;
     return ONLP_STATUS_OK;
 }
 
-/**
- * @brief Retrieve the thermal's oid header.
- * @param id The thermal oid.
- * @param rv [out] Receives the header.
- */
-int onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv)
+int
+onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* info)
 {
-    int local_id;
-    onlp_thermal_info_t* info;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_THERMAL_MAX) {
-        return ONLP_STATUS_E_INVALID;
-    }
-    info = &__onlp_thermal_info[local_id];
-
-    *rv = info->hdr;
-
-    return ONLP_STATUS_OK;
+    *info = __onlp_thermal_info[id];
+    return onlp_file_read_int(&info->mcelsius, __info_list[id].file);
 }

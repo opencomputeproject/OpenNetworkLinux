@@ -29,16 +29,6 @@
 #include <unistd.h>
 #include "platform_lib.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_FAN(_id)) {         \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-
-
-
 typedef struct fani_info_s {
     int slow_pwm;
     int normal_pwm;
@@ -116,253 +106,181 @@ static fani_info_t __info_list[ONLP_FAN_COUNT] = {
 /* Static values */
 static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = {
     { }, /* Not used */
-    {   {
-            ONLP_FAN_ID_CREATE(ONLP_FAN_1), "Fan 1", 0,
-            {
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_1),
+            .description = "Fan 1",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_FAN_ID_CREATE(ONLP_FAN_1_WEAK),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN1_GREEN),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN1_RED)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
         },
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   {
-            ONLP_FAN_ID_CREATE(ONLP_FAN_2), "Fan 2", 0,
-            {
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_2),
+            .description = "Fan 2",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_FAN_ID_CREATE(ONLP_FAN_2_WEAK),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN2_GREEN),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN2_RED)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   {
-            ONLP_FAN_ID_CREATE(ONLP_FAN_3), "Fan 3", 0,
-            {
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_3),
+            .description = "Fan 3",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_FAN_ID_CREATE(ONLP_FAN_3_WEAK),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN3_GREEN),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN3_RED)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   {
-            ONLP_FAN_ID_CREATE(ONLP_FAN_4), "Fan 4", 0,
-            {
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_4),
+            .description = "Fan 4",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_FAN_ID_CREATE(ONLP_FAN_4_WEAK),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN4_GREEN),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN4_RED)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   {
-            ONLP_FAN_ID_CREATE(ONLP_FAN_5), "Fan 5", 0,
-            {
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_5),
+            .description = "Fan 5",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
                 ONLP_FAN_ID_CREATE(ONLP_FAN_5_WEAK),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN5_GREEN),
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN5_RED)
-            }
+            },
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
         },
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_1_WEAK), "Fan 1 WEAK", ONLP_FAN_ID_CREATE(ONLP_FAN_1)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_1_WEAK),
+            .description = "Fan 1 WEAK",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_1),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_2_WEAK), "Fan 2 WEAK", ONLP_FAN_ID_CREATE(ONLP_FAN_2)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_2_WEAK),
+            .description = "Fan 2 WEAK",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_2),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_3_WEAK), "Fan 3 WEAK", ONLP_FAN_ID_CREATE(ONLP_FAN_3)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_3_WEAK),
+            .description = "Fan 3 WEAK",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_3),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_4_WEAK), "Fan 4 WEAK", ONLP_FAN_ID_CREATE(ONLP_FAN_4)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_4_WEAK),
+            .description = "Fan 4 WEAK",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_4),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_5_WEAK), "Fan 5 WEAK", ONLP_FAN_ID_CREATE(ONLP_FAN_5)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_5_WEAK),
+            .description = "Fan 5 WEAK",
+            .poid = ONLP_FAN_ID_CREATE(ONLP_FAN_5),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_1), "PSU-1 Fan", ONLP_PSU_ID_CREATE(ONLP_PSU_1)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_1),
+            .description = "PSU-1 Fan",
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_1),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
     },
-    {   { ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_2), "PSU-2 Fan", ONLP_PSU_ID_CREATE(ONLP_PSU_2)},
-        ONLP_FAN_STATUS_PRESENT|ONLP_FAN_STATUS_F2B,
-        ONLP_FAN_CAPS_F2B|ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
-    }
+    {
+        .hdr = {
+            .id = ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_2),
+            .description = "PSU-2 Fan",
+            .poid = ONLP_PSU_ID_CREATE(ONLP_PSU_2),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT,
+        },
+        .dir = ONLP_FAN_DIR_F2B,
+        .caps = ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE,
+    },
 };
 
 
-/*
- * This function will be called prior to all of onlp_fani_* functions.
- */
 int
-onlp_fani_init(void)
+onlp_fani_id_validate(onlp_oid_id_t id)
 {
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, ONLP_FAN_MAX-1);
+}
+
+int
+onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    /** No Failed state processing? */
+    *hdr = __onlp_fan_info[id].hdr;
     return ONLP_STATUS_OK;
 }
 
 int
-onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
+onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info)
 {
-    int rv = ONLP_STATUS_OK;
-    int local_id;
     int pwm;
-    VALIDATE(id);
 
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_FAN_MAX) {
-        rv = ONLP_STATUS_E_INVALID;
-    }
+    ONLP_TRY(onlp_fani_hdr_get(id, &info->hdr));
 
-    if( ONLP_STATUS_OK == rv) {
-        *info = __onlp_fan_info[local_id];
-        rv = onlp_file_read_int(&info->rpm, __info_list[local_id].input_file);
-    }
+    ONLP_TRY(onlp_file_read_int(&info->rpm, __info_list[id].input_file));
+    ONLP_TRY(onlp_file_read_int(&pwm, __info_list[id].pwm_file));
 
-    if(ONLP_STATUS_OK == rv) {
-        rv = onlp_file_read_int(&pwm, __info_list[local_id].pwm_file);
-    }
+    info->percentage = (pwm*100)/__info_list[id].max_pwm;
+    snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "NA");
+    snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "NA");
 
-    if( ONLP_STATUS_OK == rv) {
-        if(0 == info->rpm) {
-            info->mode = ONLP_FAN_MODE_OFF;
-        } else if(pwm < __info_list[local_id].slow_pwm) {
-            info->mode = ONLP_FAN_MODE_SLOW;
-        } else if(pwm < __info_list[local_id].normal_pwm) {
-            info->mode = ONLP_FAN_MODE_NORMAL;
-        } else if(pwm < __info_list[local_id].max_pwm) {
-            info->mode = ONLP_FAN_MODE_FAST;
-        } else {
-            info->mode = ONLP_FAN_MODE_MAX;
-        }
-
-        info->percentage = (pwm*100)/__info_list[local_id].max_pwm;
-        snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "NA");
-        snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "NA");
-    }
-    return rv;
+    return ONLP_STATUS_OK;
 }
-
-/**
- * @brief Retrieve the fan's operational status.
- * @param id The fan OID.
- * @param rv [out] Receives the fan's operations status flags.
- * @notes Only operational state needs to be returned -
- *        PRESENT/FAILED
- */
-int onlp_fani_status_get(onlp_oid_t id, uint32_t* rv)
-{
-    int result = ONLP_STATUS_OK;
-    onlp_fan_info_t* info;
-    int local_id;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_FAN_MAX) {
-        result = ONLP_STATUS_E_INVALID;
-    } else {
-        info = &__onlp_fan_info[local_id];
-        *rv = info->status;
-    }
-    return result;
-}
-
-/**
- * @brief Retrieve the fan's OID hdr.
- * @param id The fan OID.
- * @param rv [out] Receives the OID header.
- */
-int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
-{
-    int result = ONLP_STATUS_OK;
-    onlp_fan_info_t* info;
-    int local_id;
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_FAN_MAX) {
-        result = ONLP_STATUS_E_INVALID;
-    } else {
-        info = &__onlp_fan_info[local_id];
-        *hdr = info->hdr;
-    }
-    return result;
-}
-
-
-/*
- * This function sets the speed of the given fan in RPM.
- *
- * This function will only be called if the fan supprots the RPM_SET
- * capability.
- *
- * It is optional if you have no fans at all with this feature.
- */
-int
-onlp_fani_rpm_set(onlp_oid_t id, int rpm)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * This function sets the fan speed of the given OID as a percentage.
- *
- * This will only be called if the OID has the PERCENTAGE_SET
- * capability.
- *
- * It is optional if you have no fans at all with this feature.
- */
-int
-onlp_fani_percentage_set(onlp_oid_t id, int p)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-
-/*
- * This function sets the fan speed of the given OID as per
- * the predefined ONLP fan speed modes: off, slow, normal, fast, max.
- *
- * Interpretation of these modes is up to the platform.
- *
- */
-int
-onlp_fani_mode_set(onlp_oid_t id, onlp_fan_mode_t mode)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * This function sets the fan direction of the given OID.
- *
- * This function is only relevant if the fan OID supports both direction
- * capabilities.
- *
- * This function is optional unless the functionality is available.
- */
-int
-onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
- * Generic fan ioctl. Optional.
- */
-int
-onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
