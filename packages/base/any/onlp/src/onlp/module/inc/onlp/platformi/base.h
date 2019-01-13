@@ -12,7 +12,6 @@
 #include <onlp/platformi/sfpi.h>
 #include <onlp/platformi/ledi.h>
 #include <onlp/platformi/platformi.h>
-#include <onlp/platformi/debugi.h>
 
 /*
  * Common includes needed for subsystem implementations.
