@@ -28,6 +28,8 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_sw_denit(void));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_ledi_id_validate(onlp_oid_id_t id));
+
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* rv));
 
 /**

@@ -29,6 +29,7 @@
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_psui_sw_init(void));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_psui_hw_init(uint32_t flags));
 __ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_psui_sw_denit(void));
+__ONLP_DEFAULTI_IMPLEMENTATION_OPTIONAL(onlp_psui_id_validate(onlp_oid_id_t id));
 
 /**
  * simulate hdr_get for older platforms which don't support it.

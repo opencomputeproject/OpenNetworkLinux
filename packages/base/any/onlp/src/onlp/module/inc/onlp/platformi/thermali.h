@@ -50,6 +50,12 @@ int onlp_thermali_hw_init(uint32_t flags);
 int onlp_thermali_sw_denit(void);
 
 /**
+ * @brief Validate a thermal oid.
+ * @param id The thermal id.
+ */
+int onlp_thermali_id_validate(onlp_oid_id_t id);
+
+/**
  * @brief Retrieve the thermal's oid header.
  * @param id The thermal oid.
  * @param[out] rv Receives the header.

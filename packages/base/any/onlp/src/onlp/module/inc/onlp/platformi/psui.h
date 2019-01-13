@@ -50,6 +50,12 @@ int onlp_psui_hw_init(uint32_t flags);
 int onlp_psui_sw_denit(void);
 
 /**
+ * @brief Validate a PSU OID.
+ * @param id The id.
+ */
+int onlp_psui_id_validate(onlp_oid_id_t id);
+
+/**
  * @brief Get the PSU's oid header.
  * @param id The PSU OID.
  * @param[out] rv Receives the header.
