@@ -249,6 +249,11 @@ typedef uint32_t onlp_oid_status_flags_t;
 /** Validate and retrieve a Generic ID */
 #define ONLP_OID_GENERIC_VALIDATE_GET_ID_NR(_oid, _id) ONLP_OID_TYPE_VALIDATE_GET_ID_NR(ONLP_OID_TYPE_GENERIC, _oid, _id)
 
+
+/** Validate an ID is within a given range. */
+#define ONLP_OID_ID_VALIDATE_RANGE(_id, _min, _max) \
+    ( (_id) >= (_min) && (_id) <= (_max)) ? ONLP_STATUS_OK : ONLP_STATUS_E_INVALID
+
 /**
  * There is only one Chassis OID. This value should be used.
  */
@@ -339,6 +344,9 @@ int onlp_oid_get_all_free(biglist_t* list);
  */
 #define ONLP_OID_STATUS_FLAGS_GET(_ptr)         \
     (((onlp_oid_hdr_t*)_ptr)->status)
+
+#define ONLP_OID_STATUS_FLAGS_CLR(_ptr) \
+    ONLP_OID_STATUS_FLAGS_GET(_ptr) = 0
 
 #define ONLP_OID_STATUS_FLAG_GET_VALUE(_ptr, _name)                     \
     AIM_FLAG_GET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
