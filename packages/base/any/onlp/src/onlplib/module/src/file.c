@@ -259,6 +259,27 @@ onlp_file_read_str(char** str, const char* fmt, ...)
 }
 
 int
+onlp_file_vread_str_dst(char* dst, int size, const char* fmt, va_list vargs)
+{
+    char* s;
+    ONLP_TRY(onlp_file_vread_str(&s, fmt, vargs));
+    aim_strlcpy(dst, s, size);
+    aim_free(s);
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_file_read_str_dst(char* dst, int size, const char* fmt, ...)
+{
+    int rv;
+    va_list vargs;
+    va_start(vargs, fmt);
+    rv = onlp_file_vread_str_dst(dst, size, fmt, vargs);
+    va_end(vargs);
+    return rv;
+}
+
+int
 onlp_file_vread_int(int* value, const char* fmt, va_list vargs)
 {
     int rv;
