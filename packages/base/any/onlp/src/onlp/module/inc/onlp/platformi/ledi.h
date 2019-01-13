@@ -100,4 +100,7 @@ int onlp_ledi_char_set(onlp_oid_id_t id, char c);
 #define ONLP_PSU_LED_INFO_ENTRY_INIT(_id, _desc, _psu_id, _caps) \
     ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_PSU_ID_CREATE(_psu_id), _caps)
 
+#define ONLP_FAN_LED_INFO_ENTRY_INIT(_id, _desc, _fan_id, _caps) \
+    ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_FAN_ID_CREATE(_fan_id), _caps)
+
 #endif /* __ONLP_LED_H__ */
