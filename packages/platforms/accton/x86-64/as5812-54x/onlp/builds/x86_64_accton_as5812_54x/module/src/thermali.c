@@ -68,16 +68,12 @@ static onlp_thermal_info_t linfo[] = {
 	ONLP_PSU_THERMAL_INFO_ENTRY_INIT(THERMAL_1_ON_PSU2, "PSU-2 Thermal Sensor 1", 2),
 };
 
-/*
- * Retrieve the information structure for the given thermal OID.
- *
- * If the OID is invalid, return ONLP_E_STATUS_INVALID.
- * If an unexpected error occurs, return ONLP_E_STATUS_INTERNAL.
- * Otherwise, return ONLP_STATUS_OK with the OID's information.
- *
- * Note -- it is expected that you fill out the information
- * structure even if the sensor described by the OID is not present.
- */
+int
+onlp_thermali_id_validate(onlp_oid_id_t id)
+{
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, AIM_ARRAYSIZE(linfo));
+}
+
 int
 onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* info)
 {

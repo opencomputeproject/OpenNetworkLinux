@@ -33,13 +33,6 @@
 
 //#include "onlpie_int.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_LED(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
 /* LED related data
  */
 enum led_light_mode { /*must be the same with the definition @ kernel driver */
@@ -150,11 +143,8 @@ static int conver_led_light_mode_to_driver(int led_ligth_mode)
     return 0;
 }
 
-/*
- * This function will be called prior to any other onlp_ledi_* functions.
- */
 int
-onlp_ledi_init(void)
+onlp_ledi_hw_init(uint32_t flags)
 {
     /*
      * Turn off the LOCATION and DIAG LEDs at startup
@@ -165,25 +155,27 @@ onlp_ledi_init(void)
 }
 
 int
-onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
+onlp_ledi_id_validate(onlp_oid_id_t id)
+{
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, AIM_ARRAYSIZE(linfo) -1 );
+}
+
+int
+onlp_ledi_info_get(onlp_oid_id_t id, onlp_led_info_t* info)
 {
 
-    int  fd, len, nbytes=1, local_id;
-	char data[2] = {0};
+    int  fd, len, nbytes=1;
+    char data[2] = {0};
     char fullpath[50] = {0};
 
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-
     /* get fullpath */
-    if (strchr(last_path[local_id], '/') != NULL)
+    if (strchr(last_path[id], '/') != NULL)
 	{
-        sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);
+        sprintf(fullpath, "%s%s", prefix_path, last_path[id]);
 	}
 	else
 	{
-        sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
+        sprintf(fullpath, "%s%s/%s", prefix_path, last_path[id], filename);
     }
 
 	/* Set the onlp_oid_hdr_t and capabilities */
@@ -213,51 +205,26 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 }
 
 /*
- * Turn an LED on or off.
- *
- * This function will only be called if the LED OID supports the ONOFF
- * capability.
- *
- * What 'on' means in terms of colors or modes for multimode LEDs is
- * up to the platform to decide. This is intended as baseline toggle mechanism.
- */
-int
-onlp_ledi_set(onlp_oid_t id, int on_or_off)
-{
-    VALIDATE(id);
-
-    if (!on_or_off) {
-        return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
-    }
-
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
-
-/*
  * This function puts the LED into the given mode. It is a more functional
  * interface for multimode LEDs.
  *
  * Only modes reported in the LED's capabilities will be attempted.
  */
 int
-onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
+onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode)
 {
-    int  fd, len, driver_mode, nbytes=1, local_id;
+    int  fd, len, driver_mode, nbytes=1;
     char data[2] = {0};
     char fullpath[50] = {0};
 
-    VALIDATE(id);
-
-    local_id = ONLP_OID_ID_GET(id);
-
     /* get fullpath */
-    if (strchr(last_path[local_id], '/') != NULL)
+    if (strchr(last_path[id], '/') != NULL)
 	{
-        sprintf(fullpath, "%s%s", prefix_path, last_path[local_id]);
+        sprintf(fullpath, "%s%s", prefix_path, last_path[id]);
 	}
 	else
 	{
-        sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
+        sprintf(fullpath, "%s%s/%s", prefix_path, last_path[id], filename);
     }
 
 	driver_mode = conver_led_light_mode_to_driver(mode);
@@ -277,13 +244,4 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 
     close(fd);
     return ONLP_STATUS_OK;
-}
-
-/*
- * Generic LED ioctl interface.
- */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
 }

@@ -141,6 +141,12 @@ static onlp_fan_info_t finfo[] = {
     } while(0)
 
 
+int
+onlp_fani_id_validate(onlp_oid_id_t id)
+{
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, AIM_ARRAYSIZE(finfo) - 1);
+}
+
 static int
 _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
@@ -264,7 +270,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
 
 int
-onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
+onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info)
 {
     int rc = 0;
 

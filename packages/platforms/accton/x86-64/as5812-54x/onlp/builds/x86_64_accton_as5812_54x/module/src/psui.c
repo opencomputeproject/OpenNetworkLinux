@@ -213,6 +213,12 @@ static onlp_psu_info_t pinfo[] =
 };
 
 int
+onlp_psui_id_validate(onlp_oid_id_t id)
+{
+    return ONLP_OID_ID_VALIDATE_RANGE(id, 1, AIM_ARRAYSIZE(pinfo) - 1);
+}
+
+int
 onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t* info)
 {
     int val   = 0;
