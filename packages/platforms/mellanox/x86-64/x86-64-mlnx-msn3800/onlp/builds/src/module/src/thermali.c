@@ -36,6 +36,8 @@ enum onlp_thermal_id
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE_0,
     THERMAL_CPU_CORE_1,
+    THERMAL_CPU_CORE_2,
+    THERMAL_CPU_CORE_3,
     THERMAL_CPU_PACK,
     THERMAL_ASIC,
     THERMAL_BOARD_AMB,
@@ -49,6 +51,8 @@ static char* thermal_fnames[] =  /* must map with onlp_thermal_id */
     "reserved",
     "cpu_core0",
     "cpu_core1",
+    "cpu_core2",
+    "cpu_core3",
     "cpu_pack",
     "asic",
     "board_amb",
@@ -68,12 +72,18 @@ static onlp_thermal_info_t tinfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_PACK), "CPU pack", 0},
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE_2), "CPU Core 2", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE_3), "CPU Core 3", 0},
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_PACK), "CPU pack", 0},
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, CPU_THERMAL_THRESHOLD_INIT_DEFAULTS
+        },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_ASIC), "Asic Thermal Sensor", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ASIC_THERMAL_THRESHOLD_INIT_DEFAULTS
