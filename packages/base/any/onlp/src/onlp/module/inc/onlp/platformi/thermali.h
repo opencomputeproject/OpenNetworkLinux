@@ -80,9 +80,9 @@ int onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* rv);
                 .description = _desc,                           \
                 .poid = ONLP_OID_CHASSIS,                       \
                 .status = ONLP_OID_STATUS_FLAG_PRESENT,         \
-                },                                              \
-            .caps = ONLP_THERMAL_CAPS_ALL,                      \
-                 }
+         },                                                     \
+            .caps = ONLP_THERMAL_CAPS_GET_TEMPERATURE,          \
+    }
 
 /**
  * This macro should be used to statically initialize a chassis
