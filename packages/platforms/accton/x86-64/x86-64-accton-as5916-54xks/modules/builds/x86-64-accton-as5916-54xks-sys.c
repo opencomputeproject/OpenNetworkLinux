@@ -44,7 +44,7 @@
 #define IPMI_READ_MAX_LEN       128
 
 #define EEPROM_NAME				"eeprom"
-#define EEPROM_SIZE				512	/*	512 byte eeprom */
+#define EEPROM_SIZE				256	/*	256 byte eeprom */
 
 #define IPMI_GET_CPLD_VER_CMD   0x20
 #define MAINBOARD_CPLD1_ADDR    0x60
