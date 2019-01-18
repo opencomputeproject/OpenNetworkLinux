@@ -115,6 +115,37 @@ typedef unsigned int    UINT4;
 #define SFP_RESPOND_3 (0x0C)
 #define SFP_RESPOND_4 (0x0D)
 
+/* on SWPLD2 */
+#define SFP_PRESENCE_1 0x30
+#define SFP_PRESENCE_2 0x31
+#define SFP_PRESENCE_3 0x32
+#define SFP_PRESENCE_4 0x33
+#define SFP_PRESENCE_5 0x34
+#define SFP_PRESENCE_6 0x35
+#define SFP_RXLOS_1 0x36
+#define SFP_RXLOS_2 0x37
+#define SFP_RXLOS_3 0x38
+#define SFP_RXLOS_4 0x39
+#define SFP_RXLOS_5 0x3A
+#define SFP_RXLOS_6 0x3B
+#define SFP_TXDIS_1 0x3C
+#define SFP_TXDIS_2 0x3D
+#define SFP_TXDIS_3 0x3E
+#define SFP_TXDIS_4 0x3F
+#define SFP_TXDIS_5 0x40
+#define SFP_TXDIS_6 0x41
+#define SFP_TXFAULT_1 0x42
+#define SFP_TXFAULT_2 0x43
+#define SFP_TXFAULT_3 0x44
+#define SFP_TXFAULT_4 0x45
+#define SFP_TXFAULT_5 0x46
+#define SFP_TXFAULT_6 0x47
+
+/* on SWPLD1 */
+#define QSFP_PRESENCE  0x63
+#define QSFP_LPMODE    0x62
+#define QSFP_RESET     0x3c
+
 typedef struct mux_info_s
 {
         uint8_t offset;
@@ -151,6 +182,7 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_psu_present(int *r_data);
 int dni_bmc_data_get(int bus, int addr, int reg, int len, int *r_data);
+int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data);
 void lockinit();
 
 char dev_name[50][32];

@@ -51,5 +51,8 @@ class OnlPlatform_x86_64_delta_agc7648sv1_r0(OnlPlatformDelta,
         elif bmc_mon_status == ' 01\n':
             os.system("ipmitool raw 0x38 0x0a 1")
 
+        #Prevent onlpd and onlp-snmpd access i2c peripherals
+        os.system("i2cset -y -f 0 0x31 0x14 0xfc")
+
         return True
 

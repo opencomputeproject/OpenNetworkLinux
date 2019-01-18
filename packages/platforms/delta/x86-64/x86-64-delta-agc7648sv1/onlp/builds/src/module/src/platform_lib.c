@@ -132,6 +132,23 @@ int dni_bmc_data_get(int bus, int addr, int reg, int len, int *r_data)
     return rv;
 }
 
+int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data)
+{
+    int rv = ONLP_STATUS_OK;
+    char cmd[50] = {0};
+    FILE *fptr = NULL;
+
+    sprintf(cmd, "ipmitool raw 0x38 0x3 %d 0x%x 0x%x %d > /dev/null", bus, addr, reg, w_data);
+    fptr = popen(cmd, "w");
+    if(fptr != NULL)
+        rv = ONLP_STATUS_OK;
+    else
+        rv = ONLP_STATUS_E_INVALID;
+    pclose(fptr);
+
+    return rv;
+}
+
 int dni_bmc_fanpresent_info_get(int *r_data)
 {
     int rv = ONLP_STATUS_OK;
