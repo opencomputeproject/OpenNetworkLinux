@@ -37,15 +37,14 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
 {
 	int   size = 0;
 	int   ret  = ONLP_STATUS_OK; 
-	char *prefix = NULL;
+	char *path = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_mfr_serial) :
+		                           PSU2_AC_PMBUS_NODE(psu_mfr_serial) ;
 
 	if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
 		return ONLP_STATUS_E_PARAM;
 	}
 
-	prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
-
-	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
+	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, path);
     if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
 		return ONLP_STATUS_E_INTERNAL;
 
@@ -89,6 +88,10 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 		memcpy(modelname, model, sizeof(model));
     }
 
+    if (strncmp(model, "DPS-850A", strlen("DPS-850A")) == 0) {
+        return PSU_TYPE_AC_DPS850_F2B;
+    }
+
     if (strncmp(model, "YM-2851F", strlen("YM-2851F")) == 0) {
         return PSU_TYPE_AC_YM2851_F2B;
     }
@@ -122,4 +125,20 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
 
     return ONLP_STATUS_OK;
 }
+
+int psu_dps850_pmbus_info_get(int id, char *node, int *value)
+{
+	char *prefix = NULL;
+
+    *value = 0;
+
+	prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+    if (onlp_file_read_int(value, "%s%s", prefix, node) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file(%s%s)\r\n", prefix, node);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 

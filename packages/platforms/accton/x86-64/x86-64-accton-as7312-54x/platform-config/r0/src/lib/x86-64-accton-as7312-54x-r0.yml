@@ -23,6 +23,8 @@ x86-64-accton-as7312-54x-r0:
     args: >-
       nopat
       console=ttyS1,115200n8
+      i2c-ismt.bus_speed=100
+      i2c-ismt.delay=100
 
   ##network
   ##  interfaces:

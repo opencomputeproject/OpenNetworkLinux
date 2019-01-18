@@ -154,11 +154,8 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
             return ONLP_STATUS_E_INVALID;
     }
 
-    mux_info.bus = I2C_BUS_5;
-    mux_info.addr = CPLD_B;
     mux_info.offset = offset;
     mux_info.channel = channel;
-    mux_info.flags = DEFAULT_FLAG;
     
     sprintf(fullpath, "%s%s", PREFIX_PATH, last_path[local_id]);
    

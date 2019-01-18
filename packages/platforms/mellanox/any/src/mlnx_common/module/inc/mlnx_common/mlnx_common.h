@@ -60,6 +60,7 @@
 /* 1 -without eeprom, 2 - with eeprom */
 #define PSU_TYPE_1 1
 #define PSU_TYPE_2 2
+#define PSU_TYPE_3 3
 
 #define FAN_MODEL	"MEC012579"
 
@@ -137,9 +138,12 @@ typedef struct mlnx_platform_info_s {
 
 #define PSU1_ID 1
 #define PSU2_ID 2
-#define PSU_MODULE_PREFIX "/bsp/module/psu%d_%s"
-#define PSU_POWER_PREFIX "/bsp/power/psu%d_%s"
-#define IDPROM_PATH "/bsp/eeprom/%s%d_info"
+#define HW_MANAGEMENT_PATH "/var/run/hw-management"
+#define QSFP_PATH HW_MANAGEMENT_PATH"/qsfp"
+#define THERMAL_PATH "/var/run/hw-management/thermal"
+#define PSU_MODULE_PREFIX THERMAL_PATH"/psu%d_%s"
+#define PSU_POWER_PREFIX HW_MANAGEMENT_PATH"/power/psu%d_%s"
+#define IDPROM_PATH HW_MANAGEMENT_PATH"/eeprom/%s%d_info"
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,

@@ -1,288 +1,531 @@
 /*
- * An hwmon driver for accton as5916_54xks Power Module
+ * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * Based on:
+ *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
+ * Copyright (C) 2006
  *
- * Copyright (C) 2014 Accton Technology Corporation.
- * Brandon Chuang <brandon_chuang@accton.com.tw>
+ * Based on:
+ *	pca954x.c from Ken Harrenstien
+ * Copyright (C) 2004 Google, Inc. (Ken Harrenstien)
  *
- * Based on ad7414.c
- * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
+ * Based on:
+ *	i2c-virtual_cb.c from Brian Kuschak <bkuschak@yahoo.com>
+ * and
+ *	pca9540.c from Jean Delvare <khali@linux-fr.org>.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2. This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
  */
 
 #include <linux/module.h>
-#include <linux/jiffies.h>
-#include <linux/i2c.h>
-#include <linux/hwmon.h>
-#include <linux/hwmon-sysfs.h>
-#include <linux/err.h>
-#include <linux/mutex.h>
-#include <linux/sysfs.h>
+#include <linux/init.h>
 #include <linux/slab.h>
-#include <linux/delay.h>
-#include <linux/dmi.h>
+#include <linux/device.h>
+#include <linux/version.h>
+#include <linux/stat.h>
+#include <linux/sysfs.h>
+#include <linux/hwmon-sysfs.h>
+#include <linux/ipmi.h>
+#include <linux/ipmi_smi.h>
+#include <linux/platform_device.h>
 
-static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
-static int as5916_54xks_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int as5916_54xks_cpld_read(unsigned short cpld_addr, u8 reg);
+#define DRVNAME "as5916_54xks_psu"
+#define ACCTON_IPMI_NETFN       0x34
+#define IPMI_PSU_READ_CMD       0x16
+#define IPMI_PSU_MODEL_NAME_CMD 0x10
+#define IPMI_PSU_SERIAL_NUM_CMD 0x11
+#define IPMI_TIMEOUT		(20 * HZ)
 
-/* Addresses scanned 
- */
-static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
+static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
+static ssize_t show_psu(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_string(struct device *dev, struct device_attribute *attr, char *buf);
+static int as5916_54xks_psu_probe(struct platform_device *pdev);
+static int as5916_54xks_psu_remove(struct platform_device *pdev);
 
-/* Each client has this additional data 
- */
+enum psu_id {
+    PSU_1,
+    PSU_2,
+    NUM_OF_PSU
+};
+
+enum psu_data_index {
+    PSU_PRESENT = 0,
+    PSU_TEMP_FAULT,
+    PSU_POWER_GOOD_CPLD,
+    PSU_POWER_GOOD_PMBUS,
+    PSU_OVER_VOLTAGE,
+    PSU_OVER_CURRENT,
+    PSU_POWER_ON,
+    PSU_VIN0,
+    PSU_VIN1,
+    PSU_VOUT0,
+    PSU_VOUT1,
+    PSU_IOUT0,
+    PSU_IOUT1,
+    PSU_TEMP0,
+    PSU_TEMP1,
+    PSU_FAN0,
+    PSU_FAN1,
+    PSU_POUT0,
+    PSU_POUT1,
+    PSU_STATUS_COUNT,
+    PSU_MODEL = 0,
+    PSU_SERIAL = 0
+};
+
+struct ipmi_data {
+	struct completion   read_complete;
+	struct ipmi_addr	address;
+	ipmi_user_t         user;
+	int                 interface;
+
+	struct kernel_ipmi_msg tx_message;
+	long                   tx_msgid;
+
+	void            *rx_msg_data;
+	unsigned short   rx_msg_len;
+	unsigned char    rx_result;
+	int              rx_recv_type;
+
+	struct ipmi_user_hndl ipmi_hndlrs;
+};
+
+struct ipmi_psu_resp_data {
+    unsigned char   status[19];
+    char   serial[19];
+    char   model[9];
+};
+
 struct as5916_54xks_psu_data {
-    struct device      *hwmon_dev;
-    struct mutex        update_lock;
-    char                valid;           /* !=0 if registers are valid */
-    unsigned long       last_updated;    /* In jiffies */
-    u8  index;           /* PSU index */
-    u8  status;          /* Status(present/power_good) register read from CPLD */
-    char model_name[9]; /* Model name, read from eeprom */
+    struct platform_device *pdev;
+    struct mutex     update_lock;
+    char             valid[2]; /* != 0 if registers are valid, 0: PSU1, 1: PSU2 */
+    unsigned long    last_updated[2];    /* In jiffies, 0: PSU1, 1: PSU2 */
+    struct ipmi_data ipmi;
+    struct ipmi_psu_resp_data ipmi_resp[2]; /* 0: PSU1, 1: PSU2 */ 
+    unsigned char ipmi_tx_data[2];
 };
 
-static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct device *dev);             
+struct as5916_54xks_psu_data *data = NULL;
 
-enum as5916_54xks_psu_sysfs_attributes {
-    PSU_PRESENT,
-    PSU_MODEL_NAME,
-    PSU_POWER_GOOD
+static struct platform_driver as5916_54xks_psu_driver = {
+    .probe      = as5916_54xks_psu_probe,
+    .remove     = as5916_54xks_psu_remove,
+    .driver     = {
+        .name   = DRVNAME,
+        .owner  = THIS_MODULE,
+    },
 };
 
-/* sysfs attributes for hwmon 
- */
-static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status,    NULL, PSU_PRESENT);
-static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
-static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,    NULL, PSU_POWER_GOOD);
+#define PSU_PRESENT_ATTR_ID(index)		PSU##index##_PRESENT
+#define PSU_POWERGOOD_ATTR_ID(index)  	PSU##index##_POWER_GOOD
+#define PSU_VOUT_ATTR_ID(index)         PSU##index##_VOUT
+#define PSU_IOUT_ATTR_ID(index)         PSU##index##_IOUT
+#define PSU_POUT_ATTR_ID(index)         PSU##index##_POUT
+#define PSU_MODEL_ATTR_ID(index)        PSU##index##_MODEL
+#define PSU_SERIAL_ATTR_ID(index)       PSU##index##_SERIAL
+#define PSU_TEMP_INPUT_ATTR_ID(index)   PSU##index##_TEMP_INPUT
+#define PSU_FAN_INPUT_ATTR_ID(index)    PSU##index##_FAN_INPUT
+
+#define PSU_ATTR(psu_id) \
+    PSU_PRESENT_ATTR_ID(psu_id),    \
+    PSU_POWERGOOD_ATTR_ID(psu_id),  \
+    PSU_VOUT_ATTR_ID(psu_id),       \
+    PSU_IOUT_ATTR_ID(psu_id),       \
+    PSU_POUT_ATTR_ID(psu_id),       \
+    PSU_MODEL_ATTR_ID(psu_id),      \
+    PSU_SERIAL_ATTR_ID(psu_id),     \
+    PSU_TEMP_INPUT_ATTR_ID(psu_id), \
+    PSU_FAN_INPUT_ATTR_ID(psu_id)
+
+enum as5916_54x_psu_sysfs_attrs {
+	/* psu attributes */
+    PSU_ATTR(1),
+    PSU_ATTR(2),
+    NUM_OF_PSU_ATTR,
+    NUM_OF_PER_PSU_ATTR = (NUM_OF_PSU_ATTR/NUM_OF_PSU)
+};
+
+/* psu attributes */
+#define DECLARE_PSU_SENSOR_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(psu##index##_present,    S_IRUGO, show_psu, NULL, PSU##index##_PRESENT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_power_good, S_IRUGO, show_psu, NULL, PSU##index##_POWER_GOOD); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vout, S_IRUGO, show_psu,  NULL, PSU##index##_VOUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_iout, S_IRUGO, show_psu,  NULL, PSU##index##_IOUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_pout, S_IRUGO, show_psu,  NULL, PSU##index##_POUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_model, S_IRUGO, show_string,  NULL, PSU##index##_MODEL); \
+	static SENSOR_DEVICE_ATTR(psu##index##_serial, S_IRUGO, show_string,  NULL, PSU##index##_SERIAL);\
+	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input, S_IRUGO, show_psu,  NULL, PSU##index##_TEMP_INPUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_fan1_input, S_IRUGO, show_psu,  NULL, PSU##index##_FAN_INPUT)	
+#define DECLARE_PSU_ATTR(index) \
+    &sensor_dev_attr_psu##index##_present.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_power_good.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_vout.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_iout.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_pout.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_model.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_serial.dev_attr.attr,\
+    &sensor_dev_attr_psu##index##_temp1_input.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_fan1_input.dev_attr.attr
+
+DECLARE_PSU_SENSOR_DEVICE_ATTR(1);
+DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
 
 static struct attribute *as5916_54xks_psu_attributes[] = {
-    &sensor_dev_attr_psu_present.dev_attr.attr,
-    &sensor_dev_attr_psu_model_name.dev_attr.attr,
-    &sensor_dev_attr_psu_power_good.dev_attr.attr,
+    /* psu attributes */
+    DECLARE_PSU_ATTR(1),
+    DECLARE_PSU_ATTR(2),
     NULL
 };
-
-static ssize_t show_status(struct device *dev, struct device_attribute *da,
-             char *buf)
-{
-    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xks_psu_data *data = as5916_54xks_psu_update_device(dev);
-    u8 status = 0;
-
-    if (attr->index == PSU_PRESENT) {
-        status = !(data->status & BIT(1 - data->index));;
-    }
-    else { /* PSU_POWER_GOOD */
-        status = !!(data->status & BIT(3 - data->index));
-    }
-
-    return sprintf(buf, "%d\n", status);
-}
-
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
-             char *buf)
-{
-    struct as5916_54xks_psu_data *data = as5916_54xks_psu_update_device(dev);
-    
-    return sprintf(buf, "%s\n", data->model_name);
-}
 
 static const struct attribute_group as5916_54xks_psu_group = {
     .attrs = as5916_54xks_psu_attributes,
 };
 
-static int as5916_54xks_psu_probe(struct i2c_client *client,
-            const struct i2c_device_id *dev_id)
-{
-    struct as5916_54xks_psu_data *data;
-    int status;
+/* Functions to talk to the IPMI layer */
 
-    if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_I2C_BLOCK)) {
+/* Initialize IPMI address, message buffers and user data */
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
+			      struct device *dev)
+{
+	int err;
+
+	init_completion(&ipmi->read_complete);
+
+	/* Initialize IPMI address */
+	ipmi->address.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
+	ipmi->address.channel = IPMI_BMC_CHANNEL;
+	ipmi->address.data[0] = 0;
+	ipmi->interface = iface;
+
+	/* Initialize message buffers */
+	ipmi->tx_msgid = 0;
+	ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
+
+    ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
+
+	/* Create IPMI messaging interface user */
+	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
+			       ipmi, &ipmi->user);
+	if (err < 0) {
+		dev_err(dev, "Unable to register user with IPMI "
+			"interface %d\n", ipmi->interface);
+		return -EACCES;
+	}
+
+	return 0;
+}
+
+/* Send an IPMI command */
+static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+                                     unsigned char *tx_data, unsigned short tx_len,
+                                     unsigned char *rx_data, unsigned short rx_len)
+{
+	int err;
+
+    ipmi->tx_message.cmd      = cmd;
+    ipmi->tx_message.data     = tx_data;
+    ipmi->tx_message.data_len = tx_len;
+    ipmi->rx_msg_data         = rx_data;
+    ipmi->rx_msg_len          = rx_len;
+
+	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
+	if (err)
+		goto addr_err;
+
+	ipmi->tx_msgid++;
+	err = ipmi_request_settime(ipmi->user, &ipmi->address, ipmi->tx_msgid,
+				   &ipmi->tx_message, ipmi, 0, 0, 0);
+	if (err)
+		goto ipmi_req_err;
+
+    err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
+	if (!err)
+		goto ipmi_timeout_err;
+
+	return 0;
+
+ipmi_timeout_err:
+    err = -ETIMEDOUT;
+    dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
+    return err;
+ipmi_req_err:
+	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
+	return err;
+addr_err:
+	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
+	return err;
+}
+
+/* Dispatch IPMI messages to callers */
+static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
+{
+	unsigned short rx_len;
+	struct ipmi_data *ipmi = user_msg_data;
+
+	if (msg->msgid != ipmi->tx_msgid) {
+		dev_err(&data->pdev->dev, "Mismatch between received msgid "
+			"(%02x) and transmitted msgid (%02x)!\n",
+			(int)msg->msgid,
+			(int)ipmi->tx_msgid);
+		ipmi_free_recv_msg(msg);
+		return;
+	}
+
+	ipmi->rx_recv_type = msg->recv_type;
+	if (msg->msg.data_len > 0)
+		ipmi->rx_result = msg->msg.data[0];
+	else
+		ipmi->rx_result = IPMI_UNKNOWN_ERR_COMPLETION_CODE;
+
+	if (msg->msg.data_len > 1) {
+		rx_len = msg->msg.data_len - 1;
+		if (ipmi->rx_msg_len < rx_len)
+			rx_len = ipmi->rx_msg_len;
+		ipmi->rx_msg_len = rx_len;
+		memcpy(ipmi->rx_msg_data, msg->msg.data + 1, ipmi->rx_msg_len);
+	} else
+		ipmi->rx_msg_len = 0;
+
+	ipmi_free_recv_msg(msg);
+	complete(&ipmi->read_complete);
+}
+
+static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct device_attribute *da)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+    int status = 0;
+
+    if (time_before(jiffies, data->last_updated[pid] + HZ * 5) && data->valid[pid]) {
+        return data;
+    }
+
+    mutex_lock(&data->update_lock);
+
+    data->valid[pid] = 0;
+
+    /* Get status from ipmi */
+    data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
+    status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD, data->ipmi_tx_data, 1,
+                                data->ipmi_resp[pid].status, sizeof(data->ipmi_resp[pid].status));
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
         status = -EIO;
         goto exit;
     }
 
-    data = kzalloc(sizeof(struct as5916_54xks_psu_data), GFP_KERNEL);
-    if (!data) {
-        status = -ENOMEM;
+    /* Get model name from ipmi */
+    data->ipmi_tx_data[1] = 0x10;
+    status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD, data->ipmi_tx_data, 2,
+                                data->ipmi_resp[pid].model, sizeof(data->ipmi_resp[pid].model) - 1);
+    if (unlikely(status != 0)) {
         goto exit;
     }
 
-    i2c_set_clientdata(client, data);
-    data->valid = 0;
-    data->index = dev_id->driver_data;
-    mutex_init(&data->update_lock);
-
-    dev_info(&client->dev, "chip found\n");
-
-    /* Register sysfs hooks */
-    status = sysfs_create_group(&client->dev.kobj, &as5916_54xks_psu_group);
-    if (status) {
-        goto exit_free;
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
     }
 
-    data->hwmon_dev = hwmon_device_register(&client->dev);
-    if (IS_ERR(data->hwmon_dev)) {
-        status = PTR_ERR(data->hwmon_dev);
-        goto exit_remove;
+    /* Get serial number from ipmi */
+    data->ipmi_tx_data[1] = 0x11;
+    status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,  data->ipmi_tx_data, 2,
+                                data->ipmi_resp[pid].serial, sizeof(data->ipmi_resp[pid].serial) - 1);
+    if (unlikely(status != 0)) {
+        goto exit;
     }
 
-    dev_info(&client->dev, "%s: psu '%s'\n",
-         dev_name(data->hwmon_dev), client->name);
-    
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    data->last_updated[pid] = jiffies;
+    data->valid[pid] = 1;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return data;
+}
+
+#define VALIDATE_PRESENT_RETURN(id) \
+{ \
+    if (data->ipmi_resp[id].status[PSU_PRESENT] != 0) { \
+        return -ENXIO; \
+    } \
+}
+
+static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+    struct as5916_54xks_psu_data *data = NULL;
+    int value = 0;
+
+    data = as5916_54xks_psu_update_device(da);
+    if (!data->valid[pid]) {
+        return -EIO;
+    }
+
+	switch (attr->index) {
+		case PSU1_PRESENT:
+		case PSU2_PRESENT:
+            value = !(data->ipmi_resp[pid].status[PSU_PRESENT]);
+			break;
+		case PSU1_POWER_GOOD:
+		case PSU2_POWER_GOOD:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = data->ipmi_resp[pid].status[PSU_POWER_GOOD_CPLD];
+			break;
+		case PSU1_VOUT:
+		case PSU2_VOUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((int)data->ipmi_resp[pid].status[PSU_VOUT0] |
+                     (int)data->ipmi_resp[pid].status[PSU_VOUT1] << 8) * 1000;
+			break;
+		case PSU1_IOUT:
+		case PSU2_IOUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((int)data->ipmi_resp[pid].status[PSU_IOUT0] |
+                     (int)data->ipmi_resp[pid].status[PSU_IOUT1] << 8) * 1000;
+			break;
+		case PSU1_POUT:
+		case PSU2_POUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((int)data->ipmi_resp[pid].status[PSU_POUT0] |
+                     (int)data->ipmi_resp[pid].status[PSU_POUT1] << 8) * 1000;
+			break;
+		case PSU1_TEMP_INPUT:
+		case PSU2_TEMP_INPUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((int)data->ipmi_resp[pid].status[PSU_TEMP0] |
+                     (int)data->ipmi_resp[pid].status[PSU_TEMP1] << 8) * 1000;
+			break;
+		case PSU1_FAN_INPUT:
+		case PSU2_FAN_INPUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((int)data->ipmi_resp[pid].status[PSU_FAN0] |
+                     (int)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
+			break; 
+		default:
+			return -EINVAL;
+	}
+
+	return sprintf(buf, "%d\n", value);
+}
+
+static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+    struct as5916_54xks_psu_data *data;
+    char *str = NULL;
+
+    data = as5916_54xks_psu_update_device(da);
+    if (!data->valid[pid]) {
+        return -EIO;
+    }
+
+	switch (attr->index) {
+		case PSU1_MODEL:
+		case PSU2_MODEL:
+            VALIDATE_PRESENT_RETURN(pid);
+            str = data->ipmi_resp[pid].model;
+			break;
+		case PSU1_SERIAL:
+		case PSU2_SERIAL:
+            VALIDATE_PRESENT_RETURN(pid);
+            str = data->ipmi_resp[pid].serial;
+			break;
+		default:
+			return -EINVAL;
+    }
+
+	return sprintf(buf, "%s\n", str);
+}
+
+static int as5916_54xks_psu_probe(struct platform_device *pdev)
+{
+    int status = -1;
+
+	/* Register sysfs hooks */
+	status = sysfs_create_group(&pdev->dev.kobj, &as5916_54xks_psu_group);
+	if (status) {
+		goto exit;
+	}
+
+
+    dev_info(&pdev->dev, "device created\n");
+
     return 0;
 
-exit_remove:
-    sysfs_remove_group(&client->dev.kobj, &as5916_54xks_psu_group);
-exit_free:
-    kfree(data);
 exit:
-    
     return status;
 }
 
-static int as5916_54xks_psu_remove(struct i2c_client *client)
+static int as5916_54xks_psu_remove(struct platform_device *pdev)
 {
-    struct as5916_54xks_psu_data *data = i2c_get_clientdata(client);
-
-    hwmon_device_unregister(data->hwmon_dev);
-    sysfs_remove_group(&client->dev.kobj, &as5916_54xks_psu_group);
-    kfree(data);
-    
+    sysfs_remove_group(&pdev->dev.kobj, &as5916_54xks_psu_group);
     return 0;
-}
-
-enum psu_index 
-{ 
-    as5916_54xks_psu1, 
-    as5916_54xks_psu2
-};
-
-static const struct i2c_device_id as5916_54xks_psu_id[] = {
-    { "as5916_54xks_psu1", as5916_54xks_psu1 },
-    { "as5916_54xks_psu2", as5916_54xks_psu2 },
-    {}
-};
-MODULE_DEVICE_TABLE(i2c, as5916_54xks_psu_id);
-
-static struct i2c_driver as5916_54xks_psu_driver = {
-    .class        = I2C_CLASS_HWMON,
-    .driver = {
-        .name     = "as5916_54xks_psu",
-    },
-    .probe        = as5916_54xks_psu_probe,
-    .remove       = as5916_54xks_psu_remove,
-    .id_table     = as5916_54xks_psu_id,
-    .address_list = normal_i2c,
-};
-
-static int as5916_54xks_psu_read_block(struct i2c_client *client, u8 command, u8 *data,
-              int data_len)
-{
-    int result = 0;
-    int retry_count = 5;
-	
-	while (retry_count) {
-	    retry_count--;
-	
-	    result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
-		
-		if (unlikely(result < 0)) {
-		    msleep(10);
-	        continue;
-		}
-		
-        if (unlikely(result != data_len)) {
-            result = -EIO;
-			msleep(10);
-            continue;
-        }
-		
-		result = 0;
-		break;
-	}
-	
-    return result;
-}
-
-static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct device *dev)
-{
-    struct i2c_client *client = to_i2c_client(dev);
-    struct as5916_54xks_psu_data *data = i2c_get_clientdata(client);
-    
-    mutex_lock(&data->update_lock);
-
-    if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
-        || !data->valid) {
-        int status;
-		int power_good = 0;
-
-        dev_dbg(&client->dev, "Starting as5916_54xks update\n");
-
-        /* Read psu status */
-        status = as5916_54xks_cpld_read(0x60, 0x2);
-        
-        if (status < 0) {
-            dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
-        }
-        else {
-            data->status = status;
-        }
-		
-        /* Read model name */
-        memset(data->model_name, 0, sizeof(data->model_name));
-        power_good = data->status & BIT(3 - data->index);
-		
-        if (power_good) {
-            status = as5916_54xks_psu_read_block(client, 0x20, data->model_name, 
-                                               ARRAY_SIZE(data->model_name)-1);
-
-            if (status < 0) {
-                data->model_name[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
-            }
-            else {
-                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
-            }
-        }
-        
-        data->last_updated = jiffies;
-        data->valid = 1;
-    }
-
-    mutex_unlock(&data->update_lock);
-
-    return data;
 }
 
 static int __init as5916_54xks_psu_init(void)
 {
-    return i2c_add_driver(&as5916_54xks_psu_driver);
+    int ret;
+
+    data = kzalloc(sizeof(struct as5916_54xks_psu_data), GFP_KERNEL);
+    if (!data) {
+        ret = -ENOMEM;
+        goto alloc_err;
+    }
+
+	mutex_init(&data->update_lock);
+
+    ret = platform_driver_register(&as5916_54xks_psu_driver);
+    if (ret < 0) {
+        goto dri_reg_err;
+    }
+
+    data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+    if (IS_ERR(data->pdev)) {
+        ret = PTR_ERR(data->pdev);
+        goto dev_reg_err;
+    }
+
+	/* Set up IPMI interface */
+	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
+	if (ret)
+		goto ipmi_err;
+
+    return 0;
+
+ipmi_err:
+    platform_device_unregister(data->pdev);
+dev_reg_err:
+    platform_driver_unregister(&as5916_54xks_psu_driver);
+dri_reg_err:
+    kfree(data);
+alloc_err:
+    return ret;
 }
 
 static void __exit as5916_54xks_psu_exit(void)
 {
-    i2c_del_driver(&as5916_54xks_psu_driver);
+    ipmi_destroy_user(data->ipmi.user);
+    platform_device_unregister(data->pdev);
+    platform_driver_unregister(&as5916_54xks_psu_driver);
+    kfree(data);
 }
+
+MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
+MODULE_DESCRIPTION("AS5916 54XKS PSU driver");
+MODULE_LICENSE("GPL");
 
 module_init(as5916_54xks_psu_init);
 module_exit(as5916_54xks_psu_exit);
-
-MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("as5916_54xks_psu driver");
-MODULE_LICENSE("GPL");
 

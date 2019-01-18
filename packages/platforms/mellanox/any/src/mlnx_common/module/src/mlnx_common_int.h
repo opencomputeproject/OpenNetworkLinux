@@ -10,7 +10,7 @@
 #include <mlnx_common/mlnx_common.h>
 
 #define MAX_NUM_OF_CPLD				4
-#define PREFIX_PATH_ON_CPLD_DEV		"/bsp/cpld"
+#define PREFIX_PATH_ON_CPLD_DEV		HW_MANAGEMENT_PATH"/system"
 
 mlnx_platform_info_t* get_platform_info(void);
 

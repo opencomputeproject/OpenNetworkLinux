@@ -162,6 +162,10 @@ _onlp_get_fan_direction_on_psu(void)
         }
 
 		switch (psu_type) {
+            case PSU_TYPE_AC_DPS850_F2B:
+				return ONLP_FAN_STATUS_F2B;
+			case PSU_TYPE_AC_DPS850_B2F:
+				return ONLP_FAN_STATUS_B2F;
 			case PSU_TYPE_AC_YM2851_F2B:
 				return ONLP_FAN_STATUS_F2B;
 			case PSU_TYPE_AC_YM2851_B2F:
@@ -178,6 +182,7 @@ static int
 _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 {
 	int val = 0;
+	psu_type_t psu_type;
 
 	info->status |= ONLP_FAN_STATUS_PRESENT;
 
@@ -185,12 +190,32 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
      */
     info->status |= _onlp_get_fan_direction_on_psu();
 
+
+     
+    psu_type = psu_type_get(pid, NULL, 0);
+    if (psu_type == PSU_TYPE_UNKNOWN)
+        return ONLP_FAN_STATUS_FAILED;
+    
     /* get fan speed
      */
-    if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
+    if (psu_type == PSU_TYPE_AC_DPS850_F2B || psu_type == PSU_TYPE_AC_DPS850_B2F)
+    { 
+        if (psu_dps850_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK)
+        {
         info->rpm = val;
 	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;	
 		info->status |= (val == 0) ? ONLP_FAN_STATUS_FAILED : 0;
+    }
+    }
+    
+    if (psu_type == PSU_TYPE_AC_YM2851_F2B || psu_type == PSU_TYPE_AC_YM2851_B2F)
+    {
+        if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK)
+        {
+            info->rpm = val;
+	        info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;	
+		    info->status |= (val == 0) ? ONLP_FAN_STATUS_FAILED : 0;
+        }
     }
 
     return ONLP_STATUS_OK;

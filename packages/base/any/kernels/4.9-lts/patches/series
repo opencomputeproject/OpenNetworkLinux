@@ -14,3 +14,7 @@ driver-support-intel-igb-bcm5461-phy.patch
 driver-i2c-i2c-core.patch
 driver-add-the-support-max6620.patch
 0013-Mellanox-backport-patchwork-from-kernels-4.17-4.19.patch
+0014-platform-x86-mlx-platform-backport-from-4.19.patch
+0015-platform-x86-mlx-platform-Add-support-for-register-a.patch
+0016-mlxsw-thermal-monitoring-amendments.patch
+0017-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
