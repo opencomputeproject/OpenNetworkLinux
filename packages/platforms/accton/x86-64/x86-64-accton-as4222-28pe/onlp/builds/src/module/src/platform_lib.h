@@ -50,7 +50,7 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/1-0060/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-3/3-0057/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/1-0057/eeprom"
 
 int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);

@@ -35,5 +35,5 @@ class OnlPlatform_x86_64_accton_as4222_28pe_r0(OnlPlatformAccton,
             self.new_i2c_device('optoe1', 0x50, port+4)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port+24, port+4), shell=True)
       
-        self.new_i2c_device('24c02', 0x57, 3)
+        self.new_i2c_device('24c02', 0x57, 1)
         return True
