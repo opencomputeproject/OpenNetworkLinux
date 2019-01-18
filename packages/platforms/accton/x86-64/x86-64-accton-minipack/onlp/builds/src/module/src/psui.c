@@ -43,6 +43,28 @@ enum {
     PSU4_ID,        /*At the right-lower of the front view.*/
 };
 
+typedef struct {
+    bool      valid;
+    time_t    last_poll;
+    uint32_t  present;
+    char model[ONLP_CONFIG_INFO_STR_MAX];
+    char serial[ONLP_CONFIG_INFO_STR_MAX];
+    uint32_t status;
+    uint32_t caps;
+} psu_status_t;
+
+typedef struct {
+    psu_status_t info[CHASSIS_PSU_COUNT];
+    sem_t mutex;
+} psus_status_t;
+
+
+#define PMBUS_PATH_STR "/sys/bus/platform/devices/minipack_psensor/%s%d_input"
+#define TTY_INTERVAL        (300000) /*in useconds*/
+#define PSU_POLL_INTERVAL       (24) /*in seconds*/
+#define SEM_LOCK    do {sem_wait(&global_psui_st->mutex);} while(0)
+#define SEM_UNLOCK  do {sem_post(&global_psui_st->mutex);} while(0)
+
 /*
  * Get all information about the given PSU oid.
  */
@@ -54,14 +76,37 @@ static onlp_psu_info_t pinfo[] =
     { {ONLP_PSU_ID_CREATE(PSU3_ID), "PSU-3", 0}, },
     { {ONLP_PSU_ID_CREATE(PSU4_ID), "PSU-4", 0}, },
 };
+psus_status_t *global_psui_st = NULL;
+
+/*---------------------------------------------------------*/
+static int psui_create_shm(key_t id) {
+    int rv;
+
+    if (global_psui_st == NULL) {
+        rv = onlp_shmem_create(id, sizeof(psus_status_t),
+                               (void**)&global_psui_st);
+        if (rv >= 0) {
+            if(pltfm_create_sem(&global_psui_st->mutex) != 0) {
+                AIM_DIE("%s(): mutex_init failed\n", __func__);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
+        else {
+            AIM_DIE("Global %s created failed.", __func__);
+        }
+    }
+    return ONLP_STATUS_OK;
+}
 
 int
 onlp_psui_init(void)
 {
+    if (psui_create_shm(ONLP_PSUI_SHM_KEY) < 0) {
+        AIM_DIE("%s::psui_create_shm created failed.", __func__);
+        return ONLP_STATUS_E_INTERNAL;
+    }
     return ONLP_STATUS_OK;
 }
-
-#define PMBUS_PATH_FORMAT "/sys/bus/platform/devices/minipack_psensor/%s%d_input"
 
 static int
 onlp_psui_rm_special_char(char* in, char* out, int max)
@@ -85,7 +130,6 @@ onlp_psui_rm_special_char(char* in, char* out, int max)
     return j;
 }
 
-
 static int
 onlp_psui_get_BMC_info(int pid, onlp_psu_info_t* info)
 {
@@ -105,8 +149,8 @@ onlp_psui_get_BMC_info(int pid, onlp_psu_info_t* info)
     offset = model;
     sprintf(cmd, bcmd, bus, addr, offset);
     memset(info->model, 0, sizeof(info->model));
-    if (bmc_reply_pure(cmd, 200000, resp, sizeof(resp)) < 0) {
-        AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+    if (bmc_reply_pure(cmd, TTY_INTERVAL, resp, sizeof(resp)) < 0) {
+        DEBUG_PRINT("Unable to send command to bmc(%s)\r\n", cmd);
         info->status &= ~ONLP_PSU_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
@@ -124,12 +168,49 @@ onlp_psui_get_BMC_info(int pid, onlp_psu_info_t* info)
     offset = serial;
     sprintf(cmd, bcmd, bus, addr, offset);
     memset(info->serial, 0, sizeof(info->serial));
-    if (bmc_reply_pure(cmd, 200000, resp, sizeof(resp)) < 0) {
-        AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+    if (bmc_reply_pure(cmd, TTY_INTERVAL, resp, sizeof(resp)) < 0) {
+        DEBUG_PRINT("Unable to send command to bmc(%s)\r\n", cmd);
         info->status &= ~ONLP_PSU_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
     onlp_psui_rm_special_char(resp, info->serial, sizeof(info->serial)-1);
+    return ONLP_STATUS_OK;
+}
+
+static int
+onlp_psui_get_string(int pid, onlp_psu_info_t* info)
+{
+    time_t cur, elapse;
+    psu_status_t *ps;
+
+    /*Sanity check*/
+    if (info == NULL)
+        return ONLP_STATUS_E_PARAM;
+
+    cur = time (NULL);
+    SEM_LOCK;
+    ps = &global_psui_st->info[pid-1];
+    elapse = cur - ps->last_poll;
+    if (!ps->valid || (elapse > PSU_POLL_INTERVAL)) {
+        if (onlp_psui_get_BMC_info(pid, info) != ONLP_STATUS_OK)
+        {
+            ps->valid = false;
+            SEM_UNLOCK;
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        strncpy(ps->model, info->model, sizeof(ps->model));
+        strncpy(ps->serial, info->serial, sizeof(ps->serial));
+        ps->status = info->status;
+        ps->caps = info->caps;
+        ps->valid = true;
+        ps->last_poll = time (NULL);
+    } else {
+        strncpy(info->model, ps->model, sizeof(info->model));
+        strncpy(info->serial, ps->serial, sizeof(info->serial));
+        info->status = ps->status;
+        info->caps =  ps->caps;
+    }
+    SEM_UNLOCK;
     return ONLP_STATUS_OK;
 }
 
@@ -145,8 +226,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Get the present status
      */
-
-    if (onlp_psui_get_BMC_info(pid, info) != ONLP_STATUS_OK)
+    if (onlp_psui_get_string(pid, info) != ONLP_STATUS_OK)
     {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -159,10 +239,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     DEBUG_PRINT("in%d_input: for pid:%d\n",pid_in, pid);
     /* Read vin */
-    sprintf(path, PMBUS_PATH_FORMAT, "in", pid_in);
+    sprintf(path, PMBUS_PATH_STR, "in", pid_in);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
 
     if (value >= 1000) {
@@ -171,10 +251,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Read iin */
-    sprintf(path, PMBUS_PATH_FORMAT, "curr", pid_in);
+    sprintf(path, PMBUS_PATH_STR, "curr", pid_in);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
     if (value >= 0) {
         info->miin = value;
@@ -182,20 +262,20 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Get pin */
-    sprintf(path, PMBUS_PATH_FORMAT, "power", pid_in);
+    sprintf(path, PMBUS_PATH_STR, "power", pid_in);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
     if (value >= 0) {
         info->mpin = value / 1000;  /*power is in unit of microWatts.*/
         info->caps |= ONLP_PSU_CAPS_PIN;
     }
     /* Get vout */
-    sprintf(path, PMBUS_PATH_FORMAT, "in", pid_out);
+    sprintf(path, PMBUS_PATH_STR, "in", pid_out);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
     if (value >= 0) {
         info->mvout = value;
@@ -203,10 +283,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Read iout */
-    sprintf(path, PMBUS_PATH_FORMAT, "curr", pid_out);
+    sprintf(path, PMBUS_PATH_STR, "curr", pid_out);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
     if (value >= 0) {
         info->miout = value;
@@ -214,16 +294,16 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Read pout */
-    sprintf(path, PMBUS_PATH_FORMAT, "power", pid_out);
+    sprintf(path, PMBUS_PATH_STR, "power", pid_out);
     if (onlp_file_read_int(&value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
+        DEBUG_PRINT("Unable to read status from file (%s)\r\n", path);
+        value = 0;
     }
     if (value >= 0) {
         info->mpout = value/1000;  /*power is in unit of microWatts.*/;
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
-    return 0;
+    return ONLP_STATUS_OK;
 }
 
 int

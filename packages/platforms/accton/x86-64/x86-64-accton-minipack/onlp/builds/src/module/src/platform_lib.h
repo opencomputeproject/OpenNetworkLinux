@@ -25,6 +25,13 @@
  ***********************************************************/
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
+#include <unistd.h>
+#include <semaphore.h>
+#include <errno.h>
+#include <onlp/onlp.h>
+#include <onlp/oids.h>
+#include <onlplib/file.h>
+#include <onlplib/shlocks.h>
 
 #include "x86_64_accton_minipack_log.h"
 
@@ -44,7 +51,7 @@
 #define CHASSIS_LED_COUNT     2
 #define CHASSIS_PSU_COUNT     4
 
-#define IDPROM_PATH "/sys/bus/i2c/devices/1-0057/eeprom"
+
 #define PLATFOTM_H_TTY_RETRY  (5)
 
 #define MAXIMUM_TTY_BUFFER_LENGTH       1024
@@ -63,13 +70,20 @@ enum onlp_thermal_id
     THERMAL_7_ON_MAIN_BROAD,
 };
 
-int bmc_reply_pure(char *cmd, unsigned long udelay, char *resp, int max_size);
+#define ONLP_PSUI_SHM_KEY   (0xF001100 | ONLP_OID_TYPE_PSU)
+#define ONLP_SFPI_SHM_KEY   (0xF001100 | ONLP_OID_TYPE_MODULE)
+#define ONLP_LEDI_SHM_KEY   (0xF001100 | ONLP_OID_TYPE_LED)
+
+
+int bmc_reply_pure(char *cmd, uint32_t udelay, char *resp, int max_size);
 int bmc_reply(char *cmd, char *resp, int max_size);
 int bmc_file_read_int(int* value, char *file, int base);
 int bmc_i2c_readb(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value);
 int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr, uint16_t *data);
 int bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data_size);
+uint32_t pltfm_create_sem (sem_t *mutex);
+
 #endif  /* __PLATFORM_LIB_H__ */
 
 

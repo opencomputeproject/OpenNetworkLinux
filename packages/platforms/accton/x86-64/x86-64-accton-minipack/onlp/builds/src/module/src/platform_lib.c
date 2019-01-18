@@ -23,9 +23,7 @@
  *
  ***********************************************************/
 #include <termios.h>
-#include <unistd.h>
 #include <sys/file.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <onlplib/file.h>
 #include <onlp/onlp.h>
@@ -34,10 +32,14 @@
 #define TTY_DEVICE                      "/dev/ttyACM0"
 #define TTY_PROMPT                      "@bmc-oob:"
 #define TTY_USER                        "root"
-#define TTY_I2C_TIMEOUT                 100000
+#define TTY_I2C_WAIT_REPLY              200000
 #define TTY_BMC_LOGIN_TIMEOUT           1000000
-#define TTY_LOGIN_RETRY                 (8)
+#define TTY_BMC_LOGIN_INTERVAL          50000
+#define TTY_LOGIN_RETRY                 (20)
+#define TTY_RETRY_INTERVAL              100000
 #define TTY_RETRY                       PLATFOTM_H_TTY_RETRY
+
+static bool global_logged_in = false;
 
 static int tty_open(int *fd)
 {
@@ -70,9 +72,7 @@ static int tty_open(int *fd)
                 return ONLP_STATUS_OK;
             }
         }
-
         i--;
-        usleep(100000);
     } while (i > 0);
     return ONLP_STATUS_E_GENERIC;
 }
@@ -89,47 +89,37 @@ static int tty_close(int *fd)
 }
 
 static int tty_clear_rxbuf(int fd, char* buf, int max_size) {
-    int ret;
+    int ret, i;
 
-    if (!buf) {
+    if (!buf || fd < 0) {
         return ONLP_STATUS_E_PARAM;
     }
-
-    if (fd < 0) {
-        return -1;
-    }
-
     do {
-        usleep(100000);
         ret = read(fd, buf, max_size);
-        if (ret > 0)
-            DEBUG_PRINT("clear %d bytes, \"%s\"\n", ret,  buf);
-
         memset(buf, 0, max_size);
-    } while (ret > 0);
-
+        i++;
+    } while (ret > 0 && i < TTY_RETRY);
     return ret;
 }
 
 static int tty_write_and_read( int fd, const char *cmd,
-                               unsigned long udelay, char *buf, int buf_size)
+                               uint32_t udelay, char *buf, int buf_size)
 {
     int ret, len, retry;
+
     if (fd < 0 || !cmd) {
         return ONLP_STATUS_E_PARAM;
     }
-
     tty_clear_rxbuf(fd, buf, buf_size);
+    len = strlen(cmd) + 1;
     retry = 0;
-    len = strlen(cmd)+1;
     do {
         ret = write(fd, cmd, len);
         retry++ ;
-    } while(ret != len && retry<5 && usleep(100000*retry));
+    } while(ret != len && retry < TTY_RETRY && usleep(TTY_RETRY_INTERVAL*retry));
 
     DEBUG_PRINT("sent cmd:%s\n",cmd);
     usleep(udelay);
-    usleep(100000);
     memset(buf, 0, buf_size);
     ret = read(fd, buf, buf_size);
     DEBUG_PRINT("Read %d bytes, \"%s\", \n", ret, buf);
@@ -137,7 +127,7 @@ static int tty_write_and_read( int fd, const char *cmd,
 }
 
 static int tty_access_and_match( int fd, const char *cmd,
-                                 unsigned long udelay, const char *keywd)
+                                 uint32_t udelay, const char *keywd)
 {
     int num;
     char resp[256] = {0};
@@ -153,29 +143,38 @@ static int tty_access_and_match( int fd, const char *cmd,
 static bool is_logged_in(int fd, char *resp, int max_size)
 {
     int num;
+    char *p;
 
-    num = tty_write_and_read(fd, "\r\r", TTY_I2C_TIMEOUT, resp, sizeof(resp));
-    if (num <= 0) {
-        return ONLP_STATUS_E_GENERIC;
+    if (global_logged_in == true) {
+        return true;
     }
-    return (strstr(resp, TTY_PROMPT) != NULL) ?
-           ONLP_STATUS_OK : ONLP_STATUS_E_GENERIC;
+
+    num = tty_write_and_read(fd, "\r\r", TTY_BMC_LOGIN_TIMEOUT, resp, max_size);
+    if (num <= 0) {
+        return false;
+    }
+    p = strstr(resp, TTY_PROMPT);
+    if (p != NULL ) {
+        global_logged_in = true;
+        return true;
+    } else {
+        return false;
+    }
 }
 
-static int tty_login(int fd)
+static int tty_login(int fd, char *buf, int buf_size)
 {
     int i;
-    char resp[256];
 
     for (i = 0; i < TTY_LOGIN_RETRY; i++) {
-        if (is_logged_in(fd, resp, sizeof(resp))) {
+        if (is_logged_in(fd, buf, buf_size)) {
             DEBUG_PRINT("Been logged in!\n");
             return ONLP_STATUS_OK;
         }
 
-        DEBUG_PRINT("Try to login!\n");
-        if (strstr(resp, "bmc") != NULL &&
-                (strstr(resp, "login:") != NULL))
+        DEBUG_PRINT("Try to login, @%d!\n", i);
+        if (strstr(buf, "bmc") != NULL &&
+                (strstr(buf, "login:") != NULL))
         {
             if (!tty_access_and_match(fd, TTY_USER"\r",TTY_BMC_LOGIN_TIMEOUT, "Password:")) {
                 if (!tty_access_and_match(fd, "0penBmc\r", TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
@@ -184,14 +183,15 @@ static int tty_login(int fd)
 
             }
         }
-        usleep(50000*i);
+        usleep(TTY_BMC_LOGIN_INTERVAL*i);
     }
+
     return ONLP_STATUS_E_GENERIC;
 }
 
-static int tty_transaction(const char *cmd, unsigned long udelay, char *resp, int max_size)
+static int
+tty_transaction(const char *cmd, uint32_t udelay, char *resp, int max_size)
 {
-    int  i;
     char *buf;
     int  tty_fd = -1;
     int  num, ret = ONLP_STATUS_OK;
@@ -205,20 +205,15 @@ static int tty_transaction(const char *cmd, unsigned long udelay, char *resp, in
         return ONLP_STATUS_E_GENERIC;
     }
 
-    /*Tried to login.*/
-    for (i = 0; i < TTY_RETRY; i++) {
-        if (tty_login(tty_fd) == ONLP_STATUS_OK) {
-            break;
-        }
-    }
-    if(i == TTY_RETRY) {
-        AIM_LOG_ERROR("ERROR: Cannot login TTY device\n");
-        return ONLP_STATUS_E_GENERIC;
-    }
     buf = (char *)calloc(buf_size, sizeof(char));
     if (buf == NULL)
     {
         AIM_LOG_ERROR("ERROR: Cannot allocate memory\n");
+        goto exit;
+    }
+    ret = tty_login(tty_fd, buf, buf_size);
+    if (ret != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("ERROR: Cannot login TTY device\n");
         goto exit;
     }
     num = tty_write_and_read(tty_fd, cmd, udelay, buf, buf_size);
@@ -228,7 +223,6 @@ static int tty_transaction(const char *cmd, unsigned long udelay, char *resp, in
         goto exit;
     }
     strncpy(resp, buf, max_size);
-    DEBUG_PRINT("Resp:\"%s\", \n", resp);
 exit:
     free(buf);
     tty_close(&tty_fd);
@@ -304,7 +298,7 @@ static int strip_off_prompt(char *buf, int max_size)
     return  ONLP_STATUS_OK;
 }
 
-int bmc_reply_pure(char *cmd, unsigned long udelay, char *resp, int max_size)
+int bmc_reply_pure(char *cmd, uint32_t udelay, char *resp, int max_size)
 {
     int i, ret = 0;
     char *p;
@@ -324,7 +318,7 @@ int bmc_reply_pure(char *cmd, unsigned long udelay, char *resp, int max_size)
         /*Find if cmd is inside the response.*/
         p = strstr(resp, cmd);
         if (p != NULL) {
-            memcpy(resp, p+strlen(cmd), max_size);
+            memcpy(resp, p+strlen(cmdr), max_size);
             return ONLP_STATUS_OK;
         }
         DEBUG_PRINT("Resp: [%s]\n", resp);
@@ -338,7 +332,7 @@ int bmc_reply(char *cmd, char *resp, int max_size)
     int i, ret = 0;
 
     for (i = 1; i <= TTY_RETRY; i++) {
-        ret = tty_transaction(cmd, TTY_I2C_TIMEOUT, resp, max_size);
+        ret = tty_transaction(cmd, TTY_I2C_WAIT_REPLY, resp, max_size);
         if (ret != ONLP_STATUS_OK) {
             continue;
         }
@@ -347,12 +341,12 @@ int bmc_reply(char *cmd, char *resp, int max_size)
         }
         return ONLP_STATUS_OK;
     }
-    AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
+    DEBUG_PRINT("Unable to send command to bmc(%s)\r\n", cmd);
     return ONLP_STATUS_E_GENERIC;
 }
 
 int
-bmc_command_read_int(int* value, char *cmd, int base)
+bmc_command_read_int(int *value, char *cmd, int base)
 {
     int len;
     int i;
@@ -360,7 +354,7 @@ bmc_command_read_int(int* value, char *cmd, int base)
     char *prev_str = NULL;
     char *current_str= NULL;
 
-    if (bmc_reply(cmd, resp, sizeof(resp)) < 0) {
+    if (bmc_reply(cmd, resp, sizeof(resp)) != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -465,5 +459,17 @@ bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data
 
     data[i] = 0;
     return 0;
+}
+
+uint32_t pltfm_create_sem (sem_t *mutex)
+{
+    int         rc;
+
+    rc = sem_init(mutex, 1, 1);
+    if (rc != 0) {
+        AIM_DIE("%s failed, errno %d.", __func__, errno);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return ONLP_STATUS_OK;
 }
 

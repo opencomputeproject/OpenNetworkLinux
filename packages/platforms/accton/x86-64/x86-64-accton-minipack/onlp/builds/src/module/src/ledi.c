@@ -45,6 +45,23 @@ enum onlp_led_id
     LED_ACT
 };
 
+typedef struct {
+    bool      valid;
+    time_t    last_poll;
+    uint8_t   reg_val;
+} led_status_t;
+
+typedef struct {
+    led_status_t ls[1];  /*2 LEDs but Only 1 reg*/
+    sem_t mutex;
+} ledi_status_t;
+
+
+#define POLL_INTERVAL       (5) /*in seconds*/
+#define SEM_LOCK    do {sem_wait(&global_ledi_st->mutex);} while(0)
+#define SEM_UNLOCK  do {sem_post(&global_ledi_st->mutex);} while(0)
+
+
 typedef struct led_address_s {
     enum onlp_led_id id;
     uint8_t bus;
@@ -57,7 +74,7 @@ typedef struct led_mode_info_s {
     uint8_t regval;
 } led_mode_info_t;
 
-static led_address_t led_addr[] = 
+static led_address_t led_addr[] =
 {
     { }, /* Not used */
     {LED_SYS, 50, 0x20, 3},
@@ -105,7 +122,7 @@ static onlp_led_info_t linfo[] =
         ONLP_LED_CAPS_ON_OFF |
         ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_PURPLE |
         ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_YELLOW |
-        ONLP_LED_CAPS_BLUE   
+        ONLP_LED_CAPS_BLUE
     },
     {
         { ONLP_LED_ID_CREATE(LED_ACT), "SIM LED 2 (ACT LED)", 0 },
@@ -113,16 +130,42 @@ static onlp_led_info_t linfo[] =
         ONLP_LED_CAPS_ON_OFF |
         ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_PURPLE |
         ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_YELLOW |
-        ONLP_LED_CAPS_BLUE   
+        ONLP_LED_CAPS_BLUE
     },
 };
 
+ledi_status_t *global_ledi_st = NULL;
+
+
+/*--------------------------------------------------------*/
+static int _create_shm(key_t id) {
+    int rv;
+
+    if (global_ledi_st == NULL) {
+        rv = onlp_shmem_create(id, sizeof(led_status_t),
+                               (void**)&global_ledi_st);
+        if (rv >= 0) {
+            if(pltfm_create_sem(&global_ledi_st->mutex) != 0) {
+                AIM_DIE("%s(): mutex_init failed\n", __func__);
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
+        else {
+            AIM_DIE("Global %s created failed.", __func__);
+        }
+    }
+    return ONLP_STATUS_OK;
+}
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */
 int
 onlp_ledi_init(void)
 {
+    if (_create_shm(ONLP_LEDI_SHM_KEY) < 0) {
+        AIM_DIE("%s::_create_shm created failed.", __func__);
+        return ONLP_STATUS_E_INTERNAL;
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -145,7 +188,7 @@ static int reg_value_to_onlp_led_mode(enum onlp_led_id type, uint8_t reg_val) {
 }
 
 static uint8_t onlp_led_mode_to_reg_value(enum onlp_led_id type,
-                                    onlp_led_mode_t mode, uint8_t reg_val) {
+        onlp_led_mode_t mode, uint8_t reg_val) {
     int i;
 
     for (i = 0; i < AIM_ARRAYSIZE(led_type_mode_data); i++) {
@@ -163,23 +206,74 @@ static uint8_t onlp_led_mode_to_reg_value(enum onlp_led_id type,
     return reg_val;
 }
 
+static int ledi_read_reg(int lid, uint8_t* data)
+{
+    time_t cur, elapse;
+    led_status_t *ps;
+    int value;
+
+    if (data == NULL)
+        return ONLP_STATUS_E_PARAM;
+
+    cur = time (NULL);
+    SEM_LOCK;
+    ps = &global_ledi_st->ls[0];    /*2 LED share same REG. Not take lid here.*/
+    elapse = cur - ps->last_poll;
+    if (!ps->valid || (elapse > POLL_INTERVAL)) {
+        value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset);
+        if (value < 0) {
+            ps->valid = false;
+            SEM_UNLOCK;
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        ps->reg_val = value;
+        ps->valid = true;
+        ps->last_poll = time (NULL);
+    } else {
+        DEBUG_PRINT("Cached PID:%d @%lu for LED:%d\n", getpid(), cur, lid);
+    }
+    *data =  ps->reg_val;
+    SEM_UNLOCK;
+    return ONLP_STATUS_OK;
+}
+
+static int ledi_write_reg(int lid, uint8_t data)
+{
+    led_status_t *ps;
+
+    SEM_LOCK;
+    ps = &global_ledi_st->ls[0];    /*2LED shares same REG. Not take lid here.*/
+    if (bmc_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr,
+                       led_addr[lid].offset, data) < 0) {
+        SEM_UNLOCK;
+        return ONLP_STATUS_E_INTERNAL;
+    } else {
+        ps->reg_val = data;
+        ps->valid = true;
+        ps->last_poll = time (NULL);
+        SEM_UNLOCK;
+        return ONLP_STATUS_OK;
+    }
+    SEM_UNLOCK;
+    return ONLP_STATUS_OK;
+}
+
 
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
-    int  lid, value;
+    int  lid;
+    uint8_t value;
 
     VALIDATE(id);
     lid = ONLP_OID_ID_GET(id);
-
-    /* Set the onlp_oid_hdr_t and capabilities */
-    *info = linfo[ONLP_OID_ID_GET(id)];
-
-    value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset);
-    if (value < 0) {
+    if (ledi_read_reg(lid, &value) != ONLP_STATUS_OK)
+    {
         return ONLP_STATUS_E_INTERNAL;
     }
 
+    /* Set the onlp_oid_hdr_t and capabilities */
+    *info = linfo[ONLP_OID_ID_GET(id)];
     info->mode = reg_value_to_onlp_led_mode(lid, value);
     /* Set the on/off status */
     if (info->mode != ONLP_LED_MODE_OFF) {
@@ -202,11 +296,9 @@ int
 onlp_ledi_set(onlp_oid_t id, int on_or_off)
 {
     VALIDATE(id);
-
     if (!on_or_off) {
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
     }
-
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
@@ -219,28 +311,25 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    int  lid, value, i;    
+    int  lid, i;
+    uint8_t value;
 
     VALIDATE(id);
     lid = ONLP_OID_ID_GET(id);
-
-    for (i = 1; i <= PLATFOTM_H_TTY_RETRY; i++) {    
-        value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, 
-                        led_addr[lid].offset);
-        if (value < 0) {
+    for (i = 0; i < PLATFOTM_H_TTY_RETRY; i++) {
+        if (ledi_read_reg(lid, &value) != ONLP_STATUS_OK)
+        {
             continue;
         }
         value = onlp_led_mode_to_reg_value(lid, mode, value);
-        if (bmc_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr, 
-                        led_addr[lid].offset, value) < 0) {
+
+        if (ledi_write_reg(lid, value) != ONLP_STATUS_OK)
+        {
             continue;
-        } else {
-            return ONLP_STATUS_OK;
         }
     }
 
     return ONLP_STATUS_E_INTERNAL;
-
 }
 
 /*

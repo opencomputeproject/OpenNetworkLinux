@@ -37,22 +37,25 @@
 #include "x86_64_accton_minipack_int.h"
 #include "x86_64_accton_minipack_log.h"
 
+#define IDPROM_PATH "/sys/bus/i2c/devices/1-0057/eeprom"
+
 const char*
 onlp_sysi_platform_get(void)
 {
     return "x86-64-accton-minipack-r0";
 }
 
-#define TLV_START_OFFSET (512)
+#define TLV_START_OFFSET    512
+#define TLV_DATA_LENGTH     256
 
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
     FILE* fp;
-    uint8_t* rdata = aim_zmalloc(512);
+    uint8_t* rdata = aim_zmalloc(TLV_DATA_LENGTH);
 
     /* Temporary solution.
-     * The very start part of eeprom is in FB format.
+     * The very start part of eeprom is in other format.
      * Real TLV info locates at where else.
      */
     fp = fopen(IDPROM_PATH, "r");
@@ -67,9 +70,9 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    *size = fread(rdata, 1, 256, fp);
+    *size = fread(rdata, 1, TLV_DATA_LENGTH, fp);
     fclose(fp);
-    if(*size == 256) {
+    if(*size == TLV_DATA_LENGTH) {
         *data = rdata;
         return ONLP_STATUS_OK;
     }
@@ -78,6 +81,17 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
     *size = 0;
     return ONLP_STATUS_E_INTERNAL;
 }
+
+
+void
+onlp_sysi_onie_data_free(uint8_t* data)
+{
+    /*If onlp_sysi_onie_data_get() allocated, it has be freed here.*/
+    if (data) {
+        aim_free(data);
+    }
+}
+
 
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
