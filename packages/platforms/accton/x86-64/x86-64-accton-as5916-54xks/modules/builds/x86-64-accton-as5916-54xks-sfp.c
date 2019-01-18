@@ -1425,11 +1425,16 @@ static ssize_t set_phy(struct device *dev, struct device_attribute *da,
 	int status;
     char *token = NULL, *last = NULL, *delim = " ";
     struct sfp_phy_write_data wdata;
-    char command[NUM_OF_PHY_REGISTERS * 3 + 3] = {0};
+    char *command = NULL;
     char *ipmi_phy_tx_data = (char *)&wdata;
 
+    command = kzalloc(count+1, GFP_KERNEL);
+    if (!command) {
+        return -ENOMEM;
+    }
+
     memset(&wdata, 0, sizeof(wdata));
-    memcpy(command, buf, sizeof(command));
+    memcpy(command, buf, count);
 
     /* Parsing command into tokens */
     token = __strtok_r(command, delim, &last);
@@ -1440,6 +1445,11 @@ static ssize_t set_phy(struct device *dev, struct device_attribute *da,
     	if (status) {
     		return status;
     	} 
+
+        /* Validate each param length */
+        if (param > 0xFF) {
+            return -EINVAL;
+        }
 
         ipmi_phy_tx_data[i++] = param;
         token = __strtok_r(NULL, delim, &last);
