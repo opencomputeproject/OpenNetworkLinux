@@ -40,7 +40,7 @@
 #include <asm/uaccess.h>
 
 
-//#define DEBUG
+/*#define DEBUG*/
 
 #ifdef DEBUG
 #define DEBUG_INTR(fmt, ...)	pr_err(fmt, ##__VA_ARGS__)
@@ -72,12 +72,11 @@
 #define TTY_USER                        "root"
 #define TTY_PASSWORD                    "0penBmc"
 #define TTY_BAUDRATE                    (57600)
-#define TTY_I2C_TIMEOUT                 800000
-#define TTY_BMC_LOGIN_TIMEOUT           1000000
-#define TTY_LOGIN_RETRY                 20
-#define TTY_LOGIN_RETRY_INTV            (300)
-#define TTY_RETRY_INTERVAL              (300)  /*mini-seconds*/
-#define TTY_RESPONSE_INTERVAL           (2000)  /*mini-seconds*/
+#define TTY_LOGIN_RETRY                 10
+#define TTY_LOGIN_RETRY_INTV            (200)
+#define TTY_RETRY_INTERVAL              (100)   /*mini-seconds*/
+#define TTY_RESPONSE_INTERVAL           (1000)  /*mini-seconds*/
+#define TTY_PMBUS_INTERVAL              (1800)  /*mini-seconds*/
 #define MAXIMUM_TTY_BUFFER_LENGTH       1024
 #define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 #define TTY_CMD_RETRY                   3
@@ -94,9 +93,9 @@
 #define ATTR_TYPE_INDEX_GAP     (100)
 
 enum sensor_type_e {
-    SENSOR_TYPE_THERMAL_IN,
+    SENSOR_TYPE_THERMAL,
     SENSOR_TYPE_FAN_RPM,
-    SENSOR_TYPE_FAN_RPM_DOWN,
+    SENSOR_TYPE_FAN_RPM_DN,
     SENSOR_TYPE_PSU1,
     SENSOR_TYPE_PSU2,
     SENSOR_TYPE_PSU3,
@@ -105,18 +104,15 @@ enum sensor_type_e {
 };
 
 enum sysfs_attributes_index {
-    INDEX_THRM_IN_START     = SENSOR_TYPE_THERMAL_IN*ATTR_TYPE_INDEX_GAP,
+    INDEX_THRM_IN_START     = SENSOR_TYPE_THERMAL   *ATTR_TYPE_INDEX_GAP,
     INDEX_FAN_RPM_START     = SENSOR_TYPE_FAN_RPM   *ATTR_TYPE_INDEX_GAP,
-    INDEX_FAN_RPM_START_DN  = SENSOR_TYPE_FAN_RPM_DOWN*ATTR_TYPE_INDEX_GAP,
+    INDEX_FAN_RPM_START_DN  = SENSOR_TYPE_FAN_RPM_DN*ATTR_TYPE_INDEX_GAP,
     INDEX_PSU1_START        = SENSOR_TYPE_PSU1      *ATTR_TYPE_INDEX_GAP,
     INDEX_PSU2_START        = SENSOR_TYPE_PSU2      *ATTR_TYPE_INDEX_GAP,
     INDEX_PSU3_START        = SENSOR_TYPE_PSU3      *ATTR_TYPE_INDEX_GAP,
     INDEX_PSU4_START        = SENSOR_TYPE_PSU4      *ATTR_TYPE_INDEX_GAP,
     INDEX_NAME              = SENSOR_TYPE_MAX       *ATTR_TYPE_INDEX_GAP,
 };
-
-
-
 
 /* Pmbus reg defines are copied from drivers/hwmon/pmbus/pmbus.h*/
 #define PMBUS_READ_VIN			0x88
@@ -151,7 +147,6 @@ struct pmbus_reg_t {
     [PSU_DATA_POUT] = {PMBUS_READ_POUT, true},
 };
 
-
 struct sensor_data {
     int lm75_input[MAX_THERMAL_COUNT];
     int fan_rpm[MAX_FAN_COUNT];
@@ -173,6 +168,7 @@ struct minipack_data {
     struct mutex	    update_lock;
     struct tty_struct   *tty;
     struct ktermios     old_ktermios;
+    bool			 logged_in;
     bool			 valid[SENSOR_TYPE_MAX];
     unsigned long	 last_updated[SENSOR_TYPE_MAX];	  /* In jiffies */
     struct sensor_data sdata;
@@ -211,151 +207,38 @@ struct attr_pattern {
 };
 
 struct sensor_set {
-    int  total;                             /*How many attr of this type*/
+    int  total;         /*How many attr of this type*/
     int  start_index;
-    int  ptn_cnt;
-    struct attr_pattern ptn[MAX_ATTR_PATTERN];
+    char *query;
+    u32  mdelay;        /*TTY delay to read after sent.*/
+    struct attr_pattern *ptn[MAX_ATTR_PATTERN];
 };
 
-struct sensor_set q16[SENSOR_TYPE_MAX] =
-{
-    [SENSOR_TYPE_THERMAL_IN] = {
-        MAX_THERMAL_COUNT, INDEX_THRM_IN_START,
-        1,
-        {   [0] = {MAX_THERMAL_COUNT, 0, "temp","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_FAN_RPM] = {
-        MAX_FAN_COUNT, INDEX_FAN_RPM_START,
-        2,
-        {   [0] = {MAX_FAN_COUNT, 0, "fan","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] = {
-                MAX_FAN_COUNT, 0, "fan","_min",
-                S_IRUGO, show_fan_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_FAN_RPM_DOWN] = {
-        MAX_FAN_COUNT, INDEX_FAN_RPM_START_DN,
-        2,
-        {   [0] = {MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] = {
-                MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_min",
-                S_IRUGO, show_fan_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_PSU1] = {
-        PSU_DATA_MAX, INDEX_PSU1_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, 0, "in","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, 0, "curr","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, 0, "power","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT, CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT, CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_PSU2] = {
-        PSU_DATA_MAX, INDEX_PSU2_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "in","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "curr","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT, "power","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT+CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT+CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_PSU3] = {
-        PSU_DATA_MAX, INDEX_PSU3_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "in","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "curr","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*2, "power","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT*2+CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT*2+CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-    [SENSOR_TYPE_PSU4] = {
-        PSU_DATA_MAX, INDEX_PSU4_START,
-        5,
-        {   [0] ={CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "in","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [1] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "curr","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [2] ={
-                CHASSIS_PSU_CHAR_COUNT, CHASSIS_PSU_CHAR_COUNT*3, "power","_input",
-                S_IRUGO, _attr_show, NULL
-            },
-            [3] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT*3+CHASSIS_PSU_VOUT_INDEX, "in","_max",
-                S_IRUGO, show_psu_vout_max, NULL
-            },
-            [4] ={
-                CHASSIS_PSU_VOUT_COUNT,
-                CHASSIS_PSU_CHAR_COUNT*3+CHASSIS_PSU_VOUT_INDEX, "in","_min",
-                S_IRUGO, show_psu_vout_min, NULL
-            },
-        }
-    },
-};
 
-struct sensor_set *model_ssets = q16;
+
+#define DECLARE_PSU_SENSOR_DEVICE_ATTR(index) \
+static struct attr_pattern psu##index##_vin =  {CHASSIS_PSU_CHAR_COUNT, \
+CHASSIS_PSU_CHAR_COUNT*index, "in","_input", S_IRUGO, _attr_show, NULL}; \
+static struct attr_pattern psu##index##_curr =  {CHASSIS_PSU_CHAR_COUNT, \
+CHASSIS_PSU_CHAR_COUNT*index, "curr","_input", S_IRUGO, _attr_show, NULL}; \
+static struct attr_pattern psu##index##_pwr =  {CHASSIS_PSU_CHAR_COUNT, \
+CHASSIS_PSU_CHAR_COUNT*index, "power","_input", S_IRUGO, _attr_show, NULL}; \
+static struct attr_pattern psu##index##_vmax =  {CHASSIS_PSU_VOUT_COUNT, \
+CHASSIS_PSU_CHAR_COUNT*index + 1, "in","_max", S_IRUGO, show_psu_vout_max, NULL};\
+static struct attr_pattern psu##index##_vmin =  {CHASSIS_PSU_VOUT_COUNT, \
+CHASSIS_PSU_CHAR_COUNT*index + 1, "in","_min", S_IRUGO, show_psu_vout_min, NULL}
+
+#define DECLARE_PSU_ATTR(index) \
+    &psu##index##_vin, &psu##index##_curr, &psu##index##_pwr, \
+    &psu##index##_vmax, &psu##index##_vmin
+
+
+DECLARE_PSU_SENSOR_DEVICE_ATTR(0);
+DECLARE_PSU_SENSOR_DEVICE_ATTR(1);
+DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
+DECLARE_PSU_SENSOR_DEVICE_ATTR(3);
+
+
 
 static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
     "ls -v /sys/class/hwmon/hwmon*/temp1_input|head -n "\
@@ -376,10 +259,59 @@ static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
     " 56 0x58 w\r",
 };
 
+static struct attr_pattern temp_in =
+{   MAX_THERMAL_COUNT, 0, "temp","_input",
+    S_IRUGO, _attr_show, NULL
+};
+static struct attr_pattern fan_in_up =
+{   MAX_FAN_COUNT, 0, "fan","_input",
+    S_IRUGO, _attr_show, NULL
+};
+static struct attr_pattern fan_min_up =
+{   MAX_FAN_COUNT, 0, "fan","_min",
+    S_IRUGO, show_fan_min, NULL
+};
+static struct attr_pattern fan_in_dw =
+{   MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_input",
+    S_IRUGO, _attr_show, NULL
+};
+static struct attr_pattern fan_min_dw =
+{   MAX_FAN_COUNT, MAX_FAN_COUNT, "fan","_min",
+    S_IRUGO, show_fan_min, NULL
+};
+
+struct sensor_set model_ssets[SENSOR_TYPE_MAX] =
+{
+    {   MAX_THERMAL_COUNT, INDEX_THRM_IN_START, tty_cmd[SENSOR_TYPE_THERMAL],
+        TTY_RESPONSE_INTERVAL, {&temp_in, NULL},
+    },
+    {   MAX_FAN_COUNT, INDEX_FAN_RPM_START, tty_cmd[SENSOR_TYPE_FAN_RPM],
+        TTY_RESPONSE_INTERVAL, {&fan_in_up, &fan_min_up, NULL},
+    },
+    {   MAX_FAN_COUNT, INDEX_FAN_RPM_START_DN, tty_cmd[SENSOR_TYPE_FAN_RPM_DN],
+        TTY_RESPONSE_INTERVAL, {&fan_in_dw, &fan_min_dw, NULL},
+    },
+    {   PSU_DATA_MAX, INDEX_PSU1_START, tty_cmd[SENSOR_TYPE_PSU1],
+        TTY_PMBUS_INTERVAL, {DECLARE_PSU_ATTR(0), NULL},
+    },
+    {   PSU_DATA_MAX, INDEX_PSU2_START, tty_cmd[SENSOR_TYPE_PSU2],
+        TTY_PMBUS_INTERVAL, {DECLARE_PSU_ATTR(1), NULL},
+    },
+    {   PSU_DATA_MAX, INDEX_PSU3_START, tty_cmd[SENSOR_TYPE_PSU3],
+        TTY_PMBUS_INTERVAL, {DECLARE_PSU_ATTR(2), NULL},
+    },
+    {   PSU_DATA_MAX, INDEX_PSU4_START, tty_cmd[SENSOR_TYPE_PSU4],
+        TTY_PMBUS_INTERVAL, {DECLARE_PSU_ATTR(3), NULL},
+    },
+};
 static struct minipack_data *mp_data = NULL;
 
-static int _tty_wait( int mdelay) {
-    msleep(mdelay);
+/*-----------------------------------------------------------------------*/
+
+static int _tty_wait(u32 mdelay) {
+    if (mdelay) {
+        msleep(mdelay);
+    }
     return 0;
 }
 
@@ -400,6 +332,7 @@ static int _tty_open(struct file **fd)
         DEBUG_INTR("Failed to open file(%s)\r\n", TTY_DEVICE);
         return -ENOENT;
     } else {
+        spin_lock(&tty_fd->f_lock);
         tty = ((struct tty_file_private *)tty_fd ->private_data)->tty;
         mp_data->old_ktermios = (tty->termios);
 
@@ -424,9 +357,12 @@ static int _tty_open(struct file **fd)
 
 static int _tty_close(struct file **tty_fd)
 {
+    struct file *fd = *tty_fd;
+
     if(*tty_fd == NULL) {
         return -EINVAL;
     }
+    spin_unlock(&fd->f_lock);
     filp_close(*tty_fd, 0);
     *tty_fd = NULL;
 
@@ -471,7 +407,7 @@ static int _tty_rx(struct file *tty_fd, char *buf, int max_len)
         rc = tty_fd->f_op->read(tty_fd, buf, max_len, 0);
         if (rc == 0) {  /*Buffer Empty, waits. */
             timeout++;
-            msleep(TTY_RETRY_INTERVAL);
+            _tty_wait(TTY_RETRY_INTERVAL);
             continue;
         } else {
             break;
@@ -498,7 +434,6 @@ static int _tty_clear_rxbuf(struct file *tty_fd, char* buf, size_t max_size) {
     set_fs(KERNEL_DS);
     i = 0;
     do {
-        _tty_wait(TTY_RETRY_INTERVAL*i);
         rc = tty_fd->f_op->read(tty_fd, buf, max_size, 0);
         memset(buf, 0, max_size);
         i++;
@@ -528,49 +463,60 @@ static int _tty_writeNread(struct file *tty_fd,
     set_fs(KERNEL_DS);
     rc = _tty_tx(tty_fd, wr_p);
     if (rc < 0) {
-        printk( "failed to write(%d)\n", rc);
+        DEBUG_INTR( "failed to write(%d)\n", rc);
         goto exit;
     }
     _tty_wait(mdelay);
     rc = _tty_rx(tty_fd, rd_p, rx_max_len);
     if (rc < 0) {
-        printk( "failed to read(%d)\n", rc);
+        DEBUG_INTR("failed to read(%d)\n", rc);
         goto exit;
     }
 
 exit:
     set_fs(old_fs);
-    if(rc < 0) {
-        dev_err(mp_data->dev, "Failed on %s ret:%d\n", __func__, rc);
-    }
     return rc;
 }
 
-static bool _is_logged_in(char *buf)
-{
-    DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
-    /*Check if logined by compare BMC's cmd prompt.*/
-    if (strstr(buf, TTY_PROMPT) != NULL) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
+static bool _is_logged_in(struct file *tty_fd, char* buf, size_t max_size)
 {
     int i, ret;
 
-    if(!tty_fd)
-        return -EINVAL;
+    if (mp_data->logged_in) {
+        return true;
+    }
 
-    for (i = 1; i <= TTY_LOGIN_RETRY; i++) {
+    _tty_clear_rxbuf(tty_fd, buf, max_size);
+    for (i = 0; i < TTY_LOGIN_RETRY; i++) {
         ret = _tty_writeNread(tty_fd, "\r\r", buf, max_size, TTY_RETRY_INTERVAL);
         if (ret < 0) {
             DEBUG_INTR("%s-%d, failed ret:%d\n", __func__, __LINE__, ret);
             continue;
         }
-        if (_is_logged_in(buf))
+
+        DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
+        /*Check if logined by comparing BMC's cmd prompt.*/
+        if (strstr(buf, TTY_PROMPT) != NULL) {
+            mp_data->logged_in = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+
+}
+
+static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
+{
+    int i;
+    int ret = -EINVAL;
+
+    if(!tty_fd)
+        return -EINVAL;
+
+    for (i = 1; i <= TTY_LOGIN_RETRY; i++) {
+        if (_is_logged_in(tty_fd, buf, max_size))
             return 0;
 
         DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
@@ -597,7 +543,7 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
                 }
             }
         }
-        msleep(TTY_RETRY_INTERVAL);
+        _tty_wait(TTY_RETRY_INTERVAL);
     }
 
     dev_err(mp_data->dev, "Failed on %s ret:%d\n", __func__, ret);
@@ -605,7 +551,7 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
 }
 
 static int
-bmc_transaction(char *cmd, char* resp, int max)
+bmc_transaction(char *cmd, char* resp, int max, u32 mdelay)
 {
     u32  i;
     struct file *tty_fd = NULL;
@@ -620,14 +566,11 @@ bmc_transaction(char *cmd, char* resp, int max)
         DEBUG_INTR("ERROR: Cannot open TTY device\n");
         return -EAGAIN;
     }
-
     buf = (char *)kmalloc(buf_size, GFP_KERNEL);
     if (!buf) {
         ret = -ENOMEM;
         goto exit;
     }
-
-    _tty_clear_rxbuf(tty_fd, buf, buf_size);
     if (_tty_login(tty_fd, buf, buf_size) != 0) {
         dev_err(mp_data->dev, "Failed to login TTY device\n");
         _tty_close(&tty_fd);
@@ -637,26 +580,23 @@ bmc_transaction(char *cmd, char* resp, int max)
 
     i = 0;
     do {
-        msleep(i*TTY_RETRY_INTERVAL);
-        ret = _tty_writeNread(tty_fd, cmd, buf, buf_size, TTY_RESPONSE_INTERVAL);
+        ret = _tty_writeNread(tty_fd, cmd, buf, buf_size,
+                              mdelay+((i)*500));
         if (ret < 0) {
             goto exit;
         }
         i++;
     } while(strstr(buf, cmd) == NULL && i <= TTY_CMD_RETRY);
     if (i > TTY_CMD_RETRY) {
-        dev_err(mp_data->dev, "Failed on tty_transaction\n");
         ret = -ENOENT;
         goto exit;
     }
-
     strncpy(resp, buf, max);
 exit:
     kfree(buf);
     _tty_close(&tty_fd);
     return ret;
 }
-
 
 static void dev_attr_init(struct device_attribute *dev_attr,
                           const char *name, umode_t mode,
@@ -693,17 +633,15 @@ static int attributs_init(struct minipack_data *data)
         return ret;
 
     /*types*/
-    for (si = 0; si < SENSOR_TYPE_MAX; si++)
-    {
+    for (si = 0; si < SENSOR_TYPE_MAX; si++) {
         struct sensor_set *ss = model+si;
-        int ptn_cnt = ss->ptn_cnt;
         num = ss->total;
         start = ss->start_index;
         acc = start;
-        for (pi = 0; pi < ptn_cnt; pi++)
+        for (pi = 0; ss->ptn[pi]; pi++)
         {
-            struct attr_pattern  *ptn = &ss->ptn[pi];
             char *prefix, *postfix;
+            struct attr_pattern *ptn = ss->ptn[pi];
             prefix = ptn->prefix;
             postfix = ptn->postfix;
             for (ai = 0; ai < ptn->count ; ai++) {
@@ -732,6 +670,7 @@ static int attributs_init(struct minipack_data *data)
 
     return 0 ;
 }
+
 static void mp_data_init(struct minipack_data *data)
 {
 
@@ -872,12 +811,12 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
     if (out_cnt == 0)
         return 0;
 
-    snprintf(cmd, sizeof(cmd), tty_cmd[type]);
+    snprintf(cmd, sizeof(cmd), model_ssets[type].query);
     DEBUG_INTR("%s-%d, cmd:%s\n", __func__, __LINE__, cmd);
-    ret = bmc_transaction(cmd, resp, sizeof(resp)-1);
-    if (ret < 0)
+    ret = bmc_transaction(cmd, resp, sizeof(resp)-1, model_ssets[type].mdelay);
+    if (ret < 0) {
         return ret;
-
+    }
     /*Strip off string of command just sent, if any.*/
     if (strstr(resp, cmd) != NULL) {
         ptr = resp + strlen(cmd);
@@ -886,9 +825,9 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
     }
 
     switch (type) {
-    case SENSOR_TYPE_THERMAL_IN:
+    case SENSOR_TYPE_THERMAL:
     case SENSOR_TYPE_FAN_RPM:
-    case SENSOR_TYPE_FAN_RPM_DOWN:
+    case SENSOR_TYPE_FAN_RPM_DN:
         ret = extract_numbers(ptr, out, out_cnt);
         break;
     case SENSOR_TYPE_PSU1:
@@ -917,13 +856,13 @@ static int get_type_data (
     struct sensor_set *model = model_ssets;
 
     switch (type) {
-    case SENSOR_TYPE_THERMAL_IN:
+    case SENSOR_TYPE_THERMAL:
         *out = &data->lm75_input[index];
         break;
     case SENSOR_TYPE_FAN_RPM:
         *out = &data->fan_rpm[index];
         break;
-    case SENSOR_TYPE_FAN_RPM_DOWN:
+    case SENSOR_TYPE_FAN_RPM_DN:
         *out = &data->fan_rpm_dn[index];
         break;
     case SENSOR_TYPE_PSU1:
@@ -968,7 +907,6 @@ update_data(struct device *dev, enum sensor_type_e type) {
             } else {
                 *valid = 0;
             }
-            _tty_wait(1000);
         } else {
             *valid = 1;
         }
@@ -1073,7 +1011,7 @@ static int minipack_probe(struct platform_device *pdev)
         status = PTR_ERR(mp_data->hwmon_dev);
         goto exit_remove;
     }
-    dev_info(&pdev->dev, "minipackbf sensors found\n");
+    dev_info(&pdev->dev, "minipack sensors found\n");
     return 0;
 
 exit_remove:
