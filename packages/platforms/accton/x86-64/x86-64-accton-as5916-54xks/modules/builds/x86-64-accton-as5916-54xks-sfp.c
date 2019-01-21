@@ -1439,26 +1439,27 @@ static ssize_t set_phy(struct device *dev, struct device_attribute *da,
     /* Parsing command into tokens */
     token = __strtok_r(command, delim, &last);
     while (token != NULL) {
-        long param = 0;
+        unsigned long param = 0;
 
-    	status = kstrtol(token, 0, &param);
+    	status = kstrtoul(token, 0, &param);
     	if (status) {
-    		return status;
+    		goto exit_free;
     	} 
 
         /* Validate each param length */
         if (param > 0xFF) {
-            return -EINVAL;
+            status = -EINVAL;
+            goto exit_free;
         }
 
         ipmi_phy_tx_data[i++] = param;
         token = __strtok_r(NULL, delim, &last);
     }
 
-
     /* Validate command */
     if (i <= IPMI_PHY_HEADER_LEN || (i != IPMI_PHY_DATA_LEN(wdata.ipmi_tx_data[2]))) {
-        return -EINVAL;
+        status = -EINVAL;
+        goto exit_free;
     }
 
     mutex_lock(&data->update_lock);
@@ -1468,20 +1469,22 @@ static ssize_t set_phy(struct device *dev, struct device_attribute *da,
                                (unsigned char *)&wdata, 
                                IPMI_PHY_DATA_LEN(wdata.ipmi_tx_data[2]), NULL, 0);
     if (unlikely(status != 0)) {
-        goto exit;
+        goto exit_lock;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
         status = -EIO;
-        goto exit;
+        goto exit_lock;
     }
 
     status = count;
 
-exit:
+exit_lock:
     mutex_unlock(&data->update_lock);
-    return status;
+exit_free:
+    kfree(command);
 
+    return status;
 }
 
 /*************************************************************************************
