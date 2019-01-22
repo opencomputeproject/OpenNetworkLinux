@@ -46,12 +46,14 @@ Multistrap:
     source: http://apt.opennetlinux.org/debian
     suite: unstable
     omitdebsrc: true
+    arches: amd64, arm64, armel
 
   ONL-Local:
     packages: *Packages
     source: http://${APT_CACHE}apt.opennetlinux.org/debian
     suite: unstable
     omitdebsrc: true
+    arches: amd64, arm64, armel
 
   Local-All:
     source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-all

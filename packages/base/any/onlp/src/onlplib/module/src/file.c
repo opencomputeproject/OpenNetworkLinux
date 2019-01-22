@@ -62,12 +62,12 @@ ds_connect__(const char* path)
     if(connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == 0) {
 
         /*
-         * Set blocking with a 1 second timeout on all domain socket read/write operations.
+         * Set blocking with a 5 second timeout on all domain socket read/write operations.
          */
         struct timeval tv;
 
         fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
-        tv.tv_sec = 1;
+        tv.tv_sec = 5;
         tv.tv_usec = 0;
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
         return fd;

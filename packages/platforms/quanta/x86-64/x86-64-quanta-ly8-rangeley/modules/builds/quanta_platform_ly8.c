@@ -78,7 +78,6 @@ struct i2c_init_data {
 	int busno;
 	int gpio_base;
 	char name[I2C_NAME_SIZE];
-	int oom_port_name;
 };
 
 static struct i2c_init_data quanta_ly8_i2c_init_data[] = {
@@ -99,54 +98,54 @@ static struct i2c_init_data quanta_ly8_i2c_init_data[] = {
 	{ .parent_bus = (0x10 + 0), .type = i2c_type_pca9554, .addr = 0x25, .name = "PCA9554(PCA9698INT)\0" },
 	{ .parent_bus = (0x10 + 0), .type = i2c_type_pca9555, .addr = 0x24, .name = "PCA9555_3(FAN)\0" },
 	{ .parent_bus = (0x10 + 0), .type = i2c_type_pca9555, .addr = 0x23, .name = "PCA9555_4(QSFP_EN)\0" },
-	{ .parent_bus = (0x20 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_1_EEPROM\0", .oom_port_name = 1 },
-	{ .parent_bus = (0x20 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_2_EEPROM\0", .oom_port_name = 2 },
-	{ .parent_bus = (0x20 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_3_EEPROM\0", .oom_port_name = 3 },
-	{ .parent_bus = (0x20 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_4_EEPROM\0", .oom_port_name = 4 },
-	{ .parent_bus = (0x20 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_5_EEPROM\0", .oom_port_name = 5 },
-	{ .parent_bus = (0x20 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_6_EEPROM\0", .oom_port_name = 6 },
-	{ .parent_bus = (0x20 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_7_EEPROM\0", .oom_port_name = 7 },
-	{ .parent_bus = (0x20 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_8_EEPROM\0", .oom_port_name = 8 },
-	{ .parent_bus = (0x28 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_9_EEPROM\0", .oom_port_name = 9 },
-	{ .parent_bus = (0x28 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_10_EEPROM\0", .oom_port_name = 10 },
-	{ .parent_bus = (0x28 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_11_EEPROM\0", .oom_port_name = 11 },
-	{ .parent_bus = (0x28 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_12_EEPROM\0", .oom_port_name = 12 },
-	{ .parent_bus = (0x28 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_13_EEPROM\0", .oom_port_name = 13 },
-	{ .parent_bus = (0x28 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_14_EEPROM\0", .oom_port_name = 14 },
-	{ .parent_bus = (0x28 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_15_EEPROM\0", .oom_port_name = 15 },
-	{ .parent_bus = (0x28 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_16_EEPROM\0", .oom_port_name = 16 },
-	{ .parent_bus = (0x30 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_17_EEPROM\0", .oom_port_name = 17 },
-	{ .parent_bus = (0x30 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_18_EEPROM\0", .oom_port_name = 18 },
-	{ .parent_bus = (0x30 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_19_EEPROM\0", .oom_port_name = 19 },
-	{ .parent_bus = (0x30 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_20_EEPROM\0", .oom_port_name = 20 },
-	{ .parent_bus = (0x30 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_21_EEPROM\0", .oom_port_name = 21 },
-	{ .parent_bus = (0x30 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_22_EEPROM\0", .oom_port_name = 22 },
-	{ .parent_bus = (0x30 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_23_EEPROM\0", .oom_port_name = 23 },
-	{ .parent_bus = (0x30 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_24_EEPROM\0", .oom_port_name = 24 },
-	{ .parent_bus = (0x38 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_25_EEPROM\0", .oom_port_name = 25 },
-	{ .parent_bus = (0x38 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_26_EEPROM\0", .oom_port_name = 26 },
-	{ .parent_bus = (0x38 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_27_EEPROM\0", .oom_port_name = 27 },
-	{ .parent_bus = (0x38 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_28_EEPROM\0", .oom_port_name = 28 },
-	{ .parent_bus = (0x38 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_29_EEPROM\0", .oom_port_name = 29 },
-	{ .parent_bus = (0x38 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_30_EEPROM\0", .oom_port_name = 30 },
-	{ .parent_bus = (0x38 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_31_EEPROM\0", .oom_port_name = 31 },
-	{ .parent_bus = (0x38 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_32_EEPROM\0", .oom_port_name = 32 },
-	{ .parent_bus = (0x40 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_33_EEPROM\0", .oom_port_name = 33 },
-	{ .parent_bus = (0x40 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_34_EEPROM\0", .oom_port_name = 34 },
-	{ .parent_bus = (0x40 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_35_EEPROM\0", .oom_port_name = 35 },
-	{ .parent_bus = (0x40 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_36_EEPROM\0", .oom_port_name = 36 },
-	{ .parent_bus = (0x40 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_37_EEPROM\0", .oom_port_name = 37 },
-	{ .parent_bus = (0x40 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_38_EEPROM\0", .oom_port_name = 38 },
-	{ .parent_bus = (0x40 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_39_EEPROM\0", .oom_port_name = 39 },
-	{ .parent_bus = (0x40 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_40_EEPROM\0", .oom_port_name = 40 },
-	{ .parent_bus = (0x48 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_41_EEPROM\0", .oom_port_name = 41 },
-	{ .parent_bus = (0x48 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_42_EEPROM\0", .oom_port_name = 42 },
-	{ .parent_bus = (0x48 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_43_EEPROM\0", .oom_port_name = 43 },
-	{ .parent_bus = (0x48 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_44_EEPROM\0", .oom_port_name = 44 },
-	{ .parent_bus = (0x48 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_45_EEPROM\0", .oom_port_name = 45 },
-	{ .parent_bus = (0x48 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_46_EEPROM\0", .oom_port_name = 46 },
-	{ .parent_bus = (0x48 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_47_EEPROM\0", .oom_port_name = 47 },
-	{ .parent_bus = (0x48 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_48_EEPROM\0", .oom_port_name = 48 },
+	{ .parent_bus = (0x20 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_1_EEPROM\0" },
+	{ .parent_bus = (0x20 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_2_EEPROM\0" },
+	{ .parent_bus = (0x20 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_3_EEPROM\0" },
+	{ .parent_bus = (0x20 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_4_EEPROM\0" },
+	{ .parent_bus = (0x20 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_5_EEPROM\0" },
+	{ .parent_bus = (0x20 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_6_EEPROM\0" },
+	{ .parent_bus = (0x20 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_7_EEPROM\0" },
+	{ .parent_bus = (0x20 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_8_EEPROM\0" },
+	{ .parent_bus = (0x28 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_9_EEPROM\0" },
+	{ .parent_bus = (0x28 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_10_EEPROM\0" },
+	{ .parent_bus = (0x28 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_11_EEPROM\0" },
+	{ .parent_bus = (0x28 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_12_EEPROM\0" },
+	{ .parent_bus = (0x28 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_13_EEPROM\0" },
+	{ .parent_bus = (0x28 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_14_EEPROM\0" },
+	{ .parent_bus = (0x28 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_15_EEPROM\0" },
+	{ .parent_bus = (0x28 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_16_EEPROM\0" },
+	{ .parent_bus = (0x30 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_17_EEPROM\0" },
+	{ .parent_bus = (0x30 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_18_EEPROM\0" },
+	{ .parent_bus = (0x30 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_19_EEPROM\0" },
+	{ .parent_bus = (0x30 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_20_EEPROM\0" },
+	{ .parent_bus = (0x30 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_21_EEPROM\0" },
+	{ .parent_bus = (0x30 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_22_EEPROM\0" },
+	{ .parent_bus = (0x30 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_23_EEPROM\0" },
+	{ .parent_bus = (0x30 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_24_EEPROM\0" },
+	{ .parent_bus = (0x38 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_25_EEPROM\0" },
+	{ .parent_bus = (0x38 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_26_EEPROM\0" },
+	{ .parent_bus = (0x38 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_27_EEPROM\0" },
+	{ .parent_bus = (0x38 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_28_EEPROM\0" },
+	{ .parent_bus = (0x38 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_29_EEPROM\0" },
+	{ .parent_bus = (0x38 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_30_EEPROM\0" },
+	{ .parent_bus = (0x38 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_31_EEPROM\0" },
+	{ .parent_bus = (0x38 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_32_EEPROM\0" },
+	{ .parent_bus = (0x40 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_33_EEPROM\0" },
+	{ .parent_bus = (0x40 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_34_EEPROM\0" },
+	{ .parent_bus = (0x40 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_35_EEPROM\0" },
+	{ .parent_bus = (0x40 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_36_EEPROM\0" },
+	{ .parent_bus = (0x40 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_37_EEPROM\0" },
+	{ .parent_bus = (0x40 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_38_EEPROM\0" },
+	{ .parent_bus = (0x40 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_39_EEPROM\0" },
+	{ .parent_bus = (0x40 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_40_EEPROM\0" },
+	{ .parent_bus = (0x48 + 0), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_41_EEPROM\0" },
+	{ .parent_bus = (0x48 + 1), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_42_EEPROM\0" },
+	{ .parent_bus = (0x48 + 2), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_43_EEPROM\0" },
+	{ .parent_bus = (0x48 + 3), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_44_EEPROM\0" },
+	{ .parent_bus = (0x48 + 4), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_45_EEPROM\0" },
+	{ .parent_bus = (0x48 + 5), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_46_EEPROM\0" },
+	{ .parent_bus = (0x48 + 6), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_47_EEPROM\0" },
+	{ .parent_bus = (0x48 + 7), .type = i2c_type_optoe2_SFP,   .addr = 0x50, .name = "SFP_48_EEPROM\0" },
 
 	{ .parent_bus = (0x10 + 3), .type = i2c_type_pca9698, .addr = 0x23, .name = "PCA9698(SFP_1-8)\0" },
 	{ .parent_bus = (0x10 + 3), .type = i2c_type_pca9698, .addr = 0x21, .name = "PCA9698(SFP_9-16)\0" },
@@ -156,10 +155,10 @@ static struct i2c_init_data quanta_ly8_i2c_init_data[] = {
 	{ .parent_bus = (0x10 + 4), .type = i2c_type_pca9698, .addr = 0x25, .name = "PCA9698(SFP_41-48)\0" },
 
 	{ .parent_bus = (0x10 + 5), .type = i2c_type_pca9548, .addr = 0x76, .busno = 0x50, .name = "PCA9548_8\0" },
-	{ .parent_bus = (0x50 + 0), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_1_EEPROM\0", .oom_port_name = 49 },
-	{ .parent_bus = (0x50 + 1), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_2_EEPROM\0", .oom_port_name = 50 },
-	{ .parent_bus = (0x50 + 2), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_3_EEPROM\0", .oom_port_name = 51 },
-	{ .parent_bus = (0x50 + 3), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_4_EEPROM\0", .oom_port_name = 52 },
+	{ .parent_bus = (0x50 + 0), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_1_EEPROM\0" },
+	{ .parent_bus = (0x50 + 1), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_2_EEPROM\0" },
+	{ .parent_bus = (0x50 + 2), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_3_EEPROM\0" },
+	{ .parent_bus = (0x50 + 3), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QSFP_4_EEPROM\0" },
 
 	{ .parent_bus = (0x10 + 5), .type = i2c_type_pca9555, .addr = 0x24, .name = "PCA9555_1(LED)\0" },
 	{ .parent_bus = (0x10 + 6), .type = i2c_type_pca9555, .addr = 0x23, .name = "PCA9555_2(QSFP)\0" },
@@ -167,8 +166,8 @@ static struct i2c_init_data quanta_ly8_i2c_init_data[] = {
 	/* QSFP+ DB */
 	{ .parent_bus = (0x10 + 7), .type = i2c_type_pca9555, .addr = 0x23, .name = "PCA9555(QDB)\0" },
 	{ .parent_bus = (0x10 + 7), .type = i2c_type_pca9546, .addr = 0x76, .busno = 0x58, .name = "PCA9546(QDB)\0" },
-	{ .parent_bus = (0x58 + 0), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QDB_QSFP_1_EEPROM\0", .oom_port_name = 53 },
-	{ .parent_bus = (0x58 + 1), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QDB_QSFP_2_EEPROM\0", .oom_port_name = 54 },
+	{ .parent_bus = (0x58 + 0), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QDB_QSFP_1_EEPROM\0" },
+	{ .parent_bus = (0x58 + 1), .type = i2c_type_optoe1_QSFP,   .addr = 0x50, .name = "QDB_QSFP_2_EEPROM\0" },
 
 	{ .parent_bus = (0x00 + 0), .type = i2c_type_pca9546, .addr = 0x72, .busno = 0x18, .name = "PCA9546\0" },
 	{ .parent_bus = (0x18 + 0), .type = i2c_type_emerson700,   .addr = 0x6f, .name = "PSU_1\0" }, /* RPSU 1 */
@@ -249,31 +248,9 @@ static inline struct pca953x_platform_data *pca953x_platform_data_get(int type, 
 	return &platform_data;
 }
 
-struct optoe_platform_data {
-	u32		byte_len;		/* size (sum of all addr) */
-	u16		page_size;		/* for writes */
-	u8		flags;
-
-	void		(*setup)(struct memory_accessor *, void *context);
-	void		*context;
-
-	int oom_port_name;
-};
-
-static inline struct optoe_platform_data *optoe_platform_data_get(int port_name) {
-	static struct optoe_platform_data platform_data;
-
-	platform_data = (struct optoe_platform_data) {
-		.oom_port_name = port_name,
-	};
-
-	return &platform_data;
-}
-
 static inline struct i2c_board_info *i2c_board_info_get(struct i2c_init_data data) {
 	struct pca954x_platform_data *mux_platform_data;
 	struct pca953x_platform_data *gpio_platform_data;
-	struct optoe_platform_data *oom_platform_data;
 	static struct i2c_board_info board_info;
 
 	switch(data.type) {
@@ -303,16 +280,6 @@ static inline struct i2c_board_info *i2c_board_info_get(struct i2c_init_data dat
 			break;
 		case i2c_type_optoe1_QSFP:
 		case i2c_type_optoe2_SFP:
-			oom_platform_data = optoe_platform_data_get(data.oom_port_name);
-			if(oom_platform_data == NULL) {
-				return (struct i2c_board_info *) NULL;
-			}
-
-			board_info = (struct i2c_board_info) {
-				.platform_data = oom_platform_data,
-			};
-			break;
-
 		case i2c_type_rtc:
 		case i2c_type_spd:
 		case i2c_type_24c02:

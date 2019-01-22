@@ -38,6 +38,17 @@
 #include "x86_64_delta_ag9032v1_log.h"
 #include "platform_lib.h"
 
+// U57 , U334 ,U38,U40 ,U240
+static thermal_fan_t thermal_level[5]={
+    { {200,64,60,56,52,45},{65,58,54,50,46,0},9},  
+    { {200,64,60,56,52,45},{65,58,54,50,46,0},9},  
+    { {200,79,75,71,67,63},{82,73,69,65,61,0},9},
+    { {200,69,65,61,57,53},{71,63,59,55,51,0},9},
+    { {200,54,49,44,39,39},{55,46,41,36,0,0},9}
+};
+
+
+
 const char*
 onlp_sysi_platform_get(void)
 {
@@ -47,6 +58,7 @@ onlp_sysi_platform_get(void)
 int
 onlp_sysi_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 
@@ -120,15 +132,16 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     {
         *e++ = ONLP_PSU_ID_CREATE(i);
     }
-
     return 0;
 }
 
 int
 onlp_sysi_platform_manage_fans(void)
 {
-     int i = 0;
+     int i=0,j=0;
      int highest_temp = 0;
+     int current_temp = 0;
+     int highest_lv = LEVEL_6;
      onlp_thermal_info_t thermal[8];
      int new_duty_percentage;
     /* Get current temperature
@@ -148,35 +161,51 @@ onlp_sysi_platform_manage_fans(void)
 	{
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), new_duty_percentage);
 	}
-
         AIM_LOG_ERROR("Unable to read thermal status");
         return ONLP_STATUS_E_INTERNAL;
     }
-    for (i = 0; i < 8; i++)
-    {
-        if (thermal[i].mcelsius > highest_temp)
-        {
-            highest_temp = thermal[i].mcelsius;
+
+    for(i=0;i<5;i++){ 
+        current_temp=thermal[i+1].mcelsius/1000;
+        if(thermal_level[i].current_lv == 9){ // initialize the temp level
+            thermal_level[i].current_lv = LEVEL_4;
         }
+        j=thermal_level[i].current_lv;
+        if(current_temp < thermal_level[i].temp_L[j] && thermal_level[i].current_lv < LEVEL_6 ){ // goto lower level
+            thermal_level[i].current_lv++;
+        }
+        else if(current_temp > thermal_level[i].temp_H[j] && thermal_level[i].current_lv > LEVEL_1 ){    // goto upper level
+            thermal_level[i].current_lv--;
+        }
+        else{      // keep in curent level 
+            // keep in the curent level and 
+        }     
+        if(highest_lv > thermal_level[i].current_lv)
+            highest_lv = thermal_level[i].current_lv;  //update the highest level
     }
+   
+    switch (highest_lv)
+    { 
+        case LEVEL_1:
+        case LEVEL_2: 
+            new_duty_percentage = SPEED_100_PERCENTAGE;
+            break;
+        case LEVEL_3: 
+            new_duty_percentage = SPEED_80_PERCENTAGE;
+            break;
+        case LEVEL_4: 
+            new_duty_percentage = SPEED_60_PERCENTAGE;
+            break;
+        case LEVEL_5: 
+            new_duty_percentage = SPEED_40_PERCENTAGE;
+            break;
+        case LEVEL_6: 
+            new_duty_percentage = SPEED_30_PERCENTAGE;
+            break;
+         default:
+            new_duty_percentage = SPEED_100_PERCENTAGE;
+            break;
 
-    highest_temp = highest_temp/1000;
-
-    if (highest_temp > 0 && highest_temp <= 30)
-    {
-        new_duty_percentage = SPEED_25_PERCENTAGE;
-    } 
-    else if (highest_temp > 30 && highest_temp <= 40)
-    {
-       new_duty_percentage = SPEED_50_PERCENTAGE;
-    }
-    else if (highest_temp > 40 && highest_temp <= 50)
-    {
-        new_duty_percentage = SPEED_75_PERCENTAGE;
-    }
-    else
-    {
-        new_duty_percentage = SPEED_100_PERCENTAGE;
     }
     /* Set speed on fan 1-10*/
     for(i = 1 ; i <= 10; i++)
@@ -188,7 +217,7 @@ onlp_sysi_platform_manage_fans(void)
      */
     if(highest_temp >= 0 && highest_temp <= 55)
     {
-	new_duty_percentage = SPEED_50_PERCENTAGE;
+	new_duty_percentage = SPEED_60_PERCENTAGE;
     }
     else if(highest_temp > 55)
     {
@@ -210,26 +239,27 @@ onlp_sysi_platform_manage_leds(void)
 {
     /* Set front lights: fan, power supply 1, 2 
      */
-    int fantray_present = -1, rpm, rpm1,i=0,count=0, state; 
+    int  rpm, rpm1,i=0,count=0, state;
+    uint8_t present_bit = 0x00;
     uint8_t power_state;
     mux_info_t mux_info;
+    dev_info_t dev_info;
+
     mux_info.offset = SWPLD_PSU_FAN_I2C_MUX_REG;
+    mux_info.channel = 0x07;
     mux_info.flags = DEFAULT_FLAG;
 
-    dev_info_t dev_info;
     dev_info.bus = I2C_BUS_3;
+    dev_info.addr = FAN_IO_CTL;
     dev_info.offset = 0x00;
     dev_info.flags = DEFAULT_FLAG;
+    dev_info.size = 1;
 
-    
+    present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
     /* Fan tray 1 */
-    mux_info.channel = 0x00;
-    dev_info.addr = FAN_TRAY_1;
-    fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-    
     rpm = dni_i2c_lock_read_attribute(NULL, FAN5_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN5_REAR);
-    if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 4)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_GREEN);
@@ -239,14 +269,11 @@ onlp_sysi_platform_manage_leds(void)
           
         onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),ONLP_LED_MODE_RED);
     }
-	/* Fan tray 2 */
-	mux_info.channel = 0x01;
-    dev_info.addr = FAN_TRAY_2;
-    fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-    
+
+    /* Fan tray 2 */
     rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
-    if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 3)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_GREEN);
@@ -256,14 +283,11 @@ onlp_sysi_platform_manage_leds(void)
           
         onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),ONLP_LED_MODE_RED);
     }
-	/* Fan tray 3 */
-	mux_info.channel = 0x02;
-    dev_info.addr = FAN_TRAY_3;
-    fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-    
+
+    /* Fan tray 3 */
     rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
-    if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 2)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_GREEN);
@@ -273,14 +297,11 @@ onlp_sysi_platform_manage_leds(void)
           
         onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),ONLP_LED_MODE_RED);
     }
-	/* Fan tray 4 */
-	mux_info.channel = 0x03;
-    dev_info.addr = FAN_TRAY_4;
-    fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-    
+
+    /* Fan tray 4 */
     rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
-    if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & (1 << 1)) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4),ONLP_LED_MODE_GREEN);
@@ -290,14 +311,11 @@ onlp_sysi_platform_manage_leds(void)
           
         onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4),ONLP_LED_MODE_RED);
     }
-	/* Fan tray 5 */
-	mux_info.channel = 0x04;
-    dev_info.addr = FAN_TRAY_5;
-    fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-    
+
+    /* Fan tray 5 */
     rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
     rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
-    if(fantray_present >= 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
+    if((present_bit & 1) == 0 && rpm != 960 && rpm != 0 && rpm1 != 960 && rpm1 != 0 )
     {/* Green light */
           
 	    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_5),ONLP_LED_MODE_GREEN);
@@ -311,10 +329,12 @@ onlp_sysi_platform_manage_leds(void)
 	/* FRONT FAN LED & SYS */
     for(i = 0; i < 5; i++)
     {
-        mux_info.channel = i;
-        dev_info.addr = FAN_TRAY_1 + i;
-        fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
-		if( fantray_present >= 0)
+        //mux_info.channel = i;
+        //dev_info.addr = FAN_TRAY_1 + i;
+        //fantray_present = dni_i2c_lock_read(&mux_info, &dev_info);
+       	//	if( fantray_present >= 0)
+        present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
+        if( (present_bit & (1 << i)) == 0)
             count++;
     }
                 /* Set front light of FAN */
@@ -336,7 +356,7 @@ onlp_sysi_platform_manage_leds(void)
     state = dni_i2c_lock_read(&mux_info, &dev_info);
         
     /* Check the state of PSU 1, "state = 1, PSU exists' */
-    if(state == 1)
+    if(state > 0)
     {
         power_state = dni_lock_swpld_read_attribute(CTL_REG);
         /* Set the light of PSU */
@@ -360,7 +380,7 @@ onlp_sysi_platform_manage_leds(void)
     state = dni_i2c_lock_read(&mux_info, &dev_info);
         
     /* Check the state of PSU 2, "state = 1, PSU exists' */
-    if(state == 1)
+    if(state > 0)
     {
         power_state = dni_lock_swpld_read_attribute(CTL_REG);
         /* Set the light of PSU */

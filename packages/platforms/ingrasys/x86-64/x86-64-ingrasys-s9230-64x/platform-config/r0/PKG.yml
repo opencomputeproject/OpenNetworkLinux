@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=ingrasys BASENAME=x86-64-ingrasys-s9230-64x REVISION=r0

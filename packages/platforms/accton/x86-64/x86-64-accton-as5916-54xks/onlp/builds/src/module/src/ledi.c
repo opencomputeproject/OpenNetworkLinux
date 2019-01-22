@@ -27,7 +27,7 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT "/sys/class/leds/accton_as5916_54xks_led::%s/brightness"
+#define LED_FORMAT "/sys/devices/platform/as5916_54xks_led/%s"
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -78,8 +78,8 @@ typedef struct led_light_mode_map {
 } led_light_mode_map_t;
 
 led_light_mode_map_t led_map[] = {
-{LED_LOC,  LED_MODE_OFF,    ONLP_LED_MODE_OFF},
-{LED_LOC,  LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
+{LED_LOC,  LED_MODE_OFF,             ONLP_LED_MODE_OFF},
+{LED_LOC,  LED_MODE_ORANGE_BLINKING, ONLP_LED_MODE_ORANGE_BLINKING},
 {LED_DIAG, LED_MODE_OFF,    ONLP_LED_MODE_OFF},
 {LED_DIAG, LED_MODE_GREEN,  ONLP_LED_MODE_GREEN},
 {LED_DIAG, LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
@@ -91,11 +91,11 @@ led_light_mode_map_t led_map[] = {
 static char *leds[] =  /* must map with onlp_led_id */
 {
     NULL,
-    "loc",
-    "diag",
-    "psu1",
-    "psu2",
-    "fan"
+    "led_loc",
+    "led_diag",
+    "led_psu1",
+    "led_psu2",
+    "led_fan"
 };
 
 /*
@@ -107,12 +107,12 @@ static onlp_led_info_t linfo[] =
     {
         { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 1 (LOC LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE_BLINKING,
     },
     {
         { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 2 (DIAG LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE,
     },
     {
         { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 3 (PSU1 LED)", 0 },
@@ -197,7 +197,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     info->mode = driver_to_onlp_led_mode(lid, value);
 
     /* Set the on/off status */
-    if (info->mode != ONLP_LED_MODE_OFF) {
+    if (info->mode != ONLP_LED_MODE_OFF && info->mode != ONLP_LED_MODE_AUTO) {
         info->status |= ONLP_LED_STATUS_ON;
     }
 

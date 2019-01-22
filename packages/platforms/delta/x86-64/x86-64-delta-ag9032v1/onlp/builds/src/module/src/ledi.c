@@ -99,6 +99,7 @@ static onlp_led_info_t linfo[] =
 int
 onlp_ledi_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 
@@ -311,15 +312,15 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             if(mode == ONLP_LED_MODE_GREEN)
             {
                front_panel_led_value |= 0x01;
-               dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+               dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE)
             {
                 front_panel_led_value |= 0x02;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             break;
          case LED_FRONT_PWR1: 
             /* Clean bit 7,6 */
@@ -329,18 +330,18 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             {
                 /* Green */
                 front_panel_led_value |= 0x40;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE_BLINKING)
             {
                 /* BLINKING ORANGE */
                 front_panel_led_value |= 0x80;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_OFF)
             {
                 front_panel_led_value &= ~0xC0;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else
                 return ONLP_STATUS_E_UNSUPPORTED;
@@ -353,18 +354,18 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             {
                 /* Green */
                 front_panel_led_value |= 0x10;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE_BLINKING)
             { 
                 /* BLINKING ORANGE */
                 front_panel_led_value |= 0x20;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_OFF)
             {
                 front_panel_led_value &= ~0x30;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else
                 return ONLP_STATUS_E_UNSUPPORTED;
@@ -376,20 +377,20 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             if(mode == ONLP_LED_MODE_GREEN_BLINKING)
             {
                 front_panel_led_value |= 0x08;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if (mode == ONLP_LED_MODE_GREEN)
             {
                 front_panel_led_value |= 0x04;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else if (mode == ONLP_LED_MODE_RED) 
             {
                 front_panel_led_value |= 0x0c;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value,BUS_LOCK);
             break;
  
         case LED_REAR_FAN_TRAY_1:
@@ -397,75 +398,75 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
              if(mode == ONLP_LED_MODE_GREEN)
              {/* Green light */
                  fan_tray_led_reg_value |= 0x40;
-                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                 dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
              }
              else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_value |= 0x80;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
              }
              else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
              break;
         case LED_REAR_FAN_TRAY_2:
             fan_tray_led_reg_value &= ~0x30;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x10;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x20;
-               dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+               dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             break;
         case LED_REAR_FAN_TRAY_3:
             fan_tray_led_reg_value &= ~0x0c;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x04;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x08;
-               dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+               dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             break;
         case LED_REAR_FAN_TRAY_4:
             fan_tray_led_reg_value &= ~0x03;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x01;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                 fan_tray_led_reg_value |= 0x02;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
             break;
          case LED_REAR_FAN_TRAY_5:
              fan_tray_led_reg_2_value &= ~0xC0;
              if(mode == ONLP_LED_MODE_GREEN)
              {/* Green light */
                 fan_tray_led_reg_2_value |= 0x40;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value,BUS_LOCK);
              }
              else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_2_value |= 0x80;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value,BUS_LOCK);
              }
              else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value,BUS_LOCK);
              break;
     }
     return ONLP_STATUS_OK;
