@@ -33,6 +33,7 @@ def baseconfig():
                    'i386-linux-gnu',
                    'x86_64-linux-gnu',
                    'arm-linux-gnueabi',
+                   'arm-linux-gnueabihf',
                    'aarch64-linux-gnu',
                    ]
 

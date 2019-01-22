@@ -64,6 +64,9 @@ int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value);
 int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data_size);
 
+int bmc_tty_init(void);
+int bmc_tty_deinit(void);
+
 #endif  /* __PLATFORM_LIB_H__ */
 
 

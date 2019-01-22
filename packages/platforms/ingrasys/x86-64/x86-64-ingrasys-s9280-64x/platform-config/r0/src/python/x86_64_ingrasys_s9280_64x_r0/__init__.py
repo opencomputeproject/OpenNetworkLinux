@@ -1,6 +1,13 @@
 from onl.platform.base import *
 from onl.platform.ingrasys import *
 import os
+import sys
+
+def msg(s, fatal=False):
+    sys.stderr.write(s)
+    sys.stderr.flush()
+    if fatal:
+        sys.exit(1)
 
 class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
     PLATFORM='x86-64-ingrasys-s9280-64x-r0'
@@ -20,6 +27,11 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
                        3,  4,  7,  8, 11, 12, 15, 16,  3,  4,  7,  8, 11, 12, 15, 16,
                        3,  4,  7,  8, 11, 12, 15, 16,  3,  4,  7,  8, 11, 12, 15, 16)
                 
+        # vid to mac vdd value mapping 
+        vdd_val_array=( 0.85,  0.82,  0.77,  0.87,  0.74,  0.84,  0.79,  0.89 )
+        # vid to rov reg value mapping 
+        rov_reg_array=( 0x79,  0x73,  0x69,  0x7D,  0x63, 0x77, 0x6D, 0x81 )
+        
         self.insmod("eeprom_mb")        
         # init SYS EEPROM devices
         self.new_i2c_devices(
@@ -176,6 +188,19 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
         for i in range(1, 3):
             self.new_i2c_device('sff8436', 0x50, 28+i)
 
+        # _mac_vdd_init
+        rov_status_file = open("/sys/bus/i2c/devices/1-0033/cpld_rov_status", "r")
+        reg_val_str = rov_status_file.read()
+        rov_status_file.close()
+
+        reg_val = int(reg_val_str, 16)
+        vid = reg_val & 0x7
+        mac_vdd_val = vdd_val_array[vid]
+        rov_reg = rov_reg_array[vid]
+        
+        msg("Setting mac vdd %1.2f with rov register value 0x%x\n" % (mac_vdd_val, rov_reg) ) 
+        os.system("i2cset -y -r 15 0x76 0x21 0x%x w" % rov_reg)
+        
         # _i2c_fan_speed_init 
         os.system("echo 120 > /sys/class/hwmon/hwmon1/device/pwm2")
 

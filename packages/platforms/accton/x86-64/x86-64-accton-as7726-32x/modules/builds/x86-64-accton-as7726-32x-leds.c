@@ -53,7 +53,6 @@ static struct accton_as7726_32x_led_data  *ledctl = NULL;
 #define LED_TYPE_DIAG_REG_MASK	 (0x3)
 #define LED_MODE_DIAG_GREEN_VALUE  (0x02)
 #define LED_MODE_DIAG_RED_VALUE	(0x01)
-#define LED_MODE_DIAG_AMBER_VALUE  (0x00)  /*It's yellow actually. Green+Red=Yellow*/
 #define LED_MODE_DIAG_OFF_VALUE	(0x03)
 
 
@@ -102,11 +101,11 @@ struct led_type_mode {
 
 static struct led_type_mode led_type_mode_data[] = {
     {LED_TYPE_LOC,  LED_MODE_OFF,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_OFF_VALUE},
-    {LED_TYPE_LOC,  LED_MODE_AMBER,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_ON_VALUE},
+    {LED_TYPE_LOC,  LED_MODE_BLUE,	LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_ON_VALUE},
     {LED_TYPE_DIAG, LED_MODE_OFF,   LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_OFF_VALUE},
     {LED_TYPE_DIAG, LED_MODE_GREEN, LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_GREEN_VALUE},
+    {LED_TYPE_DIAG, LED_MODE_OFF,   LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_OFF_VALUE},
     {LED_TYPE_DIAG, LED_MODE_RED,   LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_RED_VALUE},
-    {LED_TYPE_DIAG, LED_MODE_AMBER, LED_TYPE_DIAG_REG_MASK,  LED_MODE_DIAG_AMBER_VALUE},
 };
 
 
@@ -428,6 +427,6 @@ static void __exit accton_as7726_32x_led_exit(void)
 module_init(accton_as7726_32x_led_init);
 module_exit(accton_as7726_32x_led_exit);
 
-MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
+MODULE_AUTHOR("Jostar Yang <jostar_yang@accton.com.tw>");
 MODULE_DESCRIPTION("accton_as7726_32x_led driver");
 MODULE_LICENSE("GPL");

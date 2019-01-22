@@ -105,7 +105,7 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
     int rpm = 0;
     char fullpath[100] = {0};
-    uint8_t present_bit=0x00, bit=0x00;
+    uint8_t present_bit=0x00;
 
     mux_info_t mux_info;
     mux_info.offset = SWPLD_PSU_FAN_I2C_MUX_REG;
@@ -117,7 +117,7 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     dev_info.addr = FAN_IO_CTL;
     dev_info.offset = 0x00;
     dev_info.flags = DEFAULT_FLAG;
-    
+
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(&mux_info, fullpath);
     info->rpm = rpm;
@@ -128,42 +128,42 @@ dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 
     /* get speed percentage from rpm */
     info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
-    
+
     mux_info.channel = 0x07;
     present_bit = dni_i2c_lock_read(&mux_info, &dev_info);
     switch(local_id)
     {
         case FAN_1_ON_FAN_BOARD:
         case FAN_6_ON_FAN_BOARD:
-            if((present_bit & (bit+1)) == 0)
+            if((present_bit & 1) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_2_ON_FAN_BOARD:
         case FAN_7_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<1)) == 0)
+            if((present_bit & (1<<1)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_3_ON_FAN_BOARD:
         case FAN_8_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<2)) == 0)
+            if((present_bit & (1<<2)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_4_ON_FAN_BOARD:
         case FAN_9_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<3)) == 0)
+            if((present_bit & (1<<3)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
         case FAN_5_ON_FAN_BOARD:
         case FAN_10_ON_FAN_BOARD:
-            if((present_bit & ((bit+1)<<4)) == 0)
+            if((present_bit & (1<<4)) == 0)
                 info->status |= ONLP_FAN_STATUS_PRESENT;
             else
                 info->status |= ONLP_FAN_STATUS_FAILED;
@@ -179,7 +179,7 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     int r_data = 0;
     uint8_t channel = 0x00;
     char fullpath[80] = {0};
-    char channel_data[2] = {'\0'};
+    char channel_data[3] = {'\0'};
     mux_info_t mux_info;
     dev_info_t dev_info;
 
@@ -235,7 +235,7 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 
     /* get speed percentage from rpm */
     info->percentage = ((info->rpm) * 100) / MAX_PSU_FAN_SPEED;
-    
+
     return ONLP_STATUS_OK;
 }
 
@@ -245,6 +245,7 @@ dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 int
 onlp_fani_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 
@@ -338,11 +339,11 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
  */
 int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
-{   
+{
     int local_id;
     char data[10] = {0};
     char fullpath[70] = {0};
-    char channel_data[2] = {'\0'};
+    char channel_data[3] = {'\0'};
 
     VALIDATE(id);
     local_id = ONLP_OID_ID_GET(id);
@@ -375,11 +376,11 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     }
 
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
- 
+
     /* Write percentage to psu_fan1_duty_cycle_percentage */
     sprintf(data, "%d", p);
     dni_i2c_lock_write_attribute(NULL, data, fullpath);
-    
+
     return ONLP_STATUS_OK;
 }
 

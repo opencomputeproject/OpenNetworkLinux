@@ -1,5 +1,25 @@
-#!/bin/sh
-############################################################
-onlfs mount images --rw
-(cd /mnt/onl/images && rm -f *.swi && wget $1)
-onlfs mount images
+#!/usr/bin/python
+import os
+import sys
+import argparse
+import subprocess
+from onl.util import wget
+from onl.mounts import OnlMountContextReadWrite
+
+ap = argparse.ArgumentParser('onlswi')
+ap.add_argument('url', help="The SWI URL")
+ap.add_argument('--onl-data', help='Use /mnt/onl/data for temporary storage.', action='store_true')
+
+ops = ap.parse_args()
+(ex, filename, directory) = wget(ops.url, extension=".swi", temp_directory='/mnt/onl/data' if ops.onl_data else None)
+
+if ex:
+    print ex
+    sys.exit(1)
+
+with OnlMountContextReadWrite('ONL-IMAGES', None):
+    subprocess.check_call("rm -f /mnt/onl/images/*.swi", shell=True)
+    subprocess.check_call("cp %s /mnt/onl/images" % os.path.join(directory, filename), shell=True)
+
+subprocess.check_call("rm -rf %s" % directory, shell=True)
+subprocess.check_call("ls -l /mnt/onl/images", shell=True)

@@ -38,6 +38,9 @@ function build_source
 {
     BUILD_DIR=`mktemp -d`
     cp $2 $BUILD_DIR
+    if [ -n "$4" ]; then
+        cp $4 $BUILD_DIR
+    fi
     src=$(basename $2)
     obj=${src%.c}.o
     echo "obj-m := $obj" >> $BUILD_DIR/Kbuild
@@ -49,7 +52,7 @@ for kernel in $1; do
         if [ -d $module ]; then
             build_directory $kernel $module $3
         else
-            build_source $kernel $module $3
+            build_source $kernel $module $3 $4
         fi
     done
 done

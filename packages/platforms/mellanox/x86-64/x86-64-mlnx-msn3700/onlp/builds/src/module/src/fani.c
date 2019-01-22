@@ -88,6 +88,37 @@ onlp_fan_info_t finfo[] = {
     MAKE_FAN_INFO_NODE_ON_PSU(2,1)
 };
 
+static fan_path_T fan_path_c[] =  /* must map with onlp_fan_id */
+{
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_RESERVED),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_1_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_2_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_3_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_4_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_5_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_6_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_7_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_MAIN_BOARD(PROJECT_NAME, FAN_8_ON_MAIN_BOARD),
+    MAKE_FAN_PATH_ON_PSU(1 ,1),
+    MAKE_FAN_PATH_ON_PSU(2, 1)
+};
+
+/* Static fan information */
+onlp_fan_info_t finfo_c[] = {
+    { }, /* Not used */
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(1),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(2),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(3),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(4),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(5),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(6),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(7),
+    MAKE_FAN_INFO_NODE_ON_MAIN_BOARD(8),
+    MAKE_FAN_INFO_NODE_ON_PSU(1,1),
+    MAKE_FAN_INFO_NODE_ON_PSU(2,1)
+};
+
+
 /*
  * This function will be called prior to all of onlp_fani_* functions.
  */
@@ -95,10 +126,16 @@ int
 onlp_fani_init(void)
 {
     mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
+    if(!strcmp(mlnx_platform_info->onl_platform_name, "x86-64-mlnx_msn3700c-r0")) {
+    	mlnx_platform_info->finfo = finfo_c;
+    	mlnx_platform_info->fan_fnames = fan_path_c;
+    } else {
+    	mlnx_platform_info->finfo = finfo;
+    	mlnx_platform_info->fan_fnames = fan_path;
+    }
+
     mlnx_platform_info->min_fan_speed = min_fan_speed;
     mlnx_platform_info->max_fan_speed = max_fan_speed;
-    mlnx_platform_info->finfo = finfo;
-    mlnx_platform_info->fan_fnames = fan_path;
     mlnx_platform_info->fan_type = FAN_TYPE_NO_EEPROM;
     mlnx_platform_info->fan_per_module = 2;
     mlnx_platform_info->first_psu_fan_id = FIRST_PSU_FAN_ID;

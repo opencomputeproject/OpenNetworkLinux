@@ -66,7 +66,7 @@ class Image(object):
         self.wl("""    description = "%s";""" % self.description)
         self.wl("""    type = "%s";""" % self.type)
         self.wl("""    data = /incbin/("%s");""" % self.data)
-        self.wl("""    arch = "%s";""" % ("arm" if ops.arch == 'armel' else ops.arch))
+        self.wl("""    arch = "%s";""" % ("arm" if ops.arch in [ 'armel', 'armhf' ] else ops.arch))
         self.wl("""    compression = "%s";""" % self.compression)
         if self.os:
             self.wl("""    os = %s;""" % self.os)
@@ -95,7 +95,7 @@ class KernelImage(Image):
         if arch == 'powerpc':
             self.load = "<0x0>"
             self.entry = "<0x0>"
-        elif arch == 'armel':
+        elif arch in [ 'armel', 'armhf' ]:
             self.load = "<0x61008000>"
             self.entry = "<0x61008000>"
         elif arch == 'arm64':
@@ -117,7 +117,7 @@ class InitrdImage(Image):
         if arch == 'powerpc':
             self.load = "<0x1000000>"
             self.entry ="<0x1000000>"
-        elif arch == 'armel':
+        elif arch in [ 'armel', 'armhf' ]:
             self.load = "<0x0000000>"
             self.entry ="<0x0000000>"
         elif arch == 'arm64':
@@ -306,7 +306,7 @@ if __name__ == '__main__':
     ap.add_argument("--desc", nargs=1, help="Flat Image Tree description", default="ONL Flat Image Tree.")
     ap.add_argument("--itb", metavar='itb-file', help="Compile result to an image tree blob file.")
     ap.add_argument("--its", metavar='its-file', help="Write result to an image tree source file.")
-    ap.add_argument("--arch", choices=['powerpc', 'armel', 'arm64'], required=True)
+    ap.add_argument("--arch", choices=['powerpc', 'armel', 'armhf', 'arm64'], required=True)
     ops=ap.parse_args()
 
     fit = FlatImageTree(ops.desc)

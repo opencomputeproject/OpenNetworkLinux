@@ -14,7 +14,7 @@ arm-delta-ag6248c-poe-r0:
       =: delta_ag6248c.dtb
       <<: *arm-iproc-kernel-package
     itb:
-      <<: *arm-itb
+      <<: *armel-itb
 
   loader:
     device: /dev/mtdblock4

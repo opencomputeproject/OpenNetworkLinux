@@ -1,0 +1,86 @@
+From d83d9b8a4813c6a626db151f9b9269d8c69a032a Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Sun, 6 Jan 2019 12:25:46 +0000
+Subject: [PATCH v1] mlxsw: qsfp_sysfs: Support port numbers initialization
+
+Support port numbers initialization based on system type.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core.c       | 20 +++++++++++++++++++-
+ drivers/net/ethernet/mellanox/mlxsw/core.h       | 10 +++-------
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c |  1 +
+ 3 files changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
+index 10863d6..01987f0 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.c
+@@ -114,12 +114,30 @@ struct mlxsw_core {
+ 	struct mlxsw_resources resources;
+ 	struct mlxsw_hwmon *hwmon;
+ 	struct mlxsw_thermal *thermal;
+-struct mlxsw_qsfp *qsfp;
++	struct mlxsw_qsfp *qsfp;
+ 	struct mlxsw_core_port ports[MLXSW_PORT_MAX_PORTS];
++	unsigned int max_ports;
+ 	unsigned long driver_priv[0];
+ 	/* driver_priv has to be always the last item */
+ };
+ 
++#define MLXSW_PORT_MAX_PORTS_DEFAULT	0x40
++unsigned int mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core)
++{
++	if (mlxsw_core->max_ports)
++		return mlxsw_core->max_ports;
++	else
++		return MLXSW_PORT_MAX_PORTS_DEFAULT;
++}
++EXPORT_SYMBOL(mlxsw_core_max_ports);
++
++void mlxsw_core_max_ports_set(struct mlxsw_core *mlxsw_core,
++			      unsigned int max_ports)
++{
++	mlxsw_core->max_ports = max_ports;
++}
++EXPORT_SYMBOL(mlxsw_core_max_ports_set);
++
+ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core)
+ {
+ 	return mlxsw_core->driver_priv;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.h b/drivers/net/ethernet/mellanox/mlxsw/core.h
+index 4fb104e..db27dd0 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.h
+@@ -63,13 +63,9 @@ struct mlxsw_driver;
+ struct mlxsw_bus;
+ struct mlxsw_bus_info;
+ 
+-#define MLXSW_PORT_MAX_PORTS_DEFAULT	0x40
+-static inline unsigned int
+-mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core)
+-{
+-	return MLXSW_PORT_MAX_PORTS_DEFAULT;
+-}
+-
++unsigned int mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core);
++void mlxsw_core_max_ports_set(struct mlxsw_core *mlxsw_core,
++			      unsigned int max_ports);
+ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core);
+ 
+ int mlxsw_core_driver_register(struct mlxsw_driver *mlxsw_driver);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index bee2a08..0781f16 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -298,6 +298,7 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	mlxsw_qsfp->bus_info = mlxsw_bus_info;
+ 	mlxsw_bus_info->dev->platform_data = mlxsw_qsfp;
+ 
++	mlxsw_core_max_ports_set(mlxsw_core, mlxsw_qsfp_num);
+ 	for (i = 1; i <= mlxsw_qsfp_num; i++) {
+ 		mlxsw_reg_pmlp_pack(pmlp_pl, i);
+ 		err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(pmlp),
+-- 
+2.1.4
+

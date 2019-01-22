@@ -2,7 +2,7 @@
  * <bsn.cl fy=2014 v=onl>
  *
  *           Copyright 2014 Big Switch Networks, Inc.
- *           Copyright (C) 2017  Delta Networks, Inc. 
+ *           Copyright (C) 2017  Delta Networks, Inc.
  *
  * Licensed under the Eclipse Public License, Version 1.0 (the
  * "License"); you may not use this file except in compliance
@@ -34,9 +34,9 @@
 #include "platform_lib.h"
 /******************* Utility Function *****************************************/
 
-int 
+int
 ag5648_get_respond_val(int port)
-{   
+{
     int respond_default = 0xff;
     int value = 0x00;
     if(port > NUM_OF_SFP && port <= (NUM_OF_SFP + NUM_OF_QSFP))
@@ -48,9 +48,9 @@ ag5648_get_respond_val(int port)
     {
      return respond_default;
     }
-    
+
 }
-int 
+int
 ag5648_get_respond_reg(int port)
 {
     return QSFP_RESPOND_REG;
@@ -62,14 +62,14 @@ ag5648_get_respond_reg(int port)
  *
  ***********************************************************/
 
-int  
+int
 onlp_sfpi_init(void)
 {
     /* Called at initialization time */
     return ONLP_STATUS_OK;
 }
 
-int  
+int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*Ports {1, 54}*/
@@ -81,38 +81,37 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
     }
     return ONLP_STATUS_OK;
 }
-  
-int  
+
+int
 onlp_sfpi_is_present(int port)
 {
-    char port_data[2];
+    char port_data[3];
     int present, present_bit;
-    
+
     /* Select QSFP port */
-    sprintf(port_data, "%d", port );
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     /* Read SFP/QSFP MODULE is present or not */
     present_bit = dni_i2c_lock_read_attribute(NULL, SFP_IS_PRESENT_PATH);
 
     /* From sfp_is_present value,
-     * return 0 = The module is preset
+     * return 0 = The module is present
      * return 1 = The module is NOT present
      */
     if(present_bit == 0) {
         present = 1;
     } else if (present_bit == 1) {
         present = 0;
-        AIM_LOG_ERROR("Unble to present status from port(%d)\r\n", port);
     } else {
         /* Port range over 1-54, return -1 */
-        AIM_LOG_ERROR("Error to present status from port(%d)\r\n", port);
+        AIM_LOG_ERROR("Error to read present status from port(%d)\r\n", port);
         present = -1;
     }
     return present;
 }
 
-int  
+int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     char present_all_data[24] = {0};
@@ -135,7 +134,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
                        bytes+6,
                        bytes+7
                        );
-    
+
     if(count != AIM_ARRAYSIZE(bytes)) {
         /* Likely a CPLD read timeout. */
         AIM_LOG_ERROR("Unable to read all fields from the sfp_is_present_all device file.");
@@ -160,7 +159,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
         }
     }
 
-    /* Populate bitmap */    
+    /* Populate bitmap */
     for(i = 0; i < NUM_OF_PORT; i++) {
         AIM_BITMAP_MOD(dst, i+1, !(presence_all & 1));
         presence_all >>= 1;
@@ -168,14 +167,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     return ONLP_STATUS_OK;
 }
 
-int  
+int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    char port_data[2];
+    char port_data[3];
     int sfp_respond_reg;
     int sfp_respond_val;
 
-    
+
     /* Get respond register if port have it */
     sfp_respond_reg = ag5648_get_respond_reg(port);
 
@@ -183,9 +182,9 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     sfp_respond_val = ag5648_get_respond_val(port);
     dni_lock_cpld_write_attribute(MASTER_CPLD_PATH, sfp_respond_reg, sfp_respond_val);
 
-    
+
     /* Select port */
-    sprintf(port_data, "%d", port );
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     memset(data, 0 ,256);
@@ -200,7 +199,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     return ONLP_STATUS_OK;
 }
 
-int onlp_sfpi_port_map(int port, int* rport) 
+int onlp_sfpi_port_map(int port, int* rport)
 {
     *rport = port;
     return ONLP_STATUS_OK;
@@ -208,15 +207,15 @@ int onlp_sfpi_port_map(int port, int* rport)
 
 
 int
-onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value) 
+onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int value_t;
-    char port_data[2];
+    char port_data[3];
     /* Select QSFP port */
-    sprintf(port_data, "%d", port );
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
-    switch (control) {   
+    switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
            *value = dni_i2c_lock_read_attribute(NULL, SFP_RESET_PATH);
             /* From sfp_reset value,
@@ -225,11 +224,11 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
              */
             if (*value == 0)
             {
-                *value = 1;      
+                *value = 1;
             }
-            else if (*value == 1) 
+            else if (*value == 1)
             {
-                *value = 0;     
+                *value = 0;
             }
             value_t = ONLP_STATUS_OK;
             break;
@@ -260,13 +259,13 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int value_t;
-    char port_data[2];
-    sprintf(port_data, "%d", port);
+    char port_data[3];
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
-           sprintf(port_data, "%d", value);
+           snprintf(port_data, sizeof(port_data), "%d", value);
            dni_i2c_lock_write_attribute(NULL, port_data, SFP_RESET_PATH);
            value_t = ONLP_STATUS_OK;
            break;
@@ -277,7 +276,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
            value_t = ONLP_STATUS_E_UNSUPPORTED;
            break;
         case ONLP_SFP_CONTROL_LP_MODE:
-           sprintf(port_data, "%d", value);
+           snprintf(port_data, sizeof(port_data), "%d", value);
            dni_i2c_lock_write_attribute(NULL, port_data, SFP_LP_MODE_PATH);
            value_t = ONLP_STATUS_OK;
            break;
@@ -291,7 +290,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    char port_data[2];
+    char port_data[3];
     int sfp_respond_reg, sfp_respond_val;
     dev_info_t dev_info;
 
@@ -303,7 +302,7 @@ onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
     dni_lock_cpld_write_attribute(MASTER_CPLD_PATH, sfp_respond_reg, sfp_respond_val);
 
     /* Select port */
-    sprintf(port_data, "%d", port);
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     dev_info.bus = I2C_BUS_4;
@@ -318,7 +317,7 @@ onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    char port_data[2];
+    char port_data[3];
     int sfp_respond_reg, sfp_respond_val;
     dev_info_t dev_info;
 
@@ -330,7 +329,7 @@ onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
     dni_lock_cpld_write_attribute(MASTER_CPLD_PATH, sfp_respond_reg, sfp_respond_val);
 
     /* Select port */
-    sprintf(port_data, "%d", port);
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     dev_info.bus = I2C_BUS_4;
@@ -346,7 +345,7 @@ onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    char port_data[2];
+    char port_data[3];
     int sfp_respond_reg, sfp_respond_val;
     dev_info_t dev_info;
 
@@ -358,7 +357,7 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
     dni_lock_cpld_write_attribute(MASTER_CPLD_PATH, sfp_respond_reg, sfp_respond_val);
 
     /* Select port */
-    sprintf(port_data, "%d", port);
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     dev_info.bus = I2C_BUS_4;
@@ -373,7 +372,7 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    char port_data[2];
+    char port_data[3];
     int sfp_respond_reg, sfp_respond_val;
     dev_info_t dev_info;
 
@@ -385,7 +384,7 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
     dni_lock_cpld_write_attribute(MASTER_CPLD_PATH, sfp_respond_reg, sfp_respond_val);
 
     /* Select port */
-    sprintf(port_data, "%d", port);
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
 
     dev_info.bus = I2C_BUS_4;
@@ -401,9 +400,9 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 int
 onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
-    char port_data[2] ;
+    char port_data[3] ;
     /* Select QSFP port */
-    sprintf(port_data, "%d", port );
+    snprintf(port_data, sizeof(port_data), "%d", port);
     dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH);
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:

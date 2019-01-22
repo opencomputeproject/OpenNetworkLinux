@@ -1,0 +1,4072 @@
+From e663de0d7c184c605db27519e3f23e9ec835d845 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Fri, 14 Dec 2018 01:38:16 +0000
+Subject: [PATCH mellanox 4.20-4.21 backport] mlxsw thermal monitoring
+ amendments
+
+This patchset extends mlxsw hwmon and thermal with module temperature
+attributes (input, fault, critical and emergency thresholds) and adds
+hwmon fault for FAN.
+
+New hwmon attributes, such as FAN faults, port temperature fault will
+improve system monitoring abilities.
+
+Introduction of per QSFP module thermal zones
+
+The motivation is:
+- To support multiport network switch equipped with a big number of
+  temperature sensors (128+) and with a single cooling device.
+- Provide a user interface that will allow it to optimize thermal
+  monitoring flow.
+
+When multiple sensors are mapped to the same cooling device, the
+cooling device should be set according the worst sensor from the
+sensors associated with this cooling device. The system shall implement
+cooling control based on thermal monitoring of the critical temperature
+sensors. In many cases, in order to achieve an optimal thermal
+solution, the user involvement is reqiered.
+
+Add support for ethtool interface to allow reading QSFP/SFP modules
+content through 'ethtool -m' command.
+
+It adds to sysfs the next additional attributes:
+per each port:
+- tempX_crit (reading from Management Cable Info Access Register);
+- tempX_fault (reading Management Temperature Bulk Register);
+- tempX_emergency (reading from Management Cable Info Access Register);
+- tempX_input (reading Management Temperature Bulk Register);
+  where X is from 2 (1 is for ASIC ambient temperature) to the number
+  of ports equipped within the system.
+per each tachometer:
+- fanY_fault (reading from Fan Out of Range Event Register);
+  where Y is from 1 to the number of rotors (FANs) equipped within the
+  system.
+Temperature input, critical and emergency attributes are supposed to be
+exposed from sensors utilities of lm-sensors package, like:
+front panel 001:        +51.0C  (highest = +52.0C)
+front panel 002:        +62.0C  (crit = +70.0C, emerg = +80.0C)
+...
+front panel 055:       +60.0C  (crit = +70.0C, emerg = +80.0C)
+
+Add definitions for new registers:
+- CPLD3 version - next generation systems are equipped with three CPLD;
+- Two reset cause registers, which store the system reset reason (like
+  system failures, upgrade failures and so on;
+
+The below are the list of the commits included in patchset.
+
+mlxsw: spectrum: Move QSFP EEPROM definitons to common location
+
+Move QSFP EEPROM definitions to common location from the spectrum driver
+in order to make them available for other mlxsw modules. They are common
+for all kind of chips and have relation to SFF specifications 8024, 8436,
+8472, 8636, rather than to chip type.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: reg: Add Management Temperature Bulk Register
+
+Add MTBR (Management Temperature Bulk Register), which is used for port
+temperature reading in a bulk mode.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: reg: Add Fan Out of Range Event Register
+
+Add FORE (Fan Out of Range Event Register), which is used for Fan fault
+reading.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+mlxsw: core: Add core environment module for QSFP module temperature thresholds reading
+
+Add new core_env module to allow module temperature warning and critical
+thresholds reading.
+
+New internal API reads the temperature thresholds from the modules, which
+are equipped with the thermal sensor. These thresholds are to be exposed
+by hwmon module and to be used by thermal module.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Set different thermal polling time based on bus frequency capability
+
+Add low frequency bus capability in order to allow core functionality
+separation based on bus type. Driver could run over PCIe, which is
+considered as high frequency bus or I2C , which is considered as low
+frequency bus. In the last case time setting, for example, for thermal
+polling interval, should be increased.
+
+Use different thermal monitoring based on bus type.
+For I2C bus time is set to 20 seconds, while for PCIe 1 second polling
+interval is used.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Modify thermal zone definition
+
+Modify thermal zone trip points setting for better alignment with
+system thermal requirement.
+Add hysteresis thresholds for thermal trips are added in order to avoid
+throttling around thermal trip point. If hysteresis temperature is not
+considered PWM can have side effect of flip up/down on thermal trip
+point boundary.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Replace thermal temperature trips with defines
+
+Replace thermal hardcoded temperature trips values with defines.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Extend cooling device with cooling levels
+
+Extend cooling device with cooling levels vector to allow more
+flexibility of PWM setting.
+Thermal zone algorithm operates with the numerical states for PWM
+setting. Each state is the index, defined in range from 0 to 10 and
+it's mapped to the relevant duty cycle value, which is written to PWM
+controller. With the current definition fan speed is set to 0% for
+state 0, 10% for state 1, and so on up to 100% for the maximum state
+10.
+Some systems have limitation for the PWM speed minimum. For such
+systems PWM setting speed to 0% will just disable the ability to
+increase speed anymore and such device will be stall on zero speed.
+Cooling levels allow to configure state vector according to the
+particular system requirements. For example, if PWM speed is not
+allowed to be below 30%, cooling levels could be configured as 30%,
+30%, 30%, 30%, 40%, 50% and so on.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Rename cooling device
+
+Rename cooling device from "Fan" to "mlxsw_fan".
+Name "Fan" is too common name, and such name is misleading, while it's
+interpreted by user.
+For example name "Fan" could be used by ACPI.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Extend hwmon interface with fan fault attribute
+
+Add new fan hwmon attribute for exposing fan faults (fault indication
+is reading from Fan Out of Range Event Register).
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Extend hwmon interface with QSFP module temperature attributes
+
+Add new attributes to hwmon object for exposing QSFP module temperature
+input, fault indication, critical and emergency thresholds.
+Temperature input and fault indication are reading from Management
+Temperature Bulk Register. Temperature thresholds are reading from
+Management Cable Info Access Register.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: thermal zone binding to an external cooling device
+
+Allow thermal zone binding to an external cooling device from the
+cooling devices white list.
+It provides support for Mellanox next generation systems on which
+cooling device logic is not controlled through the switch registers.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+---
+
+mlxsw: core: Add QSFP module temperature label attribute to hwmon
+
+Add label attribute to hwmon object for exposing QSFP module's
+temperature sensors name. Modules are labeld as "front panel xxx".
+It will be exposed by utilities sensors as:
+front panel 001:   +0.0C  (crit =  +0.0C, emerg =  +0.0C)
+..
+front panel 020:  +31.0C  (crit = +70.0C, emerg = +80.0C)
+..
+front panel 056:  +41.0C  (crit = +70.0C, emerg = +80.0C)
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+Reviewed-by: Jiri Pirko <jiri@mellanox.com>
+
+mlxsw: core: Extend thermal module with per QSFP module thermal zones
+
+Add a dedicated thermal zone for each QSFP/SFP module.
+Implement per QSFP/SFP module thermal zone for mlxsw based hardware.
+Use module temperature sensor and module warning and critical
+temperature thresholds, obtained through the mlxsw hardware for the
+thermal zone current and trips temperatures.
+Bind a cooling device to all of these thermal zones for fan speed
+control.
+Set thermal zone governor to user space.
+Since all these zones share the same cooling device, it will allow to
+user to take most suitable thermal control decision and to avoid
+competing between the thermal zones for the cooling device control
+and to avoid collisions between thermal zones, when one of them could
+require increasing of the cooling device speed, while another one could
+require its reducing.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+mlxsw: core: Extend thermal module with highest thermal zone detection
+
+Add the detection of highest thermal zone and user notification about
+which thermal zone currently has a highest score. It'll allow to user
+to make an optimal decision about the thermal control management, in
+case user intends to be involved in thermal monitoring process.
+Otherwise the thermal flow is not affected.
+
+Thermal zone score is represented by 32 bits unsigned integer and
+calculated according to the next formula:
+For T < TZ<t><i>, where t from {normal trip = 0, high trip = 1, hot
+trip = 2, critical = 3}:
+TZ<i> score = (T + (TZ<t><i> - T) / 2) / (TZ<t><i> - T) * 256 ** j;
+Highest thermal zone score s is set as MAX(TZ<i>score);
+Following this formula, if TZ<i> is in trip point higher than TZ<k>,
+the higher score is to be always assigned to TZ<i>.
+
+For two thermal zones located at the same kind of trip point, the higher
+score will be assigned to the zone, which closer to the next trip point.
+Thus, the highest score will always be assigned objectively to the hottest
+thermal zone.
+
+User is notified through udev event in case new thermal zone is reached
+the highest score.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+mlxsw: minimal: Add support for ethtool interface
+
+Add support for ethtool interface to allow reading QSFP/SFP modules
+content through 'ethtool -m' command.
+The minimal driver is chip independent, uses I2C bus for chip access.
+Its purpose is to support chassis management on the systems equipped
+with Mellanox network switch device. For example from BMC (Board
+Management Controller) device.
+The patch allows to obtain QSFP/SFP module info through ethtool.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+platform/x86: mlx-platform: Add support for fan direction register
+
+Provide support for the fan direction register.
+This register shows configuration for system fans direction, which could
+be forward or reversed.
+For forward direction - relevant bit is set 0;
+For reversed direction - relevant bit is set 1.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+platform_data/mlxreg: Document fixes for core platform data
+
+Remove "led" from the description, since the structure
+"mlxreg_core_platform_data" is used not only for led data.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+platform_data/mlxreg: Add capability field to core platform data
+
+Add capability field to "mlxreg_core_platform_data" structure.
+The purpose of this register is to provide additional info to platform
+driver through the atribute related capability register.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+platform/x86: mlx-platform: Add support for fan capability registers
+
+Provide support for the fan capability registers for next generation
+systems of types MQM87xx, MSN34xx, MSN37xx. These new registers
+provide configuration for tachometers connectivity, fan drawers
+connectvivity and tachometer speed divider.
+Use these registers for next generation led, fan and hotplug structures
+in order to distinct between the systems which have minor configuration
+differences. This reduces the amount of code used to describe such
+systems.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+platform/x86: mlx-platform: Add support for new VMOD0007 board name
+
+Add support for new Mellanox system type MSN3700C, which is
+a cost reduction flavor of MSN37 system?s class.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+hwmon: (mlxreg-fan) Add support for fan capability registers
+
+Add support for fan capability registers in order to distinct between
+the systems which have minor fan configuration differences. This
+reduces the amount of code used to describe such systems.
+The capability registers provides system specific information about the
+number of physically connected tachometers and system specific fan
+speed scale parameter.
+For example one system can be equipped with twelve fan tachometers,
+while the other with for example, eight or six. Or one system should
+use default fan speed divider value, while the other has a scale
+parameter defined in hardware, which should be used for divider
+setting.
+Reading this information from the capability registers allows to use the
+same fan structure for the systems with the such differences.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+
+leds: mlxreg: Add support for capability register
+
+Add support for capability register in order to distinct between the
+systems which have minor LED configuration differences. This reduces
+the amount of code used to describe such systems.
+For example one system can be equipped with six LED, while the other
+with only four. Reading this information from the capability registers
+allows to use the same LED structure for such systems.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+---
+ drivers/hwmon/mlxreg-fan.c                         |  78 ++-
+ drivers/leds/leds-mlxreg.c                         |  55 +-
+ drivers/net/ethernet/mellanox/mlxsw/Makefile       |   2 +-
+ drivers/net/ethernet/mellanox/mlxsw/core.h         |  14 +
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c     | 238 +++++++
+ drivers/net/ethernet/mellanox/mlxsw/core_env.h     |  17 +
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   | 337 +++++++--
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 761 +++++++++++++++++++--
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c          |  43 +-
+ drivers/net/ethernet/mellanox/mlxsw/i2c.h          |  35 +-
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      | 356 ++++++++--
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          | 139 +++-
+ drivers/platform/mellanox/mlxreg-hotplug.c         |  23 +-
+ drivers/platform/mellanox/mlxreg-io.c              |   4 +-
+ drivers/platform/x86/mlx-platform.c                | 138 +++-
+ include/linux/platform_data/mlxreg.h               |   6 +-
+ include/linux/sfp.h                                | 564 +++++++++++++++
+ 17 files changed, 2506 insertions(+), 304 deletions(-)
+ create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.c
+ create mode 100644 drivers/net/ethernet/mellanox/mlxsw/core_env.h
+ create mode 100644 include/linux/sfp.h
+
+diff --git a/drivers/hwmon/mlxreg-fan.c b/drivers/hwmon/mlxreg-fan.c
+index d8fa4be..11388c5 100644
+--- a/drivers/hwmon/mlxreg-fan.c
++++ b/drivers/hwmon/mlxreg-fan.c
+@@ -27,7 +27,10 @@
+ #define MLXREG_FAN_SPEED_MAX			(MLXREG_FAN_MAX_STATE * 2)
+ #define MLXREG_FAN_SPEED_MIN_LEVEL		2	/* 20 percent */
+ #define MLXREG_FAN_TACHO_SAMPLES_PER_PULSE_DEF	44
+-#define MLXREG_FAN_TACHO_DIVIDER_DEF		1132
++#define MLXREG_FAN_TACHO_DIVIDER_MIN		283
++#define MLXREG_FAN_TACHO_DIVIDER_DEF		(MLXREG_FAN_TACHO_DIVIDER_MIN \
++						 * 4)
++#define MLXREG_FAN_TACHO_DIVIDER_SCALE_MAX	32
+ /*
+  * FAN datasheet defines the formula for RPM calculations as RPM = 15/t-high.
+  * The logic in a programmable device measures the time t-high by sampling the
+@@ -51,7 +54,7 @@
+  */
+ #define MLXREG_FAN_GET_RPM(rval, d, s)	(DIV_ROUND_CLOSEST(15000000 * 100, \
+ 					 ((rval) + (s)) * (d)))
+-#define MLXREG_FAN_GET_FAULT(val, mask) (!((val) ^ (mask)))
++#define MLXREG_FAN_GET_FAULT(val, mask) ((val) == (mask))
+ #define MLXREG_FAN_PWM_DUTY2STATE(duty)	(DIV_ROUND_CLOSEST((duty) *	\
+ 					 MLXREG_FAN_MAX_STATE,		\
+ 					 MLXREG_FAN_MAX_DUTY))
+@@ -360,12 +363,57 @@ static const struct thermal_cooling_device_ops mlxreg_fan_cooling_ops = {
+ 	.set_cur_state	= mlxreg_fan_set_cur_state,
+ };
+ 
++static int mlxreg_fan_connect_verify(struct mlxreg_fan *fan,
++				     struct mlxreg_core_data *data,
++				     bool *connected)
++{
++	u32 regval;
++	int err;
++
++	err = regmap_read(fan->regmap, data->capability, &regval);
++	if (err) {
++		dev_err(fan->dev, "Failed to query capability register 0x%08x\n",
++			data->capability);
++		return err;
++	}
++
++	*connected = (regval & data->bit) ? true : false;
++
++	return 0;
++}
++
++static int mlxreg_fan_speed_divider_get(struct mlxreg_fan *fan,
++					struct mlxreg_core_data *data)
++{
++	u32 regval;
++	int err;
++
++	err = regmap_read(fan->regmap, data->capability, &regval);
++	if (err) {
++		dev_err(fan->dev, "Failed to query capability register 0x%08x\n",
++			data->capability);
++		return err;
++	}
++
++	/*
++	 * Set divider value according to the capability register, in case it
++	 * contains valid value. Otherwise use default value. The purpose of
++	 * this validation is to protect against the old hardware, in which
++	 * this register can be un-initialized.
++	 */
++	if (regval > 0 && regval <= MLXREG_FAN_TACHO_DIVIDER_SCALE_MAX)
++		fan->divider = regval * MLXREG_FAN_TACHO_DIVIDER_MIN;
++
++	return 0;
++}
++
+ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+ 			     struct mlxreg_core_platform_data *pdata)
+ {
+ 	struct mlxreg_core_data *data = pdata->data;
+-	bool configured = false;
++	bool configured = false, connected = false;
+ 	int tacho_num = 0, i;
++	int err;
+ 
+ 	fan->samples = MLXREG_FAN_TACHO_SAMPLES_PER_PULSE_DEF;
+ 	fan->divider = MLXREG_FAN_TACHO_DIVIDER_DEF;
+@@ -376,6 +424,18 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+ 					data->label);
+ 				return -EINVAL;
+ 			}
++
++			if (data->capability) {
++				err = mlxreg_fan_connect_verify(fan, data,
++								&connected);
++				if (err)
++					return err;
++				if (!connected) {
++					tacho_num++;
++					continue;
++				}
++			}
++
+ 			fan->tacho[tacho_num].reg = data->reg;
+ 			fan->tacho[tacho_num].mask = data->mask;
+ 			fan->tacho[tacho_num++].connected = true;
+@@ -394,13 +454,19 @@ static int mlxreg_fan_config(struct mlxreg_fan *fan,
+ 				return -EINVAL;
+ 			}
+ 			/* Validate that conf parameters are not zeros. */
+-			if (!data->mask || !data->bit) {
++			if (!data->mask && !data->bit && !data->capability) {
+ 				dev_err(fan->dev, "invalid conf entry params: %s\n",
+ 					data->label);
+ 				return -EINVAL;
+ 			}
+-			fan->samples = data->mask;
+-			fan->divider = data->bit;
++			if (data->capability) {
++				err = mlxreg_fan_speed_divider_get(fan, data);
++				if (err)
++					return err;
++			} else {
++				fan->samples = data->mask;
++				fan->divider = data->bit;
++			}
+ 			configured = true;
+ 		} else {
+ 			dev_err(fan->dev, "invalid label: %s\n", data->label);
+diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
+index 036c214..2db2000 100644
+--- a/drivers/leds/leds-mlxreg.c
++++ b/drivers/leds/leds-mlxreg.c
+@@ -1,35 +1,7 @@
+-/*
+- * Copyright (c) 2017 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2017 Vadim Pasternak <vadimp@mellanox.com>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+- */
++// SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
++//
++// Copyright (c) 2018 Mellanox Technologies. All rights reserved.
++// Copyright (c) 2018 Vadim Pasternak <vadimp@mellanox.com>
+ 
+ #include <linux/bitops.h>
+ #include <linux/device.h>
+@@ -217,6 +189,7 @@ static int mlxreg_led_config(struct mlxreg_led_priv_data *priv)
+ 	struct mlxreg_led_data *led_data;
+ 	struct led_classdev *led_cdev;
+ 	int brightness;
++	u32 regval;
+ 	int i;
+ 	int err;
+ 
+@@ -226,6 +199,17 @@ static int mlxreg_led_config(struct mlxreg_led_priv_data *priv)
+ 		if (!led_data)
+ 			return -ENOMEM;
+ 
++		if (data->capability) {
++			err = regmap_read(led_pdata->regmap, data->capability,
++					  &regval);
++			if (err) {
++				dev_err(&priv->pdev->dev, "Failed to query capability register\n");
++				return err;
++			}
++			if (!(regval & data->bit))
++				continue;
++		}
++
+ 		led_cdev = &led_data->led_cdev;
+ 		led_data->data_parent = priv;
+ 		if (strstr(data->label, "red") ||
+@@ -295,16 +279,9 @@ static int mlxreg_led_remove(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
+-static const struct of_device_id mlxreg_led_dt_match[] = {
+-	{ .compatible = "mellanox,leds-mlxreg" },
+-	{ },
+-};
+-MODULE_DEVICE_TABLE(of, mlxreg_led_dt_match);
+-
+ static struct platform_driver mlxreg_led_driver = {
+ 	.driver = {
+ 	    .name = "leds-mlxreg",
+-	    .of_match_table = of_match_ptr(mlxreg_led_dt_match),
+ 	},
+ 	.probe = mlxreg_led_probe,
+ 	.remove = mlxreg_led_remove,
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/Makefile b/drivers/net/ethernet/mellanox/mlxsw/Makefile
+index b58ea1b..c62ba64 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/Makefile
++++ b/drivers/net/ethernet/mellanox/mlxsw/Makefile
+@@ -1,5 +1,5 @@
+ obj-$(CONFIG_MLXSW_CORE)	+= mlxsw_core.o
+-mlxsw_core-objs			:= core.o
++mlxsw_core-objs			:= core.o core_env.o
+ mlxsw_core-$(CONFIG_MLXSW_CORE_HWMON) += core_hwmon.o
+ mlxsw_core-$(CONFIG_MLXSW_CORE_THERMAL) += core_thermal.o
+ mlxsw_core-$(CONFIG_MLXSW_CORE_QSFP) += qsfp_sysfs.o
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.h b/drivers/net/ethernet/mellanox/mlxsw/core.h
+index ffaacc9..4fb104e 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.h
+@@ -63,6 +63,13 @@ struct mlxsw_driver;
+ struct mlxsw_bus;
+ struct mlxsw_bus_info;
+ 
++#define MLXSW_PORT_MAX_PORTS_DEFAULT	0x40
++static inline unsigned int
++mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core)
++{
++	return MLXSW_PORT_MAX_PORTS_DEFAULT;
++}
++
+ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core);
+ 
+ int mlxsw_core_driver_register(struct mlxsw_driver *mlxsw_driver);
+@@ -161,6 +168,8 @@ mlxsw_core_port_driver_priv(struct mlxsw_core_port *mlxsw_core_port)
+ 	return mlxsw_core_port;
+ }
+ 
++int mlxsw_core_port_get_phys_port_name(struct mlxsw_core *mlxsw_core,
++				       u8 local_port, char *name, size_t len);
+ int mlxsw_core_port_init(struct mlxsw_core *mlxsw_core,
+ 			 struct mlxsw_core_port *mlxsw_core_port, u8 local_port,
+ 			 struct net_device *dev, bool split, u32 split_group);
+@@ -331,6 +340,7 @@ struct mlxsw_bus_info {
+ 	} fw_rev;
+ 	u8 vsd[MLXSW_CMD_BOARDINFO_VSD_LEN];
+ 	u8 psid[MLXSW_CMD_BOARDINFO_PSID_LEN];
++	u8 low_frequency;
+ };
+ 
+ struct mlxsw_hwmon;
+@@ -351,6 +361,10 @@ static inline int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	return 0;
+ }
+ 
++static inline void mlxsw_hwmon_fini(struct mlxsw_hwmon *mlxsw_hwmon)
++{
++}
++
+ #endif
+ 
+ struct mlxsw_thermal;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+new file mode 100644
+index 0000000..7a15e93
+--- /dev/null
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -0,0 +1,238 @@
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
++/* Copyright (c) 2018 Mellanox Technologies. All rights reserved */
++
++#include <linux/kernel.h>
++#include <linux/err.h>
++
++#include "core.h"
++#include "core_env.h"
++#include "item.h"
++#include "reg.h"
++
++static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
++					  bool *qsfp)
++{
++	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
++	char mcia_pl[MLXSW_REG_MCIA_LEN];
++	u8 ident;
++	int err;
++
++	mlxsw_reg_mcia_pack(mcia_pl, id, 0, MLXSW_REG_MCIA_PAGE0_LO_OFF, 0, 1,
++			    MLXSW_REG_MCIA_I2C_ADDR_LOW);
++	err = mlxsw_reg_query(core, MLXSW_REG(mcia), mcia_pl);
++	if (err)
++		return err;
++	mlxsw_reg_mcia_eeprom_memcpy_from(mcia_pl, eeprom_tmp);
++	ident = eeprom_tmp[0];
++	switch (ident) {
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
++		*qsfp = false;
++		break;
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD:
++		*qsfp = true;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int
++mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
++			      u16 offset, u16 size, void *data,
++			      unsigned int *p_read_size)
++{
++	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
++	char mcia_pl[MLXSW_REG_MCIA_LEN];
++	u16 i2c_addr;
++	int status;
++	int err;
++
++	size = min_t(u16, size, MLXSW_REG_MCIA_EEPROM_SIZE);
++
++	if (offset < MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH &&
++	    offset + size > MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH)
++		/* Cross pages read, read until offset 256 in low page */
++		size = MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH - offset;
++
++	i2c_addr = MLXSW_REG_MCIA_I2C_ADDR_LOW;
++	if (offset >= MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH) {
++		i2c_addr = MLXSW_REG_MCIA_I2C_ADDR_HIGH;
++		offset -= MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH;
++	}
++
++	mlxsw_reg_mcia_pack(mcia_pl, module, 0, 0, offset, size, i2c_addr);
++
++	err = mlxsw_reg_query(mlxsw_core, MLXSW_REG(mcia), mcia_pl);
++	if (err)
++		return err;
++
++	status = mlxsw_reg_mcia_status_get(mcia_pl);
++	if (status)
++		return -EIO;
++
++	mlxsw_reg_mcia_eeprom_memcpy_from(mcia_pl, eeprom_tmp);
++	memcpy(data, eeprom_tmp, size);
++	*p_read_size = size;
++
++	return 0;
++}
++
++int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
++					 int off, int *temp)
++{
++	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
++	union {
++		u8 buf[MLXSW_REG_MCIA_TH_ITEM_SIZE];
++		u16 temp;
++	} temp_thresh;
++	char mcia_pl[MLXSW_REG_MCIA_LEN] = {0};
++	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
++	u16 module_temp;
++	bool qsfp;
++	int err;
++
++	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
++			    1);
++	err = mlxsw_reg_query(core, MLXSW_REG(mtbr), mtbr_pl);
++	if (err)
++		return err;
++
++	/* Don't read temperature thresholds for module with no valid info. */
++	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &module_temp, NULL);
++	switch (module_temp) {
++	case MLXSW_REG_MTBR_BAD_SENS_INFO: /* fall-through */
++	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
++	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
++	case MLXSW_REG_MTBR_INDEX_NA:
++		*temp = 0;
++		return 0;
++	default:
++		/* Do not consider thresholds for zero temperature. */
++		if (!MLXSW_REG_MTMP_TEMP_TO_MC(module_temp)) {
++			*temp = 0;
++			return 0;
++		}
++		break;
++	}
++
++	/* Read Free Side Device Temperature Thresholds from page 03h
++	 * (MSB at lower byte address).
++	 * Bytes:
++	 * 128-129 - Temp High Alarm (SFP_TEMP_HIGH_ALARM);
++	 * 130-131 - Temp Low Alarm (SFP_TEMP_LOW_ALARM);
++	 * 132-133 - Temp High Warning (SFP_TEMP_HIGH_WARN);
++	 * 134-135 - Temp Low Warning (SFP_TEMP_LOW_WARN);
++	 */
++
++	/* Validate module identifier value. */
++	err = mlxsw_env_validate_cable_ident(core, module, &qsfp);
++	if (err)
++		return err;
++
++	if (qsfp)
++		mlxsw_reg_mcia_pack(mcia_pl, module, 0,
++				    MLXSW_REG_MCIA_TH_PAGE_NUM,
++				    MLXSW_REG_MCIA_TH_PAGE_OFF + off,
++				    MLXSW_REG_MCIA_TH_ITEM_SIZE,
++				    MLXSW_REG_MCIA_I2C_ADDR_LOW);
++	else
++		mlxsw_reg_mcia_pack(mcia_pl, module, 0,
++				    MLXSW_REG_MCIA_PAGE0_LO,
++				    off, MLXSW_REG_MCIA_TH_ITEM_SIZE,
++				    MLXSW_REG_MCIA_I2C_ADDR_HIGH);
++
++	err = mlxsw_reg_query(core, MLXSW_REG(mcia), mcia_pl);
++	if (err)
++		return err;
++
++	mlxsw_reg_mcia_eeprom_memcpy_from(mcia_pl, eeprom_tmp);
++	memcpy(temp_thresh.buf, eeprom_tmp, MLXSW_REG_MCIA_TH_ITEM_SIZE);
++	*temp = temp_thresh.temp * 1000;
++
++	return 0;
++}
++
++int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
++			      struct ethtool_modinfo *modinfo)
++{
++	u8 module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE];
++	u16 offset = MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE;
++	u8 module_rev_id, module_id;
++	unsigned int read_size;
++	int err;
++
++	err = mlxsw_env_query_module_eeprom(mlxsw_core, module, 0, offset,
++					    module_info, &read_size);
++	if (err)
++		return err;
++
++	if (read_size < offset)
++		return -EIO;
++
++	module_rev_id = module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID];
++	module_id = module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID];
++
++	switch (module_id) {
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP:
++		modinfo->type       = ETH_MODULE_SFF_8436;
++		modinfo->eeprom_len = ETH_MODULE_SFF_8436_LEN;
++		break;
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28:
++		if (module_id == MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28 ||
++		    module_rev_id >=
++		    MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID_8636) {
++			modinfo->type       = ETH_MODULE_SFF_8636;
++			modinfo->eeprom_len = ETH_MODULE_SFF_8636_LEN;
++		} else {
++			modinfo->type       = ETH_MODULE_SFF_8436;
++			modinfo->eeprom_len = ETH_MODULE_SFF_8436_LEN;
++		}
++		break;
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
++		modinfo->type       = ETH_MODULE_SFF_8472;
++		modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(mlxsw_env_get_module_info);
++
++int mlxsw_env_get_module_eeprom(struct net_device *netdev,
++				struct mlxsw_core *mlxsw_core, int module,
++				struct ethtool_eeprom *ee, u8 *data)
++{
++	int offset = ee->offset;
++	unsigned int read_size;
++	int i = 0;
++	int err;
++
++	if (!ee->len)
++		return -EINVAL;
++
++	memset(data, 0, ee->len);
++
++	while (i < ee->len) {
++		err = mlxsw_env_query_module_eeprom(mlxsw_core, module, offset,
++						    ee->len - i, data + i,
++						    &read_size);
++		if (err) {
++			netdev_err(netdev, "Eeprom query failed\n");
++			return err;
++		}
++
++		i += read_size;
++		offset += read_size;
++	}
++
++	return 0;
++}
++EXPORT_SYMBOL(mlxsw_env_get_module_eeprom);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.h b/drivers/net/ethernet/mellanox/mlxsw/core_env.h
+new file mode 100644
+index 0000000..064d0e7
+--- /dev/null
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.h
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0 */
++/* Copyright (c) 2018 Mellanox Technologies. All rights reserved */
++
++#ifndef _MLXSW_CORE_ENV_H
++#define _MLXSW_CORE_ENV_H
++
++int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
++					 int off, int *temp);
++
++int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
++			      struct ethtool_modinfo *modinfo);
++
++int mlxsw_env_get_module_eeprom(struct net_device *netdev,
++				struct mlxsw_core *mlxsw_core, int module,
++				struct ethtool_eeprom *ee, u8 *data);
++
++#endif
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index ab710e3..f1ada4cd 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -1,36 +1,5 @@
+-/*
+- * drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+- * Copyright (c) 2015 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2015 Jiri Pirko <jiri@mellanox.com>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+- */
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
++/* Copyright (c) 2015-2018 Mellanox Technologies. All rights reserved */
+ 
+ #include <linux/kernel.h>
+ #include <linux/types.h>
+@@ -38,8 +7,10 @@
+ #include <linux/sysfs.h>
+ #include <linux/hwmon.h>
+ #include <linux/err.h>
++#include <linux/sfp.h>
+ 
+ #include "core.h"
++#include "core_env.h"
+ 
+ #define MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT 127
+ #define MLXSW_HWMON_ATTR_COUNT (MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT * 4 + \
+@@ -61,6 +32,7 @@ struct mlxsw_hwmon {
+ 	struct attribute *attrs[MLXSW_HWMON_ATTR_COUNT + 1];
+ 	struct mlxsw_hwmon_attr hwmon_attrs[MLXSW_HWMON_ATTR_COUNT];
+ 	unsigned int attrs_count;
++	u8 sensor_count;
+ };
+ 
+ static ssize_t mlxsw_hwmon_temp_show(struct device *dev,
+@@ -152,6 +124,27 @@ static ssize_t mlxsw_hwmon_fan_rpm_show(struct device *dev,
+ 	return sprintf(buf, "%u\n", mlxsw_reg_mfsm_rpm_get(mfsm_pl));
+ }
+ 
++static ssize_t mlxsw_hwmon_fan_fault_show(struct device *dev,
++					  struct device_attribute *attr,
++					  char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	char fore_pl[MLXSW_REG_FORE_LEN];
++	bool fault;
++	int err;
++
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(fore), fore_pl);
++	if (err) {
++		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to query fan\n");
++		return err;
++	}
++	mlxsw_reg_fore_unpack(fore_pl, mlwsw_hwmon_attr->type_index, &fault);
++
++	return sprintf(buf, "%u\n", fault);
++}
++
+ static ssize_t mlxsw_hwmon_pwm_show(struct device *dev,
+ 				    struct device_attribute *attr,
+ 				    char *buf)
+@@ -198,12 +191,160 @@ static ssize_t mlxsw_hwmon_pwm_store(struct device *dev,
+ 	return len;
+ }
+ 
++static ssize_t mlxsw_hwmon_module_temp_show(struct device *dev,
++					    struct device_attribute *attr,
++					    char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
++	u16 temp;
++	u8 module;
++	int err;
++
++	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
++	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
++			    1);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
++	if (err) {
++		dev_err(dev, "Failed to query module temprature sensor\n");
++		return err;
++	}
++
++	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
++	/* Update status and temperature cache. */
++	switch (temp) {
++	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
++	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
++	case MLXSW_REG_MTBR_INDEX_NA:
++		temp = 0;
++		break;
++	case MLXSW_REG_MTBR_BAD_SENS_INFO:
++		/* Untrusted cable is connected. Reading temperature from its
++		 * sensor is faulty.
++		 */
++		temp = 0;
++		break;
++	default:
++		temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
++		break;
++	}
++
++	return sprintf(buf, "%u\n", temp);
++}
++
++static ssize_t mlxsw_hwmon_module_temp_fault_show(struct device *dev,
++						  struct device_attribute *attr,
++						  char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
++	u8 module, fault;
++	u16 temp;
++	int err;
++
++	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
++	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
++			    1);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
++	if (err) {
++		dev_err(dev, "Failed to query module temprature sensor\n");
++		return err;
++	}
++
++	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
++
++	/* Update status and temperature cache. */
++	switch (temp) {
++	case MLXSW_REG_MTBR_BAD_SENS_INFO:
++		/* Untrusted cable is connected. Reading temperature from its
++		 * sensor is faulty.
++		 */
++		fault = 1;
++		break;
++	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
++	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
++	case MLXSW_REG_MTBR_INDEX_NA:
++	default:
++		fault = 0;
++		break;
++	}
++
++	return sprintf(buf, "%u\n", fault);
++}
++
++static ssize_t
++mlxsw_hwmon_module_temp_critical_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	int temp;
++	u8 module;
++	int err;
++
++	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
++	err = mlxsw_env_module_temp_thresholds_get(mlxsw_hwmon->core, module,
++						   SFP_TEMP_HIGH_WARN, &temp);
++	if (err) {
++		dev_err(dev, "Failed to query module temprature thresholds\n");
++		return err;
++	}
++
++	return sprintf(buf, "%u\n", temp);
++}
++
++static ssize_t
++mlxsw_hwmon_module_temp_emergency_show(struct device *dev,
++				       struct device_attribute *attr,
++				       char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	u8 module;
++	int temp;
++	int err;
++
++	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
++	err = mlxsw_env_module_temp_thresholds_get(mlxsw_hwmon->core, module,
++						   SFP_TEMP_HIGH_ALARM, &temp);
++	if (err) {
++		dev_err(dev, "Failed to query module temprature thresholds\n");
++		return err;
++	}
++
++	return sprintf(buf, "%u\n", temp);
++}
++
++static ssize_t
++mlxsw_hwmon_module_temp_label_show(struct device *dev,
++				   struct device_attribute *attr,
++				   char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++
++	return sprintf(buf, "front panel %03u\n",
++		       mlwsw_hwmon_attr->type_index);
++}
++
+ enum mlxsw_hwmon_attr_type {
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP,
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_MAX,
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_RST,
+ 	MLXSW_HWMON_ATTR_TYPE_FAN_RPM,
++	MLXSW_HWMON_ATTR_TYPE_FAN_FAULT,
+ 	MLXSW_HWMON_ATTR_TYPE_PWM,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_FAULT,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_EMERG,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_LABEL,
+ };
+ 
+ static void mlxsw_hwmon_attr_add(struct mlxsw_hwmon *mlxsw_hwmon,
+@@ -218,35 +359,75 @@ static void mlxsw_hwmon_attr_add(struct mlxsw_hwmon *mlxsw_hwmon,
+ 	switch (attr_type) {
+ 	case MLXSW_HWMON_ATTR_TYPE_TEMP:
+ 		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_temp_show;
+-		mlxsw_hwmon_attr->dev_attr.attr.mode = S_IRUGO;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "temp%u_input", num + 1);
+ 		break;
+ 	case MLXSW_HWMON_ATTR_TYPE_TEMP_MAX:
+ 		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_temp_max_show;
+-		mlxsw_hwmon_attr->dev_attr.attr.mode = S_IRUGO;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "temp%u_highest", num + 1);
+ 		break;
+ 	case MLXSW_HWMON_ATTR_TYPE_TEMP_RST:
+ 		mlxsw_hwmon_attr->dev_attr.store = mlxsw_hwmon_temp_rst_store;
+-		mlxsw_hwmon_attr->dev_attr.attr.mode = S_IWUSR;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0200;
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "temp%u_reset_history", num + 1);
+ 		break;
+ 	case MLXSW_HWMON_ATTR_TYPE_FAN_RPM:
+ 		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_fan_rpm_show;
+-		mlxsw_hwmon_attr->dev_attr.attr.mode = S_IRUGO;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "fan%u_input", num + 1);
+ 		break;
++	case MLXSW_HWMON_ATTR_TYPE_FAN_FAULT:
++		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_fan_fault_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "fan%u_fault", num + 1);
++		break;
+ 	case MLXSW_HWMON_ATTR_TYPE_PWM:
+ 		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_pwm_show;
+ 		mlxsw_hwmon_attr->dev_attr.store = mlxsw_hwmon_pwm_store;
+-		mlxsw_hwmon_attr->dev_attr.attr.mode = S_IWUSR | S_IRUGO;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0644;
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "pwm%u", num + 1);
+ 		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE:
++		mlxsw_hwmon_attr->dev_attr.show = mlxsw_hwmon_module_temp_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_input", num + 1);
++		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_FAULT:
++		mlxsw_hwmon_attr->dev_attr.show =
++					mlxsw_hwmon_module_temp_fault_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_fault", num + 1);
++		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT:
++		mlxsw_hwmon_attr->dev_attr.show =
++			mlxsw_hwmon_module_temp_critical_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_crit", num + 1);
++		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_EMERG:
++		mlxsw_hwmon_attr->dev_attr.show =
++			mlxsw_hwmon_module_temp_emergency_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_emergency", num + 1);
++		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_LABEL:
++		mlxsw_hwmon_attr->dev_attr.show =
++			mlxsw_hwmon_module_temp_label_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_label", num + 1);
++		break;
+ 	default:
+ 		WARN_ON(1);
+ 	}
+@@ -264,7 +445,6 @@ static int mlxsw_hwmon_temp_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ {
+ 	char mtcap_pl[MLXSW_REG_MTCAP_LEN] = {0};
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+-	u8 sensor_count;
+ 	int i;
+ 	int err;
+ 
+@@ -273,8 +453,8 @@ static int mlxsw_hwmon_temp_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to get number of temp sensors\n");
+ 		return err;
+ 	}
+-	sensor_count = mlxsw_reg_mtcap_sensor_count_get(mtcap_pl);
+-	for (i = 0; i < sensor_count; i++) {
++	mlxsw_hwmon->sensor_count = mlxsw_reg_mtcap_sensor_count_get(mtcap_pl);
++	for (i = 0; i < mlxsw_hwmon->sensor_count; i++) {
+ 		mlxsw_reg_mtmp_pack(mtmp_pl, i, true, true);
+ 		err = mlxsw_reg_write(mlxsw_hwmon->core,
+ 				      MLXSW_REG(mtmp), mtmp_pl);
+@@ -311,10 +491,14 @@ static int mlxsw_hwmon_fans_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	mlxsw_reg_mfcr_unpack(mfcr_pl, &freq, &tacho_active, &pwm_active);
+ 	num = 0;
+ 	for (type_index = 0; type_index < MLXSW_MFCR_TACHOS_MAX; type_index++) {
+-		if (tacho_active & BIT(type_index))
++		if (tacho_active & BIT(type_index)) {
+ 			mlxsw_hwmon_attr_add(mlxsw_hwmon,
+ 					     MLXSW_HWMON_ATTR_TYPE_FAN_RPM,
++					     type_index, num);
++			mlxsw_hwmon_attr_add(mlxsw_hwmon,
++					     MLXSW_HWMON_ATTR_TYPE_FAN_FAULT,
+ 					     type_index, num++);
++		}
+ 	}
+ 	num = 0;
+ 	for (type_index = 0; type_index < MLXSW_MFCR_PWMS_MAX; type_index++) {
+@@ -326,6 +510,53 @@ static int mlxsw_hwmon_fans_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	return 0;
+ }
+ 
++static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
++{
++	unsigned int module_count = mlxsw_core_max_ports(mlxsw_hwmon->core);
++	char pmlp_pl[MLXSW_REG_PMLP_LEN] = {0};
++	int i, index;
++	u8 width;
++	int err;
++
++	/* Add extra attributes for module temperature. Sensor index is
++	 * assigned to sensor_count value, while all indexed before
++	 * sensor_count are already utilized by the sensors connected through
++	 * mtmp register by mlxsw_hwmon_temp_init().
++	 */
++	index = mlxsw_hwmon->sensor_count;
++	for (i = 1; i < module_count; i++) {
++		mlxsw_reg_pmlp_pack(pmlp_pl, i);
++		err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(pmlp),
++				      pmlp_pl);
++		if (err) {
++			dev_err(mlxsw_hwmon->bus_info->dev, "Failed to read module index %d\n",
++				i);
++			return err;
++		}
++		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
++		if (!width)
++			continue;
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE, index,
++				     index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_FAULT,
++				     index, index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT,
++				     index, index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_EMERG,
++				     index, index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_LABEL,
++				     index, index);
++		index++;
++	}
++
++	return 0;
++}
++
+ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 		     const struct mlxsw_bus_info *mlxsw_bus_info,
+ 		     struct mlxsw_hwmon **p_hwmon)
+@@ -334,8 +565,7 @@ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	struct device *hwmon_dev;
+ 	int err;
+ 
+-	mlxsw_hwmon = devm_kzalloc(mlxsw_bus_info->dev, sizeof(*mlxsw_hwmon),
+-				   GFP_KERNEL);
++	mlxsw_hwmon = kzalloc(sizeof(*mlxsw_hwmon), GFP_KERNEL);
+ 	if (!mlxsw_hwmon)
+ 		return -ENOMEM;
+ 	mlxsw_hwmon->core = mlxsw_core;
+@@ -349,13 +579,16 @@ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	if (err)
+ 		goto err_fans_init;
+ 
++	err = mlxsw_hwmon_module_init(mlxsw_hwmon);
++	if (err)
++		goto err_temp_module_init;
++
+ 	mlxsw_hwmon->groups[0] = &mlxsw_hwmon->group;
+ 	mlxsw_hwmon->group.attrs = mlxsw_hwmon->attrs;
+ 
+-	hwmon_dev = devm_hwmon_device_register_with_groups(mlxsw_bus_info->dev,
+-							   "mlxsw",
+-							   mlxsw_hwmon,
+-							   mlxsw_hwmon->groups);
++	hwmon_dev = hwmon_device_register_with_groups(mlxsw_bus_info->dev,
++						      "mlxsw", mlxsw_hwmon,
++						      mlxsw_hwmon->groups);
+ 	if (IS_ERR(hwmon_dev)) {
+ 		err = PTR_ERR(hwmon_dev);
+ 		goto err_hwmon_register;
+@@ -366,7 +599,15 @@ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	return 0;
+ 
+ err_hwmon_register:
++err_temp_module_init:
+ err_fans_init:
+ err_temp_init:
++	kfree(mlxsw_hwmon);
+ 	return err;
+ }
++
++void mlxsw_hwmon_fini(struct mlxsw_hwmon *mlxsw_hwmon)
++{
++	hwmon_device_unregister(mlxsw_hwmon->hwmon_dev);
++	kfree(mlxsw_hwmon);
++}
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 8047556..c047b61 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -1,34 +1,6 @@
+-/*
+- * drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
++/* Copyright (c) 2016-2018 Mellanox Technologies. All rights reserved
+  * Copyright (c) 2016 Ivan Vecera <cera@cera.cz>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+ #include <linux/kernel.h>
+@@ -37,44 +9,79 @@
+ #include <linux/sysfs.h>
+ #include <linux/thermal.h>
+ #include <linux/err.h>
++#include <linux/sfp.h>
+ 
+ #include "core.h"
++#include "core_env.h"
+ 
+ #define MLXSW_THERMAL_POLL_INT	1000	/* ms */
+-#define MLXSW_THERMAL_MAX_TEMP	110000	/* 110C */
++#define MLXSW_THERMAL_SLOW_POLL_INT	20000	/* ms */
++#define MLXSW_THERMAL_ASIC_TEMP_NORM	75000	/* 75C */
++#define MLXSW_THERMAL_ASIC_TEMP_HIGH	85000	/* 85C */
++#define MLXSW_THERMAL_ASIC_TEMP_HOT	105000	/* 105C */
++#define MLXSW_THERMAL_ASIC_TEMP_CRIT	110000	/* 110C */
++#define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
++#define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
++#define MLXSW_THERMAL_ZONE_MAX_NAME	16
++#define MLXSW_THERMAL_TEMP_SCORE_MAX	0xffffffff
+ #define MLXSW_THERMAL_MAX_STATE	10
+ #define MLXSW_THERMAL_MAX_DUTY	255
++/* Minimum and maximum fan allowed speed in percent: from 20% to 100%. Values
++ * MLXSW_THERMAL_MAX_STATE + x, where x is between 2 and 10 are used for
++ * setting fan speed dynamic minimum. For example, if value is set to 14 (40%)
++ * cooling levels vector will be set to 4, 4, 4, 4, 4, 5, 6, 7, 8, 9, 10 to
++ * introduce PWM speed in percent: 40, 40, 40, 40, 40, 50, 60. 70, 80, 90, 100.
++ */
++#define MLXSW_THERMAL_SPEED_MIN		(MLXSW_THERMAL_MAX_STATE + 2)
++#define MLXSW_THERMAL_SPEED_MAX		(MLXSW_THERMAL_MAX_STATE * 2)
++#define MLXSW_THERMAL_SPEED_MIN_LEVEL	2		/* 20% */
++
++/* External cooling devices, allowed for binding to mlxsw thermal zones. */
++static char * const mlxsw_thermal_external_allowed_cdev[] = {
++	"mlxreg_fan",
++};
++
++enum mlxsw_thermal_trips {
++	MLXSW_THERMAL_TEMP_TRIP_NORM,
++	MLXSW_THERMAL_TEMP_TRIP_HIGH,
++	MLXSW_THERMAL_TEMP_TRIP_HOT,
++	MLXSW_THERMAL_TEMP_TRIP_CRIT,
++};
+ 
+ struct mlxsw_thermal_trip {
+ 	int	type;
+ 	int	temp;
++	int	hyst;
+ 	int	min_state;
+ 	int	max_state;
+ };
+ 
+ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
+-	{	/* Above normal - 60%-100% PWM */
++	{	/* In range - 0-40% PWM */
+ 		.type		= THERMAL_TRIP_ACTIVE,
+-		.temp		= 75000,
+-		.min_state	= (6 * MLXSW_THERMAL_MAX_STATE) / 10,
+-		.max_state	= MLXSW_THERMAL_MAX_STATE,
++		.temp		= MLXSW_THERMAL_ASIC_TEMP_NORM,
++		.hyst		= MLXSW_THERMAL_HYSTERESIS_TEMP,
++		.min_state	= 0,
++		.max_state	= (4 * MLXSW_THERMAL_MAX_STATE) / 10,
+ 	},
+ 	{
+-		/* Very high - 100% PWM */
++		/* In range - 40-100% PWM */
+ 		.type		= THERMAL_TRIP_ACTIVE,
+-		.temp		= 85000,
+-		.min_state	= MLXSW_THERMAL_MAX_STATE,
++		.temp		= MLXSW_THERMAL_ASIC_TEMP_HIGH,
++		.hyst		= MLXSW_THERMAL_HYSTERESIS_TEMP,
++		.min_state	= (4 * MLXSW_THERMAL_MAX_STATE) / 10,
+ 		.max_state	= MLXSW_THERMAL_MAX_STATE,
+ 	},
+ 	{	/* Warning */
+ 		.type		= THERMAL_TRIP_HOT,
+-		.temp		= 105000,
++		.temp		= MLXSW_THERMAL_ASIC_TEMP_HOT,
++		.hyst		= MLXSW_THERMAL_HYSTERESIS_TEMP,
+ 		.min_state	= MLXSW_THERMAL_MAX_STATE,
+ 		.max_state	= MLXSW_THERMAL_MAX_STATE,
+ 	},
+ 	{	/* Critical - soft poweroff */
+ 		.type		= THERMAL_TRIP_CRITICAL,
+-		.temp		= MLXSW_THERMAL_MAX_TEMP,
++		.temp		= MLXSW_THERMAL_ASIC_TEMP_CRIT,
+ 		.min_state	= MLXSW_THERMAL_MAX_STATE,
+ 		.max_state	= MLXSW_THERMAL_MAX_STATE,
+ 	}
+@@ -85,13 +92,29 @@ static const struct mlxsw_thermal_trip default_thermal_trips[] = {
+ /* Make sure all trips are writable */
+ #define MLXSW_THERMAL_TRIP_MASK	(BIT(MLXSW_THERMAL_NUM_TRIPS) - 1)
+ 
++struct mlxsw_thermal;
++
++struct mlxsw_thermal_module {
++	struct mlxsw_thermal *parent;
++	struct thermal_zone_device *tzdev;
++	struct mlxsw_thermal_trip trips[MLXSW_THERMAL_NUM_TRIPS];
++	enum thermal_device_mode mode;
++	int module;
++};
++
+ struct mlxsw_thermal {
+ 	struct mlxsw_core *core;
+ 	const struct mlxsw_bus_info *bus_info;
+ 	struct thermal_zone_device *tzdev;
++	int polling_delay;
+ 	struct thermal_cooling_device *cdevs[MLXSW_MFCR_PWMS_MAX];
++	u8 cooling_levels[MLXSW_THERMAL_MAX_STATE + 1];
+ 	struct mlxsw_thermal_trip trips[MLXSW_THERMAL_NUM_TRIPS];
+ 	enum thermal_device_mode mode;
++	struct mlxsw_thermal_module *tz_module_arr;
++	unsigned int tz_module_num;
++	int tz_highest;
++	struct mutex tz_update_lock;
+ };
+ 
+ static inline u8 mlxsw_state_to_duty(int state)
+@@ -115,9 +138,201 @@ static int mlxsw_get_cooling_device_idx(struct mlxsw_thermal *thermal,
+ 		if (thermal->cdevs[i] == cdev)
+ 			return i;
+ 
++	/* Allow mlxsw thermal zone binding to an external cooling device */
++	for (i = 0; i < ARRAY_SIZE(mlxsw_thermal_external_allowed_cdev); i++) {
++		if (strnstr(cdev->type, mlxsw_thermal_external_allowed_cdev[i],
++			    sizeof(cdev->type)))
++			return 0;
++	}
++
+ 	return -ENODEV;
+ }
+ 
++static void
++mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
++{
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = 0;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = 0;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = 0;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = 0;
++}
++
++static int
++mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
++				  struct mlxsw_thermal_module *tz)
++{
++	int crit_temp, emerg_temp;
++	int err;
++
++	err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
++						   SFP_TEMP_HIGH_WARN,
++						   &crit_temp);
++	if (err)
++		return err;
++
++	err = mlxsw_env_module_temp_thresholds_get(core, tz->module,
++						   SFP_TEMP_HIGH_ALARM,
++						   &emerg_temp);
++	if (err)
++		return err;
++
++	/* According to the system thermal requirements, the thermal zones are
++	 * defined with four trip points. The critical and emergency
++	 * temperature thresholds, provided by QSFP module are set as "active"
++	 * and "hot" trip points, "normal" and "critical" trip points ar
++	 * derived from "active" and "hot" by subtracting or adding double
++	 * hysteresis value.
++	 */
++	if (crit_temp >= MLXSW_THERMAL_MODULE_TEMP_SHIFT)
++		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp -
++					MLXSW_THERMAL_MODULE_TEMP_SHIFT;
++	else
++		tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = crit_temp;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = crit_temp;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = emerg_temp;
++	if (emerg_temp > crit_temp)
++		tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp +
++					MLXSW_THERMAL_MODULE_TEMP_SHIFT;
++	else
++		tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = emerg_temp;
++
++	return 0;
++}
++
++static void mlxsw_thermal_tz_score_get(struct mlxsw_thermal_trip *trips,
++				       int temp, int *score)
++{
++	struct mlxsw_thermal_trip *trip = trips;
++	int delta, i, shift = 1;
++
++	/* Calculate thermal zone score, if temperature is above the critical
++	 * threshold score is set to MLXSW_THERMAL_TEMP_SCORE_MAX.
++	 */
++	*score = MLXSW_THERMAL_TEMP_SCORE_MAX;
++	for (i = MLXSW_THERMAL_TEMP_TRIP_NORM; i < MLXSW_THERMAL_NUM_TRIPS;
++	     i++, trip++) {
++		if (temp < trip->temp) {
++			delta = DIV_ROUND_CLOSEST(temp, trip->temp - temp);
++			*score = delta * shift;
++			break;
++		}
++		shift *= 256;
++	}
++}
++
++static int
++mlxsw_thermal_highest_tz_get(struct device *dev, struct mlxsw_thermal *thermal,
++			     int module_count, unsigned int seed_temp,
++			     int *max_tz, int *max_score)
++{
++	char mtbr_pl[MLXSW_REG_MTBR_LEN];
++	struct mlxsw_thermal_module *tz;
++	int i, j, index, off, score;
++	u16 temp;
++	int err;
++
++	mlxsw_thermal_tz_score_get(thermal->trips, seed_temp, max_score);
++	/* Read modules temperature. */
++	index = 0;
++	while (index < module_count) {
++		off = min_t(u8, MLXSW_REG_MTBR_REC_MAX_COUNT,
++			    module_count - index);
++		mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX +
++				    index, off);
++		err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtbr), mtbr_pl);
++		if (err) {
++			dev_err(dev, "Failed to get temp from index %d\n",
++				off);
++			return err;
++		}
++
++		for (i = 0, j = index; i < off; i++, j++) {
++			mlxsw_reg_mtbr_temp_unpack(mtbr_pl, i, &temp, NULL);
++			/* Update status and temperature cache. */
++			switch (temp) {
++			case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
++			case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
++			case MLXSW_REG_MTBR_INDEX_NA: /* fall-through */
++			case MLXSW_REG_MTBR_BAD_SENS_INFO:
++				temp = 0;
++				break;
++			default:
++				tz = &thermal->tz_module_arr[j];
++				if (!tz)
++					break;
++				/* Reset all trip point. */
++				mlxsw_thermal_module_trips_reset(tz);
++				temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
++				/* Do not consider zero temperature. */
++				if (!temp)
++					break;
++
++				err = mlxsw_thermal_module_trips_update(dev,
++								thermal->core,
++								tz);
++				if (err) {
++					dev_err(dev, "Failed to update trips for %s\n",
++						tz->tzdev->type);
++					return err;
++				}
++
++				score = 0;
++				mlxsw_thermal_tz_score_get(tz->trips, temp,
++							   &score);
++				if (score > *max_score) {
++					*max_score = score;
++					*max_tz = j + 1;
++				}
++				break;
++			}
++		}
++		index += off;
++	}
++
++	return 0;
++}
++
++static int
++mlxsw_thermal_highest_tz_notify(struct device *dev,
++				struct thermal_zone_device *tzdev,
++				struct mlxsw_thermal *thermal,
++				int module_count, unsigned int temp)
++{
++	char env_record[24];
++	char *envp[2] = { env_record, NULL };
++	struct mlxsw_thermal_module *tz_module;
++	struct thermal_zone_device *tz;
++	int max_tz = 0, max_score = 0;
++	int err;
++
++	err = mlxsw_thermal_highest_tz_get(dev, thermal,
++					   thermal->tz_module_num, temp,
++					   &max_tz, &max_score);
++	if (err) {
++		dev_err(dev, "Failed to query module temp sensor\n");
++		return err;
++	}
++
++	if (thermal->tz_highest != max_tz) {
++		sprintf(env_record, "TZ_HIGHEST==%u", max_score);
++		if (max_tz && (&thermal->tz_module_arr[max_tz - 1])) {
++			tz_module = &thermal->tz_module_arr[max_tz - 1];
++			tz = tz_module->tzdev;
++			err = kobject_uevent_env(&tz->device.kobj, KOBJ_CHANGE,
++						 envp);
++		} else {
++			err = kobject_uevent_env(&tzdev->device.kobj,
++						 KOBJ_CHANGE, envp);
++		}
++		if (err)
++			dev_err(dev, "Error sending uevent %s\n", envp[0]);
++		else
++			thermal->tz_highest = max_tz;
++	}
++
++	return 0;
++}
++
+ static int mlxsw_thermal_bind(struct thermal_zone_device *tzdev,
+ 			      struct thermal_cooling_device *cdev)
+ {
+@@ -183,15 +398,20 @@ static int mlxsw_thermal_set_mode(struct thermal_zone_device *tzdev,
+ 
+ 	mutex_lock(&tzdev->lock);
+ 
+-	if (mode == THERMAL_DEVICE_ENABLED)
+-		tzdev->polling_delay = MLXSW_THERMAL_POLL_INT;
+-	else
++	if (mode == THERMAL_DEVICE_ENABLED) {
++		thermal->tz_highest = 0;
++		tzdev->polling_delay = thermal->polling_delay;
++	} else {
+ 		tzdev->polling_delay = 0;
++	}
+ 
+ 	mutex_unlock(&tzdev->lock);
+ 
+ 	thermal->mode = mode;
++
++	mutex_lock(&thermal->tz_update_lock);
+ 	thermal_zone_device_update(tzdev, THERMAL_EVENT_UNSPECIFIED);
++	mutex_unlock(&thermal->tz_update_lock);
+ 
+ 	return 0;
+ }
+@@ -214,6 +434,14 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 	}
+ 	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
+ 
++	if (thermal->tz_module_arr) {
++		err = mlxsw_thermal_highest_tz_notify(dev, tzdev, thermal,
++						      thermal->tz_module_num,
++						      temp);
++		if (err)
++			dev_err(dev, "Failed to query module temp sensor\n");
++	}
++
+ 	*p_temp = (int) temp;
+ 	return 0;
+ }
+@@ -249,13 +477,31 @@ static int mlxsw_thermal_set_trip_temp(struct thermal_zone_device *tzdev,
+ 	struct mlxsw_thermal *thermal = tzdev->devdata;
+ 
+ 	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS ||
+-	    temp > MLXSW_THERMAL_MAX_TEMP)
++	    temp > MLXSW_THERMAL_ASIC_TEMP_CRIT)
+ 		return -EINVAL;
+ 
+ 	thermal->trips[trip].temp = temp;
+ 	return 0;
+ }
+ 
++static int mlxsw_thermal_get_trip_hyst(struct thermal_zone_device *tzdev,
++				       int trip, int *p_hyst)
++{
++	struct mlxsw_thermal *thermal = tzdev->devdata;
++
++	*p_hyst = thermal->trips[trip].hyst;
++	return 0;
++}
++
++static int mlxsw_thermal_set_trip_hyst(struct thermal_zone_device *tzdev,
++				       int trip, int hyst)
++{
++	struct mlxsw_thermal *thermal = tzdev->devdata;
++
++	thermal->trips[trip].hyst = hyst;
++	return 0;
++}
++
+ static struct thermal_zone_device_ops mlxsw_thermal_ops = {
+ 	.bind = mlxsw_thermal_bind,
+ 	.unbind = mlxsw_thermal_unbind,
+@@ -265,6 +511,250 @@ static struct thermal_zone_device_ops mlxsw_thermal_ops = {
+ 	.get_trip_type	= mlxsw_thermal_get_trip_type,
+ 	.get_trip_temp	= mlxsw_thermal_get_trip_temp,
+ 	.set_trip_temp	= mlxsw_thermal_set_trip_temp,
++	.get_trip_hyst	= mlxsw_thermal_get_trip_hyst,
++	.set_trip_hyst	= mlxsw_thermal_set_trip_hyst,
++};
++
++static int mlxsw_thermal_module_bind(struct thermal_zone_device *tzdev,
++				     struct thermal_cooling_device *cdev)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++	struct mlxsw_thermal *thermal = tz->parent;
++	int i, j, err;
++
++	/* If the cooling device is one of ours bind it */
++	if (mlxsw_get_cooling_device_idx(thermal, cdev) < 0)
++		return 0;
++
++	for (i = 0; i < MLXSW_THERMAL_NUM_TRIPS; i++) {
++		const struct mlxsw_thermal_trip *trip = &tz->trips[i];
++
++		err = thermal_zone_bind_cooling_device(tzdev, i, cdev,
++						       trip->max_state,
++						       trip->min_state,
++						       THERMAL_WEIGHT_DEFAULT);
++		if (err < 0)
++			goto err_bind_cooling_device;
++	}
++	return 0;
++
++err_bind_cooling_device:
++	for (j = i - 1; j >= 0; j--)
++		thermal_zone_unbind_cooling_device(tzdev, j, cdev);
++	return err;
++}
++
++static int mlxsw_thermal_module_unbind(struct thermal_zone_device *tzdev,
++				       struct thermal_cooling_device *cdev)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++	struct mlxsw_thermal *thermal = tz->parent;
++	int i;
++	int err;
++
++	/* If the cooling device is one of ours unbind it */
++	if (mlxsw_get_cooling_device_idx(thermal, cdev) < 0)
++		return 0;
++
++	for (i = 0; i < MLXSW_THERMAL_NUM_TRIPS; i++) {
++		err = thermal_zone_unbind_cooling_device(tzdev, i, cdev);
++		WARN_ON(err);
++	}
++	return err;
++}
++
++static int mlxsw_thermal_module_mode_get(struct thermal_zone_device *tzdev,
++					 enum thermal_device_mode *mode)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	*mode = tz->mode;
++
++	return 0;
++}
++
++static int mlxsw_thermal_module_mode_set(struct thermal_zone_device *tzdev,
++					 enum thermal_device_mode mode)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++	struct mlxsw_thermal *thermal = tz->parent;
++
++	mutex_lock(&tzdev->lock);
++
++	if (mode == THERMAL_DEVICE_ENABLED)
++		tzdev->polling_delay = thermal->polling_delay;
++	else
++		tzdev->polling_delay = 0;
++
++	mutex_unlock(&tzdev->lock);
++
++	tz->mode = mode;
++
++	mutex_lock(&thermal->tz_update_lock);
++	thermal_zone_device_update(tzdev, THERMAL_EVENT_UNSPECIFIED);
++	mutex_unlock(&thermal->tz_update_lock);
++
++	return 0;
++}
++
++static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
++					 int *p_temp)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++	struct mlxsw_thermal *thermal = tz->parent;
++	struct device *dev = thermal->bus_info->dev;
++	char mtbr_pl[MLXSW_REG_MTBR_LEN];
++	u16 temp;
++	int err;
++
++	/* Read module temperature. */
++	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX +
++			    tz->module, 1);
++	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtbr), mtbr_pl);
++	if (err)
++		return err;
++
++	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
++	/* Update temperature. */
++	switch (temp) {
++	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
++	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
++	case MLXSW_REG_MTBR_INDEX_NA: /* fall-through */
++	case MLXSW_REG_MTBR_BAD_SENS_INFO:
++		temp = 0;
++		break;
++	default:
++		temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
++		/* Reset all trip point. */
++		mlxsw_thermal_module_trips_reset(tz);
++		/* Update trip points. */
++		err = mlxsw_thermal_module_trips_update(dev, thermal->core,
++							tz);
++		if (err)
++			return err;
++		break;
++	}
++
++	*p_temp = (int) temp;
++	return 0;
++}
++
++static int
++mlxsw_thermal_module_trip_type_get(struct thermal_zone_device *tzdev, int trip,
++				   enum thermal_trip_type *p_type)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
++		return -EINVAL;
++
++	*p_type = tz->trips[trip].type;
++	return 0;
++}
++
++static int
++mlxsw_thermal_module_trip_temp_get(struct thermal_zone_device *tzdev,
++				   int trip, int *p_temp)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
++		return -EINVAL;
++
++	*p_temp = tz->trips[trip].temp;
++	return 0;
++}
++
++static int
++mlxsw_thermal_module_trip_temp_set(struct thermal_zone_device *tzdev,
++				   int trip, int temp)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS ||
++	    temp > tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp)
++		return -EINVAL;
++
++	tz->trips[trip].temp = temp;
++	return 0;
++}
++
++static int
++mlxsw_thermal_module_trip_hyst_get(struct thermal_zone_device *tzdev, int trip,
++				   int *p_hyst)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	*p_hyst = tz->trips[trip].hyst;
++	return 0;
++}
++
++static int
++mlxsw_thermal_module_trip_hyst_set(struct thermal_zone_device *tzdev, int trip,
++				   int hyst)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++
++	tz->trips[trip].hyst = hyst;
++	return 0;
++}
++
++static int mlxsw_thermal_module_trend_get(struct thermal_zone_device *tzdev,
++					  int trip, enum thermal_trend *trend)
++{
++	struct mlxsw_thermal_module *tz = tzdev->devdata;
++	struct mlxsw_thermal *thermal = tz->parent;
++	struct device *dev = thermal->bus_info->dev;
++	char *envp[2] = { "TZ_DOWN=1", NULL };
++	int delta, window;
++	int err;
++
++	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
++		return -EINVAL;
++
++	delta = tzdev->last_temperature - tzdev->temperature;
++	window = tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp -
++		 tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp;
++	if (delta > window && !window && !tzdev->last_temperature) {
++		/* Notify user about fast temperature decreasing by sending
++		 * hwmon uevent. Fast decreasing could happen when some hot
++		 * module is removed. In this situation temperature trend could
++		 * go down once, and then stay in a stable state.
++		 * Notification will allow user to handle such case, if user
++		 * supposes to optimize PWM state.
++		 */
++		err = kobject_uevent_env(&tzdev->device.kobj, KOBJ_CHANGE,
++					 envp);
++		if (err)
++			dev_err(dev, "Error sending uevent %s\n", envp[0]);
++	}
++
++	if (tzdev->temperature > tzdev->last_temperature)
++		*trend = THERMAL_TREND_RAISING;
++	else if (tzdev->temperature < tzdev->last_temperature)
++		*trend = THERMAL_TREND_DROPPING;
++	else
++		*trend = THERMAL_TREND_STABLE;
++
++	return 0;
++}
++
++static struct thermal_zone_params mlxsw_thermal_module_params = {
++	.governor_name = "user_space",
++};
++
++static struct thermal_zone_device_ops mlxsw_thermal_module_ops = {
++	.bind		= mlxsw_thermal_module_bind,
++	.unbind		= mlxsw_thermal_module_unbind,
++	.get_mode	= mlxsw_thermal_module_mode_get,
++	.set_mode	= mlxsw_thermal_module_mode_set,
++	.get_temp	= mlxsw_thermal_module_temp_get,
++	.get_trip_type	= mlxsw_thermal_module_trip_type_get,
++	.get_trip_temp	= mlxsw_thermal_module_trip_temp_get,
++	.set_trip_temp	= mlxsw_thermal_module_trip_temp_set,
++	.get_trip_hyst	= mlxsw_thermal_module_trip_hyst_get,
++	.set_trip_hyst	= mlxsw_thermal_module_trip_hyst_set,
++	.get_trend	= mlxsw_thermal_module_trend_get,
+ };
+ 
+ static int mlxsw_thermal_get_max_state(struct thermal_cooling_device *cdev,
+@@ -307,12 +797,51 @@ static int mlxsw_thermal_set_cur_state(struct thermal_cooling_device *cdev,
+ 	struct mlxsw_thermal *thermal = cdev->devdata;
+ 	struct device *dev = thermal->bus_info->dev;
+ 	char mfsc_pl[MLXSW_REG_MFSC_LEN];
+-	int err, idx;
++	unsigned long cur_state, i;
++	int idx;
++	u8 duty;
++	int err;
+ 
+ 	idx = mlxsw_get_cooling_device_idx(thermal, cdev);
+ 	if (idx < 0)
+ 		return idx;
+ 
++	/* Verify if this request is for changing allowed fan dynamical
++	 * minimum. If it is - update cooling levels accordingly and update
++	 * state, if current state is below the newly requested minimum state.
++	 * For example, if current state is 5, and minimal state is to be
++	 * changed from 4 to 6, thermal->cooling_levels[0 to 5] will be changed
++	 * all from 4 to 6. And state 5 (thermal->cooling_levels[4]) should be
++	 * overwritten.
++	 */
++	if (state >= MLXSW_THERMAL_SPEED_MIN &&
++	    state <= MLXSW_THERMAL_SPEED_MAX) {
++		state -= MLXSW_THERMAL_MAX_STATE;
++		for (i = 0; i <= MLXSW_THERMAL_MAX_STATE; i++)
++			thermal->cooling_levels[i] = max(state, i);
++
++		mlxsw_reg_mfsc_pack(mfsc_pl, idx, 0);
++		err = mlxsw_reg_query(thermal->core, MLXSW_REG(mfsc), mfsc_pl);
++		if (err)
++			return err;
++
++		duty = mlxsw_reg_mfsc_pwm_duty_cycle_get(mfsc_pl);
++		cur_state = mlxsw_duty_to_state(duty);
++
++		/* If current fan state is lower than requested dynamical
++		 * minimum, increase fan speed up to dynamical minimum.
++		 */
++		if (state < cur_state)
++			return 0;
++
++		state = cur_state;
++	}
++
++	if (state > MLXSW_THERMAL_MAX_STATE)
++		return -EINVAL;
++
++	/* Normalize the state to the valid speed range. */
++	state = thermal->cooling_levels[state];
+ 	mlxsw_reg_mfsc_pack(mfsc_pl, idx, mlxsw_state_to_duty(state));
+ 	err = mlxsw_reg_write(thermal->core, MLXSW_REG(mfsc), mfsc_pl);
+ 	if (err) {
+@@ -328,6 +857,122 @@ static const struct thermal_cooling_device_ops mlxsw_cooling_ops = {
+ 	.set_cur_state	= mlxsw_thermal_set_cur_state,
+ };
+ 
++static int
++mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
++{
++	char tz_name[MLXSW_THERMAL_ZONE_MAX_NAME];
++	int err;
++
++	snprintf(tz_name, sizeof(tz_name), "mlxsw-module%d",
++		 module_tz->module + 1);
++	module_tz->tzdev = thermal_zone_device_register(tz_name,
++						  MLXSW_THERMAL_NUM_TRIPS,
++						  MLXSW_THERMAL_TRIP_MASK,
++						  module_tz,
++						  &mlxsw_thermal_module_ops,
++						  &mlxsw_thermal_module_params,
++						  0, 0);
++	if (IS_ERR(module_tz->tzdev)) {
++		err = PTR_ERR(module_tz);
++		return err;
++	}
++
++	return 0;
++}
++
++static void mlxsw_thermal_module_tz_fini(struct thermal_zone_device *tzdev)
++{
++	thermal_zone_device_unregister(tzdev);
++}
++
++static int
++mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
++			  struct mlxsw_thermal *thermal, u8 local_port)
++{
++	struct mlxsw_thermal_module *module_tz;
++	char pmlp_pl[MLXSW_REG_PMLP_LEN];
++	u8 width, module;
++	int err;
++
++	mlxsw_reg_pmlp_pack(pmlp_pl, local_port);
++	err = mlxsw_reg_query(core, MLXSW_REG(pmlp), pmlp_pl);
++	if (err)
++		return err;
++
++	width = mlxsw_reg_pmlp_width_get(pmlp_pl);
++	if (!width)
++		return 0;
++
++	module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
++	module_tz = &thermal->tz_module_arr[module];
++	module_tz->module = module;
++	module_tz->parent = thermal;
++	memcpy(module_tz->trips, default_thermal_trips,
++	       sizeof(thermal->trips));
++	/* Initialize all trip point. */
++	mlxsw_thermal_module_trips_reset(module_tz);
++	/* Update trip point according to the module data. */
++	err = mlxsw_thermal_module_trips_update(dev, core, module_tz);
++	if (err)
++		return err;
++
++	thermal->tz_module_num++;
++
++	return 0;
++}
++
++static void mlxsw_thermal_module_fini(struct mlxsw_thermal_module *module_tz)
++{
++	if (module_tz && module_tz->tzdev) {
++		mlxsw_thermal_module_tz_fini(module_tz->tzdev);
++		module_tz->tzdev = NULL;
++	}
++}
++
++static int
++mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
++			   struct mlxsw_thermal *thermal)
++{
++	unsigned int module_count = mlxsw_core_max_ports(core);
++	int i, err;
++
++	thermal->tz_module_arr = kcalloc(module_count,
++					 sizeof(*thermal->tz_module_arr),
++					 GFP_KERNEL);
++	if (!thermal->tz_module_arr)
++		return -ENOMEM;
++
++	for (i = 1; i <= module_count; i++) {
++		err = mlxsw_thermal_module_init(dev, core, thermal, i);
++		if (err)
++			goto err_unreg_tz_module_arr;
++	}
++
++	for (i = 0; i < thermal->tz_module_num; i++) {
++		err = mlxsw_thermal_module_tz_init(&thermal->tz_module_arr[i]);
++		if (err)
++			goto err_unreg_tz_module_arr;
++	}
++
++	return 0;
++
++err_unreg_tz_module_arr:
++	for (i = thermal->tz_module_num - 1; i >= 0; i--)
++		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
++	kfree(thermal->tz_module_arr);
++	return err;
++}
++
++static void
++mlxsw_thermal_modules_fini(struct mlxsw_thermal *thermal)
++{
++	int i;
++
++	for (i = thermal->tz_module_num - 1; i >= 0; i--)
++		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
++	kfree(thermal->tz_module_arr);
++}
++
+ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 		       const struct mlxsw_bus_info *bus_info,
+ 		       struct mlxsw_thermal **p_thermal)
+@@ -347,6 +992,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 
+ 	thermal->core = core;
+ 	thermal->bus_info = bus_info;
++	mutex_init(&thermal->tz_update_lock);
+ 	memcpy(thermal->trips, default_thermal_trips, sizeof(thermal->trips));
+ 
+ 	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mfcr), mfcr_pl);
+@@ -380,7 +1026,8 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 		if (pwm_active & BIT(i)) {
+ 			struct thermal_cooling_device *cdev;
+ 
+-			cdev = thermal_cooling_device_register("Fan", thermal,
++			cdev = thermal_cooling_device_register("mlxsw_fan",
++							thermal,
+ 							&mlxsw_cooling_ops);
+ 			if (IS_ERR(cdev)) {
+ 				err = PTR_ERR(cdev);
+@@ -391,22 +1038,41 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 		}
+ 	}
+ 
++	/* Initialize cooling levels per PWM state. */
++	for (i = 0; i < MLXSW_THERMAL_MAX_STATE; i++)
++		thermal->cooling_levels[i] = max(MLXSW_THERMAL_SPEED_MIN_LEVEL,
++						 i);
++
++	thermal->polling_delay = bus_info->low_frequency ?
++				 MLXSW_THERMAL_SLOW_POLL_INT :
++				 MLXSW_THERMAL_POLL_INT;
++
+ 	thermal->tzdev = thermal_zone_device_register("mlxsw",
+ 						      MLXSW_THERMAL_NUM_TRIPS,
+ 						      MLXSW_THERMAL_TRIP_MASK,
+ 						      thermal,
+ 						      &mlxsw_thermal_ops,
+ 						      NULL, 0,
+-						      MLXSW_THERMAL_POLL_INT);
++						      thermal->polling_delay);
+ 	if (IS_ERR(thermal->tzdev)) {
+ 		err = PTR_ERR(thermal->tzdev);
+ 		dev_err(dev, "Failed to register thermal zone\n");
+ 		goto err_unreg_cdevs;
+ 	}
+ 
++	err = mlxsw_thermal_modules_init(dev, core, thermal);
++	if (err)
++		goto err_unreg_tzdev;
++
+ 	thermal->mode = THERMAL_DEVICE_ENABLED;
+ 	*p_thermal = thermal;
+ 	return 0;
++
++err_unreg_tzdev:
++	if (thermal->tzdev) {
++		thermal_zone_device_unregister(thermal->tzdev);
++		thermal->tzdev = NULL;
++	}
+ err_unreg_cdevs:
+ 	for (i = 0; i < MLXSW_MFCR_PWMS_MAX; i++)
+ 		if (thermal->cdevs[i])
+@@ -420,6 +1086,7 @@ void mlxsw_thermal_fini(struct mlxsw_thermal *thermal)
+ {
+ 	int i;
+ 
++	mlxsw_thermal_modules_fini(thermal);
+ 	if (thermal->tzdev) {
+ 		thermal_zone_device_unregister(thermal->tzdev);
+ 		thermal->tzdev = NULL;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index 5c31665..f1b95d5 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -1,36 +1,5 @@
+-/*
+- * drivers/net/ethernet/mellanox/mlxsw/i2c.c
+- * Copyright (c) 2016 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2016 Vadim Pasternak <vadimp@mellanox.com>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+- */
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
++/* Copyright (c) 2016-2018 Mellanox Technologies. All rights reserved */
+ 
+ #include <linux/err.h>
+ #include <linux/i2c.h>
+@@ -46,8 +15,6 @@
+ #include "core.h"
+ #include "i2c.h"
+ 
+-static const char mlxsw_i2c_driver_name[] = "mlxsw_i2c";
+-
+ #define MLXSW_I2C_CIR2_BASE		0x72000
+ #define MLXSW_I2C_CIR_STATUS_OFF	0x18
+ #define MLXSW_I2C_CIR2_OFF_STATUS	(MLXSW_I2C_CIR2_BASE + \
+@@ -364,10 +331,7 @@ mlxsw_i2c_cmd(struct device *dev, size_t in_mbox_size, u8 *in_mbox,
+ 	if (reg_size % MLXSW_I2C_BLK_MAX)
+ 		num++;
+ 
+-	if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+-		dev_err(&client->dev, "Could not acquire lock");
+-		return -EINVAL;
+-	}
++	mutex_lock(&mlxsw_i2c->cmd.lock);
+ 
+ 	err = mlxsw_i2c_write(dev, reg_size, in_mbox, num, status);
+ 	if (err)
+@@ -536,6 +500,7 @@ static int mlxsw_i2c_probe(struct i2c_client *client,
+ 	mlxsw_i2c->bus_info.device_kind = id->name;
+ 	mlxsw_i2c->bus_info.device_name = client->name;
+ 	mlxsw_i2c->bus_info.dev = &client->dev;
++	mlxsw_i2c->bus_info.low_frequency = true;
+ 	mlxsw_i2c->dev = &client->dev;
+ 
+ 	err = mlxsw_core_bus_device_register(&mlxsw_i2c->bus_info,
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.h b/drivers/net/ethernet/mellanox/mlxsw/i2c.h
+index daa24b2..17e059d 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.h
+@@ -1,36 +1,5 @@
+-/*
+- * drivers/net/ethernet/mellanox/mlxsw/i2c.h
+- * Copyright (c) 2016 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2016 Vadim Pasternak <vadimp@mellanox.com>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+- */
++/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0 */
++/* Copyright (c) 2016-2018 Mellanox Technologies. All rights reserved */
+ 
+ #ifndef _MLXSW_I2C_H
+ #define _MLXSW_I2C_H
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 3dd1626..c47949c 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -1,37 +1,9 @@
+-/*
+- * drivers/net/ethernet/mellanox/mlxsw/minimal.c
+- * Copyright (c) 2016 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2016 Vadim Pasternak <vadimp@mellanox.com>
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
+- */
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
++/* Copyright (c) 2016-2018 Mellanox Technologies. All rights reserved */
+ 
++#include <linux/netdevice.h>
++#include <linux/etherdevice.h>
++#include <linux/ethtool.h>
+ #include <linux/i2c.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -39,59 +11,339 @@
+ #include <linux/types.h>
+ 
+ #include "core.h"
++#include "core_env.h"
+ #include "i2c.h"
+ 
+-static const char mlxsw_minimal_driver_name[] = "mlxsw_minimal";
++static const char mlxsw_m_driver_name[] = "mlxsw_minimal";
+ 
+-static const struct mlxsw_config_profile mlxsw_minimal_config_profile;
++struct mlxsw_m_port;
+ 
+-static struct mlxsw_driver mlxsw_minimal_driver = {
+-	.kind		= mlxsw_minimal_driver_name,
+-	.priv_size	= 1,
+-	.profile	= &mlxsw_minimal_config_profile,
++struct mlxsw_m {
++	struct mlxsw_m_port **modules;
++	int *module_to_port;
++	struct mlxsw_core *core;
++	const struct mlxsw_bus_info *bus_info;
++	u8 base_mac[ETH_ALEN];
++	u8 max_modules;
+ };
+ 
+-static const struct i2c_device_id mlxsw_minimal_i2c_id[] = {
++struct mlxsw_m_port {
++	struct mlxsw_core_port core_port; /* must be first */
++	struct net_device *dev;
++	struct mlxsw_m *mlxsw_m;
++	u8 local_port;
++	u8 module;
++};
++
++static int mlxsw_m_port_dummy_open_stop(struct net_device *dev)
++{
++	return 0;
++}
++
++static const struct net_device_ops mlxsw_m_port_netdev_ops = {
++	.ndo_open		= mlxsw_m_port_dummy_open_stop,
++	.ndo_stop		= mlxsw_m_port_dummy_open_stop,
++};
++
++static int mlxsw_m_get_module_info(struct net_device *netdev,
++				   struct ethtool_modinfo *modinfo)
++{
++	struct mlxsw_m_port *mlxsw_m_port = netdev_priv(netdev);
++	struct mlxsw_core *core = mlxsw_m_port->mlxsw_m->core;
++	int err;
++
++	err = mlxsw_env_get_module_info(core, mlxsw_m_port->module, modinfo);
++
++	return err;
++}
++
++static int
++mlxsw_m_get_module_eeprom(struct net_device *netdev, struct ethtool_eeprom *ee,
++			  u8 *data)
++{
++	struct mlxsw_m_port *mlxsw_m_port = netdev_priv(netdev);
++	struct mlxsw_core *core = mlxsw_m_port->mlxsw_m->core;
++	int err;
++
++	err = mlxsw_env_get_module_eeprom(netdev, core,
++					  mlxsw_m_port->module, ee, data);
++
++	return err;
++}
++
++static const struct ethtool_ops mlxsw_m_port_ethtool_ops = {
++	.get_module_info	= mlxsw_m_get_module_info,
++	.get_module_eeprom	= mlxsw_m_get_module_eeprom,
++};
++
++static int
++mlxsw_m_port_module_info_get(struct mlxsw_m *mlxsw_m, u8 local_port,
++			     u8 *p_module, u8 *p_width)
++{
++	char pmlp_pl[MLXSW_REG_PMLP_LEN];
++	int err;
++
++	mlxsw_reg_pmlp_pack(pmlp_pl, local_port);
++	err = mlxsw_reg_query(mlxsw_m->core, MLXSW_REG(pmlp), pmlp_pl);
++	if (err)
++		return err;
++	*p_module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
++	*p_width = mlxsw_reg_pmlp_width_get(pmlp_pl);
++
++	return 0;
++}
++
++static int
++mlxsw_m_port_dev_addr_get(struct mlxsw_m_port *mlxsw_m_port)
++{
++	struct mlxsw_m *mlxsw_m = mlxsw_m_port->mlxsw_m;
++	struct net_device *dev = mlxsw_m_port->dev;
++	char ppad_pl[MLXSW_REG_PPAD_LEN];
++	int err;
++
++	mlxsw_reg_ppad_pack(ppad_pl, false, 0);
++	err = mlxsw_reg_query(mlxsw_m->core, MLXSW_REG(ppad), ppad_pl);
++	if (err)
++		return err;
++	mlxsw_reg_ppad_mac_memcpy_from(ppad_pl, dev->dev_addr);
++	/* The last byte value in base mac address is guaranteed
++	 * to be such it does not overflow when adding local_port
++	 * value.
++	 */
++	dev->dev_addr[ETH_ALEN - 1] += mlxsw_m_port->module + 1;
++	return 0;
++}
++
++static int
++mlxsw_m_port_create(struct mlxsw_m *mlxsw_m, u8 local_port, u8 module)
++{
++	struct mlxsw_m_port *mlxsw_m_port;
++	struct net_device *dev;
++	int err;
++
++	dev = alloc_etherdev(sizeof(struct mlxsw_m_port));
++	if (!dev) {
++		err = -ENOMEM;
++		goto err_alloc_etherdev;
++	}
++
++	SET_NETDEV_DEV(dev, mlxsw_m->bus_info->dev);
++	mlxsw_m_port = netdev_priv(dev);
++	mlxsw_m_port->dev = dev;
++	mlxsw_m_port->mlxsw_m = mlxsw_m;
++	mlxsw_m_port->local_port = local_port;
++	mlxsw_m_port->module = module;
++
++	mlxsw_m->modules[local_port] = mlxsw_m_port;
++
++	dev->netdev_ops = &mlxsw_m_port_netdev_ops;
++	dev->ethtool_ops = &mlxsw_m_port_ethtool_ops;
++
++	err = mlxsw_core_port_init(mlxsw_m->core,
++				   &mlxsw_m_port->core_port, local_port,
++				   dev, false, module);
++	if (err) {
++		dev_err(mlxsw_m->bus_info->dev, "Port %d: Failed to init core port\n",
++			local_port);
++		goto err_alloc_etherdev;
++	}
++
++	err = mlxsw_m_port_dev_addr_get(mlxsw_m_port);
++	if (err) {
++		dev_err(mlxsw_m->bus_info->dev, "Port %d: Unable to get port mac address\n",
++			mlxsw_m_port->local_port);
++		goto err_dev_addr_get;
++	}
++
++	netif_carrier_off(dev);
++
++	err = register_netdev(dev);
++	if (err) {
++		dev_err(mlxsw_m->bus_info->dev, "Port %d: Failed to register netdev\n",
++			mlxsw_m_port->local_port);
++		goto err_register_netdev;
++	}
++
++	return 0;
++
++err_register_netdev:
++	free_netdev(dev);
++err_dev_addr_get:
++err_alloc_etherdev:
++	mlxsw_m->modules[local_port] = NULL;
++	return err;
++}
++
++static void mlxsw_m_port_remove(struct mlxsw_m *mlxsw_m, u8 local_port)
++{
++	struct mlxsw_m_port *mlxsw_m_port = mlxsw_m->modules[local_port];
++
++	unregister_netdev(mlxsw_m_port->dev); /* This calls ndo_stop */
++	free_netdev(mlxsw_m_port->dev);
++	mlxsw_core_port_fini(&mlxsw_m_port->core_port);
++}
++
++static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m)
++{
++	int i;
++
++	for (i = 0; i < mlxsw_m->max_modules; i++) {
++		if (mlxsw_m->module_to_port[i] > 0)
++			mlxsw_m_port_remove(mlxsw_m,
++					    mlxsw_m->module_to_port[i]);
++	}
++
++	kfree(mlxsw_m->module_to_port);
++	kfree(mlxsw_m->modules);
++}
++
++static int mlxsw_m_port_mapping_create(struct mlxsw_m *mlxsw_m, u8 local_port,
++				       u8 *last_module)
++{
++	u8 module, width;
++	int err;
++
++	/* Fill out  to local port mapping array */
++	err = mlxsw_m_port_module_info_get(mlxsw_m, local_port, &module,
++					   &width);
++	if (err)
++		return err;
++
++	if (!width)
++		return 0;
++	/* Skip, if port belongs to the cluster */
++	if (module == *last_module)
++		return 0;
++	*last_module = module;
++	mlxsw_m->module_to_port[module] = ++mlxsw_m->max_modules;
++
++	return 0;
++}
++
++static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
++{
++	unsigned int max_port = mlxsw_core_max_ports(mlxsw_m->core);
++	u8 last_module = max_port;
++	int i;
++	int err;
++
++	mlxsw_m->modules = kcalloc(max_port, sizeof(*mlxsw_m->modules),
++				   GFP_KERNEL);
++	if (!mlxsw_m->modules)
++		return -ENOMEM;
++
++	mlxsw_m->module_to_port = kmalloc_array(max_port, sizeof(int),
++						GFP_KERNEL);
++	if (!mlxsw_m->module_to_port) {
++		err = -ENOMEM;
++		goto err_port_create;
++	}
++
++	/* Invalidate the entries of module to local port mapping array */
++	for (i = 0; i < max_port; i++)
++		mlxsw_m->module_to_port[i] = -1;
++
++	/* Fill out module to local port mapping array */
++	for (i = 1; i <= max_port; i++) {
++		err = mlxsw_m_port_mapping_create(mlxsw_m, i, &last_module);
++		if (err)
++			goto err_port_create;
++	}
++
++	/* Create port objects for each valid entry */
++	for (i = 0; i < mlxsw_m->max_modules; i++) {
++		if (mlxsw_m->module_to_port[i] > 0) {
++			err = mlxsw_m_port_create(mlxsw_m,
++						  mlxsw_m->module_to_port[i],
++						  i);
++			if (err)
++				goto err_port_create;
++		}
++	}
++
++	return 0;
++
++err_port_create:
++	mlxsw_m_ports_remove(mlxsw_m);
++	return err;
++}
++
++static int mlxsw_m_init(struct mlxsw_core *mlxsw_core,
++			const struct mlxsw_bus_info *mlxsw_bus_info)
++{
++	struct mlxsw_m *mlxsw_m = mlxsw_core_driver_priv(mlxsw_core);
++	int err;
++
++	mlxsw_m->core = mlxsw_core;
++	mlxsw_m->bus_info = mlxsw_bus_info;
++
++	err = mlxsw_m_ports_create(mlxsw_m);
++	if (err) {
++		dev_err(mlxsw_m->bus_info->dev, "Failed to create modules\n");
++		return err;
++	}
++
++	return 0;
++}
++
++static void mlxsw_m_fini(struct mlxsw_core *mlxsw_core)
++{
++	struct mlxsw_m *mlxsw_m = mlxsw_core_driver_priv(mlxsw_core);
++
++	mlxsw_m_ports_remove(mlxsw_m);
++}
++
++static const struct mlxsw_config_profile mlxsw_m_config_profile;
++
++static struct mlxsw_driver mlxsw_m_driver = {
++	.kind		= mlxsw_m_driver_name,
++	.priv_size	= sizeof(struct mlxsw_m),
++	.init		= mlxsw_m_init,
++	.fini		= mlxsw_m_fini,
++	.profile	= &mlxsw_m_config_profile,
++};
++
++static const struct i2c_device_id mlxsw_m_i2c_id[] = {
+ 	{ "mlxsw_minimal", 0},
+ 	{ },
+ };
+ 
+-static struct i2c_driver mlxsw_minimal_i2c_driver = {
++static struct i2c_driver mlxsw_m_i2c_driver = {
+ 	.driver.name = "mlxsw_minimal",
+ 	.class = I2C_CLASS_HWMON,
+-	.id_table = mlxsw_minimal_i2c_id,
++	.id_table = mlxsw_m_i2c_id,
+ };
+ 
+-static int __init mlxsw_minimal_module_init(void)
++static int __init mlxsw_m_module_init(void)
+ {
+ 	int err;
+ 
+-	err = mlxsw_core_driver_register(&mlxsw_minimal_driver);
++	err = mlxsw_core_driver_register(&mlxsw_m_driver);
+ 	if (err)
+ 		return err;
+ 
+-	err = mlxsw_i2c_driver_register(&mlxsw_minimal_i2c_driver);
++	err = mlxsw_i2c_driver_register(&mlxsw_m_i2c_driver);
+ 	if (err)
+ 		goto err_i2c_driver_register;
+ 
+ 	return 0;
+ 
+ err_i2c_driver_register:
+-	mlxsw_core_driver_unregister(&mlxsw_minimal_driver);
++	mlxsw_core_driver_unregister(&mlxsw_m_driver);
+ 
+ 	return err;
+ }
+ 
+-static void __exit mlxsw_minimal_module_exit(void)
++static void __exit mlxsw_m_module_exit(void)
+ {
+-	mlxsw_i2c_driver_unregister(&mlxsw_minimal_i2c_driver);
+-	mlxsw_core_driver_unregister(&mlxsw_minimal_driver);
++	mlxsw_i2c_driver_unregister(&mlxsw_m_i2c_driver);
++	mlxsw_core_driver_unregister(&mlxsw_m_driver);
+ }
+ 
+-module_init(mlxsw_minimal_module_init);
+-module_exit(mlxsw_minimal_module_exit);
++module_init(mlxsw_m_module_init);
++module_exit(mlxsw_m_module_exit);
+ 
+ MODULE_LICENSE("Dual BSD/GPL");
+ MODULE_AUTHOR("Vadim Pasternak <vadimp@mellanox.com>");
+ MODULE_DESCRIPTION("Mellanox minimal driver");
+-MODULE_DEVICE_TABLE(i2c, mlxsw_minimal_i2c_id);
++MODULE_DEVICE_TABLE(i2c, mlxsw_m_i2c_id);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index 2c0c331..20f01bb 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -4618,6 +4618,35 @@ static inline void mlxsw_reg_mfsl_unpack(char *payload, u8 tacho,
+ 		*p_tach_max = mlxsw_reg_mfsl_tach_max_get(payload);
+ }
+ 
++/* FORE - Fan Out of Range Event Register
++ * --------------------------------------
++ * This register reports the status of the controlled fans compared to the
++ * range defined by the MFSL register.
++ */
++#define MLXSW_REG_FORE_ID 0x9007
++#define MLXSW_REG_FORE_LEN 0x0C
++
++MLXSW_REG_DEFINE(fore, MLXSW_REG_FORE_ID, MLXSW_REG_FORE_LEN);
++
++/* fan_under_limit
++ * Fan speed is below the low limit defined in MFSL register. Each bit relates
++ * to a single tachometer and indicates the specific tachometer reading is
++ * below the threshold.
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, fore, fan_under_limit, 0x00, 16, 10);
++
++static inline void mlxsw_reg_fore_unpack(char *payload, u8 tacho,
++					 bool *fan_under_limit)
++{
++	u16 limit;
++
++	if (fan_under_limit) {
++		limit = mlxsw_reg_fore_fan_under_limit_get(payload);
++		*fan_under_limit = !!(limit & BIT(tacho));
++	}
++}
++
+ /* MTCAP - Management Temperature Capabilities
+  * -------------------------------------------
+  * This register exposes the capabilities of the device and
+@@ -4750,6 +4779,80 @@ static inline void mlxsw_reg_mtmp_unpack(char *payload, unsigned int *p_temp,
+ 		mlxsw_reg_mtmp_sensor_name_memcpy_from(payload, sensor_name);
+ }
+ 
++/* MTBR - Management Temperature Bulk Register
++ * -------------------------------------------
++ * This register is used for bulk temperature reading.
++ */
++#define MLXSW_REG_MTBR_ID 0x900F
++#define MLXSW_REG_MTBR_BASE_LEN 0x10 /* base length, without records */
++#define MLXSW_REG_MTBR_REC_LEN 0x04 /* record length */
++#define MLXSW_REG_MTBR_REC_MAX_COUNT 47 /* firmware limitation */
++#define MLXSW_REG_MTBR_LEN (MLXSW_REG_MTBR_BASE_LEN +	\
++			    MLXSW_REG_MTBR_REC_LEN *	\
++			    MLXSW_REG_MTBR_REC_MAX_COUNT)
++
++MLXSW_REG_DEFINE(mtbr, MLXSW_REG_MTBR_ID, MLXSW_REG_MTBR_LEN);
++
++/* reg_mtbr_base_sensor_index
++ * Base sensors index to access (0 - ASIC sensor, 1-63 - ambient sensors,
++ * 64-127 are mapped to the SFP+/QSFP modules sequentially).
++ * Access: Index
++ */
++MLXSW_ITEM32(reg, mtbr, base_sensor_index, 0x00, 0, 7);
++
++/* reg_mtbr_num_rec
++ * Request: Number of records to read
++ * Response: Number of records read
++ * See above description for more details.
++ * Range 1..255
++ * Access: RW
++ */
++MLXSW_ITEM32(reg, mtbr, num_rec, 0x04, 0, 8);
++
++/* reg_mtbr_rec_max_temp
++ * The highest measured temperature from the sensor.
++ * When the bit mte is cleared, the field max_temperature is reserved.
++ * Access: RO
++ */
++MLXSW_ITEM32_INDEXED(reg, mtbr, rec_max_temp, MLXSW_REG_MTBR_BASE_LEN, 16,
++		     16, MLXSW_REG_MTBR_REC_LEN, 0x00, false);
++
++/* reg_mtbr_rec_temp
++ * Temperature reading from the sensor. Reading is in 0..125 Celsius
++ * degrees units.
++ * Access: RO
++ */
++MLXSW_ITEM32_INDEXED(reg, mtbr, rec_temp, MLXSW_REG_MTBR_BASE_LEN, 0, 16,
++		     MLXSW_REG_MTBR_REC_LEN, 0x00, false);
++
++static inline void mlxsw_reg_mtbr_pack(char *payload, u8 base_sensor_index,
++				       u8 num_rec)
++{
++	MLXSW_REG_ZERO(mtbr, payload);
++	mlxsw_reg_mtbr_base_sensor_index_set(payload, base_sensor_index);
++	mlxsw_reg_mtbr_num_rec_set(payload, num_rec);
++}
++
++/* Error codes from temperatute reading */
++enum mlxsw_reg_mtbr_temp_status {
++	MLXSW_REG_MTBR_NO_CONN		= 0x8000,
++	MLXSW_REG_MTBR_NO_TEMP_SENS	= 0x8001,
++	MLXSW_REG_MTBR_INDEX_NA		= 0x8002,
++	MLXSW_REG_MTBR_BAD_SENS_INFO	= 0x8003,
++};
++
++/* Base index for reading modules temperature */
++#define MLXSW_REG_MTBR_BASE_MODULE_INDEX 64
++
++static inline void mlxsw_reg_mtbr_temp_unpack(char *payload, int rec_ind,
++					      u16 *p_temp, u16 *p_max_temp)
++{
++	if (p_temp)
++		*p_temp = mlxsw_reg_mtbr_rec_temp_get(payload, rec_ind);
++	if (p_max_temp)
++		*p_max_temp = mlxsw_reg_mtbr_rec_max_temp_get(payload, rec_ind);
++}
++
+ /* MCIA - Management Cable Info Access
+  * -----------------------------------
+  * MCIA register is used to access the SFP+ and QSFP connector's EPROM.
+@@ -4804,13 +4907,41 @@ MLXSW_ITEM32(reg, mcia, device_address, 0x04, 0, 16);
+  */
+ MLXSW_ITEM32(reg, mcia, size, 0x08, 0, 16);
+ 
+-#define MLXSW_SP_REG_MCIA_EEPROM_SIZE 48
++#define MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH	256
++#define MLXSW_REG_MCIA_EEPROM_SIZE		48
++#define MLXSW_REG_MCIA_I2C_ADDR_LOW		0x50
++#define MLXSW_REG_MCIA_I2C_ADDR_HIGH		0x51
++#define MLXSW_REG_MCIA_PAGE0_LO_OFF		0xa0
++#define MLXSW_REG_MCIA_TH_ITEM_SIZE		2
++#define MLXSW_REG_MCIA_TH_PAGE_NUM		3
++#define MLXSW_REG_MCIA_PAGE0_LO			0
++#define MLXSW_REG_MCIA_TH_PAGE_OFF		0x80
++
++enum mlxsw_reg_mcia_eeprom_module_info_rev_id {
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID_UNSPC	= 0x00,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID_8436	= 0x01,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID_8636	= 0x03,
++};
++
++enum mlxsw_reg_mcia_eeprom_module_info_id {
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP	= 0x03,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP	= 0x0C,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS	= 0x0D,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28	= 0x11,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD	= 0x18,
++};
++
++enum mlxsw_reg_mcia_eeprom_module_info {
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE,
++};
+ 
+ /* reg_mcia_eeprom
+  * Bytes to read/write.
+  * Access: RW
+  */
+-MLXSW_ITEM_BUF(reg, mcia, eeprom, 0x10, MLXSW_SP_REG_MCIA_EEPROM_SIZE);
++MLXSW_ITEM_BUF(reg, mcia, eeprom, 0x10, MLXSW_REG_MCIA_EEPROM_SIZE);
+ 
+ static inline void mlxsw_reg_mcia_pack(char *payload, u8 module, u8 lock,
+ 				       u8 page_number, u16 device_addr,
+@@ -5548,6 +5679,8 @@ static inline const char *mlxsw_reg_id_str(u16 reg_id)
+ 		return "MFSC";
+ 	case MLXSW_REG_MFSM_ID:
+ 		return "MFSM";
++	case MLXSW_REG_FORE_ID:
++		return "FORE";
+ 	case MLXSW_REG_MTCAP_ID:
+ 		return "MTCAP";
+ 	case MLXSW_REG_MPAT_ID:
+@@ -5556,6 +5689,8 @@ static inline const char *mlxsw_reg_id_str(u16 reg_id)
+ 		return "MPAR";
+ 	case MLXSW_REG_MTMP_ID:
+ 		return "MTMP";
++	case MLXSW_REG_MTBR_ID:
++		return "MTBR";
+ 	case MLXSW_REG_MLCR_ID:
+ 		return "MLCR";
+ 	case MLXSW_REG_SBPR_ID:
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index b6d4455..52314a1 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -495,7 +495,9 @@ static int mlxreg_hotplug_set_irq(struct mlxreg_hotplug_priv_data *priv)
+ {
+ 	struct mlxreg_core_hotplug_platform_data *pdata;
+ 	struct mlxreg_core_item *item;
+-	int i, ret;
++	struct mlxreg_core_data *data;
++	u32 regval;
++	int i, j, ret;
+ 
+ 	pdata = dev_get_platdata(&priv->pdev->dev);
+ 	item = pdata->items;
+@@ -507,6 +509,25 @@ static int mlxreg_hotplug_set_irq(struct mlxreg_hotplug_priv_data *priv)
+ 		if (ret)
+ 			goto out;
+ 
++		/*
++		 * Verify if hardware configuration requires to disable
++		 * interrupt capability for some of components.
++		 */
++		data = item->data;
++		for (j = 0; j < item->count; j++, data++) {
++			/* Verify if the attribute has capability register. */
++			if (data->capability) {
++				/* Read capability register. */
++				ret = regmap_read(priv->regmap,
++						  data->capability, &regval);
++				if (ret)
++					goto out;
++
++				if (!(regval & data->bit))
++					item->mask &= ~BIT(j);
++			}
++		}
++
+ 		/* Set group initial status as mask and unmask group event. */
+ 		if (item->inversed) {
+ 			item->cache = item->mask;
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index c192dfe..acfaf64 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -152,8 +152,8 @@ static int mlxreg_io_attr_init(struct mlxreg_io_priv_data *priv)
+ {
+ 	int i;
+ 
+-	priv->group.attrs = devm_kzalloc(&priv->pdev->dev,
+-					 priv->pdata->counter *
++	priv->group.attrs = devm_kcalloc(&priv->pdev->dev,
++					 priv->pdata->counter,
+ 					 sizeof(struct attribute *),
+ 					 GFP_KERNEL);
+ 	if (!priv->group.attrs)
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index e8782f5..6e150b4 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -1,34 +1,9 @@
++// SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ /*
+- * Copyright (c) 2016 Mellanox Technologies. All rights reserved.
+- * Copyright (c) 2016 Vadim Pasternak <vadimp@mellanox.com>
++ * Mellanox platform driver
+  *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions are met:
+- *
+- * 1. Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- * 2. Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in the
+- *    documentation and/or other materials provided with the distribution.
+- * 3. Neither the names of the copyright holders nor the names of its
+- *    contributors may be used to endorse or promote products derived from
+- *    this software without specific prior written permission.
+- *
+- * Alternatively, this software may be distributed under the terms of the
+- * GNU General Public License ("GPL") version 2 as published by the Free
+- * Software Foundation.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+- * POSSIBILITY OF SUCH DAMAGE.
++ * Copyright (C) 2016-2018 Mellanox Technologies
++ * Copyright (C) 2016-2018 Vadim Pasternak <vadimp@mellanox.com>
+  */
+ 
+ #include <linux/device.h>
+@@ -49,7 +24,7 @@
+ #define MLXPLAT_CPLD_LPC_REG_BASE_ADRR		0x2500
+ #define MLXPLAT_CPLD_LPC_REG_CPLD1_VER_OFFSET	0x00
+ #define MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET	0x01
+-#define MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET   0x02
++#define MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET	0x02
+ #define MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET	0x1d
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET	0x1e
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET	0x1f
+@@ -58,6 +33,7 @@
+ #define MLXPLAT_CPLD_LPC_REG_LED3_OFFSET	0x22
+ #define MLXPLAT_CPLD_LPC_REG_LED4_OFFSET	0x23
+ #define MLXPLAT_CPLD_LPC_REG_LED5_OFFSET	0x24
++#define MLXPLAT_CPLD_LPC_REG_FAN_DIRECTION	0x2a
+ #define MLXPLAT_CPLD_LPC_REG_GP1_OFFSET		0x30
+ #define MLXPLAT_CPLD_LPC_REG_WP1_OFFSET		0x31
+ #define MLXPLAT_CPLD_LPC_REG_GP2_OFFSET		0x32
+@@ -92,6 +68,10 @@
+ #define MLXPLAT_CPLD_LPC_REG_TACHO10_OFFSET	0xee
+ #define MLXPLAT_CPLD_LPC_REG_TACHO11_OFFSET	0xef
+ #define MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET	0xf0
++#define MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET	0xf5
++#define MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET	0xf6
++#define MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET	0xf7
++#define MLXPLAT_CPLD_LPC_REG_TACHO_SPEED_OFFSET	0xf8
+ #define MLXPLAT_CPLD_LPC_IO_RANGE		0x100
+ #define MLXPLAT_CPLD_LPC_I2C_CH1_OFF		0xdb
+ #define MLXPLAT_CPLD_LPC_I2C_CH2_OFF		0xda
+@@ -578,7 +558,7 @@ static struct mlxreg_core_item mlxplat_mlxcpld_msn201x_items[] = {
+ 
+ static
+ struct mlxreg_core_hotplug_platform_data mlxplat_mlxcpld_msn201x_data = {
+-	.items = mlxplat_mlxcpld_msn21xx_items,
++	.items = mlxplat_mlxcpld_msn201x_items,
+ 	.counter = ARRAY_SIZE(mlxplat_mlxcpld_msn201x_items),
+ 	.cell = MLXPLAT_CPLD_LPC_REG_AGGR_OFFSET,
+ 	.mask = MLXPLAT_CPLD_AGGR_MASK_DEF,
+@@ -609,36 +589,48 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_fan_items_data[] = {
+ 		.label = "fan1",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(0),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "fan2",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(1),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(1),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "fan3",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(2),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(2),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "fan4",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(3),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(3),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "fan5",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(4),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(4),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "fan6",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_OFFSET,
+ 		.mask = BIT(5),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(5),
+ 		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ };
+@@ -841,61 +833,85 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_led_data[] = {
+ 		.label = "fan1:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(0),
+ 	},
+ 	{
+ 		.label = "fan1:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(0),
+ 	},
+ 	{
+ 		.label = "fan2:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(1),
+ 	},
+ 	{
+ 		.label = "fan2:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED2_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(1),
+ 	},
+ 	{
+ 		.label = "fan3:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(2),
+ 	},
+ 	{
+ 		.label = "fan3:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(2),
+ 	},
+ 	{
+ 		.label = "fan4:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(3),
+ 	},
+ 	{
+ 		.label = "fan4:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED3_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(3),
+ 	},
+ 	{
+ 		.label = "fan5:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED4_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(4),
+ 	},
+ 	{
+ 		.label = "fan5:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED4_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(4),
+ 	},
+ 	{
+ 		.label = "fan6:green",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED4_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(5),
+ 	},
+ 	{
+ 		.label = "fan6:orange",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_LED4_OFFSET,
+ 		.mask = MLXPLAT_CPLD_LED_HI_NIBBLE_MASK,
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
++		.bit = BIT(5),
+ 	},
+ };
+ 
+@@ -1123,7 +1139,7 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.reg = MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET,
+ 		.bit = GENMASK(7, 0),
+ 		.mode = 0444,
+-        },
++	},
+ 	{
+ 		.label = "reset_long_pb",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+@@ -1209,6 +1225,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.bit = 1,
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "fan_dir",
++		.reg = MLXPLAT_CPLD_LPC_REG_FAN_DIRECTION,
++		.bit = GENMASK(7, 0),
++		.mode = 0200,
++	},
+ };
+ 
+ static struct mlxreg_core_platform_data mlxplat_default_ng_regs_io_data = {
+@@ -1226,61 +1248,90 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
+ 		.label = "tacho1",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(0),
+ 	},
+ 	{
+ 		.label = "tacho2",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO2_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(1),
+ 	},
+ 	{
+ 		.label = "tacho3",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO3_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(2),
+ 	},
+ 	{
+ 		.label = "tacho4",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO4_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(3),
+ 	},
+ 	{
+ 		.label = "tacho5",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO5_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(4),
+ 	},
+ 	{
+ 		.label = "tacho6",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO6_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(5),
+ 	},
+ 	{
+ 		.label = "tacho7",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO7_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(6),
+ 	},
+ 	{
+ 		.label = "tacho8",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO8_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET,
++		.bit = BIT(7),
+ 	},
+ 	{
+ 		.label = "tacho9",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO9_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
++		.bit = BIT(0),
+ 	},
+ 	{
+ 		.label = "tacho10",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO10_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
++		.bit = BIT(1),
+ 	},
+ 	{
+ 		.label = "tacho11",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO11_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
++		.bit = BIT(2),
+ 	},
+ 	{
+ 		.label = "tacho12",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET,
+ 		.mask = GENMASK(7, 0),
++		.capability = MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET,
++		.bit = BIT(3),
++	},
++	{
++		.label = "conf",
++		.reg = MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET,
++		.capability = MLXPLAT_CPLD_LPC_REG_TACHO_SPEED_OFFSET,
+ 	},
+ };
+ 
+@@ -1332,6 +1383,7 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_LED3_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_LED4_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_LED5_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_DIRECTION:
+ 	case MLXPLAT_CPLD_LPC_REG_GP1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WP1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_GP2_OFFSET:
+@@ -1366,6 +1418,10 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO11_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM_CONTROL_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_TACHO_SPEED_OFFSET:
+ 		return true;
+ 	}
+ 	return false;
+@@ -1385,6 +1441,7 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_LED3_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_LED4_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_LED5_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_DIRECTION:
+ 	case MLXPLAT_CPLD_LPC_REG_GP1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_GP2_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_AGGR_OFFSET:
+@@ -1417,6 +1474,10 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO11_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM_CONTROL_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_CAP1_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_CAP2_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_TACHO_SPEED_OFFSET:
+ 		return true;
+ 	}
+ 	return false;
+@@ -1639,6 +1700,13 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+ 		},
+ 	},
+ 	{
++		.callback = mlxplat_dmi_qmb7xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "MSN38"),
++		},
++	},
++	{
+ 		.callback = mlxplat_dmi_default_matched,
+ 		.matches = {
+ 			DMI_MATCH(DMI_BOARD_NAME, "VMOD0001"),
+@@ -1668,6 +1736,12 @@ static const struct dmi_system_id mlxplat_dmi_table[] __initconst = {
+ 			DMI_MATCH(DMI_BOARD_NAME, "VMOD0005"),
+ 		},
+ 	},
++	{
++		.callback = mlxplat_dmi_qmb7xx_matched,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0007"),
++		},
++	},
+ 	{ }
+ };
+ 
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index 19f5cb61..1b2f86f 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -61,6 +61,7 @@ struct mlxreg_hotplug_device {
+  * @reg: attribute register;
+  * @mask: attribute access mask;
+  * @bit: attribute effective bit;
++ * @capability: attribute capability register;
+  * @mode: access mode;
+  * @np - pointer to node platform associated with attribute;
+  * @hpdev - hotplug device data;
+@@ -72,6 +73,7 @@ struct mlxreg_core_data {
+ 	u32 reg;
+ 	u32 mask;
+ 	u32 bit;
++	u32 capability;
+ 	umode_t	mode;
+ 	struct device_node *np;
+ 	struct mlxreg_hotplug_device hpdev;
+@@ -107,9 +109,9 @@ struct mlxreg_core_item {
+ /**
+  * struct mlxreg_core_platform_data - platform data:
+  *
+- * @led_data: led private data;
++ * @data: instance private data;
+  * @regmap: register map of parent device;
+- * @counter: number of led instances;
++ * @counter: number of instances;
+  */
+ struct mlxreg_core_platform_data {
+ 	struct mlxreg_core_data *data;
+diff --git a/include/linux/sfp.h b/include/linux/sfp.h
+new file mode 100644
+index 0000000..d37518e
+--- /dev/null
++++ b/include/linux/sfp.h
+@@ -0,0 +1,564 @@
++#ifndef LINUX_SFP_H
++#define LINUX_SFP_H
++
++#include <linux/phy.h>
++
++struct sfp_eeprom_base {
++	u8 phys_id;
++	u8 phys_ext_id;
++	u8 connector;
++#if defined __BIG_ENDIAN_BITFIELD
++	u8 e10g_base_er:1;
++	u8 e10g_base_lrm:1;
++	u8 e10g_base_lr:1;
++	u8 e10g_base_sr:1;
++	u8 if_1x_sx:1;
++	u8 if_1x_lx:1;
++	u8 if_1x_copper_active:1;
++	u8 if_1x_copper_passive:1;
++
++	u8 escon_mmf_1310_led:1;
++	u8 escon_smf_1310_laser:1;
++	u8 sonet_oc192_short_reach:1;
++	u8 sonet_reach_bit1:1;
++	u8 sonet_reach_bit2:1;
++	u8 sonet_oc48_long_reach:1;
++	u8 sonet_oc48_intermediate_reach:1;
++	u8 sonet_oc48_short_reach:1;
++
++	u8 unallocated_5_7:1;
++	u8 sonet_oc12_smf_long_reach:1;
++	u8 sonet_oc12_smf_intermediate_reach:1;
++	u8 sonet_oc12_short_reach:1;
++	u8 unallocated_5_3:1;
++	u8 sonet_oc3_smf_long_reach:1;
++	u8 sonet_oc3_smf_intermediate_reach:1;
++	u8 sonet_oc3_short_reach:1;
++
++	u8 e_base_px:1;
++	u8 e_base_bx10:1;
++	u8 e100_base_fx:1;
++	u8 e100_base_lx:1;
++	u8 e1000_base_t:1;
++	u8 e1000_base_cx:1;
++	u8 e1000_base_lx:1;
++	u8 e1000_base_sx:1;
++
++	u8 fc_ll_v:1;
++	u8 fc_ll_s:1;
++	u8 fc_ll_i:1;
++	u8 fc_ll_l:1;
++	u8 fc_ll_m:1;
++	u8 fc_tech_sa:1;
++	u8 fc_tech_lc:1;
++	u8 fc_tech_electrical_inter_enclosure:1;
++
++	u8 fc_tech_electrical_intra_enclosure:1;
++	u8 fc_tech_sn:1;
++	u8 fc_tech_sl:1;
++	u8 fc_tech_ll:1;
++	u8 sfp_ct_active:1;
++	u8 sfp_ct_passive:1;
++	u8 unallocated_8_1:1;
++	u8 unallocated_8_0:1;
++
++	u8 fc_media_tw:1;
++	u8 fc_media_tp:1;
++	u8 fc_media_mi:1;
++	u8 fc_media_tv:1;
++	u8 fc_media_m6:1;
++	u8 fc_media_m5:1;
++	u8 unallocated_9_1:1;
++	u8 fc_media_sm:1;
++
++	u8 fc_speed_1200:1;
++	u8 fc_speed_800:1;
++	u8 fc_speed_1600:1;
++	u8 fc_speed_400:1;
++	u8 fc_speed_3200:1;
++	u8 fc_speed_200:1;
++	u8 unallocated_10_1:1;
++	u8 fc_speed_100:1;
++#elif defined __LITTLE_ENDIAN_BITFIELD
++	u8 if_1x_copper_passive:1;
++	u8 if_1x_copper_active:1;
++	u8 if_1x_lx:1;
++	u8 if_1x_sx:1;
++	u8 e10g_base_sr:1;
++	u8 e10g_base_lr:1;
++	u8 e10g_base_lrm:1;
++	u8 e10g_base_er:1;
++
++	u8 sonet_oc3_short_reach:1;
++	u8 sonet_oc3_smf_intermediate_reach:1;
++	u8 sonet_oc3_smf_long_reach:1;
++	u8 unallocated_5_3:1;
++	u8 sonet_oc12_short_reach:1;
++	u8 sonet_oc12_smf_intermediate_reach:1;
++	u8 sonet_oc12_smf_long_reach:1;
++	u8 unallocated_5_7:1;
++
++	u8 sonet_oc48_short_reach:1;
++	u8 sonet_oc48_intermediate_reach:1;
++	u8 sonet_oc48_long_reach:1;
++	u8 sonet_reach_bit2:1;
++	u8 sonet_reach_bit1:1;
++	u8 sonet_oc192_short_reach:1;
++	u8 escon_smf_1310_laser:1;
++	u8 escon_mmf_1310_led:1;
++
++	u8 e1000_base_sx:1;
++	u8 e1000_base_lx:1;
++	u8 e1000_base_cx:1;
++	u8 e1000_base_t:1;
++	u8 e100_base_lx:1;
++	u8 e100_base_fx:1;
++	u8 e_base_bx10:1;
++	u8 e_base_px:1;
++
++	u8 fc_tech_electrical_inter_enclosure:1;
++	u8 fc_tech_lc:1;
++	u8 fc_tech_sa:1;
++	u8 fc_ll_m:1;
++	u8 fc_ll_l:1;
++	u8 fc_ll_i:1;
++	u8 fc_ll_s:1;
++	u8 fc_ll_v:1;
++
++	u8 unallocated_8_0:1;
++	u8 unallocated_8_1:1;
++	u8 sfp_ct_passive:1;
++	u8 sfp_ct_active:1;
++	u8 fc_tech_ll:1;
++	u8 fc_tech_sl:1;
++	u8 fc_tech_sn:1;
++	u8 fc_tech_electrical_intra_enclosure:1;
++
++	u8 fc_media_sm:1;
++	u8 unallocated_9_1:1;
++	u8 fc_media_m5:1;
++	u8 fc_media_m6:1;
++	u8 fc_media_tv:1;
++	u8 fc_media_mi:1;
++	u8 fc_media_tp:1;
++	u8 fc_media_tw:1;
++
++	u8 fc_speed_100:1;
++	u8 unallocated_10_1:1;
++	u8 fc_speed_200:1;
++	u8 fc_speed_3200:1;
++	u8 fc_speed_400:1;
++	u8 fc_speed_1600:1;
++	u8 fc_speed_800:1;
++	u8 fc_speed_1200:1;
++#else
++#error Unknown Endian
++#endif
++	u8 encoding;
++	u8 br_nominal;
++	u8 rate_id;
++	u8 link_len[6];
++	char vendor_name[16];
++	u8 extended_cc;
++	char vendor_oui[3];
++	char vendor_pn[16];
++	char vendor_rev[4];
++	union {
++		__be16 optical_wavelength;
++		__be16 cable_compliance;
++		struct {
++#if defined __BIG_ENDIAN_BITFIELD
++			u8 reserved60_2:6;
++			u8 fc_pi_4_app_h:1;
++			u8 sff8431_app_e:1;
++			u8 reserved61:8;
++#elif defined __LITTLE_ENDIAN_BITFIELD
++			u8 sff8431_app_e:1;
++			u8 fc_pi_4_app_h:1;
++			u8 reserved60_2:6;
++			u8 reserved61:8;
++#else
++#error Unknown Endian
++#endif
++		} __packed passive;
++		struct {
++#if defined __BIG_ENDIAN_BITFIELD
++			u8 reserved60_4:4;
++			u8 fc_pi_4_lim:1;
++			u8 sff8431_lim:1;
++			u8 fc_pi_4_app_h:1;
++			u8 sff8431_app_e:1;
++			u8 reserved61:8;
++#elif defined __LITTLE_ENDIAN_BITFIELD
++			u8 sff8431_app_e:1;
++			u8 fc_pi_4_app_h:1;
++			u8 sff8431_lim:1;
++			u8 fc_pi_4_lim:1;
++			u8 reserved60_4:4;
++			u8 reserved61:8;
++#else
++#error Unknown Endian
++#endif
++		} __packed active;
++	} __packed;
++	u8 reserved62;
++	u8 cc_base;
++} __packed;
++
++struct sfp_eeprom_ext {
++	__be16 options;
++	u8 br_max;
++	u8 br_min;
++	char vendor_sn[16];
++	char datecode[8];
++	u8 diagmon;
++	u8 enhopts;
++	u8 sff8472_compliance;
++	u8 cc_ext;
++} __packed;
++
++/**
++ * struct sfp_eeprom_id - raw SFP module identification information
++ * @base: base SFP module identification structure
++ * @ext: extended SFP module identification structure
++ *
++ * See the SFF-8472 specification and related documents for the definition
++ * of these structure members. This can be obtained from
++ * ftp://ftp.seagate.com/sff
++ */
++struct sfp_eeprom_id {
++	struct sfp_eeprom_base base;
++	struct sfp_eeprom_ext ext;
++} __packed;
++
++struct sfp_diag {
++	__be16 temp_high_alarm;
++	__be16 temp_low_alarm;
++	__be16 temp_high_warn;
++	__be16 temp_low_warn;
++	__be16 volt_high_alarm;
++	__be16 volt_low_alarm;
++	__be16 volt_high_warn;
++	__be16 volt_low_warn;
++	__be16 bias_high_alarm;
++	__be16 bias_low_alarm;
++	__be16 bias_high_warn;
++	__be16 bias_low_warn;
++	__be16 txpwr_high_alarm;
++	__be16 txpwr_low_alarm;
++	__be16 txpwr_high_warn;
++	__be16 txpwr_low_warn;
++	__be16 rxpwr_high_alarm;
++	__be16 rxpwr_low_alarm;
++	__be16 rxpwr_high_warn;
++	__be16 rxpwr_low_warn;
++	__be16 laser_temp_high_alarm;
++	__be16 laser_temp_low_alarm;
++	__be16 laser_temp_high_warn;
++	__be16 laser_temp_low_warn;
++	__be16 tec_cur_high_alarm;
++	__be16 tec_cur_low_alarm;
++	__be16 tec_cur_high_warn;
++	__be16 tec_cur_low_warn;
++	__be32 cal_rxpwr4;
++	__be32 cal_rxpwr3;
++	__be32 cal_rxpwr2;
++	__be32 cal_rxpwr1;
++	__be32 cal_rxpwr0;
++	__be16 cal_txi_slope;
++	__be16 cal_txi_offset;
++	__be16 cal_txpwr_slope;
++	__be16 cal_txpwr_offset;
++	__be16 cal_t_slope;
++	__be16 cal_t_offset;
++	__be16 cal_v_slope;
++	__be16 cal_v_offset;
++} __packed;
++
++/* SFP EEPROM registers */
++enum {
++	SFP_PHYS_ID			= 0x00,
++	SFP_PHYS_EXT_ID			= 0x01,
++	SFP_CONNECTOR			= 0x02,
++	SFP_COMPLIANCE			= 0x03,
++	SFP_ENCODING			= 0x0b,
++	SFP_BR_NOMINAL			= 0x0c,
++	SFP_RATE_ID			= 0x0d,
++	SFP_LINK_LEN_SM_KM		= 0x0e,
++	SFP_LINK_LEN_SM_100M		= 0x0f,
++	SFP_LINK_LEN_50UM_OM2_10M	= 0x10,
++	SFP_LINK_LEN_62_5UM_OM1_10M	= 0x11,
++	SFP_LINK_LEN_COPPER_1M		= 0x12,
++	SFP_LINK_LEN_50UM_OM4_10M	= 0x12,
++	SFP_LINK_LEN_50UM_OM3_10M	= 0x13,
++	SFP_VENDOR_NAME			= 0x14,
++	SFP_VENDOR_OUI			= 0x25,
++	SFP_VENDOR_PN			= 0x28,
++	SFP_VENDOR_REV			= 0x38,
++	SFP_OPTICAL_WAVELENGTH_MSB	= 0x3c,
++	SFP_OPTICAL_WAVELENGTH_LSB	= 0x3d,
++	SFP_CABLE_SPEC			= 0x3c,
++	SFP_CC_BASE			= 0x3f,
++	SFP_OPTIONS			= 0x40,	/* 2 bytes, MSB, LSB */
++	SFP_BR_MAX			= 0x42,
++	SFP_BR_MIN			= 0x43,
++	SFP_VENDOR_SN			= 0x44,
++	SFP_DATECODE			= 0x54,
++	SFP_DIAGMON			= 0x5c,
++	SFP_ENHOPTS			= 0x5d,
++	SFP_SFF8472_COMPLIANCE		= 0x5e,
++	SFP_CC_EXT			= 0x5f,
++
++	SFP_PHYS_ID_SFF			= 0x02,
++	SFP_PHYS_ID_SFP			= 0x03,
++	SFP_PHYS_EXT_ID_SFP		= 0x04,
++	SFP_CONNECTOR_UNSPEC		= 0x00,
++	/* codes 01-05 not supportable on SFP, but some modules have single SC */
++	SFP_CONNECTOR_SC		= 0x01,
++	SFP_CONNECTOR_FIBERJACK		= 0x06,
++	SFP_CONNECTOR_LC		= 0x07,
++	SFP_CONNECTOR_MT_RJ		= 0x08,
++	SFP_CONNECTOR_MU		= 0x09,
++	SFP_CONNECTOR_SG		= 0x0a,
++	SFP_CONNECTOR_OPTICAL_PIGTAIL	= 0x0b,
++	SFP_CONNECTOR_MPO_1X12		= 0x0c,
++	SFP_CONNECTOR_MPO_2X16		= 0x0d,
++	SFP_CONNECTOR_HSSDC_II		= 0x20,
++	SFP_CONNECTOR_COPPER_PIGTAIL	= 0x21,
++	SFP_CONNECTOR_RJ45		= 0x22,
++	SFP_CONNECTOR_NOSEPARATE	= 0x23,
++	SFP_CONNECTOR_MXC_2X16		= 0x24,
++	SFP_ENCODING_UNSPEC		= 0x00,
++	SFP_ENCODING_8B10B		= 0x01,
++	SFP_ENCODING_4B5B		= 0x02,
++	SFP_ENCODING_NRZ		= 0x03,
++	SFP_ENCODING_8472_MANCHESTER	= 0x04,
++	SFP_ENCODING_8472_SONET		= 0x05,
++	SFP_ENCODING_8472_64B66B	= 0x06,
++	SFP_ENCODING_256B257B		= 0x07,
++	SFP_ENCODING_PAM4		= 0x08,
++	SFP_OPTIONS_HIGH_POWER_LEVEL	= BIT(13),
++	SFP_OPTIONS_PAGING_A2		= BIT(12),
++	SFP_OPTIONS_RETIMER		= BIT(11),
++	SFP_OPTIONS_COOLED_XCVR		= BIT(10),
++	SFP_OPTIONS_POWER_DECL		= BIT(9),
++	SFP_OPTIONS_RX_LINEAR_OUT	= BIT(8),
++	SFP_OPTIONS_RX_DECISION_THRESH	= BIT(7),
++	SFP_OPTIONS_TUNABLE_TX		= BIT(6),
++	SFP_OPTIONS_RATE_SELECT		= BIT(5),
++	SFP_OPTIONS_TX_DISABLE		= BIT(4),
++	SFP_OPTIONS_TX_FAULT		= BIT(3),
++	SFP_OPTIONS_LOS_INVERTED	= BIT(2),
++	SFP_OPTIONS_LOS_NORMAL		= BIT(1),
++	SFP_DIAGMON_DDM			= BIT(6),
++	SFP_DIAGMON_INT_CAL		= BIT(5),
++	SFP_DIAGMON_EXT_CAL		= BIT(4),
++	SFP_DIAGMON_RXPWR_AVG		= BIT(3),
++	SFP_DIAGMON_ADDRMODE		= BIT(2),
++	SFP_ENHOPTS_ALARMWARN		= BIT(7),
++	SFP_ENHOPTS_SOFT_TX_DISABLE	= BIT(6),
++	SFP_ENHOPTS_SOFT_TX_FAULT	= BIT(5),
++	SFP_ENHOPTS_SOFT_RX_LOS		= BIT(4),
++	SFP_ENHOPTS_SOFT_RATE_SELECT	= BIT(3),
++	SFP_ENHOPTS_APP_SELECT_SFF8079	= BIT(2),
++	SFP_ENHOPTS_SOFT_RATE_SFF8431	= BIT(1),
++	SFP_SFF8472_COMPLIANCE_NONE	= 0x00,
++	SFP_SFF8472_COMPLIANCE_REV9_3	= 0x01,
++	SFP_SFF8472_COMPLIANCE_REV9_5	= 0x02,
++	SFP_SFF8472_COMPLIANCE_REV10_2	= 0x03,
++	SFP_SFF8472_COMPLIANCE_REV10_4	= 0x04,
++	SFP_SFF8472_COMPLIANCE_REV11_0	= 0x05,
++	SFP_SFF8472_COMPLIANCE_REV11_3	= 0x06,
++	SFP_SFF8472_COMPLIANCE_REV11_4	= 0x07,
++	SFP_SFF8472_COMPLIANCE_REV12_0	= 0x08,
++};
++
++/* SFP Diagnostics */
++enum {
++	/* Alarm and warnings stored MSB at lower address then LSB */
++	SFP_TEMP_HIGH_ALARM		= 0x00,
++	SFP_TEMP_LOW_ALARM		= 0x02,
++	SFP_TEMP_HIGH_WARN		= 0x04,
++	SFP_TEMP_LOW_WARN		= 0x06,
++	SFP_VOLT_HIGH_ALARM		= 0x08,
++	SFP_VOLT_LOW_ALARM		= 0x0a,
++	SFP_VOLT_HIGH_WARN		= 0x0c,
++	SFP_VOLT_LOW_WARN		= 0x0e,
++	SFP_BIAS_HIGH_ALARM		= 0x10,
++	SFP_BIAS_LOW_ALARM		= 0x12,
++	SFP_BIAS_HIGH_WARN		= 0x14,
++	SFP_BIAS_LOW_WARN		= 0x16,
++	SFP_TXPWR_HIGH_ALARM		= 0x18,
++	SFP_TXPWR_LOW_ALARM		= 0x1a,
++	SFP_TXPWR_HIGH_WARN		= 0x1c,
++	SFP_TXPWR_LOW_WARN		= 0x1e,
++	SFP_RXPWR_HIGH_ALARM		= 0x20,
++	SFP_RXPWR_LOW_ALARM		= 0x22,
++	SFP_RXPWR_HIGH_WARN		= 0x24,
++	SFP_RXPWR_LOW_WARN		= 0x26,
++	SFP_LASER_TEMP_HIGH_ALARM	= 0x28,
++	SFP_LASER_TEMP_LOW_ALARM	= 0x2a,
++	SFP_LASER_TEMP_HIGH_WARN	= 0x2c,
++	SFP_LASER_TEMP_LOW_WARN		= 0x2e,
++	SFP_TEC_CUR_HIGH_ALARM		= 0x30,
++	SFP_TEC_CUR_LOW_ALARM		= 0x32,
++	SFP_TEC_CUR_HIGH_WARN		= 0x34,
++	SFP_TEC_CUR_LOW_WARN		= 0x36,
++	SFP_CAL_RXPWR4			= 0x38,
++	SFP_CAL_RXPWR3			= 0x3c,
++	SFP_CAL_RXPWR2			= 0x40,
++	SFP_CAL_RXPWR1			= 0x44,
++	SFP_CAL_RXPWR0			= 0x48,
++	SFP_CAL_TXI_SLOPE		= 0x4c,
++	SFP_CAL_TXI_OFFSET		= 0x4e,
++	SFP_CAL_TXPWR_SLOPE		= 0x50,
++	SFP_CAL_TXPWR_OFFSET		= 0x52,
++	SFP_CAL_T_SLOPE			= 0x54,
++	SFP_CAL_T_OFFSET		= 0x56,
++	SFP_CAL_V_SLOPE			= 0x58,
++	SFP_CAL_V_OFFSET		= 0x5a,
++	SFP_CHKSUM			= 0x5f,
++
++	SFP_TEMP			= 0x60,
++	SFP_VCC				= 0x62,
++	SFP_TX_BIAS			= 0x64,
++	SFP_TX_POWER			= 0x66,
++	SFP_RX_POWER			= 0x68,
++	SFP_LASER_TEMP			= 0x6a,
++	SFP_TEC_CUR			= 0x6c,
++
++	SFP_STATUS			= 0x6e,
++	SFP_ALARM0			= 0x70,
++	SFP_ALARM0_TEMP_HIGH		= BIT(7),
++	SFP_ALARM0_TEMP_LOW		= BIT(6),
++	SFP_ALARM0_VCC_HIGH		= BIT(5),
++	SFP_ALARM0_VCC_LOW		= BIT(4),
++	SFP_ALARM0_TX_BIAS_HIGH		= BIT(3),
++	SFP_ALARM0_TX_BIAS_LOW		= BIT(2),
++	SFP_ALARM0_TXPWR_HIGH		= BIT(1),
++	SFP_ALARM0_TXPWR_LOW		= BIT(0),
++
++	SFP_ALARM1			= 0x71,
++	SFP_ALARM1_RXPWR_HIGH		= BIT(7),
++	SFP_ALARM1_RXPWR_LOW		= BIT(6),
++
++	SFP_WARN0			= 0x74,
++	SFP_WARN0_TEMP_HIGH		= BIT(7),
++	SFP_WARN0_TEMP_LOW		= BIT(6),
++	SFP_WARN0_VCC_HIGH		= BIT(5),
++	SFP_WARN0_VCC_LOW		= BIT(4),
++	SFP_WARN0_TX_BIAS_HIGH		= BIT(3),
++	SFP_WARN0_TX_BIAS_LOW		= BIT(2),
++	SFP_WARN0_TXPWR_HIGH		= BIT(1),
++	SFP_WARN0_TXPWR_LOW		= BIT(0),
++
++	SFP_WARN1			= 0x75,
++	SFP_WARN1_RXPWR_HIGH		= BIT(7),
++	SFP_WARN1_RXPWR_LOW		= BIT(6),
++
++	SFP_EXT_STATUS			= 0x76,
++	SFP_VSL				= 0x78,
++	SFP_PAGE			= 0x7f,
++};
++
++struct fwnode_handle;
++struct ethtool_eeprom;
++struct ethtool_modinfo;
++struct net_device;
++struct sfp_bus;
++
++/**
++ * struct sfp_upstream_ops - upstream operations structure
++ * @module_insert: called after a module has been detected to determine
++ *   whether the module is supported for the upstream device.
++ * @module_remove: called after the module has been removed.
++ * @link_down: called when the link is non-operational for whatever
++ *   reason.
++ * @link_up: called when the link is operational.
++ * @connect_phy: called when an I2C accessible PHY has been detected
++ *   on the module.
++ * @disconnect_phy: called when a module with an I2C accessible PHY has
++ *   been removed.
++ */
++struct sfp_upstream_ops {
++	int (*module_insert)(void *priv, const struct sfp_eeprom_id *id);
++	void (*module_remove)(void *priv);
++	void (*link_down)(void *priv);
++	void (*link_up)(void *priv);
++	int (*connect_phy)(void *priv, struct phy_device *);
++	void (*disconnect_phy)(void *priv);
++};
++
++#if IS_ENABLED(CONFIG_SFP)
++int sfp_parse_port(struct sfp_bus *bus, const struct sfp_eeprom_id *id,
++		   unsigned long *support);
++void sfp_parse_support(struct sfp_bus *bus, const struct sfp_eeprom_id *id,
++		       unsigned long *support);
++phy_interface_t sfp_select_interface(struct sfp_bus *bus,
++				     const struct sfp_eeprom_id *id,
++				     unsigned long *link_modes);
++
++int sfp_get_module_info(struct sfp_bus *bus, struct ethtool_modinfo *modinfo);
++int sfp_get_module_eeprom(struct sfp_bus *bus, struct ethtool_eeprom *ee,
++			  u8 *data);
++void sfp_upstream_start(struct sfp_bus *bus);
++void sfp_upstream_stop(struct sfp_bus *bus);
++struct sfp_bus *sfp_register_upstream(struct fwnode_handle *fwnode,
++				      struct net_device *ndev, void *upstream,
++				      const struct sfp_upstream_ops *ops);
++void sfp_unregister_upstream(struct sfp_bus *bus);
++#else
++static inline int sfp_parse_port(struct sfp_bus *bus,
++				 const struct sfp_eeprom_id *id,
++				 unsigned long *support)
++{
++	return PORT_OTHER;
++}
++
++static inline void sfp_parse_support(struct sfp_bus *bus,
++				     const struct sfp_eeprom_id *id,
++				     unsigned long *support)
++{
++}
++
++static inline phy_interface_t sfp_select_interface(struct sfp_bus *bus,
++						   const struct sfp_eeprom_id *id,
++						   unsigned long *link_modes)
++{
++	return PHY_INTERFACE_MODE_NA;
++}
++
++static inline int sfp_get_module_info(struct sfp_bus *bus,
++				      struct ethtool_modinfo *modinfo)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline int sfp_get_module_eeprom(struct sfp_bus *bus,
++					struct ethtool_eeprom *ee, u8 *data)
++{
++	return -EOPNOTSUPP;
++}
++
++static inline void sfp_upstream_start(struct sfp_bus *bus)
++{
++}
++
++static inline void sfp_upstream_stop(struct sfp_bus *bus)
++{
++}
++
++static inline struct sfp_bus *sfp_register_upstream(
++	struct fwnode_handle *fwnode,
++	struct net_device *ndev, void *upstream,
++	const struct sfp_upstream_ops *ops)
++{
++	return (struct sfp_bus *)-1;
++}
++
++static inline void sfp_unregister_upstream(struct sfp_bus *bus)
++{
++}
++#endif
++
++#endif
+-- 
+2.1.4
+

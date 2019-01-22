@@ -210,7 +210,9 @@ typedef struct
     unsigned char tempLow2HighThreshold[3];
     unsigned char tempHigh2LowThreshold[3];
     unsigned char fanDutySet[3];
-} fanControlTable_t;
+    unsigned int fanSpeed[3];
+    unsigned int inSet[W83795ADG_VSEN_COUNT][3];
+} ControlTable_t;
 
 static int w83795adg_hardware_monitor_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int w83795adg_hardware_monitor_detect(struct i2c_client *client, struct i2c_board_info *info);
@@ -463,62 +465,139 @@ static struct i2c_driver w83795adg_hardware_monitor_driver = {
 };
 
 /* Front to Back */
-static fanControlTable_t  fanControlTable[] =
+static ControlTable_t  ControlTable[] =
 {
     /* Huracan */
     {
-        {77, 95, 105},  /* temperature threshold (going to up) */
-        {72, 77, 95},  /* temperature threshold (going to down) */
-        {0x6C, 0x9E, 0xFF} /* fan rpm : 8000, 12000, 16000 */
+        {77, 95, 105},        /* temperature threshold (going to up) */
+        {72, 77, 95},         /* temperature threshold (going to down) */
+        {0x6C, 0x9E, 0xFF},   /* fan duty */
+        {8000, 12000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* Sesto */
     {
-        {85, 95, 100},  /* temperature threshold (going to up) */
-        {71, 85, 95},  /* temperature threshold (going to down) */
-        {0x73, 0xCC, 0xFF} /* fan rpm : 9000, 14000, 16000 */
+        {85, 95, 100},        /* temperature threshold (going to up) */
+        {71, 85, 95},         /* temperature threshold (going to down) */
+        {0x73, 0xCC, 0xFF},   /* fan duty */
+        {9000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* NC2X */
     {
-        {62, 70, 85},  /* temperature threshold (going to up) */
-        {58, 66, 70},  /* temperature threshold (going to down) */
-        {0x70, 0xB7, 0xFF} /* fan rpm : 8000, 13000, 16000 */
+        {62, 70, 85},         /* temperature threshold (going to up) */
+        {58, 66, 70},         /* temperature threshold (going to down) */
+        {0x70, 0xB7, 0xFF},   /* fan duty */
+        {8000, 13000, 16000}, /* fan rpm */
+        {
+            {970, 1250,1275}, /* vsen1 */
+            {0},              /* vsen2 */
+            {0},              /* vsen3 */
+            {970, 1000,1030}, /* vsen4 */
+            {1710,1800,1890}, /* vsen5 */
+            {0},              /* rsvd */
+            {1187,1250,1312}, /* vsen7 */
+        },
     },
     /* Asterion */
     {
-        {70, 75, 80},  /* temperature threshold (going to up) */
-        {60, 65, 70},  /* temperature threshold (going to down) */
-        {0x8B, 0xD1, 0xFF} /* fan rpm : 12000, 18000, 22000 */
+        {70, 75, 80},         /* temperature threshold (going to up) */
+        {60, 65, 70},         /* temperature threshold (going to down) */
+        {0x8B, 0xD1, 0xFF},   /* fan duty */
+        {12000, 18000, 22000},/* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     }
 };
 
 /* Back to Front */
-static fanControlTable_t  fanControlTable_B2F[] =
+static ControlTable_t  ControlTable_B2F[] =
 {
     /* Huracan */
     {
-        {70, 77, 105},  /* temperature threshold (going to up) */
-        {60, 70, 77},  /* temperature threshold (going to down) */
-        {0x6C, 0xC7, 0xFF} /* fan rpm : 8000, 14000, 16000 */
+        {70, 77, 105},        /* temperature threshold (going to up) */
+        {60, 70, 77},         /* temperature threshold (going to down) */
+        {0x6C, 0xC7, 0xFF},   /* fan duty */
+        {8000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* Sesto */
     {
-        {71, 81, 105},  /* temperature threshold (going to up) */
-        {64, 81, 88},  /* temperature threshold (going to down) */
-        {0x73, 0xCC, 0xFF} /* fan rpm : 9000, 14000, 16000 */
+        {71, 81, 105},        /* temperature threshold (going to up) */
+        {64, 81, 88},         /* temperature threshold (going to down) */
+        {0x73, 0xCC, 0xFF},   /* fan duty */
+        {9000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* NC2X */
     {
-        {58, 63, 80},  /* temperature threshold (going to up) */
-        {54, 60, 63},  /* temperature threshold (going to down) */
-        {0x6F, 0xB7, 0xFF} /* fan rpm : 8000, 13000, 16000 */
+        {58, 63, 80},         /* temperature threshold (going to up) */
+        {54, 60, 63},         /* temperature threshold (going to down) */
+        {0x6F, 0xB7, 0xFF},   /* fan duty */
+        {8000, 13000, 16000}, /* fan rpm */
+        {
+            {970, 1250,1275}, /* vsen1 */
+            {0},              /* vsen2 */
+            {0},              /* vsen3 */
+            {970, 1000,1030}, /* vsen4 */
+            {1710,1800,1890}, /* vsen5 */
+            {0},              /* rsvd */
+            {1187,1250,1312}, /* vsen7 */
+        },
     },
     /* Asterion */
     {
-        {70, 75, 80},  /* temperature threshold (going to up) */
-        {60, 65, 70},  /* temperature threshold (going to down) */
-        {0x8B, 0xD1, 0xFF} /* fan rpm : 12000, 18000, 22000 */
+        {70, 75, 80},         /* temperature threshold (going to up) */
+        {60, 65, 70},         /* temperature threshold (going to down) */
+        {0x8B, 0xD1, 0xFF},   /* fan duty */
+        {12000, 18000, 22000},/* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     }
 };
+
+static const ControlTable_t *get_platform_control_table(void)
+{
+    const ControlTable_t *cTable;
+
+    switch(platformModelId)
+    {
+        default:
+        case HURACAN_WITH_BMC:
+        case HURACAN_WITHOUT_BMC:
+        case HURACAN_A_WITH_BMC:
+        case HURACAN_A_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[0]);
+            else
+                cTable = &(ControlTable_B2F[0]);
+            break;
+
+        case SESTO_WITH_BMC:
+        case SESTO_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[1]);
+            else
+                cTable = &(ControlTable_B2F[1]);
+            break;
+
+        case NCIIX_WITH_BMC:
+        case NCIIX_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[2]);
+            else
+                cTable = &(ControlTable_B2F[2]);
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+            if (FanDir2 != 0)
+                cTable = &(ControlTable[3]);
+            else
+                cTable = &(ControlTable_B2F[3]);
+            break;
+    }
+
+    return cTable;
+}
 
 #if 0
 static int i2c_device_byte_write(const struct i2c_client *client, unsigned char command, unsigned char value)
@@ -693,7 +772,7 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
     int MNTRTD, MNTTD;
     int i, fanErr;
     unsigned int cTemp, fanDuty, maxTemp, LastTemp = 0;
-    fanControlTable_t  *fanTable;
+    const ControlTable_t  *cTable;
     unsigned int fanCtrlDelay = 5;
     unsigned int fanSpeed;
     unsigned short port_status;
@@ -800,47 +879,11 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                 }
 
                 /* FAN Control */
-                switch(platformModelId)
-                {
-                    default:
-                    case HURACAN_WITH_BMC:
-                    case HURACAN_WITHOUT_BMC:
-                    case HURACAN_A_WITH_BMC:
-                    case HURACAN_A_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[0]);
-                        else
-                            fanTable = &(fanControlTable_B2F[0]);
-                        break;
-
-                    case SESTO_WITH_BMC:
-                    case SESTO_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[1]);
-                        else
-                            fanTable = &(fanControlTable_B2F[1]);
-                        break;
-
-                    case NCIIX_WITH_BMC:
-                    case NCIIX_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[2]);
-                        else
-                            fanTable = &(fanControlTable_B2F[2]);
-                        break;
-
-                    case ASTERION_WITH_BMC:
-                    case ASTERION_WITHOUT_BMC:
-                        if (FanDir2 != 0)
-                            fanTable = &(fanControlTable[3]);
-                        else
-                            fanTable = &(fanControlTable_B2F[3]);
-                        break;
-                }
+                cTable = get_platform_control_table();
 
                 if (fanErr)
                 {
-                    fanDuty = fanTable->fanDutySet[2];
+                    fanDuty = cTable->fanDutySet[2];
                     LastTemp = 0;
                 }
                 else
@@ -848,17 +891,17 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                     fanDuty = 0;
                     if (maxTemp > LastTemp) /* temp is going to up */
                     {
-                        if (maxTemp < fanTable->tempLow2HighThreshold[0])
+                        if (maxTemp < cTable->tempLow2HighThreshold[0])
                         {
-                            fanDuty = fanTable->fanDutySet[0];
+                            fanDuty = cTable->fanDutySet[0];
                         }
-                        else if (maxTemp < fanTable->tempLow2HighThreshold[1])
+                        else if (maxTemp < cTable->tempLow2HighThreshold[1])
                         {
-                            fanDuty = fanTable->fanDutySet[1];
+                            fanDuty = cTable->fanDutySet[1];
                         }
-                        else if (maxTemp < fanTable->tempLow2HighThreshold[2])
+                        else if (maxTemp < cTable->tempLow2HighThreshold[2])
                         {
-                            fanDuty = fanTable->fanDutySet[2];
+                            fanDuty = cTable->fanDutySet[2];
                         }
                         else /* shutdown system */
                         {
@@ -867,17 +910,17 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                     }
                     else if (maxTemp < LastTemp)/* temp is going to down */
                     {
-                        if (maxTemp <= fanTable->tempHigh2LowThreshold[0])
+                        if (maxTemp <= cTable->tempHigh2LowThreshold[0])
                         {
-                            fanDuty = fanTable->fanDutySet[0];
+                            fanDuty = cTable->fanDutySet[0];
                         }
-                        else if (maxTemp <= fanTable->tempHigh2LowThreshold[1])
+                        else if (maxTemp <= cTable->tempHigh2LowThreshold[1])
                         {
-                            fanDuty = fanTable->fanDutySet[1];
+                            fanDuty = cTable->fanDutySet[1];
                         }
                         else
                         {
-                            fanDuty = fanTable->fanDutySet[2];
+                            fanDuty = cTable->fanDutySet[2];
                         }
                     }
                     LastTemp = maxTemp;
@@ -2889,6 +2932,46 @@ static ssize_t show_voltage_sen(struct device *dev, struct device_attribute *dev
     return sprintf(buf, "%d.%03d\n", (voltage/VOL_MONITOR_UNIT), (voltage%VOL_MONITOR_UNIT));
 }
 
+/* lm-sensors */
+static ssize_t show_temp_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+
+    if (data->remoteTempIsPositive[attr->index]==1)
+        return sprintf(buf, "%u\n", data->remoteTempInt[attr->index] * 1000 + data->remoteTempDecimal[attr->index]);
+    else
+        return sprintf(buf, "-%u\n", data->remoteTempInt[attr->index] * 1000 + data->remoteTempDecimal[attr->index]);
+}
+
+static ssize_t show_mac_temp_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+
+    return sprintf(buf, "%u\n", data->macTemp * 1000);
+}
+
+static ssize_t show_in_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+    unsigned int MNTVSEN, MNTV;
+    unsigned int voltage;
+
+    mutex_lock(&data->lock);
+    MNTVSEN = data->vSen[attr->index];
+    MNTV = data->vSenLsb[attr->index];
+    mutex_unlock(&data->lock);
+
+    voltage = ((MNTVSEN << 2) + ((MNTV & 0xC0) >> 6));
+    voltage *= ((2*VOL_MONITOR_UNIT)/VOL_MONITOR_UNIT);
+
+    return sprintf(buf, "%u\n", (voltage/VOL_MONITOR_UNIT) * 1000 + voltage%VOL_MONITOR_UNIT);
+}
+
 static DEVICE_ATTR(mac_temp, S_IWUSR | S_IRUGO, show_mac_temp, set_mac_temp);
 static DEVICE_ATTR(chip_info, S_IRUGO, show_chip_info, NULL);
 static DEVICE_ATTR(board_build_rev, S_IRUGO, show_board_build_revision, NULL);
@@ -2940,6 +3023,134 @@ static SENSOR_DEVICE_ATTR(vsen4, S_IRUGO, show_voltage_sen, NULL, 3);
 static SENSOR_DEVICE_ATTR(vsen5, S_IRUGO, show_voltage_sen, NULL, 4);
 static SENSOR_DEVICE_ATTR(vsen7, S_IRUGO, show_voltage_sen, NULL, 6);
 
+/* lm-sensors compatible feature/subfeature names */
+static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO, show_fan_rpm, NULL, 0);
+static SENSOR_DEVICE_ATTR(fan2_input, S_IRUGO, show_fan_rpm, NULL, 1);
+static SENSOR_DEVICE_ATTR(fan3_input, S_IRUGO, show_fan_rpm, NULL, 2);
+static SENSOR_DEVICE_ATTR(fan4_input, S_IRUGO, show_fan_rpm, NULL, 3);
+static SENSOR_DEVICE_ATTR(fan5_input, S_IRUGO, show_fan_rpm, NULL, 4);
+static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO, show_fan_rpm, NULL, 5);
+static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO, show_fan_rpm, NULL, 6);
+static SENSOR_DEVICE_ATTR(fan8_input, S_IRUGO, show_fan_rpm, NULL, 7);
+static SENSOR_DEVICE_ATTR(fan9_input, S_IRUGO, show_fan_rpm, NULL, 8);
+static SENSOR_DEVICE_ATTR(fan10_input, S_IRUGO, show_fan_rpm, NULL, 9);
+
+static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, show_temp_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, show_temp_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_input, S_IRUGO, show_temp_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp4_input, S_IRUGO, show_temp_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(temp10_input, S_IRUGO, show_mac_temp_lm_sensors, NULL, 4);
+
+static SENSOR_DEVICE_ATTR(in1_input, S_IRUGO, show_in_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(in2_input, S_IRUGO, show_in_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(in3_input, S_IRUGO, show_in_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(in4_input, S_IRUGO, show_in_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(in5_input, S_IRUGO, show_in_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(in7_input, S_IRUGO, show_in_lm_sensors, NULL, 6);
+
+/* fan min/max */
+
+static ssize_t show_fan_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+
+    return sprintf(buf, "%u\n", attr->index < 100 ? cTable->fanSpeed[0] : cTable->fanSpeed[2]);
+}
+
+static SENSOR_DEVICE_ATTR(fan1_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(fan2_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(fan3_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(fan4_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(fan5_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(fan6_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 5);
+static SENSOR_DEVICE_ATTR(fan7_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 6);
+static SENSOR_DEVICE_ATTR(fan8_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 7);
+static SENSOR_DEVICE_ATTR(fan9_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 8);
+static SENSOR_DEVICE_ATTR(fan10_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 9);
+
+static SENSOR_DEVICE_ATTR(fan1_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(fan2_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(fan3_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(fan4_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(fan5_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 104);
+static SENSOR_DEVICE_ATTR(fan6_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 105);
+static SENSOR_DEVICE_ATTR(fan7_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 106);
+static SENSOR_DEVICE_ATTR(fan8_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 107);
+static SENSOR_DEVICE_ATTR(fan9_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 108);
+static SENSOR_DEVICE_ATTR(fan10_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 109);
+
+/* temp min/max */
+
+static ssize_t show_temp_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+    unsigned int temp;
+
+    if (attr->index < 100)
+        temp = cTable->tempLow2HighThreshold[0];
+    else
+        temp = cTable->tempLow2HighThreshold[2];
+
+    return sprintf(buf, "%u\n", temp * 1000);
+}
+
+static ssize_t show_mac_temp_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    unsigned int temp;
+
+    if (attr->index < 100)
+        temp = 0;
+    else
+        temp = 120;
+
+    return sprintf(buf, "%u\n", temp * 1000);
+}
+
+static SENSOR_DEVICE_ATTR(temp1_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(temp2_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp4_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(temp10_min, S_IRUGO, show_mac_temp_minmax_lm_sensors, NULL, 4);
+
+static SENSOR_DEVICE_ATTR(temp1_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp2_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp3_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(temp4_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(temp10_max, S_IRUGO, show_mac_temp_minmax_lm_sensors, NULL, 104);
+
+/* voltage min/max */
+
+static ssize_t show_in_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+    unsigned int in;
+
+    if (attr->index < 100)
+        in = cTable->inSet[attr->index][0];
+    else
+        in = cTable->inSet[attr->index - 100][2];
+
+    return sprintf(buf, "%u\n", in);
+}
+
+static SENSOR_DEVICE_ATTR(in1_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(in2_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(in3_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(in4_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(in5_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(in7_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 6);
+
+static SENSOR_DEVICE_ATTR(in1_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(in2_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(in3_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(in4_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(in5_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 104);
+static SENSOR_DEVICE_ATTR(in7_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 106);
+
 static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
     &dev_attr_mac_temp.attr,
     &dev_attr_chip_info.attr,
@@ -2983,6 +3194,63 @@ static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
     &sensor_dev_attr_vsen2.dev_attr.attr,
     &sensor_dev_attr_vsen3.dev_attr.attr,
     &sensor_dev_attr_vsen4.dev_attr.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in2_input.dev_attr.attr,
+    &sensor_dev_attr_in3_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in2_min.dev_attr.attr,
+    &sensor_dev_attr_in3_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in2_max.dev_attr.attr,
+    &sensor_dev_attr_in3_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
 
     NULL
 };
@@ -3030,6 +3298,63 @@ static struct attribute *i2c_bus0_hardware_monitor_attr_nc2x[] = {
     &sensor_dev_attr_vsen4.dev_attr.attr,
     &sensor_dev_attr_vsen5.dev_attr.attr,
     &sensor_dev_attr_vsen7.dev_attr.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+    &sensor_dev_attr_in5_input.dev_attr.attr,
+    &sensor_dev_attr_in7_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+    &sensor_dev_attr_in5_min.dev_attr.attr,
+    &sensor_dev_attr_in7_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
+    &sensor_dev_attr_in5_max.dev_attr.attr,
+    &sensor_dev_attr_in7_max.dev_attr.attr,
 
     NULL
 };
@@ -3083,6 +3408,75 @@ static struct attribute *i2c_bus0_hardware_monitor_attr_asterion[] = {
     &sensor_dev_attr_vsen2.dev_attr.attr,
     &sensor_dev_attr_vsen3.dev_attr.attr,
     &sensor_dev_attr_vsen4.dev_attr.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+    &sensor_dev_attr_fan9_input.dev_attr.attr,
+    &sensor_dev_attr_fan10_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp3_input.dev_attr.attr,
+    &sensor_dev_attr_temp4_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in2_input.dev_attr.attr,
+    &sensor_dev_attr_in3_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+    &sensor_dev_attr_fan9_min.dev_attr.attr,
+    &sensor_dev_attr_fan10_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp3_min.dev_attr.attr,
+    &sensor_dev_attr_temp4_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in2_min.dev_attr.attr,
+    &sensor_dev_attr_in3_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+    &sensor_dev_attr_fan9_max.dev_attr.attr,
+    &sensor_dev_attr_fan10_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp3_max.dev_attr.attr,
+    &sensor_dev_attr_temp4_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in2_max.dev_attr.attr,
+    &sensor_dev_attr_in3_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
 
     NULL
 };
@@ -3524,7 +3918,7 @@ static ssize_t show_psu_vout(struct device *dev, struct device_attribute *devatt
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueV = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3635,12 +4029,20 @@ static ssize_t show_psu_vout(struct device *dev, struct device_attribute *devatt
                 valueE = valueV + 1;
                 temp = (unsigned int)(1 << valueE);
                 if (temp)
-                    count = sprintf(buf, "%d.%04d\n", valueY >> valueE, ((valueY % temp) * 10000) / temp);
+                {
+                    if (attr->index >= 100)
+                        count = sprintf(buf, "%d\n", (valueY>>valueE)*1000 + ((valueY%temp)*1000)/temp);
+                    else
+                        count = sprintf(buf, "%d.%04d\n", valueY>>valueE, ((valueY%temp)*10000)/temp);
+                }
             }
             else
             {
                 valueN = (((valueV) >> 11) & 0x0F);
-                count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+                temp = (valueY*(1<<valueN));
+                if (attr->index >= 100)
+                    temp *= 1000;
+                count = sprintf(buf, "%d\n", temp);
             }
         }
         else
@@ -3651,11 +4053,19 @@ static ssize_t show_psu_vout(struct device *dev, struct device_attribute *devatt
                 valueN = (~valueN) +1;
                 temp = (unsigned int)(1<<valueN);
                 if (temp)
-                    count = sprintf(buf, "%d.%04d\n", valueV/temp, ((valueV%temp)*10000)/temp);
+                {
+                    if (attr->index >= 100)
+                        count = sprintf(buf, "%d\n", valueV/temp*1000 + ((valueV%temp)*1000)/temp);
+                    else
+                        count = sprintf(buf, "%d.%04d\n", valueV/temp, ((valueV%temp)*10000)/temp);
+                }
             }
             else
             {
-                count = sprintf(buf, "%d\n", (valueV*(1<<valueN)));
+                temp = (valueV*(1<<valueN));
+                if (attr->index >= 100)
+                    temp *= 1000;
+                count = sprintf(buf, "%d\n", temp);
             }
         }
     }
@@ -3672,7 +4082,7 @@ static ssize_t show_psu_iout(struct device *dev, struct device_attribute *devatt
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3774,12 +4184,20 @@ static ssize_t show_psu_iout(struct device *dev, struct device_attribute *devatt
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3795,7 +4213,7 @@ static ssize_t show_psu_temp_1(struct device *dev, struct device_attribute *deva
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3897,12 +4315,20 @@ static ssize_t show_psu_temp_1(struct device *dev, struct device_attribute *deva
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3918,7 +4344,7 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -4022,12 +4448,20 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -4043,7 +4477,7 @@ static ssize_t show_psu_fan_speed(struct device *dev, struct device_attribute *d
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int temp = 0;
     unsigned int psu_present = 0;
 
@@ -4147,7 +4581,7 @@ static ssize_t show_psu_pout(struct device *dev, struct device_attribute *devatt
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -4249,12 +4683,20 @@ static ssize_t show_psu_pout(struct device *dev, struct device_attribute *devatt
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000000 + ((valueY%temp)*1000000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -4270,7 +4712,7 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -4374,12 +4816,20 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000000 + ((valueY%temp)*1000000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -5528,6 +5978,24 @@ static SENSOR_DEVICE_ATTR(psu2_pin, S_IRUGO, show_psu_pin, NULL, 1);
 
 static DEVICE_ATTR(psu_power_off, S_IWUSR, NULL, set_psu_power_off);
 
+/* lm-sensors compatible feature/subfeature names */
+static SENSOR_DEVICE_ATTR(in12_input, S_IRUGO, show_psu_vout, NULL, 100);
+static SENSOR_DEVICE_ATTR(curr12_input, S_IRUGO, show_psu_iout, NULL, 100);
+static SENSOR_DEVICE_ATTR(power11_input, S_IRUGO, show_psu_pin, NULL, 100);
+static SENSOR_DEVICE_ATTR(power12_input, S_IRUGO, show_psu_pout, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp11_input, S_IRUGO, show_psu_temp_1, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp12_input, S_IRUGO, show_psu_temp_2, NULL, 100);
+static SENSOR_DEVICE_ATTR(fan11_input, S_IRUGO, show_psu_fan_speed, NULL, 100);
+
+static SENSOR_DEVICE_ATTR(in22_input, S_IRUGO, show_psu_vout, NULL, 101);
+static SENSOR_DEVICE_ATTR(curr22_input, S_IRUGO, show_psu_iout, NULL, 101);
+static SENSOR_DEVICE_ATTR(power21_input, S_IRUGO, show_psu_pin, NULL, 101);
+static SENSOR_DEVICE_ATTR(power22_input, S_IRUGO, show_psu_pout, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp21_input, S_IRUGO, show_psu_temp_1, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp22_input, S_IRUGO, show_psu_temp_2, NULL, 101);
+static SENSOR_DEVICE_ATTR(fan21_input, S_IRUGO, show_psu_fan_speed, NULL, 101);
+
+
 static struct attribute *i2c_bus1_hardware_monitor_attr_huracan[] = {
     &dev_attr_eeprom.attr,
     &dev_attr_system_led.attr,
@@ -5697,6 +6165,23 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_huracan[] = {
     &sensor_dev_attr_psu2_pin.dev_attr.attr,
 
     &dev_attr_psu_power_off.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
 
     NULL
 };
@@ -6106,6 +6591,23 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_sesto[] = {
 
     &dev_attr_psu_power_off.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
+
     NULL
 };
 
@@ -6464,6 +6966,23 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_nc2x[] = {
     &sensor_dev_attr_psu2_pin.dev_attr.attr,
 
     &dev_attr_psu_power_off.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
 
     NULL
 };
@@ -6910,6 +7429,23 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_asterion[] = {
     &sensor_dev_attr_psu2_pout.dev_attr.attr,
 
     &dev_attr_psu_power_off.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
 
     NULL
 };
