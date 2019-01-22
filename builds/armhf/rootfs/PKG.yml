@@ -1,0 +1,1 @@
+!include $ONL/builds/any/rootfs/APKG.yml ARCH=armhf

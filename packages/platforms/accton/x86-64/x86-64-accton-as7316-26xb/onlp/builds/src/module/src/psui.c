@@ -57,6 +57,22 @@ static onlp_psu_info_t pinfo[] =
     }
 };
 
+static int
+get_DCorAC_cap(char *model)
+{
+    const char *dc_models[] = {"YM-2401U", "um400d", NULL };
+    int i;
+
+    i = 0;
+    while(dc_models[i]) {
+        if (!strncasecmp(model, dc_models[i], strlen(dc_models[i]))){
+            return ONLP_PSU_CAPS_DC12;
+        }
+        i++;
+    }
+    return ONLP_PSU_CAPS_AC;
+}
+
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
@@ -140,6 +156,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     if (string && len) {
         strncpy(info->model, string, len);
         aim_free(string);
+        info->caps |= get_DCorAC_cap (info->model);
     }
 
     /* Read serial */

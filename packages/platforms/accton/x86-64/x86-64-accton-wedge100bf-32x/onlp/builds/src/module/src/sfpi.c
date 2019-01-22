@@ -32,6 +32,8 @@
 
 #define BIT(i)          (1 << (i))
 #define NUM_OF_SFP_PORT 32
+#define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
+
 static const int sfp_bus_index[] = {
    3,  2,  5,  4,  7,  6,  9, 8,
  11,  10, 13, 12, 15, 14, 17, 16,
@@ -156,44 +158,55 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     return ONLP_STATUS_OK;
 }
 
-static int
-sfpi_eeprom_read(int port, uint8_t devaddr, uint8_t data[256])
-{
-    int i;
-
-    /*
-     * Read the SFP eeprom into data[]
-     *
-     * Return MISSING if SFP is missing.
-     * Return OK if eeprom is read
-     */
-    memset(data, 0, 256);
-
-    for (i = 0; i < 128; i++) {
-        int bus = sfp_bus_index[port];
-        int val = onlp_i2c_readw(bus, devaddr, i*2, ONLP_I2C_F_FORCE);
-
-        if (val < 0) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-
-        data[i*2]   = val & 0xff;
-        data[(i*2)+1] = (val >> 8) & 0xff;
-    }
-
-    return ONLP_STATUS_OK;
-}
-
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    return sfpi_eeprom_read(port, 0x50, data);
+    int size = 0;
+    if(port <0 || port >= NUM_OF_SFP_PORT)
+        return ONLP_STATUS_E_INTERNAL;
+    memset(data, 0, 256);
+
+    if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, sfp_bus_index[port]) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (size != 256) {
+        AIM_LOG_ERROR("Unable to read eeprom from port(%d), size(%d) is different!\r\n", port, size);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
+
 }
 
 int
 onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
-    return sfpi_eeprom_read(port, 0x51, data);
+    FILE* fp;
+    char file[64] = {0};
+
+    sprintf(file, PORT_EEPROM_FORMAT, sfp_bus_index[port]);
+    fp = fopen(file, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (fseek(fp, 256, SEEK_CUR) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    int ret = fread(data, 1, 256, fp);
+    fclose(fp);
+    if (ret != 256) {
+        AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d, %d)", port, ret);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
 }
 
 int

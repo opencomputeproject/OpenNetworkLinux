@@ -138,7 +138,7 @@ case $(uname -m) in
     ARCH_LIST="x86_64 amd64"
     ;;
   armv7l)
-    ARCH_LIST="armel"
+    ARCH_LIST="armel armhf"
     ;;
   aarch64)
     ARCH_LIST="arm64"

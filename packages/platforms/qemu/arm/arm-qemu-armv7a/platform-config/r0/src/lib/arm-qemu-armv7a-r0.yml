@@ -15,7 +15,7 @@ arm-qemu-armv7a-r0:
       =: accton_as4610_54.dtb
       <<: *arm-iproc-kernel-package
     itb:
-      <<: *arm-itb
+      <<: *armel-itb
 
   loader:
 

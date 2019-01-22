@@ -18,6 +18,7 @@ common:
   maintainer: support@bigswitch.com
   support: opennetworklinux@googlegroups.com
   changelog: None
+  dists: $DISTS
 
 packages:
   - name: onl-platform-config-$PLATFORM

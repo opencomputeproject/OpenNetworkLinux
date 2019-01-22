@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-modules.yml ARCH=armhf VENDOR=accton BASENAME=arm-accton-as4610-54 KERNELS="onl-kernel-4.14-lts-armhf-iproc-all:armhf"

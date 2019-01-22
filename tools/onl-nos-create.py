@@ -920,6 +920,7 @@ include %(MTOP)s/make/versions/version-%(prefix)s.mk
 INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS_$(FNAME_BUILD_ID)_$(UARCH)_$(BOOTMODE)_INSTALLER
 
 MKINSTALLER_OPTS := \
+  --onl-version "$(VERSION_STRING)" \
   --arch $(ARCH) \
   --boot-config boot-config \
   --swi %(prefix)s-swi:$(ARCH)

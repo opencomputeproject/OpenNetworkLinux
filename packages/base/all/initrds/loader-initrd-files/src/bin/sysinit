@@ -47,8 +47,10 @@ case "$(stat -f -c "%T" /tmp)" in
     ;;
 esac
 
-# Grab cmdline settings
+# Initialize RNG early
+python /bin/initrng.py
 
+# Grab cmdline settings
 touch /etc/onl/boot-config
 tr -s " " "\n" </proc/cmdline |
 while read -r l; do

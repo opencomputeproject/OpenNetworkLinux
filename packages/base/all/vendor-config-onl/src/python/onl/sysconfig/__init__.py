@@ -41,11 +41,7 @@ class OnlSystemConfig(object):
         self.variables = {}
         self.variables['PLATFORM'] = platform.platform()
         self.variables['ARCH'] = pp.machine()
-        self.variables['PARCH'] = dict(ppc='powerpc',
-                                       x86_64='amd64',
-                                       armv7l='armel',
-                                       aarch64='arm64')[pp.machine()]
-
+        self.variables['PARCH'] = onl.util.dpkg_architecture()
         self.config = {}
         for dir_ in self.SYSTEM_CONFIG_DIRS:
             if os.path.isdir(dir_):

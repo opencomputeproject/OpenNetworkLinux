@@ -425,8 +425,8 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 		case PSU1_FAN_INPUT:
 		case PSU2_FAN_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_FAN0] |
-                     (int)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
+			value = (((unsigned char)data->ipmi_resp[pid].status[PSU_FAN0]) |
+                     ((unsigned char)data->ipmi_resp[pid].status[PSU_FAN1]) << 8);
 			break; 
 		default:
 			return -EINVAL;

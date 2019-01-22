@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import os
 
 class OnlServiceMixin(object):
 
@@ -120,3 +121,36 @@ def dmerge(d1, d2):
             q.append((v1, v2, c3[k],))
 
     return merged
+
+
+def wget(url, directory=None, temp_directory=None, extension=None):
+
+    import urllib2
+    import tempfile
+
+    try:
+        response = urllib2.urlopen(url)
+        filename = os.path.basename(urllib2.urlparse.urlparse(response.url).path)
+    except Exception, e:
+        return (e, None, None)
+
+    if extension and not filename.endswith("%s" % extension):
+        return (ValueError("The requested filename does not have the correct extension (%s)" % extension), None, None)
+
+    if directory is None:
+        directory = tempfile.mkdtemp(dir=temp_directory)
+
+    if os.path.exists(os.path.join(directory, filename)):
+        return (ValueError("The requested filename already exists in the target directory."), None, None)
+
+    try:
+        subprocess.check_call("wget -P %s %s" % (directory, url), shell=True)
+        return (None, filename, directory)
+    except subprocess.CalledProcessError, e:
+        return (e, None, None)
+
+def dpkg_architecture():
+    try:
+        return subprocess.check_output(['/usr/bin/dpkg', '--print-architecture']).strip()
+    except (subprocess.CalledProcessError, OSError):
+        return None
