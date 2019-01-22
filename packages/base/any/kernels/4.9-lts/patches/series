@@ -21,4 +21,4 @@ driver-add-the-support-max6620.patch
 0018-mlxsw-thermal-monitoring-amendments.patch
 0019-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
 0020-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
-
+0021-mlxsw-Align-code-with-kernel-v-5.0.patch
