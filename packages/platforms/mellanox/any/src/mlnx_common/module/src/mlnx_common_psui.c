@@ -213,7 +213,7 @@ _psu_info_get_type3(onlp_psu_info_t* info)
         info->mvin = val;
         info->caps |= ONLP_PSU_CAPS_VIN;
 
-        if (psu_power_info_get(index, "volt3", &val) == 0) {
+        if (psu_power_info_get(index, "volt_out2", &val) == 0) {
             info->mvout = val;
             info->caps |= ONLP_PSU_CAPS_VOUT;
         }

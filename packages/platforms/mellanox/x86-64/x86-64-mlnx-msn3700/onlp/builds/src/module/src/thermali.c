@@ -113,7 +113,7 @@ static char* thermal_fnames_c[] =  /* must map with onlp_thermal_id */
     "cpu_core1",
     "cpu_pack",
     "asic",
-    "board_amb",
+    "fan_amb",
     "port_amb",
     "psu1",
     "psu2"
