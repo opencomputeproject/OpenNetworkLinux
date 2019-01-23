@@ -1,0 +1,42 @@
+From 81443e4927ec84223f8305e0e4cec647521856e4 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 21 Jan 2019 14:54:58 +0000
+Subject: [PATCH hwmon] hwmon: (pmbus) Fix driver info initialization in probe
+ routine
+
+Fix tps53679_probe() by using dynamically allocated ?pmbus_driver_info?
+structure instead of static. Usage of static structures causes
+overwritten of the field ?vrm_version? - when the number of tps53679
+devices with the different ?vrm_version? are used within the same
+system, the last probed device overwrites this field for all others.
+
+Fixes: 610526527a13e4c9 ("hwmon: (pmbus) Add support for Texas Instruments tps53679 device")
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/hwmon/pmbus/tps53679.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/hwmon/pmbus/tps53679.c b/drivers/hwmon/pmbus/tps53679.c
+index 85b515c..45eacc5 100644
+--- a/drivers/hwmon/pmbus/tps53679.c
++++ b/drivers/hwmon/pmbus/tps53679.c
+@@ -80,7 +80,15 @@ static struct pmbus_driver_info tps53679_info = {
+ static int tps53679_probe(struct i2c_client *client,
+ 			  const struct i2c_device_id *id)
+ {
+-	return pmbus_do_probe(client, id, &tps53679_info);
++	struct pmbus_driver_info *info;
++
++	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
++	if (!info)
++		return -ENOMEM;
++
++	memcpy(info, &tps53679_info, sizeof(*info));
++
++	return pmbus_do_probe(client, id, info);
+ }
+ 
+ static const struct i2c_device_id tps53679_id[] = {
+-- 
+2.1.4
+
