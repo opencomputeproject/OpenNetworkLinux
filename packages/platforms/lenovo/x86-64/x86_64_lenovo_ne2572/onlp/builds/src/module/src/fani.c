@@ -58,22 +58,20 @@
 #define CPLD_FAN_PWM_ADDR_OFFSET            0x23
 #define CPLD_FAN_SEL_CONTROL_ADDR_OFFSET    0x24  /* 0: CPLD control, 1: BMC control */
 
-#define FAN1_EEPROM_BUS     21
+#define FAN1_EEPROM_BUS     77
 #define FAN_EEPROM_ADDR     0x57
 #define FAN_MODEL_OFFSET    0x67
-#define FAN_MODEL_LENGTH    13
-#define FAN_SERIAL_OFFSET   0x76
-#define FAN_SERIAL_LENGTH   9
+#define FAN_MODEL_LENGTH    12
+#define FAN_SERIAL_OFFSET   0x77
+#define FAN_SERIAL_LENGTH   8
 
 #define FAN_MAX_RPM  21000
 
 #if 1 //PSU FAN
 
-#define PSU_PMBus_ADDR          0x59
-#define READ_FAN_SPEED_REG      0x90
+#define PSU_PMBus_ADDR           0x59
+#define READ_FAN_SPEED_REG       0x90
 #define READ_FAN_STATUS_1_2_REG  0x81
-//#define PSU_ID_OFFSET           4
-#define PSU_ID_OFFSET          (PSU1_BUS_ID - FAN_1_ON_PSU1)
 #endif
 
 #define FAN_DIR_FRONT_TO_BACK   0
@@ -354,15 +352,15 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t *info)
     DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
 
     /* Get PSU fan speed */
-    switch (local_id + PSU_ID_OFFSET)
+    switch (local_id)
     {
-        case PSU1_BUS_ID:
+        case FAN_1_ON_PSU1:
             ret = i2c_read_word(PSU1_BUS_ID, PSU_PMBus_ADDR, READ_FAN_SPEED_REG);
             if (ret < 0 && DEBUG)
                 AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
 
             break;
-        case PSU2_BUS_ID:
+        case FAN_1_ON_PSU2:
             ret = i2c_read_word(PSU2_BUS_ID, PSU_PMBus_ADDR, READ_FAN_SPEED_REG);
             if (ret < 0 && DEBUG)
                 AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
@@ -371,7 +369,6 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t *info)
     }
 
     //printf("[%s]local_id:%d i2c read ret:%d\n",__FUNCTION__, local_id, ret);
-
     if (ret <= 0)
     {
         info->status |= ONLP_FAN_STATUS_FAILED;

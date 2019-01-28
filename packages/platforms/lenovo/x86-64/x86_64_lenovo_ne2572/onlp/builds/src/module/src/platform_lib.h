@@ -26,17 +26,17 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
-#include "x86_64_lenovo_ne10032_log.h"
+#include "x86_64_lenovo_ne2572_log.h"
 
-//for ne10032 
+//for ne2572 
 #define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0056/eeprom"
 //#define IDPROM_PATH "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-6/i2c-10/10-0051/eeprom"
 
 #define PSU1_ID 1
 #define PSU2_ID 2
-#define PSUI_BUS_ID_OFFSET      9
-#define PSU1_BUS_ID             (PSUI_BUS_ID_OFFSET + PSU1_ID)
-#define PSU2_BUS_ID             (PSUI_BUS_ID_OFFSET + PSU2_ID)
+#define PSU1_BUS_ID             11
+#define PSU2_BUS_ID             10
+
 
 #define CHASSIS_THERMAL_COUNT 2
 #define CHASSIS_FAN_COUNT     6
@@ -54,8 +54,11 @@
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
 #define PSU2_DC_HWMON_NODE(node) PSU2_DC_HWMON_PREFIX#node
 
-#define NUM_OF_SFP_PORT 32
-#define QSFP28_EEPROM_I2C_ADDR            0x50  /* QSFP28 EEPROM Physical Address in the I2C */
+#define NUM_OF_SFP_PORT  54
+#define QSFP_START_INDEX 48 
+
+#define QSFP28_EEPROM_I2C_ADDR          0x50  /* QSFP28 EEPROM Physical Address in the I2C */
+#define SFP_DOM_EEPROM_I2C_ADDR         0x51
 
 #define QSFP28_EEPROM_TXRX_LOS_OFFSET     3
 #define QSFP28_EEPROM_TX_FAULT_OFFSET     4
@@ -173,12 +176,7 @@ enum onlp_led_id
     LED_SERVICE,
     LED_STACKING,
     LED_PWR,
-    LED_FAN1,
-    LED_FAN2,
-    LED_FAN3,
-    LED_FAN4,
-    LED_FAN5,
-    LED_FAN6,
+    LED_FAN,
     LED_REAR_FAN1,
     LED_REAR_FAN2,
     LED_REAR_FAN3,

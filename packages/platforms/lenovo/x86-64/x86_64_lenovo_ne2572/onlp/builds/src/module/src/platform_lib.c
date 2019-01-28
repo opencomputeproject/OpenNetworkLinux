@@ -40,24 +40,29 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
     int fd;
     int len;
 
-    if ((buffer == NULL) || (buf_size < 0)) {
-        return -1;
-    }  
-
-    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {    
-        return -1;  
-    }
-
-    if ((len = write(fd, buffer, buf_size)) < 0) {    
-        close(fd);    
+    if ((buffer == NULL) || (buf_size < 0))
+    {
         return -1;
     }
 
-    if ((close(fd) == -1)) {
+    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1)
+    {
         return -1;
-    }  
+    }
 
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
+    if ((len = write(fd, buffer, buf_size)) < 0)
+    {
+        close(fd);
+        return -1;
+    }
+
+    if ((close(fd) == -1))
+    {
+        return -1;
+    }
+
+    if ((len > buf_size) || (data_len != 0 && len != data_len))
+    {
         return -1;
     }
 
@@ -66,35 +71,40 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
 
 int deviceNodeWriteInt(char *filename, int value, int data_len)
 {
-    char buf[8] = {0};
+    char buf[8] = { 0 };
     sprintf(buf, "%d", value);
 
-    return deviceNodeWrite(filename, buf, sizeof(buf)-1, data_len);
+    return deviceNodeWrite(filename, buf, sizeof(buf) - 1, data_len);
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
-    {    
+{
     int fd;
     int len;
 
-    if ((buffer == NULL) || (buf_size < 0)) {
+    if ((buffer == NULL) || (buf_size < 0))
+    {
         return -1;
-    }  
-
-    if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;  
     }
 
-    if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);    
+    if ((fd = open(filename, O_RDONLY)) == -1)
+    {
         return -1;
-    }  
-    
-    if ((close(fd) == -1)) {    
-        return -1;  
     }
 
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
+    if ((len = read(fd, buffer, buf_size)) < 0)
+    {
+        close(fd);
+        return -1;
+    }
+
+    if ((close(fd) == -1))
+    {
+        return -1;
+    }
+
+    if ((len > buf_size) || (data_len != 0 && len != data_len))
+    {
         return -1;
     }
 
@@ -105,28 +115,32 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 {
     int ret;
 
-    if (data_len >= buf_size || data_len < 0) {
+    if (data_len >= buf_size || data_len < 0)
+    {
         return -1;
     }
-    
-    ret = deviceNodeReadBinary(filename, buffer, buf_size-1, data_len);
 
-    if (ret == 0) {
-        if (data_len) {
+    ret = deviceNodeReadBinary(filename, buffer, buf_size - 1, data_len);
+
+    if (ret == 0)
+    {
+        if (data_len)
+        {
             buffer[data_len] = '\0';
         }
-        else {
-            buffer[buf_size-1] = '\0';
+        else
+        {
+            buffer[buf_size - 1] = '\0';
         }
     }
-    
+
     return ret;
 }
 
 
 int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask)
 {
-    uint16_t  valid_data  = data & mask;
+    uint16_t valid_data = data & mask;
     bool is_negative = valid_data >> (valid_bit - 1);
 
     return is_negative ? (-(((~valid_data) & mask) + 1)) : valid_data;
@@ -141,7 +155,7 @@ static int i2c_read_word(int i2cbus, int addr, int command)
 static int i2c_write_byte(int i2cbus, int addr, int offset, char val) 
 static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val) 
 */
-int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
+int i2c_read(int i2cbus, int addr, int offset, int length, char *data)
 {
     int file;
     int i;
@@ -152,7 +166,8 @@ int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
     filename[sizeof(filename) - 1] = '\0';
     file = open(filename, O_RDWR);
 
-    if (file < 0) {
+    if (file < 0)
+    {
         sprintf(filename, "/dev/i2c-%d", i2cbus);
         file = open(filename, O_RDWR);
     }
@@ -162,40 +177,41 @@ int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
         return -1;
     }
 
-    #if 0/*check funcs*/
+#if 0/*check funcs*/
     unsigned long funcs;
-    if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
+    if (ioctl(file, I2C_FUNCS, &funcs) < 0)
+    {
         AIM_LOG_INFO("Error: Could not get the adapter\r\n");
         return -1;
     }
     //I2C_SMBUS_BLOCK_DATA
-    #endif
+#endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    //if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
         return -errno;
     }
 
-    #if 1
+#if 1
     int res = 0;
-    for (i = 0; i<length; i++)
+    for (i = 0; i < length; i++)
     {
-        res = i2c_smbus_read_byte_data(file, offset+i);
+        res = i2c_smbus_read_byte_data(file, offset + i);
         if (res < 0 && DEBUG_FLAG)
         {
-            AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset+i);
+            AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset + i);
             close(file);
             return res;
         }
         data[i] = res;
     }
 
-    #else
+#else
 
     /*i2c_smbus_read_block_data(file, bank, cblock);*/
     int res = 0;
@@ -218,13 +234,13 @@ int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
     {
         data[i] = cblock[offset + i];
     }
-    #endif
+#endif
 
     close(file);
     return 0;
 }
 
-int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data)
+int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char *data)
 {
     int file;
     int i;
@@ -236,7 +252,8 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     filename[sizeof(filename) - 1] = '\0';
     file = open(filename, O_RDWR);
 
-    if (file < 0) {
+    if (file < 0)
+    {
         sprintf(filename, "/dev/i2c-%d", i2cbus);
         file = open(filename, O_RDWR);
     }
@@ -247,7 +264,7 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
@@ -269,20 +286,21 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
                     +----------------------------------------------------+        
      
       */
-    res = i2c_smbus_write_byte_data(file, (uint8_t)offset>>8,(uint8_t)offset);
+    res = i2c_smbus_write_byte_data(file, (uint8_t)offset >> 8, (uint8_t)offset);
 
-    if(res != 0) {
+    if (res != 0)
+    {
         AIM_LOG_INFO("Error: Write start address failed, return code %d\n", res);
-            return -1;
+        return -1;
     }
 
-    for (i = 0; i<length; i++)
+    for (i = 0; i < length; i++)
     {
         res = i2c_smbus_read_byte(file);
-  
+
         if (res < 0 && DEBUG_FLAG)
         {
-            AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset+i);
+            AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset + i);
             close(file);
             return res;
         }
@@ -304,7 +322,8 @@ int i2c_read_rps_status(int i2cbus, int addr, int offset)
     filename[sizeof(filename) - 1] = '\0';
     file = open(filename, O_RDWR);
 
-    if (file < 0) {
+    if (file < 0)
+    {
         sprintf(filename, "/dev/i2c-%d", i2cbus);
         file = open(filename, O_RDWR);
     }
@@ -314,19 +333,20 @@ int i2c_read_rps_status(int i2cbus, int addr, int offset)
         return -1;
     }
 
-    #if 0/*check funcs*/
+#if 0/*check funcs*/
     unsigned long funcs;
-    if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
+    if (ioctl(file, I2C_FUNCS, &funcs) < 0)
+    {
         AIM_LOG_INFO("Error: Could not get the adapter\r\n");
         return -1;
     }
     //I2C_SMBUS_BLOCK_DATA
-    #endif
+#endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -357,7 +377,8 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
     filename[sizeof(filename) - 1] = '\0';
     file = open(filename, O_RDWR);
 
-    if (file < 0) {
+    if (file < 0)
+    {
         sprintf(filename, "/dev/i2c-%d", i2cbus);
         file = open(filename, O_RDWR);
     }
@@ -367,28 +388,29 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
         return -1;
     }
 
-    #if 0/*check funcs*/
+#if 0/*check funcs*/
     unsigned long funcs;
-    if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
+    if (ioctl(file, I2C_FUNCS, &funcs) < 0)
+    {
         AIM_LOG_INFO("Error: Could not get the adapter\r\n");
         return -1;
     }
     //I2C_SMBUS_BLOCK_DATA
-    #endif
+#endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", offset, strerror(errno));
         close(file);
         return -errno;
     }
 
-    #if 1
+#if 1
     int res = 0;
-    
+
     res = i2c_smbus_read_word_data(file, offset);
     if (res < 0 && DEBUG_FLAG)
     {
@@ -397,7 +419,7 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
         //return res;
     }
 
-    #else
+#else
 
     /*i2c_smbus_read_block_data(file, bank, cblock);*/
     int res = 0;
@@ -416,17 +438,19 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
         return -1;
     }
 
-    for (i = 0; i < length; i++)
+    for (i = 0;
+         i < length;
+         i++)
     {
         data[i] = cblock[offset + i];
     }
-    #endif
+#endif
 
     close(file);
     return res;
 }
 
-int i2c_read_byte(int i2cbus, int addr, int offset, char* data)
+int i2c_read_byte(int i2cbus, int addr, int offset, char *data)
 {
     int ret;
 
@@ -434,7 +458,7 @@ int i2c_read_byte(int i2cbus, int addr, int offset, char* data)
 
     if (ret < 0 && DEBUG_FLAG)
     {
-        AIM_LOG_INFO("Error: Read failed %d\r\n",ret);
+        AIM_LOG_INFO("Error: Read failed %d\r\n", ret);
     }
 
     //AIM_LOG_INFO("i2c_read_byte: bus:%d add:0x%x offset:%d ret:%d data:0x%x\r\n", i2cbus, addr, offset, ret, *data);
@@ -450,13 +474,14 @@ int i2c_read_word(int i2cbus, int addr, int offset)
 
     if (ret < 0 && DEBUG_FLAG)
     {
-        AIM_LOG_INFO("Error: Read failed %d\r\n",ret);
+        AIM_LOG_INFO("Error: Read failed %d\r\n", ret);
     }
 
     //AIM_LOG_INFO("i2c_read_word: bus:%d add:0x%x offset:%d ret:%d\r\n", i2cbus, addr, offset, ret);
 
     return ret;
 }
+
 int _i2c_read_block_data(int i2cbus, int addr, uint8_t offset, uint8_t *data, int data_length)
 {
     int file;
@@ -467,7 +492,8 @@ int _i2c_read_block_data(int i2cbus, int addr, uint8_t offset, uint8_t *data, in
     filename[sizeof(filename) - 1] = '\0';
     file = open(filename, O_RDWR);
 
-    if (file < 0) {
+    if (file < 0)
+    {
         sprintf(filename, "/dev/i2c-%d", i2cbus);
         file = open(filename, O_RDWR);
     }
@@ -477,17 +503,18 @@ int _i2c_read_block_data(int i2cbus, int addr, uint8_t offset, uint8_t *data, in
         return -1;
     }
 
-    #if 0/*check funcs*/
+#if 0/*check funcs*/
     unsigned long funcs;
-    if (ioctl(file, I2C_FUNCS, &funcs) < 0) {
+    if (ioctl(file, I2C_FUNCS, &funcs) < 0)
+    {
         AIM_LOG_INFO("Error: Could not get the adapter\r\n");
         return -1;
     }
     //I2C_SMBUS_BLOCK_DATA
-    #endif
+#endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
@@ -601,7 +628,7 @@ int i2c_read_i2c_block_dump(int i2cbus, int addr, uint8_t *data)
 
     if (ret < 0 && DEBUG_FLAG)
     {
-        AIM_LOG_INFO("Error: Read failed %d\r\n",ret);
+        AIM_LOG_INFO("Error: Read failed %d\r\n", ret);
     }
     //AIM_LOG_INFO("i2c_read_block: bus:%d add:0x%x offset:%d ret:%d data:0x%x\r\n", i2cbus, addr, offset, ret, *data);
 
@@ -614,14 +641,14 @@ int i2c_write_byte(int i2cbus, int addr, int offset, char val)
     char filename[20];
     int res = 0;
 
-    #if 0/*get current value*/
+#if 0/*get current value*/
     char cur_val=0;
     res = i2c_read_byte(i2cbus, addr, offset, &cur_val);
     if (ret <0)
     {
         return res;
     }
-    #endif
+#endif
 
     /*open i2c device*/
     snprintf(filename, sizeof(filename), "/dev/i2c/%d", i2cbus);
@@ -640,9 +667,9 @@ int i2c_write_byte(int i2cbus, int addr, int offset, char val)
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -664,8 +691,8 @@ int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
 {
 
     int res = 0;
-    char cur_val=0;
-    char new_val=0;
+    char cur_val = 0;
+    char new_val = 0;
     if (val != 0 && val != 1)
     {
         AIM_LOG_INFO("Error: i2c_write_bit error val:%d\r\n", val);
@@ -679,18 +706,18 @@ int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
     }
 
     res = i2c_read_byte(i2cbus, addr, offset, &cur_val);
-    if (res <0)
+    if (res < 0)
     {
         return res;
     }
 
     if (val == 1)
     {
-        new_val = cur_val | (1<<bit);
+        new_val = cur_val | (1 << bit);
     }
     else
     {
-        new_val = cur_val & ~(1<<bit);
+        new_val = cur_val & ~(1 << bit);
     }
 
     //AIM_LOG_INFO("i2c_write_bit %d-0x%x-%d cur:0x%x new:0x%x\r\n", i2cbus, addr, offset, cur_val, new_val);
@@ -701,7 +728,7 @@ int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
     }
 
     res = i2c_write_byte(i2cbus, addr, offset, new_val);
-    if (res <0)
+    if (res < 0)
     {
         return res;
     }
@@ -709,7 +736,7 @@ int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
     return 0;
 }
 
-static char diag_flag=0;
+static char diag_flag = 0;
 
 char diag_flag_set(char d)
 {
@@ -737,15 +764,15 @@ char diag_debug_trace_off(void)
 char diag_debug_trace_check(void)
 {
     char flag = 0;
-    FILE* file = fopen ("/tmp/onlpi_dbg_trace", "r");
+    FILE *file = fopen("/tmp/onlpi_dbg_trace", "r");
     if (file == NULL)
     {
         return 0;
     }
-    flag = fgetc (file);
-    fclose (file);
+    flag = fgetc(file);
+    fclose(file);
 
-    return (flag == '1')?1:0;
+    return (flag == '1') ? 1 : 0;
 }
 
 char* sfp_control_to_str(int value)
@@ -790,16 +817,16 @@ char diag_debug_pause_platform_manage_off(void)
 char diag_debug_pause_platform_manage_check(void)
 {
     char flag = 0;
-    FILE* file = fopen ("/tmp/onlpi_dbg_pause_pm", "r");
+    FILE *file = fopen("/tmp/onlpi_dbg_pause_pm", "r");
     if (file == NULL)
     {
         return 0;
     }
-    flag = fgetc (file);
-    fclose (file);
+    flag = fgetc(file);
+    fclose(file);
 
-    return (flag == '1')?1:0;
-}
+    return (flag == '1') ? 1 : 0;
+} 
 
 #define ONIE_EEPROM_HEADER_LENGTH 11
 int eeprom_tlv_read(uint8_t *rdata, char type, char *data)

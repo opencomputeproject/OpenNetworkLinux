@@ -630,7 +630,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
             if (onlp_sfpi_is_present(port) == 0)
             {
 #if 1 //for display RX_LOS Bitmap in onlpdump
-                *value = 1;
+                *value = 0;
                 break;
 #else
                 return ONLP_STATUS_E_MISSING;
