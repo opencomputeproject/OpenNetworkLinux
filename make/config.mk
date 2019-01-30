@@ -26,6 +26,10 @@ export ONL_DEBIAN_SUITE_$(ONL_DEBIAN_SUITE)=1
 
 export BUILD_DIR_BASE=BUILD/$(ONL_DEBIAN_SUITE)
 
+# init system options sysvinit, systemd. default is sysvinit
+ifndef INIT
+  export INIT := sysvinit
+endif
 
 # Use the new module database tool to resolve dependencies dynamically.
 ifndef BUILDER_MODULE_DATABASE

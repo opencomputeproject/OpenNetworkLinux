@@ -1,0 +1,1 @@
+!include $ONL/packages/base/any/onlp-snmpd/APKG.yml ARCH=armhf TOOLCHAIN=arm-linux-gnueabihf

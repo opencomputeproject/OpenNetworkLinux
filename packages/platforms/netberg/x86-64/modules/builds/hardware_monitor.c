@@ -25,8 +25,11 @@ enum platform_type {
 #define W83795ADG_VENDOR_ID            0x5CA3
 #define W83795ADG_CHIP_ID              0x79
 
-#define W83795ADG_TEMP_COUNT     2
-#define W83795ADG_FAN_COUNT     8
+#define W83795ADG_NUM2     2
+#define W83795ADG_NUM8     8
+
+#define W83795ADG_TEMP_COUNT     4
+#define W83795ADG_FAN_COUNT     10
 #define W83795ADG_FAN_SPEED_FACTOR     1350000 /* 1.35 * 10^6 */
 #define W83795ADG_FAN_POLES_NUMBER     4
 #define W83795ADG_VSEN_COUNT     7
@@ -44,6 +47,7 @@ enum platform_type {
 /* Bank 0*/
 #define W83795ADG_REG_CONFIG   0x01 /* Configuration Register */
 #define W83795ADG_REG_TEMP_CTRL2   0x05 /* Temperature Monitoring Control Register */
+#define W83795ADG_REG_FANIN_CTRL2   0x07 /* FANIN CTRL2. FANIN Monitoring Control Register */
 #define W83795ADG_REG_VSEN1   0x10 /* VSEN1 voltage readout high byte */
 #define W83795ADG_REG_VSEN2   0x11 /* VSEN2 voltage readout high byte */
 #define W83795ADG_REG_VSEN3   0x12 /* VSEN3 voltage readout high byte */
@@ -86,6 +90,8 @@ enum platform_type {
 #define CPLD_REG_LED_0x44  0x44 /* FAN LED Register */
 
 #define CPLD_REG_LED   0x44 /* FAN LED */
+
+#define CPLD_REG_MUX   0x4A /* I2C MUX control Register */
 
 /* 9548 Channel Index */
 #define PCA9548_CH00        0
@@ -195,6 +201,7 @@ typedef enum
 /* QSFP */
 #define QSFP_COUNT       64
 #define QSFP_DATA_SIZE   256
+#define SFP_COPPER_DATA_SIZE    512
 
 #define EEPROM_DATA_SIZE   256
 
@@ -203,7 +210,9 @@ typedef struct
     unsigned char tempLow2HighThreshold[3];
     unsigned char tempHigh2LowThreshold[3];
     unsigned char fanDutySet[3];
-} fanControlTable_t;
+    unsigned int fanSpeed[3];
+    unsigned int inSet[W83795ADG_VSEN_COUNT][3];
+} ControlTable_t;
 
 static int w83795adg_hardware_monitor_probe(struct i2c_client *client, const struct i2c_device_id *id);
 static int w83795adg_hardware_monitor_detect(struct i2c_client *client, struct i2c_board_info *info);
@@ -310,9 +319,10 @@ SFP_PORT_DATA_t sfpPortData_78F[] = {
 
 static struct i2c_client qsfpDataA0_client;
 static struct i2c_client qsfpDataA2_client;
+static struct i2c_client SfpCopperData_client;
 
 /* i2c bus 0 */
-static struct i2c_client pca9535pwr_client;
+static struct i2c_client pca9535pwr_client_bus0;
 static struct i2c_client cpld_client;
 static struct i2c_client pca9548_client_bus0;
 static struct i2c_client pca9535_client_bus0[4];
@@ -324,15 +334,15 @@ static struct i2c_client psu_mcu_client_bus0;
 
 /* i2c bus 1 */
 static struct i2c_client pca9548_client[4];
-static struct i2c_client pca9535pwr_client_bus1[6];
+static struct i2c_client pca9535pwr_client[6];
 
 static struct i2c_client eeprom_client;
-static struct i2c_client eeprom_client_2;
 static struct i2c_client psu_eeprom_client;
 static struct i2c_client psu_mcu_client;
 
 static unsigned int FanErr[W83795ADG_FAN_COUNT] = {0};
 static unsigned int FanDir = 0;
+static unsigned int FanDir2 = 0;
 static unsigned int isBMCSupport = 0;
 
 static unsigned int platformBuildRev = 0xffff;
@@ -344,8 +354,11 @@ static char platformPsuABS = 0;
 
 unsigned int SFPPortAbsStatus[QSFP_COUNT];
 unsigned int SFPPortRxLosStatus[QSFP_COUNT];
+unsigned int SFPPortTxFaultStatus[QSFP_COUNT];
 char SFPPortDataValid[QSFP_COUNT];
 char SFPPortTxDisable[QSFP_COUNT];
+
+static struct i2c_client cpld_client_bus1;
 
 struct i2c_bus0_hardware_monitor_data {
     struct device *hwmon_dev;
@@ -405,16 +418,27 @@ struct i2c_bus1_hardware_monitor_data {
     unsigned short qsfpPortAbsStatus[4];
     char qsfpPortDataA0[QSFP_COUNT][QSFP_DATA_SIZE];
     char qsfpPortDataA2[QSFP_COUNT][QSFP_DATA_SIZE];
+    char SfpCopperPortData[QSFP_COUNT][SFP_COPPER_DATA_SIZE];
     unsigned short qsfpPortDataValid[4];
     unsigned short sfpPortTxDisable[3];
     unsigned short sfpPortRateSelect[3];
     unsigned short sfpPortRxLosStatus[4];
+    unsigned short sfpPortTxFaultStatus[4];
 
     unsigned short fanAbs[2];
     unsigned short fanDir[2];
 
     unsigned short systemLedStatus;
     unsigned short frontLedStatus;
+    unsigned char sfpPortDataValidAst[64];
+    unsigned char sfpPortAbsRxLosStatus[24];
+    unsigned char qsfpPortAbsStatusAst[16];
+    unsigned char sfpPortRateSelectAst[12];
+    unsigned char sfpPortTxDisableAst[6];
+
+    char qsfpPortTxDisableData[QSFP_COUNT];
+    char qsfpPortTxDisableDataUpdate[QSFP_COUNT];
+    struct i2c_client *sfpPortClient[QSFP_COUNT];
 };
 
 /* Addresses to scan */
@@ -441,50 +465,139 @@ static struct i2c_driver w83795adg_hardware_monitor_driver = {
 };
 
 /* Front to Back */
-static fanControlTable_t  fanControlTable[] =
+static ControlTable_t  ControlTable[] =
 {
     /* Huracan */
     {
-        {77, 95, 105},  /* temperature threshold (going to up) */
-        {72, 77, 95},  /* temperature threshold (going to down) */
-        {0x6C, 0x9E, 0xFF} /* fan rpm : 8000, 12000, 16000 */
+        {77, 95, 105},        /* temperature threshold (going to up) */
+        {72, 77, 95},         /* temperature threshold (going to down) */
+        {0x6C, 0x9E, 0xFF},   /* fan duty */
+        {8000, 12000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* Sesto */
     {
-        {85, 95, 100},  /* temperature threshold (going to up) */
-        {71, 85, 95},  /* temperature threshold (going to down) */
-        {0x73, 0xCC, 0xFF} /* fan rpm : 9000, 14000, 16000 */
+        {85, 95, 100},        /* temperature threshold (going to up) */
+        {71, 85, 95},         /* temperature threshold (going to down) */
+        {0x73, 0xCC, 0xFF},   /* fan duty */
+        {9000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* NC2X */
     {
-        {62, 70, 85},  /* temperature threshold (going to up) */
-        {58, 66, 70},  /* temperature threshold (going to down) */
-        {0x70, 0xB7, 0xFF} /* fan rpm : 8000, 13000, 16000 */
+        {62, 70, 85},         /* temperature threshold (going to up) */
+        {58, 66, 70},         /* temperature threshold (going to down) */
+        {0x70, 0xB7, 0xFF},   /* fan duty */
+        {8000, 13000, 16000}, /* fan rpm */
+        {
+            {970, 1250,1275}, /* vsen1 */
+            {0},              /* vsen2 */
+            {0},              /* vsen3 */
+            {970, 1000,1030}, /* vsen4 */
+            {1710,1800,1890}, /* vsen5 */
+            {0},              /* rsvd */
+            {1187,1250,1312}, /* vsen7 */
+        },
+    },
+    /* Asterion */
+    {
+        {70, 75, 80},         /* temperature threshold (going to up) */
+        {60, 65, 70},         /* temperature threshold (going to down) */
+        {0x8B, 0xD1, 0xFF},   /* fan duty */
+        {12000, 18000, 22000},/* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     }
 };
 
 /* Back to Front */
-static fanControlTable_t  fanControlTable_B2F[] =
+static ControlTable_t  ControlTable_B2F[] =
 {
     /* Huracan */
     {
-        {70, 77, 105},  /* temperature threshold (going to up) */
-        {60, 70, 77},  /* temperature threshold (going to down) */
-        {0x6C, 0xC7, 0xFF} /* fan rpm : 8000, 14000, 16000 */
+        {70, 77, 105},        /* temperature threshold (going to up) */
+        {60, 70, 77},         /* temperature threshold (going to down) */
+        {0x6C, 0xC7, 0xFF},   /* fan duty */
+        {8000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* Sesto */
     {
-        {71, 81, 105},  /* temperature threshold (going to up) */
-        {64, 81, 88},  /* temperature threshold (going to down) */
-        {0x73, 0xCC, 0xFF} /* fan rpm : 9000, 14000, 16000 */
+        {71, 81, 105},        /* temperature threshold (going to up) */
+        {64, 81, 88},         /* temperature threshold (going to down) */
+        {0x73, 0xCC, 0xFF},   /* fan duty */
+        {9000, 14000, 16000}, /* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     },
     /* NC2X */
     {
-        {58, 63, 80},  /* temperature threshold (going to up) */
-        {54, 60, 63},  /* temperature threshold (going to down) */
-        {0x6F, 0xB7, 0xFF} /* fan rpm : 8000, 13000, 16000 */
+        {58, 63, 80},         /* temperature threshold (going to up) */
+        {54, 60, 63},         /* temperature threshold (going to down) */
+        {0x6F, 0xB7, 0xFF},   /* fan duty */
+        {8000, 13000, 16000}, /* fan rpm */
+        {
+            {970, 1250,1275}, /* vsen1 */
+            {0},              /* vsen2 */
+            {0},              /* vsen3 */
+            {970, 1000,1030}, /* vsen4 */
+            {1710,1800,1890}, /* vsen5 */
+            {0},              /* rsvd */
+            {1187,1250,1312}, /* vsen7 */
+        },
+    },
+    /* Asterion */
+    {
+        {70, 75, 80},         /* temperature threshold (going to up) */
+        {60, 65, 70},         /* temperature threshold (going to down) */
+        {0x8B, 0xD1, 0xFF},   /* fan duty */
+        {12000, 18000, 22000},/* fan rpm */
+        {{0}},                /* (fixme) HW_monitoring_ONL.pdf */
     }
 };
+
+static const ControlTable_t *get_platform_control_table(void)
+{
+    const ControlTable_t *cTable;
+
+    switch(platformModelId)
+    {
+        default:
+        case HURACAN_WITH_BMC:
+        case HURACAN_WITHOUT_BMC:
+        case HURACAN_A_WITH_BMC:
+        case HURACAN_A_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[0]);
+            else
+                cTable = &(ControlTable_B2F[0]);
+            break;
+
+        case SESTO_WITH_BMC:
+        case SESTO_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[1]);
+            else
+                cTable = &(ControlTable_B2F[1]);
+            break;
+
+        case NCIIX_WITH_BMC:
+        case NCIIX_WITHOUT_BMC:
+            if (FanDir != 0)
+                cTable = &(ControlTable[2]);
+            else
+                cTable = &(ControlTable_B2F[2]);
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+            if (FanDir2 != 0)
+                cTable = &(ControlTable[3]);
+            else
+                cTable = &(ControlTable_B2F[3]);
+            break;
+    }
+
+    return cTable;
+}
 
 #if 0
 static int i2c_device_byte_write(const struct i2c_client *client, unsigned char command, unsigned char value)
@@ -507,6 +620,39 @@ static int i2c_device_byte_write(const struct i2c_client *client, unsigned char 
     return ret;
 }
 #endif
+
+#define BIT_INDEX(i)                (1ULL << (i))
+#define SFF8436_RX_LOS_ADDR         3
+#define SFF8436_TX_FAULT_ADDR       4
+#define SFF8436_TX_DISABLE_ADDR     86
+
+#define I2C_RW_RETRY_COUNT          3
+#define I2C_RW_RETRY_INTERVAL       100 /* ms */
+
+enum port_sysfs_attributes {
+  PRESENT,
+  RX_LOS,
+  RX_LOS1,
+  RX_LOS2,
+  RX_LOS3,
+  RX_LOS4,
+  TX_DISABLE,
+  TX_DISABLE1,
+  TX_DISABLE2,
+  TX_DISABLE3,
+  TX_DISABLE4,
+  TX_FAULT,
+  TX_FAULT1,
+  TX_FAULT2,
+  TX_FAULT3,
+  TX_FAULT4,
+  EEPROM_A0_PAGE,
+  EEPROM_A2_PAGE,
+  SFP_COPPER,
+  LAST_ATTRIBUTE
+};
+
+static struct mutex portStatusLock;
 
 static int i2c_device_word_write(const struct i2c_client *client, unsigned char command, unsigned short value)
 {
@@ -531,21 +677,8 @@ static int i2c_device_word_write(const struct i2c_client *client, unsigned char 
     return ret;
 }
 
-int qsfpDataRead(struct i2c_client *client, char *buf)
+int eepromDataBlockRead(struct i2c_client *client, char *buf)
 {
-#if 0
-    unsigned int index;
-    int value;
-
-    for (index=0; index<QSFP_DATA_SIZE; index++)
-    {
-        value = i2c_smbus_read_byte_data(client, index);
-        if (value < 0)
-            return value;
-        buf[index] = (char)(value&0xff);
-    }
-    return 0;
-#else
     char data[32];
     int i, ret;
 
@@ -558,7 +691,62 @@ int qsfpDataRead(struct i2c_client *client, char *buf)
         memcpy(buf+(i*32), data, 32);
     }
     return ret;
-#endif
+}
+
+int eepromDataByteRead(struct i2c_client *client, char *buf)
+{
+    unsigned int index;
+    int value;
+
+    for (index=0; index<EEPROM_DATA_SIZE; index++)
+    {
+        value = i2c_smbus_read_byte_data(client, index);
+        if (value < 0)
+            return value;
+        buf[index] = (char)(value&0xff);
+    }
+    return 0;
+}
+
+int eepromDataByteWrite(struct i2c_client *client, u8 command, const char *data,
+        int data_len)
+{
+    int status, retry = I2C_RW_RETRY_COUNT;
+
+    while (retry)
+    {
+        status = i2c_smbus_write_byte_data(client, command, *data);
+        if (unlikely(status < 0))
+        {
+            msleep(I2C_RW_RETRY_INTERVAL);
+            retry--;
+            continue;
+        }
+        break;
+    }
+
+    if (unlikely(status < 0))
+    {
+        return status;
+    }
+
+    return 1;
+}
+
+int eepromDataWordRead(struct i2c_client *client, char *buf)
+{
+    unsigned int index;
+    int value;
+
+    for (index=0; index<EEPROM_DATA_SIZE; index++)
+    {
+        value = i2c_smbus_read_word_data(client, index);
+        if (value < 0)
+            return value;
+        buf[index*2 + 1] = (value & 0xff00) >> 8;
+        buf[index*2] = value & 0x00ff;
+    }
+    return 0;
 }
 
 int eepromDataRead(struct i2c_client *client, char *buf)
@@ -584,7 +772,7 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
     int MNTRTD, MNTTD;
     int i, fanErr;
     unsigned int cTemp, fanDuty, maxTemp, LastTemp = 0;
-    fanControlTable_t  *fanTable;
+    const ControlTable_t  *cTable;
     unsigned int fanCtrlDelay = 5;
     unsigned int fanSpeed;
     unsigned short port_status;
@@ -601,6 +789,13 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
             fanErr = 0;
             for (i=0; i<W83795ADG_FAN_COUNT; i++)
             {
+                /* Only ASTERION support 10 FAN */
+                if ((i >= W83795ADG_NUM8) && (data->modelId != ASTERION_WITH_BMC) && (data->modelId != ASTERION_WITHOUT_BMC))
+                {
+                    FanErr[i] = 0;
+                    continue;
+                }
+
                 fanSpeed = 0;
                 /* Choose W83795ADG bank 0 */
                 i2c_smbus_write_byte_data(client, W83795ADG_REG_BANK, 0x00);
@@ -625,9 +820,9 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                 if (data->hwRev == 0x00) /* Proto */
                 {
                     if (fanErr == 1)
-                        i2c_smbus_write_byte_data(&pca9535pwr_client, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x80);
+                        i2c_smbus_write_byte_data(&pca9535pwr_client_bus0, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x80);
                     else
-                        i2c_smbus_write_byte_data(&pca9535pwr_client, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x00);
+                        i2c_smbus_write_byte_data(&pca9535pwr_client_bus0, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x00);
                 }
                 else if (data->hwRev == 0x02) /* Beta */
                 {
@@ -648,6 +843,10 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
             /* Get Remote Temp */
             for (i=0; i<W83795ADG_TEMP_COUNT; i++)
             {
+                /* Only ASTERION support 4 remote temperature */
+                if ((i >= W83795ADG_NUM2) && (data->modelId != ASTERION_WITH_BMC) && (data->modelId != ASTERION_WITHOUT_BMC))
+                    break;
+
                 MNTRTD = (int) i2c_smbus_read_byte_data(client, (W83795ADG_REG_TR1+i));
                 MNTTD = (int) i2c_smbus_read_byte_data(client, W83795ADG_REG_VR_LSB);
                 /* temperature is negative */
@@ -672,61 +871,37 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                 maxTemp = data->macTemp;
                 for (i=0; i<W83795ADG_TEMP_COUNT; i++)
                 {
+                    if ((i >= W83795ADG_NUM2) && (data->modelId != ASTERION_WITH_BMC) && (data->modelId != ASTERION_WITHOUT_BMC))
+                        break;
+
                     if (data->remoteTempInt[i] > maxTemp)
                         maxTemp = data->remoteTempInt[i];
                 }
 
                 /* FAN Control */
-                switch(platformModelId)
-                {
-                    default:
-                    case HURACAN_WITH_BMC:
-                    case HURACAN_WITHOUT_BMC:
-                    case HURACAN_A_WITH_BMC:
-                    case HURACAN_A_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[0]);
-                        else
-                            fanTable = &(fanControlTable_B2F[0]);
-                        break;
-
-                    case SESTO_WITH_BMC:
-                    case SESTO_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[1]);
-                        else
-                            fanTable = &(fanControlTable_B2F[1]);
-                        break;
-
-                    case NCIIX_WITH_BMC:
-                    case NCIIX_WITHOUT_BMC:
-                        if (FanDir != 0)
-                            fanTable = &(fanControlTable[2]);
-                        else
-                            fanTable = &(fanControlTable_B2F[2]);
-                        break;
-                }
+                cTable = get_platform_control_table();
 
                 if (fanErr)
                 {
-                    fanDuty = fanTable->fanDutySet[2];
+                    fanDuty = cTable->fanDutySet[2];
+                    LastTemp = 0;
                 }
                 else
                 {
                     fanDuty = 0;
                     if (maxTemp > LastTemp) /* temp is going to up */
                     {
-                        if (maxTemp < fanTable->tempLow2HighThreshold[0])
+                        if (maxTemp < cTable->tempLow2HighThreshold[0])
                         {
-                            fanDuty = fanTable->fanDutySet[0];
+                            fanDuty = cTable->fanDutySet[0];
                         }
-                        else if (maxTemp < fanTable->tempLow2HighThreshold[1])
+                        else if (maxTemp < cTable->tempLow2HighThreshold[1])
                         {
-                            fanDuty = fanTable->fanDutySet[1];
+                            fanDuty = cTable->fanDutySet[1];
                         }
-                        else if (maxTemp < fanTable->tempLow2HighThreshold[2])
+                        else if (maxTemp < cTable->tempLow2HighThreshold[2])
                         {
-                            fanDuty = fanTable->fanDutySet[2];
+                            fanDuty = cTable->fanDutySet[2];
                         }
                         else /* shutdown system */
                         {
@@ -735,21 +910,21 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                     }
                     else if (maxTemp < LastTemp)/* temp is going to down */
                     {
-                        if (maxTemp <= fanTable->tempHigh2LowThreshold[0])
+                        if (maxTemp <= cTable->tempHigh2LowThreshold[0])
                         {
-                            fanDuty = fanTable->fanDutySet[0];
+                            fanDuty = cTable->fanDutySet[0];
                         }
-                        else if (maxTemp <= fanTable->tempHigh2LowThreshold[1])
+                        else if (maxTemp <= cTable->tempHigh2LowThreshold[1])
                         {
-                            fanDuty = fanTable->fanDutySet[1];
+                            fanDuty = cTable->fanDutySet[1];
                         }
                         else
                         {
-                            fanDuty = fanTable->fanDutySet[2];
+                            fanDuty = cTable->fanDutySet[2];
                         }
                     }
+                    LastTemp = maxTemp;
                 }
-                LastTemp = maxTemp;
 
                 if ((fanDuty!=0)&&(data->fanDuty!=fanDuty))
                 {
@@ -792,9 +967,11 @@ static int i2c_bus0_hardware_monitor_update_thread(void *p)
                         {
                             port_status = i2c_smbus_read_word_data(&(pca9535_client_bus0[j]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                             port = ((j*2)+(i*8));
+                            SFPPortTxFaultStatus[port] = (PCA9553_TEST_BIT(port_status, 0)==0);
                             SFPPortAbsStatus[port] = (PCA9553_TEST_BIT(port_status, 1)==0);
                             SFPPortRxLosStatus[port] = (PCA9553_TEST_BIT(port_status, 2)==0);
                             port++;
+                            SFPPortTxFaultStatus[port] = (PCA9553_TEST_BIT(port_status, 6)==0);
                             SFPPortAbsStatus[port] = (PCA9553_TEST_BIT(port_status, 7)==0);
                             SFPPortRxLosStatus[port] = (PCA9553_TEST_BIT(port_status, 8)==0);
                         }
@@ -919,9 +1096,10 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
     struct i2c_client *client = p;
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     int i, ret;
-    unsigned short value,  fanErr;
+    unsigned short value, value2, fanErr, fanErr2;
     unsigned int step = 0;
     unsigned char qsfpPortData[QSFP_DATA_SIZE];
+    unsigned char SfpCopperPortData[SFP_COPPER_DATA_SIZE];
     unsigned short port_status;
     int j, port;
 
@@ -944,7 +1122,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         /* QSFP Port */
                         for (i=0; i<2; i++)
-                            data->qsfpPortAbsStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                            data->qsfpPortAbsStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
 
                         step = 1;
                         break;
@@ -964,7 +1142,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     ret = i2c_smbus_write_byte(&(pca9548_client[0]), (1<<i));
                                     if (ret>=0)
                                     {
-                                        ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                        if (data->qsfpPortTxDisableDataUpdate[i] == 1)
+                                        {
+                                            eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i], sizeof(char));
+                                            data->qsfpPortTxDisableDataUpdate[i] = 0;
+                                        }
+                                        ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                         if (ret>=0)
                                         {
                                             memcpy(&(data->qsfpPortDataA0[i][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -976,8 +1159,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 else
                                 {
                                     memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
-                                    memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
+                                    data->qsfpPortTxDisableDataUpdate[i] = 1;
                                 }
                             }
                         }
@@ -986,8 +1169,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             for (i=0; i<8; i++)
                             {
                                 memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
-                                memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
+                                data->qsfpPortTxDisableDataUpdate[i] = 1;
                             }
                         }
 
@@ -1009,7 +1192,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     ret = i2c_smbus_write_byte(&(pca9548_client[1]), (1<<(i-8)));
                                     if (ret>=0)
                                     {
-                                        ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                        if (data->qsfpPortTxDisableDataUpdate[i] == 1)
+                                        {
+                                            eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i], sizeof(char));
+                                            data->qsfpPortTxDisableDataUpdate[i] = 0;
+                                        }
+                                        ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                         if (ret>=0)
                                         {
                                             memcpy(&(data->qsfpPortDataA0[i][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -1021,8 +1209,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 else
                                 {
                                     memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
-                                    memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
+                                    data->qsfpPortTxDisableDataUpdate[i] = 1;
                                 }
                             }
                         }
@@ -1031,8 +1219,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             for (i=8; i<16; i++)
                             {
                                 memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
-                                memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
+                                data->qsfpPortTxDisableDataUpdate[i] = 1;
                             }
                         }
 
@@ -1054,7 +1242,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     ret = i2c_smbus_write_byte(&(pca9548_client[2]), (1<<i));
                                     if (ret>=0)
                                     {
-                                        ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                        if (data->qsfpPortTxDisableDataUpdate[i+16] == 1)
+                                        {
+                                            eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i+16], sizeof(char));
+                                            data->qsfpPortTxDisableDataUpdate[i+16] = 0;
+                                        }
+                                        ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                         if (ret>=0)
                                         {
                                             memcpy(&(data->qsfpPortDataA0[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -1066,8 +1259,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 else
                                 {
                                     memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
-                                    memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
+                                    data->qsfpPortTxDisableDataUpdate[i+16] = 1;
                                 }
                             }
                         }
@@ -1076,8 +1269,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             for (i=0; i<8; i++)
                             {
                                 memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
-                                memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
+                                data->qsfpPortTxDisableDataUpdate[i+16] = 1;
                             }
                         }
 
@@ -1099,7 +1292,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     ret = i2c_smbus_write_byte(&(pca9548_client[3]), (1<<(i-8)));
                                     if (ret>=0)
                                     {
-                                        ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                        if (data->qsfpPortTxDisableDataUpdate[i+16] == 1)
+                                        {
+                                            eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i+16], sizeof(char));
+                                            data->qsfpPortTxDisableDataUpdate[i+16] = 0;
+                                        }
+                                        ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                         if (ret>=0)
                                         {
                                             memcpy(&(data->qsfpPortDataA0[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -1111,8 +1309,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 else
                                 {
                                     memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
-                                    memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
+                                    data->qsfpPortTxDisableDataUpdate[i+16] = 1;
                                 }
                             }
                         }
@@ -1121,8 +1319,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             for (i=8; i<16; i++)
                             {
                                 memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
-                                memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
+                                data->qsfpPortTxDisableDataUpdate[i+16] = 1;
                             }
                         }
 
@@ -1140,7 +1338,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         value = 0xcccc;
                         fanErr = 0;
-                        for (i=0; i<W83795ADG_FAN_COUNT; i++)
+                        for (i=0; i<W83795ADG_NUM8; i++)
                         {
                             if (FanErr[i] == 1)
                                 fanErr |=  (0x1<<i);
@@ -1166,7 +1364,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         else
                             value |= 0x1000;
 
-                        ret = i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
+                        ret = i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
                         if (ret < 0)
                             break;
 
@@ -1209,11 +1407,11 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     break;
                             }
 
-                            i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+                            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
                         }
 
                         /* FAN Status */
-                        value =  i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        value =  i2c_smbus_read_word_data(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                         data->fanAbs[0] = (value&0x4444);
                         data->fanDir[0] = (value&0x8888);
                         FanDir = data->fanDir[0];
@@ -1245,7 +1443,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         /* SFP Port */
                         for (i=0; i<4; i++)
-                            data->qsfpPortAbsStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                            data->qsfpPortAbsStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
 
                         /* Turn on PCA9548#1 channel 1 on I2C-bus1 */
                         ret = i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH01));
@@ -1253,8 +1451,17 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             break;
 
                         /* SFP Port - RXLOS */
-                        for (i=0; i<4; i++)
-                            data->sfpPortRxLosStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        for (i=0; i<3; i++)
+                            data->sfpPortRxLosStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+
+                        /* Turn on PCA9548#1 channel 2 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH02));
+                        if (ret < 0)
+                            break;
+
+                        /* SFP Port - TX_FAULT */
+                        for (i=0; i<3; i++)
+                            data->sfpPortTxFaultStatus[i] = i2c_smbus_read_word_data(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
 
                         step = 1;
                         break;
@@ -1276,16 +1483,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[0], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[0], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]), 0x00);
                                 }
@@ -1293,6 +1503,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
                                 }
                             }
@@ -1303,6 +1514,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
                             }
                         }
@@ -1327,16 +1539,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[0], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[0], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]), 0x00);
                                 }
@@ -1344,6 +1559,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
                                 }
                             }
@@ -1354,6 +1570,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[0], i);
                             }
                         }
@@ -1378,16 +1595,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[1], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[1], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i+16][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]), 0x00);
                                 }
@@ -1395,6 +1615,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i+16][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
                                 }
                             }
@@ -1405,6 +1626,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i+16][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
                             }
                         }
@@ -1429,16 +1651,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[1], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[1], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i+16][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i+16][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]),  0x00);
                                 }
@@ -1446,6 +1671,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i+16][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
                                 }
                             }
@@ -1456,6 +1682,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i+16][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i+16][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i+16][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[1], i);
                             }
                         }
@@ -1480,16 +1707,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[2], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i+32][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[2], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i+32][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i+32][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]), 0x00);
                                 }
@@ -1497,6 +1727,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i+32][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i+32][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i+32][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[2], i);
                                 }
                             }
@@ -1507,6 +1738,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i+32][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i+32][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i+32][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[2], i);
                             }
                         }
@@ -1531,16 +1763,19 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     {
                                         if (PCA9553_TEST_BIT(data->qsfpPortDataValid[2], i) == 0)
                                         {
-                                            ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                            ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                             if (ret>=0)
                                             {
                                                 memcpy(&(data->qsfpPortDataA0[i+32][0]), qsfpPortData, QSFP_DATA_SIZE);
                                                 PCA9553_SET_BIT(data->qsfpPortDataValid[2], i);
                                             }
                                         }
-                                        ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                        ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                         if (ret>=0)
                                             memcpy(&(data->qsfpPortDataA2[i+32][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                        if (ret>=0)
+                                            memcpy(&(data->SfpCopperPortData[i+32][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                     }
                                     i2c_smbus_write_byte(&(pca9548_client[0]),  0x00);
                                 }
@@ -1548,6 +1783,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 {
                                     memset(&(data->qsfpPortDataA0[i+32][0]), 0, QSFP_DATA_SIZE);
                                     memset(&(data->qsfpPortDataA2[i+32][0]), 0, QSFP_DATA_SIZE);
+                                    memset(&(data->SfpCopperPortData[i+32][0]), 0, SFP_COPPER_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[2], i);
                                 }
                             }
@@ -1558,6 +1794,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                 memset(&(data->qsfpPortDataA0[i+32][0]), 0, QSFP_DATA_SIZE);
                                 memset(&(data->qsfpPortDataA2[i+32][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i+32][0]), 0, SFP_COPPER_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[2], i);
                             }
                         }
@@ -1580,7 +1817,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                     ret = i2c_smbus_write_byte(&(pca9548_client[0]), (1<<i));
                                     if (ret>=0)
                                     {
-                                        ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                        if (data->qsfpPortTxDisableDataUpdate[i+48] == 1)
+                                        {
+                                            eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i+48], sizeof(char));
+                                            data->qsfpPortTxDisableDataUpdate[i+48] = 0;
+                                        }
+                                        ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                         if (ret>=0)
                                         {
                                             memcpy(&(data->qsfpPortDataA0[i+48][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -1592,8 +1834,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 else
                                 {
                                     memset(&(data->qsfpPortDataA0[i+48][0]), 0, QSFP_DATA_SIZE);
-                                    memset(&(data->qsfpPortDataA2[i+48][0]), 0, QSFP_DATA_SIZE);
                                     PCA9553_CLEAR_BIT(data->qsfpPortDataValid[3], i);
+                                    data->qsfpPortTxDisableDataUpdate[i+48] = 1;
                                 }
                             }
                         }
@@ -1602,8 +1844,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             for (i=0; i<6; i++)
                             {
                                 memset(&(data->qsfpPortDataA0[i+48][0]), 0, QSFP_DATA_SIZE);
-                                memset(&(data->qsfpPortDataA2[i+48][0]), 0, QSFP_DATA_SIZE);
                                 PCA9553_CLEAR_BIT(data->qsfpPortDataValid[3], i);
+                                data->qsfpPortTxDisableDataUpdate[i+48] = 1;
                             }
                         }
 
@@ -1625,7 +1867,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         value = 0xcccc;
                         fanErr = 0;
-                        for (i=0; i<W83795ADG_FAN_COUNT; i++)
+                        for (i=0; i<W83795ADG_NUM8; i++)
                         {
                             if (FanErr[i] == 1)
                                 fanErr |=  (0x1<<i);
@@ -1651,7 +1893,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         else
                             value |= 0x1000;
 
-                        ret = i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
+                        ret = i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
                         if (ret < 0)
                             break;
 
@@ -1691,10 +1933,10 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 break;
                         }
 
-                        i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+                        i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
 
                         /* FAN Status */
-                        value =  i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        value =  i2c_smbus_read_word_data(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                         data->fanAbs[0] = (value&0x4444);
                         data->fanDir[0] = (value&0x8888);
                         FanDir = data->fanDir[0];
@@ -1722,11 +1964,13 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         for (j=0; j<4; j++)
                         {
-                            port_status = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[j]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                            port_status = i2c_smbus_read_word_data(&(pca9535pwr_client[j]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                             port = ((j*2)+40);
+                            SFPPortTxFaultStatus[port] = (PCA9553_TEST_BIT(port_status, 0)==0);
                             SFPPortAbsStatus[port] = (PCA9553_TEST_BIT(port_status, 1)==0);
                             SFPPortRxLosStatus[port] = (PCA9553_TEST_BIT(port_status, 2)==0);
                             port++;
+                            SFPPortTxFaultStatus[port] = (PCA9553_TEST_BIT(port_status, 6)==0);
                             SFPPortAbsStatus[port] = (PCA9553_TEST_BIT(port_status, 7)==0);
                             SFPPortRxLosStatus[port] = (PCA9553_TEST_BIT(port_status, 8)==0);
                         }
@@ -1741,7 +1985,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             break;
 
                         fanErr = 0;
-                        for (i=0; i<W83795ADG_FAN_COUNT; i++)
+                        for (i=0; i<W83795ADG_NUM8; i++)
                         {
                             if (FanErr[i] == 1)
                                 fanErr |=  (0x1<<i);
@@ -1783,7 +2027,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 break;
                         }
 
-                        i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+                        i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
 
                         i2c_smbus_write_byte_data(client, 0, 0x00);
                         step = 2;
@@ -1795,11 +2039,11 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         if (ret < 0)
                             break;
 
-                        value = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        value = i2c_smbus_read_word_data(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                         SFPPortAbsStatus[48] = (PCA9553_TEST_BIT(value, 9)==0);
                         SFPPortAbsStatus[49] = (PCA9553_TEST_BIT(value, 4)==0);
                         SFPPortAbsStatus[51] = (PCA9553_TEST_BIT(value, 14)==0);
-                        value = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[1]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        value = i2c_smbus_read_word_data(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                         SFPPortAbsStatus[50] = (PCA9553_TEST_BIT(value, 4)==0);
                         SFPPortAbsStatus[52] = (PCA9553_TEST_BIT(value, 14)==0);
                         SFPPortAbsStatus[53] = (PCA9553_TEST_BIT(value, 9)==0);
@@ -1815,7 +2059,7 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
                         value = 0xcccc;
                         fanErr = 0;
-                        for (i=0; i<W83795ADG_FAN_COUNT; i++)
+                        for (i=0; i<W83795ADG_NUM8; i++)
                         {
                             if (FanErr[i] == 1)
                                 fanErr |=  (0x1<<i);
@@ -1841,11 +2085,11 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                         else
                             value |= 0x1000;
 
-                        ret = i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
+                        ret = i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
                         if (ret < 0)
                             break;
 
-                        value = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        value = i2c_smbus_read_word_data(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
                         data->fanAbs[0] = (value&0x4444);
                         data->fanDir[0] = (value&0x8888);
                         FanDir = data->fanDir[0];
@@ -1864,7 +2108,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 i2c_smbus_write_byte_data(&(pca9548_client[0]), 0, sfpPortData_78F[i].portMaskBitForPCA9548_2TO5);
                                 if ((SFPPortDataValid[i] == 0)||(i>=48))
                                 {
-                                    ret = qsfpDataRead(&qsfpDataA0_client,qsfpPortData);
+                                    if ((i>=48)&&(data->qsfpPortTxDisableDataUpdate[i] == 1))
+                                    {
+                                        eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[i], sizeof(char));
+                                        data->qsfpPortTxDisableDataUpdate[i] = 0;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
                                     if (ret>=0)
                                     {
                                         memcpy(&(data->qsfpPortDataA0[i][0]), qsfpPortData, QSFP_DATA_SIZE);
@@ -1873,9 +2122,12 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                                 }
                                 if (i<48)
                                 {
-                                    ret = qsfpDataRead(&qsfpDataA2_client,qsfpPortData);
+                                    ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
                                     if (ret>=0)
                                         memcpy(&(data->qsfpPortDataA2[i][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                    ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                    if (ret>=0)
+                                        memcpy(&(data->SfpCopperPortData[i][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
                                 }
                                 i2c_smbus_write_byte_data(&(pca9548_client[0]), 0, 0x00);
                                 i2c_smbus_write_byte_data(&(pca9548_client[1]), 0, 0x00);
@@ -1884,6 +2136,8 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
                             {
                                  memset(&(data->qsfpPortDataA0[i][0]), 0, QSFP_DATA_SIZE);
                                  memset(&(data->qsfpPortDataA2[i][0]), 0, QSFP_DATA_SIZE);
+                                 memset(&(data->SfpCopperPortData[i][0]), 0, SFP_COPPER_DATA_SIZE);
+                                 data->qsfpPortTxDisableDataUpdate[i] = 1;
                                  SFPPortDataValid[i] = 0;
                              }
                         }
@@ -1898,6 +2152,345 @@ static int i2c_bus1_hardware_monitor_update_thread(void *p)
 
             case ASTERION_WITH_BMC:
             case ASTERION_WITHOUT_BMC:
+                switch (step)
+                {
+                    case 0:
+                        /* Turn on PCA9548#0 channel 0 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH00));
+                        if (ret < 0)
+                            break;
+
+                        /* SFP Port 0~23, SFP Port - RXLOS */
+                        for (i = 0; i < 10; i++)
+                            data->sfpPortAbsRxLosStatus[i] = i2c_smbus_read_byte_data(&(cpld_client_bus1), (0x20 + i));
+
+                        data->sfpPortAbsRxLosStatus[10] = i2c_smbus_read_byte_data(&(cpld_client_bus1), 0x30);
+                        data->sfpPortAbsRxLosStatus[11] = i2c_smbus_read_byte_data(&(cpld_client_bus1), 0x31);
+
+                        /* Turn on PCA9548#0 channel 1 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH01));
+                        if (ret < 0)
+                            break;
+
+                        /* SFP Port 24~47, SFP Port - RXLOS */
+                        for (i = 0; i < 10; i++)
+                            data->sfpPortAbsRxLosStatus[i + 12] = i2c_smbus_read_byte_data(&(cpld_client_bus1), 0x20 + i);
+
+                        data->sfpPortAbsRxLosStatus[22] = i2c_smbus_read_byte_data(&(cpld_client_bus1), 0x30);
+                        data->sfpPortAbsRxLosStatus[23] = i2c_smbus_read_byte_data(&(cpld_client_bus1), 0x31);
+
+                        /* Turn on PCA9548#0 channel 2 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH02));
+                        if (ret < 0)
+                            break;
+
+                        /* QSFP Port 48~63 */
+                        for (i = 0; i < 16; i++)
+                            data->qsfpPortAbsStatusAst[i] = i2c_smbus_read_byte_data(&(cpld_client_bus1), (0x20 + i));
+
+                        step = 1;
+                        break;
+
+                    case 1:
+                        /* Turn on PCA9548#0 channel 0 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH00));
+                        if (ret < 0)
+                            break;
+
+                        for (i = 0; i < 12; i++)  /* SFP 0,2,4 ... 22 */
+                        {
+                            if ((data->sfpPortAbsRxLosStatus[i] & 0x02) == 0)  /* present */
+                            {
+                                ret = i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, (0x01 + (i * 2)));
+
+                                if (ret >= 0)
+                                {
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
+
+                                    if (ret >= 0)
+                                    {
+                                        memcpy(&(data->qsfpPortDataA0[i * 2][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        data->sfpPortDataValidAst[i * 2] = 1;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
+                                    memcpy(&(data->qsfpPortDataA2[i * 2][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                    ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                    if (ret>=0)
+                                        memcpy(&(data->SfpCopperPortData[i * 2][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
+                                }
+                                i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, 0x00);
+                            }
+                            else
+                            {
+                                memset(&(data->qsfpPortDataA0[i * 2][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->qsfpPortDataA2[i * 2][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[i * 2][0]), 0, SFP_COPPER_DATA_SIZE);
+                                data->sfpPortDataValidAst[i * 2] = 0;
+                            }
+                        }
+
+                        for (i = 0; i < 12; i++)  /* SFP 1,3,5 ... 23 */
+                        {
+                            if ((data->sfpPortAbsRxLosStatus[i] & 0x20) == 0)  /* present */
+                            {
+                                ret = i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, (0x02 + (i * 2)));
+                                if (ret >= 0)
+                                {
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
+                                    if (ret >= 0)
+                                    {
+                                        memcpy(&(data->qsfpPortDataA0[1 + (i * 2)][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        data->sfpPortDataValidAst[1 + (i * 2)] = 1;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
+                                    if (ret >= 0)
+                                        memcpy(&(data->qsfpPortDataA2[1 + (i * 2)][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                    ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                    if (ret>=0)
+                                        memcpy(&(data->SfpCopperPortData[1 + (i * 2)][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
+                                }
+                                i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, 0x00);
+                            }
+                            else
+                            {
+                                memset(&(data->qsfpPortDataA0[1 + (i * 2)][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->qsfpPortDataA2[1 + (i * 2)][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[1 + (i * 2)][0]), 0, SFP_COPPER_DATA_SIZE);
+                                data->sfpPortDataValidAst[1 + (i * 2)] = 0;
+                            }
+                         }
+
+                         step = 2;
+                         break;
+
+                    case 2:
+                        /* Turn on PCA9548#0 channel 1 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH01));
+                        if (ret < 0)
+                            break;
+
+                        for (i = 0; i < 12; i++)  /* SFP 24,26,28 ... 46 */
+                        {
+                            if ((data->sfpPortAbsRxLosStatus[i + 12] & 0x02) == 0)  /* present */
+                            {
+                                ret = i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, (0x01 + (i * 2)));
+                                if (ret >= 0)
+                                {
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
+                                    if (ret >= 0)
+                                    {
+                                        memcpy(&(data->qsfpPortDataA0[(i +12) * 2][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        data->sfpPortDataValidAst[(i + 12) * 2] = 1;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
+                                    if (ret >= 0)
+                                        memcpy(&(data->qsfpPortDataA2[(i + 12) * 2][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                    ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                    if (ret>=0)
+                                        memcpy(&(data->SfpCopperPortData[(i + 12) * 2][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
+                                }
+                                i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, 0x00);
+                            }
+                            else
+                            {
+                                memset(&(data->qsfpPortDataA0[(i + 12) * 2][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->qsfpPortDataA2[(i + 12) * 2][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[(i + 12) * 2][0]), 0, SFP_COPPER_DATA_SIZE);
+                                data->sfpPortDataValidAst[(i + 12) * 2] = 0;
+                            }
+                        }
+
+                        for (i = 0; i < 12; i++)  /* SFP 25,27,29 ... 47 */
+                        {
+                            if ((data->sfpPortAbsRxLosStatus[i + 12] & 0x20) == 0)  /* present */
+                            {
+                                ret = i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, (0x02 + (i * 2)));
+                                if (ret >= 0)
+                                {
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
+                                    if (ret >= 0)
+                                    {
+                                        memcpy(&(data->qsfpPortDataA0[1 + ((i + 12) * 2)][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        data->sfpPortDataValidAst[1 + ((i + 12) * 2)] = 1;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA2_client,qsfpPortData);
+                                    if (ret >= 0)
+                                        memcpy(&(data->qsfpPortDataA2[1 + ((i + 12) * 2)][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                    ret = eepromDataWordRead(&SfpCopperData_client,SfpCopperPortData);
+                                    if (ret>=0)
+                                        memcpy(&(data->SfpCopperPortData[1 + ((i + 12) * 2)][0]), SfpCopperPortData, SFP_COPPER_DATA_SIZE);
+                                }
+                                i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, 0x00);
+                            }
+                            else
+                            {
+                                memset(&(data->qsfpPortDataA0[1 + ((i + 12) * 2)][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->qsfpPortDataA2[1 + ((i + 12) * 2)][0]), 0, QSFP_DATA_SIZE);
+                                memset(&(data->SfpCopperPortData[1 + ((i + 12) * 2)][0]), 0, SFP_COPPER_DATA_SIZE);
+                                data->sfpPortDataValidAst[1 + ((i + 12) * 2)] = 0;
+                            }
+                        }
+
+                        step = 3;
+                        break;
+
+                    case 3:
+                        /* Turn on PCA9548#0 channel 2 on I2C-bus1 */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH02));
+                        if (ret < 0)
+                            break;
+
+                        for (i = 0; i < 16; i++)  /* QSFP 48~63 */
+                        {
+                            if ((data->qsfpPortAbsStatusAst[i] & 0x02) == 0)  /* present */
+                            {
+                                ret = i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, (0x01 + i));
+                                if (ret >= 0)
+                                {
+                                    if (data->qsfpPortTxDisableDataUpdate[48 + i] == 1)
+                                    {
+                                        eepromDataByteWrite(&qsfpDataA0_client, SFF8436_TX_DISABLE_ADDR, &data->qsfpPortTxDisableData[48 + i], sizeof(char));
+                                        data->qsfpPortTxDisableDataUpdate[48 + i] = 0;
+                                    }
+                                    ret = eepromDataBlockRead(&qsfpDataA0_client,qsfpPortData);
+                                    if (ret >= 0)
+                                    {
+                                        memcpy(&(data->qsfpPortDataA0[48 + i][0]), qsfpPortData, QSFP_DATA_SIZE);
+                                        data->sfpPortDataValidAst[48 + i] = 1;
+                                    }
+                                }
+                                i2c_smbus_write_byte_data(&(cpld_client_bus1), CPLD_REG_MUX, 0x00);
+                             }
+                             else
+                             {
+                                 memset(&(data->qsfpPortDataA0[48 + i][0]), 0, QSFP_DATA_SIZE);
+                                 data->sfpPortDataValidAst[48 + i] = 0;
+                                 data->qsfpPortTxDisableDataUpdate[48 + i] = 1;
+                             }
+                        }
+
+                        step = 4;
+                        break;
+
+                    case 4:
+                        /* Turn on PCA9548#0 channel 3 on I2C-bus1 : FAN Status */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH03));
+                        if (ret < 0)
+                            break;
+
+                        value = 0xcccc;
+                        fanErr = 0;
+                        for (i = 0; i < W83795ADG_NUM8; i++)
+                        {
+                            if (FanErr[i] == 1)
+                                fanErr |=  (0x1 << i);
+                        }
+
+                        if (fanErr & 0x03)
+                            value |= 0x0001;
+                        else
+                            value |= 0x0002;
+
+                        if (fanErr & 0x0c)
+                            value |= 0x0010;
+                        else
+                            value |= 0x0020;
+
+                        if (fanErr & 0x30)
+                            value |= 0x0100;
+                        else
+                            value |= 0x0200;
+
+                        if (fanErr & 0xc0)
+                            value |= 0x1000;
+                        else
+                            value |= 0x2000;
+
+                        ret = i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
+                        if (ret < 0)
+                            break;
+
+                        /* FAN Status */
+                        value = i2c_smbus_read_word_data(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+                        data->fanAbs[0] = (value & 0x4444);
+                        data->fanDir[0] = (value & 0x8888);
+                        FanDir = data->fanDir[0];
+
+                        fanErr2 = 0;
+                        for (i = W83795ADG_NUM8; i < W83795ADG_FAN_COUNT; i++)
+                        {
+                            if (FanErr[i] == 1)
+                                fanErr2 |=  (0x1 << (i - 8));
+                        }
+
+                        if (fanErr2 & 0x03)
+                            value2 = 0x0010;
+                        else
+                            value2 = 0x0020;
+
+                        ret = i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value2);
+                        if (ret < 0)
+                            break;
+
+                        /* FAN Status */
+                        value2 = i2c_smbus_read_word_data(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_INPUT_PORT_0);
+
+                        data->fanAbs[1] = (value2 & 0x0040);
+                        data->fanDir[1] = (value2 & 0x0080);
+                        FanDir2 = data->fanDir[1];
+
+                        /* Turn on PCA9548#0 channel 4 on I2C-bus1 : System LED */
+                        ret = i2c_smbus_write_byte(client, (1 << PCA9548_CH04));
+                        if (ret < 0)
+                            break;
+
+                        data->frontLedStatus |= 0x00ff;
+                        if (fanErr == 0 && fanErr2 == 0)
+                            data->frontLedStatus &= (~0x0010); /* FAN_LED_G# */
+                        else
+                            data->frontLedStatus &= (~0x0020); /* FAN_LED_Y# */
+
+                        if ((platformPsuABS & 0x01) == 0x00) /* PSU1 Present */
+                        {
+                            if (platformPsuPG & 0x04) /* PSU1_PG_LDC Power Goodasserted */
+                                data->frontLedStatus &= (~0x0001); /* PSU1_LED_G# */
+                            else
+                                data->frontLedStatus &= (~0x0002); /* PSU1_LED_Y# */
+                        }
+                        if ((platformPsuABS & 0x02) == 0x00) /* PSU2 Present */
+                        {
+                            if (platformPsuPG & 0x08) /* PSU2_PG_LDC Power Goodasserted */
+                                data->frontLedStatus &= (~0x0004); /* PSU2_LED_G# */
+                            else
+                                data->frontLedStatus &= (~0x0008); /* PSU2_LED_Y# */
+                        }
+
+                        switch (data->systemLedStatus)
+                        {
+                            default:
+                            case 0: /* Booting */
+                                break;
+
+                            case 1: /* Critical*/
+                                data->frontLedStatus &= (~0x0080); /* SYS_LED_Y# */
+                                break;
+
+                            case 2: /* Normal */
+                                data->frontLedStatus &= (~0x0040); /* SYS_LED_G# */
+                                break;
+                        }
+
+                        i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+
+                        step = 0;
+                        break;
+
+                    default:
+                        step = 0;
+                        break;
+                }
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x33, 0x00);
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x33, 0xff);
                 break;
 
             default:
@@ -1960,10 +2553,27 @@ static ssize_t show_psu_pg_sen(struct device *dev, struct device_attribute *deva
     value = data->psuPG;
     mutex_unlock(&data->lock);
 
-    if (attr->index == 0)
-        value &= 0x08;
-    else
-        value &= 0x10;
+    switch(platformModelId)
+    {
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            if (attr->index == 0)
+                value &= 0x04;
+            else
+                value &= 0x08;
+        }
+            break;
+
+        default:
+        {
+            if (attr->index == 0)
+                value &= 0x08;
+            else
+                value &= 0x10;
+        }
+            break;
+    }
     return sprintf(buf, "%d\n", value?1:0);
 }
 
@@ -2183,8 +2793,6 @@ static ssize_t set_rov(struct device *dev, struct device_attribute *devattr, con
     {
         case HURACAN_WITH_BMC:
         case HURACAN_WITHOUT_BMC:
-        case ASTERION_WITH_BMC:
-        case ASTERION_WITHOUT_BMC:
         case HURACAN_A_WITH_BMC:
         case HURACAN_A_WITHOUT_BMC:
         {
@@ -2219,6 +2827,8 @@ static ssize_t set_rov(struct device *dev, struct device_attribute *devattr, con
 
         case SESTO_WITH_BMC:
         case SESTO_WITHOUT_BMC:
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
         {
             /*
             - 4'b0000 = 1.2000V    -> 0x47
@@ -2322,6 +2932,46 @@ static ssize_t show_voltage_sen(struct device *dev, struct device_attribute *dev
     return sprintf(buf, "%d.%03d\n", (voltage/VOL_MONITOR_UNIT), (voltage%VOL_MONITOR_UNIT));
 }
 
+/* lm-sensors */
+static ssize_t show_temp_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+
+    if (data->remoteTempIsPositive[attr->index]==1)
+        return sprintf(buf, "%u\n", data->remoteTempInt[attr->index] * 1000 + data->remoteTempDecimal[attr->index]);
+    else
+        return sprintf(buf, "-%u\n", data->remoteTempInt[attr->index] * 1000 + data->remoteTempDecimal[attr->index]);
+}
+
+static ssize_t show_mac_temp_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+
+    return sprintf(buf, "%u\n", data->macTemp * 1000);
+}
+
+static ssize_t show_in_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus0_hardware_monitor_data *data = i2c_get_clientdata(client);
+    unsigned int MNTVSEN, MNTV;
+    unsigned int voltage;
+
+    mutex_lock(&data->lock);
+    MNTVSEN = data->vSen[attr->index];
+    MNTV = data->vSenLsb[attr->index];
+    mutex_unlock(&data->lock);
+
+    voltage = ((MNTVSEN << 2) + ((MNTV & 0xC0) >> 6));
+    voltage *= ((2*VOL_MONITOR_UNIT)/VOL_MONITOR_UNIT);
+
+    return sprintf(buf, "%u\n", (voltage/VOL_MONITOR_UNIT) * 1000 + voltage%VOL_MONITOR_UNIT);
+}
+
 static DEVICE_ATTR(mac_temp, S_IWUSR | S_IRUGO, show_mac_temp, set_mac_temp);
 static DEVICE_ATTR(chip_info, S_IRUGO, show_chip_info, NULL);
 static DEVICE_ATTR(board_build_rev, S_IRUGO, show_board_build_revision, NULL);
@@ -2363,6 +3013,8 @@ static SENSOR_DEVICE_ATTR(fan10_duty, S_IRUGO, show_fan_duty, NULL, 9);
 
 static SENSOR_DEVICE_ATTR(remote_temp1, S_IRUGO, show_remote_temp, NULL, 0);
 static SENSOR_DEVICE_ATTR(remote_temp2, S_IRUGO, show_remote_temp, NULL, 1);
+static SENSOR_DEVICE_ATTR(remote_temp3, S_IRUGO, show_remote_temp, NULL, 2);
+static SENSOR_DEVICE_ATTR(remote_temp4, S_IRUGO, show_remote_temp, NULL, 3);
 
 static SENSOR_DEVICE_ATTR(vsen1, S_IRUGO, show_voltage_sen, NULL, 0);
 static SENSOR_DEVICE_ATTR(vsen2, S_IRUGO, show_voltage_sen, NULL, 1);
@@ -2370,6 +3022,134 @@ static SENSOR_DEVICE_ATTR(vsen3, S_IRUGO, show_voltage_sen, NULL, 2);
 static SENSOR_DEVICE_ATTR(vsen4, S_IRUGO, show_voltage_sen, NULL, 3);
 static SENSOR_DEVICE_ATTR(vsen5, S_IRUGO, show_voltage_sen, NULL, 4);
 static SENSOR_DEVICE_ATTR(vsen7, S_IRUGO, show_voltage_sen, NULL, 6);
+
+/* lm-sensors compatible feature/subfeature names */
+static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO, show_fan_rpm, NULL, 0);
+static SENSOR_DEVICE_ATTR(fan2_input, S_IRUGO, show_fan_rpm, NULL, 1);
+static SENSOR_DEVICE_ATTR(fan3_input, S_IRUGO, show_fan_rpm, NULL, 2);
+static SENSOR_DEVICE_ATTR(fan4_input, S_IRUGO, show_fan_rpm, NULL, 3);
+static SENSOR_DEVICE_ATTR(fan5_input, S_IRUGO, show_fan_rpm, NULL, 4);
+static SENSOR_DEVICE_ATTR(fan6_input, S_IRUGO, show_fan_rpm, NULL, 5);
+static SENSOR_DEVICE_ATTR(fan7_input, S_IRUGO, show_fan_rpm, NULL, 6);
+static SENSOR_DEVICE_ATTR(fan8_input, S_IRUGO, show_fan_rpm, NULL, 7);
+static SENSOR_DEVICE_ATTR(fan9_input, S_IRUGO, show_fan_rpm, NULL, 8);
+static SENSOR_DEVICE_ATTR(fan10_input, S_IRUGO, show_fan_rpm, NULL, 9);
+
+static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, show_temp_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, show_temp_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_input, S_IRUGO, show_temp_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp4_input, S_IRUGO, show_temp_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(temp10_input, S_IRUGO, show_mac_temp_lm_sensors, NULL, 4);
+
+static SENSOR_DEVICE_ATTR(in1_input, S_IRUGO, show_in_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(in2_input, S_IRUGO, show_in_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(in3_input, S_IRUGO, show_in_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(in4_input, S_IRUGO, show_in_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(in5_input, S_IRUGO, show_in_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(in7_input, S_IRUGO, show_in_lm_sensors, NULL, 6);
+
+/* fan min/max */
+
+static ssize_t show_fan_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+
+    return sprintf(buf, "%u\n", attr->index < 100 ? cTable->fanSpeed[0] : cTable->fanSpeed[2]);
+}
+
+static SENSOR_DEVICE_ATTR(fan1_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(fan2_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(fan3_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(fan4_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(fan5_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(fan6_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 5);
+static SENSOR_DEVICE_ATTR(fan7_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 6);
+static SENSOR_DEVICE_ATTR(fan8_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 7);
+static SENSOR_DEVICE_ATTR(fan9_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 8);
+static SENSOR_DEVICE_ATTR(fan10_min, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 9);
+
+static SENSOR_DEVICE_ATTR(fan1_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(fan2_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(fan3_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(fan4_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(fan5_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 104);
+static SENSOR_DEVICE_ATTR(fan6_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 105);
+static SENSOR_DEVICE_ATTR(fan7_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 106);
+static SENSOR_DEVICE_ATTR(fan8_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 107);
+static SENSOR_DEVICE_ATTR(fan9_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 108);
+static SENSOR_DEVICE_ATTR(fan10_max, S_IRUGO, show_fan_minmax_lm_sensors, NULL, 109);
+
+/* temp min/max */
+
+static ssize_t show_temp_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+    unsigned int temp;
+
+    if (attr->index < 100)
+        temp = cTable->tempLow2HighThreshold[0];
+    else
+        temp = cTable->tempLow2HighThreshold[2];
+
+    return sprintf(buf, "%u\n", temp * 1000);
+}
+
+static ssize_t show_mac_temp_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    unsigned int temp;
+
+    if (attr->index < 100)
+        temp = 0;
+    else
+        temp = 120;
+
+    return sprintf(buf, "%u\n", temp * 1000);
+}
+
+static SENSOR_DEVICE_ATTR(temp1_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(temp2_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(temp4_min, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(temp10_min, S_IRUGO, show_mac_temp_minmax_lm_sensors, NULL, 4);
+
+static SENSOR_DEVICE_ATTR(temp1_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp2_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp3_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(temp4_max, S_IRUGO, show_temp_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(temp10_max, S_IRUGO, show_mac_temp_minmax_lm_sensors, NULL, 104);
+
+/* voltage min/max */
+
+static ssize_t show_in_minmax_lm_sensors(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    const ControlTable_t *cTable = get_platform_control_table();
+    unsigned int in;
+
+    if (attr->index < 100)
+        in = cTable->inSet[attr->index][0];
+    else
+        in = cTable->inSet[attr->index - 100][2];
+
+    return sprintf(buf, "%u\n", in);
+}
+
+static SENSOR_DEVICE_ATTR(in1_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 0);
+static SENSOR_DEVICE_ATTR(in2_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 1);
+static SENSOR_DEVICE_ATTR(in3_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 2);
+static SENSOR_DEVICE_ATTR(in4_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 3);
+static SENSOR_DEVICE_ATTR(in5_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 4);
+static SENSOR_DEVICE_ATTR(in7_min, S_IRUGO, show_in_minmax_lm_sensors, NULL, 6);
+
+static SENSOR_DEVICE_ATTR(in1_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 100);
+static SENSOR_DEVICE_ATTR(in2_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 101);
+static SENSOR_DEVICE_ATTR(in3_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 102);
+static SENSOR_DEVICE_ATTR(in4_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 103);
+static SENSOR_DEVICE_ATTR(in5_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 104);
+static SENSOR_DEVICE_ATTR(in7_max, S_IRUGO, show_in_minmax_lm_sensors, NULL, 106);
 
 static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
     &dev_attr_mac_temp.attr,
@@ -2414,6 +3194,63 @@ static struct attribute *i2c_bus0_hardware_monitor_attr[] = {
     &sensor_dev_attr_vsen2.dev_attr.attr,
     &sensor_dev_attr_vsen3.dev_attr.attr,
     &sensor_dev_attr_vsen4.dev_attr.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in2_input.dev_attr.attr,
+    &sensor_dev_attr_in3_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in2_min.dev_attr.attr,
+    &sensor_dev_attr_in3_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in2_max.dev_attr.attr,
+    &sensor_dev_attr_in3_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
 
     NULL
 };
@@ -2462,6 +3299,63 @@ static struct attribute *i2c_bus0_hardware_monitor_attr_nc2x[] = {
     &sensor_dev_attr_vsen5.dev_attr.attr,
     &sensor_dev_attr_vsen7.dev_attr.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+    &sensor_dev_attr_in5_input.dev_attr.attr,
+    &sensor_dev_attr_in7_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+    &sensor_dev_attr_in5_min.dev_attr.attr,
+    &sensor_dev_attr_in7_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
+    &sensor_dev_attr_in5_max.dev_attr.attr,
+    &sensor_dev_attr_in7_max.dev_attr.attr,
+
     NULL
 };
 
@@ -2507,11 +3401,82 @@ static struct attribute *i2c_bus0_hardware_monitor_attr_asterion[] = {
 
     &sensor_dev_attr_remote_temp1.dev_attr.attr,
     &sensor_dev_attr_remote_temp2.dev_attr.attr,
+    &sensor_dev_attr_remote_temp3.dev_attr.attr,
+    &sensor_dev_attr_remote_temp4.dev_attr.attr,
 
     &sensor_dev_attr_vsen1.dev_attr.attr,
     &sensor_dev_attr_vsen2.dev_attr.attr,
     &sensor_dev_attr_vsen3.dev_attr.attr,
     &sensor_dev_attr_vsen4.dev_attr.attr,
+
+    /* lm-sensors */
+    &sensor_dev_attr_fan1_input.dev_attr.attr,
+    &sensor_dev_attr_fan2_input.dev_attr.attr,
+    &sensor_dev_attr_fan3_input.dev_attr.attr,
+    &sensor_dev_attr_fan4_input.dev_attr.attr,
+    &sensor_dev_attr_fan5_input.dev_attr.attr,
+    &sensor_dev_attr_fan6_input.dev_attr.attr,
+    &sensor_dev_attr_fan7_input.dev_attr.attr,
+    &sensor_dev_attr_fan8_input.dev_attr.attr,
+    &sensor_dev_attr_fan9_input.dev_attr.attr,
+    &sensor_dev_attr_fan10_input.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_temp3_input.dev_attr.attr,
+    &sensor_dev_attr_temp4_input.dev_attr.attr,
+    &sensor_dev_attr_temp10_input.dev_attr.attr,
+
+    &sensor_dev_attr_in1_input.dev_attr.attr,
+    &sensor_dev_attr_in2_input.dev_attr.attr,
+    &sensor_dev_attr_in3_input.dev_attr.attr,
+    &sensor_dev_attr_in4_input.dev_attr.attr,
+
+    /* min */
+    &sensor_dev_attr_fan1_min.dev_attr.attr,
+    &sensor_dev_attr_fan2_min.dev_attr.attr,
+    &sensor_dev_attr_fan3_min.dev_attr.attr,
+    &sensor_dev_attr_fan4_min.dev_attr.attr,
+    &sensor_dev_attr_fan5_min.dev_attr.attr,
+    &sensor_dev_attr_fan6_min.dev_attr.attr,
+    &sensor_dev_attr_fan7_min.dev_attr.attr,
+    &sensor_dev_attr_fan8_min.dev_attr.attr,
+    &sensor_dev_attr_fan9_min.dev_attr.attr,
+    &sensor_dev_attr_fan10_min.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_min.dev_attr.attr,
+    &sensor_dev_attr_temp2_min.dev_attr.attr,
+    &sensor_dev_attr_temp3_min.dev_attr.attr,
+    &sensor_dev_attr_temp4_min.dev_attr.attr,
+    &sensor_dev_attr_temp10_min.dev_attr.attr,
+
+    &sensor_dev_attr_in1_min.dev_attr.attr,
+    &sensor_dev_attr_in2_min.dev_attr.attr,
+    &sensor_dev_attr_in3_min.dev_attr.attr,
+    &sensor_dev_attr_in4_min.dev_attr.attr,
+
+    /* max */
+    &sensor_dev_attr_fan1_max.dev_attr.attr,
+    &sensor_dev_attr_fan2_max.dev_attr.attr,
+    &sensor_dev_attr_fan3_max.dev_attr.attr,
+    &sensor_dev_attr_fan4_max.dev_attr.attr,
+    &sensor_dev_attr_fan5_max.dev_attr.attr,
+    &sensor_dev_attr_fan6_max.dev_attr.attr,
+    &sensor_dev_attr_fan7_max.dev_attr.attr,
+    &sensor_dev_attr_fan8_max.dev_attr.attr,
+    &sensor_dev_attr_fan9_max.dev_attr.attr,
+    &sensor_dev_attr_fan10_max.dev_attr.attr,
+
+    &sensor_dev_attr_temp1_max.dev_attr.attr,
+    &sensor_dev_attr_temp2_max.dev_attr.attr,
+    &sensor_dev_attr_temp3_max.dev_attr.attr,
+    &sensor_dev_attr_temp4_max.dev_attr.attr,
+    &sensor_dev_attr_temp10_max.dev_attr.attr,
+
+    &sensor_dev_attr_in1_max.dev_attr.attr,
+    &sensor_dev_attr_in2_max.dev_attr.attr,
+    &sensor_dev_attr_in3_max.dev_attr.attr,
+    &sensor_dev_attr_in4_max.dev_attr.attr,
 
     NULL
 };
@@ -2520,7 +3485,8 @@ static struct attribute *i2c_bus0_hardware_monitor_attr_asterion[] = {
 static ssize_t show_port_abs(struct device *dev, struct device_attribute *devattr, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client_bus1[0]));
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
+    struct i2c_bus1_hardware_monitor_data *dataAst = i2c_get_clientdata(&(cpld_client_bus1));
     int rc = 0;
 
     switch(platformModelId)
@@ -2528,6 +3494,34 @@ static ssize_t show_port_abs(struct device *dev, struct device_attribute *devatt
         case NCIIX_WITH_BMC:
         case NCIIX_WITHOUT_BMC:
             rc = ((SFPPortAbsStatus[attr->index]==1)&&(SFPPortDataValid[attr->index]==1));
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            unsigned char qsfpPortAbsAst = 0, index = 0, bit = 0;
+            unsigned char sfpPortDataValidAst = 0;
+
+            if (attr->index < 48)
+            {
+                index = (attr->index / 2);
+                bit = ((attr->index & 0x01) ? 5 : 1);
+                mutex_lock(&dataAst->lock);
+                qsfpPortAbsAst = dataAst->sfpPortAbsRxLosStatus[index];
+                sfpPortDataValidAst = dataAst->sfpPortDataValidAst[attr->index];
+                mutex_unlock(&dataAst->lock);
+                rc = ((PCA9553_TEST_BIT(qsfpPortAbsAst, bit) ? 0 : 1)&&sfpPortDataValidAst);
+            }
+            else
+            {
+                index = (attr->index % 48);
+                mutex_lock(&dataAst->lock);
+                qsfpPortAbsAst = dataAst->qsfpPortAbsStatusAst[index];
+                sfpPortDataValidAst = dataAst->sfpPortDataValidAst[attr->index];
+                mutex_unlock(&dataAst->lock);
+                rc = ((PCA9553_TEST_BIT(qsfpPortAbsAst, 1) ? 0 : 1)&&sfpPortDataValidAst);
+            }
+        }
             break;
 
         default:
@@ -2552,7 +3546,7 @@ static ssize_t show_port_abs(struct device *dev, struct device_attribute *devatt
 static ssize_t show_port_rxlos(struct device *dev, struct device_attribute *devattr, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client_bus1[0]));
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
     int rc = 0;
 
     switch(platformModelId)
@@ -2576,6 +3570,20 @@ static ssize_t show_port_rxlos(struct device *dev, struct device_attribute *deva
         }
             break;
 
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            unsigned char qsfpPortRxLos = 0, index = 0, bit = 0;
+
+            index = (attr->index / 2);
+            bit = ((attr->index & 0x01) ? 4 : 0);
+            mutex_lock(&data->lock);
+            qsfpPortRxLos = data->sfpPortAbsRxLosStatus[index];
+            mutex_unlock(&data->lock);
+            rc = (PCA9553_TEST_BIT(qsfpPortRxLos, bit) ? 1 : 0);
+        }
+            break;
+
         default:
             break;
     }
@@ -2586,8 +3594,7 @@ static ssize_t show_port_rxlos(struct device *dev, struct device_attribute *deva
 static ssize_t show_port_data_a0(struct device *dev, struct device_attribute *devattr, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&qsfpDataA0_client);
     unsigned char qsfpPortData[QSFP_DATA_SIZE];
     ssize_t count = 0;
 
@@ -2605,8 +3612,7 @@ static ssize_t show_port_data_a0(struct device *dev, struct device_attribute *de
 static ssize_t show_port_data_a2(struct device *dev, struct device_attribute *devattr, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&qsfpDataA2_client);
     unsigned char qsfpPortData[QSFP_DATA_SIZE];
     ssize_t count = 0;
 
@@ -2617,6 +3623,24 @@ static ssize_t show_port_data_a2(struct device *dev, struct device_attribute *de
 
     count = QSFP_DATA_SIZE;
     memcpy(buf, (char *)qsfpPortData, QSFP_DATA_SIZE);
+
+    return count;
+}
+
+static ssize_t show_port_sfp_copper(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&SfpCopperData_client);
+    unsigned char SfpCopperPortData[SFP_COPPER_DATA_SIZE];
+    ssize_t count = 0;
+
+    memset(SfpCopperPortData, 0, SFP_COPPER_DATA_SIZE);
+    mutex_lock(&data->lock);
+    memcpy(SfpCopperPortData, &(data->SfpCopperPortData[attr->index][0]), SFP_COPPER_DATA_SIZE);
+    mutex_unlock(&data->lock);
+
+    count = SFP_COPPER_DATA_SIZE;
+    memcpy(buf, (char *)SfpCopperPortData, SFP_COPPER_DATA_SIZE);
 
     return count;
 }
@@ -2721,7 +3745,7 @@ static ssize_t show_eeprom(struct device *dev, struct device_attribute *devattr,
         case NCIIX_WITH_BMC:
         case NCIIX_WITHOUT_BMC:
             {
-                if ((platformBuildRev == 0x01)&&(platformHwRev == 0x03)) /* PVT */
+                if (platformHwRev == 0x03) /* PVT */
                 {
                     struct i2c_client *client = to_i2c_client(dev);
                     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
@@ -2729,8 +3753,8 @@ static ssize_t show_eeprom(struct device *dev, struct device_attribute *devattr,
                     mutex_lock(&data->lock);
                     /* Turn on PCA9548#1 channel 2 on I2C-bus1 */
                     i2c_smbus_write_byte(client, 0x04);
-                    i2c_smbus_write_byte_data(&eeprom_client_2, 0x00, 0x00);
-                    ret = eepromDataRead(&eeprom_client_2, &(eepromData[0]));
+                    i2c_smbus_write_byte_data(&eeprom_client, 0x00, 0x00);
+                    ret = eepromDataRead(&eeprom_client, &(eepromData[0]));
                     i2c_smbus_write_byte(client, 0x00);
                     mutex_unlock(&data->lock);
                 }
@@ -2815,7 +3839,7 @@ static ssize_t show_psu_eeprom(struct device *dev, struct device_attribute *deva
                     else
                         /* Turn on PCA9548 channel 6 on I2C-bus1 */
                         i2c_smbus_write_byte(client, 0x40);
-                    ret = qsfpDataRead(&psu_eeprom_client, &(eepromData[0]));
+                    ret = eepromDataBlockRead(&psu_eeprom_client, &(eepromData[0]));
                     i2c_smbus_write_byte(client, 0x00);
                     mutex_unlock(&data->lock);
                 }
@@ -2835,7 +3859,7 @@ static ssize_t show_psu_eeprom(struct device *dev, struct device_attribute *deva
                     else
                         /* Turn on PCA9548#1 channel 6 on I2C-bus1 */
                         i2c_smbus_write_byte(&(pca9548_client[1]), 0x40);
-                    ret = qsfpDataRead(&psu_eeprom_client, &(eepromData[0]));
+                    ret = eepromDataBlockRead(&psu_eeprom_client, &(eepromData[0]));
                     i2c_smbus_write_byte(&(pca9548_client[1]), 0x00);
                     mutex_unlock(&data->lock);
                 }
@@ -2844,18 +3868,35 @@ static ssize_t show_psu_eeprom(struct device *dev, struct device_attribute *deva
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    /*
+                        Because the write ability of EEPROM with 0xAx address on I2C bus 0 (I801 bus) is blocked by BIOS,
+                        it does not support I2C block read, it supports byte read only.
+                        The PSUs will be moved to I2C bus 1 (iSMT bus) in PVT rev2.
+                    */
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        ret = eepromDataBlockRead(&psu_eeprom_client, &(eepromData[0]));
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    ret = qsfpDataRead(&psu_eeprom_client_bus0, &(eepromData[0]));
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        ret = eepromDataByteRead(&psu_eeprom_client_bus0, &(eepromData[0]));
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
@@ -2877,12 +3918,14 @@ static ssize_t show_psu_vout(struct device *dev, struct device_attribute *devatt
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueV = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
     unsigned int temp = 0;
     unsigned int psu_present = 0;
+    unsigned char valueE = 0;
+    unsigned short valueY = 0;
 
     index = (attr->index&0x1);
     if (index&0x01) /* PSU 2 */
@@ -2944,36 +3987,86 @@ static ssize_t show_psu_vout(struct device *dev, struct device_attribute *devatt
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        valueN = i2c_smbus_read_byte_data(&psu_mcu_client, 0x20);
+                        valueV = (unsigned int)i2c_smbus_read_word_data(&psu_mcu_client, 0x8B);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    valueN = i2c_smbus_read_byte_data(&psu_mcu_client_bus0, 0x20);
-                    valueV = (unsigned int)i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8B);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        valueN = i2c_smbus_read_byte_data(&psu_mcu_client_bus0, 0x20);
+                        valueV = (unsigned int)i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8B);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
             default:
                 break;
         }
-        if (valueN & 0x10)
+
+        if (valueN == 0xff)
         {
-            valueN = 0xF0 + (valueN & 0x0F);
-            valueN = (~valueN) +1;
-            temp = (unsigned int)(1<<valueN);
-            if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueV/temp, ((valueV%temp)*10000)/temp);
+            valueY = (valueV & 0x07ff);
+            if ((valueV & 0x8000)&&(valueY))
+            {
+                valueV = ((~valueV) >> 11);
+                valueE = valueV + 1;
+                temp = (unsigned int)(1 << valueE);
+                if (temp)
+                {
+                    if (attr->index >= 100)
+                        count = sprintf(buf, "%d\n", (valueY>>valueE)*1000 + ((valueY%temp)*1000)/temp);
+                    else
+                        count = sprintf(buf, "%d.%04d\n", valueY>>valueE, ((valueY%temp)*10000)/temp);
+                }
+            }
+            else
+            {
+                valueN = (((valueV) >> 11) & 0x0F);
+                temp = (valueY*(1<<valueN));
+                if (attr->index >= 100)
+                    temp *= 1000;
+                count = sprintf(buf, "%d\n", temp);
+            }
         }
         else
         {
-            count = sprintf(buf, "%d\n", (valueV*(1<<valueN)));
+            if (valueN & 0x10)
+            {
+                valueN = 0xF0 + (valueN & 0x0F);
+                valueN = (~valueN) +1;
+                temp = (unsigned int)(1<<valueN);
+                if (temp)
+                {
+                    if (attr->index >= 100)
+                        count = sprintf(buf, "%d\n", valueV/temp*1000 + ((valueV%temp)*1000)/temp);
+                    else
+                        count = sprintf(buf, "%d.%04d\n", valueV/temp, ((valueV%temp)*10000)/temp);
+                }
+            }
+            else
+            {
+                temp = (valueV*(1<<valueN));
+                if (attr->index >= 100)
+                    temp *= 1000;
+                count = sprintf(buf, "%d\n", temp);
+            }
         }
     }
     else
@@ -2989,7 +4082,7 @@ static ssize_t show_psu_iout(struct device *dev, struct device_attribute *devatt
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3054,18 +4147,30 @@ static ssize_t show_psu_iout(struct device *dev, struct device_attribute *devatt
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x8C);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8C);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8C);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
@@ -3079,12 +4184,20 @@ static ssize_t show_psu_iout(struct device *dev, struct device_attribute *devatt
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3100,7 +4213,7 @@ static ssize_t show_psu_temp_1(struct device *dev, struct device_attribute *deva
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3165,18 +4278,30 @@ static ssize_t show_psu_temp_1(struct device *dev, struct device_attribute *deva
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x8D);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8D);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8D);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
@@ -3190,12 +4315,20 @@ static ssize_t show_psu_temp_1(struct device *dev, struct device_attribute *deva
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3211,7 +4344,7 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3235,8 +4368,6 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
         {
             case HURACAN_WITH_BMC:
             case HURACAN_WITHOUT_BMC:
-            case ASTERION_WITH_BMC:
-            case ASTERION_WITHOUT_BMC:
             case HURACAN_A_WITH_BMC:
             case HURACAN_A_WITHOUT_BMC:
                 {
@@ -3276,19 +4407,35 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x8E);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8E);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x8E);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
+                break;
+
+            case ASTERION_WITH_BMC:
+            case ASTERION_WITHOUT_BMC:
                 break;
 
             default:
@@ -3301,12 +4448,20 @@ static ssize_t show_psu_temp_2(struct device *dev, struct device_attribute *deva
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000 + ((valueY%temp)*1000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3322,7 +4477,7 @@ static ssize_t show_psu_fan_speed(struct device *dev, struct device_attribute *d
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int temp = 0;
     unsigned int psu_present = 0;
 
@@ -3384,18 +4539,30 @@ static ssize_t show_psu_fan_speed(struct device *dev, struct device_attribute *d
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x90);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x90);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x90);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
@@ -3414,7 +4581,7 @@ static ssize_t show_psu_pout(struct device *dev, struct device_attribute *devatt
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3479,18 +4646,30 @@ static ssize_t show_psu_pout(struct device *dev, struct device_attribute *devatt
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x96);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x96);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x96);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
                 break;
 
@@ -3504,12 +4683,20 @@ static ssize_t show_psu_pout(struct device *dev, struct device_attribute *devatt
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000000 + ((valueY%temp)*1000000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3525,7 +4712,7 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
     struct i2c_client *client = to_i2c_client(dev);
     struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
     unsigned short value = 0;
-    unsigned short index = 0;
+    unsigned int index = 0;
     unsigned int valueY = 0;
     unsigned char valueN = 0;
     ssize_t count = 0;
@@ -3549,8 +4736,6 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
         {
             case HURACAN_WITH_BMC:
             case HURACAN_WITHOUT_BMC:
-            case ASTERION_WITH_BMC:
-            case ASTERION_WITHOUT_BMC:
             case HURACAN_A_WITH_BMC:
             case HURACAN_A_WITHOUT_BMC:
                 {
@@ -3590,19 +4775,35 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
             case NCIIX_WITH_BMC:
             case NCIIX_WITHOUT_BMC:
                 {
-                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
-
-                    mutex_lock(&data_bus0->lock);
-                    if (index)
-                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                    if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
+                    {
+                        mutex_lock(&data->lock);
+                        if (index)
+                            i2c_smbus_write_byte(client, 0x20); /* Turn on PCA9548 channel 5 on I2C-bus1 */
+                        else
+                            i2c_smbus_write_byte(client, 0x10); /* Turn on PCA9548 channel 4 on I2C-bus1 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client, 0x97);
+                        i2c_smbus_write_byte(client, 0x00);
+                        mutex_unlock(&data->lock);
+                    }
                     else
-                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x97);
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                    mutex_unlock(&data_bus0->lock);
+                    {
+                        struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                        mutex_lock(&data_bus0->lock);
+                        if (index)
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x04); /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        else
+                            i2c_smbus_write_byte(&pca9548_client_bus0, 0x02); /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        value = i2c_smbus_read_word_data(&psu_mcu_client_bus0, 0x97);
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                        mutex_unlock(&data_bus0->lock);
+                    }
                 }
+                break;
+
+            case ASTERION_WITH_BMC:
+            case ASTERION_WITHOUT_BMC:
                 break;
 
             default:
@@ -3615,12 +4816,20 @@ static ssize_t show_psu_pin(struct device *dev, struct device_attribute *devattr
             valueN = (~valueN) +1;
             temp = (unsigned int)(1<<valueN);
             if (temp)
-                count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            {
+                if (attr->index >= 100)
+                    count = sprintf(buf, "%d\n", valueY/temp*1000000 + ((valueY%temp)*1000000)/temp);
+                else
+                    count = sprintf(buf, "%d.%04d\n", valueY/temp, ((valueY%temp)*10000)/temp);
+            }
         }
         else
         {
             valueN = (((value) >> 11) & 0x0F);
-            count = sprintf(buf, "%d\n", (valueY*(1<<valueN)));
+            temp = (valueY*(1<<valueN));
+            if (attr->index >= 100)
+                temp *= 1000000;
+            count = sprintf(buf, "%d\n", temp);
         }
     }
     else
@@ -3715,7 +4924,6 @@ static ssize_t set_psu_power_off(struct device *dev, struct device_attribute *de
         case NCIIX_WITH_BMC:
         case NCIIX_WITHOUT_BMC:
             {
-                struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
                 /*
                     Setting the ON_OFF_CONFIG Command (02h) to type 9 (SW : turn-on/off by operation command).
                     I2C Command:  B2      02      19    59
@@ -3729,23 +4937,48 @@ static ssize_t set_psu_power_off(struct device *dev, struct device_attribute *de
                 */
                 unsigned short cmd_data_2 = 0x2900;
 
-                mutex_lock(&data_bus0->lock);
-                if ((platformPsuABS&0x01)==0x00) /* PSU1 Present */
+                if ((platformBuildRev > 0x01) && (platformHwRev == 0x03)) /* PVT rev2*/
                 {
-                    /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
-                    i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x02, cmd_data_1);
-                    i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x01, cmd_data_2);
+                    mutex_lock(&data->lock);
+                    if ((platformPsuABS & 0x01) == 0x00) /* PSU1 Present */
+                    {
+                        /* Turn on PCA9548#0 channel 4 on I2C-bus1 */
+                        i2c_smbus_write_byte(client, 0x10);
+                        i2c_smbus_write_word_data(&psu_mcu_client, 0x02, cmd_data_1);
+                        i2c_smbus_write_word_data(&psu_mcu_client, 0x01, cmd_data_2);
+                    }
+                    if ((platformPsuABS & 0x02) == 0x00) /* PSU2 Present */
+                    {
+                        /* Turn on PCA9548#0 channel 5 on I2C-bus1 */
+                        i2c_smbus_write_byte(client, 0x20);
+                        i2c_smbus_write_word_data(&psu_mcu_client, 0x02, cmd_data_1);
+                        i2c_smbus_write_word_data(&psu_mcu_client, 0x01, cmd_data_2);
+                    }
+                    i2c_smbus_write_byte(client, 0x00);
+                    mutex_unlock(&data->lock);
                 }
-                if ((platformPsuABS&0x02)==0x00) /* PSU2 Present */
+                else
                 {
-                    /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
-                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
-                    i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x02, cmd_data_1);
-                    i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x01, cmd_data_2);
+                    struct i2c_bus0_hardware_monitor_data *data_bus0 = i2c_get_clientdata(&psu_eeprom_client_bus0);
+
+                    mutex_lock(&data_bus0->lock);
+                    if ((platformPsuABS & 0x01) == 0x00) /* PSU1 Present */
+                    {
+                        /* Turn on PCA9548#0 channel 1 on I2C-bus0 */
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x02);
+                        i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x02, cmd_data_1);
+                        i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x01, cmd_data_2);
+                    }
+                    if ((platformPsuABS & 0x02) == 0x00) /* PSU2 Present */
+                    {
+                        /* Turn on PCA9548#0 channel 2 on I2C-bus0 */
+                        i2c_smbus_write_byte(&pca9548_client_bus0, 0x04);
+                        i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x02, cmd_data_1);
+                        i2c_smbus_write_word_data(&psu_mcu_client_bus0, 0x01, cmd_data_2);
+                    }
+                    i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
+                    mutex_unlock(&data_bus0->lock);
                 }
-                i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
-                mutex_unlock(&data_bus0->lock);
             }
             break;
 
@@ -3776,6 +5009,108 @@ static ssize_t set_system_led(struct device *dev, struct device_attribute *devat
     return count;
 }
 
+static ssize_t show_fan_led(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+    unsigned int temp;
+    unsigned int frontLedStatus;
+
+    mutex_lock(&data->lock);
+    frontLedStatus = (unsigned int)data->frontLedStatus;
+    switch(platformModelId)
+    {
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            if (!(frontLedStatus & 0x0010))
+                temp = 2; /* Normal */
+            else if (!(frontLedStatus & 0x0020))
+                temp = 1; /* Critical */
+            else
+                temp = 0; /* Booting */
+        }
+            break;
+        default:
+        {
+            if (!(frontLedStatus & 0x0008))
+                temp = 2; /* Normal */
+            else if (!(frontLedStatus & 0x0004))
+                temp = 1; /* Critical */
+            else
+                temp = 0; /* Booting */
+        }
+            break;
+    }
+    mutex_unlock(&data->lock);
+
+    return sprintf(buf, "%d\n", temp);
+}
+
+static ssize_t show_psu_led(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+    unsigned int temp;
+    unsigned int frontLedStatus;
+
+    mutex_lock(&data->lock);
+    frontLedStatus = (unsigned int)data->frontLedStatus;
+    switch(platformModelId)
+    {
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            if (attr->index == 0)
+            {
+                if (!(frontLedStatus & 0x0001))
+                    temp = 2; /* Normal */
+                else if (!(frontLedStatus & 0x0002))
+                    temp = 1; /* Critical */
+                else
+                    temp = 0; /* Booting */
+            }
+            else
+            {
+                if (!(frontLedStatus & 0x0004))
+                    temp = 2; /* Normal */
+                else if (!(frontLedStatus & 0x0008))
+                    temp = 1; /* Critical */
+                else
+                    temp = 0; /* Booting */
+            }
+        }
+            break;
+        default:
+        {
+            if (attr->index == 0)
+            {
+                if (!(frontLedStatus & 0x0002))
+                    temp = 2; /* Normal */
+                else if (!(frontLedStatus & 0x0001))
+                    temp = 1; /* Critical */
+                else
+                    temp = 0; /* Booting */
+            }
+            else
+            {
+                if (!(frontLedStatus & 0x0020))
+                    temp = 2; /* Normal */
+                else if (!(frontLedStatus & 0x0010))
+                    temp = 1; /* Critical */
+                else
+                    temp = 0; /* Booting */
+            }
+        }
+            break;
+    }
+
+    mutex_unlock(&data->lock);
+
+    return sprintf(buf, "%d\n", temp);
+}
+
 static ssize_t show_port_tx_disable(struct device *dev, struct device_attribute *devattr, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
@@ -3786,8 +5121,7 @@ static ssize_t show_port_tx_disable(struct device *dev, struct device_attribute 
         case SESTO_WITH_BMC:
         case SESTO_WITHOUT_BMC:
         {
-            struct i2c_client *client = to_i2c_client(dev);
-            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
             unsigned short index=0, bit=0;
 
             index = (attr->index/16);
@@ -3805,6 +5139,19 @@ static ssize_t show_port_tx_disable(struct device *dev, struct device_attribute 
         }
             break;
 
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
+            unsigned short bit = 0;
+
+            bit = (attr->index % 8);
+            mutex_lock(&data->lock);
+            rc = (PCA9553_TEST_BIT(data->sfpPortTxDisableAst[attr->index / 8], bit) ? 1 : 0);
+            mutex_unlock(&data->lock);
+        }
+            break;
+
         default:
             break;
     }
@@ -3816,14 +5163,17 @@ static ssize_t show_port_tx_disable(struct device *dev, struct device_attribute 
 static ssize_t set_port_tx_disable(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
-    struct i2c_client *client = to_i2c_client(dev);
-    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+    struct i2c_client *client, pca9548Client;
+    struct i2c_bus1_hardware_monitor_data *data;
     long temp;
 
     if (kstrtol(buf, 10, &temp))
         return -EINVAL;
     temp = clamp_val(temp, 0, 1);
 
+    pca9548Client = pca9548_client[1];
+    client = &pca9548Client;
+    data = i2c_get_clientdata(client);
     switch(platformModelId)
     {
         case SESTO_WITH_BMC:
@@ -3840,7 +5190,7 @@ static ssize_t set_port_tx_disable(struct device *dev, struct device_attribute *
             else
                 PCA9553_CLEAR_BIT(data->sfpPortTxDisable[index], bit);
             i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH05));
-            i2c_device_word_write(&(pca9535pwr_client_bus1[index]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortTxDisable[index]);
+            i2c_device_word_write(&(pca9535pwr_client[index]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortTxDisable[index]);
             i2c_smbus_write_byte(&(pca9548_client[1]), 0x00);
             mutex_unlock(&data->lock);
         }
@@ -3851,17 +5201,18 @@ static ssize_t set_port_tx_disable(struct device *dev, struct device_attribute *
         {
             unsigned short value = 0;
 
+            pca9548Client.addr = 0x70;
             SFPPortTxDisable[attr->index] = (temp&0x1);
             if ((attr->index/8) == 5) /* SFP+ 40~47 */
             {
                 mutex_lock(&data->lock);
                 i2c_smbus_write_byte(client, sfpPortData_78F[attr->index].portMaskIOsForPCA9548_0);
-                value = i2c_smbus_read_word_data(&(pca9535pwr_client_bus1[sfpPortData_78F[attr->index].i2cAddrForPCA9535]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0);
+                value = i2c_smbus_read_word_data(&(pca9535pwr_client[sfpPortData_78F[attr->index].i2cAddrForPCA9535]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0);
                 if (temp==1)
                     PCA9553_SET_BIT(value, sfpPortData_78F[attr->index].portMaskBitForTxEnPin);
                 else
                     PCA9553_CLEAR_BIT(value, sfpPortData_78F[attr->index].portMaskBitForTxEnPin);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[sfpPortData_78F[attr->index].i2cAddrForPCA9535]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
+                i2c_device_word_write(&(pca9535pwr_client[sfpPortData_78F[attr->index].i2cAddrForPCA9535]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, value);
                 i2c_smbus_write_byte(client, 0x00);
                 mutex_unlock(&data->lock);
             }
@@ -3880,6 +5231,37 @@ static ssize_t set_port_tx_disable(struct device *dev, struct device_attribute *
                 i2c_smbus_write_byte(&pca9548_client_bus0, 0x00);
                 mutex_unlock(&data_bus0->lock);
             }
+        }
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            unsigned short index = 0, bit = 0;
+
+            pca9548Client.addr = 0x72;
+            index = (attr->index / 8);
+            bit = (attr->index % 8);
+
+            mutex_lock(&data->lock);
+            if (temp == 1)
+                PCA9553_SET_BIT(data->sfpPortTxDisableAst[index], bit);
+            else
+                PCA9553_CLEAR_BIT(data->sfpPortTxDisableAst[index], bit);
+
+            if (index < 3)
+            {
+                i2c_smbus_write_byte(client, (1 << PCA9548_CH00));
+                i2c_smbus_write_byte_data(&(cpld_client_bus1), (0x40 + index), data->sfpPortTxDisableAst[index]);
+            }
+            else
+            {
+                i2c_smbus_write_byte(client, (1 << PCA9548_CH01));
+                i2c_smbus_write_byte_data(&(cpld_client_bus1), (0x40 + (index - 3)), data->sfpPortTxDisableAst[index]);
+            }
+
+            i2c_smbus_write_byte(client, 0x00);
+            mutex_unlock(&data->lock);
         }
             break;
 
@@ -3908,6 +5290,20 @@ static ssize_t show_port_rate_select(struct device *dev, struct device_attribute
             bit = (attr->index%16);
             mutex_lock(&data->lock);
             rc = (PCA9553_TEST_BIT(data->sfpPortRateSelect[index], bit)?1:0);
+            mutex_unlock(&data->lock);
+        }
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            struct i2c_client *client = to_i2c_client(dev);
+            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
+            unsigned short index = 0;
+
+            index = (attr->index % 4);
+            mutex_lock(&data->lock);
+            rc = (PCA9553_TEST_BIT(data->sfpPortRateSelectAst[attr->index / 4], (index * 2)) ? 1 : 0);
             mutex_unlock(&data->lock);
         }
             break;
@@ -3950,15 +5346,15 @@ static ssize_t set_port_rate_select(struct device *dev, struct device_attribute 
             switch(index)
             {
                 case 0:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[0]);
+                    i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[0]);
                     break;
 
                 case 1:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[1]);
+                    i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[1]);
                     break;
 
                 case 2:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[2]);
+                    i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[2]);
                     break;
 
                 default:
@@ -3968,21 +5364,112 @@ static ssize_t set_port_rate_select(struct device *dev, struct device_attribute 
             switch(index)
             {
                 case 0:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[0]);
+                    i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[0]);
                     break;
 
                 case 1:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[1]);
+                    i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[1]);
                     break;
 
                 case 2:
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[2]);
+                    i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->sfpPortRateSelect[2]);
                     break;
 
                 default:
                     break;
             }
             i2c_smbus_write_byte(&(pca9548_client[1]), 0x00);
+            mutex_unlock(&data->lock);
+        }
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            unsigned short index = 0, bit = 0;
+
+            index = (attr->index / 4);
+            bit = (attr->index % 4);
+
+            mutex_lock(&data->lock);
+            if (attr->index >= 0 && attr->index < 24)
+            {
+                /* Turn on PCA9548#0 channel 0 on I2C-bus1 - RX_RS, TX_RS */
+                i2c_smbus_write_byte(client, (1 << PCA9548_CH00));
+
+                if (temp == 1)
+                {
+                    PCA9553_SET_BIT(data->sfpPortRateSelectAst[index], (bit * 2));
+                    PCA9553_SET_BIT(data->sfpPortRateSelectAst[index], (bit * 2 + 1));
+                }
+                else
+                {
+                    PCA9553_CLEAR_BIT(data->sfpPortRateSelectAst[index], (bit * 2));
+                    PCA9553_CLEAR_BIT(data->sfpPortRateSelectAst[index], (bit * 2 + 1));
+                }
+
+                switch(index)
+                {
+                    case 0:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x8, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 1:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x9, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 2:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x10, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 3:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x11, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 4:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x12, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 5:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x13, data->sfpPortRateSelectAst[index]);
+                        break;
+                }
+            }
+            else
+            {
+                /* Turn on PCA9548#0 channel 1 on I2C-bus1 - RX_RS, TX_RS */
+                i2c_smbus_write_byte(client, (1 << PCA9548_CH01));
+
+                if (temp == 1)
+                {
+                    PCA9553_SET_BIT(data->sfpPortRateSelectAst[index], (bit * 2));
+                    PCA9553_SET_BIT(data->sfpPortRateSelectAst[index], (bit * 2 + 1));
+                }
+                else
+                {
+                    PCA9553_CLEAR_BIT(data->sfpPortRateSelectAst[index], (bit * 2));
+                    PCA9553_CLEAR_BIT(data->sfpPortRateSelectAst[index], (bit * 2 + 1));
+                }
+
+                switch(index)
+                {
+                    case 6:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x8, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 7:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x9, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 8:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x10, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 9:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x11, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 10:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x12, data->sfpPortRateSelectAst[index]);
+                        break;
+                    case 11:
+                        i2c_smbus_write_byte_data(&(cpld_client_bus1), 0x13, data->sfpPortRateSelectAst[index]);
+                        break;
+                }
+            }
+
+            i2c_smbus_write_byte(client, 0x00);
             mutex_unlock(&data->lock);
         }
             break;
@@ -3994,8 +5481,62 @@ static ssize_t set_port_rate_select(struct device *dev, struct device_attribute 
     return count;
 }
 
+static ssize_t show_port_tx_fault(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    int rc = 0;
+
+    switch(platformModelId)
+    {
+        case SESTO_WITH_BMC:
+        case SESTO_WITHOUT_BMC:
+        {
+            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
+            unsigned short index = 0, bit = 0;
+
+            index = (attr->index / 16);
+            bit = (attr->index % 16);
+            mutex_lock(&data->lock);
+            rc = (PCA9553_TEST_BIT(data->sfpPortTxFaultStatus[index], bit) ? 1 : 0);
+            mutex_unlock(&data->lock);
+        }
+            break;
+
+        case NCIIX_WITH_BMC:
+        case NCIIX_WITHOUT_BMC:
+        {
+            rc = (SFPPortTxFaultStatus[attr->index] ? 0 : 1);
+        }
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&(pca9535pwr_client[0]));
+            unsigned char qsfpPortRxLos = 0, index = 0, bit = 0;
+
+            index = (attr->index / 2);
+            bit = ((attr->index & 0x01) ? 7 : 3);
+            mutex_lock(&data->lock);
+            qsfpPortRxLos = data->sfpPortAbsRxLosStatus[index];
+            mutex_unlock(&data->lock);
+            rc = (PCA9553_TEST_BIT(qsfpPortRxLos, bit) ? 1 : 0);
+        }
+            break;
+
+        default:
+            break;
+    }
+
+
+    return sprintf(buf, "%d\n", rc);
+}
+
 static DEVICE_ATTR(eeprom, S_IRUGO, show_eeprom, NULL);
 static DEVICE_ATTR(system_led, S_IWUSR, NULL, set_system_led);
+static DEVICE_ATTR(fan_led, S_IRUGO, show_fan_led, NULL);
+static SENSOR_DEVICE_ATTR(psu1_led, S_IRUGO, show_psu_led, NULL, 0);
+static SENSOR_DEVICE_ATTR(psu2_led, S_IRUGO, show_psu_led, NULL, 1);
 
 static SENSOR_DEVICE_ATTR(port_1_data_a0, S_IRUGO, show_port_data_a0, NULL, 0);
 static SENSOR_DEVICE_ATTR(port_2_data_a0, S_IRUGO, show_port_data_a0, NULL, 1);
@@ -4126,6 +5667,71 @@ static SENSOR_DEVICE_ATTR(port_61_data_a2, S_IRUGO, show_port_data_a2, NULL, 60)
 static SENSOR_DEVICE_ATTR(port_62_data_a2, S_IRUGO, show_port_data_a2, NULL, 61);
 static SENSOR_DEVICE_ATTR(port_63_data_a2, S_IRUGO, show_port_data_a2, NULL, 62);
 static SENSOR_DEVICE_ATTR(port_64_data_a2, S_IRUGO, show_port_data_a2, NULL, 63);
+
+static SENSOR_DEVICE_ATTR(port_1_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 0);
+static SENSOR_DEVICE_ATTR(port_2_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 1);
+static SENSOR_DEVICE_ATTR(port_3_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 2);
+static SENSOR_DEVICE_ATTR(port_4_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 3);
+static SENSOR_DEVICE_ATTR(port_5_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 4);
+static SENSOR_DEVICE_ATTR(port_6_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 5);
+static SENSOR_DEVICE_ATTR(port_7_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 6);
+static SENSOR_DEVICE_ATTR(port_8_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 7);
+static SENSOR_DEVICE_ATTR(port_9_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 8);
+static SENSOR_DEVICE_ATTR(port_10_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 9);
+static SENSOR_DEVICE_ATTR(port_11_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 10);
+static SENSOR_DEVICE_ATTR(port_12_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 11);
+static SENSOR_DEVICE_ATTR(port_13_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 12);
+static SENSOR_DEVICE_ATTR(port_14_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 13);
+static SENSOR_DEVICE_ATTR(port_15_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 14);
+static SENSOR_DEVICE_ATTR(port_16_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 15);
+static SENSOR_DEVICE_ATTR(port_17_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 16);
+static SENSOR_DEVICE_ATTR(port_18_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 17);
+static SENSOR_DEVICE_ATTR(port_19_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 18);
+static SENSOR_DEVICE_ATTR(port_20_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 19);
+static SENSOR_DEVICE_ATTR(port_21_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 20);
+static SENSOR_DEVICE_ATTR(port_22_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 21);
+static SENSOR_DEVICE_ATTR(port_23_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 22);
+static SENSOR_DEVICE_ATTR(port_24_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 23);
+static SENSOR_DEVICE_ATTR(port_25_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 24);
+static SENSOR_DEVICE_ATTR(port_26_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 25);
+static SENSOR_DEVICE_ATTR(port_27_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 26);
+static SENSOR_DEVICE_ATTR(port_28_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 27);
+static SENSOR_DEVICE_ATTR(port_29_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 28);
+static SENSOR_DEVICE_ATTR(port_30_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 29);
+static SENSOR_DEVICE_ATTR(port_31_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 30);
+static SENSOR_DEVICE_ATTR(port_32_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 31);
+static SENSOR_DEVICE_ATTR(port_33_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 32);
+static SENSOR_DEVICE_ATTR(port_34_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 33);
+static SENSOR_DEVICE_ATTR(port_35_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 34);
+static SENSOR_DEVICE_ATTR(port_36_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 35);
+static SENSOR_DEVICE_ATTR(port_37_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 36);
+static SENSOR_DEVICE_ATTR(port_38_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 37);
+static SENSOR_DEVICE_ATTR(port_39_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 38);
+static SENSOR_DEVICE_ATTR(port_40_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 39);
+static SENSOR_DEVICE_ATTR(port_41_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 40);
+static SENSOR_DEVICE_ATTR(port_42_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 41);
+static SENSOR_DEVICE_ATTR(port_43_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 42);
+static SENSOR_DEVICE_ATTR(port_44_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 43);
+static SENSOR_DEVICE_ATTR(port_45_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 44);
+static SENSOR_DEVICE_ATTR(port_46_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 45);
+static SENSOR_DEVICE_ATTR(port_47_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 46);
+static SENSOR_DEVICE_ATTR(port_48_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 47);
+static SENSOR_DEVICE_ATTR(port_49_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 48);
+static SENSOR_DEVICE_ATTR(port_50_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 49);
+static SENSOR_DEVICE_ATTR(port_51_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 50);
+static SENSOR_DEVICE_ATTR(port_52_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 51);
+static SENSOR_DEVICE_ATTR(port_53_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 52);
+static SENSOR_DEVICE_ATTR(port_54_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 53);
+static SENSOR_DEVICE_ATTR(port_55_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 54);
+static SENSOR_DEVICE_ATTR(port_56_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 55);
+static SENSOR_DEVICE_ATTR(port_57_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 56);
+static SENSOR_DEVICE_ATTR(port_58_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 57);
+static SENSOR_DEVICE_ATTR(port_59_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 58);
+static SENSOR_DEVICE_ATTR(port_60_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 59);
+static SENSOR_DEVICE_ATTR(port_61_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 60);
+static SENSOR_DEVICE_ATTR(port_62_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 61);
+static SENSOR_DEVICE_ATTR(port_63_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 62);
+static SENSOR_DEVICE_ATTR(port_64_sfp_copper, S_IRUGO, show_port_sfp_copper, NULL, 63);
 
 static SENSOR_DEVICE_ATTR(port_1_abs, S_IRUGO, show_port_abs, NULL, 0);
 static SENSOR_DEVICE_ATTR(port_2_abs, S_IRUGO, show_port_abs, NULL, 1);
@@ -4372,9 +5978,30 @@ static SENSOR_DEVICE_ATTR(psu2_pin, S_IRUGO, show_psu_pin, NULL, 1);
 
 static DEVICE_ATTR(psu_power_off, S_IWUSR, NULL, set_psu_power_off);
 
+/* lm-sensors compatible feature/subfeature names */
+static SENSOR_DEVICE_ATTR(in12_input, S_IRUGO, show_psu_vout, NULL, 100);
+static SENSOR_DEVICE_ATTR(curr12_input, S_IRUGO, show_psu_iout, NULL, 100);
+static SENSOR_DEVICE_ATTR(power11_input, S_IRUGO, show_psu_pin, NULL, 100);
+static SENSOR_DEVICE_ATTR(power12_input, S_IRUGO, show_psu_pout, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp11_input, S_IRUGO, show_psu_temp_1, NULL, 100);
+static SENSOR_DEVICE_ATTR(temp12_input, S_IRUGO, show_psu_temp_2, NULL, 100);
+static SENSOR_DEVICE_ATTR(fan11_input, S_IRUGO, show_psu_fan_speed, NULL, 100);
+
+static SENSOR_DEVICE_ATTR(in22_input, S_IRUGO, show_psu_vout, NULL, 101);
+static SENSOR_DEVICE_ATTR(curr22_input, S_IRUGO, show_psu_iout, NULL, 101);
+static SENSOR_DEVICE_ATTR(power21_input, S_IRUGO, show_psu_pin, NULL, 101);
+static SENSOR_DEVICE_ATTR(power22_input, S_IRUGO, show_psu_pout, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp21_input, S_IRUGO, show_psu_temp_1, NULL, 101);
+static SENSOR_DEVICE_ATTR(temp22_input, S_IRUGO, show_psu_temp_2, NULL, 101);
+static SENSOR_DEVICE_ATTR(fan21_input, S_IRUGO, show_psu_fan_speed, NULL, 101);
+
+
 static struct attribute *i2c_bus1_hardware_monitor_attr_huracan[] = {
     &dev_attr_eeprom.attr,
     &dev_attr_system_led.attr,
+    &dev_attr_fan_led.attr,
+    &sensor_dev_attr_psu1_led.dev_attr.attr,
+    &sensor_dev_attr_psu2_led.dev_attr.attr,
 
     &sensor_dev_attr_port_1_data_a0.dev_attr.attr,
     &sensor_dev_attr_port_2_data_a0.dev_attr.attr,
@@ -4442,6 +6069,39 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_huracan[] = {
     &sensor_dev_attr_port_31_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_32_data_a2.dev_attr.attr,
 
+    &sensor_dev_attr_port_1_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_2_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_3_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_4_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_5_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_6_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_7_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_8_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_9_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_10_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_11_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_12_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_13_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_14_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_15_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_16_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_17_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_18_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_19_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_20_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_21_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_22_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_23_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_24_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_25_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_26_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_27_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_28_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_29_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_30_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_31_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_32_sfp_copper.dev_attr.attr,
+
     &sensor_dev_attr_port_1_abs.dev_attr.attr,
     &sensor_dev_attr_port_2_abs.dev_attr.attr,
     &sensor_dev_attr_port_3_abs.dev_attr.attr,
@@ -4506,12 +6166,32 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_huracan[] = {
 
     &dev_attr_psu_power_off.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
+
     NULL
 };
 
 static struct attribute *i2c_bus1_hardware_monitor_attr_sesto[] = {
     &dev_attr_eeprom.attr,
     &dev_attr_system_led.attr,
+    &dev_attr_fan_led.attr,
+    &sensor_dev_attr_psu1_led.dev_attr.attr,
+    &sensor_dev_attr_psu2_led.dev_attr.attr,
 
     &sensor_dev_attr_port_1_data_a0.dev_attr.attr,
     &sensor_dev_attr_port_2_data_a0.dev_attr.attr,
@@ -4622,6 +6302,61 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_sesto[] = {
     &sensor_dev_attr_port_52_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_53_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_54_data_a2.dev_attr.attr,
+
+    &sensor_dev_attr_port_1_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_2_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_3_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_4_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_5_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_6_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_7_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_8_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_9_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_10_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_11_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_12_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_13_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_14_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_15_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_16_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_17_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_18_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_19_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_20_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_21_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_22_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_23_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_24_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_25_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_26_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_27_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_28_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_29_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_30_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_31_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_32_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_33_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_34_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_35_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_36_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_37_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_38_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_39_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_40_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_41_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_42_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_43_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_44_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_45_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_46_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_47_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_48_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_49_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_50_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_51_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_52_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_53_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_54_sfp_copper.dev_attr.attr,
 
     &sensor_dev_attr_port_1_abs.dev_attr.attr,
     &sensor_dev_attr_port_2_abs.dev_attr.attr,
@@ -4856,12 +6591,32 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_sesto[] = {
 
     &dev_attr_psu_power_off.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
+
     NULL
 };
 
 static struct attribute *i2c_bus1_hardware_monitor_attr_nc2x[] = {
     &dev_attr_eeprom.attr,
     &dev_attr_system_led.attr,
+    &dev_attr_fan_led.attr,
+    &sensor_dev_attr_psu1_led.dev_attr.attr,
+    &sensor_dev_attr_psu2_led.dev_attr.attr,
 
     &sensor_dev_attr_port_1_data_a0.dev_attr.attr,
     &sensor_dev_attr_port_2_data_a0.dev_attr.attr,
@@ -4972,6 +6727,61 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_nc2x[] = {
     &sensor_dev_attr_port_52_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_53_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_54_data_a2.dev_attr.attr,
+
+    &sensor_dev_attr_port_1_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_2_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_3_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_4_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_5_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_6_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_7_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_8_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_9_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_10_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_11_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_12_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_13_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_14_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_15_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_16_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_17_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_18_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_19_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_20_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_21_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_22_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_23_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_24_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_25_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_26_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_27_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_28_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_29_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_30_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_31_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_32_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_33_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_34_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_35_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_36_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_37_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_38_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_39_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_40_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_41_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_42_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_43_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_44_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_45_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_46_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_47_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_48_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_49_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_50_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_51_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_52_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_53_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_54_sfp_copper.dev_attr.attr,
 
     &sensor_dev_attr_port_1_abs.dev_attr.attr,
     &sensor_dev_attr_port_2_abs.dev_attr.attr,
@@ -5157,12 +6967,32 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_nc2x[] = {
 
     &dev_attr_psu_power_off.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
+
     NULL
 };
 
 static struct attribute *i2c_bus1_hardware_monitor_attr_asterion[] = {
     &dev_attr_eeprom.attr,
     &dev_attr_system_led.attr,
+    &dev_attr_fan_led.attr,
+    &sensor_dev_attr_psu1_led.dev_attr.attr,
+    &sensor_dev_attr_psu2_led.dev_attr.attr,
 
     &sensor_dev_attr_port_1_data_a0.dev_attr.attr,
     &sensor_dev_attr_port_2_data_a0.dev_attr.attr,
@@ -5293,6 +7123,71 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_asterion[] = {
     &sensor_dev_attr_port_62_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_63_data_a2.dev_attr.attr,
     &sensor_dev_attr_port_64_data_a2.dev_attr.attr,
+
+    &sensor_dev_attr_port_1_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_2_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_3_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_4_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_5_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_6_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_7_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_8_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_9_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_10_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_11_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_12_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_13_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_14_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_15_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_16_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_17_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_18_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_19_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_20_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_21_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_22_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_23_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_24_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_25_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_26_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_27_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_28_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_29_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_30_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_31_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_32_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_33_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_34_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_35_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_36_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_37_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_38_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_39_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_40_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_41_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_42_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_43_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_44_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_45_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_46_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_47_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_48_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_49_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_50_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_51_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_52_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_53_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_54_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_55_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_56_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_57_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_58_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_59_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_60_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_61_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_62_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_63_sfp_copper.dev_attr.attr,
+    &sensor_dev_attr_port_64_sfp_copper.dev_attr.attr,
 
     &sensor_dev_attr_port_1_abs.dev_attr.attr,
     &sensor_dev_attr_port_2_abs.dev_attr.attr,
@@ -5524,30 +7419,432 @@ static struct attribute *i2c_bus1_hardware_monitor_attr_asterion[] = {
     &sensor_dev_attr_psu1_vout.dev_attr.attr,
     &sensor_dev_attr_psu1_iout.dev_attr.attr,
     &sensor_dev_attr_psu1_temp_1.dev_attr.attr,
-    &sensor_dev_attr_psu1_temp_2.dev_attr.attr,
     &sensor_dev_attr_psu1_fan_speed.dev_attr.attr,
     &sensor_dev_attr_psu1_pout.dev_attr.attr,
-    &sensor_dev_attr_psu1_pin.dev_attr.attr,
 
     &sensor_dev_attr_psu2_vout.dev_attr.attr,
     &sensor_dev_attr_psu2_iout.dev_attr.attr,
     &sensor_dev_attr_psu2_temp_1.dev_attr.attr,
-    &sensor_dev_attr_psu2_temp_2.dev_attr.attr,
     &sensor_dev_attr_psu2_fan_speed.dev_attr.attr,
     &sensor_dev_attr_psu2_pout.dev_attr.attr,
-    &sensor_dev_attr_psu2_pin.dev_attr.attr,
 
     &dev_attr_psu_power_off.attr,
 
+    /* lm-sensors */
+    &sensor_dev_attr_in12_input.dev_attr.attr,
+    &sensor_dev_attr_curr12_input.dev_attr.attr,
+    &sensor_dev_attr_power11_input.dev_attr.attr,
+    &sensor_dev_attr_power12_input.dev_attr.attr,
+    &sensor_dev_attr_temp11_input.dev_attr.attr,
+    &sensor_dev_attr_temp12_input.dev_attr.attr,
+    &sensor_dev_attr_fan11_input.dev_attr.attr,
+
+    &sensor_dev_attr_in22_input.dev_attr.attr,
+    &sensor_dev_attr_curr22_input.dev_attr.attr,
+    &sensor_dev_attr_power21_input.dev_attr.attr,
+    &sensor_dev_attr_power22_input.dev_attr.attr,
+    &sensor_dev_attr_temp21_input.dev_attr.attr,
+    &sensor_dev_attr_temp22_input.dev_attr.attr,
+    &sensor_dev_attr_fan21_input.dev_attr.attr,
+
     NULL
 };
+
+static int is_port_present(struct i2c_bus1_hardware_monitor_data *data, int port)
+{
+    int rc = 0;
+
+    switch(platformModelId)
+    {
+        case NCIIX_WITH_BMC:
+        case NCIIX_WITHOUT_BMC:
+            rc = ((SFPPortAbsStatus[port] == 1) && (SFPPortDataValid[port] == 1));
+            break;
+
+        case ASTERION_WITH_BMC:
+        case ASTERION_WITHOUT_BMC:
+        {
+            unsigned char qsfpPortAbsAst = 0, index = 0, bit = 0;
+            unsigned char sfpPortDataValidAst = 0;
+
+            if (port < 48)
+            {
+                index = (port / 2);
+                bit = ((port & 0x01) ? 5 : 1);
+                qsfpPortAbsAst = data->sfpPortAbsRxLosStatus[index];
+                sfpPortDataValidAst = data->sfpPortDataValidAst[port];
+                rc = ((PCA9553_TEST_BIT(qsfpPortAbsAst, bit) ? 0 : 1) && (sfpPortDataValidAst));
+            }
+            else
+            {
+                index = (port % 48);
+                qsfpPortAbsAst = data->qsfpPortAbsStatusAst[index];
+                sfpPortDataValidAst = data->sfpPortDataValidAst[port];
+                rc = ((PCA9553_TEST_BIT(qsfpPortAbsAst, 1) ? 0 : 1) && (sfpPortDataValidAst));
+            }
+        }
+            break;
+
+        default:
+        {
+            unsigned short qsfpPortAbs = 0, index = 0, bit = 0;
+            unsigned short qsfpPortDataValid = 0;
+
+            index = (port / 16);
+            bit = (port % 16);
+            qsfpPortAbs = data->qsfpPortAbsStatus[index];
+            qsfpPortDataValid = data->qsfpPortDataValid[index];
+            rc = ((PCA9553_TEST_BIT(qsfpPortAbs, bit) ? 0 : 1) && (PCA9553_TEST_BIT(qsfpPortDataValid, bit)));
+        }
+            break;
+    }
+
+    return rc;
+}
+
+static ssize_t get_qsfp_port_tx_rx_status(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&qsfpDataA0_client);
+    unsigned char qsfpPortData[QSFP_DATA_SIZE];
+    struct i2c_client *client = to_i2c_client(dev);
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    int index = (client->addr - 1);
+    int val = 0;
+
+    memset(qsfpPortData, 0, QSFP_DATA_SIZE);
+
+    mutex_lock(&data->lock);
+    if (is_port_present(data, index) == 1)
+        memcpy(qsfpPortData, &(data->qsfpPortDataA0[index][0]), QSFP_DATA_SIZE);
+    else
+    {
+        qsfpPortData[SFF8436_RX_LOS_ADDR] = qsfpPortData[SFF8436_TX_FAULT_ADDR] = 0xF;
+        qsfpPortData[SFF8436_TX_DISABLE_ADDR] = data->qsfpPortTxDisableData[index];
+    }
+    mutex_unlock(&data->lock);
+
+    switch (attr->index)
+    {
+        case RX_LOS:
+            val = (qsfpPortData[SFF8436_RX_LOS_ADDR] & 0xF);
+            break;
+        case RX_LOS1:
+        case RX_LOS2:
+        case RX_LOS3:
+        case RX_LOS4:
+            val = (qsfpPortData[SFF8436_RX_LOS_ADDR] & BIT_INDEX(attr->index - RX_LOS1));
+            break;
+
+        case TX_DISABLE:
+            val = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] & 0xF);
+            break;
+        case TX_DISABLE1:
+        case TX_DISABLE2:
+        case TX_DISABLE3:
+        case TX_DISABLE4:
+            val = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] & BIT_INDEX(attr->index - TX_DISABLE1));
+            break;
+
+        case TX_FAULT:
+            val = (qsfpPortData[SFF8436_TX_FAULT_ADDR] & 0xF);
+            break;
+        case TX_FAULT1:
+        case TX_FAULT2:
+        case TX_FAULT3:
+        case TX_FAULT4:
+            val = (qsfpPortData[SFF8436_TX_FAULT_ADDR] & BIT_INDEX(attr->index - TX_FAULT1));
+            break;
+
+        default:
+            break;
+    }
+    return sprintf(buf, "%d\n", ((val) ? 1 : 0));
+}
+
+static ssize_t get_port_status(struct device *dev, struct device_attribute *devattr, char *buf)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    int status = LAST_ATTRIBUTE;
+    ssize_t count = 0;
+
+    mutex_lock(&portStatusLock);
+
+    status = attr->index;
+
+    /* common status */
+    switch (status)
+    {
+        case PRESENT:
+            attr->index = (client->addr - 1);
+            count = show_port_abs(dev, devattr, buf);
+            attr->index = status;
+            mutex_unlock(&portStatusLock);
+            return count;
+
+        case EEPROM_A0_PAGE:
+            attr->index = (client->addr - 1);
+            count = show_port_data_a0(dev, devattr, buf);
+            attr->index = status;
+            mutex_unlock(&portStatusLock);
+            return count;
+
+        case EEPROM_A2_PAGE:
+            attr->index = (client->addr - 1);
+            count = show_port_data_a2(dev, devattr, buf);
+            attr->index = status;
+            mutex_unlock(&portStatusLock);
+            return count;
+
+        case SFP_COPPER:
+            attr->index = (client->addr - 1);
+            count = show_port_sfp_copper(dev, devattr, buf);
+            attr->index = status;
+            mutex_unlock(&portStatusLock);
+            return count;
+
+        default:
+            break;
+    }
+
+    /* status for QSFP ports */
+    if (strncmp(client->name, "qsfp", strlen("qsfp")) == 0)
+    {
+        count = get_qsfp_port_tx_rx_status(dev, devattr, buf);
+        mutex_unlock(&portStatusLock);
+        return count;
+    }
+
+    /* status for SFP+ ports */
+    attr->index = (client->addr - 1);
+    switch (status)
+    {
+        case RX_LOS:
+        case RX_LOS1:
+        case RX_LOS2:
+        case RX_LOS3:
+        case RX_LOS4:
+            count = show_port_rxlos(dev, devattr, buf);
+            break;
+
+        case TX_DISABLE:
+        case TX_DISABLE1:
+        case TX_DISABLE2:
+        case TX_DISABLE3:
+        case TX_DISABLE4:
+            count = show_port_tx_disable(dev, devattr, buf);
+            break;
+
+        case TX_FAULT:
+        case TX_FAULT1:
+        case TX_FAULT2:
+        case TX_FAULT3:
+        case TX_FAULT4:
+            count = show_port_tx_fault(dev, devattr, buf);
+            break;
+
+        default:
+            count = sprintf(buf, "0\n");
+            break;
+    }
+    attr->index = status;
+    mutex_unlock(&portStatusLock);
+    return count;
+}
+
+static ssize_t set_qsfp_port_tx_status(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
+{
+    struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&qsfpDataA0_client);
+    unsigned char qsfpPortData[QSFP_DATA_SIZE];
+    struct i2c_client *client = to_i2c_client(dev);
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    int index = (client->addr - 1);
+    long disable;
+
+    if (kstrtol(buf, 10, &disable))
+        return -EINVAL;
+    disable = clamp_val(disable, 0, 1);
+
+    memset(qsfpPortData, 0, QSFP_DATA_SIZE);
+
+    mutex_lock(&data->lock);
+    memcpy(qsfpPortData, &(data->qsfpPortDataA0[index][0]), QSFP_DATA_SIZE);
+    switch (attr->index)
+    {
+        case TX_DISABLE:
+            if (disable == 1)
+                data->qsfpPortTxDisableData[index] = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] |0xF);
+            else
+                data->qsfpPortTxDisableData[index] = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] & 0xF0);
+            data->qsfpPortTxDisableDataUpdate[index] = 1;
+            break;
+        case TX_DISABLE1:
+        case TX_DISABLE2:
+        case TX_DISABLE3:
+        case TX_DISABLE4:
+            if (disable == 1)
+                data->qsfpPortTxDisableData[index]  = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] | (1 << (attr->index - TX_DISABLE1)));
+            else
+                data->qsfpPortTxDisableData[index]  = (qsfpPortData[SFF8436_TX_DISABLE_ADDR] & ~(1 << (attr->index - TX_DISABLE1)));
+            data->qsfpPortTxDisableDataUpdate[index] = 1;
+            break;
+
+        default:
+            break;
+    }
+    mutex_unlock(&data->lock);
+    return count;
+}
+
+static ssize_t set_port_tx_status(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+    int status = LAST_ATTRIBUTE;
+
+    mutex_lock(&portStatusLock);
+
+    /* status for QSFP ports */
+    if (strncmp(client->name, "qsfp", strlen("qsfp")) == 0)
+    {
+        set_qsfp_port_tx_status(dev, devattr, buf, count);
+        mutex_unlock(&portStatusLock);
+        return count;
+    }
+
+    /* status for SFP+ ports */
+    status = attr->index;
+    attr->index = (client->addr - 1);
+    switch (status)
+    {
+        case TX_DISABLE:
+        case TX_DISABLE1:
+        case TX_DISABLE2:
+        case TX_DISABLE3:
+        case TX_DISABLE4:
+            set_port_tx_disable(dev, devattr, buf, count);
+            break;
+
+        default:
+            break;
+    }
+    attr->index = status;
+    mutex_unlock(&portStatusLock);
+    return count;
+}
+
+static ssize_t set_port_sfp_copper(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+
+    /* QSFP ports */
+    if (strncmp(client->name, "qsfp", strlen("qsfp")) == 0)
+    {
+        return count;
+    }
+    /* SFP+ ports */
+    else
+    {
+        struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(&SfpCopperData_client);
+        int index = (client->addr - 1);
+        long value;
+
+        if ((platformModelId != NCIIX_WITH_BMC) && (platformModelId != NCIIX_WITHOUT_BMC))
+            return count;
+
+        if (kstrtol(buf, 10, &value))
+            return -EINVAL;
+
+        mutex_lock(&data->lock);
+        if (SFPPortAbsStatus[index]) /*present*/
+        {
+            i2c_smbus_write_byte_data(&(pca9548_client[1]), 0, sfpPortData_78F[index].portMaskBitForPCA9548_1);
+            i2c_smbus_write_byte_data(&(pca9548_client[0]), 0, sfpPortData_78F[index].portMaskBitForPCA9548_2TO5);
+            i2c_device_word_write(&SfpCopperData_client,
+                                  (unsigned char)((value >> 16) & 0xff),
+                                  (unsigned short)(value & 0xffff));
+            i2c_smbus_write_byte_data(&(pca9548_client[0]), 0, 0x00);
+            i2c_smbus_write_byte_data(&(pca9548_client[1]), 0, 0x00);
+        }
+        mutex_unlock(&data->lock);
+    }
+
+    return count;
+}
+
+static SENSOR_DEVICE_ATTR(abs, S_IRUGO, get_port_status, NULL, PRESENT);
+static SENSOR_DEVICE_ATTR(rxlos, S_IRUGO, get_port_status, NULL, RX_LOS);
+static SENSOR_DEVICE_ATTR(rxlos1, S_IRUGO, get_port_status, NULL, RX_LOS1);
+static SENSOR_DEVICE_ATTR(rxlos2, S_IRUGO, get_port_status, NULL, RX_LOS2);
+static SENSOR_DEVICE_ATTR(rxlos3, S_IRUGO, get_port_status, NULL, RX_LOS3);
+static SENSOR_DEVICE_ATTR(rxlos4, S_IRUGO, get_port_status, NULL, RX_LOS4);
+static SENSOR_DEVICE_ATTR(tx_disable, S_IWUSR | S_IRUGO, get_port_status, set_port_tx_status, TX_DISABLE);
+static SENSOR_DEVICE_ATTR(tx_disable1, S_IWUSR | S_IRUGO, get_port_status, set_port_tx_status, TX_DISABLE1);
+static SENSOR_DEVICE_ATTR(tx_disable2, S_IWUSR | S_IRUGO, get_port_status, set_port_tx_status, TX_DISABLE2);
+static SENSOR_DEVICE_ATTR(tx_disable3, S_IWUSR | S_IRUGO, get_port_status, set_port_tx_status, TX_DISABLE3);
+static SENSOR_DEVICE_ATTR(tx_disable4, S_IWUSR | S_IRUGO, get_port_status, set_port_tx_status, TX_DISABLE4);
+static SENSOR_DEVICE_ATTR(tx_fault, S_IRUGO, get_port_status, NULL, TX_FAULT);
+static SENSOR_DEVICE_ATTR(tx_fault1, S_IRUGO, get_port_status, NULL, TX_FAULT1);
+static SENSOR_DEVICE_ATTR(tx_fault2, S_IRUGO, get_port_status, NULL, TX_FAULT2);
+static SENSOR_DEVICE_ATTR(tx_fault3, S_IRUGO, get_port_status, NULL, TX_FAULT3);
+static SENSOR_DEVICE_ATTR(tx_fault4, S_IRUGO, get_port_status, NULL, TX_FAULT4);
+static SENSOR_DEVICE_ATTR(data_a0, S_IRUGO, get_port_status, NULL, EEPROM_A0_PAGE);
+static SENSOR_DEVICE_ATTR(data_a2, S_IRUGO, get_port_status, NULL, EEPROM_A2_PAGE);
+static SENSOR_DEVICE_ATTR(sfp_copper, S_IWUSR | S_IRUGO, get_port_status, set_port_sfp_copper, SFP_COPPER);
+
+static struct attribute *sfp_attributes[] = {
+    &sensor_dev_attr_abs.dev_attr.attr,
+    &sensor_dev_attr_rxlos.dev_attr.attr,
+    &sensor_dev_attr_rxlos1.dev_attr.attr,
+    &sensor_dev_attr_rxlos2.dev_attr.attr,
+    &sensor_dev_attr_rxlos3.dev_attr.attr,
+    &sensor_dev_attr_rxlos4.dev_attr.attr,
+    &sensor_dev_attr_tx_disable.dev_attr.attr,
+    &sensor_dev_attr_tx_disable1.dev_attr.attr,
+    &sensor_dev_attr_tx_disable2.dev_attr.attr,
+    &sensor_dev_attr_tx_disable3.dev_attr.attr,
+    &sensor_dev_attr_tx_disable4.dev_attr.attr,
+    &sensor_dev_attr_tx_fault.dev_attr.attr,
+    &sensor_dev_attr_tx_fault1.dev_attr.attr,
+    &sensor_dev_attr_tx_fault2.dev_attr.attr,
+    &sensor_dev_attr_tx_fault3.dev_attr.attr,
+    &sensor_dev_attr_tx_fault4.dev_attr.attr,
+    &sensor_dev_attr_data_a0.dev_attr.attr,
+    &sensor_dev_attr_data_a2.dev_attr.attr,
+    &sensor_dev_attr_sfp_copper.dev_attr.attr,
+    NULL
+};
+
+static const struct attribute_group sfp_group = {
+    .attrs = sfp_attributes,
+};
+
+static struct i2c_client *sfpPortDeviceCreate(struct i2c_adapter *adap, int port, const char *sfpType)
+{
+    struct i2c_client *client = NULL;
+    int status;
+
+    client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
+    if (!client)
+        return NULL;
+
+    client->adapter = adap;
+    client->addr = (port + 1);
+    sprintf(client->name, "%s_%03d", sfpType, (port + 1));
+    client->dev.parent = &client->adapter->dev;
+    dev_set_name(&client->dev, "port_%03d", (port + 1));
+    status = device_register(&client->dev);
+    /* Register sysfs hooks */
+    status = sysfs_create_group(&client->dev.kobj, &sfp_group);
+    return client;
+}
 
 static void i2c_bus0_devices_client_address_init(struct i2c_client *client)
 {
     int index;
 
-    pca9535pwr_client = *client;
-    pca9535pwr_client.addr = 0x27;
+    pca9535pwr_client_bus0 = *client;
+    pca9535pwr_client_bus0.addr = 0x27;
 
     cpld_client = *client;
     cpld_client.addr = 0x33;
@@ -5635,7 +7932,7 @@ static void i2c_bus0_hardware_monitor_hw_default_config(struct i2c_client *clien
         /* Get device id */
         data->dviceId= i2c_smbus_read_byte_data(client, W83795ADG_REG_DEVICE_ID);
 
-        /* set FANCTL8 ¡V FANCTL1 output mode control to PWM output duty cycle mode. */
+        /* set FANCTL8 - FANCTL1 output mode control to PWM output duty cycle mode. */
         i2c_smbus_write_byte_data(client, W83795ADG_REG_FOMC, 0x00);
         i2c_smbus_write_byte_data(client, W83795ADG_REG_F1OV, 0xff);
         i2c_smbus_write_byte_data(client, W83795ADG_REG_F2OV, 0xff);
@@ -5644,6 +7941,10 @@ static void i2c_bus0_hardware_monitor_hw_default_config(struct i2c_client *clien
         i2c_smbus_write_byte_data(client, W83795ADG_REG_BANK, 0x00);
         /* Enable TR1~TR4 thermistor temperature monitoring */
         i2c_smbus_write_byte_data(client, W83795ADG_REG_TEMP_CTRL2, 0xff);
+
+        /* set FANCTL2 to enable FANIN9 and FANIN10 monitoring */
+        i2c_smbus_write_byte_data(client, W83795ADG_REG_FANIN_CTRL2, 0x03);
+
         /* Enable monitoring operations */
         configByte |= 0x01;
         i2c_smbus_write_byte_data(client, W83795ADG_REG_CONFIG, configByte);
@@ -5732,10 +8033,10 @@ static void i2c_bus0_hardware_monitor_hw_default_config(struct i2c_client *clien
 
         default:
             /* set default value for IO expander #0 */
-            i2c_smbus_write_word_data(&pca9535pwr_client, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+            i2c_smbus_write_word_data(&pca9535pwr_client_bus0, PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
             /* set input-1/output-0 mode for IO expander #0 */
-            i2c_smbus_write_word_data(&pca9535pwr_client, PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-            i2c_smbus_write_word_data(&pca9535pwr_client, PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xff7f);
+            i2c_smbus_write_word_data(&pca9535pwr_client_bus0, PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_smbus_write_word_data(&pca9535pwr_client_bus0, PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xff7f);
             break;
     }
 
@@ -5754,9 +8055,12 @@ static void i2c_bus1_devices_client_address_init(struct i2c_client *client)
 
     for (index=0; index<6; index++)
     {
-        pca9535pwr_client_bus1[index] = *client;
-        pca9535pwr_client_bus1[index].addr = (0x20+index);
+        pca9535pwr_client[index] = *client;
+        pca9535pwr_client[index].addr = (0x20+index);
     }
+
+    cpld_client_bus1 = *client;
+    cpld_client_bus1.addr = 0x33;
 
     qsfpDataA0_client = *client;
     qsfpDataA0_client.addr = 0x50;
@@ -5764,17 +8068,34 @@ static void i2c_bus1_devices_client_address_init(struct i2c_client *client)
     qsfpDataA2_client = *client;
     qsfpDataA2_client.addr = 0x51;
 
-    eeprom_client = *client;
-    eeprom_client.addr = 0x54;
+    SfpCopperData_client = *client;
+    SfpCopperData_client.addr = 0x56;
 
-    eeprom_client_2 = *client;
-    eeprom_client_2.addr = 0x56;
+    switch(platformModelId)
+    {
+        case NCIIX_WITH_BMC:
+        case NCIIX_WITHOUT_BMC:
+            eeprom_client = *client;
+            eeprom_client.addr = 0x56;
 
-    psu_eeprom_client = *client;
-    psu_eeprom_client.addr = 0x50;
+            psu_eeprom_client = *client;
+            psu_eeprom_client.addr = 0x51;
 
-    psu_mcu_client = *client;
-    psu_mcu_client.addr = 0x58;
+            psu_mcu_client = *client;
+            psu_mcu_client.addr = 0x59;
+            break;
+
+        default:
+            eeprom_client = *client;
+            eeprom_client.addr = 0x54;
+
+            psu_eeprom_client = *client;
+            psu_eeprom_client.addr = 0x50;
+
+            psu_mcu_client = *client;
+            psu_mcu_client.addr = 0x58;
+            break;
+    }
  }
 
 static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
@@ -5793,8 +8114,8 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-4 on channel 4 */
             for (i=0; i<4; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
             }
 
             /* Turn on PCA9548 channel 5 on I2C-bus1 */
@@ -5804,27 +8125,27 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-2 on channel 5 */
             for (i=0; i<2; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
 
             /* RST#(Module Reset) = 1 */
             /* set input-1/output-0 mode for IO expander #3-4 on channel 5 */
             for (i=2; i<4; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
 
             /* MODSEL# (Module Select) = 0 */
             /* set input-1/output-0 mode for IO expander #5-6 on channel 5 */
             for (i=4; i<6; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
 
             if (isBMCSupport == 0)
@@ -5833,30 +8154,30 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
                 i2c_smbus_write_byte(client, (1<<PCA9548_CH06));
                 /* PSU Status */
                 /* set input-1/output-0 mode for IO expander #1 on channel 6 */
-                i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
 /* If the PSU_PWROFF pin of IO expander is output mode, the power cycling of CPLD cannot work.*/
 #if 0
-                i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffbb);
+                i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffbb);
 #else
-                i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
 #endif
 
                 /* Turn on PCA9548 channel 7 on I2C-bus1 */
                 i2c_smbus_write_byte(client, (1<<PCA9548_CH07));
                 /* FAN Status */
                 /* set input-1/output-0 mode for IO expander #1 on channel 7 */
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xeeee);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xeeee);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
                 if ( (platformHwRev == 0x03) || /* PVT */
                          (platformModelId == HURACAN_A_WITH_BMC)||(platformModelId == HURACAN_A_WITHOUT_BMC) )
                 {
                     /* Front Pannel LED Status */
                     /* set input-1/output-0 mode for IO expander #2 on channel 7 */
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                    i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                    i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+                    i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                    i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
                 }
             }
 
@@ -5875,8 +8196,8 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-4 on channel 0 */
             for (i=0; i<4; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
             }
 
              /* Turn on PCA9548#1 channel 1 on I2C-bus1 - RXLOS */
@@ -5884,8 +8205,8 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-3 on channel 1 */
             for (i=0; i<3; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
             }
 
             /* Turn on PCA9548#1 channel 2 on I2C-bus1 - TXFAULT */
@@ -5893,8 +8214,8 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-3 on channel 2 */
             for (i=0; i<3; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
             }
 
             /* Turn on PCA9548#1 channel 3 on I2C-bus1 - TX_RS  = 1, LPMODE = 0, MODSEL = 0 */
@@ -5902,22 +8223,22 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-4 on channel 3 */
             for (i=0; i<3; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
 
             /* Turn on PCA9548#1 channel 4 on I2C-bus1 - RX _RS = 1 */
             i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH04));
             /* set input-1/output-0 mode for IO expander #1-3 on channel 4 */
             for (i=0; i<3; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
 
             /* Turn on PCA9548#1 channel 5 on I2C-bus1 - TXEN = 0, RST = 1*/
@@ -5925,14 +8246,14 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #1-3 on channel 5 */
             for (i=0; i<3; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
             }
             /* set input-1/output-0 mode for IO expander #4 on channel 5 */
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffff);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[3]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
 
             if (isBMCSupport == 0)
             {
@@ -5940,30 +8261,30 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
                 i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH06));
                 /* PSU Status */
                 /* set input-1/output-0 mode for IO expander #1 on channel 6 */
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
 /* If the PSU_PWROFF pin of IO expander is output mode, the power cycling of CPLD cannot work.*/
 #if 0
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffbb);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffbb);
 #else
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
 #endif
 
                 /* Turn on PCA9548#1 channel 7 on I2C-bus1 */
                 i2c_smbus_write_byte(&(pca9548_client[1]), (1<<PCA9548_CH07));
                 /* FAN Status */
                 /* set input-1/output-0 mode for IO expander #1 on channel 7 */
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xeeee);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xeeee);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
 
                 /* Turn on PCA9548#0 channel 7 on I2C-bus1 */
                 i2c_smbus_write_byte(client, (1<<PCA9548_CH07));
                 /* Front Pannel LED Status */
                 /* set input-1/output-0 mode for IO expander #2 on channel 7 */
-                i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+                i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
                 /* Turn off PCA9548#0 all channels on I2C-bus1 */
                 i2c_smbus_write_byte(client, 0x00);
             }
@@ -5979,17 +8300,17 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #20-23 on channel 0 : SFP+ 40-47 : TXEN = 0, RX_RS = 0, TX_RS = 0 */
             for (i=0; i<4; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xf1c7);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xf1c7);
             }
 
             /* Turn on PCA9548#1 channel 1 on I2C-bus1 */
             i2c_smbus_write_byte(client, (1<<PCA9548_CH01));
             /* set input-1/output-0 mode for IO expander #26 on channel 1 : LED Board */
-            i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
 
              /* Turn on PCA9548#1 channel 3 on I2C-bus1 */
             i2c_smbus_write_byte(client, (1<<PCA9548_CH03));
@@ -5997,17 +8318,17 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
             /* set input-1/output-0 mode for IO expander #25 on channel 3 : QSFP 3, 5, 6 : MODSEL = 0, RST = 1, LPMODE = 0 */
             for (i=0; i<2; i++)
             {
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0842);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-                i2c_device_word_write(&(pca9535pwr_client_bus1[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xe318);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0842);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+                i2c_device_word_write(&(pca9535pwr_client[i]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xe318);
             }
 
             /* Turn on PCA9548#1 channel 7 on I2C-bus1 */
             i2c_smbus_write_byte(client, (1<<PCA9548_CH07));
             /* set input-1/output-0 mode for IO expander #27 on channel 7 : FAN Board */
-            i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
-            i2c_device_word_write(&(pca9535pwr_client_bus1[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
 
             /* Turn off PCA9548 all channels on I2C-bus1 */
             i2c_smbus_write_byte(client, 0x00);
@@ -6015,6 +8336,42 @@ static void i2c_bus1_io_expander_default_set(struct i2c_client *client)
 
         case ASTERION_WITH_BMC:
         case ASTERION_WITHOUT_BMC:
+            /* Turn on PCA9548#0 channel 3 on I2C-bus1 */
+            i2c_smbus_write_byte(client, (1 << PCA9548_CH03));
+            /* FAN Status */
+            /* set input-1/output-0 mode for IO expander #1 on channel 3 */
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xdddd);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xcccc);
+
+            i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0xffdf);
+            i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[1]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffcf);
+
+            /* Turn on PCA9548#0 channel 4 on I2C-bus1 */
+            i2c_smbus_write_byte(client, (1 << PCA9548_CH04));
+            /* Front Panel LED Status */
+            /* set input-1/output-0 mode for IO expander #1 on channel 4 */
+
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, data->frontLedStatus);
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[2]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0x0000);
+
+            /* Turn on PCA9548#0 channel 5 on I2C-bus1 */
+            i2c_smbus_write_byte(client, (1 << PCA9548_CH05));
+            /* PSU Status */
+            /* set input-1/output-0 mode for IO expander #1 on channel 5 */
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_OUTPUT_PORT_0, 0x0000);
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_POLARITY_INVERSION_0, 0x0000);
+/* If the PSU_PWROFF pin of IO expander is output mode, the power cycling of CPLD cannot work.*/
+#if 0
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffbb);
+#else
+            i2c_device_word_write(&(pca9535pwr_client[0]), PCA9553_COMMAND_BYTE_REG_CONFIGURATION_0, 0xffff);
+#endif
+
+            /* Turn off PCA9548#0 all channels on I2C-bus1 */
+            i2c_smbus_write_byte(client, 0x00);
             break;
 
         default:
@@ -6213,6 +8570,69 @@ static int w83795adg_hardware_monitor_probe(struct i2c_client *client,
             }
             else
             {
+                struct i2c_adapter *adap = to_i2c_adapter(&client->dev);
+                int port;
+
+                for (port = 0; port < QSFP_COUNT; port++)
+                    data->qsfpPortTxDisableDataUpdate[port] = 1;
+                mutex_init(&portStatusLock);
+                switch (platformModelId)
+                {
+                    case HURACAN_WITH_BMC:
+                    case HURACAN_WITHOUT_BMC:
+                    case HURACAN_A_WITH_BMC:
+                    case HURACAN_A_WITHOUT_BMC:
+                        /* QSFP ports */
+                        for (port = 0; port < 32; port++)
+                        {
+                            data->sfpPortClient[port] = sfpPortDeviceCreate(adap, port, "qsfp");
+                            if (!data->sfpPortClient[port])
+                                return -ENOMEM;
+                        }
+                        break;
+
+                    case SESTO_WITH_BMC:
+                    case SESTO_WITHOUT_BMC:
+                    case NCIIX_WITH_BMC:
+                    case NCIIX_WITHOUT_BMC:
+                        /* SFP+ ports */
+                        for (port = 0; port < 48; port++)
+                        {
+                            data->sfpPortClient[port] = sfpPortDeviceCreate(adap, port, "sfp");
+                            if (!data->sfpPortClient[port])
+                                return -ENOMEM;
+                        }
+                        /* QSFP ports */
+                        for (port = 48; port < 54; port++)
+                        {
+                            data->sfpPortClient[port] = sfpPortDeviceCreate(adap, port, "qsfp");
+                            if (!data->sfpPortClient[port])
+                                return -ENOMEM;
+                        }
+                        break;
+
+                    case ASTERION_WITH_BMC:
+                    case ASTERION_WITHOUT_BMC:
+                        /* SFP+ ports */
+                        for (port = 0; port < 48; port++)
+                        {
+                            data->sfpPortClient[port] = sfpPortDeviceCreate(adap, port, "sfp");
+                            if (!data->sfpPortClient[port])
+                                return -ENOMEM;
+                        }
+                        /* QSFP ports */
+                        for (port = 48; port < 64; port++)
+                        {
+                            data->sfpPortClient[port] = sfpPortDeviceCreate(adap, port, "qsfp");
+                            if (!data->sfpPortClient[port])
+                                return -ENOMEM;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+
                 init_completion(&data->auto_update_stop);
                 data->auto_update = kthread_run(i2c_bus1_hardware_monitor_update_thread, client, dev_name(data->hwmon_dev));
                 if (IS_ERR(data->auto_update)) {
@@ -6249,16 +8669,35 @@ static int w83795adg_hardware_monitor_remove(struct i2c_client *client)
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x44, 0x00);
 #endif
 
+        mutex_destroy(&client->dev.mutex);
         hwmon_device_unregister(data->hwmon_dev);
         sysfs_remove_group(&client->dev.kobj, &data->hwmon_group);
+        mutex_destroy(&data->lock);
     }
     else if(client->adapter->nr == 0x1)
     {
+        int port;
+        struct i2c_client *c;
         struct i2c_bus1_hardware_monitor_data *data = i2c_get_clientdata(client);
         kthread_stop(data->auto_update);
         wait_for_completion(&data->auto_update_stop);
+        for (port = 0; port < QSFP_COUNT; port ++)
+        {
+            c = data->sfpPortClient[port];
+            if (c)
+            {
+                sysfs_remove_group(&c->dev.kobj, &sfp_group);
+                mutex_destroy(&c->dev.mutex);
+                device_del(&c->dev);
+                kfree(c);
+            }
+        }
+        mutex_destroy(&portStatusLock);
+
+        mutex_destroy(&client->dev.mutex);
         hwmon_device_unregister(data->hwmon_dev);
         sysfs_remove_group(&client->dev.kobj, &data->hwmon_group);
+        mutex_destroy(&data->lock);
     }
     return 0;
 }
@@ -6284,8 +8723,22 @@ static void w83795adg_hardware_monitor_shutdown(struct i2c_client *client)
         i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_LED_0x44, 0x00);
 #endif
         /* reset MAC */
-        i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6e);
-        i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6f);
+        switch(platformModelId)
+        {
+            case ASTERION_WITH_BMC:
+            case ASTERION_WITHOUT_BMC:
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x3e);
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x3f);
+                /* reset CPLD 2, 3 and 4 */
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x35, 0xfd); /* assert RST_CPLD2_3_4 */
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x35, 0xff);
+                break;
+
+            default:
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6e);
+                i2c_smbus_write_byte_data(&cpld_client, CPLD_REG_RESET_0x30, 0x6f);
+                break;
+        }
 
         hwmon_device_unregister(data->hwmon_dev);
         sysfs_remove_group(&client->dev.kobj, &data->hwmon_group);

@@ -65,6 +65,7 @@ dni_psu_pmbus_info_get(int id, char *node, int *value)
 int
 onlp_psui_init(void)
 {
+    lockinit(); 
     return ONLP_STATUS_OK;
 }
 

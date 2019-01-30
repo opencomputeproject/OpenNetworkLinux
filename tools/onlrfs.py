@@ -189,9 +189,18 @@ class OnlMultistrapConfig(object):
         self.__validate_key(general, 'arch', str, True)
         self.__validate_key(general, 'debootstrap', str, True)
 
-        for e in general['debootstrap'].split():
-            if e not in self.config:
-                raise OnlRfsError("Section '%s' is specified in the debootstrap option but does not exist in the configuration." % e)
+        for entry in [ 'debootstrap', 'aptsources' ]:
+            sectionlist = []
+            for e in general[entry].split():
+                if e not in self.config:
+                    raise OnlRfsError("Section '%s' is specified in the %s option but does not exist in the configuration." % (e, entry))
+
+                if self.config[e].get('arches', None) and general['arch'] not in self.config[e]['arches']:
+                    del self.config[e]
+                else:
+                    sectionlist.append(e)
+
+            general[entry] = " ".join(sectionlist)
 
         self.localrepos = []
 
@@ -325,7 +334,7 @@ class OnlRfsBuilder(object):
             if not os.path.exists(self.QEMU_PPC):
                 raise OnlRfsError("%s is missing." % self.QEMU_PPC)
 
-        if self.arch == 'armel':
+        if self.arch in [ 'armel', 'armhf' ]:
             if not os.path.exists(self.QEMU_ARM):
                 raise OnlRfsError("%s is missing." % self.QEMU_ARM)
 
@@ -369,7 +378,7 @@ class OnlRfsBuilder(object):
     def dpkg_configure(self, dir_):
         if self.arch == 'powerpc':
             onlu.execute('sudo cp %s %s' % (self.QEMU_PPC, os.path.join(dir_, 'usr/bin')))
-        if self.arch == 'armel':
+        if self.arch in [ 'armel', 'armhf' ]:
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM, os.path.join(dir_, 'usr/bin')))
         if self.arch == 'arm64':
             onlu.execute('sudo cp %s %s' % (self.QEMU_ARM64, os.path.join(dir_, 'usr/bin')))
@@ -380,8 +389,7 @@ class OnlRfsBuilder(object):
         script = os.path.join(dir_, "tmp/configure.sh")
         with open(script, "w") as f:
             os.chmod(script, 0700)
-            f.write("""
-#!/bin/bash -ex
+            f.write("""#!/bin/bash -ex
 /bin/echo -e "#!/bin/sh\\nexit 101" >/usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d
 export DEBIAN_FRONTEND=noninteractive

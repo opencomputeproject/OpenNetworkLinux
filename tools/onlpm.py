@@ -136,8 +136,10 @@ class OnlPackage(object):
         'BUILD_DIR' : 'BUILD/%s' % g_dist_codename,
 
         # Default Templates Location
-        'ONL_TEMPLATES' : "%s/packages/base/any/templates" % os.getenv("ONL")
+        'ONL_TEMPLATES' : "%s/packages/base/any/templates" % os.getenv("ONL"),
 
+        # Default Distribution
+        'DISTS' : g_dist_codename,
         }
 
     ############################################################
@@ -362,9 +364,14 @@ class OnlPackage(object):
             if os.path.exists(src):
                 OnlPackage.copyf(src, dst, root)
 
-        for (link,src) in self.pkg.get('links', {}).iteritems():
+        for (link, src) in self.pkg.get('links', {}).iteritems():
             logger.info("Linking %s -> %s..." % (link, src))
-            link = os.path.join(root, link)
+            # The source must be relative to the existing root directory.
+            if link.startswith('/'):
+                link = "%s%s" % (root, link)
+            else:
+                link = "%s/%s" % (root, link)
+            # The link must be relative or absolute to the final filesystem.
             os.symlink(src, link)
 
         #
@@ -497,6 +504,13 @@ class OnlPackageGroup(object):
                 if p.arch() not in arches:
                     return False
             return True
+
+    def distcheck(self):
+        for p in self.packages:
+            if p.pkg.get("dists", None):
+                if g_dist_codename not in p.pkg['dists'].split(','):
+                    return False
+        return True
 
     def prerequisite_packages(self):
         rv = []
@@ -858,7 +872,8 @@ class OnlPackageManager(object):
                 pg.filtered = True
             if not pg.archcheck(arches):
                 pg.filtered = True
-
+            if not pg.distcheck():
+                pg.filtered = True
 
     def load(self, basedir, usecache=True, rebuildcache=False):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
@@ -1084,6 +1099,8 @@ class OnlPackageManager(object):
     def list_platforms(self, arch):
         platforms = []
         for pg in self.package_groups:
+            if not pg.distcheck():
+                continue
             for p in pg.packages:
                 (name, pkgArch) = OnlPackage.idparse(p.id())
                 m = re.match(r'onl-platform-config-(?P<platform>.*)', name)
@@ -1098,7 +1115,7 @@ def defaultPm():
     packagedirs = os.environ['ONLPM_OPTION_PACKAGEDIRS'].split(':')
     repoPackageDir = os.environ.get('ONLPM_OPTION_REPO_PACKAGE_DIR', 'packages')
     subdir = os.getcwd()
-    arches = ['amd64', 'powerpc', 'armel', 'arm64', 'all',]
+    arches = ['amd64', 'powerpc', 'armel', 'armhf', 'arm64', 'all',]
 
     if envJson:
         for j in envJson.split(':'):
@@ -1134,7 +1151,7 @@ if __name__ == '__main__':
     ap.add_argument("--csv", action='store_true')
     ap.add_argument("--show-group", action='store_true')
     ap.add_argument("--arch")
-    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'armel', 'arm64', 'all']),
+    ap.add_argument("--arches", nargs='+', default=['amd64', 'powerpc', 'armel', 'armhf', 'arm64', 'all']),
     ap.add_argument("--pmake", action='store_true')
     ap.add_argument("--prereq-packages", action='store_true')
     ap.add_argument("--lookup", metavar='PACKAGE')

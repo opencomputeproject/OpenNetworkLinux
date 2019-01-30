@@ -380,12 +380,142 @@ onlp_sysi_platform_manage_leds_type2(void)
 }
 
 int
+onlp_sysi_platform_manage_leds_type3(void)
+{
+    int fan_number, psu_number;
+    onlp_led_mode_t mode, system_mode;
+    int min_fan_speed;
+
+    int fan_led_id[6] = { LED_FAN1, LED_FAN2, LED_FAN3, LED_FAN4, LED_FAN5, LED_FAN6 };
+
+    int fan_problem = 0;
+    int psu_problem = 0;
+
+    /*
+     * FAN Indicators
+     *
+     *     Green - Fan is operating
+     *     Orange   - No power or Fan failure
+     *     Off   - No power
+     *
+     */
+    for (fan_number = 1; fan_number <= mlnx_platform_info.fan_num; fan_number += 2)
+    {
+        /* each 2 fans had same led_fan */
+        onlp_fan_info_t fi;
+        /* check fans */
+        mode = ONLP_LED_MODE_GREEN;
+        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number), &fi) < 0)
+        {
+            mode = ONLP_LED_MODE_ORANGE;
+            fan_problem = 1;
+        } else if ((fi.status & ONLP_FAN_STATUS_PRESENT) == 0) {
+            if (mlnx_platform_info.fan_fixed == false)
+            {
+                /* Not present */
+                mode = ONLP_LED_MODE_ORANGE;
+                fan_problem = 1;
+            }
+        } else if (fi.status & ONLP_FAN_STATUS_FAILED) {
+            mode = ONLP_LED_MODE_ORANGE;
+            fan_problem = 1;
+        } else {
+            min_fan_speed = onlp_fani_get_min_rpm(fan_number);
+            if (fi.rpm < min_fan_speed)
+            {
+                mode = ONLP_LED_MODE_ORANGE;
+                fan_problem = 1;
+            }
+        }
+        /* check fan i+1 */
+        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number + 1), &fi) < 0)
+        {
+            mode = ONLP_LED_MODE_ORANGE;
+            fan_problem = 1;
+        } else if ((fi.status & 0x1) == 0) {
+            if (mlnx_platform_info.fan_fixed == false)
+            {
+                /* Not present */
+                mode = ONLP_LED_MODE_ORANGE;
+                fan_problem = 1;
+            }
+        } else if (fi.status & ONLP_FAN_STATUS_FAILED)
+        {
+            mode = ONLP_LED_MODE_ORANGE;
+            fan_problem = 1;
+        } else {
+            min_fan_speed = onlp_fani_get_min_rpm(fan_number + 1);
+            if (fi.rpm < min_fan_speed)
+            {
+                mode = ONLP_LED_MODE_ORANGE;
+                fan_problem = 1;
+            }
+        }
+        onlp_ledi_mode_set( ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, fan_led_id[fan_number / 2]), mode);
+    }
+
+    for (psu_number = 1; psu_number <= mlnx_platform_info.psu_num; psu_number++)
+    {
+        onlp_psu_info_t pi;
+        if (onlp_psui_info_get(ONLP_PSU_ID_CREATE(psu_number), &pi) < 0)
+        {
+            psu_problem = 1;
+        } else {
+            if (mlnx_platform_info.psu_fixed)
+            {
+                /* Fixed system, PSU always in. Check only cable plugged. */
+                if (pi.status & ONLP_PSU_STATUS_UNPLUGGED)
+                {
+                    mode = ONLP_LED_MODE_ORANGE;
+                    psu_problem = 1;
+                }
+            } else {
+                if ((pi.status & ONLP_PSU_STATUS_PRESENT) == 0)
+                {
+                    /* Not present */
+                    psu_problem = 1;
+                } else if (pi.status & ONLP_PSU_STATUS_UNPLUGGED) {
+                    psu_problem = 1;
+                }
+            }
+        }
+    }
+
+    if (psu_problem)
+        mode = ONLP_LED_MODE_ORANGE;
+    else
+        mode = ONLP_LED_MODE_GREEN;
+    onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, LED_PSU), mode);
+
+    /* Set System status LED green if no problem in FANs or PSUs */
+    if (fan_problem || psu_problem)
+        system_mode = ONLP_LED_MODE_ORANGE;
+    else
+        system_mode = ONLP_LED_MODE_GREEN;
+
+    onlp_ledi_mode_set(ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, LED_SYSTEM), system_mode);
+
+    return ONLP_STATUS_OK;
+}
+
+int
 onlp_sysi_platform_manage_leds(void)
 {
-	int res;
-	if(mlnx_platform_info.led_type == 1)
-		res=onlp_sysi_platform_manage_leds_type1();
-	else
-		res=onlp_sysi_platform_manage_leds_type2();
-	return res;
+    int res;
+    switch (mlnx_platform_info.led_type) {
+        case LED_TYPE_1:
+            res=onlp_sysi_platform_manage_leds_type1();
+            break;
+
+        case LED_TYPE_2:
+            res=onlp_sysi_platform_manage_leds_type2();
+            break;
+
+        case LED_TYPE_3:
+            res=onlp_sysi_platform_manage_leds_type3();
+            break;
+        default:
+            res = ONLP_STATUS_E_INVALID;
+    }
+    return res;
 }

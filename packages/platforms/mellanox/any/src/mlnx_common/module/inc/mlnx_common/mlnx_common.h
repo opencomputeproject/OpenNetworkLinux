@@ -24,6 +24,7 @@
 
 #define LED_TYPE_1 1
 #define LED_TYPE_2 2
+#define LED_TYPE_3 3
 
 /* led common id */
 #define LED_RESERVED 0
@@ -39,6 +40,11 @@
 #define LED_PSU1 3
 #define LED_PSU2 4
 #define LED_UID 5
+
+/*led type 3 id */
+#define LED_FAN5 6
+#define LED_FAN6 7
+#define LED_PSU_T3 8
 
 #define PERCENTAGE_MIN 60.0
 #define PERCENTAGE_MAX 100.0
@@ -125,6 +131,7 @@ typedef struct mlnx_platform_info_s {
     onlp_fan_info_t* finfo;
     fan_path_T* fan_fnames;
     int fan_type;
+    int fan_per_module;
     int first_psu_fan_id;
 } mlnx_platform_info_t;
 

@@ -660,6 +660,7 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 	ssize_t retval;
 	size_t pending_len = 0, chunk_len = 0;
 	loff_t chunk_offset = 0, chunk_start_offset = 0;
+	loff_t chunk_end_offset = 0;
 
 	dev_dbg(&client->dev,
 		"%s: off %lld  len:%ld, opcode:%s\n",
@@ -699,30 +700,30 @@ static ssize_t optoe_read_write(struct optoe_data *optoe,
 		/*
 		 * Compute the offset and number of bytes to be read/write
 		 *
-		 * 1. start at offset 0 (within the chunk), and read/write
-		 *    the entire chunk
-		 * 2. start at offset 0 (within the chunk) and read/write less
-		 *    than entire chunk
-		 * 3. start at an offset not equal to 0 and read/write the rest
+		 * 1. start at an offset not equal to 0 (within the chunk)
+		 *    and read/write less than the rest of the chunk
+		 * 2. start at an offset not equal to 0 and read/write the rest
 		 *    of the chunk
-		 * 4. start at an offset not equal to 0 and read/write less than
-		 *    (end of chunk - offset)
+		 * 3. start at offset 0 (within the chunk) and read/write less
+		 *    than entire chunk
+		 * 4. start at offset 0 (within the chunk), and read/write
+		 *    the entire chunk
 		 */
 		chunk_start_offset = chunk * OPTOE_PAGE_SIZE;
+		chunk_end_offset = chunk_start_offset + OPTOE_PAGE_SIZE;
 
 		if (chunk_start_offset < off) {
 			chunk_offset = off;
-			if ((off + pending_len) < (chunk_start_offset +
-					OPTOE_PAGE_SIZE))
+			if ((off + pending_len) < chunk_end_offset)
 				chunk_len = pending_len;
 			else
-				chunk_len = OPTOE_PAGE_SIZE - off;
+				chunk_len = chunk_end_offset - off;
 		} else {
 			chunk_offset = chunk_start_offset;
-			if (pending_len > OPTOE_PAGE_SIZE)
-				chunk_len = OPTOE_PAGE_SIZE;
-			else
+			if (pending_len < OPTOE_PAGE_SIZE)
 				chunk_len = pending_len;
+			else
+				chunk_len = OPTOE_PAGE_SIZE;
 		}
 
 		dev_dbg(&client->dev,

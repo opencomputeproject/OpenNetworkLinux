@@ -43,9 +43,20 @@ enum fan_id {
     FAN_3_ON_FAN_BOARD,
     FAN_4_ON_FAN_BOARD,
     FAN_5_ON_FAN_BOARD,
+    FAN_6_ON_FAN_BOARD,
+    FAN_7_ON_FAN_BOARD,
+    FAN_8_ON_FAN_BOARD,
+    FAN_9_ON_FAN_BOARD,
+    FAN_10_ON_FAN_BOARD,
 };
 
 #define FAN_BOARD_PATH    "/sys/bus/i2c/devices/8-0033/"
+
+#define FAN_BOARD_PATH_2  "/sys/bus/i2c/devices/9-0033/"
+
+#define FETCH_FAN_PATH(x) (x <= 5) ? FAN_BOARD_PATH : FAN_BOARD_PATH_2
+
+#define FETCH_FAN_ID(x)   ((x <= 5) ? x : (x-5) )
 
 #define CHASSIS_FAN_INFO(fid)        \
     { \
@@ -64,7 +75,12 @@ onlp_fan_info_t finfo[] = {
     CHASSIS_FAN_INFO(2),
     CHASSIS_FAN_INFO(3),
     CHASSIS_FAN_INFO(4),
-    CHASSIS_FAN_INFO(5)
+    CHASSIS_FAN_INFO(5),
+    CHASSIS_FAN_INFO(6),
+    CHASSIS_FAN_INFO(7),
+    CHASSIS_FAN_INFO(8),
+    CHASSIS_FAN_INFO(9),
+    CHASSIS_FAN_INFO(10)
 };
 
 /*
@@ -88,7 +104,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get fan present status
      */
-    sprintf(path, "%s""fantray_present", FAN_BOARD_PATH);
+    sprintf(path, "%s""fantray_present", FETCH_FAN_PATH(fid));
 
     if (bmc_file_read_int(&value, path, 16) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
@@ -103,7 +119,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get front fan rpm
      */
-    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2 - 1);
+    sprintf(path, "%s""fan%d_input", FETCH_FAN_PATH(fid), FETCH_FAN_ID(fid)*2 - 1);
 
     if (bmc_file_read_int(&value, path, 10) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
@@ -113,7 +129,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get rear fan rpm
      */
-    sprintf(path, "%s""fan%d_input", FAN_BOARD_PATH, fid*2);
+    sprintf(path, "%s""fan%d_input", FETCH_FAN_PATH(fid),  FETCH_FAN_ID(fid)*2);
 
     if (bmc_file_read_int(&value, path, 10) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);

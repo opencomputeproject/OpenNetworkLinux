@@ -4,11 +4,12 @@
 #
 ############################################################
 - base-files
-- sysvinit-core
 - locales
 - python
 - apt
 - apt-utils
+- debconf
+- dialog
 - procps
 - net-tools
 - iputils-ping
@@ -79,3 +80,4 @@
 - strace
 - sysstat
 - ipmitool
+- lm-sensors

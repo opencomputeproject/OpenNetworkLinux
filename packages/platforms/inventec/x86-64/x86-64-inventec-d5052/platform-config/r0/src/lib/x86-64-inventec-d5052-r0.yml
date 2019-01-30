@@ -1,0 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for d5052
+#
+######################################################################
+
+x86-64-inventec-d5052-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x2f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-3-16
+
+    args: >-
+      nopat
+      console=ttyS1,115200n8
+      i2c-ismt.enable=0
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0

@@ -1,0 +1,30 @@
+---
+
+######################################################################
+#
+# platform-config for AS4610-30
+#
+######################################################################
+
+arm-accton-as4610-30-r0:
+  flat_image_tree:
+    kernel:
+      <<: *armhf-iproc-4-14-kernel
+    dtb:
+      =: arm-accton-as4610.dtb
+      package: onl-platform-build-arm-accton-as4610-30-r0:armhf
+
+    itb:
+      <<: *armhf-itb
+
+  loader:
+    device: /dev/sda
+    ##partition: /dev/sda1
+    loadaddr: 0x70000000
+    nos_bootcmds: *usb2_bootcmds
+
+    environment:
+    - device: /dev/mtd2
+      env_offset: 0x00000000
+      env_size: 0x00002000
+      sector_size: 0x00010000

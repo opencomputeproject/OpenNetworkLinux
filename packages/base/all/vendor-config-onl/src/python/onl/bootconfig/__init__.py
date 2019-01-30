@@ -22,6 +22,8 @@ class OnlBootConfig(object):
     def read(self, bc=None):
         if bc:
             self._readf(bc)
+        elif os.path.exists(self.BOOT_CONFIG_DEFAULT):
+            self._readf(self.BOOT_CONFIG_DEFAULT)
         else:
             from onl.mounts import OnlMountContextReadOnly
             with OnlMountContextReadOnly("ONL-BOOT", logger=None):
@@ -189,7 +191,7 @@ class OnlBootConfigNet(OnlBootConfig):
                 if not self.is_ip_address(netdns):
                     raise ValueError("NETDNS=%s is not a valid ip-address" % (netdns))
 
-        elif self.keys['NETAUTO'] not in ['dhcp', 'up']:
+        elif self.keys['NETAUTO'] not in ['dhcp', 'up', 'none', '']:
             raise ValueError("The NETAUTO value '%s' is invalid." % self.keys['NETAUTO'])
         elif self.keys['NETAUTO'] == 'up' and self.NET_REQUIRED:
             raise ValueError("NETAUTO is 'up' but non-local networking is required.")

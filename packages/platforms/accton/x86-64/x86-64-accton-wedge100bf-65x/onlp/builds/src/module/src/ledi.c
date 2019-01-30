@@ -67,12 +67,12 @@ static led_mode_info_t led_mode_info[] =
 {
     {ONLP_LED_MODE_OFF, 0x0},
     {ONLP_LED_MODE_OFF, 0x8},
-    {ONLP_LED_MODE_RED, 0x1},
-    {ONLP_LED_MODE_RED_BLINKING, 0x9},
+    {ONLP_LED_MODE_BLUE, 0x1},
+    {ONLP_LED_MODE_BLUE_BLINKING, 0x9},
     {ONLP_LED_MODE_GREEN, 0x2},
     {ONLP_LED_MODE_GREEN_BLINKING, 0xa},
-    {ONLP_LED_MODE_BLUE, 0x4},
-    {ONLP_LED_MODE_BLUE_BLINKING, 0xc},
+    {ONLP_LED_MODE_RED, 0x4},
+    {ONLP_LED_MODE_RED_BLINKING, 0xc},
 };
 
 /*

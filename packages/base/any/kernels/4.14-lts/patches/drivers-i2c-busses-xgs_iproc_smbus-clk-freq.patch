@@ -1,0 +1,86 @@
+diff -urpN a/drivers/i2c/busses/xgs_iproc_smbus.c b/drivers/i2c/busses/xgs_iproc_smbus.c
+--- a/drivers/i2c/busses/xgs_iproc_smbus.c	2018-12-17 15:00:29.412457650 +0000
++++ b/drivers/i2c/busses/xgs_iproc_smbus.c	2018-12-17 15:01:26.255275662 +0000
+@@ -52,6 +52,8 @@
+                                                       (regval & ~(mask)) | \
+                                                       ((fldval) << (startbit))
+ 
++//#define IPROC_SMB_DBG 1
++
+ typedef enum iproc_smb_clk_freq {
+ 	I2C_SPEED_100KHz = 0,
+ 	I2C_SPEED_400KHz = 1,
+@@ -178,7 +180,7 @@ static int iproc_smb_set_clk_freq(void _
+ 	SETREGFLDVAL(regval, val, CCB_SMB_TIMGCFG_MODE400_MASK,
+ 			CCB_SMB_TIMGCFG_MODE400_SHIFT);
+ 	writel(regval, base_addr + CCB_SMB_TIMGCFG_REG);
+-
++	
+ 	return 0;
+ }
+ 
+@@ -208,9 +210,20 @@ static int iproc_smbus_block_init(struct
+ 	udelay(100);
+ 
+ 	/* Set default clock frequency */
+-	if (of_property_read_u32(dn, "clock-frequency", &i2c_clk_freq))
+-		/*no property available, use default: 100KHz*/
+-		i2c_clk_freq = I2C_SPEED_100KHz;
++        if (of_property_read_u32(dn, "clock-frequency", &i2c_clk_freq)) {
++            /*no property available, use default: 100KHz*/
++            i2c_clk_freq = 100000;
++        }
++
++/* Edgecore patch */
++        if (i2c_clk_freq == 400000) {
++            dev_info(dev->dev, "bus set to %u Hz\n", i2c_clk_freq);
++            i2c_clk_freq = I2C_SPEED_400KHz;
++        } else {
++            dev_info(dev->dev, "bus set to %u Hz\n", 100000);
++            i2c_clk_freq = I2C_SPEED_100KHz;
++        }
++      
+ 	iproc_smb_set_clk_freq(base_addr, i2c_clk_freq);
+ 
+ 	/* Disable intrs */
+@@ -577,7 +590,9 @@ static int iproc_smb_data_send(struct i2
+ 
+ 		if (regval != MSTR_STS_XACT_SUCCESS) {
+ 			/* We can flush Tx FIFO here */
++#ifdef IPROC_SMB_DBG
+ 			dev_err(dev->dev, "Send: Error in transaction\n");
++#endif
+ 			return -EREMOTEIO;
+ 		}
+ 	}
+@@ -662,7 +677,9 @@ static int iproc_smb_data_recv(struct i2
+ 
+ 		if (regval != MSTR_STS_XACT_SUCCESS) {
+ 			/* We can flush Tx FIFO here */
++#ifdef IPROC_SMB_DBG
+ 			dev_info(dev->dev, "Error in transaction\n");
++#endif
+ 			return -EREMOTEIO;
+ 		}
+ 	}
+@@ -840,8 +857,10 @@ static int iproc_smb_xfer(struct i2c_ada
+ 		}
+        
+ 		if (rc < 0) {
++#ifdef IPROC_SMB_DBG
+ 			dev_info(dev->dev, "%s error accessing\n",
+ 			    (read_write == I2C_SMBUS_READ) ? "Read" : "Write");
++#endif
+ 			up(&dev->xfer_lock);
+ 			return -EREMOTEIO;
+ 		}
+@@ -856,7 +875,8 @@ static int iproc_smb_xfer(struct i2c_ada
+ 		}
+ 	}
+ 
+-	msleep(1);	
++	/* Edge-core comments out the sleep to speed up EEPROM dump */
++	//msleep(1);	
+ 	up(&dev->xfer_lock);
+ 
+ 	return (rc);

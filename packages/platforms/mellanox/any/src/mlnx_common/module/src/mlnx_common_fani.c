@@ -126,43 +126,33 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     int r_val, ret;
     float range = 0;
     float temp  = 0;
-    float fru_index = 0;
+    int fru_index = 0;
     const char fan_model[]=FAN_MODEL;
     mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
     if(mlnx_platform_info->fan_type == FAN_TYPE_NO_EEPROM)
-	strncpy(info->model, fan_model, sizeof(info->model));
+        strncpy(info->model, fan_model, sizeof(info->model));
 
     if(!mlnx_platform_info->fan_fixed) {
-      /* We have 4 FRU with 2 fans(total 8 fans).
-	 Eeprom is per FRU but not per fan.
-	 So, need to convert fan ID to FRU ID.*/
-      if (local_id % 2) {
-	  fru_index = local_id / 2 + 1;
-      } else {
-	  fru_index = local_id / 2;
-      }
-      /* get fan status
-      */
-      if(mlnx_platform_info->fan_type == FAN_TYPE_EEPROM) {
-        ret = onlp_file_read_int(&r_val, "%s%s", PREFIX_MODULE_PATH, mlnx_platform_info->fan_fnames[(int)fru_index].status);
-        if (ret < 0) {
-            return ONLP_STATUS_E_INTERNAL;
+      /* not fixed FAN's can have more than 1 FAN per FRU.
+         EEPROM is per FRU but not per FAN.
+         So, need to convert fan ID to FRU ID.*/
+        if (mlnx_platform_info->fan_per_module == 0) {
+            info->status |= ONLP_FAN_STATUS_FAILED;
+            return ONLP_STATUS_OK;
         }
 
-	if (r_val != FAN_STATUS_OK) {
-	      info->status &= ~ONLP_FAN_STATUS_PRESENT;
-	    return ONLP_STATUS_OK;
-	}
-      }
-      else {
-        ret = onlp_file_read_int(&r_val, "%s%s", PREFIX_MODULE_PATH, mlnx_platform_info->fan_fnames[local_id].status);
+        /* get fan status */
+        fru_index = (local_id + mlnx_platform_info->fan_per_module -1) / mlnx_platform_info->fan_per_module;
+
+        ret = onlp_file_read_int(&r_val, "%s%s", PREFIX_MODULE_PATH, mlnx_platform_info->fan_fnames[fru_index].status);
         if (ret < 0) {
             return ONLP_STATUS_E_INTERNAL;
         }
-	if (r_val != FAN_STATUS_OK) {
-	    return ONLP_STATUS_OK;
-	}
-      }
+        if (r_val != FAN_STATUS_OK) {
+            if(mlnx_platform_info->fan_type == FAN_TYPE_EEPROM)
+                info->status &= ~ONLP_FAN_STATUS_PRESENT;
+            return ONLP_STATUS_OK;
+        }
     }
     /* Fixed system FAN is always present */
     info->status |= ONLP_FAN_STATUS_PRESENT;
@@ -230,9 +220,9 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
     }
 
     if (r_val != FAN_STATUS_OK) {
-	if(mlnx_platform_info->fan_type == FAN_TYPE_EEPROM)
-	  info->status &= ~ONLP_FAN_STATUS_PRESENT;
-	return ONLP_STATUS_OK;
+        if(mlnx_platform_info->fan_type == FAN_TYPE_EEPROM)
+            info->status &= ~ONLP_FAN_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
     }
     info->status |= ONLP_FAN_STATUS_PRESENT;
 
@@ -259,7 +249,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, int psu_id, onlp_fan_info_t* info)
     info->percentage = (int)temp;
 
     if (0 != psu_read_eeprom((local_id-mlnx_platform_info->first_psu_fan_id)+1, NULL, info))
-                return ONLP_STATUS_E_INTERNAL;
+        return ONLP_STATUS_E_INTERNAL;
 
     return ONLP_STATUS_OK;
 }

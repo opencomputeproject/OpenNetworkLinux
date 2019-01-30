@@ -8,10 +8,10 @@ class OnlPlatform_x86_64_accton_as5512_54x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5512.54.1"
 
     def baseconfig(self):
-
+        self.insmod('optoe')
         self.insmod('cpr_4011_4mxx')
-        self.insmod('accton_i2c_cpld')
-        self.insmod_platform()
+        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
+            self.insmod("x86-64-accton-as5512-54x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
 
@@ -30,23 +30,29 @@ class OnlPlatform_x86_64_accton_as5512_54x_r0(OnlPlatformAccton,
         # initialize CPLDs
         self.new_i2c_devices(
             [
-                ('accton_i2c_cpld', 0x60, 0),
-                ('accton_i2c_cpld', 0x61, 0),
-                ('accton_i2c_cpld', 0x62, 0),
+                ('as5512_54x_cpld1', 0x60, 0),
+                ('as5512_54x_cpld2', 0x61, 0),
+                ('as5512_54x_cpld3', 0x62, 0),
                 ]
             )
         # initialize SFP devices
         for port in range(1, 49):
-            self.new_i2c_device('sfp%d' % port, 0x50, port+1)
-            self.new_i2c_device('sfp%d' % port, 0x51, port+1)
+            self.new_i2c_device('optoe2', 0x50, port+1)
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+1), shell=True)
 
         # Initialize QSFP devices
-        self.new_i2c_device('sfp51', 0x50, 50)
-        self.new_i2c_device('sfp54', 0x50, 51)
-        self.new_i2c_device('sfp50', 0x50, 52)
-        self.new_i2c_device('sfp53', 0x50, 53)
-        self.new_i2c_device('sfp49', 0x50, 54)
-        self.new_i2c_device('sfp52', 0x50, 55)
+        self.new_i2c_device('optoe1', 0x50, 50)
+        self.new_i2c_device('optoe1', 0x50, 51)
+        self.new_i2c_device('optoe1', 0x50, 52)
+        self.new_i2c_device('optoe1', 0x50, 53)
+        self.new_i2c_device('optoe1', 0x50, 54)
+        self.new_i2c_device('optoe1', 0x50, 55)
+        subprocess.call('echo port51 > /sys/bus/i2c/devices/50-0050/port_name', shell=True)
+        subprocess.call('echo port54 > /sys/bus/i2c/devices/51-0050/port_name', shell=True)
+        subprocess.call('echo port50 > /sys/bus/i2c/devices/52-0050/port_name', shell=True)
+        subprocess.call('echo port53 > /sys/bus/i2c/devices/53-0050/port_name', shell=True)
+        subprocess.call('echo port49 > /sys/bus/i2c/devices/54-0050/port_name', shell=True)
+        subprocess.call('echo port52 > /sys/bus/i2c/devices/55-0050/port_name', shell=True)
 
         ########### initialize I2C bus 1 ###########
         self.new_i2c_devices(

@@ -46,6 +46,20 @@ default:
       =: kernel-3.2-lts-arm-iproc-all.bin.gz
       <<: *arm-iproc-kernel-package
 
+    armel-iproc-4-14-kernel-package: &armel-iproc-4-14-kernel-package
+      package: onl-kernel-4.14-lts-armel-iproc-all:armel
+
+    armel-iproc-4-14-kernel: &armel-iproc-4-14-kernel
+      =: kernel-4.14-lts-armel-iproc-all.bin.gz
+      <<: *armel-iproc-4-14-kernel-package
+
+    armhf-iproc-4-14-kernel-package: &armhf-iproc-4-14-kernel-package
+      package: onl-kernel-4.14-lts-armhf-iproc-all:armhf
+
+    armhf-iproc-4-14-kernel: &armhf-iproc-4-14-kernel
+      =: kernel-4.14-lts-armhf-iproc-all.bin.gz
+      <<: *armhf-iproc-4-14-kernel-package
+
     arm64-kernel-package: &arm64-kernel-package
       package: onl-kernel-4.9-lts-arm64-all:arm64
 
@@ -78,9 +92,13 @@ default:
       =: onl-loader-fit.itb
       package: onl-loader-fit:powerpc
 
-    arm-itb: &arm-itb
+    armel-itb: &armel-itb
       =: onl-loader-fit.itb
       package: onl-loader-fit:armel
+
+    armhf-itb: &armhf-itb
+      =: onl-loader-fit.itb
+      package: onl-loader-fit:armhf
 
     arm64-itb: &arm64-itb
       =: onl-loader-fit.itb
@@ -125,7 +143,7 @@ default:
     - "bootm $onl_loadaddr#$onl_platform"
 
     mmc_bootcmds: &mmc_bootcmds
-    - mmc part 0
+    - mmc part
     - ext2load mmc 0:1 $onl_loadaddr $onl_itb
     - "bootm $onl_loadaddr#$onl_platform"
 

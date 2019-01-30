@@ -115,10 +115,11 @@ enum sysfs_fan_attributes {
 
 /* Define attributes
  */
-#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
-#define DECLARE_FAN_FAULT_ATTR(index)      &sensor_dev_attr_fan##index##_fault.dev_attr.attr
-
+#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index, index2) \
+    static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT);\
+    static SENSOR_DEVICE_ATTR(fan##index2##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
+#define DECLARE_FAN_FAULT_ATTR(index, index2)      &sensor_dev_attr_fan##index##_fault.dev_attr.attr, \
+    &sensor_dev_attr_fan##index2##_fault.dev_attr.attr
 #define DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(index) \
     static SENSOR_DEVICE_ATTR(fan##index##_direction, S_IRUGO, fan_show_value, NULL, FAN##index##_DIRECTION)
 #define DECLARE_FAN_DIRECTION_ATTR(index)  &sensor_dev_attr_fan##index##_direction.dev_attr.attr
@@ -127,40 +128,47 @@ enum sysfs_fan_attributes {
     static SENSOR_DEVICE_ATTR(fan##index##_duty_cycle_percentage, S_IWUSR | S_IRUGO, fan_show_value, set_duty_cycle, FAN##index##_DUTY_CYCLE_PERCENTAGE)
 #define DECLARE_FAN_DUTY_CYCLE_ATTR(index) &sensor_dev_attr_fan##index##_duty_cycle_percentage.dev_attr.attr
 
-#define DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(fan##index##_present, S_IRUGO, fan_show_value, NULL, FAN##index##_PRESENT)
-#define DECLARE_FAN_PRESENT_ATTR(index)      &sensor_dev_attr_fan##index##_present.dev_attr.attr
+#define DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(index, index2) \
+    static SENSOR_DEVICE_ATTR(fan##index##_present, S_IRUGO, fan_show_value, NULL, FAN##index##_PRESENT);\
+    static SENSOR_DEVICE_ATTR(fan##index2##_present, S_IRUGO, fan_show_value, NULL, FAN##index##_PRESENT)
+#define DECLARE_FAN_PRESENT_ATTR(index, index2)      &sensor_dev_attr_fan##index##_present.dev_attr.attr, \
+    &sensor_dev_attr_fan##index2##_present.dev_attr.attr
 
-#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index) \
+#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index, index2) \
     static SENSOR_DEVICE_ATTR(fan##index##_front_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_FRONT_SPEED_RPM);\
-    static SENSOR_DEVICE_ATTR(fan##index##_rear_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM)
-#define DECLARE_FAN_SPEED_RPM_ATTR(index)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
-                                           &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr
+    static SENSOR_DEVICE_ATTR(fan##index##_rear_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM);\
+    static SENSOR_DEVICE_ATTR(fan##index##_input, S_IRUGO, fan_show_value, NULL, FAN##index##_FRONT_SPEED_RPM);\
+    static SENSOR_DEVICE_ATTR(fan##index2##_input, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM)
+
+#define DECLARE_FAN_SPEED_RPM_ATTR(index, index2)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
+                                           &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr, \
+                                           &sensor_dev_attr_fan##index##_input.dev_attr.attr, \
+                                           &sensor_dev_attr_fan##index2##_input.dev_attr.attr
 
 static SENSOR_DEVICE_ATTR(fan_max_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN_MAX_RPM);
 #define DECLARE_FAN_MAX_RPM_ATTR(index)      &sensor_dev_attr_fan_max_speed_rpm.dev_attr.attr
 
 /* 6 fan fault attributes in this platform */
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(3);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(4);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(5);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(6); 
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1, 11);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2, 12);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(3, 13);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(4, 14);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(5, 15);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(6, 16); 
 /* 6 fan speed(rpm) attributes in this platform */
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(3);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(4);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(5);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(6);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1, 11);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2, 12);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(3, 13);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(4, 14);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(5, 15);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(6, 16);
 /* 6 fan present attributes in this platform */
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(1);
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(2);
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(3);
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(4);
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(5);
-DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(6);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(1, 11);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(2, 12);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(3, 13);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(4, 14);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(5, 15);
+DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(6, 16);
 /* 6 fan direction attribute in this platform */
 DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(1);
 DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(2);
@@ -173,24 +181,24 @@ DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
 
 static struct attribute *as5912_54x_fan_attributes[] = {
     /* fan related attributes */
-    DECLARE_FAN_FAULT_ATTR(1),
-    DECLARE_FAN_FAULT_ATTR(2),
-    DECLARE_FAN_FAULT_ATTR(3),
-    DECLARE_FAN_FAULT_ATTR(4),
-    DECLARE_FAN_FAULT_ATTR(5),
-    DECLARE_FAN_FAULT_ATTR(6),
-    DECLARE_FAN_SPEED_RPM_ATTR(1),
-    DECLARE_FAN_SPEED_RPM_ATTR(2),
-    DECLARE_FAN_SPEED_RPM_ATTR(3),
-    DECLARE_FAN_SPEED_RPM_ATTR(4),
-    DECLARE_FAN_SPEED_RPM_ATTR(5),
-    DECLARE_FAN_SPEED_RPM_ATTR(6),
-    DECLARE_FAN_PRESENT_ATTR(1),
-    DECLARE_FAN_PRESENT_ATTR(2),
-    DECLARE_FAN_PRESENT_ATTR(3),
-    DECLARE_FAN_PRESENT_ATTR(4),
-    DECLARE_FAN_PRESENT_ATTR(5),
-    DECLARE_FAN_PRESENT_ATTR(6),
+    DECLARE_FAN_FAULT_ATTR(1, 11),
+    DECLARE_FAN_FAULT_ATTR(2, 12),
+    DECLARE_FAN_FAULT_ATTR(3, 13),
+    DECLARE_FAN_FAULT_ATTR(4, 14),
+    DECLARE_FAN_FAULT_ATTR(5, 15),
+    DECLARE_FAN_FAULT_ATTR(6, 16),
+    DECLARE_FAN_SPEED_RPM_ATTR(1, 11),
+    DECLARE_FAN_SPEED_RPM_ATTR(2, 12),
+    DECLARE_FAN_SPEED_RPM_ATTR(3, 13),
+    DECLARE_FAN_SPEED_RPM_ATTR(4, 14),
+    DECLARE_FAN_SPEED_RPM_ATTR(5, 15),
+    DECLARE_FAN_SPEED_RPM_ATTR(6, 16),
+    DECLARE_FAN_PRESENT_ATTR(1, 11),
+    DECLARE_FAN_PRESENT_ATTR(2, 12),
+    DECLARE_FAN_PRESENT_ATTR(3, 13),
+    DECLARE_FAN_PRESENT_ATTR(4, 14),
+    DECLARE_FAN_PRESENT_ATTR(5, 15),
+    DECLARE_FAN_PRESENT_ATTR(6, 16),
 	DECLARE_FAN_DIRECTION_ATTR(1),
 	DECLARE_FAN_DIRECTION_ATTR(2),
 	DECLARE_FAN_DIRECTION_ATTR(3),

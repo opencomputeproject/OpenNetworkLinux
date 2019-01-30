@@ -29,3 +29,4 @@ driver-igb-netberg-aurora.patch
 driver-hid-cp2112-mods.patch
 gcc-no-pie.patch
 driver-ixgbe-version-5.2.4.patch
+drivers-mfd-lpc_ich.patch

@@ -47,6 +47,7 @@
 #define SYS_PSU1_PREFIX             "/sys/bus/i2c/devices/i2c-18/18-0050/"
 #define SYS_PSU2_PREFIX             "/sys/bus/i2c/devices/i2c-17/17-0050/"
 #define SYS_EEPROM_PATH             "/sys/bus/i2c/devices/0-0051/eeprom"
+#define SYS_EEPROM_SIZE 512
 #define PSU1_EEPROM_PATH            "/sys/bus/i2c/devices/18-0050/psu_eeprom"
 #define PSU2_EEPROM_PATH            "/sys/bus/i2c/devices/17-0050/psu_eeprom"
 #define PSU_STATUS_PRESENT          1

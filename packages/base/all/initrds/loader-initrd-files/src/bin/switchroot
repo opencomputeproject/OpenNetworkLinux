@@ -62,6 +62,8 @@ mount --move /dev /newroot/dev
 # Switch to /newroot if possible, else re-execute /init
 if [ -x /newroot/sbin/init ]; then
     exec switch_root -c /dev/console /newroot /sbin/init
+elif [ -x /newroot/lib/systemd/systemd ]; then
+    exec switch_root -c /dev/console /newroot /lib/systemd/systemd
 else
     exec /init
 fi

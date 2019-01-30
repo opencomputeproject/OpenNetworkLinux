@@ -131,10 +131,9 @@ static ssize_t set_fan_duty_cycle(struct device *dev, struct device_attribute \
 		return -EINVAL;
 
 	/* Select SWPLD PSU offset */
-	i2c_cpld_write(SWPLD_BUS, SWPLD_REG, 
-					SWPLD_PSU_MUX_REG, SELECT_PSU2_EEPROM);
 
 	mutex_lock(&data->update_lock);
+        i2c_cpld_write(SWPLD_BUS, SWPLD_REG,SWPLD_PSU_MUX_REG, SELECT_PSU2_EEPROM);
 	data->fan_duty_cycle[nr] = speed;
 	dps_800ab_16_d_write_word(client, 0x3B + nr, data->fan_duty_cycle[nr]);
 	mutex_unlock(&data->update_lock);
