@@ -50,7 +50,7 @@ int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform)
 	mlnx_platform->cpld_num = CPLD_COUNT;
 	mlnx_platform->psu_fixed = false;
 	mlnx_platform->fan_fixed = false;
-	mlnx_platform->psu_type = PSU_TYPE_2;
+	mlnx_platform->psu_type = PSU_TYPE_3;
 	mlnx_platform->led_type = LED_TYPE_3;
 
 	return ONLP_STATUS_OK;
