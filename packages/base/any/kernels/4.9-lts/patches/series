@@ -19,6 +19,5 @@ driver-add-the-support-max6620.patch
 0016-qsfp_sysfs-Fix-dmidecode-call.patch
 0017-mlxsw-qsfp_sysfs-Support-extended-port-numbers-for-S.patch
 0018-mlxsw-thermal-monitoring-amendments.patch
-0019-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
 0020-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
 0021-mlxsw-Align-code-with-kernel-v-5.0.patch
