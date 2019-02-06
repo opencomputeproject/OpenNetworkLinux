@@ -34,5 +34,4 @@ endif
 FORCE:
 
 clean:
-	$(ONL_v_at) rm -rf $(SWI_WORKDIR)/*.swi* $(SWI_WORKDIR)/manifest.json
-	test -d  $(SWI_WORKDIR) && rmdir $(SWI_WORKDIR) || true
+	rm -rf $(SWI_WORKDIR)
