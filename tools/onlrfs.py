@@ -542,6 +542,8 @@ rm -f /usr/sbin/policy-rc.d
                     import asr
                     asro = asr.AimSyslogReference()
                     asro.merge(dir_)
+                    asrf = os.path.join(dir_, asropts['file'])
+                    OnlRfsSystemAdmin.chmod('777', os.path.dirname(asrf))
                     asro.format(os.path.join(dir_, asropts['file']), fmt=asropts['format'])
 
                 for (mf, fields) in Configure.get('manifests', {}).iteritems():
