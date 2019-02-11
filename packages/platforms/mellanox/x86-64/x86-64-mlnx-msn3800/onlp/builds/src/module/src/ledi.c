@@ -40,6 +40,7 @@ static char* file_names[] =  /* must map with onlp_led_id */
     "fan2",
     "fan3",
     "psu",
+    "psu",
 };
 
 /*
