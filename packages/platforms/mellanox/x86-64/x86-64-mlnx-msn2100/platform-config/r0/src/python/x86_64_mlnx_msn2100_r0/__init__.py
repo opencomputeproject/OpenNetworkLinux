@@ -12,6 +12,5 @@ class OnlPlatform_x86_64_mlnx_msn2100_r0(OnlPlatformMellanox,
         import os
         # necessary if there are issues with the install
         # os.system("/usr/bin/apt-get install")
-        os.system("/etc/mlnx/mlnx-hw-management start")
         self.syseeprom_export();
         return True
