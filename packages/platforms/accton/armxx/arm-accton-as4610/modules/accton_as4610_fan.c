@@ -262,8 +262,7 @@ static int as4610_fan_probe(struct platform_device *pdev)
 
 	}
 
-	fan_data->hwmon_dev = hwmon_device_register_with_info(&pdev->dev, "as4610_fan",
-							NULL, NULL, NULL);
+	fan_data->hwmon_dev = hwmon_device_register(&pdev->dev);
 	if (IS_ERR(fan_data->hwmon_dev)) {
 		status = PTR_ERR(fan_data->hwmon_dev);
 		goto exit_remove;

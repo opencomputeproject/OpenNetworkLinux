@@ -135,8 +135,7 @@ static int as4610_psu_probe(struct i2c_client *client,
 		goto exit_free;
 	}
 
-	data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "as4610_psu",
-							NULL, NULL, NULL);
+	data->hwmon_dev = hwmon_device_register(&client->dev);
 	if (IS_ERR(data->hwmon_dev)) {
 		status = PTR_ERR(data->hwmon_dev);
 		goto exit_remove;
