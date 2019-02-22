@@ -366,7 +366,8 @@ static int accton_as5512_54x_fan_probe(struct platform_device *pdev)
 
     }
     
-	fan_data->hwmon_dev = hwmon_device_register(&pdev->dev);
+    fan_data->hwmon_dev = hwmon_device_register_with_info(&pdev->dev, "as5512_54x_fan",
+                                                      NULL, NULL, NULL);
 	if (IS_ERR(fan_data->hwmon_dev)) {
 		status = PTR_ERR(fan_data->hwmon_dev);
 		goto exit_remove;

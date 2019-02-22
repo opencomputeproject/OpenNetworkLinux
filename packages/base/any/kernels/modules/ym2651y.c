@@ -32,6 +32,7 @@
 #include <linux/sysfs.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/version.h>
 
 #define MAX_FAN_DUTY_CYCLE      100
 #define I2C_RW_RETRY_COUNT      10
@@ -461,7 +462,12 @@ static int ym2651y_probe(struct i2c_client *client,
         goto exit_free;
     }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "ym2651y",
+                                                      NULL, NULL, NULL);
+#else
     data->hwmon_dev = hwmon_device_register(&client->dev);
+#endif
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;

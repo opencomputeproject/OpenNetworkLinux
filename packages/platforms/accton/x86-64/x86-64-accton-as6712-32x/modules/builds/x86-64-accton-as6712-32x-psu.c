@@ -168,7 +168,8 @@ static int as6712_32x_psu_probe(struct i2c_client *client,
         goto exit_free;
     }
 
-    data->hwmon_dev = hwmon_device_register(&client->dev);
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "as6712_32x_psu",
+                                                      NULL, NULL, NULL);
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
