@@ -4,7 +4,6 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
-
 #include <linux/i2c/pca954x.h>
 
 struct inv_i2c_board_info {

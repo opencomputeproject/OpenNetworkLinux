@@ -20,11 +20,12 @@
 #define SWP_VERSION           "4.2.5"
 #define SWP_LICENSE           "GPL"
 
-#define SWPS_KERN_VER_AF_3_10 (1)
-
 /* Module status define */
 #define SWP_STATE_NORMAL      (0)
 #define SWP_STATE_I2C_DIE     (-91)
+
+#define INV_BATOI(a)	((a>='0'&&a<='9')?(a-'0'):(-1))
+#define INV_BATOX(a)	((a>='0'&&a<='9')?(a-'0'):((a>='a'&&a<='f')?(a-'a'+10):((a >='A'&&a<='F')?(a-'A'+10):-1)))
 
 /* [Note]:
  *  Functions and mechanism for auto-detect platform type is ready,
@@ -81,6 +82,7 @@
 #elif (PLATFORM_SETTINGS == PLATFORM_TYPE_SEQUOIA_GA)
   #define SWPS_SEQUOIA           (1)
   #define SWPS_KERN_VER_BF_3_8   (1)
+  #define SWPS_KERN_VER_AF_3_10  (1)
 #endif
 
 

@@ -45,6 +45,7 @@ static DECLARE_DELAYED_WORK(swp_polling, swp_polling_worker);
 
 static int reset_i2c_topology(void);
 
+static unsigned int eeprom_update = 0;
 
 static int
 __swp_match(struct device *dev,
@@ -88,6 +89,27 @@ sscanf_2_int(const char *buf) {
         }
         if(sscanf(buf,"-%d",&result)) {
             return -result;
+        }
+        if (sscanf(buf,"%x",&result)) {
+            return result;
+        }
+    }
+    return -EBFONT;
+}
+
+static unsigned int
+sscanf_2_uint(const char *buf) {
+
+    unsigned int result  = -EBFONT;
+    char *hex_tag = "0x";
+
+    if (strcspn(buf, hex_tag) == 0) {
+        if (sscanf(buf,"%x",&result)) {
+            return result;
+        }
+    } else {
+        if (sscanf(buf,"%u",&result)) {
+            return result;
         }
         if (sscanf(buf,"%x",&result)) {
             return result;
@@ -225,6 +247,17 @@ _update_auto_config_2_trnasvr(void) {
     return retval;
 }
 
+unsigned int
+get_eeprom_update(void)
+{
+    return eeprom_update;
+}
+
+void
+set_eeprom_update(unsigned int value)
+{
+    eeprom_update = value;
+}
 
 /* ========== R/W Functions module control attribute ==========
  */
@@ -261,6 +294,14 @@ show_attr_auto_config(struct device *dev_p,
                       char *buf_p){
 
     return snprintf(buf_p, 8, "%d\n", auto_config);
+}
+
+static ssize_t
+show_attr_eeprom_update(struct device *dev_p,
+                      struct device_attribute *attr_p,
+                      char *buf_p){
+
+    return snprintf(buf_p, 10, "%08x\n", eeprom_update);
 }
 
 
@@ -366,6 +407,24 @@ store_attr_auto_config(struct device *dev_p,
     }
     auto_config = input_val;
     _update_auto_config_2_trnasvr();
+    return count;
+}
+
+
+static ssize_t
+store_attr_eeprom_update(struct device *dev_p,
+                       struct device_attribute *attr_p,
+                       const char *buf_p,
+                       size_t count){
+
+    unsigned int input_val = sscanf_2_uint(buf_p);
+    
+    if (input_val == 0){
+	eeprom_update = 0;
+    }
+    else {
+	eeprom_update |= input_val;
+    }
     return count;
 }
 
@@ -1563,6 +1622,7 @@ static DEVICE_ATTR(status,          S_IRUGO,         show_attr_status,          
 static DEVICE_ATTR(reset_i2c,       S_IWUSR,         NULL,                      store_attr_reset_i2c);
 static DEVICE_ATTR(reset_swps,      S_IWUSR,         NULL,                      store_attr_reset_swps);
 static DEVICE_ATTR(auto_config,     S_IRUGO|S_IWUSR, show_attr_auto_config,     store_attr_auto_config);
+static DEVICE_ATTR(eeprom_update,   S_IRUGO|S_IWUSR, show_attr_eeprom_update,   store_attr_eeprom_update);
 
 /* ========== Transceiver attribute: from eeprom ==========
  */
@@ -2499,6 +2559,10 @@ register_modctl_attr(struct device *device_p){
         err_msg = "dev_attr_auto_config";
         goto err_reg_modctl_attr;
     }
+    if (device_create_file(device_p, &dev_attr_eeprom_update) < 0) {
+        err_msg = "dev_attr_eeprom_update";
+        goto err_reg_modctl_attr;
+    }
     return 0;
 
 err_reg_modctl_attr:
@@ -2732,6 +2796,9 @@ create_port_objs(void) {
                     "Create transceiver object fail <id>:%s", dev_name);
             goto err_initport_create_tranobj;
         }
+
+	transvr_obj_p->port_no = minor_curr;
+
         /* Setup Lane_ID mapping */
         i = ARRAY_SIZE(port_layout[minor_curr].lane_id);
         j = ARRAY_SIZE(transvr_obj_p->lane_id);
@@ -2838,6 +2905,7 @@ init_swps_common(void){
     char *err_msg = "ERR";
     
     auto_config = 0;
+    eeprom_update = 0;
     if ((SWP_AUTOCONFIG_ENABLE) && (SWP_POLLING_ENABLE)){
         auto_config = 1;
     }

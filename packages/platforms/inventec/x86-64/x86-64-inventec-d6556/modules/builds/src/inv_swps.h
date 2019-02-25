@@ -24,6 +24,9 @@
 #define SWP_STATE_NORMAL      (0)
 #define SWP_STATE_I2C_DIE     (-91)
 
+#define INV_BATOI(a)	((a>='0'&&a<='9')?(a-'0'):(-1))
+#define INV_BATOX(a)	((a>='0'&&a<='9')?(a-'0'):((a>='a'&&a<='f')?(a-'a'+10):((a >='A'&&a<='F')?(a-'A'+10):-1)))
+
 /* [Note]:
  *  Functions and mechanism for auto-detect platform type is ready,
  *  But HW and BIOS not ready! We need to wait them.
@@ -1148,10 +1151,3 @@ struct inv_port_layout_s maple_port_layout[] = {
 #endif
 
 #endif /* INV_SWPS_H */
-
-
-
-
-
-
-

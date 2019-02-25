@@ -351,6 +351,27 @@ static ssize_t show_psu_st(struct device *dev, struct device_attribute *da,
 	return strlen(buf);
 }
 
+static ssize_t psoc_show_psu_st(char *buf, int psu_index)
+{
+	u32 status=0;
+	u8 byte=0;
+	int shift = (psu_index == 0)?3:0;
+
+    status = psoc_ipmi_read(&byte, PSOC_PSU_OFFSET, 1);
+
+    byte = (byte >> shift) & 0x7;
+
+	status = sprintf (buf, "%d : %s\n", byte, psu_str[byte]);
+
+	return strlen(buf);
+}
+
+ssize_t psoc_show_psu_state(char *buf, int index)
+{
+	return psoc_show_psu_st(buf, index);
+}
+EXPORT_SYMBOL(psoc_show_psu_state);
+
 static ssize_t show_ipmi_pmbus(struct device *dev, struct device_attribute *da,
                          char *buf)
 {
@@ -464,9 +485,24 @@ static ssize_t show_rpm(struct device *dev, struct device_attribute *da,
 	u8 offset = attr->index;
 	status = psoc_read16(offset);
 
-	return sprintf(buf, "%d\n",
-		       status);
+	return sprintf(buf, "%d\n", status);
 }
+
+static ssize_t psoc_show_rpm(char *buf, int fan_index)
+{
+	int status=0;
+	u8 offset = fan_index;
+	
+	status = psoc_read16(offset);
+
+	return sprintf(buf, "%d\n", status);
+}
+
+ssize_t psoc_show_fan_input(char *buf, int index)
+{
+	return psoc_show_rpm(buf, index);
+}
+EXPORT_SYMBOL(psoc_show_fan_input);
 
 static ssize_t show_switch_tmp(struct device *dev, struct device_attribute *da,
 			 char *buf)
@@ -507,6 +543,19 @@ static ssize_t show_diag(struct device *dev, struct device_attribute *da,
 	return strlen(buf);
 }
 
+static ssize_t psoc_show_diag(char *buf)
+{
+	u16 status=0;
+	u8 diag_flag = 0;
+
+        status = psoc_ipmi_read((u8*)&diag_flag, DIAG_FLAG_OFFSET, 1);
+
+	status = sprintf (buf, "%d\n", ((diag_flag & 0x80)?1:0));
+	    
+	return strlen(buf);
+}
+EXPORT_SYMBOL(psoc_show_diag);
+
 static ssize_t set_diag(struct device *dev,
 			   struct device_attribute *devattr,
 			   const char *buf, size_t count)
@@ -523,6 +572,22 @@ static ssize_t set_diag(struct device *dev,
 	
 	return count;
 }
+
+static ssize_t psoc_set_diag(const char *buf, size_t count)
+{
+	u8 value = 0;
+	u8 diag = simple_strtol(buf, NULL, 10);
+	
+        diag = diag?1:0;
+
+	psoc_ipmi_read((u8*)&value, DIAG_FLAG_OFFSET, 1);
+	if(diag) value |= (1<<7);
+	else     value &= ~(1<<7);
+	psoc_ipmi_write((u8*)&value, DIAG_FLAG_OFFSET, 1);
+	
+	return count;
+}
+EXPORT_SYMBOL(psoc_set_diag);
 
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
 			 char *buf)
@@ -587,6 +652,33 @@ static ssize_t show_value8(struct device *dev, struct device_attribute *da,
 	return sprintf(buf, "0x%02X\n", status );
 }
 
+static ssize_t psoc_show_value8(char *buf, int offset)
+{
+	int status=0;
+
+	status = psoc_read8(offset);
+
+	return sprintf(buf, "0x%02X\n", status );
+}
+
+static char prev_fan_state[8] = { 0 };
+
+ssize_t psoc_show_fan_state(char *buf)
+{
+	int i;
+	int rv = psoc_show_value8(buf, FAN_GPI_OFFSET);
+	for (i = 0; i < 3; i++) {
+		if (strncmp(prev_fan_state, buf, 4) == 0) {
+	           return rv;
+		}
+		msleep(500);
+		rv = psoc_show_value8(buf, FAN_GPI_OFFSET);
+	}
+	strcpy(prev_fan_state, buf);
+	return rv;
+}
+EXPORT_SYMBOL(psoc_show_fan_state);
+
 static long pmbus_reg2data_linear(int data, int linear16)
 {
     s16 exponent;
@@ -634,6 +726,29 @@ static ssize_t show_psu_psoc(struct device *dev, struct device_attribute *da,
 
 	return sprintf(buf, "%ld \n", pmbus_reg2data_linear(status, offset ));
 }
+
+static ssize_t psoc_show_psu_psoc(char *buf, int psu_index, char *attr_name)
+{
+	u16 status=0;
+	u8 offset = psu_index + PSU_INFO_OFFSET;
+
+	status = psoc_read16(offset);
+        
+	if((strstr(attr_name, "vout")!=NULL)|(strstr(attr_name, "in3")!=NULL)|(strstr(attr_name, "in4")!=NULL)) {
+		offset=1;
+	}
+	else {
+		offset=0;
+        }
+
+	return sprintf(buf, "%ld \n", pmbus_reg2data_linear(status, offset ));
+}
+
+ssize_t psoc_show_psu_vin(char *buf, int index)
+{
+        return psoc_show_psu_psoc(buf, index, "vin");
+}
+EXPORT_SYMBOL(psoc_show_psu_vin);
 
 static ssize_t show_name(struct device *dev,
 			struct device_attribute *devattr, char *buf)
