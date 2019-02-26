@@ -48,6 +48,7 @@ enum chips {
     YM2401,
     YM2851,
     YM1921,
+    YPEB1200AM
 };
 
 /* Each client has this additional data
@@ -497,6 +498,7 @@ static const struct i2c_device_id ym2651y_id[] = {
     { "ym2401", YM2401 },
     { "ym2851", YM2851 },
     { "ym1921", YM1921 },
+    { "ype1200am", YPEB1200AM },
     {}
 };
 MODULE_DEVICE_TABLE(i2c, ym2651y_id);
