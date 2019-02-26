@@ -148,11 +148,11 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_AC_F2B;
+	        return PSU_TYPE_AC_F2B_3YPOWER;
 	    }
 
 	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_AC_B2F;
+	        return PSU_TYPE_AC_B2F_3YPOWER;
 	    }
     }
 
@@ -198,12 +198,37 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 	}
 
+    if (strncmp(model_name, "FSF019", 6) == 0) {
+	    if (modelname) {
+			strncpy(modelname, model_name, 11); /* Copy full model name */
+	    }
+
+        /* Read model */
+        char *string = NULL;
+        char *prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+        int len = onlp_file_read_str(&string, "%s""psu_fan_dir", prefix);
+        if (!string || len <= 0) {
+            return PSU_TYPE_UNKNOWN;
+        }
+
+        strncpy(fan_dir, string, len);
+        aim_free(string);
+
+	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
+	        return PSU_TYPE_AC_F2B_ACBEL;
+	    }
+
+	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
+	        return PSU_TYPE_AC_B2F_ACBEL;
+	    }
+    }
+
     return PSU_TYPE_UNKNOWN;
 }
 
 #define PSU_SERIAL_NUMBER_LEN	18
 
-int psu_serial_number_get(int id, char *serial, int serial_len)
+int psu_pmbus_serial_number_get(int id, char *serial, int serial_len)
 {
 	int   size = 0;
 	int   ret  = ONLP_STATUS_OK; 
@@ -222,6 +247,23 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
     }
 
 	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+	return ONLP_STATUS_OK;
+}
+
+int psu_acbel_serial_number_get(int id, char *serial, int serial_len)
+{
+    char *serial_number = NULL;
+    char *prefix = (id == PSU1_ID) ? PSU1_AC_HWMON_PREFIX : PSU2_AC_HWMON_PREFIX;
+    
+    int len = onlp_file_read_str(&serial_number, "%s""psu_serial_number", prefix);
+    if (!serial || len <= 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    strncpy(serial, serial_number, len);
+    aim_free(serial_number);
+
+	serial[len] = '\0';
 	return ONLP_STATUS_OK;
 }
 

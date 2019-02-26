@@ -1,1 +1,1 @@
-!include $ONL_TEMPLATES/no-platform-modules.yml ARCH=armel VENDOR=accton BASENAME=arm-accton-as4610-54
+!include $ONL_TEMPLATES/platform-modules.yml ARCH=armel VENDOR=accton BASENAME=arm-accton-as4610-54 KERNELS="onl-kernel-4.14-lts-armel-iproc-all:armel"

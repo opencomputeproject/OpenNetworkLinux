@@ -17,23 +17,13 @@ packages:
     summary: Open Network Linux Switch Image (All $ARCH) Platforms)
 
     files:
-      builds/*.swi          : $$PKG_INSTALL/
-      builds/*.md5sum       : $$PKG_INSTALL/
-      builds/manifest.json  : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/*.swi          : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/*.md5sum       : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/manifest.json  : $$PKG_INSTALL/
 
     changelog:  Change changes changes.,
 
 
 release:
-  - builds/*.swi : $ARCH/
-  - builds/*.md5sum : $ARCH/
-
-
-
-
-
-
-
-
-
-
+  - builds/$ONL_DEBIAN_SUITE/*.swi : $ARCH/
+  - builds/$ONL_DEBIAN_SUITE/*.md5sum : $ARCH/

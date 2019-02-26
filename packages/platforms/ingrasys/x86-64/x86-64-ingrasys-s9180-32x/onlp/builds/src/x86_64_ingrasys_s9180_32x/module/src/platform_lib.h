@@ -44,6 +44,7 @@
 #define SYS_QSFP_NEAR_TEMP_PREFIX   "/sys/class/hwmon/hwmon6/"
 #define SYS_FAN_PREFIX              "/sys/class/hwmon/hwmon1/device/"
 #define SYS_EEPROM_PATH             "/sys/bus/i2c/devices/0-0055/eeprom"
+#define SYS_EEPROM_SIZE 512
 #define PSU1_EEPROM_PATH            "/sys/bus/i2c/devices/58-0050/eeprom"
 #define PSU2_EEPROM_PATH            "/sys/bus/i2c/devices/57-0050/eeprom"
 #define PSU_STATUS_PRESENT          1

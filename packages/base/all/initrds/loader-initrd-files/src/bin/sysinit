@@ -47,8 +47,10 @@ case "$(stat -f -c "%T" /tmp)" in
     ;;
 esac
 
-# Grab cmdline settings
+# Initialize RNG early
+python /bin/initrng.py
 
+# Grab cmdline settings
 touch /etc/onl/boot-config
 tr -s " " "\n" </proc/cmdline |
 while read -r l; do
@@ -107,6 +109,16 @@ if [ -f "$ONL_PKI" ]; then
     "$ONL_PKI" --init
 fi
 
+#
+# Custom sysinit hooks
+#
+if [ -d "/etc/sysinit.d" ]; then
+    for s in `ls /etc/sysinit.d/* | sort`; do
+        if [ -x "$s" ]; then
+            "$s"
+        fi
+    done
+fi
 
 # Parse settings
 touch /etc/onl/SWI /etc/onl/CONSOLESPEED /etc/onl/PASSWORD /etc/onl/NET /etc/onl/BOOTMODE /etc/onl/BOOTPARAMS

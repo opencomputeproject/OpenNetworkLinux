@@ -446,7 +446,6 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 	return strlen(buf);
 }
 
-
 static SENSOR_DEVICE_ATTR(info,	S_IRUGO,	        show_info, 0, 0);
 static SENSOR_DEVICE_ATTR(ctl,	S_IWUSR|S_IRUGO,	show_ctl, set_ctl, 0);
 

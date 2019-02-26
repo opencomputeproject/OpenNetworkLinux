@@ -91,6 +91,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     if (ret < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
+
     if (value & (1 << (fid-1))) {
 	info->status |= ONLP_FAN_STATUS_FAILED;
     }
@@ -104,6 +105,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     if (ret < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
+
     info->rpm = value;
     info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
 
@@ -165,7 +167,7 @@ _onlp_fani_info_get_fan_on_psu(int fid, onlp_fan_info_t* info)
     if (ret < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    info->rpm = value;
+
     info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
     info->status |= (value == 0) ? ONLP_FAN_STATUS_FAILED : 0;
 

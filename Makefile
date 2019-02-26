@@ -13,7 +13,7 @@ endif
 include $(ONL)/make/config.mk
 
 # All available architectures.
-ALL_ARCHES := amd64 powerpc armel arm64
+ALL_ARCHES := amd64 powerpc armel arm64 armhf
 
 # Build rule for each architecture.
 define build_arch_template
@@ -26,7 +26,7 @@ $(foreach a,$(ALL_ARCHES),$(eval $(call build_arch_template,$(a))))
 # Available build architectures based on the current suite
 BUILD_ARCHES_wheezy := amd64 powerpc
 BUILD_ARCHES_jessie := amd64 powerpc armel
-BUILD_ARCHES_stretch := arm64 amd64
+BUILD_ARCHES_stretch := arm64 amd64 armel armhf
 
 # Build available architectures by default.
 .DEFAULT_GOAL := all
