@@ -208,7 +208,7 @@ static struct i2c_board_info ix7_i2c_devices[] = {
 		.platform_data = &pca9555_CPU_data,
 	},
 	{
-		I2C_BOARD_INFO("24c02", 0x50),          // 12 0x50 SFP, QSFP28 EEPROM
+		I2C_BOARD_INFO("optoe1", 0x50),          // 12 0x50 SFP, QSFP28 EEPROM
 	},
 	{
 		I2C_BOARD_INFO("CPLDLED_IX7", 0x39),	// 13 0x72 ch0 CPLD_led_1
