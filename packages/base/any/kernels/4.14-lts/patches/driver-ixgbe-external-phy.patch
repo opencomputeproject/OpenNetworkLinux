@@ -1,9 +1,3 @@
-add to support external PHY
-
-Copyright (C) 2018 Accton Technology Corporation
-
-SPDX-License-Identifier:     GPL-2.0
-
 diff --git a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
 index 654a402..9714687 100644
 --- a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c

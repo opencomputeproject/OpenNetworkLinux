@@ -37,7 +37,8 @@
 #include "x86_64_accton_as4630_54pe_log.h"
 
 
-#define PREFIX_PATH_ON_CPLD_DEV          "/sys/bus/i2c/devices/"
+#define PREFIX_PATH_ON_CPLD_DEV          "/sys/bus/i2c/devices/3-0060/"
+
 #define NUM_OF_CPLD                      3
 #define FAN_DUTY_CYCLE_MAX         (100)
 #define FAN_DUTY_CYCLE_DEFAULT     (32)
@@ -53,12 +54,8 @@ typedef struct fan_ctrl_policy {
    int step_dn_thermal;   /* In mini-Celsius */
 } fan_ctrl_policy_t;
 
-static char arr_cplddev_name[NUM_OF_CPLD][10] =
-{
- "4-0060",
- "5-0062",
- "6-0064"
-};
+
+
 
 const char*
 onlp_sysi_platform_get(void)
@@ -116,16 +113,12 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
 int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
-    int   i, v[NUM_OF_CPLD]={0};
+    int ver=0;
 	
-    for (i = 0; i < NUM_OF_CPLD; i++) {
-        v[i] = 0;
+    if(onlp_file_read_int(&ver, "%s/version", PREFIX_PATH_ON_CPLD_DEV) < 0)
+        return ONLP_STATUS_E_INTERNAL;
 		
-        if(onlp_file_read_int(v+i, "%s%s/version", PREFIX_PATH_ON_CPLD_DEV, arr_cplddev_name[i]) < 0) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-    }
-    pi->cpld_versions = aim_fstrdup("%d.%d.%d", v[0], v[1], v[2]);
+    pi->cpld_versions = aim_fstrdup("%d", ver);
 	
     return 0;
 }
