@@ -1,0 +1,650 @@
+From 83d2cf92f7fef5df0de2cf19f4235dc6c50f92a5 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 4 Mar 2019 14:50:48 +0000
+Subject: [PATCH backport 5.1] mlxsw: core: add support for Gear Box
+ temperatures in hwmon
+
+Add hwmon interface for inter-connects temperature reading.
+This information is a critical for the system equipped with such hardware.
+These new attributes are necessary for the system monitoring.
+
+Such inter-connect devices are equipped on new Mellanox MSN3800
+Ethernet 2U systems with 64xQSFP28 100GbE full bidirectional bandwidth
+ports.
+The connectivity map is depicted below.
+
++------+D01
+|      |+-->+--------+
+|      |    |    Die0+--->P01
+|      |    |Gear    +--->P02
+|      |    |Box     |
+|  S   |    |01      +--->P03
+|  P   |    |    Die1+--->P04
+|  E   |+-->+--------+
+|  C   |D02
+|  T   |...
+|  R   |D15
+|  U   |+-->+---------+
+|  M   |    |     Die0+--->P29
+|  2   |    |Gear     +--->P30
+|      |    |Box      |
+|  C   |    |08       +--->P31
+|  H   |    |     Die1+--->P32
+|  I   |+-->+---------+
+|  P   |D16
+|      |...
+|      |D31
+|      |+-->+---------+
+|      |    |     Die0+--->P61
+|      |    |Gear     +--->P62
+|      |    |Box      |
+|      |    |16       +--->P63
+|      |    |     Die1+--->P64
+|      |+-->+---------+
++------+D32
+
+Spectrum-2 chip provides 64 100GbE ports toward the front panel, in 64
+QSFP ports.
+
+Each D(i) above is a pair of 2x50GBe lanes utilizing PAM4 (Pulse
+Amplitude Modulation) technology lanes.
+
+Each P(k) above is 4x25GBe lanes utilizing NRZ (Non-Return to Zero)
+technology.
+
+Each Gearbox(j) above is a low power 400GbE device supporting data
+streams in re-timer mode with PAM-4 modulation or 26.5625Gbps down to
+1.25Gbps streams with NRZ modulation.
+Each such device is equipped with two dies and each die is equipped
+with the temperature sensor for junction temperature measurement. The
+operating junction temperature is between 0C and 110C.
+These sensors are the subject of this patchset.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  85 ++++++++++-
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 165 ++++++++++++++++-----
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c   |   7 +
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          |  56 ++++++-
+ drivers/platform/mellanox/mlxreg-hotplug.c         |   5 +-
+ drivers/platform/x86/mlx-platform.c                |   6 +-
+ 6 files changed, 276 insertions(+), 48 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 6956bbebe2f1..976f81a2bbba 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -15,6 +15,9 @@
+ #define MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT 127
+ #define MLXSW_HWMON_ATTR_COUNT (MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT * 4 + \
+ 				MLXSW_MFCR_TACHOS_MAX + MLXSW_MFCR_PWMS_MAX)
++#define MLXSW_HWMON_GET_ATTR_INDEX(ind, count)				\
++				(((ind) >= (count)) ? (ind) % (count) + \
++				 MLXSW_REG_MTMP_GBOX_INDEX_MIN : (ind))
+ 
+ struct mlxsw_hwmon_attr {
+ 	struct device_attribute dev_attr;
+@@ -33,6 +36,7 @@ struct mlxsw_hwmon {
+ 	struct mlxsw_hwmon_attr hwmon_attrs[MLXSW_HWMON_ATTR_COUNT];
+ 	unsigned int attrs_count;
+ 	u8 sensor_count;
++	u8 module_sensor_count;
+ };
+ 
+ static ssize_t mlxsw_hwmon_temp_show(struct device *dev,
+@@ -44,10 +48,12 @@ static ssize_t mlxsw_hwmon_temp_show(struct device *dev,
+ 	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	unsigned int temp;
++	int index;
+ 	int err;
+ 
+-	mlxsw_reg_mtmp_pack(mtmp_pl, mlwsw_hwmon_attr->type_index,
+-			    false, false);
++	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++					   mlxsw_hwmon->module_sensor_count);
++	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err) {
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to query temp sensor\n");
+@@ -66,10 +72,12 @@ static ssize_t mlxsw_hwmon_temp_max_show(struct device *dev,
+ 	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	unsigned int temp_max;
++	int index;
+ 	int err;
+ 
+-	mlxsw_reg_mtmp_pack(mtmp_pl, mlwsw_hwmon_attr->type_index,
+-			    false, false);
++	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++					   mlxsw_hwmon->module_sensor_count);
++	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err) {
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to query temp sensor\n");
+@@ -88,6 +96,7 @@ static ssize_t mlxsw_hwmon_temp_rst_store(struct device *dev,
+ 	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	unsigned long val;
++	int index;
+ 	int err;
+ 
+ 	err = kstrtoul(buf, 10, &val);
+@@ -96,7 +105,9 @@ static ssize_t mlxsw_hwmon_temp_rst_store(struct device *dev,
+ 	if (val != 1)
+ 		return -EINVAL;
+ 
+-	mlxsw_reg_mtmp_pack(mtmp_pl, mlwsw_hwmon_attr->type_index, true, true);
++	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++					   mlxsw_hwmon->module_sensor_count);
++	mlxsw_reg_mtmp_pack(mtmp_pl, index, true, true);
+ 	err = mlxsw_reg_write(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err) {
+ 		dev_err(mlxsw_hwmon->bus_info->dev, "Failed to reset temp sensor history\n");
+@@ -333,6 +344,20 @@ mlxsw_hwmon_module_temp_label_show(struct device *dev,
+ 		       mlwsw_hwmon_attr->type_index);
+ }
+ 
++static ssize_t
++mlxsw_hwmon_gbox_temp_label_show(struct device *dev,
++				 struct device_attribute *attr,
++				 char *buf)
++{
++	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
++			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
++	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
++	int index = mlwsw_hwmon_attr->type_index -
++		    mlxsw_hwmon->module_sensor_count + 1;
++
++	return sprintf(buf, "gearbox %03u\n", index);
++}
++
+ enum mlxsw_hwmon_attr_type {
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP,
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_MAX,
+@@ -345,6 +370,7 @@ enum mlxsw_hwmon_attr_type {
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT,
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_EMERG,
+ 	MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_LABEL,
++	MLXSW_HWMON_ATTR_TYPE_TEMP_GBOX_LABEL,
+ };
+ 
+ static void mlxsw_hwmon_attr_add(struct mlxsw_hwmon *mlxsw_hwmon,
+@@ -428,6 +454,13 @@ static void mlxsw_hwmon_attr_add(struct mlxsw_hwmon *mlxsw_hwmon,
+ 		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
+ 			 "temp%u_label", num + 1);
+ 		break;
++	case MLXSW_HWMON_ATTR_TYPE_TEMP_GBOX_LABEL:
++		mlxsw_hwmon_attr->dev_attr.show =
++			mlxsw_hwmon_gbox_temp_label_show;
++		mlxsw_hwmon_attr->dev_attr.attr.mode = 0444;
++		snprintf(mlxsw_hwmon_attr->name, sizeof(mlxsw_hwmon_attr->name),
++			 "temp%u_label", num + 1);
++		break;
+ 	default:
+ 		WARN_ON(1);
+ 	}
+@@ -553,6 +586,43 @@ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 				     index, index);
+ 		index++;
+ 	}
++	mlxsw_hwmon->module_sensor_count = index;
++
++	return 0;
++}
++
++static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
++{
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	int index, max_index;
++	u8 gbox_num;
++	int err;
++
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mgpir), mgpir_pl);
++	if (err)
++		return 0;
++
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &gbox_num, NULL, NULL);
++	if (!gbox_num)
++		return 0;
++
++	index = mlxsw_hwmon->module_sensor_count;
++	max_index = mlxsw_hwmon->module_sensor_count + gbox_num;
++	while (index < max_index) {
++		mlxsw_hwmon_attr_add(mlxsw_hwmon, MLXSW_HWMON_ATTR_TYPE_TEMP,
++				     index, index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MAX, index,
++				     index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_RST, index,
++				     index);
++		mlxsw_hwmon_attr_add(mlxsw_hwmon,
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_GBOX_LABEL,
++				     index, index);
++		index++;
++	}
+ 
+ 	return 0;
+ }
+@@ -583,6 +653,10 @@ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	if (err)
+ 		goto err_temp_module_init;
+ 
++	err = mlxsw_hwmon_gearbox_init(mlxsw_hwmon);
++	if (err)
++		goto err_temp_gearbox_init;
++
+ 	mlxsw_hwmon->groups[0] = &mlxsw_hwmon->group;
+ 	mlxsw_hwmon->group.attrs = mlxsw_hwmon->attrs;
+ 
+@@ -599,6 +673,7 @@ int mlxsw_hwmon_init(struct mlxsw_core *mlxsw_core,
+ 	return 0;
+ 
+ err_hwmon_register:
++err_temp_gearbox_init:
+ err_temp_module_init:
+ err_fans_init:
+ err_temp_init:
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 1f7ef90b2270..5f970798ab6a 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -112,6 +112,8 @@ struct mlxsw_thermal {
+ 	enum thermal_device_mode mode;
+ 	struct mlxsw_thermal_module *tz_module_arr;
+ 	unsigned int tz_module_num;
++	struct mlxsw_thermal_module *tz_gearbox_arr;
++	u8 tz_gearbox_num;
+ };
+ 
+ static inline u8 mlxsw_state_to_duty(int state)
+@@ -546,62 +548,61 @@ mlxsw_thermal_module_trip_hyst_set(struct thermal_zone_device *tzdev, int trip,
+ 	return 0;
+ }
+ 
+-static int mlxsw_thermal_module_trend_get(struct thermal_zone_device *tzdev,
+-					  int trip, enum thermal_trend *trend)
++static struct thermal_zone_params mlxsw_thermal_module_params = {
++	.governor_name = "user_space",
++};
++
++static struct thermal_zone_device_ops mlxsw_thermal_module_ops = {
++	.bind		= mlxsw_thermal_module_bind,
++	.unbind		= mlxsw_thermal_module_unbind,
++	.get_mode	= mlxsw_thermal_module_mode_get,
++	.set_mode	= mlxsw_thermal_module_mode_set,
++	.get_temp	= mlxsw_thermal_module_temp_get,
++	.get_trip_type	= mlxsw_thermal_module_trip_type_get,
++	.get_trip_temp	= mlxsw_thermal_module_trip_temp_get,
++	.set_trip_temp	= mlxsw_thermal_module_trip_temp_set,
++	.get_trip_hyst	= mlxsw_thermal_module_trip_hyst_get,
++	.set_trip_hyst	= mlxsw_thermal_module_trip_hyst_set,
++};
++
++static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
++					  int *p_temp)
+ {
+ 	struct mlxsw_thermal_module *tz = tzdev->devdata;
+ 	struct mlxsw_thermal *thermal = tz->parent;
+-	struct device *dev = thermal->bus_info->dev;
+-	char *envp[2] = { "TZ_DOWN=1", NULL };
+-	int delta, window;
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	unsigned int temp;
++	u16 index;
+ 	int err;
+ 
+-	if (trip < 0 || trip >= MLXSW_THERMAL_NUM_TRIPS)
+-		return -EINVAL;
++	index = MLXSW_REG_MTMP_GBOX_INDEX_MIN + tz->module;
++	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 
+-	delta = tzdev->last_temperature - tzdev->temperature;
+-	window = tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp -
+-		 tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp;
+-	if (delta > window && !window && !tzdev->last_temperature) {
+-		/* Notify user about fast temperature decreasing by sending
+-		 * hwmon uevent. Fast decreasing could happen when some hot
+-		 * module is removed. In this situation temperature trend could
+-		 * go down once, and then stay in a stable state.
+-		 * Notification will allow user to handle such case, if user
+-		 * supposes to optimize PWM state.
+-		 */
+-		err = kobject_uevent_env(&tzdev->device.kobj, KOBJ_CHANGE,
+-					 envp);
+-		if (err)
+-			dev_err(dev, "Error sending uevent %s\n", envp[0]);
+-	}
++	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtmp), mtmp_pl);
++	if (err)
++		return err;
+ 
+-	if (tzdev->temperature > tzdev->last_temperature)
+-		*trend = THERMAL_TREND_RAISING;
+-	else if (tzdev->temperature < tzdev->last_temperature)
+-		*trend = THERMAL_TREND_DROPPING;
+-	else
+-		*trend = THERMAL_TREND_STABLE;
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
+ 
++	*p_temp = (int) temp;
+ 	return 0;
+ }
+ 
+-static struct thermal_zone_params mlxsw_thermal_module_params = {
+-	.governor_name = "user_space",
+-};
+-
+-static struct thermal_zone_device_ops mlxsw_thermal_module_ops = {
++static struct thermal_zone_device_ops mlxsw_thermal_gearbox_ops = {
+ 	.bind		= mlxsw_thermal_module_bind,
+ 	.unbind		= mlxsw_thermal_module_unbind,
+ 	.get_mode	= mlxsw_thermal_module_mode_get,
+ 	.set_mode	= mlxsw_thermal_module_mode_set,
+-	.get_temp	= mlxsw_thermal_module_temp_get,
++	.get_temp	= mlxsw_thermal_gearbox_temp_get,
+ 	.get_trip_type	= mlxsw_thermal_module_trip_type_get,
+ 	.get_trip_temp	= mlxsw_thermal_module_trip_temp_get,
+ 	.set_trip_temp	= mlxsw_thermal_module_trip_temp_set,
+ 	.get_trip_hyst	= mlxsw_thermal_module_trip_hyst_get,
+ 	.set_trip_hyst	= mlxsw_thermal_module_trip_hyst_set,
+-	.get_trend	= mlxsw_thermal_module_trend_get,
++};
++
++static struct thermal_zone_params mlxsw_thermal_gearbox_params = {
++	.governor_name = "user_space",
+ };
+ 
+ static int mlxsw_thermal_get_max_state(struct thermal_cooling_device *cdev,
+@@ -752,7 +753,7 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+ 
+ 	module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
+ 	module_tz = &thermal->tz_module_arr[module];
+-	/* Skip if parent is already set - could in in case of port split. */
++	/* Skip if parent is already set (case of port split). */
+ 	if (module_tz->parent)
+ 		return 0;
+ 	module_tz->module = module;
+@@ -776,7 +777,7 @@ static void mlxsw_thermal_module_fini(struct mlxsw_thermal_module *module_tz)
+ 	if (module_tz && module_tz->tzdev) {
+ 		mlxsw_thermal_module_tz_fini(module_tz->tzdev);
+ 		module_tz->tzdev = NULL;
+-		module_tz->parent = 0;
++		module_tz->parent = NULL;
+ 	}
+ }
+ 
+@@ -830,6 +831,89 @@ mlxsw_thermal_modules_fini(struct mlxsw_thermal *thermal)
+ 	kfree(thermal->tz_module_arr);
+ }
+ 
++static int
++mlxsw_thermal_gearbox_tz_init(struct mlxsw_thermal_module *gearbox_tz)
++{
++	char tz_name[MLXSW_THERMAL_ZONE_MAX_NAME];
++	int err;
++
++	snprintf(tz_name, sizeof(tz_name), "mlxsw-gearbox%d",
++		 gearbox_tz->module + 1);
++	gearbox_tz->tzdev = thermal_zone_device_register(tz_name,
++						MLXSW_THERMAL_NUM_TRIPS,
++						MLXSW_THERMAL_TRIP_MASK,
++						gearbox_tz,
++						&mlxsw_thermal_gearbox_ops,
++						&mlxsw_thermal_gearbox_params,
++						0, 0);
++	if (IS_ERR(gearbox_tz->tzdev)) {
++		err = PTR_ERR(gearbox_tz->tzdev);
++		return err;
++	}
++
++	return 0;
++}
++
++static void
++mlxsw_thermal_gearbox_tz_fini(struct mlxsw_thermal_module *gearbox_tz)
++{
++	thermal_zone_device_unregister(gearbox_tz->tzdev);
++}
++
++static int
++mlxsw_thermal_gearboxes_init(struct device *dev, struct mlxsw_core *core,
++			     struct mlxsw_thermal *thermal)
++{
++	struct mlxsw_thermal_module *gearbox_tz;
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	int i;
++	int err;
++
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(core, MLXSW_REG(mgpir), mgpir_pl);
++	if (err)
++		return 0;
++
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &thermal->tz_gearbox_num, NULL, NULL);
++	if (!thermal->tz_gearbox_num)
++		return 0;
++
++	thermal->tz_gearbox_arr = kcalloc(thermal->tz_gearbox_num,
++					  sizeof(*thermal->tz_gearbox_arr),
++					  GFP_KERNEL);
++	if (!thermal->tz_gearbox_arr)
++		return -ENOMEM;
++
++	for (i = 0; i < thermal->tz_gearbox_num; i++) {
++		gearbox_tz = &thermal->tz_gearbox_arr[i];
++		memcpy(gearbox_tz->trips, default_thermal_trips,
++		       sizeof(thermal->trips));
++		gearbox_tz->module = i;
++		gearbox_tz->parent = thermal;
++		err = mlxsw_thermal_gearbox_tz_init(gearbox_tz);
++		if (err)
++			goto err_unreg_tz_gearbox;
++	}
++
++	return 0;
++
++err_unreg_tz_gearbox:
++	for (i--; i >= 0; i--)
++		mlxsw_thermal_gearbox_tz_fini(&thermal->tz_gearbox_arr[i]);
++	kfree(thermal->tz_gearbox_arr);
++	return err;
++}
++
++static void
++mlxsw_thermal_gearboxes_fini(struct mlxsw_thermal *thermal)
++{
++	int i;
++
++	for (i = thermal->tz_gearbox_num - 1; i >= 0; i--)
++		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
++	kfree(thermal->tz_gearbox_arr);
++}
++
+ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 		       const struct mlxsw_bus_info *bus_info,
+ 		       struct mlxsw_thermal **p_thermal)
+@@ -920,6 +1004,10 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 	if (err)
+ 		goto err_unreg_tzdev;
+ 
++	mlxsw_thermal_gearboxes_init(dev, core, thermal);
++	if (err)
++		goto err_unreg_modules_tzdev;
++
+ 	thermal->mode = THERMAL_DEVICE_ENABLED;
+ 	*p_thermal = thermal;
+ 	return 0;
+@@ -944,6 +1032,7 @@ void mlxsw_thermal_fini(struct mlxsw_thermal *thermal)
+ {
+ 	int i;
+ 
++	mlxsw_thermal_gearboxes_fini(thermal);
+ 	mlxsw_thermal_modules_fini(thermal);
+ 	if (thermal->tzdev) {
+ 		thermal_zone_device_unregister(thermal->tzdev);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index bee2a08d372b..347f9823e375 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -268,6 +268,13 @@ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "MSN37"),
+ 		},
+ 	},
++	{
++		.callback = mlxsw_qsfp_dmi_set_qsfp_num,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "MSN38"),
++		},
++	},
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(dmi, mlxsw_qsfp_dmi_table);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index 94407dcfacdb..f16d27e115d2 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -7589,6 +7589,7 @@ MLXSW_ITEM32(reg, mtcap, sensor_count, 0x00, 0, 7);
+  */
+ #define MLXSW_REG_MTMP_ID 0x900A
+ #define MLXSW_REG_MTMP_LEN 0x20
++#define MLXSW_REG_MTMP_GBOX_INDEX_MIN 256
+ 
+ MLXSW_REG_DEFINE(mtmp, MLXSW_REG_MTMP_ID, MLXSW_REG_MTMP_LEN);
+ 
+@@ -7598,7 +7599,7 @@ MLXSW_REG_DEFINE(mtmp, MLXSW_REG_MTMP_ID, MLXSW_REG_MTMP_LEN);
+  * (module 0 is mapped to sensor_index 64).
+  * Access: Index
+  */
+-MLXSW_ITEM32(reg, mtmp, sensor_index, 0x00, 0, 7);
++MLXSW_ITEM32(reg, mtmp, sensor_index, 0x00, 0, 11);
+ 
+ /* Convert to milli degrees Celsius */
+ #define MLXSW_REG_MTMP_TEMP_TO_MC(val) (val * 125)
+@@ -7660,7 +7661,7 @@ MLXSW_ITEM32(reg, mtmp, temperature_threshold_lo, 0x10, 0, 16);
+  */
+ MLXSW_ITEM_BUF(reg, mtmp, sensor_name, 0x18, MLXSW_REG_MTMP_SENSOR_NAME_SIZE);
+ 
+-static inline void mlxsw_reg_mtmp_pack(char *payload, u8 sensor_index,
++static inline void mlxsw_reg_mtmp_pack(char *payload, u16 sensor_index,
+ 				       bool max_temp_enable,
+ 				       bool max_temp_reset)
+ {
+@@ -8579,6 +8580,56 @@ static inline void mlxsw_reg_mprs_pack(char *payload, u16 parsing_depth,
+ 	mlxsw_reg_mprs_vxlan_udp_dport_set(payload, vxlan_udp_dport);
+ }
+ 
++/* MGPIR - Management General Peripheral Information Register
++ * ----------------------------------------------------------
++ * MGPIR register allows software to query the hardware and
++ * firmware general information of peripheral entities.
++ */
++#define MLXSW_REG_MGPIR_ID 0x9100
++#define MLXSW_REG_MGPIR_LEN 0xA0
++
++MLXSW_REG_DEFINE(mgpir, MLXSW_REG_MGPIR_ID, MLXSW_REG_MGPIR_LEN);
++
++/* device_type
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, mgpir, device_type, 0x00, 24, 4);
++
++/* devices_per_flash
++ * Number of devices of device_type per flash (can be shared by few devices).
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, mgpir, devices_per_flash, 0x00, 16, 8);
++
++/* num_of_devices
++ * Number of devices of device_type.
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, mgpir, num_of_devices, 0x00, 0, 8);
++
++enum mlxsw_reg_mgpir_device_type {
++	MLXSW_REG_MGPIR_TYPE_NONE,
++	MLXSW_REG_MGPIR_TYPE_GEARBOX_DIE,
++};
++
++static inline void mlxsw_reg_mgpir_pack(char *payload)
++{
++	MLXSW_REG_ZERO(mgpir, payload);
++}
++
++static inline void mlxsw_reg_mgpir_unpack(char *payload, u8 *num_of_devices,
++					  u8 *device_type,
++					  u8 *devices_per_flash)
++{
++	if (num_of_devices)
++		*num_of_devices = mlxsw_reg_mgpir_num_of_devices_get(payload);
++	if (device_type)
++		*device_type = mlxsw_reg_mgpir_device_type_get(payload);
++	if (devices_per_flash)
++		*devices_per_flash =
++				mlxsw_reg_mgpir_devices_per_flash_get(payload);
++}
++
+ /* TNGCR - Tunneling NVE General Configuration Register
+  * ----------------------------------------------------
+  * The TNGCR register is used for setting up the NVE Tunneling configuration.
+@@ -9591,6 +9642,7 @@ static const struct mlxsw_reg_info *mlxsw_reg_infos[] = {
+ 	MLXSW_REG(mcda),
+ 	MLXSW_REG(mgpc),
+ 	MLXSW_REG(mprs),
++	MLXSW_REG(mgpir),
+ 	MLXSW_REG(tngcr),
+ 	MLXSW_REG(tnumt),
+ 	MLXSW_REG(tnqcr),
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index 52314a1ffaaf..687ce6817d0d 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -248,7 +248,8 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 			   struct mlxreg_core_item *item)
+ {
+ 	struct mlxreg_core_data *data;
+-	u32 asserted, regval, bit;
++	unsigned long asserted;
++	u32 regval, bit;
+ 	int ret;
+ 
+ 	/*
+@@ -281,7 +282,7 @@ mlxreg_hotplug_work_helper(struct mlxreg_hotplug_priv_data *priv,
+ 	asserted = item->cache ^ regval;
+ 	item->cache = regval;
+ 
+-	for_each_set_bit(bit, (unsigned long *)&asserted, 8) {
++	for_each_set_bit(bit, &asserted, 8) {
+ 		data = item->data + bit;
+ 		if (regval & BIT(bit)) {
+ 			if (item->inversed)
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index af033fb2e5d9..d5d2448dc7e4 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -938,6 +938,11 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_led_data[] = {
+ 		.capability = MLXPLAT_CPLD_LPC_REG_FAN_DRW_CAP_OFFSET,
+ 		.bit = BIT(5),
+ 	},
++	{
++		.label = "uid:blue",
++		.reg = MLXPLAT_CPLD_LPC_REG_LED5_OFFSET,
++		.mask = MLXPLAT_CPLD_LED_LO_NIBBLE_MASK,
++	},
+ };
+ 
+ static struct mlxreg_core_platform_data mlxplat_default_ng_led_data = {
+@@ -1361,7 +1366,6 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_fan_data[] = {
+ 	},
+ 	{
+ 		.label = "conf",
+-		.reg = MLXPLAT_CPLD_LPC_REG_TACHO12_OFFSET,
+ 		.capability = MLXPLAT_CPLD_LPC_REG_TACHO_SPEED_OFFSET,
+ 	},
+ };
+-- 
+2.11.0
+

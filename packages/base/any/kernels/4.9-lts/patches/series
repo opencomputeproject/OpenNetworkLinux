@@ -24,4 +24,7 @@ driver-add-the-support-max6620.patch
 0023-hwmon-pmbus-Fix-driver-info-initialization-in-probe-.patch
 0024-mlxsw-thermal-disable-highest-zone-calculation.patch
 0025-platform-x86-mlx-platform-Add-CPLD4-register.patch
-0026-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
+0026-mlxsw-Align-code-with-kernel-v-5.1.patch
+0027-mlxsw-core-Add-check-for-split-port-during-thermal-z.patch
+0028-watchdog-mlx-wdt-kernel-upstream-and-wd-type2-change.patch
+0029-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
