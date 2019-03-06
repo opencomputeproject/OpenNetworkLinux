@@ -327,7 +327,7 @@ static int __init as4610_fan_init(void)
 	int ret;
 
 	if (as4610_number_of_system_fan() == 0) {
-		return -ENODEV;
+		return 0;
 	}
 
 	ret = platform_driver_register(&as4610_fan_driver);
