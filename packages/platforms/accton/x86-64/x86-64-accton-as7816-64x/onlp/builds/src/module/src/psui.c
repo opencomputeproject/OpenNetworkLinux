@@ -60,21 +60,56 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
+    
+    if (strncmp(info->model, "YM-2851J", strlen("YM-2851J")) == 0) {
+        
+            /* Read voltage, current and power */
+        if (psu_dps850_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+            info->mvout = val;
+            info->caps |= ONLP_PSU_CAPS_VOUT;
+        }
 
-    /* Read voltage, current and power */
-    if (psu_ym2651y_pmbus_info_get(index, "psu_v_out", &val) == 0) {
-        info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
-    }
+        if (psu_dps850_pmbus_info_get(index, "psu_v_in", &val) == 0) {
+            info->mvin  = val;
+            info->caps |= ONLP_PSU_CAPS_VIN;
+        }
 
-    if (psu_ym2651y_pmbus_info_get(index, "psu_i_out", &val) == 0) {
-        info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
-    }
+        if (psu_dps850_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+            info->miout = val;
+            info->caps |= ONLP_PSU_CAPS_IOUT;
+        }
 
-    if (psu_ym2651y_pmbus_info_get(index, "psu_p_out", &val) == 0) {
-        info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
+        if (psu_dps850_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+            info->caps |= ONLP_PSU_CAPS_IIN;
+        }
+
+        if (psu_dps850_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+            info->mpout = val;
+            info->caps |= ONLP_PSU_CAPS_POUT;
+        }
+
+        if (psu_dps850_pmbus_info_get(index, "psu_p_in", &val) == 0) {
+            info->mpin  = val;
+            info->caps |= ONLP_PSU_CAPS_PIN;
+        }
+    } 
+    else {
+
+        /* Read voltage, current and power */
+        if (psu_ym2651y_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+            info->mvout = val;
+            info->caps |= ONLP_PSU_CAPS_VOUT;
+        }
+
+        if (psu_ym2651y_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+            info->miout = val;
+            info->caps |= ONLP_PSU_CAPS_IOUT;
+        }
+
+        if (psu_ym2651y_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+            info->mpout = val;
+            info->caps |= ONLP_PSU_CAPS_POUT;
+        }
     }
 
 	psu_serial_number_get(index, info->serial, sizeof(info->serial));

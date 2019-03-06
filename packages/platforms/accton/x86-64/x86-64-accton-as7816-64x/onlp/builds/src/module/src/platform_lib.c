@@ -32,6 +32,7 @@
 #define PSU_MODEL_NAME_LEN 		8
 #define PSU_SERIAL_NUMBER_LEN	18
 #define PSU_NODE_MAX_PATH_LEN   64
+#define PSU_FAN_DIR_LEN    3
 
 int psu_serial_number_get(int id, char *serial, int serial_len)
 {
@@ -60,6 +61,7 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
 	int   ret   = ONLP_STATUS_OK; 
 	char  model[PSU_MODEL_NAME_LEN + 1] = {0};
 	char *prefix = NULL;
+    char  fan_dir[PSU_FAN_DIR_LEN + 1] = {0};
 
 	if (modelname && modelname_len < PSU_MODEL_NAME_LEN) {
 		return PSU_TYPE_UNKNOWN;
@@ -89,11 +91,51 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
     }
 
     if (strncmp(model, "DPS-850A", strlen("DPS-850A")) == 0) {
-        return PSU_TYPE_AC_DPS850_F2B;
+        prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+        ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
+        if (ret != ONLP_STATUS_OK || value != PSU_FAN_DIR_LEN) {
+            return PSU_TYPE_UNKNOWN;
+        }
+
+        if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
+            return PSU_TYPE_AC_DPS850_F2B;
+        }
+
+        if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
+            return PSU_TYPE_AC_DPS850_B2F;
+        }
     }
 
     if (strncmp(model, "YM-2851F", strlen("YM-2851F")) == 0) {
-        return PSU_TYPE_AC_YM2851_F2B;
+        prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+        ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
+        if (ret != ONLP_STATUS_OK || value != PSU_FAN_DIR_LEN) {
+            return PSU_TYPE_UNKNOWN;
+        }
+
+        if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
+            return PSU_TYPE_AC_YM2851_F2B;
+        }
+
+        if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
+            return PSU_TYPE_AC_YM2851_B2F;
+        }
+    }
+    
+    if (strncmp(model, "YM-2851J", strlen("YM-2851J")) == 0) {
+        prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+        ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
+        if (ret != ONLP_STATUS_OK || value != PSU_FAN_DIR_LEN) {
+            return PSU_TYPE_UNKNOWN;
+        }
+
+        if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
+            return PSU_TYPE_AC_YM2851_F2B;
+        }
+
+        if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
+            return PSU_TYPE_AC_YM2851_B2F;
+        }
     }
 
     return PSU_TYPE_UNKNOWN;
