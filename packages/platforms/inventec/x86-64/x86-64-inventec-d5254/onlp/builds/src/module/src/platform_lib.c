@@ -34,17 +34,17 @@
 #include "platform_lib.h"
 
 
-int platform_psoc_diag_enable_read(int *enable)
+int platform_hwmon_diag_enable_read(int *enable)
 {
     int rv = ONLP_STATUS_OK;
-    rv = onlp_file_read_int((int*)enable, PLATFORM_PSOC_DIAG_PATH);
+    rv = onlp_file_read_int((int*)enable, INV_HWMON_PREFIX"diag");
     return rv;
 }
 
 
-int platform_psoc_diag_enable_write(int enable)
+int platform_hwmon_diag_enable_write(int enable)
 {
     int rv = ONLP_STATUS_OK;
-    rv = onlp_file_write_int(enable, PLATFORM_PSOC_DIAG_PATH);
+    rv = onlp_file_write_int(enable, INV_HWMON_PREFIX"diag");
     return rv;
 }
