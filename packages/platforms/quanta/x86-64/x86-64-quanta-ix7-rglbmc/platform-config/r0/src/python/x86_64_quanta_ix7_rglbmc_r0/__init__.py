@@ -16,8 +16,13 @@ class OnlPlatform_x86_64_quanta_ix7_rglbmc_r0(OnlPlatformQuanta,
     SYS_OBJECT_ID=".7032.3700"
 
     def baseconfig(self):
+        self.insmod("optoe")
         self.insmod("qci_cpld")
         self.insmod("qci_cpld_led")
         self.insmod("quanta_platform_ix7")
+
+        for port_number in range(1,33):
+            bus_number = port_number + 31
+            os.system("echo %d >/sys/bus/i2c/devices/%d-0050/port_name" % (port_number, bus_number))
 
         return True

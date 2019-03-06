@@ -273,7 +273,7 @@ static struct i2c_board_info ix8_i2c_devices[] = {
 		.platform_data = &pca9698_2_data,
 	},
 	{
-		I2C_BOARD_INFO("24c02", 0x50),          // 15 0x50 SFP28, QSFP EEPROM
+		I2C_BOARD_INFO("optoe1", 0x50),          // 15 0x50 QSFP EEPROM
 	},
 	{
 		I2C_BOARD_INFO("pca9546", 0x71),		// 16
@@ -288,6 +288,9 @@ static struct i2c_board_info ix8_i2c_devices[] = {
 	},
 	{
 		I2C_BOARD_INFO("CPLDLED_IX8", 0x39),	// 19 0x72 ch0 CPLD6 LED function of SFP28 & QSFP28 (Port1~26)
+	},
+	{
+		I2C_BOARD_INFO("optoe2", 0x50),          // 20 0x50 SFP EEPROM
 	},
 };
 
@@ -381,7 +384,14 @@ static int __init ix8_platform_init(void)
 
 	for(i = 32; i < 88; i ++){									// SFP28 1~48 & QSFP 49~56 EEPROM
 		adapter = i2c_get_adapter(i);
-		client = i2c_new_device(adapter, &ix8_i2c_devices[15]);
+
+		if (i < 80) {
+			client = i2c_new_device(adapter, &ix8_i2c_devices[20]);
+		}
+		else {
+			client = i2c_new_device(adapter, &ix8_i2c_devices[15]);
+		}
+
 		i2c_put_adapter(adapter);
 	}
 
