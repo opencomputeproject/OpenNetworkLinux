@@ -31,7 +31,7 @@
 #include <onlp/platformi/ledi.h>
 #include <mlnx_common/mlnx_common.h>
 
-#define prefix_path "/bsp/led/led_"
+#define prefix_path HW_MANAGEMENT_PATH"/led/led_"
 #define driver_value_len 50
 
 #define LED_MODE_OFF         "none"
