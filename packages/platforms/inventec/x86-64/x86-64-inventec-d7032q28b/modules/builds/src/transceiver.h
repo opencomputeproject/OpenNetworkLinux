@@ -668,6 +668,8 @@ struct transvr_obj_s {
     uint8_t option[3];
 
     uint8_t eeprom[256];
+    int eeprom_update;		/* max 32 ports on redwood */
+    int port_no;
 
     /* ========== Object private property ==========
      */
@@ -803,9 +805,7 @@ int isolate_transvr_obj(struct transvr_obj_s *self);
 int resync_channel_tier_2(struct transvr_obj_s *self);
 
 void alarm_msg_2_user(struct transvr_obj_s *self, char *emsg);
+unsigned int get_eeprom_update(void);
+void set_eeprom_update(unsigned int value);
 
 #endif /* TRANSCEIVER_H */
-
-
-
-

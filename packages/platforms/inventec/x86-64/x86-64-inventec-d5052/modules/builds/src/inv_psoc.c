@@ -28,6 +28,8 @@
 #define FAN_NUM  4 
 #define PSU_NUM  2 
 
+static struct device *psoc_led_client_dev = NULL;
+
 struct __attribute__ ((__packed__))  psoc_psu_layout {
     u16 psu1_iin;
     u16 psu2_iin;
@@ -450,17 +452,49 @@ static ssize_t show_psu_st(struct device *dev, struct device_attribute *da,
 	struct psoc_data *data = i2c_get_clientdata(client);
 	u8 byte;
 	int shift = (attr->index == 0)?3:0;
-    
+  
 	mutex_lock(&data->update_lock);
     status = psoc_i2c_read(client, &byte, PSOC_PSU_OFFSET, 1);
 	mutex_unlock(&data->update_lock);
-	
+
     byte = (byte >> shift) & 0x7;
-	
+
 	status = sprintf (buf, "%d : %s\n", byte, psu_str[byte]);
-	    
+    
 	return strlen(buf);
 }
+
+static ssize_t psoc_show_psu_st(char *buf, int psu_index)
+{
+	u32 status;
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+	u8 byte;
+	int shift = (psu_index == 0)?3:0;
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+    status = psoc_i2c_read(client, &byte, PSOC_PSU_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+    byte = (byte >> shift) & 0x7;
+
+	status = sprintf (buf, "%d : %s\n", byte, psu_str[byte]);
+
+	return strlen(buf);
+}
+
+ssize_t psoc_show_psu_state(char *buf, int index)
+{
+	return psoc_show_psu_st(buf, index);
+}
+EXPORT_SYMBOL(psoc_show_psu_state);
 
 /*-----------------------------------------------------------------------*/
 
@@ -537,14 +571,40 @@ static ssize_t show_rpm(struct device *dev, struct device_attribute *da,
 	u8 offset = attr->index*2  + RPM_OFFSET;
     
 	mutex_lock(&data->update_lock);
-	
 	status = psoc_read16(client, offset);
-	
 	mutex_unlock(&data->update_lock);
 	
 	return sprintf(buf, "%d\n",
 		       status);
 }
+
+static ssize_t psoc_show_rpm(char *buf, int fan_index)
+{
+	int status;
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+	u8 offset = fan_index*2  + RPM_OFFSET;
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+	status = psoc_read16(client, offset);
+	mutex_unlock(&data->update_lock);
+
+	return sprintf(buf, "%d\n",
+		       status);
+}
+
+ssize_t psoc_show_fan_input(char *buf, int index)
+{
+	return psoc_show_rpm(buf, index);
+}
+EXPORT_SYMBOL(psoc_show_fan_input);
 
 static ssize_t show_switch_tmp(struct device *dev, struct device_attribute *da,
 			 char *buf)
@@ -624,6 +684,59 @@ static ssize_t set_diag(struct device *dev,
 	return count;
 }
 
+ssize_t psoc_show_diag(char *buf)
+{
+	u16 status;
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+	u8 diag_flag = 0;
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+    status = psoc_i2c_read(client, (u8*)&diag_flag, DIAG_FLAG_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	data->diag = (diag_flag & 0x80)?1:0;
+	status = sprintf (buf, "%d\n", data->diag);
+
+	return strlen(buf);
+}
+EXPORT_SYMBOL(psoc_show_diag);
+
+ssize_t psoc_set_diag(const char *buf, size_t count)
+{
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+	u8 value = 0;
+	u8 diag = simple_strtol(buf, NULL, 10);
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+    diag = diag?1:0;
+	data->diag = diag;
+
+	mutex_lock(&data->update_lock);
+	psoc_i2c_read(client, (u8*)&value, DIAG_FLAG_OFFSET, 1);
+	if(diag) value |= (1<<7);
+	else     value &= ~(1<<7);
+	psoc_i2c_write(client, (u8*)&value, DIAG_FLAG_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	return count;
+}
+EXPORT_SYMBOL(psoc_set_diag);
+
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
@@ -702,6 +815,44 @@ static ssize_t show_value8(struct device *dev, struct device_attribute *da,
 	
 	return sprintf(buf, "0x%02X\n", status );
 }
+
+ssize_t psoc_show_value8(char *buf, int offset)
+{
+	int status;
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+	status = psoc_read8(client, offset);
+	mutex_unlock(&data->update_lock);
+
+	return sprintf(buf, "0x%02X\n", status );
+}
+
+static char prev_fan_state[8] = { 0 };
+
+ssize_t psoc_show_fan_state(char *buf)
+{
+    int i;
+    int rv = psoc_show_value8(buf, FAN_GPI_OFFSET);
+    for (i = 0; i < 2; i++) {
+	if (strncmp(prev_fan_state, buf, 4) == 0) {
+	    return rv;
+	}
+	msleep(50);
+	rv = psoc_show_value8(buf, FAN_GPI_OFFSET);
+    }
+    strcpy(prev_fan_state, buf);
+    return rv;
+}
+EXPORT_SYMBOL(psoc_show_fan_state);
 
 static long pmbus_reg2data_linear(int data, int linear16)
 {
@@ -805,6 +956,33 @@ static ssize_t show_psu_psoc(struct device *dev, struct device_attribute *da,
            return sprintf(buf, "%s \n",rxbuf);
         }
 }
+
+static ssize_t psoc_show_psu_psoc(char *buf, int psu_index, char *attr_name)
+{
+	u16 status;
+	struct i2c_client *client = NULL;
+	struct psoc_data *data = NULL;
+	u8 offset = psu_index + PSU_INFO_OFFSET;
+
+	if (!psoc_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(psoc_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+	status = psoc_read16(client, offset);
+	mutex_unlock(&data->update_lock);
+
+	return sprintf(buf, "%ld \n", pmbus_reg2data_linear(status, strstr(attr_name, "vout")? 1:0 ));
+}
+
+ssize_t psoc_show_psu_vin(char *buf, int index)
+{
+	return psoc_show_psu_psoc(buf, index, "vin");
+}
+EXPORT_SYMBOL(psoc_show_psu_vin);
 
 #define PSOC_POLLING_PERIOD 1000
 #define PSU_NOT_INSTALLED   7
@@ -1246,6 +1424,7 @@ psoc_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	dev_info(&client->dev, "%s: sensor '%s'\n",
 		 dev_name(data->hwmon_dev), client->name);
 
+	psoc_led_client_dev = &client->dev;
 	return 0;
 
 exit_remove:
@@ -1253,6 +1432,7 @@ exit_remove:
 exit_free:
 	i2c_set_clientdata(client, NULL);
 	kfree(data);
+	psoc_led_client_dev = NULL;
 	return status;
 }
 
@@ -1264,6 +1444,7 @@ static int psoc_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &psoc_group);
 	i2c_set_clientdata(client, NULL);
 	kfree(data);
+	psoc_led_client_dev = NULL;
 	return 0;
 }
 

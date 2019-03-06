@@ -21,6 +21,7 @@
 #define INV_EPRM_PREFIX		"/sys/bus/i2c/devices/0-0053/"
 #define INV_CTMP_PREFIX		"/sys/devices/platform/coretemp.0/hwmon/hwmon0/"
 
+#define INV_SFP_EEPROM_UPDATE	"/sys/class/swps/module/eeprom_update"
 #define CHASSIS_SFP_COUNT	(56)
 
 /*
@@ -30,7 +31,7 @@
 
 
 /*
- * Definitions of D7264Q28B device
+ * Definitions of D6556 device
  */
 enum onlp_thermal_id {
     THERMAL_RESERVED = 0,
@@ -68,8 +69,7 @@ enum onlp_fan_id {
 };
 #define CHASSIS_FAN_COUNT	(8)
 
-enum onlp_led_id
-{
+enum onlp_led_id {
     LED_RESERVED = 0,
     LED_SYS,
     LED_FAN1,
@@ -80,15 +80,13 @@ enum onlp_led_id
 };
 #define CHASSIS_LED_COUNT	(1)
 
-enum onlp_psu_id
-{
+enum onlp_psu_id {
     PSU_RESERVED = 0,
     PSU1_ID,
     PSU2_ID,
     PSU_MAX
 };
 #define CHASSIS_PSU_COUNT	(2)
-
 
 #define PSU1_AC_PMBUS_PREFIX	INV_PSOC_PREFIX
 #define PSU2_AC_PMBUS_PREFIX	INV_PSOC_PREFIX

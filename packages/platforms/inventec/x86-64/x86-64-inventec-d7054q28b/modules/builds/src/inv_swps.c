@@ -45,6 +45,10 @@ static DECLARE_DELAYED_WORK(swp_polling, swp_polling_worker);
 
 static int reset_i2c_topology(void);
 
+static union {
+    unsigned int eeprom_update_32[2];
+    unsigned char eeprom_update_8[8];
+} ueu_64;
 
 static int
 __swp_match(struct device *dev,
@@ -90,6 +94,46 @@ sscanf_2_int(const char *buf) {
             return -result;
         }
         if (sscanf(buf,"%x",&result)) {
+            return result;
+        }
+    }
+    return -EBFONT;
+}
+
+static unsigned long long int
+sscanf_2_ullint(const char *buf, size_t count) {
+
+    unsigned long long int result = -EBFONT;
+    char *hex_tag = "0x";
+    int i, zero = 0;
+
+    for (i = 0; i < count-2; i++) {
+	if (buf[i] != '0') {
+	    zero = 1;
+	}
+    }
+    if (zero == 0) {
+	return 0x0ULL;
+    }
+
+    if (strcspn(buf, hex_tag) == 0) {
+	for (i = 2; i < count-2; i++) {
+	    if (INV_BATOX(buf[i]) == -1) {
+		return -EBFONT;
+	    }
+	}
+
+        if (sscanf(buf,"0x%llx",&result)) {
+            return result;
+        }
+    } else {
+	for (i = 0; i < count-2; i++) {
+	    if (INV_BATOI(buf[i]) == -1) {
+		return -EBFONT;
+	    }
+	}
+
+        if (sscanf(buf,"%llu",&result)) {
             return result;
         }
     }
@@ -225,6 +269,17 @@ _update_auto_config_2_trnasvr(void) {
     return retval;
 }
 
+unsigned char *
+get_eeprom_update(void)
+{
+    return &ueu_64.eeprom_update_8[0];
+}
+
+void
+set_eeprom_update(unsigned char value[8])
+{
+    memcpy(ueu_64.eeprom_update_8, value, 8);
+}
 
 /* ========== R/W Functions module control attribute ==========
  */
@@ -261,6 +316,17 @@ show_attr_auto_config(struct device *dev_p,
                       char *buf_p){
 
     return snprintf(buf_p, 8, "%d\n", auto_config);
+}
+
+static ssize_t
+show_attr_eeprom_update(struct device *dev_p,
+		struct device_attribute *attr_p,
+		char *buf_p){
+    return snprintf(buf_p, 20, "0x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+		ueu_64.eeprom_update_8[7],ueu_64.eeprom_update_8[6],
+		ueu_64.eeprom_update_8[5],ueu_64.eeprom_update_8[4],
+		ueu_64.eeprom_update_8[3],ueu_64.eeprom_update_8[2],
+		ueu_64.eeprom_update_8[1],ueu_64.eeprom_update_8[0]);
 }
 
 
@@ -366,6 +432,39 @@ store_attr_auto_config(struct device *dev_p,
     }
     auto_config = input_val;
     _update_auto_config_2_trnasvr();
+    return count;
+}
+
+static ssize_t
+store_attr_eeprom_update(struct device *dev_p,
+			struct device_attribute *attr_p,
+			const char *buf_p,
+			size_t count) {
+
+    union {
+	unsigned long long int input_val_64;
+	unsigned int input_val_32[2];
+    } uiv;
+    int i;
+    uiv.input_val_64 = sscanf_2_ullint(buf_p, count);
+    if (uiv.input_val_64 == 0){
+	for (i = 0; i < 8; i++) {
+	    ueu_64.eeprom_update_8[i] = 0;
+	}
+    }
+    else
+    if (uiv.input_val_64 > 0) {
+	for (i = 0; i < 32; i++) {
+	    if (uiv.input_val_32[0] & 1<<i) {
+		ueu_64.eeprom_update_32[0] |= 1<<i;
+	    }
+	}
+	for (i = 0; i < 32; i++) {
+	    if (uiv.input_val_32[1] & 1<<i) {
+		ueu_64.eeprom_update_32[1] |= 1<<i;
+	    }
+	}
+    }
     return count;
 }
 
@@ -1563,6 +1662,7 @@ static DEVICE_ATTR(status,          S_IRUGO,         show_attr_status,          
 static DEVICE_ATTR(reset_i2c,       S_IWUSR,         NULL,                      store_attr_reset_i2c);
 static DEVICE_ATTR(reset_swps,      S_IWUSR,         NULL,                      store_attr_reset_swps);
 static DEVICE_ATTR(auto_config,     S_IRUGO|S_IWUSR, show_attr_auto_config,     store_attr_auto_config);
+static DEVICE_ATTR(eeprom_update,   S_IRUGO|S_IWUSR, show_attr_eeprom_update,   store_attr_eeprom_update);
 
 /* ========== Transceiver attribute: from eeprom ==========
  */
@@ -2503,6 +2603,10 @@ register_modctl_attr(struct device *device_p){
         err_msg = "dev_attr_auto_config";
         goto err_reg_modctl_attr;
     }
+    if (device_create_file(device_p, &dev_attr_eeprom_update) < 0) {
+	err_msg = "dev_attr_eeprom_update";
+	goto err_reg_modctl_attr;
+    }
     return 0;
 
 err_reg_modctl_attr:
@@ -2736,6 +2840,9 @@ create_port_objs(void) {
                     "Create transceiver object fail <id>:%s", dev_name);
             goto err_initport_create_tranobj;
         }
+
+	transvr_obj_p->port_no = minor_curr;
+
         /* Setup Lane_ID mapping */
         i = ARRAY_SIZE(port_layout[minor_curr].lane_id);
         j = ARRAY_SIZE(transvr_obj_p->lane_id);

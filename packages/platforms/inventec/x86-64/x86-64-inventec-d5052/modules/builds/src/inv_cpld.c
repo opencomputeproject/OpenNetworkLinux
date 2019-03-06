@@ -14,8 +14,7 @@
 #include <linux/hwmon-sysfs.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
-
-//#include "I2CHostCommunication.h"
+#include "inv_pthread.h"
 
 #define USE_SMBUS    1
 
@@ -33,6 +32,8 @@ struct cpld_data {
 	struct device		*hwmon_dev;
 	struct mutex		update_lock;
 };
+
+static struct device *cpld_led_client_dev = NULL;
 
 /*-----------------------------------------------------------------------*/
 
@@ -243,7 +244,7 @@ static ssize_t show_led(struct device *dev, struct device_attribute *da,
 	struct i2c_client *client = to_i2c_client(dev);
 	struct cpld_data *data = i2c_get_clientdata(client);
 	u8 byte;
-	int shift = (attr->index == 0)?3:0;
+	int shift = (attr->index == CPLD_DEV_LED_GRN_INDEX)?3:0;
     
 	mutex_lock(&data->update_lock);
     status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
@@ -282,6 +283,125 @@ static ssize_t set_led(struct device *dev,
 
 	return count;
 }
+
+ssize_t cpld_show_led(char *buf, int index)
+{
+	u32 status;
+	struct i2c_client *client = NULL;
+	struct cpld_data *data = NULL;
+	u8 byte;
+	int shift = (index == CPLD_DEV_LED_GRN_INDEX)?3:0;
+
+	if (!cpld_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(cpld_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+    status = cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	if(status != 1) return sprintf(buf, "read cpld offset 0x%x\n", CPLD_LED_OFFSET);
+
+    byte = (byte >> shift) & 0x7;
+
+	/*
+	    0: off
+	    1: 0.5hz
+	    2: 1 hz
+	    3: 2 hz
+	    4~6: not define
+	    7: on
+	*/
+
+	status = sprintf (buf, "%d: %s\n", byte, led_str[byte]);
+
+	return strlen(buf);
+}
+EXPORT_SYMBOL(cpld_show_led);
+
+ssize_t cpld_set_led(const char *buf, size_t count, int index)
+{
+	struct i2c_client *client = NULL;
+	struct cpld_data *data = NULL;
+
+	u8 temp = simple_strtol(buf, NULL, 16);
+	u8 byte;
+	int shift = (index == CPLD_DEV_LED_GRN_INDEX)?3:0;
+
+	if (!cpld_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(cpld_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+    temp &= 0x7;
+    //validate temp value: 0,1,2,3,7, TBD
+
+	mutex_lock(&data->update_lock);
+    cpld_i2c_read(client, &byte, CPLD_LED_OFFSET, 1);
+    byte &= ~(0x7<<shift);
+    byte |= (temp<<shift);
+	cpld_i2c_write(client, &byte, CPLD_LED_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	return count;
+}
+EXPORT_SYMBOL(cpld_set_led);
+
+ssize_t cpld_show_ctl(char *buf)
+{
+	u32 status;
+	struct i2c_client *client = NULL;
+	struct cpld_data *data = NULL;
+	u8 b[1];
+
+	if (!cpld_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(cpld_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+    status = cpld_i2c_read(client, b, CPLD_CTL_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	if(status != 1) return sprintf(buf, "read cpld ctl fail\n");
+
+	status = sprintf (buf, "0x%X\n", b[0]);
+
+	return strlen(buf);
+}
+EXPORT_SYMBOL(cpld_show_ctl);
+
+ssize_t cpld_set_ctl(const char *buf, size_t count)
+{
+	struct i2c_client *client = NULL;
+	struct cpld_data *data = NULL;
+	u8 byte;
+	u8 temp = simple_strtol(buf, NULL, 10);
+
+	if (!cpld_led_client_dev) {
+	    return 0;
+	}
+
+	client = to_i2c_client(cpld_led_client_dev);
+	data = i2c_get_clientdata(client);
+
+	mutex_lock(&data->update_lock);
+        cpld_i2c_read(client, &byte, CPLD_CTL_OFFSET, 1);
+	if(temp) byte |= (1<<0);
+	else     byte &= ~(1<<0);
+	cpld_i2c_write(client, &byte, CPLD_CTL_OFFSET, 1);
+	mutex_unlock(&data->update_lock);
+
+	return count;
+}
+EXPORT_SYMBOL(cpld_set_ctl);
 
 /*
 CPLD report the PSU0 status
@@ -326,17 +446,16 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 	return strlen(buf);
 }
 
+static SENSOR_DEVICE_ATTR(info,	S_IRUGO,	        show_info, 0, 0);
+static SENSOR_DEVICE_ATTR(ctl,	S_IWUSR|S_IRUGO,	show_ctl, set_ctl, 0);
 
-static SENSOR_DEVICE_ATTR(info,  S_IRUGO,			        show_info, 0, 0);
-static SENSOR_DEVICE_ATTR(ctl, S_IWUSR|S_IRUGO,			show_ctl, set_ctl, 0);
+static SENSOR_DEVICE_ATTR(grn_led, S_IWUSR|S_IRUGO,	show_led, set_led, CPLD_DEV_LED_GRN_INDEX);
+static SENSOR_DEVICE_ATTR(red_led, S_IWUSR|S_IRUGO,	show_led, set_led, CPLD_DEV_LED_RED_INDEX);
 
-static SENSOR_DEVICE_ATTR(grn_led, S_IWUSR|S_IRUGO,			show_led, set_led, 0);
-static SENSOR_DEVICE_ATTR(red_led, S_IWUSR|S_IRUGO,			show_led, set_led, 1);
+static SENSOR_DEVICE_ATTR(psu0,  S_IRUGO,	        show_psu, 0, 0);
+static SENSOR_DEVICE_ATTR(psu1,  S_IRUGO,	        show_psu, 0, 1);
 
-static SENSOR_DEVICE_ATTR(psu0,  S_IRUGO,			        show_psu, 0, 0);
-static SENSOR_DEVICE_ATTR(psu1,  S_IRUGO,			        show_psu, 0, 1);
-
-static SENSOR_DEVICE_ATTR(bios_cs,  S_IWUSR|S_IRUGO,         show_bios_cs, set_bios_cs, 0);
+static SENSOR_DEVICE_ATTR(bios_cs, S_IWUSR|S_IRUGO,	show_bios_cs, set_bios_cs, 0);
 			
 static struct attribute *cpld_attributes[] = {
     //info
@@ -380,8 +499,6 @@ cpld_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct cpld_data *data;
 	int status;
 
-//    printk("+%s \n", __func__);
-    
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA))
 		return -EIO;
@@ -411,6 +528,7 @@ cpld_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	dev_info(&client->dev, "%s: sensor '%s'\n",
 		 dev_name(data->hwmon_dev), client->name);
 
+	cpld_led_client_dev = &client->dev;
 	return 0;
 
 exit_remove:
@@ -418,6 +536,7 @@ exit_remove:
 exit_free:
 	i2c_set_clientdata(client, NULL);
 	kfree(data);
+	cpld_led_client_dev = NULL;
 	return status;
 }
 
@@ -429,6 +548,7 @@ static int cpld_remove(struct i2c_client *client)
 	sysfs_remove_group(&client->dev.kobj, &cpld_group);
 	i2c_set_clientdata(client, NULL);
 	kfree(data);
+	cpld_led_client_dev = NULL;
 	return 0;
 }
 

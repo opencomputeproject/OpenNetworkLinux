@@ -47,7 +47,6 @@ enum onlp_thermal_id {
 };
 #define CHASSIS_THERMAL_COUNT	(9)
 
-
 enum onlp_fan_id {
     FAN_RESERVED = 0,
     FAN_1_ON_MAIN_BOARD,
@@ -64,8 +63,7 @@ enum onlp_fan_id {
 };
 #define CHASSIS_FAN_COUNT	(8)
 
-enum onlp_led_id
-{
+enum onlp_led_id {
     LED_RESERVED = 0,
     LED_SYS,
     LED_FAN1,
@@ -76,8 +74,7 @@ enum onlp_led_id
 };
 #define CHASSIS_LED_COUNT	(1)
 
-enum onlp_psu_id
-{
+enum onlp_psu_id {
     PSU_RESERVED = 0,
     PSU1_ID,
     PSU2_ID,

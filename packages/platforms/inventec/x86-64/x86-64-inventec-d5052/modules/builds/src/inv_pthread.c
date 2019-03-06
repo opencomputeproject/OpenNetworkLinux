@@ -1,5 +1,5 @@
 /*****************************
- Maple (d6556) platform
+ Cottonwood(D5052) platform
 ******************************/
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -146,26 +146,6 @@ static ssize_t psoc_show_fan4_input(char *buf)
 	return psoc_show_fan_input(buf, 4);
 }
 
-static ssize_t psoc_show_fan5_input(char *buf)
-{
-	return psoc_show_fan_input(buf, 5);
-}
-
-static ssize_t psoc_show_fan6_input(char *buf)
-{
-	return psoc_show_fan_input(buf, 6);
-}
-
-static ssize_t psoc_show_fan7_input(char *buf)
-{
-	return psoc_show_fan_input(buf, 7);
-}
-
-static ssize_t psoc_show_fan8_input(char *buf)
-{
-	return psoc_show_fan_input(buf, 8);
-}
-
 static struct fans_tbl_s {
         char *fan_name;
         ssize_t (*fan_front)(char *);
@@ -176,10 +156,6 @@ static struct fans_tbl_s {
 			psoc_show_fan2_input,	0},
         {"fan2",	psoc_show_fan3_input,
 			psoc_show_fan4_input,	0},
-        {"fan3",	psoc_show_fan5_input,
-			psoc_show_fan6_input,	0},
-        {"fan4",	psoc_show_fan7_input,
-			psoc_show_fan8_input,	0},
 };
 #define FAN_TBL_TOTAL	( sizeof(fans_tbl)/ sizeof(const struct fans_tbl_s) )
 
