@@ -255,17 +255,6 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index];
 
-    switch (index) {
-        case PSU1_ID:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
-            break;
-        case PSU2_ID:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
-            break;
-        default:
-            break;
-    }
-
     if(dni_bmc_check() == BMC_ON)
     {
         /* Check PSU have voltage input or not */
@@ -284,6 +273,17 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     else
     {
+        switch (index) {
+            case PSU1_ID:
+                psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
+                break;
+            case PSU2_ID:
+                psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
+                break;
+            default:
+                break;
+        }
+
         /* Check PSU have voltage input or not */
         dni_psu_pmbus_info_get(index, "psu_v_in", &val);
 

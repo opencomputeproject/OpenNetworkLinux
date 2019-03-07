@@ -159,5 +159,6 @@ class OnlPlatform_x86_64_accton_wedge100bf_65x_r0(OnlPlatformAccton,
         subprocess.call('echo port62 > /sys/bus/i2c/devices/31-0050/port_name', shell=True)
         subprocess.call('echo port63 > /sys/bus/i2c/devices/34-0050/port_name', shell=True)
         subprocess.call('echo port64 > /sys/bus/i2c/devices/33-0050/port_name', shell=True)
+        subprocess.call('ifconfig usb0 up', shell=True)
 
         return True

@@ -428,15 +428,16 @@ rm -f /usr/sbin/policy-rc.d
 
         with OnlRfsContext(dir_):
             os_release = os.path.join(dir_, 'etc', 'os-release')
+            os_release_dict = {}
             if os.path.exists(os_release):
                 # Convert /etc/os-release to /etc/os-release.json
                 import shlex
                 contents = open(os_release).read()
-                d = dict(token.split('=') for token in shlex.split(contents))
+                os_release_dict = dict(token.split('=') for token in shlex.split(contents))
                 ua = OnlRfsSystemAdmin(dir_)
                 ua.chmod('a+rwx', os.path.dirname(os_release))
                 with open(os.path.join(os.path.dirname(os_release), 'os-release.json'), "w") as f:
-                    f.write(json.dumps(d))
+                    f.write(json.dumps(os_release_dict))
                 ua.chmod('0755', os.path.dirname(os_release))
 
             Configure = self.config.get('Configure', None)
@@ -541,6 +542,8 @@ rm -f /usr/sbin/policy-rc.d
                     import asr
                     asro = asr.AimSyslogReference()
                     asro.merge(dir_)
+                    asrf = os.path.join(dir_, asropts['file'])
+                    OnlRfsSystemAdmin.chmod('777', os.path.dirname(asrf))
                     asro.format(os.path.join(dir_, asropts['file']), fmt=asropts['format'])
 
                 for (mf, fields) in Configure.get('manifests', {}).iteritems():
@@ -554,6 +557,7 @@ rm -f /usr/sbin/policy-rc.d
                     md = {}
                     md['version'] = json.load(open(fields['version']))
                     md['arch'] = self.arch
+                    md['os-release'] = os_release_dict
 
                     if os.path.exists(fields['platforms']):
                         md['platforms'] = yaml.load(open(fields['platforms']))

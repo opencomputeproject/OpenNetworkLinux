@@ -104,6 +104,8 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_POUT;
     } 
 
+    psu_serial_number_get(index, info->serial, sizeof(info->serial));
+
     return ONLP_STATUS_OK;
 }
 

@@ -150,17 +150,6 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-#if 1
-    int bus = FRONT_PORT_TO_MUX_INDEX(port);
-
-    memset(data, 0, 256);
-    /* Read eeprom information into data[] */
-    if (onlp_i2c_read(bus, 0x50, 0x00, 256, data, 0) != 0)
-    {
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-#else
     char* path;
     int len = 0;
     /*
@@ -175,7 +164,6 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
-#endif
     return ONLP_STATUS_OK;
 }
 
@@ -196,7 +184,22 @@ int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
     int bus = FRONT_PORT_TO_MUX_INDEX(port);
-    return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    int ret = onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+
+    if (ret == 0)  {
+	unsigned char buf[8] = { 0 };
+	char str[20];
+
+	buf[port/8] = (1 << port%8);
+	sprintf(str, "0x%02x%02x%02x%02x%02x%02x%02x%02x", buf[7],buf[6],buf[5],buf[4],buf[3],buf[2],buf[1],buf[0]);
+	if (onlp_file_write((uint8_t*)str, 20, INV_SFP_EEPROM_UPDATE) < 0) {
+	    AIM_LOG_ERROR("Unable to write eeprom_update for port(%d)\r\n", port);
+	    return ONLP_STATUS_E_INTERNAL;
+	}
+        return ONLP_STATUS_OK;
+    }
+    AIM_LOG_ERROR("Unable to read eeprom_update from port(%d)\r\n", port);
+    return ret;
 }
 
 int
@@ -210,7 +213,22 @@ int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
     int bus = FRONT_PORT_TO_MUX_INDEX(port);
-    return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    int ret = onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+
+    if (ret == 0)  {
+	unsigned char buf[8] = { 0 };
+	char str[20];
+
+	buf[port/8] = (1 << port%8);
+	sprintf(str, "0x%02x%02x%02x%02x%02x%02x%02x%02x", buf[7],buf[6],buf[5],buf[4],buf[3],buf[2],buf[1],buf[0]);
+	if (onlp_file_write((uint8_t*)str, 20, INV_SFP_EEPROM_UPDATE) < 0) {
+	    AIM_LOG_ERROR("Unable to write eeprom_update for port(%d)\r\n", port);
+	    return ONLP_STATUS_E_INTERNAL;
+	}
+        return ONLP_STATUS_OK;
+    }
+    AIM_LOG_ERROR("Unable to read eeprom_update from port(%d)\r\n", port);
+    return ret;
 }
 
 int

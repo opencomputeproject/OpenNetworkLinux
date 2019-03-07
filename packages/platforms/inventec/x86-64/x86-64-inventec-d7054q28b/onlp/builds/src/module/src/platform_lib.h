@@ -22,6 +22,7 @@
 #define INV_EPRM_PREFIX		"/sys/bus/i2c/devices/0-0053/"
 #define INV_CTMP_PREFIX		"/sys/devices/platform/coretemp.0/hwmon/hwmon0/"
 
+#define INV_SFP_EEPROM_UPDATE	"/sys/class/swps/module/eeprom_update"
 #define CHASSIS_SFP_COUNT	(54)
 
 /*
@@ -29,12 +30,10 @@
  */
 #define EEPROM_NODE(node)	INV_EPRM_PREFIX#node
 
-
 /*
  * Definitions of D7054Q28B device
  */
-enum onlp_thermal_id
-{
+enum onlp_thermal_id {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE_FIRST,
     THERMAL_CPU_CORE_2,
@@ -55,23 +54,22 @@ enum onlp_thermal_id
 #define CHASSIS_THERMAL_COUNT	(10)
 
 enum onlp_fan_id {
-        FAN_RESERVED = 0,
-        FAN_1_ON_MAIN_BOARD,
-        FAN_2_ON_MAIN_BOARD,
-        FAN_3_ON_MAIN_BOARD,
-        FAN_4_ON_MAIN_BOARD,
-        FAN_5_ON_MAIN_BOARD,
-        FAN_6_ON_MAIN_BOARD,
-        FAN_7_ON_MAIN_BOARD,
-        FAN_8_ON_MAIN_BOARD,
-        FAN_1_ON_PSU1,
-        FAN_1_ON_PSU2,
-        FAN_MAX
+    FAN_RESERVED = 0,
+    FAN_1_ON_MAIN_BOARD,
+    FAN_2_ON_MAIN_BOARD,
+    FAN_3_ON_MAIN_BOARD,
+    FAN_4_ON_MAIN_BOARD,
+    FAN_5_ON_MAIN_BOARD,
+    FAN_6_ON_MAIN_BOARD,
+    FAN_7_ON_MAIN_BOARD,
+    FAN_8_ON_MAIN_BOARD,
+    FAN_1_ON_PSU1,
+    FAN_1_ON_PSU2,
+    FAN_MAX
 };
 #define CHASSIS_FAN_COUNT	(8)
 
-enum onlp_led_id
-{
+enum onlp_led_id {
     LED_RESERVED = 0,
     LED_SYS,
     LED_FAN1,
@@ -82,9 +80,7 @@ enum onlp_led_id
 };
 #define CHASSIS_LED_COUNT	(1)
 
-
-enum onlp_psu_id
-{
+enum onlp_psu_id {
     PSU_RESERVED = 0,
     PSU1_ID,
     PSU2_ID,
@@ -141,4 +137,3 @@ int psu_pmbus_info_set(int id, char *node, int value);
 #endif
 
 #endif  /* __PLATFORM_LIB_H__ */
-

@@ -23,8 +23,8 @@
  *
  *
  ***********************************************************/
-#include <onlp/platformi/sfpi.h>
 
+#include <onlp/platformi/sfpi.h>
 #include <fcntl.h> /* For O_RDWR && open */
 #include <stdio.h>
 #include <string.h>
@@ -33,19 +33,41 @@
 #include <onlplib/i2c.h>
 #include "platform_lib.h"
 #include <dirent.h>
+#include <onlplib/file.h>
 
 #define MAX_SFP_PATH 128
-//static char sfp_node_path[MAX_SFP_PATH] = {0};
 
-#define MUX_START_INDEX 1
+#define MUX_START_INDEX 10
+#define QSFP_DEV_ADDR 0x50
 #define NUM_OF_SFP_PORT 48
 #define NUM_OF_QSFP_PORT 6
 #define NUM_OF_ALL_PORT (NUM_OF_SFP_PORT+NUM_OF_QSFP_PORT)
+
+#define FRONT_PORT_TO_MUX_INDEX(port) (port+MUX_START_INDEX)
 /************************************************************
  *
  * SFPI Entry Points
  *
  ***********************************************************/
+enum onlp_sfp_port_type {
+    ONLP_PORT_TYPE_SFP = 0,
+    ONLP_PORT_TYPE_QSFP,
+    ONLP_PORT_TYPE_MAX
+};
+
+static int
+onlp_sfpi_port_type(int port)
+{
+    if(port >= 0 && port < NUM_OF_SFP_PORT) {
+        return ONLP_PORT_TYPE_SFP;
+    } else if(port >= NUM_OF_SFP_PORT && port < NUM_OF_ALL_PORT) {
+        return ONLP_PORT_TYPE_QSFP;
+    } else {
+        AIM_LOG_ERROR("Invalid port(%d)\r\n", port);
+        return ONLP_STATUS_E_PARAM;
+    }
+}
+
 int
 onlp_sfpi_init(void)
 {
@@ -53,76 +75,24 @@ onlp_sfpi_init(void)
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_sfpi_port_is_valid(int port){
-    if(port > NUM_OF_ALL_PORT || port < 1)
-        return 0;
-    return 1;
-}
-
-int
-onlp_sfpi_get_file_byte(int port, char* attr){
-    if(!onlp_sfpi_port_is_valid(port)){
-        return -1;
-    }
-    char path[128]={0};
-    int err = snprintf(path, sizeof(path), "/sys/class/swps/port%d/%s", (port-1), attr);
-    if( err < 0){
-        return err;
-    }
-    FILE* pFile = fopen(path, "r");
-    if(pFile == NULL){
-        return ONLP_STATUS_E_UNSUPPORTED;
-    }
-    char buf[8] = {0};
-    fread( buf, sizeof(buf), sizeof(buf), pFile );
-    int ret = strtol (buf, NULL, 10);
-    fclose(pFile);
-    return ret;
-}
-
-int
-onlp_sfpi_set_file_byte(int port, char* attr, int value){
-    if(!onlp_sfpi_port_is_valid(port)){
-        return -1;
-    }
-    if(value > 10 || value < 0){
-        return -1;
-    }
-    char path[128]={0};
-    int err = snprintf(path, sizeof(path), "/sys/class/swps/port%d/%s", (port-1), attr);
-    if( err < 0){
-        return err;
-    }
-    FILE* pFile = fopen(path, "r+");
-    if(pFile == NULL){
-        return ONLP_STATUS_E_UNSUPPORTED;
-    }
-    char buf = 0;
-    buf = value+'0';
-    err = fwrite(&buf, sizeof(buf), sizeof(buf), pFile);
-    if(err < 0){
-        return err;
-    }
-    fclose(pFile);
-    return err;
-}
-
-int
-onlp_sfpi_port2chan(int port){
-    return port+9;
+int onlp_sfpi_port_map(int port, int* rport)
+{
+    int p_type = onlp_sfpi_port_type(port);
+    if(p_type < 0) {return ONLP_STATUS_E_INVALID;}
+    *rport = port;
+    return ONLP_STATUS_OK;
 }
 
 int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {1, 54}
+     * Ports {0, 53}
      */
     int p;
     AIM_BITMAP_CLR_ALL(bmap);
 
-    for(p = 1; p <= NUM_OF_ALL_PORT; p++) {
+    for(p = 0; p < NUM_OF_ALL_PORT; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -137,55 +107,101 @@ onlp_sfpi_is_present(int port)
      * Return 0 if not present.
      * Return < 0 if error.
      */
-    int present = -999;
-    present = onlp_sfpi_get_file_byte(port, "present");
-    if(present >= 0){
-        return (-present)+1;
+    int p_type = onlp_sfpi_port_type(port);
+    if(p_type < 0) {return ONLP_STATUS_E_INVALID;}
+
+    int present;
+    int rv;
+    if(onlp_file_read_int(&present, INV_SFP_PREFIX"port%d/present", port) != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
     }
-    return present;
+    if(present == 0) {
+        rv = true;
+    } else if (present == 1) {
+        rv = false;
+    } else {
+        AIM_LOG_ERROR("Unvalid present status %d from port(%d)\r\n",present,port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return rv;
 }
 
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     AIM_BITMAP_CLR_ALL(dst);
-    int port=MUX_START_INDEX;
-    for(port=MUX_START_INDEX;port<=NUM_OF_ALL_PORT;port++){
-        if(onlp_sfpi_is_present(port))
-            AIM_BITMAP_SET(dst, port);
+    int port;
+    for(port = 0; port < NUM_OF_ALL_PORT; port++) {
+        if(onlp_sfpi_is_present(port) == true) {
+            AIM_BITMAP_MOD(dst, port, 1);
+        } else if(onlp_sfpi_is_present(port) == false) {
+            AIM_BITMAP_MOD(dst, port, 0);
+        } else {
+            return ONLP_STATUS_E_INTERNAL;
+        }
     }
     return ONLP_STATUS_OK;
 }
 
-int
+static int
 onlp_sfpi_is_rx_los(int port)
 {
-    if(port <= NUM_OF_SFP_PORT){
-        if (onlp_sfpi_is_present(port) == 1){
-            int rxlos = onlp_sfpi_get_file_byte(port, "rxlos");
-            if(rxlos < 0){
-                AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-                return ONLP_STATUS_E_INTERNAL;
-            }
-            return rxlos;
+    int rxlos;
+    int rv;
+    int len;
+    char buf[ONLP_CONFIG_INFO_STR_MAX];
+
+    int p_type = onlp_sfpi_port_type(port);
+
+    if(p_type == ONLP_PORT_TYPE_SFP) {
+        if(onlp_file_read_int(&rxlos, INV_SFP_PREFIX"port%d/rxlos", port) != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
         }
-        return 0;
+        if(rxlos == 0) {
+            rv = true;
+        } else {
+            rv = false;
+        }
+    } else if(p_type == ONLP_PORT_TYPE_QSFP) {
+        if(onlp_file_read((uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"port%d/soft_rx_los", port) != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        if(sscanf( buf, "0x%x\n", &rxlos) != 1) {
+            AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        if(rxlos < 0 || rxlos > 0x0f) {
+            AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        } else if(rxlos == 0) {
+            rv = true;
+        } else {
+            rv = false;
+        }
+    } else {
+        return ONLP_STATUS_E_INVALID;
     }
-    else if(port > NUM_OF_SFP_PORT){
-        return 0;
-    }
-    AIM_LOG_ERROR("Read rxlos from port(%d) out of range.\r\n", port);
-    return ONLP_STATUS_E_INTERNAL;
+
+    return rv;
 }
 
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
-{   
+{
     AIM_BITMAP_CLR_ALL(dst);
-    int port=MUX_START_INDEX;
-    for(port=MUX_START_INDEX;port<=NUM_OF_ALL_PORT;port++){
-        if(onlp_sfpi_is_rx_los(port))
-            AIM_BITMAP_SET(dst, port);
+    int port;
+    int isrxlos;
+    for(port = 0; port < NUM_OF_ALL_PORT; port++) {
+        if(onlp_sfpi_is_present(port) == true) {
+            isrxlos = onlp_sfpi_is_rx_los(port);
+            if(isrxlos == true) {
+                AIM_BITMAP_MOD(dst, port, 1);
+            } else if(isrxlos == false) {
+                AIM_BITMAP_MOD(dst, port, 0);
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
     }
     return ONLP_STATUS_OK;
 }
@@ -212,12 +228,14 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return OK if eeprom is read
      */
     memset(data, 0, 256);
-    
-    int byte = -1;
-    byte = onlp_i2c_read(onlp_sfpi_port2chan(port), 0x50, 0, 256, data, 0);
-    if(byte < 0){
+
+    if(onlp_sfpi_port_type(port) < 0) { return ONLP_STATUS_E_INVALID; }
+    int sts;
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
+    sts = onlp_i2c_read(bus, QSFP_DEV_ADDR, 0, 256, data, ONLP_I2C_F_FORCE);
+    if(sts < 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
+        return ONLP_STATUS_E_MISSING;
     }
     return ONLP_STATUS_OK;
 }
@@ -225,64 +243,59 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = onlp_sfpi_port2chan(port);
+    if(onlp_sfpi_port_type(port) < 0) { return ONLP_STATUS_E_INVALID; }
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
     return onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    int bus = onlp_sfpi_port2chan(port);
+    if(onlp_sfpi_port_type(port) < 0) { return ONLP_STATUS_E_INVALID; }
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
     return onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    int bus = onlp_sfpi_port2chan(port);
+    if(onlp_sfpi_port_type(port) < 0) { return ONLP_STATUS_E_INVALID; }
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
     return onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    int bus = onlp_sfpi_port2chan(port);
+    if(onlp_sfpi_port_type(port) < 0) { return ONLP_STATUS_E_INVALID; }
+    int bus = FRONT_PORT_TO_MUX_INDEX(port);
     return onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
 }
 
 int
 onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
+    *rv = 0;
+    int p_type = onlp_sfpi_port_type(port);
+    if(p_type < 0) { return ONLP_STATUS_E_INVALID; }
     switch (control) {
-        case ONLP_SFP_CONTROL_RESET_STATE:
-            if(port >= NUM_OF_SFP_PORT && port < (NUM_OF_SFP_PORT + NUM_OF_QSFP_PORT)){
-                *rv = 1;
-            }
-            else{
-                *rv = 0;
-            }
-            break;
-        case ONLP_SFP_CONTROL_RX_LOS:
-            *rv = 0;
-            break;
-        case ONLP_SFP_CONTROL_TX_DISABLE:
-            if(port <= NUM_OF_SFP_PORT){
-                *rv = 1;
-            }
-            else if(port >= NUM_OF_SFP_PORT && port < (NUM_OF_SFP_PORT + NUM_OF_QSFP_PORT)){
-                *rv = 0;
-            }
-            break;
-        case ONLP_SFP_CONTROL_LP_MODE:
-        if(port >= NUM_OF_SFP_PORT && port < (NUM_OF_SFP_PORT + NUM_OF_QSFP_PORT)){
-                *rv = 1;
-            }
-            else{
-                *rv = 0;
-            }
-            break;
-        default:
-            break;
+    case ONLP_SFP_CONTROL_RESET_STATE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            *rv = 1;
+        }
+        break;
+    case ONLP_SFP_CONTROL_TX_DISABLE:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            *rv = 1;
+        }
+        break;
+    case ONLP_SFP_CONTROL_LP_MODE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            *rv = 1;
+        }
+        break;
+    default:
+        break;
     }
 
     return ONLP_STATUS_OK;
@@ -291,100 +304,69 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    int ret_val = 0;
-    int err = 0;
+    int ret = ONLP_STATUS_E_UNSUPPORTED;
+    int p_type = onlp_sfpi_port_type(port);
+    if(p_type < 0) { return ONLP_STATUS_E_INVALID; }
     switch (control) {
-        case ONLP_SFP_CONTROL_RESET_STATE:
-            err = onlp_sfpi_set_file_byte(port, "reset", value);
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_RX_LOS:
-            ret_val = ONLP_STATUS_E_UNSUPPORTED;
-            break;
-        case ONLP_SFP_CONTROL_TX_DISABLE:
-            err = onlp_sfpi_set_file_byte(port, "tx_disable", value);
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_LP_MODE:
-            err = onlp_sfpi_set_file_byte(port, "lpmod", value);
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            ret_val = ONLP_STATUS_OK;
-            break;
-        default:
-            ret_val = ONLP_STATUS_E_UNSUPPORTED;
-            break;
+    case ONLP_SFP_CONTROL_RESET_STATE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/reset", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_TX_DISABLE:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/tx_disable", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_LP_MODE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/lpmod", port);
+        }
+        break;
+    default:
+        break;
     }
-    return ret_val;
+
+    return ret;
 }
 
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
-    int ret_val = 0;
-    int err = 0;
-    
+    int ret = ONLP_STATUS_E_UNSUPPORTED;
+    int p_type = onlp_sfpi_port_type(port);
+    if(p_type < 0) { return ONLP_STATUS_E_INVALID; }
     switch (control) {
-        case ONLP_SFP_CONTROL_RESET_STATE:
-            err = onlp_sfpi_get_file_byte(port, "reset");
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            *value = err;
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_RX_LOS:
-            err = onlp_sfpi_get_file_byte(port, "rxlos");
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            *value = err;
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_TX_DISABLE:
-            err = onlp_sfpi_get_file_byte(port, "tx_disable");
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            *value = err;
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_LP_MODE:
-            err = onlp_sfpi_get_file_byte(port, "lpmod");
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            *value = err;
-            ret_val = ONLP_STATUS_OK;
-            break;
-        case ONLP_SFP_CONTROL_TX_FAULT:
-            err = onlp_sfpi_get_file_byte(port, "tx_fault");
-            if(err == ONLP_STATUS_E_UNSUPPORTED){
-                ret_val = ONLP_STATUS_E_UNSUPPORTED;
-                break;
-            }
-            *value = err;
-            ret_val = ONLP_STATUS_OK;
-            break;
-        default:
-            ret_val = ONLP_STATUS_E_UNSUPPORTED;
-            break;
+    case ONLP_SFP_CONTROL_RESET_STATE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_RX_LOS:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/rxlos", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_TX_DISABLE:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/tx_disable", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_LP_MODE:
+        if(p_type == ONLP_PORT_TYPE_QSFP) {
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/lpmod", port);
+        }
+        break;
+    case ONLP_SFP_CONTROL_TX_FAULT:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/tx_fault", port);
+        }
+        break;
+    default:
+        break;
     }
-    return ret_val;
+
+    return ret;
 }
 
 int
@@ -397,4 +379,10 @@ void
 onlp_sfpi_debug(int port, aim_pvs_t* pvs)
 {
     aim_printf(pvs, "Debug data for port %d goes here.", port);
+}
+
+int
+onlp_sfpi_ioctl(int port, va_list vargs)
+{
+    return ONLP_STATUS_E_UNSUPPORTED;
 }

@@ -16,8 +16,16 @@ class OnlPlatform_x86_64_quanta_ix8_rglbmc_r0(OnlPlatformQuanta,
     SYS_OBJECT_ID=".4048.3800"
 
     def baseconfig(self):
+        self.insmod("optoe")
         self.insmod("qci_cpld_sfp28")
         self.insmod("qci_cpld_led")
         self.insmod("qci_platform_ix8")
+
+        #SFP for 1~48 port
+        #QSFP for 49~56 port
+        for port_number in range(1,57):
+            bus_number = port_number + 31
+            os.system("echo %d >/sys/bus/i2c/devices/%d-0050/port_name" % (port_number, bus_number))
+
 
         return True

@@ -1,5 +1,5 @@
 /*****************************
- Redwood platform
+ Redwood (d7032q28b) platform
 ******************************/
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -17,6 +17,9 @@
 #include <linux/uaccess.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include "inv_pthread.h"
+
+#define INV_PTHREAD_KERNEL_MODULE
 
 #define SHOW_ATTR_WARNING       ("N/A")
 #define SHOW_ATTR_NOTPRINT      ("Not Available")
@@ -29,7 +32,6 @@
 #define ACC_R           (0)
 #define ACC_W           (1)
 
-#define TINY_BUF_SIZE   (8)
 #define MAX_PATH_SIZE   (64)
 #define MIN_ACC_SIZE    (32)
 #define MAX_ACC_SIZE    (256)
@@ -37,23 +39,25 @@
 /*
  * LED definitions
  */
-#define STATUS_LED_MODE_AUTO    0
-#define STATUS_LED_MODE_DIAG    1
-#define STATUS_LED_MODE_MANU    2
+#define STATUS_LED_MODE_AUTO	(0)
+#define STATUS_LED_MODE_DIAG	(1)
+#define STATUS_LED_MODE_MANU	(2)
+#define STATUS_LED_MODE_ERR	(-1)
 
-#define STATUS_LED_GRN0         10      // 0 - 000: off
-#define STATUS_LED_GRN1         11      // 1 - 001: 0.5hz
-#define STATUS_LED_GRN2         12      // 2 - 010: 1 hz
-#define STATUS_LED_GRN3         13      // 3 - 011: 2 hz
-#define STATUS_LED_GRN7         17      // 7 - 111: on
-#define STATUS_LED_RED0         20      // 0 - 000: off
-#define STATUS_LED_RED1         21      // 1 - 001: 0.5hz
-#define STATUS_LED_RED2         22      // 2 - 010: 1 hz
-#define STATUS_LED_RED3         23      // 3 - 011: 2 hz
-#define STATUS_LED_RED7         27      // 7 - 111: on
-#define STATUS_LED_INVALID      0       // Invalid
+#define STATUS_LED_GRN0		(10)	// 0 - 000: off
+#define STATUS_LED_GRN1		(11)	// 1 - 001: 0.5hz
+#define STATUS_LED_GRN2		(12)	// 2 - 010: 1 hz
+#define STATUS_LED_GRN3		(13)	// 3 - 011: 2 hz
+#define STATUS_LED_GRN7		(17)	// 7 - 111: on
+#define STATUS_LED_RED0		(20)	// 0 - 000: off
+#define STATUS_LED_RED1		(21)	// 1 - 001: 0.5hz
+#define STATUS_LED_RED2		(22)	// 2 - 010: 1 hz
+#define STATUS_LED_RED3		(23)	// 3 - 011: 2 hz
+#define STATUS_LED_RED7		(27)	// 7 - 111: on
+#define STATUS_LED_INVALID	(0)	// Invalid
 
-ssize_t status_led_change(const char *path1, const char *tmp1, const char *path2, const char *tmp2);
+static struct mutex pthread_mutex;
+
 ssize_t status_led_grn(const char *freq);
 ssize_t status_led_red(const char *freq);
 ssize_t status_led_diag_mode_enable(void);
@@ -69,69 +73,12 @@ int status_led_check_diag_mode(void);
 #define SYSFS_LOG(fmt, args...) printk(KERN_WARNING "[p_thread] " fmt, ##args)
 #endif
 
-#define INV_PTHREAD_KERNEL_MODULE (1)
-#define SWITCH_HEALTH_LED_CHANGE_VIA_GPIO (1)
 
 /* inventec_class *********************************/
 static struct kobject *status_kobj;
 static struct kset *status_kset;
 
-
-static struct mutex rw_lock;
-
-static int hwm_psoc = INV_HWMID_INIT;
-static int hwm_cpld = INV_HWMID_INIT;
-
-int get_hwm_psoc(void)
-{
-    return hwm_psoc;
-}
-
-int get_hwm_cpld(void)
-{
-    return hwm_cpld;
-}
-
-static ssize_t access_user_space(const char *name, int mode, char *buf, size_t len, loff_t offset)
-{
-	struct file *fp;
-	mm_segment_t fs;
-	loff_t pos = offset;
-	char *mark = NULL;
-	ssize_t vfs_ret = 0;
-
-	if (mode == ACC_R) {
-		fp = filp_open(name, O_RDONLY, S_IRUGO);
-		if (IS_ERR(fp))
-			return -ENODEV;
-
-		fs = get_fs();
-		set_fs(KERNEL_DS);
-
-		vfs_ret = vfs_read(fp, buf, len, &pos);
-
-		mark = strpbrk(buf, "\n");
-		if (mark)
-			*mark = '\0';
-
-		filp_close(fp, NULL);
-		set_fs(fs);
-	} else if (mode == ACC_W) {
-		fp = filp_open(name, O_WRONLY, S_IWUSR | S_IRUGO);
-		if (IS_ERR(fp))
-			return -ENODEV;
-
-		fs = get_fs();
-		set_fs(KERNEL_DS);
-
-		vfs_ret = vfs_write(fp, buf, len, &pos);
-		filp_close(fp, NULL);
-		set_fs(fs);
-	}
-
-	return vfs_ret;
-}
-
+#if 0
 int inventec_strtol(const char *sbufp, char **endp, unsigned int base)
 {
     char *endptr;
@@ -143,6 +90,7 @@ int inventec_strtol(const char *sbufp, char **endp, unsigned int base)
     *endp = (char*)1;
     return value;
 }
+#endif
 
 int inventec_singlechar_to_int(const char c)
 {
@@ -160,157 +108,7 @@ int inventec_singlechar_to_int(const char c)
     return -1;
 }
 
-int inventec_store_input(char *inputp, int count)
-{
-        int i = 0;
-        while(inputp[i] != '\n' && inputp[i] != '\0' && i < count) {
-                i++;
-        }
-        inputp[i] = '\0';
-        return strlen(inputp);
-}
-
-ssize_t
-inventec_show_attr(char *buf_p, const char *invdevp)
-{
-    int  inv_len = MAX_ACC_SIZE;	/* INV driver return max length      */
-    char tmp_buf[MAX_ACC_SIZE];
-    char *str_negative = "-", *mark = NULL;
-
-    /* [Step2] Get data by uaccess */
-    memset(tmp_buf, 0, sizeof(tmp_buf));
-    mutex_lock(&rw_lock);
-    if (access_user_space(invdevp, ACC_R, tmp_buf, inv_len, 0) < 0) {
-        /* u_access fail */
-        mutex_unlock(&rw_lock);
-        return sprintf(buf_p, "%s\n", SHOW_ATTR_WARNING);
-    }
-    mutex_unlock(&rw_lock);
-
-    /* [Step3] Check return value
-     * - Ex: When transceiver not plugged
-     *   => SWPS return error code "-202"
-     *   => Pic8 need return "NA" (assume)
-     */
-    if (strcspn(tmp_buf, str_negative) == 0) {
-        /* error case: <ex> "-202" */
-        return sprintf(buf_p, "%s\n", SHOW_ATTR_WARNING);
-    }
-
-    /* OK case:*/
-    mark = strpbrk(tmp_buf, "\n");
-    if (mark) { *mark = '\0'; }
-
-    return sprintf(buf_p, "%s\n", tmp_buf);
-}
-
-ssize_t
-inventec_store_attr(const char *buf_p, size_t count, const char *invdevp)
-{
-    ssize_t ret = 0;
-
-    /* [Step2] Get data by uaccess */
-    mutex_lock(&rw_lock);
-    if ((ret = access_user_space(invdevp, ACC_W, (char*)buf_p, count, 0)) < 0) {
-        /* u_access fail */
-        mutex_unlock(&rw_lock);
-        return -EINVAL;
-    }
-    mutex_unlock(&rw_lock);
-
-    /* OK case:*/
-    return ret;
-}
-
-int sysfs_detect_hwmon_index(void)
-{
-    char hwmon_buf[MAX_ACC_SIZE];
-    char hwmon_path[MAX_PATH_SIZE];
-    int hwid = 0;
-
-    for (hwid = 0;
-	 hwid < INV_HWMID_MAX && (hwm_psoc == INV_HWMID_INIT || hwm_cpld == INV_HWMID_INIT);
-	 hwid++) {
-	memset(hwmon_buf, 0, sizeof(hwmon_buf));
-	sprintf(hwmon_path, "/sys/class/hwmon/hwmon%d/device/name", hwid);
-
-	inventec_show_attr(hwmon_buf, hwmon_path);
-	if (strncmp(hwmon_buf, "inv_psoc", 8) == 0) {
-	    hwm_psoc = hwid;
-	} 
-	else
-	if (strncmp(hwmon_buf, "inv_bmc", 7) == 0) {
-	    hwm_psoc = hwid;
-	}
-	else
-	if (strncmp(hwmon_buf, "inv_cpld", 8) == 0) {
-	    hwm_cpld = hwid;
-	}
-    }
-    if (hwid >= INV_HWMID_MAX) {
-	printk(KERN_ERR "[p_thread] detect hwmon index failed, psoc = %d, cpld = %d\n", hwm_psoc, hwm_cpld);
-	return -1;
-    }
-    printk(KERN_INFO "[p_thread] detect hwmon index success, psoc = %d, cpld = %d\n", hwm_psoc, hwm_cpld);
-    return 0;
-}
-
-static int __init
-inventec_class_init(void)
-{
-    mutex_init(&rw_lock);
-
-#ifdef	INV_PTHREAD_KERNEL_MODULE
-    if (sysfs_detect_hwmon_index() < 0) {
-        return -1;
-    }
-#endif
-
-    printk(KERN_INFO "[p_thread] [%s/%d] Module initial success.\n",__func__,__LINE__);
-
-    return 0;
-}
-
-static void __exit
-inventec_class_exit(void)
-{
-    printk(KERN_INFO "[p_thread] [%s/%d] Remove module.\n",__func__,__LINE__);
-}
-
 /* fan device *************************************/
-#define FAN_DEV_PATH_STATE	"/sys/class/hwmon/hwmon%d/device/fan_gpi"
-#define FAN_DEV_PATH_FAN1_INPUT "/sys/class/hwmon/hwmon%d/device/fan1_input"
-#define FAN_DEV_PATH_FAN2_INPUT "/sys/class/hwmon/hwmon%d/device/fan2_input"
-#define FAN_DEV_PATH_FAN3_INPUT "/sys/class/hwmon/hwmon%d/device/fan3_input"
-#define FAN_DEV_PATH_FAN4_INPUT "/sys/class/hwmon/hwmon%d/device/fan4_input"
-#define FAN_DEV_PATH_FAN5_INPUT "/sys/class/hwmon/hwmon%d/device/fan5_input"
-#define FAN_DEV_PATH_FAN6_INPUT "/sys/class/hwmon/hwmon%d/device/fan6_input"
-#define FAN_DEV_PATH_FAN7_INPUT "/sys/class/hwmon/hwmon%d/device/fan7_input"
-#define FAN_DEV_PATH_FAN8_INPUT "/sys/class/hwmon/hwmon%d/device/fan8_input"
-
-static char fan_dev_path_state[MAX_PATH_SIZE];
-static char fan_dev_path_fan1_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan2_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan3_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan4_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan5_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan6_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan7_input[MAX_PATH_SIZE];
-static char fan_dev_path_fan8_input[MAX_PATH_SIZE];
-
-void sysfs_fan_path_init(void)
-{
-    sprintf(&fan_dev_path_state[0],	FAN_DEV_PATH_STATE,	 get_hwm_psoc());
-    sprintf(&fan_dev_path_fan1_input[0],FAN_DEV_PATH_FAN1_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan2_input[0],FAN_DEV_PATH_FAN2_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan3_input[0],FAN_DEV_PATH_FAN3_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan4_input[0],FAN_DEV_PATH_FAN4_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan5_input[0],FAN_DEV_PATH_FAN5_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan6_input[0],FAN_DEV_PATH_FAN6_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan7_input[0],FAN_DEV_PATH_FAN7_INPUT, get_hwm_psoc());
-    sprintf(&fan_dev_path_fan8_input[0],FAN_DEV_PATH_FAN8_INPUT, get_hwm_psoc());
-}
-
 #define FAN_STATE_NORMAL	"normal"
 #define FAN_STATE_FAULTY	"faulty"
 #define FAN_STATE_UNINSTALLED	"uninstalled"
@@ -328,20 +126,60 @@ void sysfs_fan_path_init(void)
 #define FAN_STATE_BIT_INVALID		3
 #define FAN_STATE_BIT_READ_ERROR	4
 
+static ssize_t psoc_show_fan1_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 1);
+}
+
+static ssize_t psoc_show_fan2_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 2);
+}
+
+static ssize_t psoc_show_fan3_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 3);
+}
+
+static ssize_t psoc_show_fan4_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 4);
+}
+
+static ssize_t psoc_show_fan5_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 5);
+}
+
+static ssize_t psoc_show_fan6_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 6);
+}
+
+static ssize_t psoc_show_fan7_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 7);
+}
+
+static ssize_t psoc_show_fan8_input(char *buf)
+{
+	return psoc_show_fan_input(buf, 8);
+}
+
 static struct fans_tbl_s {
         char *fan_name;
-        char *fan_front;
-        char *fan_rear;
+        ssize_t (*fan_front)(char *);
+        ssize_t (*fan_rear)(char *);
         unsigned int fan_state;
 } fans_tbl[] = {
-        {"fan1",	fan_dev_path_fan1_input,
-			fan_dev_path_fan2_input,	0},
-        {"fan2",	fan_dev_path_fan3_input,
-			fan_dev_path_fan4_input,	0},
-        {"fan3",	fan_dev_path_fan5_input,
-			fan_dev_path_fan6_input,	0},
-        {"fan4",	fan_dev_path_fan7_input,
-			fan_dev_path_fan8_input,	0},
+        {"fan1",	psoc_show_fan1_input,
+			psoc_show_fan2_input,	0},
+        {"fan2",	psoc_show_fan3_input,
+			psoc_show_fan4_input,	0},
+        {"fan3",	psoc_show_fan5_input,
+			psoc_show_fan6_input,	0},
+        {"fan4",	psoc_show_fan7_input,
+			psoc_show_fan8_input,	0},
 };
 #define FAN_TBL_TOTAL	( sizeof(fans_tbl)/ sizeof(const struct fans_tbl_s) )
 
@@ -357,7 +195,7 @@ fans_faulty_log(int fan_id)
     int pwm;
 
     memset(&buf[0], 0, MAX_ACC_SIZE);
-    if (inventec_show_attr(buf, fans_tbl[fan_id].fan_front) < 0) {
+    if (fans_tbl[fan_id].fan_front(buf) < 0) {
 	if(!FAN_STATE_CHECK(fan_id, FAN_STATE_BIT_READ_ERROR)) {
 	    FAN_STATE_SET(fan_id, FAN_STATE_BIT_READ_ERROR);
 	    SYSFS_LOG("[p_thread] %s: front %s\n",fans_tbl[fan_id].fan_name,FAN_STATE_READ_ERROR);
@@ -374,7 +212,7 @@ fans_faulty_log(int fan_id)
     }
 
     memset(&buf[0], 0, MAX_ACC_SIZE);
-    if (inventec_show_attr(buf, fans_tbl[fan_id].fan_rear) < 0) {
+    if (fans_tbl[fan_id].fan_rear(buf) < 0) {
 	if(!FAN_STATE_CHECK(fan_id, FAN_STATE_BIT_READ_ERROR)) {
 	    FAN_STATE_SET(fan_id, FAN_STATE_BIT_READ_ERROR);
 	    SYSFS_LOG("[p_thread] %s: rear %s\n",fans_tbl[fan_id].fan_name,FAN_STATE_READ_ERROR);
@@ -399,103 +237,68 @@ fans_faulty_log(int fan_id)
 
 /* INV drivers mapping */
 static int
-fans_control_log(int fan_id)
+fans_control_log(char *buf, int fan_id)
 {
-    char buf[MAX_ACC_SIZE];
-    unsigned int statebit2, statebit3, bitshift;
-
-    if (inventec_show_attr(buf, fan_dev_path_state) < 0) {
-	SYSFS_LOG("[p_thread] read fan_gpi failed\n");
-	return 1;
-    }
+    unsigned int statebit;
 
     if (buf[0] != '0' || (buf[1] != 'x' && buf[1] != 'X')) {
 	SYSFS_LOG("[p_thread] %s/%d: %s %s\n",__func__,__LINE__,FAN_STATE_INVALID, buf);
 	return 1;
     }
 
-    if ((statebit2 = inventec_singlechar_to_int(buf[2])) == -1) {
-	SYSFS_LOG("[p_thread] Error value read from %s\n", fan_dev_path_state);
-	return 1;
-    }
-    if (buf[2] == 'f' || buf[2] == 'F') statebit2 = 0;
-
-    if ((statebit3 = inventec_singlechar_to_int(buf[3])) == -1) {
-	SYSFS_LOG("[p_thread] Error value read from %s\n", fan_dev_path_state);
+    if (buf[2] != buf[3]) {
+	SYSFS_LOG("[p_thread] %s/%d: %s %s\n",__func__,__LINE__,FAN_STATE_INVALID, buf);
 	return 1;
     }
 
-    bitshift = fan_id;
-    //SYSFS_LOG("[p_thread] 1: statebit2 = 0x%x statebit3 = 0x%x bitshift = 0x%x\n",statebit2,statebit3,bitshift);
-    if ((statebit2 & 1<<bitshift) && (statebit3 & 1<<bitshift)) {
+    if ((statebit = inventec_singlechar_to_int(buf[2])) == -1) {
+	SYSFS_LOG("[p_thread] Error value read from fan %d\n", fan_id);
+	return 1;
+    }
+
+    if (statebit & 1<<fan_id) {
 	if(!FAN_STATE_CHECK(fan_id, FAN_STATE_BIT_UNINSTALLED)) {
 	    FAN_STATE_SET(fan_id, FAN_STATE_BIT_UNINSTALLED);
 	    SYSFS_LOG("[p_thread] %s: %s\n",fans_tbl[fan_id].fan_name,FAN_LOG_UNINSTALLED);
 	}
-	return 1;
-    }
-    else
-    if (!(statebit2 & 1<<bitshift) && !(statebit3 & 1<<bitshift)) {
 	return fans_faulty_log(fan_id);
     }
-    else {
-	if(!FAN_STATE_CHECK(fan_id, FAN_STATE_BIT_FAULTY)) {
-	    FAN_STATE_SET(fan_id, FAN_STATE_BIT_FAULTY);
-	    SYSFS_LOG("[p_thread] %s: %s\n",fans_tbl[fan_id].fan_name,FAN_STATE_FAULTY);
-	}
-	return 1;
-    }
+
     return 0;
 }
 
 int fans_control(void)
 {
-    int i, ret = 0;
-    static int cd_shutdown = 5;
+    char buf[MAX_ACC_SIZE];
+    int i, err_fans = 0;
+
+    if (psoc_show_fan_state(buf) < 0) {
+        SYSFS_LOG("[p_thread] read fan_gpi failed\n");
+        return FAN_TBL_TOTAL+1;
+    }
 
     for (i = 0; i < FAN_TBL_TOTAL; i++) {
-        if(fans_control_log(i) == 1) {
-            ret++;
+        if(fans_control_log(buf, i) == 1) {
+            err_fans++;
         }
     }
 
-    if (0 < ret && ret < FAN_TBL_TOTAL) {
-        status_led_red("2");  //1Hz
-        cd_shutdown = 5; //reset count down
+    if (!err_fans) {
+	return 0;
     }
 
-    if (ret == FAN_TBL_TOTAL) {
-        status_led_red("3"); //4Hz
-        if (cd_shutdown == 0) {
-            kobject_uevent(status_kobj, KOBJ_REMOVE);
-        }
-        else if (cd_shutdown > 0)
-        {
-            printk(KERN_ERR "[p_thread] All fans failed.\n");
-            printk(KERN_ERR "[p_thread] System shutdown immediately in %d seconds.\n", cd_shutdown);
-        }
-        cd_shutdown -= 1;
+    status_led_red("3");  //1Hz
+    if (0 < err_fans && err_fans < FAN_TBL_TOTAL) {
+	printk(KERN_ERR "[p_thread] %d fans failed. [%s]\n", err_fans, buf);
     }
-    return ret;
+    else
+    if (err_fans == FAN_TBL_TOTAL) {
+        printk(KERN_ERR "[p_thread] All fans failed. [%s]\n", buf);
+    }
+    return err_fans;
 }
 
 /* End of faninfo_device */
-
-static int __init
-fan_device_init(void)
-{
-#ifdef	INV_PTHREAD_KERNEL_MODULE
-    sysfs_fan_path_init();
-#endif
-    return 0;
-}
-
-
-static void __exit
-fan_device_exit(void)
-{
-    printk(KERN_INFO "[p_thread] Remove fan module.\n");
-}
 
 /* psu device *************************************/
 static unsigned int psu_voltin = 0;
@@ -527,7 +330,6 @@ static unsigned int psu_voltin = 0;
 
 typedef struct {
 	char *inv_dev_attrp;
-	char *inv_dev_pathp;
 } psu_dev_t;
 
 typedef struct {
@@ -547,20 +349,9 @@ typedef struct {
 	char			*psu_voltout;
 } psu_dev_group_t;
 
-#define PSU_DEV_PATH_TEMPLATE	"/sys/class/hwmon/hwmon%d/device/%s"
-
-static char psu_dev_path_state[MAX_PATH_SIZE];
-static char psu_dev_path_psu_voltin[MAX_PATH_SIZE];
-
-void sysfs_psu_path_init(void)
-{
-    sprintf(&psu_dev_path_state[0],		PSU_DEV_PATH_TEMPLATE,	get_hwm_cpld(), "\%s" );
-    sprintf(&psu_dev_path_psu_voltin[0], 	PSU_DEV_PATH_TEMPLATE,	get_hwm_psoc(), "\%s" );
-}
-
 static psu_dev_t psu_dev_name[] = {
-	{ "state",		psu_dev_path_state },	// Using cpld
-	{ "psu_voltin",		psu_dev_path_psu_voltin },
+	{ "state" },	// Using cpld
+	{ "psu_voltin" },
 };
 #define PSU_DEV_NAME_TOTAL	( sizeof(psu_dev_name) / sizeof(const psu_dev_t) )
 
@@ -580,21 +371,41 @@ static psu_dev_group_t psu_dev_group[] = {
 
 static char psu_state[4][MIN_ACC_SIZE];
 
+static ssize_t psoc_show_psu0_state(char *buf)
+{
+        return psoc_show_psu_state(buf, 0);
+}
+
+static ssize_t psoc_show_psu1_state(char *buf)
+{
+        return psoc_show_psu_state(buf, 1);
+}
+
+static ssize_t psoc_show_psu1_vin(char *buf)
+{
+        return psoc_show_psu_vin(buf, 1);
+}
+
+static ssize_t psoc_show_psu2_vin(char *buf)
+{
+        return psoc_show_psu_vin(buf, 2);
+}
+
 static struct psu_wire_tbl_s {
         char *psu_attr;
         char *psu_name;
-	char *psu_wire;
+	ssize_t (*psu_wire)(char *);
 	char *psu_state;
 } psu_wire_tbl[] = {
-        { "state",		"psu1",	"psu0",			psu_state[0] },	// Using cpld
-        { "state",		"psu2",	"psu1",			psu_state[1] },
-	{ "psu_voltin",		"psu1",	"psoc_psu1_vin",	psu_state[2] },
-	{ "psu_voltin",		"psu2",	"psoc_psu2_vin",	psu_state[3] },
+        { "state",		"psu1",	psoc_show_psu0_state,	psu_state[0] },	// Using cpld
+        { "state",		"psu2",	psoc_show_psu1_state,	psu_state[1] },
+	{ "psu_voltin",		"psu1",	psoc_show_psu1_vin,	psu_state[2] },
+	{ "psu_voltin",		"psu2",	psoc_show_psu2_vin,	psu_state[3] },
 };
 #define PSU_WIRE_TBL_TOTAL   ( sizeof(psu_wire_tbl)/ sizeof(const struct psu_wire_tbl_s) )
 
-static char *
-psu_attr_get_wirep(const char *psu_attrp, const char *psu_namep, char **psu_statepp)
+static ssize_t
+(*psu_get_show_function(const char *psu_attrp, const char *psu_namep, char **psu_statepp)) (char *buf)
 {
     int i;
 
@@ -624,10 +435,10 @@ int psu_check_state_normal(char *statep)
 /* Get PSU voltin for determon AC(110v) or DC(48v) */
 void psu_get_voltin(void)
 {
-    char acc_path[MAX_PATH_SIZE], volt[MIN_ACC_SIZE];
+    char volt[MIN_ACC_SIZE];
     psu_dev_t *devnamep;
     unsigned int voltin;
-    char *invwirep;
+    ssize_t (*invwirep)(char *buf) = NULL;
     int i, j;
 
     for (i = 0; i < PSU_DEV_GROUP_TOTAL; i++) {
@@ -635,20 +446,18 @@ void psu_get_voltin(void)
 	devnamep = psu_dev_group[i].psu_dev_namep;
 	for (j = 0; j < psu_dev_group[i].psu_dev_total; j++, devnamep++) {
 	    if (strncmp(devnamep->inv_dev_attrp, PSU_ATTR_VOLTIN, PSU_ATTR_VOLTIN_LEN) == 0) {
-		invwirep = psu_attr_get_wirep(PSU_ATTR_VOLTIN, psu_dev_group[i].psu_name, NULL);
+		invwirep = psu_get_show_function(PSU_ATTR_VOLTIN, psu_dev_group[i].psu_name, NULL);
 		if (invwirep == NULL) {
 		    printk(KERN_DEBUG "[p_thread] Invalid psuname: %s\n", psu_dev_group[i].psu_name);
 		    continue;
 		}
-		sprintf(acc_path, devnamep->inv_dev_pathp, invwirep);
-		//printk(KERN_DEBUG "[p_thread] RYU: %s/%d: acc_path = %s\n",__func__,__LINE__,acc_path);
-		if (inventec_show_attr(volt, acc_path) <= 0) {
-		    printk(KERN_DEBUG "[p_thread] Read %s failed\n", acc_path);
+		if (invwirep(volt) <= 0) {
+		    printk(KERN_DEBUG "[p_thread] Read %s failed\n", psu_dev_group[i].psu_name);
 		    continue;
 		}
 		else {
 		    voltin = simple_strtol(&volt[0], NULL, 10);
-		    printk(KERN_DEBUG "[p_thread] Read %s %s = %u\n",acc_path,volt,voltin);
+		    printk(KERN_DEBUG "[p_thread] Read %s %s = %u\n",psu_dev_group[i].psu_name,volt,voltin);
 		    if (voltin > psu_voltin) {
 			psu_voltin = voltin;
 		    }
@@ -666,9 +475,9 @@ void psu_get_voltin(void)
 /* psus_control() by inv_thread */
 int psus_control(int log_only)
 {
-    char acc_path[MAX_PATH_SIZE], state[MIN_ACC_SIZE];
+    char state[MIN_ACC_SIZE];
     psu_dev_t *devnamep = NULL;
-    char *invwirep = NULL;
+    ssize_t (*invwirep)(char *buf) = NULL;
     char *psu_statep = NULL;
     int i, j, flag = 0;
 
@@ -676,15 +485,13 @@ int psus_control(int log_only)
 	devnamep = psu_dev_group[i].psu_dev_namep;
 	for (j = 0; j < psu_dev_group[i].psu_dev_total; j++, devnamep++) {
 	    if (strncmp(devnamep->inv_dev_attrp, PSU_ATTR_STATE, PSU_ATTR_STATE_LEN) == 0) {
-		invwirep = psu_attr_get_wirep(PSU_ATTR_STATE, psu_dev_group[i].psu_name, &psu_statep);
+		invwirep = psu_get_show_function(PSU_ATTR_STATE, psu_dev_group[i].psu_name, &psu_statep);
 		if (invwirep == NULL) {
 		    printk(KERN_DEBUG "[p_thread] Invalid psuname: %s\n", psu_dev_group[i].psu_name);
 		    continue;
 		}
-		sprintf(acc_path, devnamep->inv_dev_pathp, invwirep);
-		//printk(KERN_INFO "[p_thread] RYU: %s/%d: acc_path = %s\n",__func__,__LINE__,acc_path);
-		if (inventec_show_attr(state, acc_path) <= 0) {
-		    printk(KERN_DEBUG "[p_thread] Read %s failed\n", acc_path);
+		if (invwirep(state) <= 0) {
+		    printk(KERN_DEBUG "[p_thread] Read %s failed\n", psu_dev_group[i].psu_name);
 		    if (strncmp(psu_statep, PSU_STATE_ERROR, strlen(PSU_STATE_ERROR)) != 0) {
 			strcpy(psu_statep, PSU_STATE_ERROR);
 			SYSFS_LOG("[p_thread] %s: %s\n",psu_dev_group[i].psu_name,PSU_STATE_ERROR);
@@ -693,7 +500,6 @@ int psus_control(int log_only)
 		}
 		else
 		if (strstr(state, "normal")) {
-		    //printk(KERN_INFO "[p_thread] %s: %s\n", psu_dev_group[i].psu_name, state);
 		    if (strncmp(psu_statep, state, strlen(state)) != 0) {
 			strcpy(psu_statep, state);
 			SYSFS_LOG("[p_thread] %s: %s\n",psu_dev_group[i].psu_name,state);
@@ -701,7 +507,6 @@ int psus_control(int log_only)
 		}
 		else
 		if (psu_voltin > PSU_VOLTIN_ACDC) {	/* AC PSUS */
-		    //printk(KERN_INFO "[p_thread] RYU: %s: %s\n", psu_dev_group[i].psu_name, state);
 		    if (strncmp(psu_statep, state, strlen(state)) != 0) {
 			strcpy(psu_statep, state);
 			SYSFS_LOG("[p_thread] %s: %s\n",psu_dev_group[i].psu_name,state);
@@ -725,7 +530,7 @@ int psus_control(int log_only)
 
     //SYSFS_LOG("[p_thread] RYU: %s: flag = %d\n",psu_wire_tbl[i].psu_name,flag);
     if (flag == 1) {
-	status_led_grn("3");
+	status_led_grn("2");
 	return 1;
     }
     return 0;
@@ -733,66 +538,7 @@ int psus_control(int log_only)
 
 /* End of psuinfo_device */
 
-static int __init
-psu_device_init(void)
-{
-#ifdef	INV_PTHREAD_KERNEL_MODULE
-    sysfs_psu_path_init();
-#endif
-    return 0;
-}
-
-
-static void __exit
-psu_device_exit(void)
-{
-    printk(KERN_INFO "[p_thread] Remove psu module.\n");
-}
-
 /* led device *************************************/
-#define STATUS_LED_GRN_PATH	"/sys/class/hwmon/hwmon%d/device/grn_led"
-#define STATUS_LED_RED_PATH	"/sys/class/hwmon/hwmon%d/device/red_led"
-
-#define FAN_LED_GRN1_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_grn1"
-#define FAN_LED_GRN2_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_grn2"
-#define FAN_LED_GRN3_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_grn3"
-#define FAN_LED_GRN4_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_grn4"
-#define FAN_LED_RED1_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_red1"
-#define FAN_LED_RED2_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_red2"
-#define FAN_LED_RED3_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_red3"
-#define FAN_LED_RED4_PATH	"/sys/class/hwmon/hwmon%d/device/fan_led_red4"
-
-#define HWMON_DEVICE_DIAG_PATH	"/sys/class/hwmon/hwmon%d/device/diag"
-#define HWMON_DEVICE_CTRL_PATH	"/sys/class/hwmon/hwmon%d/device/ctl"
-
-static char status_led_grn_path[MAX_PATH_SIZE];
-static char status_led_red_path[MAX_PATH_SIZE];
-static char fan_led_grn1_path[MAX_PATH_SIZE];
-static char fan_led_grn2_path[MAX_PATH_SIZE];
-static char fan_led_grn3_path[MAX_PATH_SIZE];
-static char fan_led_grn4_path[MAX_PATH_SIZE];
-static char fan_led_red1_path[MAX_PATH_SIZE];
-static char fan_led_red2_path[MAX_PATH_SIZE];
-static char fan_led_red3_path[MAX_PATH_SIZE];
-static char fan_led_red4_path[MAX_PATH_SIZE];
-static char hwmon_device_diag_path[MAX_PATH_SIZE];
-static char hwmon_device_ctrl_path[MAX_PATH_SIZE];
-
-void sysfs_led_path_init(void)
-{
-    sprintf(&status_led_grn_path[0], STATUS_LED_GRN_PATH, get_hwm_cpld());
-    sprintf(&status_led_red_path[0], STATUS_LED_RED_PATH, get_hwm_cpld());
-    sprintf(&fan_led_grn1_path[0], FAN_LED_GRN1_PATH, get_hwm_psoc());
-    sprintf(&fan_led_grn2_path[0], FAN_LED_GRN2_PATH, get_hwm_psoc());
-    sprintf(&fan_led_grn3_path[0], FAN_LED_GRN3_PATH, get_hwm_psoc());
-    sprintf(&fan_led_grn4_path[0], FAN_LED_GRN4_PATH, get_hwm_psoc());
-    sprintf(&fan_led_red1_path[0], FAN_LED_RED1_PATH, get_hwm_psoc());
-    sprintf(&fan_led_red2_path[0], FAN_LED_RED2_PATH, get_hwm_psoc());
-    sprintf(&fan_led_red3_path[0], FAN_LED_RED3_PATH, get_hwm_psoc());
-    sprintf(&fan_led_red4_path[0], FAN_LED_RED4_PATH, get_hwm_psoc());
-    sprintf(&hwmon_device_diag_path[0], HWMON_DEVICE_DIAG_PATH, get_hwm_psoc());
-    sprintf(&hwmon_device_ctrl_path[0], HWMON_DEVICE_CTRL_PATH, get_hwm_cpld());
-}
 
 /* return 0/off 1/green 2/red */
 int
@@ -801,7 +547,7 @@ status_led_check_color(void)
     char tmpbuf[MIN_ACC_SIZE];
     int ret = STATUS_LED_INVALID;
 
-    if (inventec_show_attr(&tmpbuf[0], status_led_grn_path) > 0) {
+    if (cpld_show_led(&tmpbuf[0], CPLD_DEV_LED_GRN_INDEX) > 0) {
 	if (tmpbuf[0] == '0') {
 	    ret = STATUS_LED_GRN0;
 	}
@@ -820,7 +566,7 @@ status_led_check_color(void)
         return ret;
     }
 
-    if (inventec_show_attr(&tmpbuf[0], status_led_red_path) > 0) {
+    if (cpld_show_led(&tmpbuf[0], CPLD_DEV_LED_RED_INDEX) > 0) {
 	if (tmpbuf[0] == '0') {
 	    ret = STATUS_LED_RED0;
 	}
@@ -844,32 +590,26 @@ status_led_check_color(void)
 /*
  * Store attr Section
  */
-static DEFINE_MUTEX(diag_mutex);
-
 ssize_t status_led_diag_mode_enable(void)
 {
     char tmp[MIN_ACC_SIZE];
     ssize_t ret;
 
-    ret = inventec_show_attr(&tmp[0], hwmon_device_diag_path);
+    ret = psoc_show_diag(&tmp[0]);
     if (ret <= 0) {
         return ret;
     }
 
     if (tmp[0] == '0') {
-	mutex_lock(&diag_mutex);
-        ret = inventec_store_attr("1", 1, hwmon_device_diag_path);
+	ret = psoc_set_diag("1", 1);
         if (ret < 0) {
-	    mutex_unlock(&diag_mutex);
             return ret;
         }
 
-        ret = inventec_store_attr("1", 1, hwmon_device_ctrl_path);
+	ret = cpld_set_ctl("1", 1);
         if (ret < 0) {
-	    mutex_unlock(&diag_mutex);
             return ret;
         }
-	mutex_unlock(&diag_mutex);
     }
 
     return ret;
@@ -880,69 +620,44 @@ ssize_t status_led_diag_mode_disable(void)
     char tmp[MIN_ACC_SIZE];
     ssize_t ret;
 
-    ret = inventec_show_attr(&tmp[0], hwmon_device_diag_path);
+    ret = psoc_show_diag(&tmp[0]);
     if (ret <= 0) {
         return ret;
     }
 
     if (tmp[0] == '1') {
-	mutex_lock(&diag_mutex);
-        ret = inventec_store_attr("0", 1, hwmon_device_diag_path);
+	ret = psoc_set_diag("0", 1);
         if (ret < 0) {
-	    mutex_unlock(&diag_mutex);
             return 1;
         }
 
-        ret = inventec_store_attr("1", 1, hwmon_device_ctrl_path);
+	ret = cpld_set_ctl("1", 1);
         if (ret < 0) {
-	    mutex_unlock(&diag_mutex);
             return 1;
         }
-	mutex_unlock(&diag_mutex);
     }
     return 1;
 }
 
 ssize_t
-status_led_change(const char *path1, const char *tmp1, const char *path2, const char *tmp2)
-{
-    ssize_t ret;
-
-    ret = inventec_store_attr(tmp1, strlen(tmp1), path1);
-    if (ret < 0) {
-        return ret;
-    }
-    ret = inventec_store_attr(tmp2, strlen(tmp2), path2);
-    if (ret < 0) {
-        return ret;
-    }
-    if ((ret = status_led_diag_mode_enable()) <= 0) {
-        return ret;
-    }
-    ssleep(1);
-    if ((ret = status_led_diag_mode_disable()) <= 0) {
-        return ret;
-    }
-    return ret;
-}
-
-ssize_t
 status_led_red(const char *freq)
 {
+    char buf[MIN_ACC_SIZE];
     ssize_t ret;
 
-    ret = inventec_store_attr("0", 1, &status_led_grn_path[0]);
-
-    if (ret < 0) {
+    ret = cpld_show_led(buf, CPLD_DEV_LED_RED_INDEX);
+    if (ret < 0 || buf[0] == freq[0]) {
         return ret;
     }
 
-    ret = inventec_store_attr(freq, strlen(freq), &status_led_red_path[0]);
-
+    ret = cpld_set_led("0", 1, CPLD_DEV_LED_GRN_INDEX);
     if (ret < 0) {
         return ret;
     }
-
+    ret = cpld_set_led(freq, strlen(freq), CPLD_DEV_LED_RED_INDEX);
+    if (ret < 0) {
+        return ret;
+    }
     if ((ret = status_led_diag_mode_enable()) <= 0) {
         return ret;
     }
@@ -956,13 +671,20 @@ status_led_red(const char *freq)
 ssize_t
 status_led_grn(const char *freq)
 {
+    char buf[MIN_ACC_SIZE];
     ssize_t ret;
 
-    ret = inventec_store_attr("0", 1, &status_led_red_path[0]);
+    ret = cpld_show_led(buf, CPLD_DEV_LED_GRN_INDEX);
+    if (ret < 0 || buf[0] == freq[0]) {
+	return ret;
+    }
+
+    ret = cpld_set_led("0", 1, CPLD_DEV_LED_RED_INDEX);
     if (ret < 0) {
         return ret;
     }
-    ret = inventec_store_attr(freq, strlen(freq), &status_led_grn_path[0]);
+    ssleep(1);
+    ret = cpld_set_led(freq, strlen(freq), CPLD_DEV_LED_GRN_INDEX);
     if (ret < 0) {
         return ret;
     }
@@ -976,49 +698,28 @@ status_led_grn(const char *freq)
     return ret;
 }
 
-static int status_led_diag_mode = STATUS_LED_MODE_AUTO;
-
 int status_led_check_diag_mode(void)
 {
-    return status_led_diag_mode;
+    char tmp[MIN_ACC_SIZE];
+    ssize_t ret;
+
+    ret = psoc_show_diag(&tmp[0]);
+    if (ret <= 0) {
+        return ret;
+    }
+
+    if (tmp[0] == '1') {
+	return STATUS_LED_MODE_DIAG;
+    }
+
+    if (tmp[0] == '0') {
+	return STATUS_LED_MODE_AUTO;
+    }
+
+    return -1;
 }
 
 /* End of ledinfo_device */
-
-static int __init
-led_device_init(void)
-{
-#ifdef	INV_PTHREAD_KERNEL_MODULE
-    sysfs_led_path_init();
-#endif
-    return 0;
-}
-
-
-static void __exit
-led_device_exit(void)
-{
-    printk(KERN_INFO "[p_thread] Remove led module.\n");
-}
-
-/* sensor device **********************************/
-#define SENSOR_DEV_PATH_SWITCH_TEMP	"/sys/class/hwmon/hwmon%d/device/switch_tmp"
-
-static char sensor_dev_path_switch_temp[MAX_PATH_SIZE];
-
-void sysfs_sensor_path_init(void)
-{
-    sprintf(&sensor_dev_path_switch_temp[0], SENSOR_DEV_PATH_SWITCH_TEMP, get_hwm_psoc());
-}
-
-void switch_temp_update(void)
-{
-    char buf[MIN_ACC_SIZE];
-    ssize_t count = inventec_show_attr(&buf[0], "/proc/switch/temp");
-    if (count > 0) {
-        inventec_store_attr(&buf[0], count, sensor_dev_path_switch_temp);
-    }
-}
 
 /**************************************************/
 /* From system_device */
@@ -1038,68 +739,29 @@ void thread_control_set(int val)
 #define THREAD_SLEEP_MINS	(3)
 #define THREAD_DELAY_MINS	(THREAD_SLEEP_MINS + THREAD_SLEEP_MINS + 1)
 
-extern void psu_get_voltin(void);
-
 static struct task_struct *thread_st;
 static int thread_data;
-
-#ifdef SWITCH_HEALTH_LED_CHANGE_VIA_GPIO
-void led_set_gpio_to_change_status_led(void)
-{
-    ssize_t ret = inventec_store_attr("253", 3, "/sys/class/gpio/export");
-    if (ret < 0) {
-	SYSFS_LOG("[p_thread] Write 253 to /sys/class/gpio/export failed\n");
-	return;
-    }
-
-    printk("[p_thread] Write 253 to /sys/class/gpio/export\n");
-
-    ret = inventec_store_attr("out", 3, "/sys/class/gpio/gpio253/direction");
-    if (ret < 0) {
-	SYSFS_LOG("[p_thread] Write low to /sys/class/gpio/gpio253/direction failed\n");
-	return;
-    }
-
-    //pull high and then low
-    ret = inventec_store_attr("1", 1, "sys/class/gpio/gpio253/value");
-    if (ret < 0) {
-        SYSFS_LOG("[p_thread] Write 1 to sys/class/gpio/gpio253/value failed\n");
-    }
-
-    //pull low
-    ret = inventec_store_attr("0", 1, "sys/class/gpio/gpio253/value");
-    if (ret < 0) {
-        SYSFS_LOG("[p_thread] Write 0 to sys/class/gpio/gpio253/value failed\n");
-    }
-
-    SYSFS_LOG("[p_thread] Set gpio to support status led change successfully\n");
-}
-#endif
 
 // Function executed by kernel thread
 static int thread_fn(void *unused)
 {
-    /* Delay for guarantee HW ready */
+    mutex_init(&pthread_mutex);
+
     ssleep(THREAD_DELAY_MINS);
 
-#ifndef	INV_PTHREAD_KERNEL_MODULE
-    sysfs_led_path_init();
-    sysfs_fan_path_init();
-    sysfs_psu_path_init();
-#endif
-    sysfs_sensor_path_init();
-
     /* Default status init */
+    mutex_lock(&pthread_mutex);
     status_led_grn("7");
+    mutex_unlock(&pthread_mutex);
 
     psu_get_voltin();
 
-#ifdef SWITCH_HEALTH_LED_CHANGE_VIA_GPIO
-    led_set_gpio_to_change_status_led();
-#endif
+    /* Delay for guarantee HW ready */
+    ssleep(THREAD_DELAY_MINS);
 
     while (1)
     {
+	mutex_unlock(&pthread_mutex);
 	ssleep(THREAD_SLEEP_MINS);
 
 	if (thread_control() == 0) {
@@ -1107,12 +769,15 @@ static int thread_fn(void *unused)
 	    break;
 	}
 
+	mutex_lock(&pthread_mutex);
 	if (status_led_check_diag_mode() == STATUS_LED_MODE_MANU) {
             /* status led in change color/freq mode, higher priority. Ignore fans sttaus */
             continue;
 	}
 
+#if 0
 	switch_temp_update();
+#endif
 
 	if (fans_control() > 0) {
 	    psus_control(1);
@@ -1128,9 +793,6 @@ static int thread_fn(void *unused)
 	}
     }
 
-#ifndef	INV_PTHREAD_KERNEL_MODULE
-err_inv_pthread_fn_1:
-#endif
     do_exit(0);
     printk(KERN_INFO "[p_thread] %s/%d: Thread Stopped\n",__func__,__LINE__);
     return 0;
@@ -1140,7 +802,7 @@ err_inv_pthread_fn_1:
 static ssize_t s_show(struct kobject *kobj, struct attribute *attr, char *buf)
 {
     int fan_absence;
-    size_t count;
+    size_t count = 0;
 
     fan_absence = fans_control();
     count += sprintf(&buf[count], "%d\n", fan_absence);
@@ -1187,12 +849,6 @@ static int __init inv_pthread_init(void)
 
     retval = sysfs_create_file(status_kobj, &status_att);
 
-
-    inventec_class_init();
-    fan_device_init();
-    psu_device_init();
-    led_device_init();
-
     thread_control_set(1);
 
     printk(KERN_INFO "[p_thread] %s/%d: Creating Thread\n",__func__,__LINE__);
@@ -1212,11 +868,6 @@ static void __exit inv_pthread_exit(void)
     /* Delay for guarantee thread exit */
     ssleep(THREAD_DELAY_MINS);
 
-    fan_device_exit();
-    psu_device_exit();
-    led_device_exit();
-    inventec_class_exit();
-
     sysfs_remove_file(status_kobj, &status_att);
     kset_unregister(status_kset);
     kobject_del(status_kobj);
@@ -1229,5 +880,5 @@ module_exit(inv_pthread_exit);
 
 MODULE_AUTHOR("Robert <yu.robertxk@inventec.com>");
 MODULE_DESCRIPTION("Inventec Platform Management Thread");
-MODULE_VERSION("version 1.0");
+MODULE_VERSION("version 1.1");
 MODULE_LICENSE("GPL");
