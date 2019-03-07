@@ -133,6 +133,10 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
         return rv;
     }
+    else if (tid == THERMAL_1_ON_PSU1 || tid == THERMAL_1_ON_PSU2) {
+        int pid = tid - THERMAL_1_ON_PSU1 + 1;
+        return onlp_file_read_int(&info->mcelsius, "%s%s", psu_pmbus_path(pid), "psu_temp1_input");
+    }
 
     return onlp_file_read_int(&info->mcelsius, devfiles__[tid]);
 }

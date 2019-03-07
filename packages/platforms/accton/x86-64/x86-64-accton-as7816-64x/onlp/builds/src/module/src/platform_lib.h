@@ -87,7 +87,7 @@ int psu_serial_number_get(int id, char *serial, int serial_len);
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 int psu_dps850_pmbus_info_get(int id, char *node, int *value);
-
+char* psu_pmbus_path(int pid);
 
 #define DEBUG_MODE 0
 
