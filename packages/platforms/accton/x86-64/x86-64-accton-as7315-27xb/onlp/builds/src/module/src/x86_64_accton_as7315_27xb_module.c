@@ -3,19 +3,19 @@
  *
  *
  *****************************************************************************/
-#include <x86_64_accton_as7516_27xb/x86_64_accton_as7516_27xb_config.h>
+#include <x86_64_accton_as7315_27xb/x86_64_accton_as7315_27xb_config.h>
 
-#include "x86_64_accton_as7516_27xb_log.h"
+#include "x86_64_accton_as7315_27xb_log.h"
 
 static int
 datatypes_init__(void)
 {
-#define x86_64_accton_as7516_27xb_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
-#include <x86_64_accton_as7516_27xb/x86_64_accton_as7516_27xb.x>
+#define x86_64_accton_as7315_27xb_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
+#include <x86_64_accton_as7315_27xb/x86_64_accton_as7315_27xb.x>
     return 0;
 }
 
-void __x86_64_accton_as7516_27xb_module_init__(void)
+void __x86_64_accton_as7315_27xb_module_init__(void)
 {
     AIM_LOG_STRUCT_REGISTER();
     datatypes_init__();

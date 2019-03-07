@@ -1,465 +1,588 @@
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A LED driver for the accton_as7315_27xb_led
  *
- * This module supports the accton cpld that hold the channel select
- * mechanism for other i2c slave devices, such as SFP.
- * This includes the:
- *	 Accton as7516_54x CPLD1/CPLD2
+ * Copyright (C) 2019 Accton Technology Corporation.
+ * Brandon Chuang <brandon_chuang@accton.com.tw>
  *
- * Based on:
- *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
- * Copyright (C) 2006
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
- * Based on:
- *	pca954x.c from Ken Harrenstien
- * Copyright (C) 2004 Google, Inc. (Ken Harrenstien)
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * Based on:
- *	i2c-virtual_cb.c from Brian Kuschak <bkuschak@yahoo.com>
- * and
- *	pca9540.c from Jean Delvare <khali@linux-fr.org>.
- *
- * This file is licensed under the terms of the GNU General Public
- * License version 2. This program is licensed "as is" without any
- * warranty of any kind, whether express or implied.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/*#define DEBUG*/
+
 #include <linux/module.h>
+#include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/slab.h>
-#include <linux/device.h>
-#include <linux/version.h>
-#include <linux/stat.h>
-#include <linux/sysfs.h>
-#include <linux/hwmon-sysfs.h>
-#include <linux/ipmi.h>
-#include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
+#include <linux/err.h>
+#include <linux/leds.h>
+#include <linux/slab.h>
 
-#define DRVNAME "as7516_27xb_led"
-#define ACCTON_IPMI_NETFN   0x34
-#define IPMI_LED_READ_CMD   0x1A
-#define IPMI_LED_WRITE_CMD  0x1B
-#define IPMI_TIMEOUT		(5 * HZ)
+extern int as7315_27xb_cpld_read (unsigned short cpld_addr, u8 reg);
+extern int as7315_27xb_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
-static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
-static ssize_t set_led(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
-static ssize_t show_led(struct device *dev, struct device_attribute *attr, char *buf);
-static int as7516_27xb_led_probe(struct platform_device *pdev);
-static int as7516_27xb_led_remove(struct platform_device *pdev);
+#define DRVNAME "as7315_27xb_led"
 
-enum led_data_index {
-    LOC_INDEX,
-    DIAG_RED_INDEX,
-    DIAG_GREEN_INDEX
-};
-
-struct ipmi_data {
-	struct completion   read_complete;
-	struct ipmi_addr	address;
-	ipmi_user_t         user;
-	int                 interface;
-
-	struct kernel_ipmi_msg tx_message;
-	long                   tx_msgid;
-
-	void            *rx_msg_data;
-	unsigned short   rx_msg_len;
-	unsigned char    rx_result;
-	int              rx_recv_type;
-
-	struct ipmi_user_hndl ipmi_hndlrs;
-};
-
-struct as7516_27xb_led_data {
+struct accton_as7315_27xb_led_data {
     struct platform_device *pdev;
     struct mutex     update_lock;
     char             valid;           /* != 0 if registers are valid */
     unsigned long    last_updated;    /* In jiffies */
-    unsigned char    ipmi_resp[3]; /* 0: LOC LED, 1: DIAG Red LED, 2: DIAG Green LED */
-    struct ipmi_data ipmi;
+    u8               reg_val[4];     /* Register value, 0 = LOC/DIAG/FAN LED
+                                                        1 = PSU1/PSU2 LED
+                                                        2 = FAN1-4 LED
+                                                        3 = FAN5-6 LED */
 };
 
-struct as7516_27xb_led_data *data = NULL;
+static struct accton_as7315_27xb_led_data  *ledctl = NULL;
 
-static struct platform_driver as7516_27xb_led_driver = {
-    .probe      = as7516_27xb_led_probe,
-    .remove     = as7516_27xb_led_remove,
-    .driver     = {
-        .name   = DRVNAME,
-        .owner  = THIS_MODULE,
-    },
+/* LED related data
+ */
+#define LED_TYPE_PSU1_REG_MASK   0x03
+#define LED_MODE_PSU1_GREEN_MASK 0x02
+#define LED_MODE_PSU1_AMBER_MASK 0x01
+#define LED_MODE_PSU1_OFF_MASK   0x03
+#define LED_MODE_PSU1_AUTO_MASK  0x00
+
+#define LED_TYPE_PSU2_REG_MASK   0x0C
+#define LED_MODE_PSU2_GREEN_MASK 0x08
+#define LED_MODE_PSU2_AMBER_MASK 0x04
+#define LED_MODE_PSU2_OFF_MASK   0x0C
+#define LED_MODE_PSU2_AUTO_MASK  0x00
+
+#define LED_TYPE_DIAG_REG_MASK    0x0C
+#define LED_MODE_DIAG_GREEN_MASK  0x08
+#define LED_MODE_DIAG_AMBER_MASK  0x04
+#define LED_MODE_DIAG_OFF_MASK    0x0C
+
+#define LED_TYPE_FAN_REG_MASK     0x03
+#define LED_MODE_FAN_GREEN_MASK   0x02
+#define LED_MODE_FAN_AMBER_MASK   0x01
+#define LED_MODE_FAN_OFF_MASK     0x03
+#define LED_MODE_FAN_AUTO_MASK    0x00
+
+#define LED_TYPE_FAN1_REG_MASK    0x03
+#define LED_TYPE_FAN2_REG_MASK    0x0C
+#define LED_TYPE_FAN3_REG_MASK    0x30
+#define LED_TYPE_FAN4_REG_MASK    0xC0
+#define LED_TYPE_FAN5_REG_MASK    0x03
+#define LED_TYPE_FAN6_REG_MASK    0x0C
+
+#define LED_MODE_FANX_GREEN_MASK   0x01
+#define LED_MODE_FANX_RED_MASK     0x02
+#define LED_MODE_FANX_OFF_MASK     0x00
+
+#define LED_TYPE_LOC_REG_MASK     0x30
+#define LED_MODE_LOC_ON_MASK      0x00
+#define LED_MODE_LOC_OFF_MASK     0x10
+#define LED_MODE_LOC_BLINK_MASK   0x20
+
+static const u8 led_reg[] = {
+    0xA,        /* LOC/DIAG/FAN LED*/
+    0xB,        /* PSU1/PSU2 LED */
+    0x16,      /* FAN1-4 LED */
+    0x17,      /* FAN4-6 LED */
+};
+
+enum led_type {
+    LED_TYPE_PSU1,
+    LED_TYPE_PSU2,
+    LED_TYPE_DIAG,
+    LED_TYPE_FAN,
+    LED_TYPE_FAN1,
+    LED_TYPE_FAN2,
+    LED_TYPE_FAN3,
+    LED_TYPE_FAN4,
+    LED_TYPE_FAN5,
+    LED_TYPE_LOC
 };
 
 enum led_light_mode {
-    LED_MODE_OFF,
-    LED_MODE_RED 				= 10,
-    LED_MODE_RED_BLINKING 		= 11,
-    LED_MODE_ORANGE 			= 12,
-    LED_MODE_ORANGE_BLINKING 	= 13,
-    LED_MODE_YELLOW 			= 14,
-    LED_MODE_YELLOW_BLINKING 	= 15,
-    LED_MODE_GREEN 				= 16,
-    LED_MODE_GREEN_BLINKING 	= 17,
-    LED_MODE_BLUE 				= 18,
-    LED_MODE_BLUE_BLINKING 		= 19,
-    LED_MODE_PURPLE 			= 20,
-    LED_MODE_PURPLE_BLINKING 	= 21,
-    LED_MODE_AUTO 				= 22,
-    LED_MODE_AUTO_BLINKING 		= 23,
-    LED_MODE_WHITE 				= 24,
-    LED_MODE_WHITE_BLINKING 	= 25,
-    LED_MODE_CYAN 				= 26,
-    LED_MODE_CYAN_BLINKING 		= 27,
-    LED_MODE_UNKNOWN			= 99
+    LED_MODE_OFF = 0,
+    LED_MODE_GREEN,
+    LED_MODE_AMBER,
+    LED_MODE_RED,
+    LED_MODE_GREEN_BLINK,
+    LED_MODE_AMBER_BLINK,
+    LED_MODE_RED_BLINK,
+    LED_MODE_AUTO,
 };
 
-enum as7516_54x_led_sysfs_attrs {
-	LED_LOC,
-    LED_DIAG,
-    LED_PSU1,
-    LED_PSU2,
-    LED_FAN
+struct led_type_mode {
+    enum led_type type;
+    int  type_mask;
+    enum led_light_mode mode;
+    int  mode_mask;
 };
 
-static SENSOR_DEVICE_ATTR(led_loc, S_IWUSR | S_IRUGO, show_led, set_led, LED_LOC);
-static SENSOR_DEVICE_ATTR(led_diag, S_IWUSR | S_IRUGO, show_led, set_led, LED_DIAG);
-static SENSOR_DEVICE_ATTR(led_psu1, S_IWUSR | S_IRUGO, show_led, set_led, LED_PSU1);
-static SENSOR_DEVICE_ATTR(led_psu2, S_IWUSR | S_IRUGO, show_led, set_led, LED_PSU2);
-static SENSOR_DEVICE_ATTR(led_fan, S_IWUSR | S_IRUGO, show_led, set_led, LED_FAN);
-
-static struct attribute *as7516_27xb_led_attributes[] = {
-    &sensor_dev_attr_led_loc.dev_attr.attr,
-    &sensor_dev_attr_led_diag.dev_attr.attr,
-    &sensor_dev_attr_led_psu1.dev_attr.attr,
-    &sensor_dev_attr_led_psu2.dev_attr.attr,
-    &sensor_dev_attr_led_fan.dev_attr.attr,
-    NULL
+static struct led_type_mode led_type_mode_data[] = {
+{LED_TYPE_PSU1, LED_TYPE_PSU1_REG_MASK, LED_MODE_GREEN, LED_MODE_PSU1_GREEN_MASK},
+{LED_TYPE_PSU1, LED_TYPE_PSU1_REG_MASK, LED_MODE_AMBER, LED_MODE_PSU1_AMBER_MASK},
+{LED_TYPE_PSU1, LED_TYPE_PSU1_REG_MASK, LED_MODE_AUTO,  LED_MODE_PSU1_AUTO_MASK},
+{LED_TYPE_PSU1, LED_TYPE_PSU1_REG_MASK, LED_MODE_OFF,   LED_MODE_PSU1_OFF_MASK},
+{LED_TYPE_PSU2, LED_TYPE_PSU2_REG_MASK, LED_MODE_GREEN, LED_MODE_PSU2_GREEN_MASK},
+{LED_TYPE_PSU2, LED_TYPE_PSU2_REG_MASK, LED_MODE_AMBER, LED_MODE_PSU2_AMBER_MASK},
+{LED_TYPE_PSU2, LED_TYPE_PSU2_REG_MASK, LED_MODE_AUTO,  LED_MODE_PSU2_AUTO_MASK},
+{LED_TYPE_PSU2, LED_TYPE_PSU2_REG_MASK, LED_MODE_OFF,   LED_MODE_PSU2_OFF_MASK},
+{LED_TYPE_FAN,  LED_TYPE_FAN_REG_MASK,  LED_MODE_GREEN, LED_MODE_FAN_GREEN_MASK},
+{LED_TYPE_FAN,  LED_TYPE_FAN_REG_MASK,  LED_MODE_AMBER, LED_MODE_FAN_AMBER_MASK},
+{LED_TYPE_FAN,  LED_TYPE_FAN_REG_MASK,  LED_MODE_AUTO,  LED_MODE_FAN_AUTO_MASK},
+{LED_TYPE_FAN,  LED_TYPE_FAN_REG_MASK,  LED_MODE_OFF,   LED_MODE_FAN_OFF_MASK},
+{LED_TYPE_FAN1,  LED_TYPE_FAN1_REG_MASK,  LED_MODE_GREEN, LED_MODE_FANX_GREEN_MASK << 0},
+{LED_TYPE_FAN1,  LED_TYPE_FAN1_REG_MASK,  LED_MODE_RED,   LED_MODE_FANX_RED_MASK << 0},
+{LED_TYPE_FAN1,  LED_TYPE_FAN1_REG_MASK,  LED_MODE_OFF,   LED_MODE_FANX_OFF_MASK   << 0},
+{LED_TYPE_FAN2,  LED_TYPE_FAN2_REG_MASK,  LED_MODE_GREEN, LED_MODE_FANX_GREEN_MASK << 2},
+{LED_TYPE_FAN2,  LED_TYPE_FAN2_REG_MASK,  LED_MODE_RED,   LED_MODE_FANX_RED_MASK << 2},
+{LED_TYPE_FAN2,  LED_TYPE_FAN2_REG_MASK,  LED_MODE_OFF,   LED_MODE_FANX_OFF_MASK   << 2},
+{LED_TYPE_FAN3,  LED_TYPE_FAN3_REG_MASK,  LED_MODE_GREEN, LED_MODE_FANX_GREEN_MASK << 4},
+{LED_TYPE_FAN3,  LED_TYPE_FAN3_REG_MASK,  LED_MODE_RED,   LED_MODE_FANX_RED_MASK << 4},
+{LED_TYPE_FAN3,  LED_TYPE_FAN3_REG_MASK,  LED_MODE_OFF,   LED_MODE_FANX_OFF_MASK   << 4},
+{LED_TYPE_FAN4,  LED_TYPE_FAN4_REG_MASK,  LED_MODE_GREEN, LED_MODE_FANX_GREEN_MASK << 6},
+{LED_TYPE_FAN4,  LED_TYPE_FAN4_REG_MASK,  LED_MODE_RED,   LED_MODE_FANX_RED_MASK << 6},
+{LED_TYPE_FAN4,  LED_TYPE_FAN4_REG_MASK,  LED_MODE_OFF,   LED_MODE_FANX_OFF_MASK   << 6},
+{LED_TYPE_FAN5,  LED_TYPE_FAN5_REG_MASK,  LED_MODE_GREEN, LED_MODE_FANX_GREEN_MASK << 0},
+{LED_TYPE_FAN5,  LED_TYPE_FAN5_REG_MASK,  LED_MODE_RED,   LED_MODE_FANX_RED_MASK << 0},
+{LED_TYPE_FAN5,  LED_TYPE_FAN5_REG_MASK,  LED_MODE_OFF,   LED_MODE_FANX_OFF_MASK   << 0},
+{LED_TYPE_DIAG, LED_TYPE_DIAG_REG_MASK, LED_MODE_GREEN, LED_MODE_DIAG_GREEN_MASK},
+{LED_TYPE_DIAG, LED_TYPE_DIAG_REG_MASK, LED_MODE_AMBER, LED_MODE_DIAG_AMBER_MASK},
+{LED_TYPE_DIAG, LED_TYPE_DIAG_REG_MASK, LED_MODE_OFF,   LED_MODE_DIAG_OFF_MASK},
+{LED_TYPE_LOC, LED_TYPE_LOC_REG_MASK, LED_MODE_AMBER,       LED_MODE_LOC_ON_MASK},
+{LED_TYPE_LOC, LED_TYPE_LOC_REG_MASK, LED_MODE_OFF,         LED_MODE_LOC_OFF_MASK},
+{LED_TYPE_LOC, LED_TYPE_LOC_REG_MASK, LED_MODE_AMBER_BLINK, LED_MODE_LOC_BLINK_MASK}
 };
 
-static const struct attribute_group as7516_27xb_led_group = {
-    .attrs = as7516_27xb_led_attributes,
+
+struct fanx_info_s {
+    u8 cname; /* device name */
+    enum led_type type;
+    u8   reg_id; /* map to led_reg & reg_val */
 };
 
-/* Functions to talk to the IPMI layer */
+static struct fanx_info_s fanx_info[] = {
+    {'1', LED_TYPE_FAN1, 2},
+    {'2', LED_TYPE_FAN2, 2},
+    {'3', LED_TYPE_FAN3, 2},
+    {'4', LED_TYPE_FAN4, 2},
+    {'5', LED_TYPE_FAN5, 3}
+};
 
-/* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-			      struct device *dev)
-{
-	int err;
+static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {
+    int i;
 
-	init_completion(&ipmi->read_complete);
+    for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
 
-	/* Initialize IPMI address */
-	ipmi->address.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
-	ipmi->address.channel = IPMI_BMC_CHANNEL;
-	ipmi->address.data[0] = 0;
-	ipmi->interface = iface;
+        if (type != led_type_mode_data[i].type)
+            continue;
 
-	/* Initialize message buffers */
-	ipmi->tx_msgid = 0;
-	ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
-
-    ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
-
-	/* Create IPMI messaging interface user */
-	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-			       ipmi, &ipmi->user);
-	if (err < 0) {
-		dev_err(dev, "Unable to register user with IPMI "
-			"interface %d\n", ipmi->interface);
-		return -EACCES;
-	}
-
-	return 0;
-}
-
-/* Send an IPMI command */
-static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-                                     unsigned char *tx_data, unsigned short tx_len,
-                                     unsigned char *rx_data, unsigned short rx_len)
-{
-	int err;
-
-    ipmi->tx_message.cmd      = cmd;
-    ipmi->tx_message.data     = tx_data;
-    ipmi->tx_message.data_len = tx_len;
-    ipmi->rx_msg_data         = rx_data;
-    ipmi->rx_msg_len          = rx_len;
-
-	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
-	if (err)
-		goto addr_err;
-
-	ipmi->tx_msgid++;
-	err = ipmi_request_settime(ipmi->user, &ipmi->address, ipmi->tx_msgid,
-				   &ipmi->tx_message, ipmi, 0, 0, 0);
-	if (err)
-		goto ipmi_req_err;
-
-    err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
-	if (!err)
-		goto ipmi_timeout_err;
-
-	return 0;
-
-ipmi_timeout_err:
-    err = -ETIMEDOUT;
-    dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
-    return err;
-ipmi_req_err:
-	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
-	return err;
-addr_err:
-	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
-	return err;
-}
-
-/* Dispatch IPMI messages to callers */
-static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
-{
-	unsigned short rx_len;
-	struct ipmi_data *ipmi = user_msg_data;
-
-	if (msg->msgid != ipmi->tx_msgid) {
-		dev_err(&data->pdev->dev, "Mismatch between received msgid "
-			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
-		ipmi_free_recv_msg(msg);
-		return;
-	}
-
-	ipmi->rx_recv_type = msg->recv_type;
-	if (msg->msg.data_len > 0)
-		ipmi->rx_result = msg->msg.data[0];
-	else
-		ipmi->rx_result = IPMI_UNKNOWN_ERR_COMPLETION_CODE;
-
-	if (msg->msg.data_len > 1) {
-		rx_len = msg->msg.data_len - 1;
-		if (ipmi->rx_msg_len < rx_len)
-			rx_len = ipmi->rx_msg_len;
-		ipmi->rx_msg_len = rx_len;
-		memcpy(ipmi->rx_msg_data, msg->msg.data + 1, ipmi->rx_msg_len);
-	} else
-		ipmi->rx_msg_len = 0;
-
-	ipmi_free_recv_msg(msg);
-	complete(&ipmi->read_complete);
-}
-
-static struct as7516_27xb_led_data *as7516_27xb_led_update_device(void)
-{
-    int status = 0;
-
-    if (time_before(jiffies, data->last_updated + HZ * 5) && data->valid) {
-        return data;
-    }
-
-    mutex_lock(&data->update_lock);
-
-    data->valid = 0;
-    status = ipmi_send_message(&data->ipmi, IPMI_LED_READ_CMD, NULL, 0,
-                                data->ipmi_resp, sizeof(data->ipmi_resp));
-    if (unlikely(status != 0)) {
-        goto exit;
-    }
-
-    if (unlikely(data->ipmi.rx_result != 0)) {
-        status = -EIO;
-        goto exit;
-    }
-
-    data->last_updated = jiffies;
-    data->valid = 1;
-
-exit:
-    mutex_unlock(&data->update_lock);
-    return data;
-}
-
-static ssize_t show_led(struct device *dev, struct device_attribute *da, char *buf)
-{
-    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7516_27xb_led_data *data = NULL;
-    int value;
-
-    data = as7516_27xb_led_update_device();
-    if (!data->valid) {
-        return -EIO;
-    }
-
-	switch (attr->index) {
-		case LED_LOC:
-            value = data->ipmi_resp[LOC_INDEX] ? LED_MODE_ORANGE_BLINKING : LED_MODE_OFF;
-            break;
-		case LED_DIAG:
+        if ((led_type_mode_data[i].type_mask & reg_val) ==
+             led_type_mode_data[i].mode_mask)
         {
-            if (data->ipmi_resp[DIAG_GREEN_INDEX] && data->ipmi_resp[DIAG_RED_INDEX])
-                value = LED_MODE_OFF;
-            else if (!data->ipmi_resp[DIAG_GREEN_INDEX] && !data->ipmi_resp[DIAG_RED_INDEX])
-                value = LED_MODE_OFF;
-            else if (data->ipmi_resp[DIAG_RED_INDEX])
-                value = LED_MODE_ORANGE;
-            else if (data->ipmi_resp[DIAG_GREEN_INDEX] == 1)
-                value = LED_MODE_GREEN_BLINKING;
+            return led_type_mode_data[i].mode;
+        }
+    }
+
+    return 0;
+}
+
+static u8 led_light_mode_to_reg_val(enum led_type type,
+                                    enum led_light_mode mode, u8 reg_val) {
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
+        if (type != led_type_mode_data[i].type)
+            continue;
+
+        if (mode != led_type_mode_data[i].mode)
+            continue;
+
+        reg_val = led_type_mode_data[i].mode_mask |
+                 (reg_val & (~led_type_mode_data[i].type_mask));
+    }
+
+    return reg_val;
+}
+
+static int accton_as7315_27xb_led_read_value(u8 reg)
+{
+    return as7315_27xb_cpld_read(0x60, reg);
+}
+
+static int accton_as7315_27xb_led_write_value(u8 reg, u8 value)
+{
+    return as7315_27xb_cpld_write(0x60, reg, value);
+}
+
+static void accton_as7315_27xb_led_update(void)
+{
+    mutex_lock(&ledctl->update_lock);
+
+    if (time_after(jiffies, ledctl->last_updated + HZ + HZ / 2)
+        || !ledctl->valid) {
+        int i;
+
+        dev_dbg(&ledctl->pdev->dev, "Starting accton_as7315_27xb_led update\n");
+
+        /* Update LED data
+         */
+        for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
+            int status = accton_as7315_27xb_led_read_value(led_reg[i]);
+
+            if (status < 0) {
+                ledctl->valid = 0;
+                dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg[i], status);
+				goto exit;
+            }
             else
-                value = LED_MODE_GREEN;
-			break;   
+            {
+                ledctl->reg_val[i] = status;
+            }
         }
-		case LED_PSU1:
-		case LED_PSU2:
-		case LED_FAN:
-            value = LED_MODE_AUTO;
-            break;
-		default:
-			return -EINVAL;
+
+        ledctl->last_updated = jiffies;
+        ledctl->valid = 1;
     }
-
-	return sprintf(buf, "%d\n", value);
-}
-
-static ssize_t set_led(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
-{
-	long mode;
-	int status;
-    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-
-	status = kstrtol(buf, 10, &mode);
-	if (status) {
-		return status;
-	}
-
-    data = as7516_27xb_led_update_device();
-    if (!data->valid) {
-        return -EIO;
-    }
-
-    switch (attr->index) {
-		case LED_LOC:
-            data->ipmi_resp[LOC_INDEX] = !!mode;
-            break;
-		case LED_DIAG:
-        {
-            if (mode == LED_MODE_GREEN_BLINKING) {
-                data->ipmi_resp[DIAG_GREEN_INDEX] = 1;
-                data->ipmi_resp[DIAG_RED_INDEX]   = 0;
-            }
-            else if (mode == LED_MODE_GREEN) {
-                data->ipmi_resp[DIAG_GREEN_INDEX] = 2;
-                data->ipmi_resp[DIAG_RED_INDEX]   = 0;
-            }
-            else if (mode == LED_MODE_ORANGE) {
-                data->ipmi_resp[DIAG_GREEN_INDEX] = 0;
-                data->ipmi_resp[DIAG_RED_INDEX]   = 1;
-            }
-            else { /* OFF */
-                data->ipmi_resp[DIAG_GREEN_INDEX] = 0;
-                data->ipmi_resp[DIAG_RED_INDEX]   = 0;
-            }
-                
-			break;   
-        }
-		default:
-			return -EINVAL;
-    }
-
-    /* Send IPMI write command */
-    status = ipmi_send_message(&data->ipmi, IPMI_LED_WRITE_CMD,
-                                data->ipmi_resp, sizeof(data->ipmi_resp), NULL, 0);
-    if (unlikely(status != 0)) {
-        return status;
-    }
-
-    if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
-    }
-
-    return count;
-}
-
-static int as7516_27xb_led_probe(struct platform_device *pdev)
-{
-    int status = -1;
-
-	/* Register sysfs hooks */
-	status = sysfs_create_group(&pdev->dev.kobj, &as7516_27xb_led_group);
-	if (status) {
-		goto exit;
-	}
-    
-    dev_info(&pdev->dev, "device created\n");
-
-    return 0;
 
 exit:
-    return status;
+    mutex_unlock(&ledctl->update_lock);
 }
 
-static int as7516_27xb_led_remove(struct platform_device *pdev)
+static void accton_as7315_27xb_led_set(struct led_classdev *led_cdev,
+                                      enum led_brightness led_light_mode,
+                                      u8 reg, enum led_type type)
 {
-    sysfs_remove_group(&pdev->dev.kobj, &as7516_27xb_led_group);	
+    int reg_val;
+
+    mutex_lock(&ledctl->update_lock);
+
+    reg_val = accton_as7315_27xb_led_read_value(reg);
+
+    if (reg_val < 0) {
+        dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", reg, reg_val);
+        goto exit;
+    }
+
+    reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);
+    accton_as7315_27xb_led_write_value(reg, reg_val);
+
+    /* to prevent the slow-update issue */
+    ledctl->valid = 0;
+
+exit:
+    mutex_unlock(&ledctl->update_lock);
+}
+
+static void accton_as7315_27xb_led_psu_1_set(struct led_classdev *led_cdev,
+                                            enum led_brightness led_light_mode)
+{
+    accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[1], LED_TYPE_PSU1);
+}
+
+static enum led_brightness accton_as7315_27xb_led_psu_1_get(struct led_classdev *cdev)
+{
+    accton_as7315_27xb_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_PSU1, ledctl->reg_val[1]);
+}
+
+static void accton_as7315_27xb_led_psu_2_set(struct led_classdev *led_cdev,
+                                            enum led_brightness led_light_mode)
+{
+    accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[1], LED_TYPE_PSU2);
+}
+
+static enum led_brightness accton_as7315_27xb_led_psu_2_get(struct led_classdev *cdev)
+{
+    accton_as7315_27xb_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_PSU2, ledctl->reg_val[1]);
+}
+
+static void accton_as7315_27xb_led_fan_set(struct led_classdev *led_cdev,
+                                          enum led_brightness led_light_mode)
+{
+    accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_FAN);
+}
+
+static enum led_brightness accton_as7315_27xb_led_fan_get(struct led_classdev *cdev)
+{
+    accton_as7315_27xb_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[0]);
+}
+
+
+static void accton_as7315_27xb_led_fanx_set(struct led_classdev *led_cdev,
+                                          enum led_brightness led_light_mode)
+{
+    enum led_type led_type1;
+    int reg_id;
+    int i, nsize;
+    int ncount = sizeof(fanx_info)/sizeof(struct fanx_info_s);
+
+    for(i=0;i<ncount;i++)
+    {
+        nsize=strlen(led_cdev->name);
+
+        if (led_cdev->name[nsize-1] == fanx_info[i].cname)
+        {
+            led_type1 = fanx_info[i].type;
+            reg_id = fanx_info[i].reg_id;
+            accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[reg_id], led_type1);
+            return;
+        }
+    }
+}
+
+
+static enum led_brightness accton_as7315_27xb_led_fanx_get(struct led_classdev *cdev)
+{
+    enum led_type led_type1;
+    int reg_id;
+    int i, nsize;
+    int ncount = sizeof(fanx_info)/sizeof(struct fanx_info_s);
+
+    for(i=0;i<ncount;i++)
+    {
+        nsize=strlen(cdev->name);
+
+        if (cdev->name[nsize-1] == fanx_info[i].cname)
+        {
+            led_type1 = fanx_info[i].type;
+            reg_id = fanx_info[i].reg_id;
+            accton_as7315_27xb_led_update();
+            return led_reg_val_to_light_mode(led_type1, ledctl->reg_val[reg_id]);
+        }
+    }
+
+
+    return led_reg_val_to_light_mode(LED_TYPE_FAN1, ledctl->reg_val[2]);
+}
+
+
+static void accton_as7315_27xb_led_diag_set(struct led_classdev *led_cdev,
+                                           enum led_brightness led_light_mode)
+{
+    accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_DIAG);
+}
+
+static enum led_brightness accton_as7315_27xb_led_diag_get(struct led_classdev *cdev)
+{
+    accton_as7315_27xb_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_DIAG, ledctl->reg_val[0]);
+}
+
+static void accton_as7315_27xb_led_loc_set(struct led_classdev *led_cdev,
+                                          enum led_brightness led_light_mode)
+{
+    accton_as7315_27xb_led_set(led_cdev, led_light_mode, led_reg[0], LED_TYPE_LOC);
+}
+
+static enum led_brightness accton_as7315_27xb_led_loc_get(struct led_classdev *cdev)
+{
+    accton_as7315_27xb_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[0]);
+}
+
+static struct led_classdev accton_as7315_27xb_leds[] = {
+    [LED_TYPE_PSU1] = {
+        .name             = "accton_as7315_27xb_led::psu1",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_psu_1_set,
+        .brightness_get  = accton_as7315_27xb_led_psu_1_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_PSU2] = {
+        .name             = "accton_as7315_27xb_led::psu2",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_psu_2_set,
+        .brightness_get  = accton_as7315_27xb_led_psu_2_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN] = {
+        .name             = "accton_as7315_27xb_led::fan",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fan_set,
+        .brightness_get  = accton_as7315_27xb_led_fan_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN1] = {
+        .name             = "accton_as7315_27xb_led::fan1",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fanx_set,
+        .brightness_get  = accton_as7315_27xb_led_fanx_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN2] = {
+        .name             = "accton_as7315_27xb_led::fan2",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fanx_set,
+        .brightness_get  = accton_as7315_27xb_led_fanx_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN3] = {
+        .name             = "accton_as7315_27xb_led::fan3",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fanx_set,
+        .brightness_get  = accton_as7315_27xb_led_fanx_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN4] = {
+        .name             = "accton_as7315_27xb_led::fan4",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fanx_set,
+        .brightness_get  = accton_as7315_27xb_led_fanx_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_FAN5] = {
+        .name             = "accton_as7315_27xb_led::fan5",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_fanx_set,
+        .brightness_get  = accton_as7315_27xb_led_fanx_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_DIAG] = {
+        .name             = "accton_as7315_27xb_led::diag",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_diag_set,
+        .brightness_get  = accton_as7315_27xb_led_diag_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+    [LED_TYPE_LOC] = {
+        .name             = "accton_as7315_27xb_led::loc",
+        .default_trigger = "unused",
+        .brightness_set     = accton_as7315_27xb_led_loc_set,
+        .brightness_get  = accton_as7315_27xb_led_loc_get,
+        .flags             = LED_CORE_SUSPENDRESUME,
+        .max_brightness  = LED_MODE_AUTO,
+    },
+};
+
+static int accton_as7315_27xb_led_suspend(struct platform_device *dev,
+        pm_message_t state)
+{
+    int i = 0;
+
+    for (i = 0; i < ARRAY_SIZE(accton_as7315_27xb_leds); i++) {
+        led_classdev_suspend(&accton_as7315_27xb_leds[i]);
+    }
 
     return 0;
 }
 
-static int __init as7516_27xb_led_init(void)
+static int accton_as7315_27xb_led_resume(struct platform_device *dev)
 {
-    int ret;
+    int i = 0;
 
-    data = kzalloc(sizeof(struct as7516_27xb_led_data), GFP_KERNEL);
-    if (!data) {
-        ret = -ENOMEM;
-        goto alloc_err;
+    for (i = 0; i < ARRAY_SIZE(accton_as7315_27xb_leds); i++) {
+        led_classdev_resume(&accton_as7315_27xb_leds[i]);
     }
-
-	mutex_init(&data->update_lock);
-    data->valid = 0;
-
-    ret = platform_driver_register(&as7516_27xb_led_driver);
-    if (ret < 0) {
-        goto dri_reg_err;
-    }
-
-    data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-    if (IS_ERR(data->pdev)) {
-        ret = PTR_ERR(data->pdev);
-        goto dev_reg_err;
-    }
-
-	/* Set up IPMI interface */
-	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
-	if (ret)
-		goto ipmi_err;
 
     return 0;
+}
 
-ipmi_err:
-    platform_device_unregister(data->pdev);
-dev_reg_err:
-    platform_driver_unregister(&as7516_27xb_led_driver);
-dri_reg_err:
-    kfree(data);
-alloc_err:
+static int accton_as7315_27xb_led_probe(struct platform_device *pdev)
+{
+    int ret, i;
+
+    for (i = 0; i < ARRAY_SIZE(accton_as7315_27xb_leds); i++) {
+        ret = led_classdev_register(&pdev->dev, &accton_as7315_27xb_leds[i]);
+
+        if (ret < 0)
+            break;
+    }
+
+    /* Check if all LEDs were successfully registered */
+    if (i != ARRAY_SIZE(accton_as7315_27xb_leds)){
+        int j;
+
+        /* only unregister the LEDs that were successfully registered */
+        for (j = 0; j < i; j++) {
+            led_classdev_unregister(&accton_as7315_27xb_leds[i]);
+        }
+    }
+
     return ret;
 }
 
-static void __exit as7516_27xb_led_exit(void)
+static int accton_as7315_27xb_led_remove(struct platform_device *pdev)
 {
-    ipmi_destroy_user(data->ipmi.user);
-    platform_device_unregister(data->pdev);
-    platform_driver_unregister(&as7516_27xb_led_driver);
-    kfree(data);
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(accton_as7315_27xb_leds); i++) {
+        led_classdev_unregister(&accton_as7315_27xb_leds[i]);
+    }
+
+    return 0;
 }
 
+static struct platform_driver accton_as7315_27xb_led_driver = {
+    .probe      = accton_as7315_27xb_led_probe,
+    .remove     = accton_as7315_27xb_led_remove,
+    .suspend    = accton_as7315_27xb_led_suspend,
+    .resume     = accton_as7315_27xb_led_resume,
+    .driver     = {
+    .name   = DRVNAME,
+    .owner  = THIS_MODULE,
+    },
+};
+
+static int __init accton_as7315_27xb_led_init(void)
+{
+    int ret;
+  
+    ret = platform_driver_register(&accton_as7315_27xb_led_driver);
+    if (ret < 0) {
+        goto exit;
+    }
+
+    ledctl = kzalloc(sizeof(struct accton_as7315_27xb_led_data), GFP_KERNEL);
+    if (!ledctl) {
+        ret = -ENOMEM;
+        platform_driver_unregister(&accton_as7315_27xb_led_driver);
+        goto exit;
+    }
+
+    mutex_init(&ledctl->update_lock);
+
+    ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+    if (IS_ERR(ledctl->pdev)) {
+        ret = PTR_ERR(ledctl->pdev);
+        platform_driver_unregister(&accton_as7315_27xb_led_driver);
+        kfree(ledctl);
+        goto exit;
+    }
+
+exit:
+    return ret;
+}
+
+static void __exit accton_as7315_27xb_led_exit(void)
+{
+    platform_device_unregister(ledctl->pdev);
+    platform_driver_unregister(&accton_as7315_27xb_led_driver);
+    kfree(ledctl);
+}
+
+module_init(accton_as7315_27xb_led_init);
+module_exit(accton_as7315_27xb_led_exit);
+
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("AS7516 27XB led driver");
+MODULE_DESCRIPTION("accton_as7315_27xb_led driver");
 MODULE_LICENSE("GPL");
-
-module_init(as7516_27xb_led_init);
-module_exit(as7516_27xb_led_exit);
-

@@ -38,14 +38,14 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
-    "/sys/devices/platform/as7516_27xb_thermal/temp1_input",
-    "/sys/devices/platform/as7516_27xb_thermal/temp2_input",
-    "/sys/devices/platform/as7516_27xb_thermal/temp3_input",
-    "/sys/devices/platform/as7516_27xb_thermal/temp4_input",
-    "/sys/devices/platform/as7516_27xb_thermal/temp5_input",
-    "/sys/devices/platform/as7516_27xb_thermal/temp6_input",
-    "/sys/devices/platform/as7516_27xb_psu/psu1_temp1_input",
-    "/sys/devices/platform/as7516_27xb_psu/psu2_temp1_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp1_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp2_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp3_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp4_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp5_input",
+    "/sys/devices/platform/as7315_27xb_thermal/temp6_input",
+    "/sys/devices/platform/as7315_27xb_psu/psu1_temp1_input",
+    "/sys/devices/platform/as7315_27xb_psu/psu2_temp1_input",
 };
 
 static char* cpu_coretemp_files[] =

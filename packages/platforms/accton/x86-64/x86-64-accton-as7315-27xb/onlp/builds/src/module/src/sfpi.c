@@ -26,16 +26,16 @@
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/i2c.h>
 #include <onlplib/file.h>
-#include "x86_64_accton_as7516_27xb_int.h"
-#include "x86_64_accton_as7516_27xb_log.h"
+#include "x86_64_accton_as7315_27xb_int.h"
+#include "x86_64_accton_as7315_27xb_log.h"
 
-#define PORT_EEPROM_FORMAT              "/sys/devices/platform/as7516_27xb_sfp/module_eeprom_%d"
-#define MODULE_PRESENT_FORMAT		    "/sys/devices/platform/as7516_27xb_sfp/module_present_%d"
-#define MODULE_RXLOS_FORMAT             "/sys/devices/platform/as7516_27xb_sfp/module_rx_los_%d"
-#define MODULE_TXFAULT_FORMAT           "/sys/devices/platform/as7516_27xb_sfp/module_tx_fault_%d"
-#define MODULE_TXDISABLE_FORMAT         "/sys/devices/platform/as7516_27xb_sfp/module_tx_disable_%d"
-#define MODULE_PRESENT_ALL_ATTR	        "/sys/devices/platform/as7516_27xb_sfp/module_present_all"
-#define MODULE_RXLOS_ALL_ATTR           "/sys/devices/platform/as7516_27xb_sfp/module_rxlos_all"
+#define PORT_EEPROM_FORMAT              "/sys/devices/platform/as7315_27xb_sfp/module_eeprom_%d"
+#define MODULE_PRESENT_FORMAT		    "/sys/devices/platform/as7315_27xb_sfp/module_present_%d"
+#define MODULE_RXLOS_FORMAT             "/sys/devices/platform/as7315_27xb_sfp/module_rx_los_%d"
+#define MODULE_TXFAULT_FORMAT           "/sys/devices/platform/as7315_27xb_sfp/module_tx_fault_%d"
+#define MODULE_TXDISABLE_FORMAT         "/sys/devices/platform/as7315_27xb_sfp/module_tx_disable_%d"
+#define MODULE_PRESENT_ALL_ATTR	        "/sys/devices/platform/as7315_27xb_sfp/module_present_all"
+#define MODULE_RXLOS_ALL_ATTR           "/sys/devices/platform/as7315_27xb_sfp/module_rxlos_all"
 
 /************************************************************
  *

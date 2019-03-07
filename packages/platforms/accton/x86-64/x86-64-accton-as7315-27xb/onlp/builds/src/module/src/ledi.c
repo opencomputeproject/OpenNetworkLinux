@@ -27,7 +27,7 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT "/sys/devices/platform/as7516_27xb_led/%s"
+#define LED_FORMAT "/sys/devices/platform/as7315_27xb_led/%s"
 
 #define VALIDATE(_id)                           \
     do {                                        \

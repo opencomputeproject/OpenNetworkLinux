@@ -26,7 +26,7 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
-#include "x86_64_accton_as7516_27xb_log.h"
+#include "x86_64_accton_as7315_27xb_log.h"
 
 #define CHASSIS_FAN_COUNT		5
 #define CHASSIS_THERMAL_COUNT	7
@@ -36,12 +36,12 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 
-#define PSU_SYSFS_PATH  "/sys/devices/platform/as7516_27xb_psu/"
+#define PSU_SYSFS_PATH  "/sys/devices/platform/as7315_27xb_psu/"
 
-#define FAN_BOARD_PATH	"/sys/devices/platform/as7516_27xb_fan/"
+#define FAN_BOARD_PATH	"/sys/devices/platform/as7315_27xb_fan/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/devices/platform/as7516_27xb_sys/eeprom"
+#define IDPROM_PATH "/sys/devices/platform/as7315_27xb_sys/eeprom"
 
 enum onlp_thermal_id
 {

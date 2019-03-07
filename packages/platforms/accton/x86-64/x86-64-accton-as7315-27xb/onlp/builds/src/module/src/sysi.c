@@ -34,13 +34,13 @@
 #include <onlp/platformi/psui.h>
 #include "platform_lib.h"
 
-#include "x86_64_accton_as7516_27xb_int.h"
-#include "x86_64_accton_as7516_27xb_log.h"
+#include "x86_64_accton_as7315_27xb_int.h"
+#include "x86_64_accton_as7315_27xb_log.h"
 
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "x86-64-accton-as7516-27xb-r0";
+    return "x86-64-accton-as7315-27xb-r0";
 }
 
 int

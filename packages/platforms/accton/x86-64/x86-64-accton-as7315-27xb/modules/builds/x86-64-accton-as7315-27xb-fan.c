@@ -4,7 +4,7 @@
  * This module supports the accton cpld that hold the channel select
  * mechanism for other i2c slave devices, such as SFP.
  * This includes the:
- *	 Accton as7516_54x CPLD1/CPLD2
+ *	 Accton as7315_54x CPLD1/CPLD2
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -36,7 +36,7 @@
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
 
-#define DRVNAME "as7516_27xb_fan"
+#define DRVNAME "as7315_27xb_fan"
 #define ACCTON_IPMI_NETFN   0x34
 #define IPMI_FAN_READ_CMD   0x14
 #define IPMI_FAN_WRITE_CMD  0x15
@@ -46,8 +46,8 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_fan(struct device *dev, struct device_attribute *attr, char *buf);
-static int as7516_27xb_fan_probe(struct platform_device *pdev);
-static int as7516_27xb_fan_remove(struct platform_device *pdev);
+static int as7315_27xb_fan_probe(struct platform_device *pdev);
+static int as7315_27xb_fan_remove(struct platform_device *pdev);
 
 enum fan_id {
     FAN_1,
@@ -83,7 +83,7 @@ struct ipmi_data {
 	struct ipmi_user_hndl ipmi_hndlrs;
 };
 
-struct as7516_27xb_fan_data {
+struct as7315_27xb_fan_data {
     struct platform_device *pdev;
     struct mutex     update_lock;
     char             valid;           /* != 0 if registers are valid */
@@ -93,11 +93,11 @@ struct as7516_27xb_fan_data {
     unsigned char ipmi_tx_data[3];  /* 0: FAN id, 1: 0x02, 2: PWM */
 };
 
-struct as7516_27xb_fan_data *data = NULL;
+struct as7315_27xb_fan_data *data = NULL;
 
-static struct platform_driver as7516_27xb_fan_driver = {
-    .probe      = as7516_27xb_fan_probe,
-    .remove     = as7516_27xb_fan_remove,
+static struct platform_driver as7315_27xb_fan_driver = {
+    .probe      = as7315_27xb_fan_probe,
+    .remove     = as7315_27xb_fan_remove,
     .driver     = {
         .name   = DRVNAME,
         .owner  = THIS_MODULE,
@@ -113,7 +113,7 @@ static struct platform_driver as7516_27xb_fan_driver = {
     FAN_PWM_ATTR_ID(fan_id),        \
     FAN_RPM_ATTR_ID(fan_id)
 
-enum as7516_54x_fan_sysfs_attrs {
+enum as7315_54x_fan_sysfs_attrs {
 	FAN_ATTR(1),
     FAN_ATTR(2),
     FAN_ATTR(3),
@@ -139,7 +139,7 @@ DECLARE_FAN_SENSOR_DEVICE_ATTR(3);
 DECLARE_FAN_SENSOR_DEVICE_ATTR(4);
 DECLARE_FAN_SENSOR_DEVICE_ATTR(5);
 
-static struct attribute *as7516_27xb_fan_attributes[] = {
+static struct attribute *as7315_27xb_fan_attributes[] = {
     /* fan attributes */
     DECLARE_FAN_ATTR(1),
     DECLARE_FAN_ATTR(2),
@@ -149,8 +149,8 @@ static struct attribute *as7516_27xb_fan_attributes[] = {
     NULL
 };
 
-static const struct attribute_group as7516_27xb_fan_group = {
-    .attrs = as7516_27xb_fan_attributes,
+static const struct attribute_group as7315_27xb_fan_group = {
+    .attrs = as7315_27xb_fan_attributes,
 };
 
 /* Functions to talk to the IPMI layer */
@@ -262,7 +262,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
-static struct as7516_27xb_fan_data *as7516_27xb_fan_update_device(void)
+static struct as7315_27xb_fan_data *as7315_27xb_fan_update_device(void)
 {
     int status = 0;
 
@@ -296,12 +296,12 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da, char *b
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char fid = attr->index / NUM_OF_PER_FAN_ATTR;
-    struct as7516_27xb_fan_data *data = NULL;
+    struct as7315_27xb_fan_data *data = NULL;
     int value = 0;
     int index = 0;
     int present = 0;
 
-    data = as7516_27xb_fan_update_device();
+    data = as7315_27xb_fan_update_device();
     if (!data->valid) {
         return -EIO;
     }
@@ -374,12 +374,12 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
     return count;
 }
 
-static int as7516_27xb_fan_probe(struct platform_device *pdev)
+static int as7315_27xb_fan_probe(struct platform_device *pdev)
 {
     int status = -1;
 
 	/* Register sysfs hooks */
-	status = sysfs_create_group(&pdev->dev.kobj, &as7516_27xb_fan_group);
+	status = sysfs_create_group(&pdev->dev.kobj, &as7315_27xb_fan_group);
 	if (status) {
 		goto exit;
 	}
@@ -392,18 +392,18 @@ exit:
     return status;
 }
 
-static int as7516_27xb_fan_remove(struct platform_device *pdev)
+static int as7315_27xb_fan_remove(struct platform_device *pdev)
 {
-    sysfs_remove_group(&pdev->dev.kobj, &as7516_27xb_fan_group);
+    sysfs_remove_group(&pdev->dev.kobj, &as7315_27xb_fan_group);
 
     return 0;
 }
 
-static int __init as7516_27xb_fan_init(void)
+static int __init as7315_27xb_fan_init(void)
 {
     int ret;
 
-    data = kzalloc(sizeof(struct as7516_27xb_fan_data), GFP_KERNEL);
+    data = kzalloc(sizeof(struct as7315_27xb_fan_data), GFP_KERNEL);
     if (!data) {
         ret = -ENOMEM;
         goto alloc_err;
@@ -412,7 +412,7 @@ static int __init as7516_27xb_fan_init(void)
 	mutex_init(&data->update_lock);
     data->valid = 0;
 
-    ret = platform_driver_register(&as7516_27xb_fan_driver);
+    ret = platform_driver_register(&as7315_27xb_fan_driver);
     if (ret < 0) {
         goto dri_reg_err;
     }
@@ -433,25 +433,25 @@ static int __init as7516_27xb_fan_init(void)
 ipmi_err:
     platform_device_unregister(data->pdev);
 dev_reg_err:
-    platform_driver_unregister(&as7516_27xb_fan_driver);
+    platform_driver_unregister(&as7315_27xb_fan_driver);
 dri_reg_err:
     kfree(data);
 alloc_err:
     return ret;
 }
 
-static void __exit as7516_27xb_fan_exit(void)
+static void __exit as7315_27xb_fan_exit(void)
 {
     ipmi_destroy_user(data->ipmi.user);
     platform_device_unregister(data->pdev);
-    platform_driver_unregister(&as7516_27xb_fan_driver);
+    platform_driver_unregister(&as7315_27xb_fan_driver);
     kfree(data);
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("AS7516 27XB fan driver");
+MODULE_DESCRIPTION("AS7315 27XB fan driver");
 MODULE_LICENSE("GPL");
 
-module_init(as7516_27xb_fan_init);
-module_exit(as7516_27xb_fan_exit);
+module_init(as7315_27xb_fan_init);
+module_exit(as7315_27xb_fan_exit);
 

@@ -3,10 +3,10 @@
  * 
  *
  *****************************************************************************/
-#ifndef __x86_64_accton_as7516_27xb_LOG_H__
-#define __x86_64_accton_as7516_27xb_LOG_H__
+#ifndef __x86_64_accton_as7315_27xb_LOG_H__
+#define __x86_64_accton_as7315_27xb_LOG_H__
 
-#define AIM_LOG_MODULE_NAME x86_64_accton_as7516_27xb
+#define AIM_LOG_MODULE_NAME x86_64_accton_as7315_27xb
 #include <AIM/aim_log.h>
 
-#endif /* __x86_64_accton_as7516_27xb_LOG_H__ */
+#endif /* __x86_64_accton_as7315_27xb_LOG_H__ */
