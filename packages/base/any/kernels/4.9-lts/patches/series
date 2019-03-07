@@ -21,3 +21,5 @@ driver-add-the-support-max6620.patch
 0018-mlxsw-thermal-monitoring-amendments.patch
 0020-mlxsw-qsfp_sysfs-Support-port-numbers-initialization.patch
 0021-mlxsw-Align-code-with-kernel-v-5.0.patch
+drivers-i2c-muxes-pca954x-deselect-on-exit.patch
+driver-support-sff-8436-eeprom.patch
