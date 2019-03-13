@@ -29,14 +29,14 @@
 #include "x86_64_accton_as7315_27xb_log.h"
 
 #define CHASSIS_FAN_COUNT		5
-#define CHASSIS_THERMAL_COUNT	7
-#define CHASSIS_LED_COUNT		5
+#define CHASSIS_THERMAL_COUNT	6
+#define CHASSIS_LED_COUNT		2
 #define CHASSIS_PSU_COUNT		2
 
 #define PSU1_ID 1
 #define PSU2_ID 2
 
-#define PSU_SYSFS_PATH  "/sys/devices/platform/as7315_27xb_psu/"
+#define PSU_SYSFS_PATH  "/sys/bus/i2c/devices/%d-00%02x/"
 
 #define FAN_BOARD_PATH	"/sys/devices/platform/as7315_27xb_fan/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
@@ -50,9 +50,6 @@ enum onlp_thermal_id
     THERMAL_1_ON_MAIN_BROAD,
     THERMAL_2_ON_MAIN_BROAD,
     THERMAL_3_ON_MAIN_BROAD,
-    THERMAL_4_ON_MAIN_BROAD,
-    THERMAL_5_ON_MAIN_BROAD,
-    THERMAL_6_ON_MAIN_BROAD,
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
 };
@@ -60,10 +57,10 @@ enum onlp_thermal_id
 #define DEBUG_MODE 0
 
 #if (DEBUG_MODE == 1)
-	#define DEBUG_PRINT(fmt, args...)                                        \
+#define DEBUG_PRINT(fmt, args...)                                        \
 		printf("%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)
 #else
-	#define DEBUG_PRINT(fmt, args...)
+#define DEBUG_PRINT(fmt, args...)
 #endif
 
 #endif  /* __PLATFORM_LIB_H__ */

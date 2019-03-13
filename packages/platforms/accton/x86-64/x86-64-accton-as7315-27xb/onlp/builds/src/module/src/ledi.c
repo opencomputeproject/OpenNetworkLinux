@@ -27,7 +27,10 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define LED_FORMAT "/sys/devices/platform/as7315_27xb_led/%s"
+
+#define LED_PLATFORM_PATH  "/sys/devices/platform/as7315_27xb_led/leds/"
+#define LED_CFILE   LED_PLATFORM_PATH"as7315_27xb_%s/brightness"
+
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -40,14 +43,11 @@
  */
 enum onlp_led_id
 {
-	LED_RESERVED = 0,
-	LED_LOC,
-	LED_DIAG,
-    LED_PSU1,
-    LED_PSU2,
-    LED_FAN,
+    LED_RESERVED = 0,
+    LED_LOC,
+    LED_DIAG,
 };
-        
+
 enum led_light_mode {
     LED_MODE_OFF,
     LED_MODE_RED 				= 10,
@@ -78,25 +78,19 @@ typedef struct led_light_mode_map {
 } led_light_mode_map_t;
 
 led_light_mode_map_t led_map[] = {
-{LED_LOC,  LED_MODE_OFF,             ONLP_LED_MODE_OFF},
-{LED_LOC,  LED_MODE_ORANGE_BLINKING, ONLP_LED_MODE_ORANGE_BLINKING},
-{LED_DIAG, LED_MODE_OFF,             ONLP_LED_MODE_OFF},
-{LED_DIAG, LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
-{LED_DIAG, LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
-{LED_DIAG, LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
-{LED_FAN,  LED_MODE_AUTO,   ONLP_LED_MODE_AUTO},
-{LED_PSU1, LED_MODE_AUTO,   ONLP_LED_MODE_AUTO},
-{LED_PSU2, LED_MODE_AUTO,   ONLP_LED_MODE_AUTO}
+    {LED_LOC,  LED_MODE_OFF,             ONLP_LED_MODE_OFF},
+    {LED_LOC,  LED_MODE_BLUE_BLINKING,  ONLP_LED_MODE_BLUE_BLINKING},
+    {LED_DIAG, LED_MODE_OFF,             ONLP_LED_MODE_OFF},
+    {LED_DIAG, LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
+    {LED_DIAG, LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_DIAG, LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
 };
 
 static char *leds[] =  /* must map with onlp_led_id */
 {
     NULL,
-    "led_loc",
-    "led_diag",
-    "led_psu1",
-    "led_psu2",
-    "led_fan"
+    "loc",
+    "diag",
 };
 
 /*
@@ -108,34 +102,20 @@ static onlp_led_info_t linfo[] =
     {
         { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 1 (LOC LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE_BLINKING,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_BLUE_BLINKING,
     },
     {
         { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 2 (DIAG LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING,
-    },
-    {
-        { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 3 (PSU1 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_AUTO,
-    },
-    {
-        { ONLP_LED_ID_CREATE(LED_PSU2), "Chassis LED 4 (PSU2 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_AUTO,
-    },
-    {
-        { ONLP_LED_ID_CREATE(LED_FAN), "Chassis LED 5 (FAN LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_AUTO,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE
+        | ONLP_LED_CAPS_GREEN_BLINKING,
     },
 };
 
 static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driver_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for (i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && driver_led_mode == led_map[i].driver_led_mode)
@@ -143,14 +123,14 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driv
             return led_map[i].onlp_led_mode;
         }
     }
-    
+
     return 0;
 }
 
 static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for(i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && onlp_led_mode == led_map[i].onlp_led_mode)
@@ -158,7 +138,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
             return led_map[i].driver_led_mode;
         }
     }
-    
+
     return 0;
 }
 
@@ -181,17 +161,17 @@ int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  lid, value;
-		
+
     VALIDATE(id);
-	
+
     lid = ONLP_OID_ID_GET(id);
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Get LED mode */
-    if (onlp_file_read_int(&value, LED_FORMAT, leds[lid]) < 0) {
-        DEBUG_PRINT("Unable to read status from file "LED_FORMAT, leds[lid]);
+    if (onlp_file_read_int(&value, LED_CFILE, leds[lid]) < 0) {
+        DEBUG_PRINT("Unable to read status from file "LED_CFILE, leds[lid]);
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -222,7 +202,25 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
     if (!on_or_off) {
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
     }
+    else
+    {
+        /*Just pick a color to light*/
+        int rv, i;
+        onlp_led_info_t info;
+        uint32_t caps;
 
+        rv = onlp_ledi_info_get(id, &info);
+        if (rv < 0)
+            return rv;
+
+        caps = info.caps;
+        /*Bit scan*/
+        for (i = 1; i < sizeof(caps)*8; i++) {
+            if( caps & (1<<i)) {
+                return onlp_ledi_mode_set(id, i);
+            }
+        }
+    }
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
@@ -235,11 +233,11 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    int  lid;	
+    int  lid;
     VALIDATE(id);
-
     lid = ONLP_OID_ID_GET(id);
-    if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_FORMAT, leds[lid]) < 0) {
+
+    if (onlp_file_write_int(onlp_to_driver_led_mode(lid, mode), LED_CFILE, leds[lid]) < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 

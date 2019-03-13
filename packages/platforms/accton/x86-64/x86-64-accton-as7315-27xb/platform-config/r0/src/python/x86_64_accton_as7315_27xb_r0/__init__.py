@@ -9,9 +9,9 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
 
     def baseconfig(self):
         self.insmod('optoe')
-        self.insmod("ym2651y")
-        self.insmod("accton_i2c_cpld")
-        self.insmod_platform()
+        self.insmod('ym2651y')
+        for m in ['cpld', 'led', 'psu']:
+            self.insmod("x86-64-accton-as7315-27xb-%s.ko" % m)
 
         # initiate multiplexer (PCA9548)
         self.new_i2c_devices(
@@ -25,13 +25,21 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
             ]
         )
 
+        # initiate cplds
         self.new_i2c_devices(
             [
-                # initiate PSU-1
-                ('as7315_27xb_psu1', 0x50, 12),
+                ('as7315_cpld1', 0x63, 8),
+                ('as7315_cpld2', 0x64, 7),
+            ]
+        )
+
+        self.new_i2c_devices(
+            [
+                # initiate PSU-2
+                ('as7315_27xb_psu2', 0x50, 12),
                 ('ym2401',  0x58, 12),
                 # initiate PSU-1
-                ('as7315_27xb_psu2', 0x53, 13),
+                ('as7315_27xb_psu1', 0x53, 13),
                 ('ym2401',  0x5b, 13),
             ]
         )
@@ -42,13 +50,15 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
         for port in range(1, 25):
             bus = port+25
             self.new_i2c_device('optoe2', 0x50, bus)
-            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus))
+            cmd = 'echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus)
+            subprocess.call(cmd, shell=True)
 
         # Initialize QSFP devices
         for port in range(25, 28):
             bus = port - 25 + 21
             self.new_i2c_device('optoe1', 0x50, bus)
-            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus))
+            cmd = 'echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus)
+            subprocess.call(cmd, shell=True)
 
         return True
 

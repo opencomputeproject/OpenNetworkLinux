@@ -73,33 +73,41 @@ static struct accton_as7315_27xb_led_data  *ledctl = NULL;
 #define MODE_LOC_BLINK_MASK   0x00
 
 
-enum led_light_mode {
-    LED_MODE_OFF = 0,
-    LED_MODE_RED,
-    LED_MODE_GREEN,
-    LED_MODE_BLUE,
-    LED_MODE_AMBER,
-    LED_MODE_R_BLINK,
-    LED_MODE_G_BLINK,
-    LED_MODE_B_BLINK,
-    LED_MODE_A_BLINK,
-    LED_MODE_AUTO,
-};
+typedef enum onlp_led_mode_e {
+    ONLP_LED_MODE_OFF,
+    ONLP_LED_MODE_ON,
+    ONLP_LED_MODE_BLINKING,
+    ONLP_LED_MODE_RED = 10,
+    ONLP_LED_MODE_RED_BLINKING = 11,
+    ONLP_LED_MODE_ORANGE = 12,
+    ONLP_LED_MODE_ORANGE_BLINKING = 13,
+    ONLP_LED_MODE_YELLOW = 14,
+    ONLP_LED_MODE_YELLOW_BLINKING = 15,
+    ONLP_LED_MODE_GREEN = 16,
+    ONLP_LED_MODE_GREEN_BLINKING = 17,
+    ONLP_LED_MODE_BLUE = 18,
+    ONLP_LED_MODE_BLUE_BLINKING = 19,
+    ONLP_LED_MODE_PURPLE = 20,
+    ONLP_LED_MODE_PURPLE_BLINKING = 21,
+    ONLP_LED_MODE_AUTO = 22,
+    ONLP_LED_MODE_AUTO_BLINKING = 23,
+} onlp_led_mode_t;
+
 
 struct led_type_mode {
     enum led_type type;
     int  type_mask;
-    enum led_light_mode mode;
+    enum onlp_led_mode_e mode;
     int  mode_mask;
 };
 
 static struct led_type_mode led_type_mode_data[] = {
-    {TYPE_DIAG, TYPE_DIAG_REG_MASK, LED_MODE_G_BLINK, MODE_DIAG_GBLINK_MASK},
-    {TYPE_DIAG, TYPE_DIAG_REG_MASK, LED_MODE_GREEN, MODE_DIAG_GREEN_MASK},
-    {TYPE_DIAG, TYPE_DIAG_REG_MASK, LED_MODE_AMBER, MODE_DIAG_AMBER_MASK},
-    {TYPE_DIAG, TYPE_DIAG_REG_MASK, LED_MODE_OFF,   MODE_DIAG_OFF_MASK},
-    {TYPE_LOC, TYPE_LOC_REG_MASK, LED_MODE_B_BLINK,  MODE_LOC_BLINK_MASK},
-    {TYPE_LOC, TYPE_LOC_REG_MASK, LED_MODE_OFF,       MODE_LOC_OFF_MASK},
+    {TYPE_DIAG, TYPE_DIAG_REG_MASK, ONLP_LED_MODE_GREEN_BLINKING, MODE_DIAG_GBLINK_MASK},
+    {TYPE_DIAG, TYPE_DIAG_REG_MASK, ONLP_LED_MODE_GREEN, MODE_DIAG_GREEN_MASK},
+    {TYPE_DIAG, TYPE_DIAG_REG_MASK, ONLP_LED_MODE_ORANGE, MODE_DIAG_AMBER_MASK},
+    {TYPE_DIAG, TYPE_DIAG_REG_MASK, ONLP_LED_MODE_OFF,   MODE_DIAG_OFF_MASK},
+    {TYPE_LOC, TYPE_LOC_REG_MASK, ONLP_LED_MODE_BLUE_BLINKING,  MODE_LOC_BLINK_MASK},
+    {TYPE_LOC, TYPE_LOC_REG_MASK, ONLP_LED_MODE_OFF,       MODE_LOC_OFF_MASK},
 };
 
 extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
@@ -136,7 +144,7 @@ static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {
 }
 
 static u8 led_light_mode_to_reg_val(enum led_type type,
-                                    enum led_light_mode mode, u8 reg_val) {
+                                    enum onlp_led_mode_e mode, u8 reg_val) {
     int i;
 
     for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
@@ -180,7 +188,6 @@ static void accton_as7315_27xb_led_update(void)
             u8 addr, offset;
             addr = ledctl->slave_addr[i];
             offset = ledctl->reg_addr[i];
-
             status = accton_as7315_27xb_led_read_value(addr, offset);
             if (status < 0) {
                 ledctl->valid = 0;
@@ -274,7 +281,7 @@ static struct led_classdev accton_as7315_27xb_leds[TYPE_MAX] = {
         .brightness_set     = led_mode_set,
         .brightness_get  = led_mode_get,
         .flags             = LED_CORE_SUSPENDRESUME,
-        .max_brightness  = LED_MODE_AUTO,
+        .max_brightness  = ONLP_LED_MODE_AUTO,
     },
     [TYPE_LOC] = {
         .name             = led_list[TYPE_LOC].name,
@@ -282,7 +289,7 @@ static struct led_classdev accton_as7315_27xb_leds[TYPE_MAX] = {
         .brightness_set     = led_mode_set,
         .brightness_get  = led_mode_get,
         .flags             = LED_CORE_SUSPENDRESUME,
-        .max_brightness  = LED_MODE_AUTO,
+        .max_brightness  = ONLP_LED_MODE_AUTO,
     },
 };
 

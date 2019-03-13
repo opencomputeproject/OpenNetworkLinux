@@ -44,6 +44,8 @@
 #define  SFP_1ST_PRST_REG   0x10
 #define  QSFP_1ST_PRST_REG   0x18
 
+#define  SFP_1ST_RXLOS_REG   0x13
+
 enum models {
     MDL_CPLD_SFP,
     MDL_CPLD_QSFP,
@@ -81,6 +83,7 @@ enum common_attrs {
     CMN_VERSION,
     CMN_ACCESS,
     CMN_PRESENT_ALL,
+    CMN_RXLOS_ALL,
     NUM_COMMON_ATTR
 };
 
@@ -88,6 +91,8 @@ enum sfp_sb_attrs {
     SFP_PRESENT,
     SFP_RESET,
     SFP_TX_DIS,
+    SFP_TX_FAULT,
+    SFP_RX_LOS,
     QSFP_PRESENT,
     QSFP_LP_MODE,
     NUM_SFP_SB_ATTR
@@ -155,6 +160,8 @@ struct model_attrs {
 
 static ssize_t show_bit(struct device *dev,
                         struct device_attribute *devattr, char *buf);
+static ssize_t show_rxlos_all(struct device *dev,
+                              struct device_attribute *devattr, char *buf);
 static ssize_t show_presnet_all(struct device *dev,
                                 struct device_attribute *devattr, char *buf);
 static ssize_t set_1bit(struct device *dev, struct device_attribute *da,
@@ -168,28 +175,32 @@ int accton_i2c_cpld_read(u8 cpld_addr, u8 reg);
 int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 
-struct base_attrs common_attrs[NUM_COMMON_ATTR] =
+struct base_attrs common_base_attrs[NUM_COMMON_ATTR] =
 {
     [CMN_VERSION] = {"version", S_IRUGO, show_bit, NULL},
     [CMN_ACCESS] =  {"access",  S_IWUSR, NULL, set_byte},
     [CMN_PRESENT_ALL] = {"module_present_all", S_IRUGO, show_presnet_all, NULL},
+    [CMN_RXLOS_ALL] = {"rx_los_all", S_IRUGO, show_rxlos_all, NULL},
 };
 
-struct attrs as7315_common[] = {
-    [CMN_VERSION]   = {0x01, false, &common_attrs[CMN_VERSION]},
-    [CMN_ACCESS]    = {-1, false, &common_attrs[CMN_ACCESS]},
-    [CMN_PRESENT_ALL] = {-1, false, &common_attrs[CMN_PRESENT_ALL]},
+struct attrs common_attrs[] = {
+    [CMN_VERSION]   = {0x01, false, &common_base_attrs[CMN_VERSION]},
+    [CMN_ACCESS]    = {-1, false, &common_base_attrs[CMN_ACCESS]},
+    [CMN_PRESENT_ALL] = {-1, false, &common_base_attrs[CMN_PRESENT_ALL]},
+    [CMN_RXLOS_ALL] = {-1, false, &common_base_attrs[CMN_RXLOS_ALL]},
 };
 struct attrs plain_common[] = {
-    [CMN_VERSION] = {0x01, false, &common_attrs[CMN_VERSION]},
+    [CMN_VERSION] = {0x01, false, &common_base_attrs[CMN_VERSION]},
 };
 
 struct base_attrs portly_attrs[] =
 {
-    [SFP_PRESENT] = {"sfp_present", S_IRUGO, show_bit, NULL},
+    [SFP_PRESENT] = {"present", S_IRUGO, show_bit, NULL},
     [SFP_RESET] = {0},
     [SFP_TX_DIS] =  {"tx_disable", S_IRUGO|S_IWUSR, show_bit, set_1bit},
-    [QSFP_PRESENT] = {"qsfp_present", S_IRUGO, show_bit, NULL},
+    [SFP_TX_FAULT] =  {"tx_fault", S_IRUGO|S_IWUSR, show_bit, set_1bit},
+    [SFP_RX_LOS] =  {"rx_los", S_IRUGO|S_IWUSR, show_bit, set_1bit},
+    [QSFP_PRESENT] = {"present", S_IRUGO, show_bit, NULL},
     [QSFP_LP_MODE] = {"low_power_mode", S_IRUGO|S_IWUSR, show_bit, set_1bit},
 };
 
@@ -197,14 +208,17 @@ struct attrs as7315_port[NUM_SFP_SB_ATTR] = {
     {SFP_1ST_PRST_REG, true, &portly_attrs[SFP_PRESENT]},
     {0},
     {0x12, false, &portly_attrs[SFP_TX_DIS]},
+    {0x11, false, &portly_attrs[SFP_TX_FAULT]},
+    {SFP_1ST_RXLOS_REG, false, &portly_attrs[SFP_RX_LOS]},
     {QSFP_1ST_PRST_REG, true, &portly_attrs[QSFP_PRESENT]},
-    {0x19, true, &portly_attrs[QSFP_LP_MODE]},
+    {0x19, false, &portly_attrs[QSFP_LP_MODE]},
 };
 
 struct attrs *as7315_cmn_list[] = {
-    &as7315_common[CMN_VERSION],
-    &as7315_common[CMN_ACCESS],
-    &as7315_common[CMN_PRESENT_ALL],
+    &common_attrs[CMN_VERSION],
+    &common_attrs[CMN_ACCESS],
+    &common_attrs[CMN_PRESENT_ALL],
+    &common_attrs[CMN_RXLOS_ALL],
     NULL
 };
 
@@ -222,6 +236,8 @@ struct attrs *as7315_qsfp_list[] = {
 struct attrs *as7315_sfp_list[] = {
     &as7315_port[SFP_PRESENT],
     &as7315_port[SFP_TX_DIS],
+    &as7315_port[SFP_TX_FAULT],
+    &as7315_port[SFP_RX_LOS],
     NULL
 };
 
@@ -275,14 +291,30 @@ static int get_present_reg(int model, u8 port, u8 *reg, u8 *num)
             *reg = QSFP_1ST_PRST_REG + (port/8);
             *num = (NUM_QSFP > 8)? 8 : NUM_QSFP;
             return 0;
-        }            
+        }
         break;
     default:
         return -EINVAL;
     }
-    return -EINVAL;    
+    return -EINVAL;
 }
 
+static int get_rxlos_reg(int model, u8 port, u8 *reg, u8 *num)
+{
+
+    switch (model) {
+    case MDL_CPLD_SFP:
+        if (port < NUM_SFP) {
+            *reg = SFP_1ST_RXLOS_REG + (port/8)*4;
+            *num = (NUM_SFP > 8)? 8 : NUM_SFP;
+            return 0;
+        }
+        break;
+    default:
+        return -EINVAL;
+    }
+    return -EINVAL;
+}
 
 static int cpld_write_internal(
     struct i2c_client *client, u8 reg, u8 value)
@@ -317,12 +349,52 @@ static int cpld_read_internal(struct i2c_client *client, u8 reg)
     return status;
 }
 
-static ssize_t show_presnet_all(struct device *dev,
-        struct device_attribute *devattr, char *buf)
+static ssize_t show_rxlos_all(struct device *dev,
+                              struct device_attribute *devattr, char *buf)
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct cpld_data *data = i2c_get_clientdata(client);
-    u8 i, value, reg, num; 
+    u8 i, value, reg, num;
+    u64  values;
+
+    i = num = reg =0;
+    values = 0;
+    mutex_lock(&data->update_lock);
+    while (i < data->sfp_num)
+    {
+        /*No rxlos for QSFP*/
+        if (data->model == MDL_CPLD_QSFP) {
+            values = 0;
+            break;
+        }
+        get_rxlos_reg(data->model, i, &reg, &num);
+        if (!(num > 0))
+        {
+            value = -EINVAL;
+            goto exit;
+        }
+        value = cpld_read_internal(client, reg);
+        if (unlikely(value < 0)) {
+            goto exit;
+        }
+        values |= (value &((1<<(num))-1)) << i;
+        i += num;
+    }
+    mutex_unlock(&data->update_lock);
+    values = cpu_to_le64(values);
+    return snprintf(buf, sizeof(values)+1, "%llx\n", values);
+exit:
+    mutex_unlock(&data->update_lock);
+    return value;
+}
+
+
+static ssize_t show_presnet_all(struct device *dev,
+                                struct device_attribute *devattr, char *buf)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct cpld_data *data = i2c_get_clientdata(client);
+    u8 i, value, reg, num;
     u64  values;
 
     i = num = reg =0;
@@ -345,7 +417,7 @@ static ssize_t show_presnet_all(struct device *dev,
     }
     mutex_unlock(&data->update_lock);
     values = cpu_to_le64(values);
-    return snprintf(buf, sizeof(values)+1, "%llx\n", values);        
+    return snprintf(buf, sizeof(values)+1, "%llx\n", values);
 exit:
     mutex_unlock(&data->update_lock);
     return value;
@@ -366,7 +438,7 @@ static ssize_t show_bit(struct device *dev,
         value = !value;
     mutex_unlock(&data->update_lock);
 
-    return snprintf(buf, PAGE_SIZE, "%x\n", value);
+    return snprintf(buf, PAGE_SIZE, "%x\n", !!value);
 }
 
 static ssize_t set_1bit(struct device *dev, struct device_attribute *devattr,
@@ -690,7 +762,7 @@ static int as7315_i2c_cpld_probe(struct i2c_client *client,
     }
 
     data->hwmon_dev = hwmon_device_register_with_info(&client->dev,
-                      DRV_NAME, NULL, NULL, NULL);
+                      client->name, NULL, NULL, NULL);
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
