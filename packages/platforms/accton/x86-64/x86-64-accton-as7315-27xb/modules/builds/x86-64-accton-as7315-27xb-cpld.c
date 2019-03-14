@@ -874,6 +874,6 @@ static void __exit as7315_i2c_cpld_exit(void)
 module_init(as7315_i2c_cpld_init);
 module_exit(as7315_i2c_cpld_exit);
 
-MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
+MODULE_AUTHOR("Roy Lee <roy_lee@accton.com.tw>");
 MODULE_DESCRIPTION("as7315_i2c_cpld driver");
 MODULE_LICENSE("GPL");
