@@ -38,52 +38,47 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
-    "/sys/devices/platform/as7315_27xb_thermal/temp1_input",
-    "/sys/devices/platform/as7315_27xb_thermal/temp2_input",
-    "/sys/devices/platform/as7315_27xb_thermal/temp3_input",
-    "/sys/devices/platform/as7315_27xb_thermal/temp4_input",
-    "/sys/devices/platform/as7315_27xb_thermal/temp5_input",
-    "/sys/devices/platform/as7315_27xb_thermal/temp6_input",
-    "/sys/devices/platform/as7315_27xb_psu/psu1_temp1_input",
-    "/sys/devices/platform/as7315_27xb_psu/psu2_temp1_input",
+    "/sys/bus/i2c/devices/13-005b/psu_temp1_input",
+    "/sys/bus/i2c/devices/12-0058/psu_temp1_input",
 };
 
 static char* cpu_coretemp_files[] =
-    {
-        "/sys/devices/platform/coretemp.0*temp2_input",
-        "/sys/devices/platform/coretemp.0*temp3_input",
-        "/sys/devices/platform/coretemp.0*temp4_input",
-        "/sys/devices/platform/coretemp.0*temp5_input",
-        NULL,
-    };
+{
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp10_input",
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp14_input",
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input",
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp4_input",
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp8_input",
+    NULL,
+};
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
-	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0}, 
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },	
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1", 0}, 
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2", 0}, 
+    { }, /* Not used */
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    /*{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-3", 0}, 
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)}, 
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-3", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)}, 
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        }
+        },*/
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    }
 };
 
 /*
@@ -110,10 +105,10 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int   tid;
     VALIDATE(id);
-	
+
     tid = ONLP_OID_ID_GET(id);
-	
-    /* Set the onlp_oid_hdr_t and capabilities */		
+
+    /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[tid];
 
     if(tid == THERMAL_CPU_CORE) {

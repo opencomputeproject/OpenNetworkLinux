@@ -28,27 +28,12 @@
 #include "platform_lib.h"
 
 enum fan_id {
-	FAN_1_ON_FAN_BOARD = 1,
-	FAN_2_ON_FAN_BOARD,
-	FAN_3_ON_FAN_BOARD,
-	FAN_4_ON_FAN_BOARD,
-	FAN_5_ON_FAN_BOARD,
-	FAN_1_ON_PSU_1,
-	FAN_1_ON_PSU_2,
+    FAN_1_ON_PSU_1 = 1,
+    FAN_1_ON_PSU_2,
 };
 
 #define MAX_FAN_SPEED     25500
 #define MAX_PSU_FAN_SPEED 25500
-
-#define CHASSIS_FAN_INFO(fid)		\
-    { \
-        { ONLP_FAN_ID_CREATE(FAN_##fid##_ON_FAN_BOARD), "Chassis Fan - "#fid, 0 },\
-        0x0,\
-        ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,\
-        0,\
-        0,\
-        ONLP_FAN_MODE_INVALID,\
-    }
 
 #define PSU_FAN_INFO(pid, fid) 		\
     { \
@@ -63,13 +48,8 @@ enum fan_id {
 /* Static fan information */
 onlp_fan_info_t finfo[] = {
     { }, /* Not used */
-	CHASSIS_FAN_INFO(1),
-	CHASSIS_FAN_INFO(2),
-	CHASSIS_FAN_INFO(3),
-	CHASSIS_FAN_INFO(4),
-	CHASSIS_FAN_INFO(5),
-	PSU_FAN_INFO(1, 1),
-	PSU_FAN_INFO(2, 1)
+    PSU_FAN_INFO(1, 1),
+    PSU_FAN_INFO(2, 1)
 };
 
 #define VALIDATE(_id)                           \
@@ -78,57 +58,20 @@ onlp_fan_info_t finfo[] = {
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
- 
-static int
-_onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
-{
-	int   value, ret;
 
-	/* get fan present status
-	 */
-    ret = onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid);
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-	if (value == 0) {
-		return ONLP_STATUS_OK; /* fan is not present */
-	}
-	info->status |= ONLP_FAN_STATUS_PRESENT;
-
-
-    /* get fan direction
-     */
-	info->status |= ONLP_FAN_STATUS_F2B;
-
-
-    /* get fan speed
-     */
-    ret = onlp_file_read_int(&value, "%s""fan%d_input", FAN_BOARD_PATH, fid);
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-	info->rpm = value;
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
-
-
-    /* get fan fault status
-     */
-    if (!info->rpm) {
-        info->status |= ONLP_FAN_STATUS_FAILED;
-    }
-
-	return ONLP_STATUS_OK;
-}
+static int pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
 
 static int
 _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 {
-	int   value, ret;
+    int     bus, offset;
+    int     value, ret;
+    int zid = pid - 1 ;   /*Turn to 0-base*/
+    /*char  *fs[] =  {"/sys/bus/i2c/devices/13-005b/psu_fan1_speed_rpm",
+                     "/sys/bus/i2c/devices/12-0058/psu_fan1_speed_rpm"}*/
 
-	info->status |= ONLP_FAN_STATUS_PRESENT;
+
+    info->status |= ONLP_FAN_STATUS_PRESENT;
 
     /* get fan direction
      */
@@ -136,13 +79,16 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 
     /* get fan speed
      */
-    ret = onlp_file_read_int(&value, "%s""psu%d_fan1_input", PSU_SYSFS_PATH, pid);
+
+    bus = pmbus_cfg[zid][0];
+    offset = pmbus_cfg[zid][1];
+    ret = onlp_file_read_int(&value, PSU_SYSFS_PATH"psu_fan1_speed_rpm", bus, offset);
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from (%s)\r\n", PSU_SYSFS_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-	info->rpm = value;
+    info->rpm = value;
     info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
 
     /* get fan fault status
@@ -175,24 +121,17 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     switch (fid)
     {
-	    case FAN_1_ON_PSU_1:
-			rc = _onlp_fani_info_get_fan_on_psu(PSU1_ID, info);
-			break;
-		case FAN_1_ON_PSU_2:
-			rc = _onlp_fani_info_get_fan_on_psu(PSU2_ID, info);
-			break;
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_5_ON_FAN_BOARD:
-            rc =_onlp_fani_info_get_fan(fid, info);						
-            break;
-        default:
-            rc = ONLP_STATUS_E_INVALID;
-            break;
-    }	
-    
+    case FAN_1_ON_PSU_1:
+        rc = _onlp_fani_info_get_fan_on_psu(PSU1_ID, info);
+        break;
+    case FAN_1_ON_PSU_2:
+        rc = _onlp_fani_info_get_fan_on_psu(PSU2_ID, info);
+        break;
+    default:
+        rc = ONLP_STATUS_E_INVALID;
+        break;
+    }
+
     return rc;
 }
 
@@ -207,26 +146,6 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-    int  fid;
-
-    VALIDATE(id);
-
-    fid = ONLP_OID_ID_GET(id);
-
-    /* reject p=0 (p=0, stop fan) */
-    if (p == 0){
-        return ONLP_STATUS_E_INVALID;
-    }
-
-    if (fid < FAN_1_ON_FAN_BOARD || fid > FAN_5_ON_FAN_BOARD) {
-        return ONLP_STATUS_E_INVALID;
-    }
-
-    if (onlp_file_write_int(p, "%s""fan%d_pwm", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to write data to file %s""fan%d_pwm", FAN_BOARD_PATH, fid);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-	return ONLP_STATUS_OK;
+    return ONLP_STATUS_E_INTERNAL;
 }
 

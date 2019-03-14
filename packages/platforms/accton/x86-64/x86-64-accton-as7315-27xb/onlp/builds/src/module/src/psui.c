@@ -41,8 +41,8 @@
         }                                       \
     } while(0)
 
-int eeprom_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x53}, {12, 0x50}};
-int pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
+static int eeprom_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x53}, {12, 0x50}};
+static int pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
 
 int
 onlp_psui_init(void)
@@ -158,12 +158,12 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Set the associated oid_table */
     val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_fan1_speed_rpm", bus, offset) == 0 && val) {
-        info->hdr.coids[0] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
+        info->hdr.coids[0] = ONLP_FAN_ID_CREATE(pid);
     }
 
     val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
-        info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(pid + CHASSIS_THERMAL_COUNT);
+        info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(pid + 1);
     }
 
     /* Read model */
