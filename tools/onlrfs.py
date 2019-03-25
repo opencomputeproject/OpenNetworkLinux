@@ -316,6 +316,12 @@ class OnlRfsBuilder(object):
         self.kwargs = kwargs
         self.arch = arch
         self.kwargs['ARCH'] = arch
+
+        # Hack -- we have to pull powerpc from the archive
+        # This will need a cleaner fix.
+        if arch == 'powerpc':
+            self.DEFAULTS['DEBIAN_MIRROR'] = 'archive.debian.org/debian/'
+
         self.kwargs.update(self.DEFAULTS)
         self.__load(config)
         self.__validate()
