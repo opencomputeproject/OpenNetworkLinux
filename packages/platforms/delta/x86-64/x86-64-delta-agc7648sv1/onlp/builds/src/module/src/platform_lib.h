@@ -30,6 +30,8 @@
 #include <onlp/onlp.h>
 #include <onlplib/shlocks.h>
 
+#define BMC
+
 typedef unsigned int    UINT4;
 
 /* CPLD numbrt & peripherals */
@@ -56,6 +58,12 @@ typedef unsigned int    UINT4;
 #define BMC_OFF                      (1)
 #define BMC_ON                       (0)
 #define PSU_NODE_MAX_PATH_LEN        (64)
+#define FAN_TIME_THRESHOLD           (5)
+#define PSU_TIME_THRESHOLD           (5)
+#define THERMAL_TIME_THRESHOLD       (10)
+#define PSU_EEPROM_TIME_THRESHOLD    (10)
+#define SWPLD_DATA_TIME_THRESHOLD    (5)
+#define DEV_NUM                      (33)
 
 #define CPU_CPLD_VERSION "/sys/devices/platform/delta-agc7648sv1-cpld.0/cpuld_ver"
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0053/eeprom"
@@ -89,6 +97,8 @@ typedef unsigned int    UINT4;
 #define FAN4_PRESENT_PATH "/sys/class/gpio/gpio496/value"
 #define PSU1_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu1_present"
 #define PSU2_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu2_present"
+#define CHECK_TIME_FILE "/tmp/check_time_file"
+#define BMC_INFO_TABLE "/tmp/bmc_info"
 
 /* REG define */
 #define SWPLD_1_ADDR (0x6A)
@@ -105,6 +115,7 @@ typedef unsigned int    UINT4;
 #define POWER_STATUS_REGISTER (0x0B)
 #define POWER_INT_REGISTER    (0x0E)
 #define DEFAULT_FLAG         (0x00)
+#define PSU_REGISTER (0x0D)
 
 /* BMC BUS define */
 #define BMC_SWPLD_BUS (2)
@@ -167,21 +178,55 @@ typedef struct dev_info_s
 
 }dev_info_t;
 
+typedef struct swpld_info_s
+{
+    char name[20];
+    uint8_t addr;
+    long time;
+}swpld_info_t;
+
+typedef struct check_time_s
+{
+    long time;
+}check_time_t;
+
+typedef struct platform_info_s
+{
+    uint8_t data;
+    long time;
+}platform_info_t;
+
+typedef struct bmc_info_s
+{
+    char tag[20];
+    float data;
+}bmc_info_t;
+
+typedef struct eeprom_info_s
+{
+    char tag[20];
+    char data[20];
+}eeprom_info_t;
+
+typedef struct onlp_psu_dev_s
+{
+   eeprom_info_t psu_eeprom_table[2];
+}onlp_psu_dev_t;
+
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len);
 int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data);
 int dni_lock_cpld_read_attribute(char *cpld_path, int addr);
 int dni_fan_present(int id);
 int dni_fan_speed_good();
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
-int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier);
-int dni_psui_eeprom_info_get(char *r_data,char *device_name,int number);
-int dni_bmc_check();
-int dni_bmc_fanpresent_info_get(int *r_data);
+int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier, int sensor_type);
+int dni_bmc_psueeprom_info_get(char *r_data,char *device_name,int number);
+int dni_bmc_fanpresent_info_get(uint8_t *fan_present_bit);
 int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_psu_present(int *r_data);
-int dni_bmc_data_get(int bus, int addr, int reg, int len, int *r_data);
+int dni_bmc_data_get(int bus, int addr, int reg, int *r_data);
 int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data);
 void lockinit();
 
@@ -255,5 +300,13 @@ enum bus
      I2C_BUS_31 = 31,
      I2C_BUS_32
 };
+
+enum sensor
+{
+    FAN_SENSOR = 0,
+    PSU_SENSOR,
+    THERMAL_SENSOR,
+};
+
 #endif  /* __PLATFORM_LIB_H__ */
 
