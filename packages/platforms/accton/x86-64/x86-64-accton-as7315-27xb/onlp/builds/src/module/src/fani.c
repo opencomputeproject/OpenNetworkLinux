@@ -67,9 +67,6 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
     int     bus, offset;
     int     value, ret;
     int zid = pid - 1 ;   /*Turn to 0-base*/
-    /*char  *fs[] =  {"/sys/bus/i2c/devices/13-005b/psu_fan1_speed_rpm",
-                     "/sys/bus/i2c/devices/12-0058/psu_fan1_speed_rpm"}*/
-
 
     info->status |= ONLP_FAN_STATUS_PRESENT;
 

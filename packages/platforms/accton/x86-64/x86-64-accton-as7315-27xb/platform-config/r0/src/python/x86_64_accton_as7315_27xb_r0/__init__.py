@@ -10,6 +10,7 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod('ym2651y')
+        self.insmod('at24_as7315_27xb')
         for m in ['cpld', 'led', 'psu']:
             self.insmod("x86-64-accton-as7315-27xb-%s.ko" % m)
 
@@ -43,8 +44,8 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
                 ('ym2401',  0x5b, 13),
             ]
         )
-        # System EEPROM
-        #self.new_i2c_device('24c02', 0x57, 4)
+        # System EEPROM, due to only support byte-read, mount just 512KB size.
+        self.new_i2c_device('24cxb04', 0x57, 4)
 
         # initialize SFP devices
         for port in range(1, 25):

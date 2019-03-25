@@ -41,7 +41,7 @@
 #define FAN_BOARD_PATH	"/sys/devices/platform/as7315_27xb_fan/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/devices/platform/as7315_27xb_sys/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/4-0057/eeprom"
 
 enum onlp_thermal_id
 {

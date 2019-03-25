@@ -283,10 +283,11 @@ abort:
 #endif
 }
 
-enum psu_type {
+enum psu_type {   
+    PSU_YM_1401_A,      /* AC110V - B2F */
     PSU_YM_2401_JCR,    /* AC110V - F2B */
     PSU_YM_2401_JDR,    /* AC110V - B2F */
-    PSU_YM_1401_A,      /* AC110V - B2F */
+    PSU_YM_2401_TCR,    /* AC110V - B2F */ 
     PSU_CPR_4011_4M11,  /* AC110V - F2B */
     PSU_CPR_4011_4M21,  /* AC110V - B2F */
     PSU_CPR_6011_2M11,  /* AC110V - F2B */
@@ -305,6 +306,7 @@ struct serial_number_info serials[] = {
     {PSU_YM_1401_A,     0x35, 19},
     {PSU_YM_2401_JCR,   0x35, 19},
     {PSU_YM_2401_JDR,   0x35, 19},
+    {PSU_YM_2401_TCR,   0x35, 19},
     {PSU_CPR_4011_4M11, 0x47, 15},
     {PSU_CPR_4011_4M21, 0x47, 15},
     {PSU_CPR_6011_2M11, 0x46, 15},
@@ -326,6 +328,7 @@ static int as7315_27xb_psu_serial_number_get(struct device *dev, enum psu_type t
     case PSU_CPR_6011_2M21:
     case PSU_YM_1401_A:
     case PSU_YM_2401_JCR:
+    case PSU_YM_2401_TCR:
     case PSU_YM_2401_JDR:
     {
         if(type >= sizeof(serials)/sizeof(struct serial_number_info))
@@ -363,6 +366,7 @@ struct model_name_info models[] = {
     {PSU_YM_1401_A,     0x20, 11, "YM-1401ACR"},
     {PSU_YM_2401_JCR,   0x20, 11, "YM-2401JCR"},
     {PSU_YM_2401_JDR,   0x20, 11, "YM-2401JDR"},
+    {PSU_YM_2401_TCR,   0x20, 11, "YM-2401TCR"},
     {PSU_CPR_4011_4M11, 0x26, 13, "CPR-4011-4M11"},
     {PSU_CPR_4011_4M21, 0x26, 13, "CPR-4011-4M21"},
     {PSU_CPR_6011_2M11, 0x26, 13, "CPR-6011-2M11"},
@@ -391,8 +395,7 @@ static int as7315_27xb_psu_model_name_get(struct device *dev, int get_serial)
         else {
             data->model_name[models[i].length] = '\0';
         }
-
-        if (i == PSU_YM_2401_JCR || i == PSU_YM_2401_JDR || i == PSU_YM_2401_JDR) {
+        if (i == PSU_YM_2401_JCR || i == PSU_YM_2401_JDR || i == PSU_YM_1401_A || i == PSU_YM_2401_TCR) {
             /* Skip the meaningless data byte 8*/
             data->model_name[8] = data->model_name[9];
             data->model_name[9] = data->model_name[10];

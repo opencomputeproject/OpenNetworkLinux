@@ -321,14 +321,12 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     case ONLP_SFP_CONTROL_TX_FAULT:
     case ONLP_SFP_CONTROL_TX_DISABLE:
         if (type == PORT_TYPE_QSFP) {
-            rv = ONLP_STATUS_E_UNSUPPORTED;
-            goto exit;
+            return ONLP_STATUS_E_UNSUPPORTED;
         }
         break;
     case ONLP_SFP_CONTROL_LP_MODE:
         if (type == PORT_TYPE_SFP) {
-            rv = ONLP_STATUS_E_UNSUPPORTED;
-            goto exit;
+            return ONLP_STATUS_E_UNSUPPORTED;
         }
         break;
     default:
@@ -350,7 +348,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         attr = "low_power_mode";
         break;
     default:
-        break;
+        return ONLP_STATUS_E_UNSUPPORTED;    
     }
 
     bus = SB_CFG[type][0];
@@ -377,7 +375,6 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         rv = ONLP_STATUS_E_UNSUPPORTED;
     }
 
-exit:
     return rv;
 }
 
