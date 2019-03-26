@@ -208,8 +208,7 @@ int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                 info->mode = ONLP_LED_MODE_OFF;
             break;
     }
-#endif
-#ifdef I2C
+#elif defined I2C
     switch(local_id)
     {
         case LED_FRONT_FAN:

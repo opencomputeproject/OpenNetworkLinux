@@ -42,12 +42,12 @@
 
 static onlp_shlock_t* dni_lock = NULL;
 
-#define DNI_BUS_LOCK() \
+#define DNI_LOCK() \
     do{ \
         onlp_shlock_take(dni_lock); \
     }while(0)
 
-#define DNI_BUS_UNLOCK() \
+#define DNI_UNLOCK() \
     do{ \
         onlp_shlock_give(dni_lock); \
     }while(0)
@@ -64,6 +64,7 @@ void lockinit()
     }
 }
 
+#ifdef BMC
 int dni_ipmi_data_time_check(long last_time, long new_time, int time_threshold)
 {
     int ipmi_data_update = 0;
@@ -210,7 +211,7 @@ int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier, int sen
 
     if(ipmi_data_update == 1)
     {
-        DNI_BUS_LOCK();
+        DNI_LOCK();
         if(dni_ipmi_data_time_check(file_last_time, bmc_check.time, time_threshold))
         {
             sprintf(ipmi_cmd, "ipmitool sdr > /tmp/bmc_info");
@@ -234,7 +235,7 @@ int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier, int sen
         }
         gettimeofday(&new_tv,NULL);
         bmc_check.time = new_tv.tv_sec;
-        DNI_BUS_UNLOCK();
+        DNI_UNLOCK();
     }
 
     for(dev_num = 0; dev_num < DEV_NUM; dev_num++)
@@ -305,11 +306,11 @@ int dni_bmc_data_get(int bus, int addr, int reg, int *r_data)
 
     if(ipmi_data_update == 1)
     {
-        DNI_BUS_LOCK();
+        DNI_LOCK();
         swpld_table[swpld_num].time = new_tv.tv_sec;
         sprintf(cmd, "ipmitool raw 0x38 0x2 %d 0x%x 0x00 255 > /tmp/%s_data", bus, addr, swpld_table[swpld_num].name);
         system(cmd);
-        DNI_BUS_UNLOCK();
+        DNI_UNLOCK();
     }
 
     sprintf(data_path, "/tmp/%s_data",swpld_table[swpld_num].name);
@@ -332,7 +333,7 @@ int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data)
     char cmd[50] = {0};
     FILE *fptr = NULL;
 
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     sprintf(cmd, "ipmitool raw 0x38 0x3 %d 0x%x 0x%x %d > /dev/null", bus, addr, reg, w_data);
     fptr = popen(cmd, "w");
     if(fptr != NULL)
@@ -340,7 +341,7 @@ int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data)
     else
         rv = ONLP_STATUS_E_INVALID;
     pclose(fptr);
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 
@@ -362,7 +363,7 @@ int dni_bmc_fanpresent_info_get(uint8_t *fan_present_bit)
 
     if(ipmi_data_update == 1)
     {
-        DNI_BUS_LOCK();
+        DNI_LOCK();
         fan.time = new_tv.tv_sec;
         sprintf(fanpresent_cmd, "ipmitool raw 0x38 0x0e");
         fptr = popen(fanpresent_cmd, "r");
@@ -379,7 +380,7 @@ int dni_bmc_fanpresent_info_get(uint8_t *fan_present_bit)
         else
             rv = ONLP_STATUS_E_INVALID;
         pclose(fptr);
-        DNI_BUS_UNLOCK();
+        DNI_UNLOCK();
     }
 
     *fan_present_bit = fan.data;
@@ -448,7 +449,7 @@ int dni_bmc_psueeprom_info_get(char * r_data, char *device_name, int number)
 
     if(ipmi_data_update == 1)
     {
-        DNI_BUS_LOCK();
+        DNI_LOCK();
         if(dni_ipmi_data_time_check(file_last_time, psu_eeprom_check.time, PSU_EEPROM_TIME_THRESHOLD))
         {
             for(psu_num = 1; psu_num < 3; psu_num++)
@@ -478,7 +479,7 @@ int dni_bmc_psueeprom_info_get(char * r_data, char *device_name, int number)
             }
         }
         psu_eeprom_check.time = new_tv.tv_sec;
-        DNI_BUS_UNLOCK();
+        DNI_UNLOCK();
     }
     for(table_num = 0; table_num < 2 ; table_num++)
     {
@@ -497,7 +498,7 @@ int dni_bmc_psueeprom_info_get(char * r_data, char *device_name, int number)
 END:
     return rv;
 }
-
+#endif
 int hex_to_int(char hex_input)
 {
     int first = hex_input / 16 - 3;
@@ -543,26 +544,26 @@ int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info)
 {
     int r_data = 0;
 
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     if(dev_info->size == 1)
         r_data = onlp_i2c_readb(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
     else
         r_data = onlp_i2c_readw(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
 
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return r_data;
 }
 
 int dni_i2c_lock_write(mux_info_t * mux_info, dev_info_t * dev_info)
 {
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     /* Write size */
     if(dev_info->size == 1)
         onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
     else
         onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
 
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return 0;
 }
 
@@ -571,14 +572,14 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
     int fd, nbytes = 10, rv = -1;
     char r_data[10] = {0};
 
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     if ((fd = open(fullpath, O_RDONLY)) >= 0)
     {
         if ((read(fd, r_data, nbytes)) > 0)
             rv = atoi(r_data);
     }
     close(fd);
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 
@@ -586,7 +587,7 @@ int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullp
 {
     int fd, rv = -1;
 
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     /* Create output file descriptor */
     if ((fd = open(fullpath, O_WRONLY, 0644)) >= 0)
     {
@@ -597,7 +598,7 @@ int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullp
         }
     }
     close(fd);
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 
@@ -613,7 +614,7 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
     sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
     sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
     sprintf(address, "0x%02x", addr);
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     /* Create output file descriptor */
     if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
@@ -632,7 +633,7 @@ int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
         }
     }
     close(fd);
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 
@@ -648,7 +649,7 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
     sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
     sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
     sprintf(address, "0x%02x", addr);
-    DNI_BUS_LOCK();
+    DNI_LOCK();
     /* Create output file descriptor */
     if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
     {
@@ -668,7 +669,7 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
         }
     }
     close(fd);
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 
@@ -692,8 +693,7 @@ int dni_fan_present(int id)
     }
     else
        rv = ONLP_STATUS_E_INVALID;
-#endif
-#ifdef I2C
+#elif defined I2C
     int fantray_present = -1;
     switch(id) {
         case LED_REAR_FAN_TRAY_1:
@@ -748,7 +748,7 @@ int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, in
 {
     int fd, rv = 0;
     int len;
-    DNI_BUS_LOCK();
+    DNI_LOCK();
 
     if ((buffer == NULL) || (buf_size < 0)) {
         rv = -1;
@@ -777,7 +777,7 @@ int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, in
     }
 
 ERROR:
-    DNI_BUS_UNLOCK();
+    DNI_UNLOCK();
     return rv;
 }
 

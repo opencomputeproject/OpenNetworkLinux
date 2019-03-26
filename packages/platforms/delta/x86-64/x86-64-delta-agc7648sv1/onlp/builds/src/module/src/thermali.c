@@ -134,22 +134,16 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     uint8_t local_id = 0;
     int rv = ONLP_STATUS_OK;
-#ifdef BMC
-    UINT4 multiplier = 1000;
-    UINT4 u4Data = 0;
-    char device_buf[20] = {0};
-#endif
-#ifdef I2C
-    int temp_base = 1;
-    char fullpath[50] = {0};
-    int r_data = 0;
-#endif
 
     VALIDATE(id);
     local_id = ONLP_OID_ID_GET(id);
     *info = linfo[local_id];
 
 #ifdef BMC
+    UINT4 multiplier = 1000;
+    UINT4 u4Data = 0;
+    char device_buf[20] = {0};
+
     switch(local_id) {
         case THERMAL_1_ON_FAN_BOARD:
             sprintf(device_buf, "Fan_Temp");
@@ -187,8 +181,11 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         info->mcelsius = u4Data;
         return 0;
     }
-#endif
-#ifdef I2C
+#elif defined I2C
+    int temp_base = 1;
+    char fullpath[50] = {0};
+    int r_data = 0;
+
     switch (local_id) {
         case THERMAL_1_ON_FAN_BOARD:
             sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);

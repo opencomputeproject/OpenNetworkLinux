@@ -31,6 +31,7 @@
 #include <onlplib/shlocks.h>
 
 #define BMC
+//#define I2C
 
 typedef unsigned int    UINT4;
 

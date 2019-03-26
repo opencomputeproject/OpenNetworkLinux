@@ -96,11 +96,6 @@ onlp_fan_info_t linfo[] = {
 static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-#ifdef I2C
-    int rpm = 0;
-    int fantray_present = -1;
-    char fullpath[100] = {0};
-#endif
 #ifdef BMC
     uint8_t bit_data = 0x00;
     UINT4 u4Data = 0;
@@ -149,8 +144,11 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
     }
-#endif
-#ifdef I2C
+#elif defined I2C
+    int rpm = 0;
+    int fantray_present = -1;
+    char fullpath[100] = {0};
+
     sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
     rpm = dni_i2c_lock_read_attribute(NULL, fullpath);
     info->rpm = rpm;
@@ -203,11 +201,6 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
 static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-#ifdef I2C
-    int psu_present = 0;
-    int r_data = 0;
-    char fullpath[100] = {0};
-#endif
 #ifdef BMC
     UINT4 multiplier = 1;
     UINT4 u4Data = 0;
@@ -249,8 +242,11 @@ static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, cha
             }
             break;
     }
-#endif
-#ifdef I2C
+#elif defined I2C
+    int psu_present = 0;
+    int r_data = 0;
+    char fullpath[100] = {0};
+
     switch(local_id) {
         case FAN_1_ON_PSU1:
             psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);

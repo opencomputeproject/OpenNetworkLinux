@@ -204,7 +204,7 @@ int onlp_sysi_platform_manage_leds(void)
     int rpm = 0, rpm1 = 0, count = 0;
     int fantray_count;
     char fantray_count_str[2] = {'\0'};
-    uint8_t psu_state;
+    uint8_t psu1_state, psu2_state;
     int psu_pwr_status = 0;
     int psu_pwr_int = 0;
     int fantray_present = -1;
@@ -308,26 +308,13 @@ int onlp_sysi_platform_manage_leds(void)
     }
 
     /* Set front light of PWR */
-    psu_state = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
+    psu1_state = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
+    psu2_state = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
     psu_pwr_status = dni_lock_cpld_read_attribute(SWPLD1_PATH,POWER_STATUS_REGISTER);
     psu_pwr_int = dni_lock_cpld_read_attribute(SWPLD1_PATH,POWER_INT_REGISTER);
 
-    if(psu_state == 0 && (psu_pwr_status & 0x80) == 0x80 && (psu_pwr_int & 0x10) == 0x10)
-    {
-        /* Green */
-        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR),ONLP_LED_MODE_GREEN) !=  ONLP_STATUS_OK)
-            rv = ONLP_STATUS_E_INTERNAL;
-    }
-    else
-    {
-        /* Amber */
-        if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR),ONLP_LED_MODE_YELLOW) != ONLP_STATUS_OK)
-            rv = ONLP_STATUS_E_INTERNAL;
-    }
 
-    psu_state = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
-
-    if(psu_state == 0 && (psu_pwr_status & 0x40) == 0x40 && (psu_pwr_int & 0x20) == 0x20)
+    if(psu1_state == 0 && psu2_state == 0 && (psu_pwr_status & 0xc0) == 0xc0 && (psu_pwr_int & 0x30) == 0x30)
     {
         /* Green */
         if(onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FRONT_PWR),ONLP_LED_MODE_GREEN) !=  ONLP_STATUS_OK)
