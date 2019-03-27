@@ -226,7 +226,6 @@ int dni_bmc_fanpresent_info_get(uint8_t *fan_present_bit);
 int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
-int dni_psu_present(int *r_data);
 int dni_bmc_data_get(int bus, int addr, int reg, int *r_data);
 int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data);
 void lockinit();

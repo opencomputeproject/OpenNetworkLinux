@@ -517,29 +517,6 @@ int hex_to_ascii(char hex_high, char hex_low)
     return high + low;
 }
 
-int dni_psu_present(int *r_data)
-{
-    FILE *fptr = NULL;
-    int rv = ONLP_STATUS_OK;
-    char cmd[35] = {0};
-    char str_data[50] = {0};
-
-    sprintf(cmd, "ipmitool raw 0x38 0x2 2 0x6a 0x0d 1");
-    fptr = popen(cmd, "r");
-    if(fptr != NULL)
-    {
-        if(fgets(str_data, sizeof(str_data), fptr) != NULL)
-            *r_data = strtol(str_data, NULL, 16);
-        else
-            rv = ONLP_STATUS_E_INVALID;
-    }
-    else
-        rv = ONLP_STATUS_E_INVALID;
-    pclose(fptr);
-
-    return rv;
-}
-
 int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info)
 {
     int r_data = 0;
