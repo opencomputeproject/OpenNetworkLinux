@@ -7,7 +7,7 @@ The Chassis OID is represented by the special value ``ONLP_OID_CHASSIS``.
 
 ## Chassis Information Structure
 
-Enumerating the current system topology starts with a call to ```onlp_chassis_info_get``` using the special value ONLP_OID_CHASSIS.
+Enumerating the current system topology starts with a call to ```onlp_chassis_info_get``` using the special value ```ONLP_OID_CHASSIS```.
 This populates the ```onlp_chassis_info_t``` structure.
 
 There are no chassis-specific fields in this structure but it contains all of the top-level OIDs as its children. Those children can then be inspected and enumerated recursively.
