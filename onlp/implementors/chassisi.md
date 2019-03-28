@@ -10,8 +10,6 @@ This returns the chassis root oid hdr for the system.
 
 You must mark the chassis oid status as both PRESENT and OPERATIONAL.
 
-You must return all top-level chassis OID children in the coids table.
-
 ## ```onlp_chassisi_info_get()```
 
 There are no fields currently defined in the ```onlp_chassis_info_t``` structure so it is currently equivalent to populating the OID header.
