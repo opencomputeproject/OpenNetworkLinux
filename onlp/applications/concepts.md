@@ -22,6 +22,45 @@ Attributes specific to a particular type of OID represent that type's functional
 There are functionality-specific APIs defined for each OID subtype.
 
 
+## Hardware and Software Initialization
+
+Each platform subsystem supports the concept of both hardware and software initialization.
+
+### Software Initialization
+
+Each platform subsystem has an init routine of the form:
+```
+int onlp_<type>_sw_init(void);
+```
+
+This function will be called prior to any other function in the subsystem.
+The purpose of this routine is to prepare your module for operation. It must *not* modify the running hardware in any way.
+The ONLP libraries are shared amongst multiple processes and can be invoked at any time and should not affect the state of the hardware unless that is the intention of the application.
+
+There is a corresponding denit function of the form:
+```
+int onlp_<type>_sw_denit(void);
+```
+
+which will be called at termination.
+
+These initialization functions are optional and need only be implemented if the design of your module requires them.
+If you do implement them they must return successfully or initialization will abort.
+
+### Hardware Initialization
+
+Each platform sybsystem has an init routine of the form:
+```
+int onlp_<type>_hw_init(uint32_t flags);
+```
+
+This function will be called at system boot time to perform any one-time hardware initialization. Just like all other subsystem functions, this will not be called until after the module's software init function.
+
+Some common operations which may be performed in the Hardware initialization phase might be to set system LEDs to their initial state and bring PHYs and SFPs out of reset.
+
+The ```flags``` parameter is designed to indicate whether this is a cold or warm initialization. For example you may not wish to change the state of the SFPs during a warm start in support of ISSU as it would affect the dataplane.
+
+
 ## OID Representation
 
 OIDs are just 32 bit integer handles. The most significant byte of the OID encodes the type (SFP, FAN, PSU, etc). The remaining 3 bytes are a unique id referencing a platform-defined object (like Fan 1, Fan 2, Fan 3).
