@@ -264,13 +264,22 @@ typedef uint32_t onlp_oid_status_flags_t;
  */
 #define ONLP_OID_DESC_SIZE 128
 
+/** OID description array. */
 typedef char onlp_oid_desc_t[ONLP_OID_DESC_SIZE];
 
-/* fixme */
+/** The maximum OID child table size */
 #define ONLP_OID_TABLE_SIZE 256
+
+/** A table of OIDs */
 typedef onlp_oid_t onlp_oid_table_t[ONLP_OID_TABLE_SIZE];
+
+/** The size of the current OID table */
 #define ONLP_OID_TABLE_SIZE_BYTES (sizeof(onlp_oid_t)*ONLP_OID_TABLE_SIZE)
+
+/** Copy an OID table. */
 #define ONLP_OID_TABLE_COPY(_dst, _src) memcpy(_dst, _src, ONLP_OID_TABLE_SIZE_BYTES)
+
+/** Clear an OID table. */
 #define ONLP_OID_TABLE_CLEAR(_table) memset(_table, 0, ONLP_OID_TABLE_SIZE_BYTES)
 
 
@@ -322,21 +331,39 @@ typedef int (*onlp_oid_iterate_f)(onlp_oid_t oid, void* cookie);
 
 /**
  * @brief Iterate over all platform OIDs.
- * @param oid The root OID.
+ * @param root The root OID.
  * @param types The OID types filter (optional)
  * @param itf The iterator function.
  * @param cookie The cookie.
  */
-int onlp_oid_iterate(onlp_oid_t oid, onlp_oid_type_flags_t types,
+int onlp_oid_iterate(onlp_oid_t root, onlp_oid_type_flags_t types,
                      onlp_oid_iterate_f itf, void* cookie);
 
 
+/**
+ * @brief Iterate over all given OID types and return their info structures.
+ * @param root The root OID.
+ * @param types The OID types filter (optional)
+ * @param flags The iterator flags.
+ * @param[out] list Receives a list of all info structures.
+ */
 int onlp_oid_info_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
                           uint32_t flags, biglist_t** list);
 
+/**
+ * @brief Iterate over all given OID types and return their hdr structures.
+ * @param root The root OID.
+ * @param types The OID types filter (optional)
+ * @param flags The iterator flags.
+ * @param[out] list Receives a list of all hdr structures.
+ */
 int onlp_oid_hdr_get_all(onlp_oid_t root, onlp_oid_type_flags_t types,
                          uint32_t flags, biglist_t** list);
 
+/**
+ * @brief Free a list returned by onlp_oid_info_get_all() or onlp_oid_hdr_get_all()
+ * @param list The list to free.
+ */
 int onlp_oid_get_all_free(biglist_t* list);
 
 /**
@@ -345,33 +372,39 @@ int onlp_oid_get_all_free(biglist_t* list);
 #define ONLP_OID_STATUS_FLAGS_GET(_ptr)         \
     (((onlp_oid_hdr_t*)_ptr)->status)
 
+/** Clear all status flags */
 #define ONLP_OID_STATUS_FLAGS_CLR(_ptr) \
     ONLP_OID_STATUS_FLAGS_GET(_ptr) = 0
 
+/** Get the value of a given flag. */
 #define ONLP_OID_STATUS_FLAG_GET_VALUE(_ptr, _name)                     \
     AIM_FLAG_GET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
+/** Set the value of a given flag. */
 #define ONLP_OID_STATUS_FLAG_SET_VALUE(_ptr, _name, _value) \
     AIM_FLAG_SET_VALUE(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name, _value)
 
+/** Set a given flag.*/
 #define ONLP_OID_STATUS_FLAG_SET(_ptr, _name)                           \
     AIM_FLAG_SET(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
+/** Clear a given flag. */
 #define ONLP_OID_STATUS_FLAG_CLR(_ptr, _name) \
     AIM_FLAG_CLR(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
+/** Determine if a flag is set. */
 #define ONLP_OID_STATUS_FLAG_IS_SET(_ptr, _name)                        \
     AIM_FLAG_IS_SET(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
+/** Determine if a flag is cleared. */
 #define ONLP_OID_STATUS_FLAG_NOT_SET(_ptr, _name)                       \
     AIM_FLAG_NOT_SET(ONLP_OID_STATUS_FLAGS_GET(_ptr), ONLP_OID_STATUS_FLAG_##_name)
 
-/**
- * Common Shorthands
- */
+/** Shortcut - OID is present. */
 #define ONLP_OID_PRESENT(_ptr) \
     ONLP_OID_STATUS_FLAG_IS_SET(_ptr, PRESENT)
 
+/** Shortcut - OID has failed. */
 #define ONLP_OID_FAILED(_ptr) \
     ONLP_OID_STATUS_FLAG_IS_SET(_ptr, FAILED)
 
@@ -409,10 +442,10 @@ int onlp_oid_get_all_free(biglist_t* list);
 int onlp_oid_is_present(onlp_oid_t* oid);
 
 
-/**
- * @brief OID -> String Representation
- */
+/** OID -> String Representation  */
 int onlp_oid_to_str(onlp_oid_t oid, char* rstr);
+
+/** OID -> User representation. */
 int onlp_oid_to_user_str(onlp_oid_t oid, char* rstr);
 
 /**
@@ -459,9 +492,28 @@ int onlp_oid_info_to_json(onlp_oid_hdr_t* info, cJSON** cj, uint32_t flags);
 
 /**
  * @brief OID -> JSON
+ * @param oid The OID.
+ * @param[out] rv Receives the JSON structure.
+ * @param flags The format flags.
  */
 int onlp_oid_to_user_json(onlp_oid_t oid, cJSON** rv, uint32_t flags);
+
+/**
+ * @brief OID -> User JSON
+ * @param oid The OID.
+ * @param[out] rv Receives the JSON structure.
+ * @param flags The format flags.
+ */
 int onlp_oid_to_json(onlp_oid_t oid, cJSON** rv, uint32_t flags);
+
+/**
+ * @brief JSON -> OID Information structures.
+ * @param cj The source JSON structure.
+ * @param[out] hdr Receives the information structure.
+ * @param[out] all Receives a list of all structures if not NULL and the JSON
+ * contains multiple objects.
+ * @param flags The JSON flags.
+ */
 int onlp_oid_from_json(cJSON* cj, onlp_oid_hdr_t** hdr, biglist_t** all, uint32_t flags);
 
 /**

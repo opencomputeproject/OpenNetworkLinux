@@ -206,48 +206,41 @@ Macros</h2></td></tr>
 <tr class="separator:ga5ebd9530d48e8ca25849e60b8404c1e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaf3dba2e55f717b919b96cfc612098c96"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaf3dba2e55f717b919b96cfc612098c96">ONLP_OID_GENERIC_VALIDATE_GET_ID_NR</a>(_oid, _id)&#160;&#160;&#160;<a class="el" href="group__oid.html#gaab4453bb7714a2d65233c35e313ca37f">ONLP_OID_TYPE_VALIDATE_GET_ID_NR</a>(ONLP_OID_TYPE_GENERIC, _oid, _id)</td></tr>
 <tr class="separator:gaf3dba2e55f717b919b96cfc612098c96"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga6075616d039e2c1847cd9f62bb60b8a4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga6075616d039e2c1847cd9f62bb60b8a4">ONLP_OID_ID_VALIDATE_RANGE</a>(_id, _min, _max)&#160;&#160;&#160;( (_id) &gt;= (_min) &amp;&amp; (_id) &lt;= (_max)) ? ONLP_STATUS_OK : ONLP_STATUS_E_INVALID</td></tr>
+<tr class="separator:ga6075616d039e2c1847cd9f62bb60b8a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gad4ef39fa45f462965b32608b91d8277b"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gad4ef39fa45f462965b32608b91d8277b">ONLP_OID_CHASSIS</a>&#160;&#160;&#160;<a class="el" href="group__oid.html#ga067f622cf9a1757eca1447b6efbc4e1d">ONLP_OID_TYPE_CREATE</a>(ONLP_OID_TYPE_CHASSIS, 1)</td></tr>
 <tr class="separator:gad4ef39fa45f462965b32608b91d8277b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga2bdd7dcf1493bf2d557e74d38007ca36"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga2bdd7dcf1493bf2d557e74d38007ca36">ONLP_OID_DESC_SIZE</a>&#160;&#160;&#160;128</td></tr>
 <tr class="separator:ga2bdd7dcf1493bf2d557e74d38007ca36"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gacc9a3d7b409b2d533447a62ddb1c2f71"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gacc9a3d7b409b2d533447a62ddb1c2f71"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_TABLE_SIZE</b>&#160;&#160;&#160;256</td></tr>
+<tr class="memitem:gacc9a3d7b409b2d533447a62ddb1c2f71"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>&#160;&#160;&#160;256</td></tr>
 <tr class="separator:gacc9a3d7b409b2d533447a62ddb1c2f71"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga06a21f1cd6059ecb11eed5742fc5d74e"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga06a21f1cd6059ecb11eed5742fc5d74e"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_TABLE_SIZE_BYTES</b>&#160;&#160;&#160;(sizeof(<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>)*ONLP_OID_TABLE_SIZE)</td></tr>
+<tr class="memitem:ga06a21f1cd6059ecb11eed5742fc5d74e"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga06a21f1cd6059ecb11eed5742fc5d74e">ONLP_OID_TABLE_SIZE_BYTES</a>&#160;&#160;&#160;(sizeof(<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>)*<a class="el" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>)</td></tr>
 <tr class="separator:ga06a21f1cd6059ecb11eed5742fc5d74e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga483521a9800ebca8a5d57c57a69f31fc"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga483521a9800ebca8a5d57c57a69f31fc"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_TABLE_COPY</b>(_dst, _src)&#160;&#160;&#160;memcpy(_dst, _src, ONLP_OID_TABLE_SIZE_BYTES)</td></tr>
+<tr class="memitem:ga483521a9800ebca8a5d57c57a69f31fc"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga483521a9800ebca8a5d57c57a69f31fc">ONLP_OID_TABLE_COPY</a>(_dst, _src)&#160;&#160;&#160;memcpy(_dst, _src, <a class="el" href="group__oid.html#ga06a21f1cd6059ecb11eed5742fc5d74e">ONLP_OID_TABLE_SIZE_BYTES</a>)</td></tr>
 <tr class="separator:ga483521a9800ebca8a5d57c57a69f31fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga65cb6a479d8b7e14132854d00650bb28"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga65cb6a479d8b7e14132854d00650bb28"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_TABLE_CLEAR</b>(_table)&#160;&#160;&#160;memset(_table, 0, ONLP_OID_TABLE_SIZE_BYTES)</td></tr>
+<tr class="memitem:ga65cb6a479d8b7e14132854d00650bb28"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga65cb6a479d8b7e14132854d00650bb28">ONLP_OID_TABLE_CLEAR</a>(_table)&#160;&#160;&#160;memset(_table, 0, <a class="el" href="group__oid.html#ga06a21f1cd6059ecb11eed5742fc5d74e">ONLP_OID_TABLE_SIZE_BYTES</a>)</td></tr>
 <tr class="separator:ga65cb6a479d8b7e14132854d00650bb28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gace9b18ec885fb7308ba511b6f62f1034"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gace9b18ec885fb7308ba511b6f62f1034">ONLP_OID_THERMAL_ENTRY</a>(_id, _desc, _parent_type, _parent_id)&#160;&#160;&#160;{ <a class="el" href="group__oid.html#ga501e5812fa8c3261d15b8fcff37c1e96">ONLP_THERMAL_ID_CREATE</a>(_id), _desc, <a class="el" href="group__oid.html#ga067f622cf9a1757eca1447b6efbc4e1d">ONLP_OID_TYPE_CREATE</a>(_parent_type, _parent_id) }</td></tr>
 <tr class="separator:gace9b18ec885fb7308ba511b6f62f1034"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga8a09a333a38a365d3849d75079eaab16"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr)&#160;&#160;&#160;(((<a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a>*)_ptr)-&gt;status)</td></tr>
 <tr class="separator:ga8a09a333a38a365d3849d75079eaab16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga21e4189763bc8b542a8f7f12b8b8588c"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga21e4189763bc8b542a8f7f12b8b8588c"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_GET_VALUE</b>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_GET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
+<tr class="memitem:gab8ac6322cd4983a8d233151fc1d48941"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gab8ac6322cd4983a8d233151fc1d48941">ONLP_OID_STATUS_FLAGS_CLR</a>(_ptr)&#160;&#160;&#160;<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr) = 0</td></tr>
+<tr class="separator:gab8ac6322cd4983a8d233151fc1d48941"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga21e4189763bc8b542a8f7f12b8b8588c"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga21e4189763bc8b542a8f7f12b8b8588c">ONLP_OID_STATUS_FLAG_GET_VALUE</a>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_GET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
 <tr class="separator:ga21e4189763bc8b542a8f7f12b8b8588c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gacae64f99f7688ac46949ee96c55832b7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gacae64f99f7688ac46949ee96c55832b7"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_SET_VALUE</b>(_ptr, _name, _value)&#160;&#160;&#160;AIM_FLAG_SET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name, _value)</td></tr>
+<tr class="memitem:gacae64f99f7688ac46949ee96c55832b7"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gacae64f99f7688ac46949ee96c55832b7">ONLP_OID_STATUS_FLAG_SET_VALUE</a>(_ptr, _name, _value)&#160;&#160;&#160;AIM_FLAG_SET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name, _value)</td></tr>
 <tr class="separator:gacae64f99f7688ac46949ee96c55832b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga7107df7b7ce4afefe27ed2b666624153"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga7107df7b7ce4afefe27ed2b666624153"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_SET</b>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
+<tr class="memitem:ga7107df7b7ce4afefe27ed2b666624153"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga7107df7b7ce4afefe27ed2b666624153">ONLP_OID_STATUS_FLAG_SET</a>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
 <tr class="separator:ga7107df7b7ce4afefe27ed2b666624153"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga411a384a6232b93a3fb79b440e4fd234"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga411a384a6232b93a3fb79b440e4fd234"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_CLR</b>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_CLR(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
+<tr class="memitem:ga411a384a6232b93a3fb79b440e4fd234"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga411a384a6232b93a3fb79b440e4fd234">ONLP_OID_STATUS_FLAG_CLR</a>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_CLR(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
 <tr class="separator:ga411a384a6232b93a3fb79b440e4fd234"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaffe364479c1ef58bc2d3312148d0e430"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gaffe364479c1ef58bc2d3312148d0e430"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_IS_SET</b>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_IS_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
+<tr class="memitem:gaffe364479c1ef58bc2d3312148d0e430"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaffe364479c1ef58bc2d3312148d0e430">ONLP_OID_STATUS_FLAG_IS_SET</a>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_IS_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
 <tr class="separator:gaffe364479c1ef58bc2d3312148d0e430"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0fad45417e896402f4f1948e3635b8ae"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga0fad45417e896402f4f1948e3635b8ae"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_STATUS_FLAG_NOT_SET</b>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_NOT_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
+<tr class="memitem:ga0fad45417e896402f4f1948e3635b8ae"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga0fad45417e896402f4f1948e3635b8ae">ONLP_OID_STATUS_FLAG_NOT_SET</a>(_ptr, _name)&#160;&#160;&#160;AIM_FLAG_NOT_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td></tr>
 <tr class="separator:ga0fad45417e896402f4f1948e3635b8ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaef2d13fe0bd0604016eea499b5076092"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaef2d13fe0bd0604016eea499b5076092">ONLP_OID_PRESENT</a>(_ptr)&#160;&#160;&#160;ONLP_OID_STATUS_FLAG_IS_SET(_ptr, PRESENT)</td></tr>
+<tr class="memitem:gaef2d13fe0bd0604016eea499b5076092"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaef2d13fe0bd0604016eea499b5076092">ONLP_OID_PRESENT</a>(_ptr)&#160;&#160;&#160;<a class="el" href="group__oid.html#gaffe364479c1ef58bc2d3312148d0e430">ONLP_OID_STATUS_FLAG_IS_SET</a>(_ptr, PRESENT)</td></tr>
 <tr class="separator:gaef2d13fe0bd0604016eea499b5076092"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga21ce504ae9d06c8c750bab7ca30d61a1"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga21ce504ae9d06c8c750bab7ca30d61a1"></a>
-#define&#160;</td><td class="memItemRight" valign="bottom"><b>ONLP_OID_FAILED</b>(_ptr)&#160;&#160;&#160;ONLP_OID_STATUS_FLAG_IS_SET(_ptr, FAILED)</td></tr>
+<tr class="memitem:ga21ce504ae9d06c8c750bab7ca30d61a1"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga21ce504ae9d06c8c750bab7ca30d61a1">ONLP_OID_FAILED</a>(_ptr)&#160;&#160;&#160;<a class="el" href="group__oid.html#gaffe364479c1ef58bc2d3312148d0e430">ONLP_OID_STATUS_FLAG_IS_SET</a>(_ptr, FAILED)</td></tr>
 <tr class="separator:ga21ce504ae9d06c8c750bab7ca30d61a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga558671a0dfcf83e35735e98142de6d11"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga558671a0dfcf83e35735e98142de6d11">ONLP_OID_TABLE_ITER_EXPR</a>(_table, _oidp, _expr)</td></tr>
 <tr class="memdesc:ga558671a0dfcf83e35735e98142de6d11"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterate over all OIDS in the given table that match the given expression.  <a href="#ga558671a0dfcf83e35735e98142de6d11">More...</a><br /></td></tr>
@@ -285,11 +278,9 @@ Typedefs</h2></td></tr>
 <tr class="separator:ga7456f922ad11e6a5fc6e8ab2c4ec6d1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga5242c44f094a2dc8708df5f6a1d6573e"><td class="memItemLeft" align="right" valign="top">typedef uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga5242c44f094a2dc8708df5f6a1d6573e">onlp_oid_status_flags_t</a></td></tr>
 <tr class="separator:ga5242c44f094a2dc8708df5f6a1d6573e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga0d5e709ef7f16a5e89acbaf8d2df5c64"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga0d5e709ef7f16a5e89acbaf8d2df5c64"></a>
-typedef char&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_desc_t</b> [<a class="el" href="group__oid.html#ga2bdd7dcf1493bf2d557e74d38007ca36">ONLP_OID_DESC_SIZE</a>]</td></tr>
+<tr class="memitem:ga0d5e709ef7f16a5e89acbaf8d2df5c64"><td class="memItemLeft" align="right" valign="top">typedef char&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga0d5e709ef7f16a5e89acbaf8d2df5c64">onlp_oid_desc_t</a> [<a class="el" href="group__oid.html#ga2bdd7dcf1493bf2d557e74d38007ca36">ONLP_OID_DESC_SIZE</a>]</td></tr>
 <tr class="separator:ga0d5e709ef7f16a5e89acbaf8d2df5c64"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga888285f6ebc43f3c0c7db1610fb3994b"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga888285f6ebc43f3c0c7db1610fb3994b"></a>
-typedef <a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_table_t</b> [ONLP_OID_TABLE_SIZE]</td></tr>
+<tr class="memitem:ga888285f6ebc43f3c0c7db1610fb3994b"><td class="memItemLeft" align="right" valign="top">typedef <a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga888285f6ebc43f3c0c7db1610fb3994b">onlp_oid_table_t</a> [<a class="el" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>]</td></tr>
 <tr class="separator:ga888285f6ebc43f3c0c7db1610fb3994b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga6496740949b7893b4122857837e26b37"><td class="memItemLeft" align="right" valign="top">typedef struct <a class="el" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a></td></tr>
 <tr class="separator:ga6496740949b7893b4122857837e26b37"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -344,37 +335,34 @@ Functions</h2></td></tr>
 <tr class="memitem:gac51dc68f4de1337b408a3bac84066014"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gac51dc68f4de1337b408a3bac84066014">onlp_oid_info_get</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> **info)</td></tr>
 <tr class="memdesc:gac51dc68f4de1337b408a3bac84066014"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the information structure for a given OID.  <a href="#gac51dc68f4de1337b408a3bac84066014">More...</a><br /></td></tr>
 <tr class="separator:gac51dc68f4de1337b408a3bac84066014"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaaf632d0d7e8f7efd0e945e533d5f8cc2"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaaf632d0d7e8f7efd0e945e533d5f8cc2">onlp_oid_iterate</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, <a class="el" href="group__oid.html#ga30a21c186874b19d2ffe2ac7e42689da">onlp_oid_iterate_f</a> itf, void *cookie)</td></tr>
-<tr class="memdesc:gaaf632d0d7e8f7efd0e945e533d5f8cc2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterate over all platform OIDs.  <a href="#gaaf632d0d7e8f7efd0e945e533d5f8cc2">More...</a><br /></td></tr>
-<tr class="separator:gaaf632d0d7e8f7efd0e945e533d5f8cc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga24832fa818bd7043cf680dfdf6868ebb"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga24832fa818bd7043cf680dfdf6868ebb"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_info_get_all</b> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> root, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, uint32_t flags, biglist_t **list)</td></tr>
+<tr class="memitem:ga2a96a7d21b2261d20b6390ea640e94a7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga2a96a7d21b2261d20b6390ea640e94a7">onlp_oid_iterate</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> root, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, <a class="el" href="group__oid.html#ga30a21c186874b19d2ffe2ac7e42689da">onlp_oid_iterate_f</a> itf, void *cookie)</td></tr>
+<tr class="memdesc:ga2a96a7d21b2261d20b6390ea640e94a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterate over all platform OIDs.  <a href="#ga2a96a7d21b2261d20b6390ea640e94a7">More...</a><br /></td></tr>
+<tr class="separator:ga2a96a7d21b2261d20b6390ea640e94a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ga24832fa818bd7043cf680dfdf6868ebb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga24832fa818bd7043cf680dfdf6868ebb">onlp_oid_info_get_all</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> root, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, uint32_t flags, biglist_t **list)</td></tr>
+<tr class="memdesc:ga24832fa818bd7043cf680dfdf6868ebb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterate over all given OID types and return their info structures.  <a href="#ga24832fa818bd7043cf680dfdf6868ebb">More...</a><br /></td></tr>
 <tr class="separator:ga24832fa818bd7043cf680dfdf6868ebb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga2b5ae7532449a853335ca32a9cfd21ba"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga2b5ae7532449a853335ca32a9cfd21ba"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_hdr_get_all</b> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> root, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, uint32_t flags, biglist_t **list)</td></tr>
+<tr class="memitem:ga2b5ae7532449a853335ca32a9cfd21ba"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga2b5ae7532449a853335ca32a9cfd21ba">onlp_oid_hdr_get_all</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> root, <a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a> types, uint32_t flags, biglist_t **list)</td></tr>
+<tr class="memdesc:ga2b5ae7532449a853335ca32a9cfd21ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Iterate over all given OID types and return their hdr structures.  <a href="#ga2b5ae7532449a853335ca32a9cfd21ba">More...</a><br /></td></tr>
 <tr class="separator:ga2b5ae7532449a853335ca32a9cfd21ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaceb5b41129f54efc7fcaa33cb9e4a895"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gaceb5b41129f54efc7fcaa33cb9e4a895"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_get_all_free</b> (biglist_t *list)</td></tr>
+<tr class="memitem:gaceb5b41129f54efc7fcaa33cb9e4a895"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaceb5b41129f54efc7fcaa33cb9e4a895">onlp_oid_get_all_free</a> (biglist_t *list)</td></tr>
+<tr class="memdesc:gaceb5b41129f54efc7fcaa33cb9e4a895"><td class="mdescLeft">&#160;</td><td class="mdescRight">Free a list returned by <a class="el" href="group__oid.html#ga24832fa818bd7043cf680dfdf6868ebb" title="Iterate over all given OID types and return their info structures. ">onlp_oid_info_get_all()</a> or <a class="el" href="group__oid.html#ga2b5ae7532449a853335ca32a9cfd21ba" title="Iterate over all given OID types and return their hdr structures. ">onlp_oid_hdr_get_all()</a>  <a href="#gaceb5b41129f54efc7fcaa33cb9e4a895">More...</a><br /></td></tr>
 <tr class="separator:gaceb5b41129f54efc7fcaa33cb9e4a895"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gacd775219c684b7f02a73aed4a1e54c6a"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gacd775219c684b7f02a73aed4a1e54c6a"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gacd775219c684b7f02a73aed4a1e54c6a">onlp_oid_is_present</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> *oid)</td></tr>
 <tr class="memdesc:gacd775219c684b7f02a73aed4a1e54c6a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether an OID is present or not. <br /></td></tr>
 <tr class="separator:gacd775219c684b7f02a73aed4a1e54c6a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga58498fce6f1aab693f89e2be2fa91d12"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga58498fce6f1aab693f89e2be2fa91d12"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga58498fce6f1aab693f89e2be2fa91d12">onlp_oid_to_str</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, char *rstr)</td></tr>
-<tr class="memdesc:ga58498fce6f1aab693f89e2be2fa91d12"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID -&gt; String Representation. <br /></td></tr>
+<tr class="memitem:ga58498fce6f1aab693f89e2be2fa91d12"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga58498fce6f1aab693f89e2be2fa91d12">onlp_oid_to_str</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, char *rstr)</td></tr>
 <tr class="separator:ga58498fce6f1aab693f89e2be2fa91d12"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gad7761ba29a97e36cedc927f39f54f7ec"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gad7761ba29a97e36cedc927f39f54f7ec"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_to_user_str</b> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, char *rstr)</td></tr>
+<tr class="memitem:gad7761ba29a97e36cedc927f39f54f7ec"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gad7761ba29a97e36cedc927f39f54f7ec">onlp_oid_to_user_str</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, char *rstr)</td></tr>
 <tr class="separator:gad7761ba29a97e36cedc927f39f54f7ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:gaaee5d0adf57df99e61c7fa98bcde6c52"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gaaee5d0adf57df99e61c7fa98bcde6c52"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaaee5d0adf57df99e61c7fa98bcde6c52">onlp_oid_from_str</a> (char *str, <a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> *roid)</td></tr>
 <tr class="memdesc:gaaee5d0adf57df99e61c7fa98bcde6c52"><td class="mdescLeft">&#160;</td><td class="mdescRight">String Represenation -&gt; OID. <br /></td></tr>
 <tr class="separator:gaaee5d0adf57df99e61c7fa98bcde6c52"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga836c8ad8a5fc3727d6d671087890930b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga836c8ad8a5fc3727d6d671087890930b">onlp_oid_table_to_json</a> (onlp_oid_table_t table, cJSON **cjp)</td></tr>
+<tr class="memitem:ga836c8ad8a5fc3727d6d671087890930b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga836c8ad8a5fc3727d6d671087890930b">onlp_oid_table_to_json</a> (<a class="el" href="group__oid.html#ga888285f6ebc43f3c0c7db1610fb3994b">onlp_oid_table_t</a> table, cJSON **cjp)</td></tr>
 <tr class="memdesc:ga836c8ad8a5fc3727d6d671087890930b"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID Table -&gt; JSON.  <a href="#ga836c8ad8a5fc3727d6d671087890930b">More...</a><br /></td></tr>
 <tr class="separator:ga836c8ad8a5fc3727d6d671087890930b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga08d80f1a4e1eff0d541dcc4cd3a454cb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga08d80f1a4e1eff0d541dcc4cd3a454cb">onlp_oid_table_from_json</a> (cJSON *cj, onlp_oid_table_t table)</td></tr>
+<tr class="memitem:ga08d80f1a4e1eff0d541dcc4cd3a454cb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga08d80f1a4e1eff0d541dcc4cd3a454cb">onlp_oid_table_from_json</a> (cJSON *cj, <a class="el" href="group__oid.html#ga888285f6ebc43f3c0c7db1610fb3994b">onlp_oid_table_t</a> table)</td></tr>
 <tr class="memdesc:ga08d80f1a4e1eff0d541dcc4cd3a454cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">JSON -&gt; OID Table.  <a href="#ga08d80f1a4e1eff0d541dcc4cd3a454cb">More...</a><br /></td></tr>
 <tr class="separator:ga08d80f1a4e1eff0d541dcc4cd3a454cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga949ba468a25f72b43c4ba2ea3eced717"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga949ba468a25f72b43c4ba2ea3eced717">onlp_oid_hdr_to_json</a> (<a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> *hdr, cJSON **cj, uint32_t flags)</td></tr>
@@ -386,15 +374,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group
 <tr class="memitem:ga153351e35d7c15ae410bb28e3714c2eb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga153351e35d7c15ae410bb28e3714c2eb">onlp_oid_info_to_json</a> (<a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> *info, cJSON **cj, uint32_t flags)</td></tr>
 <tr class="memdesc:ga153351e35d7c15ae410bb28e3714c2eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID Info Structure -&gt; JSON.  <a href="#ga153351e35d7c15ae410bb28e3714c2eb">More...</a><br /></td></tr>
 <tr class="separator:ga153351e35d7c15ae410bb28e3714c2eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga1670cae385917c4800fbee76a95467c8"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga1670cae385917c4800fbee76a95467c8"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga1670cae385917c4800fbee76a95467c8">onlp_oid_to_user_json</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, cJSON **rv, uint32_t flags)</td></tr>
-<tr class="memdesc:ga1670cae385917c4800fbee76a95467c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID -&gt; JSON. <br /></td></tr>
+<tr class="memitem:ga1670cae385917c4800fbee76a95467c8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga1670cae385917c4800fbee76a95467c8">onlp_oid_to_user_json</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, cJSON **rv, uint32_t flags)</td></tr>
+<tr class="memdesc:ga1670cae385917c4800fbee76a95467c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID -&gt; JSON.  <a href="#ga1670cae385917c4800fbee76a95467c8">More...</a><br /></td></tr>
 <tr class="separator:ga1670cae385917c4800fbee76a95467c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ga366b6fdba2adc0d64c154e8bdd5de662"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="ga366b6fdba2adc0d64c154e8bdd5de662"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_to_json</b> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, cJSON **rv, uint32_t flags)</td></tr>
+<tr class="memitem:ga366b6fdba2adc0d64c154e8bdd5de662"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga366b6fdba2adc0d64c154e8bdd5de662">onlp_oid_to_json</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, cJSON **rv, uint32_t flags)</td></tr>
+<tr class="memdesc:ga366b6fdba2adc0d64c154e8bdd5de662"><td class="mdescLeft">&#160;</td><td class="mdescRight">OID -&gt; User JSON.  <a href="#ga366b6fdba2adc0d64c154e8bdd5de662">More...</a><br /></td></tr>
 <tr class="separator:ga366b6fdba2adc0d64c154e8bdd5de662"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:gaca4e14bf64f462412be55db1630b9de7"><td class="memItemLeft" align="right" valign="top"><a class="anchor" id="gaca4e14bf64f462412be55db1630b9de7"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>onlp_oid_from_json</b> (cJSON *cj, <a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> **hdr, biglist_t **all, uint32_t flags)</td></tr>
+<tr class="memitem:gaca4e14bf64f462412be55db1630b9de7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#gaca4e14bf64f462412be55db1630b9de7">onlp_oid_from_json</a> (cJSON *cj, <a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> **hdr, biglist_t **all, uint32_t flags)</td></tr>
+<tr class="memdesc:gaca4e14bf64f462412be55db1630b9de7"><td class="mdescLeft">&#160;</td><td class="mdescRight">JSON -&gt; OID Information structures.  <a href="#gaca4e14bf64f462412be55db1630b9de7">More...</a><br /></td></tr>
 <tr class="separator:gaca4e14bf64f462412be55db1630b9de7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ga3cbac841a2ab45cac927819694a26543"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="group__oid.html#ga3cbac841a2ab45cac927819694a26543">onlp_oid_json_verify</a> (<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid)</td></tr>
 <tr class="separator:ga3cbac841a2ab45cac927819694a26543"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -597,6 +584,23 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="ga21ce504ae9d06c8c750bab7ca30d61a1"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_FAILED</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr</td><td>)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="group__oid.html#gaffe364479c1ef58bc2d3312148d0e430">ONLP_OID_STATUS_FLAG_IS_SET</a>(_ptr, FAILED)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Shortcut - OID has failed. </p>
+
+</div>
+</div>
 <a class="anchor" id="ga47cf687227cc19e03782867e2e2a2a83"></a>
 <div class="memitem">
 <div class="memproto">
@@ -787,6 +791,39 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Get the ID from an OID </p>
+
+</div>
+</div>
+<a class="anchor" id="ga6075616d039e2c1847cd9f62bb60b8a4"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_ID_VALIDATE_RANGE</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_id, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_min, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_max&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;( (_id) &gt;= (_min) &amp;&amp; (_id) &lt;= (_max)) ? ONLP_STATUS_OK : ONLP_STATUS_E_INVALID</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Validate an ID is within a given range. </p>
 
 </div>
 </div>
@@ -1209,11 +1246,11 @@ Variables</h2></td></tr>
           <td>(</td>
           <td class="paramtype">&#160;</td>
           <td class="paramname">_ptr</td><td>)</td>
-          <td>&#160;&#160;&#160;ONLP_OID_STATUS_FLAG_IS_SET(_ptr, PRESENT)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="group__oid.html#gaffe364479c1ef58bc2d3312148d0e430">ONLP_OID_STATUS_FLAG_IS_SET</a>(_ptr, PRESENT)</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Common Shorthands </p>
+<p>Shortcut - OID is present. </p>
 
 </div>
 </div>
@@ -1393,6 +1430,174 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="ga411a384a6232b93a3fb79b440e4fd234"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_CLR</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_CLR(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Clear a given flag. </p>
+
+</div>
+</div>
+<a class="anchor" id="ga21e4189763bc8b542a8f7f12b8b8588c"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_GET_VALUE</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_GET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Get the value of a given flag. </p>
+
+</div>
+</div>
+<a class="anchor" id="gaffe364479c1ef58bc2d3312148d0e430"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_IS_SET</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_IS_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Determine if a flag is set. </p>
+
+</div>
+</div>
+<a class="anchor" id="ga0fad45417e896402f4f1948e3635b8ae"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_NOT_SET</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_NOT_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Determine if a flag is cleared. </p>
+
+</div>
+</div>
+<a class="anchor" id="ga7107df7b7ce4afefe27ed2b666624153"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_SET</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_SET(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Set a given flag. </p>
+
+</div>
+</div>
+<a class="anchor" id="gacae64f99f7688ac46949ee96c55832b7"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAG_SET_VALUE</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_name, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_value&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;AIM_FLAG_SET_VALUE(<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr), ONLP_OID_STATUS_FLAG_##_name, _value)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Set the value of a given flag. </p>
+
+</div>
+</div>
 <a class="anchor" id="ga4ddd35e76a784528b275af852b9c0c6a"></a>
 <div class="memitem">
 <div class="memproto">
@@ -1410,6 +1615,23 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="gab8ac6322cd4983a8d233151fc1d48941"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_STATUS_FLAGS_CLR</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_ptr</td><td>)</td>
+          <td>&#160;&#160;&#160;<a class="el" href="group__oid.html#ga8a09a333a38a365d3849d75079eaab16">ONLP_OID_STATUS_FLAGS_GET</a>(_ptr) = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Clear all status flags </p>
+
+</div>
+</div>
 <a class="anchor" id="ga8a09a333a38a365d3849d75079eaab16"></a>
 <div class="memitem">
 <div class="memproto">
@@ -1424,6 +1646,50 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Manipulating OID Status Flags </p>
+
+</div>
+</div>
+<a class="anchor" id="ga65cb6a479d8b7e14132854d00650bb28"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_TABLE_CLEAR</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_table</td><td>)</td>
+          <td>&#160;&#160;&#160;memset(_table, 0, <a class="el" href="group__oid.html#ga06a21f1cd6059ecb11eed5742fc5d74e">ONLP_OID_TABLE_SIZE_BYTES</a>)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Clear an OID table. </p>
+
+</div>
+</div>
+<a class="anchor" id="ga483521a9800ebca8a5d57c57a69f31fc"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_TABLE_COPY</td>
+          <td>(</td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_dst, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname">_src&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td>&#160;&#160;&#160;memcpy(_dst, _src, <a class="el" href="group__oid.html#ga06a21f1cd6059ecb11eed5742fc5d74e">ONLP_OID_TABLE_SIZE_BYTES</a>)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Copy an OID table. </p>
 
 </div>
 </div>
@@ -1491,8 +1757,9 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">for</span>(_oidp = _table; _oidp &lt; (_table+ONLP_OID_TABLE_SIZE); _oidp++) \</div>
+<b>Value:</b><div class="fragment"><div class="line"><span class="keywordflow">for</span>(_oidp = _table; _oidp &lt; (_table+<a class="code" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>); _oidp++) \</div>
 <div class="line">        <span class="keywordflow">if</span>( (*_oidp) &amp;&amp; (_expr) )</div>
+<div class="ttc" id="group__oid_html_gacc9a3d7b409b2d533447a62ddb1c2f71"><div class="ttname"><a href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a></div><div class="ttdeci">#define ONLP_OID_TABLE_SIZE</div><div class="ttdef"><b>Definition:</b> oids.h:271</div></div>
 </div><!-- fragment -->
 <p>Iterate over all OIDS in the given table that match the given expression. </p>
 <dl class="params"><dt>Parameters</dt><dd>
@@ -1545,6 +1812,32 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a class="anchor" id="gacc9a3d7b409b2d533447a62ddb1c2f71"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_TABLE_SIZE&#160;&#160;&#160;256</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The maximum OID child table size </p>
+
+</div>
+</div>
+<a class="anchor" id="ga06a21f1cd6059ecb11eed5742fc5d74e"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define ONLP_OID_TABLE_SIZE_BYTES&#160;&#160;&#160;(sizeof(<a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>)*<a class="el" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The size of the current OID table </p>
 
 </div>
 </div>
@@ -1949,6 +2242,19 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Typedef Documentation</h2>
+<a class="anchor" id="ga0d5e709ef7f16a5e89acbaf8d2df5c64"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef char onlp_oid_desc_t[<a class="el" href="group__oid.html#ga2bdd7dcf1493bf2d557e74d38007ca36">ONLP_OID_DESC_SIZE</a>]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>OID description array. </p>
+
+</div>
+</div>
 <a class="anchor" id="ga6496740949b7893b4122857837e26b37"></a>
 <div class="memitem">
 <div class="memproto">
@@ -2038,6 +2344,19 @@ Variables</h2></td></tr>
 </div><div class="memdoc">
 <p>System peripherals are identified by a 32bit OID.</p>
 <p>The First byte is the object-class identifier: Thermal sensor object Fan object PSU object LED object MODULE object etc.. The remaining bytes are the object id. </p>
+
+</div>
+</div>
+<a class="anchor" id="ga888285f6ebc43f3c0c7db1610fb3994b"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef <a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> onlp_oid_table_t[<a class="el" href="group__oid.html#gacc9a3d7b409b2d533447a62ddb1c2f71">ONLP_OID_TABLE_SIZE</a>]</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>A table of OIDs </p>
 
 </div>
 </div>
@@ -2134,6 +2453,79 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
+<a class="anchor" id="gaca4e14bf64f462412be55db1630b9de7"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_from_json </td>
+          <td>(</td>
+          <td class="paramtype">cJSON *&#160;</td>
+          <td class="paramname"><em>cj</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__oid.html#ga6496740949b7893b4122857837e26b37">onlp_oid_hdr_t</a> **&#160;</td>
+          <td class="paramname"><em>hdr</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">biglist_t **&#160;</td>
+          <td class="paramname"><em>all</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>flags</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>JSON -&gt; OID Information structures. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">cj</td><td>The source JSON structure. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">hdr</td><td>Receives the information structure. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">all</td><td>Receives a list of all structures if not NULL and the JSON contains multiple objects. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">flags</td><td>The JSON flags. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="gaceb5b41129f54efc7fcaa33cb9e4a895"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_get_all_free </td>
+          <td>(</td>
+          <td class="paramtype">biglist_t *&#160;</td>
+          <td class="paramname"><em>list</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Free a list returned by <a class="el" href="group__oid.html#ga24832fa818bd7043cf680dfdf6868ebb" title="Iterate over all given OID types and return their info structures. ">onlp_oid_info_get_all()</a> or <a class="el" href="group__oid.html#ga2b5ae7532449a853335ca32a9cfd21ba" title="Iterate over all given OID types and return their hdr structures. ">onlp_oid_hdr_get_all()</a> </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">list</td><td>The list to free. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a class="anchor" id="ga57ad4b774e5b848c96d12362bdaf6a89"></a>
 <div class="memitem">
 <div class="memproto">
@@ -2198,6 +2590,55 @@ Variables</h2></td></tr>
   <table class="params">
     <tr><td class="paramdir"></td><td class="paramname">oid</td><td>The oid </td></tr>
     <tr><td class="paramdir">[out]</td><td class="paramname">hdr</td><td>Receives the header </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="ga2b5ae7532449a853335ca32a9cfd21ba"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_hdr_get_all </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a>&#160;</td>
+          <td class="paramname"><em>types</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>flags</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">biglist_t **&#160;</td>
+          <td class="paramname"><em>list</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Iterate over all given OID types and return their hdr structures. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">root</td><td>The root OID. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">types</td><td>The OID types filter (optional) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">flags</td><td>The iterator flags. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">list</td><td>Receives a list of all hdr structures. </td></tr>
   </table>
   </dd>
 </dl>
@@ -2281,6 +2722,55 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a class="anchor" id="ga24832fa818bd7043cf680dfdf6868ebb"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_info_get_all </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="group__oid.html#ga7456f922ad11e6a5fc6e8ab2c4ec6d1a">onlp_oid_type_flags_t</a>&#160;</td>
+          <td class="paramname"><em>types</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>flags</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">biglist_t **&#160;</td>
+          <td class="paramname"><em>list</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Iterate over all given OID types and return their info structures. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">root</td><td>The root OID. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">types</td><td>The OID types filter (optional) </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">flags</td><td>The iterator flags. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">list</td><td>Receives a list of all info structures. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a class="anchor" id="ga153351e35d7c15ae410bb28e3714c2eb"></a>
 <div class="memitem">
 <div class="memproto">
@@ -2323,7 +2813,7 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a class="anchor" id="gaaf632d0d7e8f7efd0e945e533d5f8cc2"></a>
+<a class="anchor" id="ga2a96a7d21b2261d20b6390ea640e94a7"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -2331,7 +2821,7 @@ Variables</h2></td></tr>
           <td class="memname">int onlp_oid_iterate </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
-          <td class="paramname"><em>oid</em>, </td>
+          <td class="paramname"><em>root</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -2362,7 +2852,7 @@ Variables</h2></td></tr>
 <p>Iterate over all platform OIDs. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">oid</td><td>The root OID. </td></tr>
+    <tr><td class="paramname">root</td><td>The root OID. </td></tr>
     <tr><td class="paramname">types</td><td>The OID types filter (optional) </td></tr>
     <tr><td class="paramname">itf</td><td>The iterator function. </td></tr>
     <tr><td class="paramname">cookie</td><td>The cookie. </td></tr>
@@ -2570,7 +3060,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">onlp_oid_table_t&#160;</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#ga888285f6ebc43f3c0c7db1610fb3994b">onlp_oid_table_t</a>&#160;</td>
           <td class="paramname"><em>table</em>&#160;</td>
         </tr>
         <tr>
@@ -2599,7 +3089,7 @@ Variables</h2></td></tr>
         <tr>
           <td class="memname">int onlp_oid_table_to_json </td>
           <td>(</td>
-          <td class="paramtype">onlp_oid_table_t&#160;</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#ga888285f6ebc43f3c0c7db1610fb3994b">onlp_oid_table_t</a>&#160;</td>
           <td class="paramname"><em>table</em>, </td>
         </tr>
         <tr>
@@ -2624,6 +3114,144 @@ Variables</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a class="anchor" id="ga366b6fdba2adc0d64c154e8bdd5de662"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_to_json </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>oid</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">cJSON **&#160;</td>
+          <td class="paramname"><em>rv</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>flags</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>OID -&gt; User JSON. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">oid</td><td>The OID. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">rv</td><td>Receives the JSON structure. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">flags</td><td>The format flags. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="ga58498fce6f1aab693f89e2be2fa91d12"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_to_str </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>oid</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>rstr</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>OID -&gt; String Representation </p>
+
+</div>
+</div>
+<a class="anchor" id="ga1670cae385917c4800fbee76a95467c8"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_to_user_json </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>oid</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">cJSON **&#160;</td>
+          <td class="paramname"><em>rv</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>flags</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>OID -&gt; JSON. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">oid</td><td>The OID. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">rv</td><td>Receives the JSON structure. </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">flags</td><td>The format flags. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a class="anchor" id="gad7761ba29a97e36cedc927f39f54f7ec"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int onlp_oid_to_user_str </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a>&#160;</td>
+          <td class="paramname"><em>oid</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char *&#160;</td>
+          <td class="paramname"><em>rstr</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>OID -&gt; User representation. </p>
 
 </div>
 </div>
@@ -2903,7 +3531,7 @@ Variables</h2></td></tr>
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Jan 9 2019 04:06:26 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu Mar 28 2019 19:37:42 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>

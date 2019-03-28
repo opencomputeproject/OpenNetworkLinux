@@ -65,7 +65,7 @@ typedef struct onlp_fan_info_s {
     /** Current direction */
     onlp_fan_dir_t dir;
 
-    /** Capabilities */
+    /** Capabilities - a combination of @ref onlp_fan_caps_t */
     uint32_t caps;
 
     /** Current fan speed, in RPM, if available */
@@ -109,28 +109,28 @@ int onlp_fan_sw_denit(void);
 
 /**
  * @brief Retrieve the fan's OID hdr.
- * @param id The fan OID.
+ * @param oid The fan OID.
  * @param[out] hdr Receives the OID header.
  */
 int onlp_fan_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr);
 
 /**
  * @brief Retrieve fan information.
- * @param id The fan OID.
+ * @param oid The fan OID.
  * @param[out] rv Receives the fan information.
  */
 int onlp_fan_info_get(onlp_oid_t oid, onlp_fan_info_t* rv);
 
 /**
  * @brief Retrieve the fan capabilities.
- * @param id The fan OID.
- * @param[out] rv Receives the fan capabilities.
+ * @param oid The fan OID.
+ * @param[out] caps Receives the fan capabilities.
  */
 int onlp_fan_caps_get(onlp_oid_t oid, uint32_t* caps);
 
 /**
  * @brief Set the fan speed in RPMs.
- * @param id The fan OID.
+ * @param oid The fan OID.
  * @param rpm The new RPM.
  * @note Only valid if the fan has the SET_RPM capability.
  */
@@ -138,7 +138,7 @@ int onlp_fan_rpm_set(onlp_oid_t oid, int rpm);
 
 /**
  * @brief Set the fan speed in percentage.
- * @param id The fan OID.
+ * @param oid The fan OID.
  * @param p The percentage.
  * @note Only valid if the fan has the SET_PERCENTAGE capability.
  */
@@ -146,7 +146,7 @@ int onlp_fan_percentage_set(onlp_oid_t oid, int p);
 
 /**
  * @brief Set the fan direction.
- * @param id The fan OID.
+ * @param oid The fan OID.
  * @param dir The fan direction (B2F or F2B)
  * @note Only called if both capabilities are set.
  */

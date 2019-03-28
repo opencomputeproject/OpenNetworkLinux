@@ -68,7 +68,7 @@ typedef struct onlp_psu_info_t {
     /** Serial Number */
     char serial[ONLP_CONFIG_INFO_STR_MAX];
 
-    /** Capabilities */
+    /** Capabilities - a combination of @ref onlp_psu_caps_t */
     uint32_t caps;
 
     /** Type */
@@ -122,17 +122,17 @@ int onlp_psu_sw_denit(void);
 
 /**
  * @brief Get the PSU's oid header.
- * @param id The PSU OID.
+ * @param oid The PSU OID.
  * @param[out] rv Receives the header.
  */
-int onlp_psu_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_psu_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rv);
 
 /**
  * @brief Get the PSU information.
- * @param id The PSU OID.
+ * @param oid The PSU OID.
  * @param[out] rv Receives the information structure.
  */
-int onlp_psu_info_get(onlp_oid_t id, onlp_psu_info_t* rv);
+int onlp_psu_info_get(onlp_oid_t oid, onlp_psu_info_t* rv);
 
 /**
  * @brief Convert a PSU info structure to user JSON.

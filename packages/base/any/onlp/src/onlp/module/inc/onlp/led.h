@@ -84,7 +84,7 @@ typedef struct onlp_led_info_s {
     /** Header */
     onlp_oid_hdr_t hdr;
 
-    /** Capabilities */
+    /** Capabilities - a combination of @ref onlp_led_caps_e */
     uint32_t caps;
 
     /** Current mode, if capable. */
@@ -115,42 +115,42 @@ int onlp_led_sw_denit(void);
 
 /**
  * @brief Get the LED header.
- * @param id The LED OID
+ * @param oid The LED OID
  * @param[out] rv Receives the header.
  */
-int onlp_led_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* rv);
+int onlp_led_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* rv);
 
 
 /**
  * @brief Get LED information.
- * @param id The LED OID.
+ * @param oid The LED OID.
  * @param[out] rv Receives the information structure.
  */
-int onlp_led_info_get(onlp_oid_t id, onlp_led_info_t* rv);
+int onlp_led_info_get(onlp_oid_t oid, onlp_led_info_t* rv);
 
 /**
  * @brief Get the LED caps.
- * @param id The LED OID.
- * @param[out] rv Receives the caps.
+ * @param oid The LED OID.
+ * @param[out] caps Receives the caps.
  */
 int onlp_led_caps_get(onlp_oid_t oid, uint32_t* caps);
 
 /**
  * @brief Set the LED mode.
- * @param id The LED OID.
+ * @param oid The LED OID.
  * @param mode The mode. .
  * @note Only relevant if the LED supports the color capability.
  */
-int onlp_led_mode_set(onlp_oid_t id, onlp_led_mode_t mode);
+int onlp_led_mode_set(onlp_oid_t oid, onlp_led_mode_t mode);
 
 
 /**
  * @brief Set the LED char
- * @param id The LED OID
+ * @param oid The LED OID
  * @param c The character.
  * @note Only relevant if the LED supports the char capability.
  */
-int onlp_led_char_set(onlp_oid_t id, char c);
+int onlp_led_char_set(onlp_oid_t oid, char c);
 
 /**
  * @brief Convert an LED info structure to user JSON.

@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * LED Platform Implementation.
+ * @file
+ * @brief Platform Management Interface.
+ * @addtogroup ledi
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_LEDI_H__
@@ -77,7 +80,7 @@ int onlp_ledi_caps_get(onlp_oid_id_t id, uint32_t* rv);
  * @brief Set the LED mode.
  * @param id The LED OID
  * @param mode The new mode.
- * @notes Only called if the mode is advertised in the LED capabilities.
+ * @note Only called if the mode is advertised in the LED capabilities.
  */
 int onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode);
 
@@ -85,10 +88,11 @@ int onlp_ledi_mode_set(onlp_oid_id_t id, onlp_led_mode_t mode);
  * @brief Set the LED character.
  * @param id The LED OID
  * @param c The character..
- * @notes Only called if the char capability is set.
+ * @note Only called if the char capability is set.
  */
 int onlp_ledi_char_set(onlp_oid_id_t id, char c);
 
+/** Initialize an LED static OID entry */
 #define ONLP_LED_INFO_ENTRY_INIT(_id, _desc, _parent, _caps)           \
     {                                                           \
         {                                                       \
@@ -100,13 +104,17 @@ int onlp_ledi_char_set(onlp_oid_id_t id, char c);
          .caps = _caps,                               \
      }
 
+/** Initialize a static chassis LED OID entry */
 #define ONLP_CHASSIS_LED_INFO_ENTRY_INIT(_id, _desc, _caps) \
     ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_OID_CHASSIS, _caps)
 
+/** Initialize a static PSU LED OID Entry */
 #define ONLP_PSU_LED_INFO_ENTRY_INIT(_id, _desc, _psu_id, _caps) \
     ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_PSU_ID_CREATE(_psu_id), _caps)
 
+/** Initialize a static Fan LED OID Entry */
 #define ONLP_FAN_LED_INFO_ENTRY_INIT(_id, _desc, _fan_id, _caps) \
     ONLP_LED_INFO_ENTRY_INIT(_id, _desc, ONLP_FAN_ID_CREATE(_fan_id), _caps)
 
 #endif /* __ONLP_LED_H__ */
+/* @} */

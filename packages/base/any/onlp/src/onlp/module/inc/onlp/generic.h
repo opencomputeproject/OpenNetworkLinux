@@ -43,7 +43,6 @@ typedef struct onlp_generic_info_s {
     onlp_oid_hdr_t hdr;
 
     /* Generic objects have no dedicated fields. */
-
 } onlp_generic_info_t;
 
 /**

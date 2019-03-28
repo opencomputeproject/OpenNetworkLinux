@@ -7,6 +7,8 @@ var searchData=
   ['percentage',['percentage',['../structonlp__fan__info__s.html#ae70e4ebc2e465899ea385644d4612d4d',1,'onlp_fan_info_s']]],
   ['platform_20initialization_20and_20management',['Platform Initialization and Management',['../group__platform.html',1,'']]],
   ['platform_2eh',['platform.h',['../platform_8h.html',1,'']]],
+  ['platformi',['platformi',['../group__platformi.html',1,'']]],
+  ['platformi_2eh',['platformi.h',['../platformi_8h.html',1,'']]],
   ['poid',['poid',['../structonlp__oid__hdr__s.html#af428fdd4d8d0d6332b8f196448984061',1,'onlp_oid_hdr_s']]],
   ['psu_2eh',['psu.h',['../psu_8h.html',1,'']]],
   ['psui',['psui',['../group__psui.html',1,'']]],

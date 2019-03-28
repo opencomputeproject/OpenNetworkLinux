@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * Platform Interface.
+ * @file
+ * @brief Platform Management Interface.
+ * @addtogroup platformi
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_PLATFORMI_H__
@@ -29,7 +32,7 @@
 
 /**
  * @brief Return the name of the the platform implementation.
- * @notes This will be called prior to any other calls into the
+ * @note This will be called prior to any other calls into the
  * platform driver, including the onlp_platformi_sw_init() function below.
  *
  * The platform implementation name should match the current
@@ -50,11 +53,15 @@
  */
 const char* onlp_platformi_get(void);
 
+/**
+ * @brief Set the platform explicitly if necessary.
+ * @param platform The platform name.
+ */
 int onlp_platformi_set(const char* platform);
 
 /**
  * @brief Initialize the platform software module.
- * @param This should not touch the hardware.
+ * @note This should not touch the hardware.
  */
 int onlp_platformi_sw_init(void);
 
@@ -85,3 +92,4 @@ int onlp_platformi_manage_fans(void);
 int onlp_platformi_manage_leds(void);
 
 #endif /* __ONLP_PLATFORMI_H__ */
+/* @} */

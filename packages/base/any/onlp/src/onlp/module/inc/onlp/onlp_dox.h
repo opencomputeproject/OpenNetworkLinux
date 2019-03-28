@@ -80,6 +80,7 @@ Foobar2
      @defgroup ledi     ledi
      @defgroup generici generici
      @defgroup attributei attributei
+     @defgroup platformi platformi
   @}
 
   @defgroup module-interfaces Module Documentation

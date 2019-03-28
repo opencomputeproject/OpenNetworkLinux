@@ -78,7 +78,7 @@ typedef struct onlp_thermal_info_s {
     /** OID Header */
     onlp_oid_hdr_t hdr;
 
-    /** Capabilities */
+    /** Capabilities - a combination of @ref onlp_thermal_caps_t */
     uint32_t caps;
 
     /** Current temperature in milli-celsius */

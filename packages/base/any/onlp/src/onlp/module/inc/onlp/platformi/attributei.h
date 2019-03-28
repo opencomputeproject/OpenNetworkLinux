@@ -17,9 +17,12 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
+ ********************************************************//**
  *
- * Attribute Platform Implementation.
+ * @file
+ * @brief Attribute Interface.
+ * @addtogroup attributei
+ * @{
  *
  ***********************************************************/
 #ifndef __ONLP_ATTRIBUTEI_H__
@@ -96,3 +99,4 @@ int onlp_attributei_onie_info_get(onlp_oid_t oid, onlp_onie_info_t* rv);
 int onlp_attributei_asset_info_get(onlp_oid_t oid, onlp_asset_info_t* rv);
 
 #endif /* __ONLP_ATTRIBUTEI_H__ */
+/* @} */

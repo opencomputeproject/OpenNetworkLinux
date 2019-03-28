@@ -122,27 +122,26 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="line"><a name="l00043"></a><span class="lineno"><a class="line" href="structonlp__generic__info__s.html#ace6ebcc963862c96685baee72a07bf35">   43</a></span>&#160;    <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a> <a class="code" href="structonlp__generic__info__s.html#ace6ebcc963862c96685baee72a07bf35">hdr</a>;</div>
 <div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;</div>
 <div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;    <span class="comment">/* Generic objects have no dedicated fields. */</span></div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;</div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;} <a class="code" href="group__oid-generic.html#ga848d526cf34ea1fb0cea7b3d5e02238f">onlp_generic_info_t</a>;</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga3841de07d924ade1c32716764b72dce3">onlp_generic_sw_init</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;</div>
-<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gaf08e41b2394efc5c6c5ac5f404f7271e">onlp_generic_hw_init</a>(uint32_t flags);</div>
-<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;</div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga2281d926ce9b0cce1dc98d8a37d70b4b">onlp_generic_sw_denit</a>(<span class="keywordtype">void</span>);</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gae6be5cc3102ef407b2107dd73e1c3d82">onlp_generic_hdr_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* hdr);</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;</div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gae24e262357a44ba5d5c10c2bb9aacaf9">onlp_generic_info_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info);</div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga52f776c183f45d6231c403736ed1baff">onlp_generic_info_to_user_json</a>(<a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info, cJSON** cj, uint32_t flags);</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;</div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gabf81dc59c0dc71f5fce380af0893ccdd">onlp_generic_info_to_json</a>(<a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info, cJSON** cj, uint32_t flags);</div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;</div>
-<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga38ec8e74265983fb67e744d3d19b55f8">onlp_generic_info_from_json</a>(cJSON* cj, <a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info);</div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;</div>
-<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* __ONLP_GENERIC_H_ */</span><span class="preprocessor"></span></div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;<span class="comment">/* @} */</span></div>
+<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160;} <a class="code" href="group__oid-generic.html#ga848d526cf34ea1fb0cea7b3d5e02238f">onlp_generic_info_t</a>;</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga3841de07d924ade1c32716764b72dce3">onlp_generic_sw_init</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gaf08e41b2394efc5c6c5ac5f404f7271e">onlp_generic_hw_init</a>(uint32_t flags);</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga2281d926ce9b0cce1dc98d8a37d70b4b">onlp_generic_sw_denit</a>(<span class="keywordtype">void</span>);</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gae6be5cc3102ef407b2107dd73e1c3d82">onlp_generic_hdr_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__oid__hdr__s.html">onlp_oid_hdr_t</a>* hdr);</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gae24e262357a44ba5d5c10c2bb9aacaf9">onlp_generic_info_get</a>(<a class="code" href="group__oid.html#gae6a6c9be0f593051fa446ce33afcf98f">onlp_oid_t</a> oid, <a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info);</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga52f776c183f45d6231c403736ed1baff">onlp_generic_info_to_user_json</a>(<a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info, cJSON** cj, uint32_t flags);</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;</div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#gabf81dc59c0dc71f5fce380af0893ccdd">onlp_generic_info_to_json</a>(<a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info, cJSON** cj, uint32_t flags);</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;</div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="keywordtype">int</span> <a class="code" href="group__oid-generic.html#ga38ec8e74265983fb67e744d3d19b55f8">onlp_generic_info_from_json</a>(cJSON* cj, <a class="code" href="structonlp__generic__info__s.html">onlp_generic_info_t</a>* info);</div>
+<div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160;</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;<span class="preprocessor">#endif </span><span class="comment">/* __ONLP_GENERIC_H_ */</span><span class="preprocessor"></span></div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;<span class="comment">/* @} */</span></div>
 <div class="ttc" id="onlp__config_8h_html"><div class="ttname"><a href="onlp__config_8h.html">onlp_config.h</a></div><div class="ttdoc">onlp Configuration Header </div></div>
 <div class="ttc" id="group__oid-generic_html_ga3841de07d924ade1c32716764b72dce3"><div class="ttname"><a href="group__oid-generic.html#ga3841de07d924ade1c32716764b72dce3">onlp_generic_sw_init</a></div><div class="ttdeci">int onlp_generic_sw_init(void)</div><div class="ttdoc">Initialize the module software module. </div></div>
 <div class="ttc" id="group__oid-generic_html_ga848d526cf34ea1fb0cea7b3d5e02238f"><div class="ttname"><a href="group__oid-generic.html#ga848d526cf34ea1fb0cea7b3d5e02238f">onlp_generic_info_t</a></div><div class="ttdeci">struct onlp_generic_info_s onlp_generic_info_t</div><div class="ttdoc">Generic OID Information Structure. </div></div>
@@ -156,12 +155,12 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 <div class="ttc" id="group__oid-generic_html_gaf08e41b2394efc5c6c5ac5f404f7271e"><div class="ttname"><a href="group__oid-generic.html#gaf08e41b2394efc5c6c5ac5f404f7271e">onlp_generic_hw_init</a></div><div class="ttdeci">int onlp_generic_hw_init(uint32_t flags)</div><div class="ttdoc">Initialize the module. </div></div>
 <div class="ttc" id="group__oid-generic_html_gae6be5cc3102ef407b2107dd73e1c3d82"><div class="ttname"><a href="group__oid-generic.html#gae6be5cc3102ef407b2107dd73e1c3d82">onlp_generic_hdr_get</a></div><div class="ttdeci">int onlp_generic_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t *hdr)</div><div class="ttdoc">Get the generic header structure. </div></div>
 <div class="ttc" id="group__oid-generic_html_gabf81dc59c0dc71f5fce380af0893ccdd"><div class="ttname"><a href="group__oid-generic.html#gabf81dc59c0dc71f5fce380af0893ccdd">onlp_generic_info_to_json</a></div><div class="ttdeci">int onlp_generic_info_to_json(onlp_generic_info_t *info, cJSON **cj, uint32_t flags)</div><div class="ttdoc">Convert a generic info structure to JSON. </div></div>
-<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:282</div></div>
+<div class="ttc" id="structonlp__oid__hdr__s_html"><div class="ttname"><a href="structonlp__oid__hdr__s.html">onlp_oid_hdr_s</a></div><div class="ttdef"><b>Definition:</b> oids.h:296</div></div>
 <div class="ttc" id="group__oid-generic_html_ga38ec8e74265983fb67e744d3d19b55f8"><div class="ttname"><a href="group__oid-generic.html#ga38ec8e74265983fb67e744d3d19b55f8">onlp_generic_info_from_json</a></div><div class="ttdeci">int onlp_generic_info_from_json(cJSON *cj, onlp_generic_info_t *info)</div><div class="ttdoc">Convert a JSON object to a generic info structure. </div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Jan 9 2019 04:06:26 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Thu Mar 28 2019 19:37:42 for ONLP by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.8
 </small></address>
