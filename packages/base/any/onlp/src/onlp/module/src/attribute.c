@@ -47,6 +47,13 @@ onlp_attribute_hw_init_locked__(uint32_t flags)
 }
 ONLP_LOCKED_API1(onlp_attribute_hw_init, uint32_t, flags)
 
+static int
+onlp_attribute_sw_denit_locked__(void)
+{
+    return onlp_attributei_sw_denit();
+}
+ONLP_LOCKED_API0(onlp_attribute_sw_denit)
+
 /**
  * @brief Determine whether the OID supports the given attribute.
  * @param oid The OID.

@@ -39,6 +39,11 @@ int onlp_attributei_sw_init(void);
 int onlp_attributei_hw_init(uint32_t flags);
 
 /**
+ * @brief Deinitialize the attribute subsystem.
+ */
+int onlp_attributei_sw_denit(void);
+
+/**
  * @brief Determine whether the OID supports the given attributei.
  * @param oid The OID.
  * @param attribute The attribute name.

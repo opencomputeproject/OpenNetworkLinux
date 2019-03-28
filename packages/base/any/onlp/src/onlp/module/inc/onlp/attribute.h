@@ -50,6 +50,14 @@ int onlp_attribute_sw_init(void);
 int onlp_attribute_hw_init(uint32_t flags);
 
 /**
+ * @brief Deinitialize the attribute subsystem.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
+ */
+int onlp_attribute_sw_denit(void);
+
+/**
  * @brief Determine whether the OID supports the given attribute.
  * @param oid The OID.
  * @param attribute The attribute name.
