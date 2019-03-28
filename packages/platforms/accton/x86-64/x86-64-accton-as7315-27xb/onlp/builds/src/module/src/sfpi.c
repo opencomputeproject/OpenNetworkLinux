@@ -44,7 +44,6 @@ enum port_type {
 #define SIDE_BAND_PATH                  "/sys/bus/i2c/devices/%d-00%02x/"
 #define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
 
-int QSFP_MAP[NUM_QSFP] = {1,2,0};
 int PORT_NUM[PORT_TYPE_MAX] = {NUM_SFP, NUM_QSFP};
 int SB_CFG[PORT_TYPE_MAX][2] = {{8, 0x63}, {7, 0x64}};
 
@@ -66,7 +65,7 @@ static enum port_type get_port_type(int port)
 static int port_to_index(int port)
 {
     if ((port > (NUM_SFP-1)) && (port < NUM_PORT))
-        return QSFP_MAP[port%NUM_SFP]+1;
+        return (port%NUM_SFP)+1;
     else
         return (port%NUM_SFP)+1;
 }
@@ -154,7 +153,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     /* Populate bitmap */
     for (i = 0; presence_all; i++) {
         if (i >= NUM_SFP) {
-            i = QSFP_MAP[i-NUM_SFP] + NUM_SFP;
+            i = (i - NUM_SFP) + NUM_SFP;
         }
         AIM_BITMAP_MOD(dst, i, (presence_all & 1));
         presence_all >>= 1;
@@ -224,7 +223,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
     if (type == PORT_TYPE_QSFP) {
         bus = bus_start[type];
-        bus += QSFP_MAP[port-NUM_SFP];
+        bus += port - NUM_SFP;
     }
     else {
         bus = bus_start[type] + (port%NUM_SFP);
