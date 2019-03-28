@@ -1,5 +1,7 @@
 # LEDs
 
+LEDs are typically children of the Chassis, PSU, Fan, or SFP OIDs. 
+
 ## LED Information Structure
 
 The current status of an LED is queried using ```onlp_led_info_get``` to populate the ```onlp_led_info_t``` structure.
