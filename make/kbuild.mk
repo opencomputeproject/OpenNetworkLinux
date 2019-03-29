@@ -171,26 +171,80 @@ endif
 endif
 
 
-MODSYNCLIST_DEFAULT := .config Module.symvers Makefile include scripts drivers \
-			arch/x86/include arch/x86/Makefile \
-			arch/powerpc/include arch/powerpc/Makefile arch/powerpc/lib arch/powerpc/boot/dts \
-			arch/arm/include arch/arm/Makefile arch/arm/lib arch/arm/boot/dts arch/arm/kernel
-
-MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA) $(K_MODSYNCLIST)
-
-# This file must be preserved for PPC module builds.
 MODSYNCKEEP := arch/powerpc/lib/crtsavres.o
 
 mbuild: build
 	rm -rf $(K_MBUILD_DIR)
 	mkdir -p $(K_MBUILD_DIR)
-	$(foreach f,$(MODSYNCLIST),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
-	find $(K_MBUILD_DIR) -name "*.o*" -delete
-	find $(K_MBUILD_DIR) -name "*.c" -delete
-	find $(K_MBUILD_DIR) -name "*.ko" -delete
-ifeq ($(ARCH), powerpc)
-	$(foreach f,$(MODSYNCKEEP), cp $(K_SOURCE_DIR)/$(f) $(K_MBUILD_DIR)/$(f) || true;)
+
+	# first copy everything
+	cd $(K_SOURCE_DIR) && \
+	find . -type f -a \( -name 'Makefile*' -o -name 'Kconfig*' \) -a \
+		-exec cp --parents -t $(K_MBUILD_DIR)/ {} +
+
+	cd $(K_SOURCE_DIR) && \
+	find drivers/ -type f -a -name '*.h' -a \
+		-exec cp --parents -t $(K_MBUILD_DIR)/ {} +
+
+	cp $(K_SOURCE_DIR)/.config $(K_MBUILD_DIR)/
+	cp $(K_SOURCE_DIR)/Module.symvers $(K_MBUILD_DIR)/
+	cp $(K_SOURCE_DIR)/System.map $(K_MBUILD_DIR)/
+
+	# then drop all but the needed Makefiles/Kconfig files
+	rm -rf $(K_MBUILD_DIR)/Documentation \
+	       $(K_MBUILD_DIR)/scripts \
+	       $(K_MBUILD_DIR)/include
+
+	# copy scripts/
+	cd $(K_SOURCE_DIR) && \
+	find scripts/ -type f -a \! -name '*.o' -a \
+		-exec cp --parents -t $(K_MBUILD_DIR)/ {} +
+
+	# copy include/
+	cp -a $(K_SOURCE_DIR)/include $(K_MBUILD_DIR)/
+
+	# copy objtool for kernel-devel (needed for building external modules)
+	if grep -q CONFIG_STACK_VALIDATION=y $(K_MBUILD_DIR)/.config && \
+	   [ -e $(K_SOURCE_DIR)/tools/objtool/objtool ]; then \
+		cd $(K_SOURCE_DIR) && \
+		cp -a --parents tools/objtool/objtool $(K_MBUILD_DIR)/; \
+	fi
+
+	# Make sure the Makefile and version.h have a matching timestamp so that
+	# external modules can be built
+	touch -r $(K_MBUILD_DIR)/.config  $(K_MBUILD_DIR)/include/generated/autoconf.h
+	touch -r $(K_MBUILD_DIR)/Makefile $(K_MBUILD_DIR)/include/generated/uapi/linux/version.h
+
+	# Copy .config to include/config/auto.conf so "make prepare" is unnecessary.
+	cp $(K_MBUILD_DIR)/.config $(K_MBUILD_DIR)/include/config/auto.conf
+
+ifeq ($(ARCH),powerpc)
+	# This file must be preserved for PPC module builds.
+	cd $(K_SOURCE_DIR) && cp -a --parents arch/powerpc/lib/crtsavres.[So] $(K_MBUILD_DIR)/
 endif
+
+ifeq ($(ARCH),x86_64)
+	$(eval ARCH := x86)
+endif
+	if [ -d $(K_SOURCE_DIR)/arch/$(ARCH) ]; then \
+		cd $(K_SOURCE_DIR) && \
+		find arch/$(ARCH) -type f -a -name '*lds' -a \
+			-exec cp --parents -t $(K_MBUILD_DIR)/ {} +; \
+	fi
+	if [ -d $(K_SOURCE_DIR)/arch/$(ARCH)/scripts ]; then \
+		cd $(K_SOURCE_DIR) && \
+		find arch/$(ARCH)/scripts \( -type f -o -type l \) -a \! -name '*.o' -a \
+			-exec cp --parents -d -t $(K_MBUILD_DIR)/ {} +; \
+	fi
+	if [ -d $(K_SOURCE_DIR)/arch/$(ARCH)/include ]; then \
+		cd $(K_SOURCE_DIR) && \
+		cp -a --parents arch/$(ARCH)/include $(K_MBUILD_DIR)/; \
+	fi
+
+	# Get rid of special files
+	cd $(K_MBUILD_DIR) && \
+	find \( -name '*~' -o -name '*.bak' -o -name '*.orig' -o -name '*.rej' \) -a \
+		-exec rm -f {} +
 
 dtbs: mbuild
 ifdef DTS_LIST

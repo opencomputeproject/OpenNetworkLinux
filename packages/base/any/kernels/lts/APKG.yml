@@ -16,7 +16,6 @@ packages:
 
     files:
       builds/$ONL_DEBIAN_SUITE/kernel-*        : $$PKG_INSTALL/
-      builds/$ONL_DEBIAN_SUITE/linux-*-mbuild   : $$PKG_INSTALL/mbuilds
 
     changelog:  Change changes changes.,
 
@@ -26,5 +25,14 @@ packages:
 
     files:
       builds/$ONL_DEBIAN_SUITE/lib: /lib
+
+    changelog:  Change changes changes.,
+
+  - name: $basename-mbuilds
+    version: 1.0.0
+    summary: Open Network Linux $VERSION LTS Kernel Headers for $ARCH Platforms
+
+    files:
+      builds/$ONL_DEBIAN_SUITE/linux-*-mbuild  : $$PKG_INSTALL/mbuilds
 
     changelog:  Change changes changes.,
