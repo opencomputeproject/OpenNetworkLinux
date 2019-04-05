@@ -123,8 +123,8 @@ typedef struct plat_thermal {
 
 	char	*temp_get_path;
 
-	char	*warnning_set_path;
-	int		def_warnning;
+	char	*warning_set_path;
+	int		def_warning;
 
 	char	*critical_set_path;
 	int		def_critical;

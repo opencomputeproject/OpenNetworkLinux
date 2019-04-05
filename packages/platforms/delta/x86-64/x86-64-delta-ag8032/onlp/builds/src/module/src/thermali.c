@@ -24,6 +24,9 @@
  ***********************************************************/
 #include <onlplib/file.h>
 #include <onlp/platformi/thermali.h>
+#include <stdio.h>
+#include <string.h>
+#include "x86_64_delta_ag8032_log.h"
 #include "platform_lib.h"
 
 static int _psu_thermal_present (void *e);
@@ -35,55 +38,55 @@ static plat_thermal_t plat_thermals[] = {
 	[PLAT_THERMAL_ID_1] = {
 		.desc = "Thermal Sensor %d - close to cpu",
 		.temp_get_path     = "/sys/bus/i2c/devices/0-0048/hwmon/*/temp1_input",
-		.warnning_set_path = "/sys/bus/i2c/devices/0-0048/hwmon/*/temp1_max_hyst",
+		.warning_set_path  = "/sys/bus/i2c/devices/0-0048/hwmon/*/temp1_max_hyst",
 		.critical_set_path = NULL,
 		.shutdown_set_path = "/sys/bus/i2c/devices/0-0048/hwmon/*/temp1_max",
 
-		.def_warnning = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+		.def_warning = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
 		.def_critical = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
 		.def_shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
 	},
 	[PLAT_THERMAL_ID_2] = {
 		.desc = "Thermal Sensor %d - Main Board (U54)",
 		.temp_get_path     = "/sys/bus/i2c/devices/2-004a/hwmon/*/temp1_input",
-		.warnning_set_path = "/sys/bus/i2c/devices/2-004a/hwmon/*/temp1_max_hyst",
+		.warning_set_path  = "/sys/bus/i2c/devices/2-004a/hwmon/*/temp1_max_hyst",
 		.critical_set_path = NULL,
 		.shutdown_set_path = "/sys/bus/i2c/devices/2-004a/hwmon/*/temp1_max",
 
-		.def_warnning = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+		.def_warning  = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
 		.def_critical = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
 		.def_shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
 	},
 	[PLAT_THERMAL_ID_3] = {
 		.desc = "Thermal Sensor %d - BCM chip Bottom (U70)",
 		.temp_get_path     = "/sys/bus/i2c/devices/2-004c/hwmon/*/temp1_input",
-		.warnning_set_path = "/sys/bus/i2c/devices/2-004c/hwmon/*/temp1_max_hyst",
+		.warning_set_path  = "/sys/bus/i2c/devices/2-004c/hwmon/*/temp1_max_hyst",
 		.critical_set_path = NULL,
 		.shutdown_set_path = "/sys/bus/i2c/devices/2-004c/hwmon/*/temp1_max",
 
-		.def_warnning = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+		.def_warning  = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
 		.def_critical = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
 		.def_shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
 	},
 	[PLAT_THERMAL_ID_4] = {
 		.desc = "Thermal Sensor %d - BCM chip Top (U71)",
 		.temp_get_path     = "/sys/bus/i2c/devices/2-004d/hwmon/*/temp1_input",
-		.warnning_set_path = "/sys/bus/i2c/devices/2-004d/hwmon/*/temp1_max_hyst",
+		.warning_set_path  = "/sys/bus/i2c/devices/2-004d/hwmon/*/temp1_max_hyst",
 		.critical_set_path = NULL,
 		.shutdown_set_path = "/sys/bus/i2c/devices/2-004d/hwmon/*/temp1_max",
 
-		.def_warnning = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+		.def_warning  = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
 		.def_critical = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
 		.def_shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
 	},
 	[PLAT_THERMAL_ID_5] = {
 		.desc = "Thermal Sensor %d - Cpu Core",
 		.temp_get_path     = "/sys/devices/platform/coretemp.0/hwmon/*/temp2_input",
-		.warnning_set_path = "/sys/devices/platform/coretemp.0/hwmon/*/temp2_crit",
+		.warning_set_path  = "/sys/devices/platform/coretemp.0/hwmon/*/temp2_crit",
 		.critical_set_path = NULL,
 		.shutdown_set_path = "/sys/devices/platform/coretemp.0/hwmon/*/temp2_max",
 
-		.def_warnning = 0,
+		.def_warning = 0,
 		.def_critical = 0,
 		.def_shutdown = 0,
 	},
@@ -93,7 +96,7 @@ static plat_thermal_t plat_thermals[] = {
 		.temp_get_path     = "/sys/bus/i2c/devices/i2c-4/4-0058/hwmon/*/temp1_input",
 		.shutdown_set_path = "/sys/bus/i2c/devices/i2c-4/4-0058/hwmon/*/temp1_max",
 
-		.def_warnning = 0,
+		.def_warning = 0,
 		.def_critical = 0,
 		.def_shutdown = 0,
 	},
@@ -103,7 +106,7 @@ static plat_thermal_t plat_thermals[] = {
 		.temp_get_path     = "/sys/bus/i2c/devices/i2c-4/4-0059/hwmon/*/temp1_input",
 		.shutdown_set_path = "/sys/bus/i2c/devices/i2c-4/4-0059/hwmon/*/temp1_max",
 
-		.def_warnning = 0,
+		.def_warning = 0,
 		.def_critical = 0,
 		.def_shutdown = 0,
 	},
@@ -132,7 +135,7 @@ static int plat_thermal_is_valid (int id)
 }
 
 int onlp_thermali_init(void)
-{ 
+{
 	int i;
 	plat_thermal_t *thermal;
 
@@ -141,14 +144,14 @@ int onlp_thermali_init(void)
 			continue;
 		thermal = &plat_thermals[i];
 
-		if (thermal->warnning_set_path && thermal->def_warnning)
-			plat_os_file_write_int (thermal->def_warnning, thermal->warnning_set_path, NULL);
+		if (thermal->warning_set_path && thermal->def_warning)
+			plat_os_file_write_int (thermal->def_warning, thermal->warning_set_path, NULL);
 		if (thermal->critical_set_path && thermal->def_critical)
 			plat_os_file_write_int (thermal->def_critical, thermal->critical_set_path, NULL);
 		if (thermal->shutdown_set_path && thermal->def_shutdown)
 			plat_os_file_write_int (thermal->def_shutdown, thermal->shutdown_set_path, NULL);
 	}
-    return ONLP_STATUS_OK;
+	return ONLP_STATUS_OK;
 }
 
 /*
@@ -163,20 +166,24 @@ int onlp_thermali_init(void)
  */
 int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
-{   
-    int tid;
+{
+	int tid;
 	int present = 1;
 	plat_thermal_t *thermal;
 	int value;
 	int error;
 
-    if (!ONLP_OID_IS_THERMAL(id))
+	if (!ONLP_OID_IS_THERMAL(id)) {
+		AIM_LOG_ERROR("not a valid oid");
 		return ONLP_STATUS_E_INVALID;
+	}
 
-    tid = ONLP_OID_ID_GET(id);
+	tid = ONLP_OID_ID_GET(id);
 
-	if (!plat_thermal_is_valid(tid))
+	if (!plat_thermal_is_valid(tid)) {
+		AIM_LOG_ERROR("not a valid platform thermal id");
 		return ONLP_STATUS_E_INVALID;
+	}
 
 	thermal = &plat_thermals[tid];
 
@@ -184,16 +191,16 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 		present = thermal->present(thermal) ? 1 : 0;
 	}
 
-	memset (info, 0, sizeof(*info));
+	memset(info, 0, sizeof(*info));
 
 	// fix onlp_thermal_info_t
 	info->hdr.id = id;
 	if (thermal->desc)
-		snprintf (info->hdr.description, sizeof(info->hdr.description), thermal->desc, tid);
+		snprintf(info->hdr.description, sizeof(info->hdr.description), thermal->desc, tid);
 
 	if (thermal->temp_get_path)
 		info->caps |= ONLP_THERMAL_CAPS_GET_TEMPERATURE;
-	if (thermal->warnning_set_path || thermal->def_warnning)
+	if (thermal->warning_set_path || thermal->def_warning)
 		info->caps |= ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD;
 	if (thermal->critical_set_path || thermal->def_critical)
 		info->caps |= ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD;
@@ -203,26 +210,29 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 	// Get value
 	error = 0;
 	if (info->caps & ONLP_THERMAL_CAPS_GET_TEMPERATURE) {
-		if (plat_os_file_read_int(&value, thermal->temp_get_path, NULL) < 0)
+		if (plat_os_file_read_int(&value, thermal->temp_get_path, NULL) < 0) {
+			AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_THERMAL_CAPS_GET_TEMPERATURE path=%s", thermal->temp_get_path);
 			error ++;
-		else
+		} else
 			info->mcelsius = value;
 	}
 	if (info->caps & ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD) {
-		if (thermal->warnning_set_path) {
-			if (plat_os_file_read_int(&value, thermal->warnning_set_path, NULL) < 0)
+		if (thermal->warning_set_path) {
+			if (plat_os_file_read_int(&value, thermal->warning_set_path, NULL) < 0) {
+				AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD path=%s", thermal->warning_set_path);
 				error ++;
-			else
+			} else
 				info->thresholds.warning = value;
 		} else {
-				info->thresholds.warning = thermal->def_warnning;
+				info->thresholds.warning = thermal->def_warning;
 		}
 	}
 	if (info->caps & ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD) {
 		if (thermal->critical_set_path) {
-			if (plat_os_file_read_int(&value, thermal->critical_set_path, NULL) < 0)
+			if (plat_os_file_read_int(&value, thermal->critical_set_path, NULL) < 0) {
+				AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD path=%s", thermal->critical_set_path);
 				error ++;
-			else
+			} else
 				info->thresholds.error = value;
 		} else {
 				info->thresholds.error = thermal->def_critical;
@@ -230,16 +240,15 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 	}
 	if (info->caps & ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD) {
 		if (thermal->shutdown_set_path) {
-			if (plat_os_file_read_int(&value, thermal->shutdown_set_path, NULL) < 0)
+			if (plat_os_file_read_int(&value, thermal->shutdown_set_path, NULL) < 0) {
+				AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD path=%s", thermal->shutdown_set_path);
 				error ++;
-			else
+			} else
 				info->thresholds.shutdown = value;
 		} else {
 				info->thresholds.shutdown = thermal->def_shutdown;
 		}
 	}
-
-
 
 	if (present)
 		info->status |= ONLP_THERMAL_STATUS_PRESENT;
@@ -258,8 +267,5 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 		}
 	}
 
-	
 	return error ? ONLP_STATUS_E_INTERNAL : ONLP_STATUS_OK;
 }
-
-
