@@ -132,8 +132,8 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 }
 
 #define FAN_DUTY_MAX  (100)
-#define FAN_DUTY_MID  (69)
-#define FAN_DUTY_MIN  (38)
+#define FAN_DUTY_DEF  (50)
+
 
 #define FANCTRL_DIR_FACTOR               (ONLP_FAN_STATUS_B2F)
 #define FANCTRL_DIR_FACTOR_DUTY_ADDON    (6)
@@ -186,13 +186,8 @@ sysi_fanctrl_fan_unknown_speed_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                       int *adjusted)
 {
     int fanduty;
-    int fanduty_min = FAN_DUTY_MIN;
-    int fanduty_mid = FAN_DUTY_MID;
 
-	*adjusted = 0;
-    fanduty_min += (fi[0].status & FANCTRL_DIR_FACTOR) ? FANCTRL_DIR_FACTOR_DUTY_ADDON : 0;
-    fanduty_mid += (fi[0].status & FANCTRL_DIR_FACTOR) ? FANCTRL_DIR_FACTOR_DUTY_ADDON : 0;
-
+    *adjusted = 0;
     if (onlp_file_read_int(&fanduty, FAN_NODE(fan_duty_cycle_percentage)) < 0) {
         *adjusted = 1;
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
@@ -200,7 +195,7 @@ sysi_fanctrl_fan_unknown_speed_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
 
     /* Bring fan speed to max if current speed is not expected
      */
-    if (fanduty != fanduty_min && fanduty != fanduty_mid && fanduty != FAN_DUTY_MAX) {
+    if (fanduty != FAN_DUTY_DEF && fanduty != FAN_DUTY_MAX) {
         *adjusted = 1;
         return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
     }
@@ -209,38 +204,55 @@ sysi_fanctrl_fan_unknown_speed_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
 }
 
 static int
+_get_tmp_threshold(int addr, int *threshold)
+{
+    int policy[][2] = {{0x4B, 36000}, {0x49, 39000}, {0x4A, 38000}, {0x4C, 39000}};
+    int i;
+
+
+    if (addr < 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
+
+    for (i = 0; i < AIM_ARRAYSIZE(policy); i++) {
+        if(policy[i][0] == addr) {
+            *threshold = policy[i][1];
+            return ONLP_STATUS_OK;
+        }
+    }
+    return ONLP_STATUS_E_MISSING;
+}
+
+static int
 sysi_fanctrl_single_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                           onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                                           int *adjusted)
 {
-	int i;
-    *adjusted = 0;
+	int i, addr, thrsh;
+    char *desc;
 
-    /* When anyone higher than 50 degrees, all fans run with duty 100%.
+    *adjusted = 0;    
+    /* If (LM75_0x4B > 36¢J or
+     *      LM75_0x49 > 39¢J or
+     *      LM75_0x4A > 38¢J or
+     *      LM75_0x4C > 39¢J),
+     * fan duty = 100%.
      */
-    for (i = (THERMAL_1_ON_MAIN_BROAD); i <= (THERMAL_3_ON_MAIN_BROAD); i++) {
-        if (ti[i-1].mcelsius < 50000) {
+    for (i = (THERMAL_1_ON_MAIN_BROAD); i <= (CHASSIS_THERMAL_COUNT); i++) {
+        desc = ti[i-1].hdr.description;
+        desc += strlen(desc) - 2; /*Take last 2 chars.*/
+        addr = (int)strtol(desc, NULL, 16);
+        if ( _get_tmp_threshold(addr, &thrsh) != ONLP_STATUS_OK){
             continue;
         }
 
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
-    }
-
-    /* When anyone higher than 45 degrees, all fans run with duty 62.5%.
-     */
-    for (i = (THERMAL_1_ON_MAIN_BROAD); i <= (THERMAL_3_ON_MAIN_BROAD); i++) {
-        if (ti[i-1].mcelsius < 45000) {
-            continue;
+        if (ti[i-1].mcelsius > thrsh) {
+            printf("%d#, %s: %d>%d\n",__LINE__, ti[i-1].hdr.description,
+            ti[i-1].mcelsius, thrsh);
+            *adjusted = 1;
+            return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
         }
-
-        int fanduty_mid = FAN_DUTY_MID;
-        fanduty_mid += (fi[0].status & FANCTRL_DIR_FACTOR) ? FANCTRL_DIR_FACTOR_DUTY_ADDON : 0;
-
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_mid);
     }
-
     return ONLP_STATUS_OK;
 }
 
@@ -249,34 +261,8 @@ sysi_fanctrl_overall_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT]
                                            onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                                            int *adjusted)
 {
-    int fanduty_min = FAN_DUTY_MIN;
-    int fanduty_mid = FAN_DUTY_MID;
-    int i, num_of_sensor = 0, temp_avg = 0;
-
+    /*No overall policy.*/
 	*adjusted = 0;
-    fanduty_min += (fi[0].status & FANCTRL_DIR_FACTOR) ? FANCTRL_DIR_FACTOR_DUTY_ADDON : 0;
-    fanduty_mid += (fi[0].status & FANCTRL_DIR_FACTOR) ? FANCTRL_DIR_FACTOR_DUTY_ADDON : 0;
-
-    for (i = (THERMAL_1_ON_MAIN_BROAD); i <= (THERMAL_3_ON_MAIN_BROAD); i++) {
-        num_of_sensor++;
-        temp_avg += ti[i-1].mcelsius;
-    }
-
-    temp_avg /= num_of_sensor;
-
-    if (temp_avg >= 45000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
-    }
-    else if (temp_avg >= 40000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_mid);
-    }
-    else if (temp_avg < 35000) {
-        *adjusted = 1;
-        return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fanduty_min);
-    }
-
     return ONLP_STATUS_OK;
 }
 
@@ -284,6 +270,11 @@ typedef int (*fan_control_policy)(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                   onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                                   int *adjusted);
 
+/*   1. default fan duty = 50%
+ *   2. if (LM75_0x4B > 36¢J or LM75_0x49 > 39¢J or LM75_0x4A > 38¢J or
+ *      LM75_0x4C > 39¢J), fan duty = 100%
+ *   3. Any of 6 fans faults, set duty = 100%.
+ */
 fan_control_policy fan_control_policies[] = {
 sysi_fanctrl_fan_fault_policy,
 sysi_fanctrl_fan_absent_policy,
@@ -332,6 +323,7 @@ onlp_sysi_platform_manage_fans(void)
 
         rc = fan_control_policies[i](fi, ti, &adjusted);
         if (!adjusted) {
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_DEF);
             continue;
         }
 
