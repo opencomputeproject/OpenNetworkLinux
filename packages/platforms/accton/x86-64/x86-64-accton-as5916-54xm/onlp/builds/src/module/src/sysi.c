@@ -247,8 +247,6 @@ sysi_fanctrl_single_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
         }
 
         if (ti[i-1].mcelsius > thrsh) {
-            printf("%d#, %s: %d>%d\n",__LINE__, ti[i-1].hdr.description,
-            ti[i-1].mcelsius, thrsh);
             *adjusted = 1;
             return onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_MAX);
         }
