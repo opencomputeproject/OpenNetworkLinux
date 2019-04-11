@@ -117,6 +117,10 @@ int sys_fan_present_get(onlp_fan_info_t* info, int id)
 {
     int rv, fan_presence, i2c_bus, offset, fan_reg_mask;
 
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
     /* get fan presence*/
     i2c_bus = I2C_BUS_59;
     switch (id)
@@ -168,6 +172,10 @@ sys_fan_info_get(onlp_fan_info_t* info, int id)
     int max_fan_speed = 22000;
     fan_status = 0;
     fan_rpm = 0;       
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
 
     rv = sys_fan_present_get(info, id);
     if (rv < 0) {
@@ -225,6 +233,11 @@ int
 sys_fan_rpm_percent_set(int perc)
 {  
     int rc;
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+	
     rc = onlp_file_write_int(perc, SYS_FAN_PREFIX "pwm%d", FAN_CTRL_SET1);
     
     if (rc < 0) {
@@ -257,6 +270,11 @@ int
 onlp_fani_percentage_set(onlp_oid_t id, int percentage)
 {
     int  fid, perc_val, rc;
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
     fid = ONLP_OID_ID_GET(id);
 
     /* 
@@ -298,6 +316,10 @@ int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv)
 {
     int fan_id ,rc;
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
     
     fan_id = ONLP_OID_ID_GET(id);
     *rv = fan_info[fan_id];

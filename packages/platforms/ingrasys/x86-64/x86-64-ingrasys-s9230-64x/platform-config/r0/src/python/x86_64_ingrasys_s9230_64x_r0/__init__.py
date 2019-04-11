@@ -15,7 +15,7 @@ class OnlPlatform_x86_64_ingrasys_s9230_64x_r0(OnlPlatformIngrasys):
                                   3,  4,  7,  8, 11, 12, 15, 16, 19, 20, 23, 24, 27, 28, 31, 32, 
                                 35, 36, 39, 40, 43, 44, 47, 48, 51, 52, 55, 56, 59, 60, 63, 64)
                 
-        self.insmod("eeprom_mb")        
+        self.insmod("eeprom_mb") 
         # init SYS EEPROM devices
         self.new_i2c_devices(
             [
@@ -29,6 +29,8 @@ class OnlPlatform_x86_64_ingrasys_s9230_64x_r0(OnlPlatformIngrasys):
         
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
+        os.system("modprobe gpio_pca953x")
+        self.insmod("optoe") 
         
         ########### initialize I2C bus 0 ###########
         # init PCA9548
@@ -164,7 +166,7 @@ class OnlPlatform_x86_64_ingrasys_s9230_64x_r0(OnlPlatformIngrasys):
             eeprom_busbase = 33 + (port_group * 8)
             eeprom_busshift = (phy_port-1)%8            
             eeprom_bus = eeprom_busbase + eeprom_busshift
-            self.new_i2c_device('sff8436', 0x50, eeprom_bus)
+            self.new_i2c_device('optoe1', 0x50, eeprom_bus)
 
         # _i2c_sfp_eeprom_init 
         for i in range(1, 3):

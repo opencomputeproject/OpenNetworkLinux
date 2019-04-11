@@ -31,11 +31,11 @@ static onlp_thermal_info_t thermal_info[] = {
     { }, /* Not used */
     { { THERMAL_OID_FRONT_MAC, "Front MAC", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_ALL, 0, THERMAL_THRESHOLD_INIT_DEFAULTS
+                ONLP_THERMAL_CAPS_ALL, 0, {62700,  66000, 69000}
     },
     { { THERMAL_OID_ASIC, "ASIC Core Temp", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_ALL, 0, THERMAL_THRESHOLD_INIT_DEFAULTS
+                ONLP_THERMAL_CAPS_ALL, 0, {84787,  89250, 93712}
     },
     { { THERMAL_OID_CPU1, "CPU Thermal 1", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
@@ -71,23 +71,23 @@ static onlp_thermal_info_t thermal_info[] = {
     },
     { { THERMAL_OID_CPU_BOARD, "CPU Board", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0
+                ONLP_THERMAL_CAPS_ALL, 0, {59774,  62920, 66066}
     },
     { { THERMAL_OID_PSU1_NEAR, "Near PSU 1", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0
+                ONLP_THERMAL_CAPS_ALL, 0, {61132,  64350, 67567}
     },
     { { THERMAL_OID_PSU2_NEAR, "Near PSU 2", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0
+                ONLP_THERMAL_CAPS_ALL, 0, {61132,  64350, 67567}
     },
     { { THERMAL_OID_MAC_REAR, "Rear MAC", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0
+                ONLP_THERMAL_CAPS_ALL, 0, {5727,  60260, 63273}
     },
     { { THERMAL_OID_QSFP_NEAR, "Near QSFP Port", 0},
                 ONLP_THERMAL_STATUS_PRESENT,
-                ONLP_THERMAL_CAPS_GET_TEMPERATURE, 0
+                ONLP_THERMAL_CAPS_ALL, 0, {55508,  58430, 61351}
     }
 };
 
@@ -105,8 +105,12 @@ sys_thermal_info_get(onlp_thermal_info_t* info, int id)
 {
     int rv;
 
-    rv = onlp_file_read_int(&info->mcelsius,
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    } else {
+        rv = onlp_file_read_int(&info->mcelsius,
                             SYS_CORE_TEMP_PREFIX "temp%d_input", id);
+    }
 
     if(rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
@@ -147,7 +151,11 @@ int
 psu_thermal_info_get(onlp_thermal_info_t* info, int id)
 {
     int rv;
-    
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+	
     rv = psu_thermal_get(info, id);
     if(rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
@@ -161,9 +169,14 @@ cpu_board_thermal_info_get(onlp_thermal_info_t* info)
 {
     int rv;
 
-    rv = onlp_file_read_int(&info->mcelsius,
+    if ( bmc_enable ) {
+        rv = onlp_file_read_int(&info->mcelsius,
+                            SYS_BMC_CPU_BOARD_TEMP_PREFIX "temp1_input");		
+    } else {
+        rv = onlp_file_read_int(&info->mcelsius,
                             SYS_CPU_BOARD_TEMP_PREFIX "temp1_input");
-
+    }
+	
     if (rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
     }
@@ -182,11 +195,19 @@ psu_near_thermal_info_get(onlp_thermal_info_t* info, int id)
     int rv;
 
     if (id == THERMAL_ID_PSU1_NEAR) {
-        rv = onlp_file_read_int(&info->mcelsius,
-                                SYS_PSU1_NEAR_TEMP_PREFIX "temp1_input");
+	 if ( bmc_enable ) {	
+            return ONLP_STATUS_E_UNSUPPORTED;
+	 } else {
+            rv = onlp_file_read_int(&info->mcelsius,
+                                SYS_PSU1_NEAR_TEMP_PREFIX "temp1_input");	 
+	 }
     } else if (id == THERMAL_ID_PSU2_NEAR) {
-        rv = onlp_file_read_int(&info->mcelsius,
+    	 if ( bmc_enable ) {	
+            return ONLP_STATUS_E_UNSUPPORTED;
+    	 } else {
+            rv = onlp_file_read_int(&info->mcelsius,
                                 SYS_PSU2_NEAR_TEMP_PREFIX "temp1_input");
+    	 }
     } else {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -208,9 +229,13 @@ mac_rear_thermal_info_get(onlp_thermal_info_t* info)
 {
     int rv;
 
-    rv = onlp_file_read_int(&info->mcelsius,
-                            SYS_MAC_REAR_TEMP_PREFIX "temp1_input");
-
+    if ( bmc_enable ) {	
+        return ONLP_STATUS_E_UNSUPPORTED;
+    } else {
+        rv = onlp_file_read_int(&info->mcelsius,
+                            SYS_MAC_REAR_TEMP_PREFIX "temp1_input");    
+    }
+	
     if (rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
     }
@@ -228,8 +253,12 @@ qsfp_near_thermal_info_get(onlp_thermal_info_t* info)
 {
     int rv;
 
-    rv = onlp_file_read_int(&info->mcelsius,
+    if ( bmc_enable ) {	
+        return ONLP_STATUS_E_UNSUPPORTED;
+    } else {
+        rv = onlp_file_read_int(&info->mcelsius,
                             SYS_QSFP_NEAR_TEMP_PREFIX "temp1_input");
+    }
 
     if (rv == ONLP_STATUS_E_INTERNAL) {
         return rv;
