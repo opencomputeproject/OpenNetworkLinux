@@ -142,7 +142,6 @@ bmc_info_t dev[] =
     {"PSU2_Iout", 0},
     {"PSU2_Pin",0},
     {"PSU2_Pout",0},
-    {"Fan_Temp", 0},
     {"TMP75_CPU-4d", 0},
     {"TMP75_FAN-4f", 0},
     {"TMP75-4e", 0},
