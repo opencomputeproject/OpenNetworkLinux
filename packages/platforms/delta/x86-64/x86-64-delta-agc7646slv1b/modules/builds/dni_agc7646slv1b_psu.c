@@ -453,12 +453,12 @@ static int dps_800ab_16_d_remove(struct i2c_client *client)
 }
 
 enum id_name {
-	dni_agc7646slv1b_psu,
+	agc7646slv1b_psu,
 	dps_800ab_16_d
 };
 
 static const struct i2c_device_id dps_800ab_16_d_id[] = {
-	{ "dni_agc7646slv1b_psu", dni_agc7646slv1b_psu },
+	{ "agc7646slv1b_psu", agc7646slv1b_psu },
 	{ "dps_800ab_16_d", dps_800ab_16_d },
 	{}
 };

@@ -64,7 +64,6 @@ void lockinit()
     }
 }
 
-#ifdef BMC
 int dni_ipmi_data_time_check(long last_time, long new_time, int time_threshold)
 {
     int ipmi_data_update = 0;
@@ -144,14 +143,12 @@ bmc_info_t dev[] =
     {"PSU2_Pin",0},
     {"PSU2_Pout",0},
     {"Fan_Temp", 0},
-    {"Temp_Sensor_1", 0},
-    {"Temp_Sensor_2", 0},
-    {"Temp_Sensor_3", 0},
-    {"Temp_Sensor_4", 0},
-    {"Temp_Sensor_5", 0},
-    {"Temp_Sensor_6", 0},
-    {"Temp_Sensor_7", 0},
-    {"Temp_Sensor_8", 0},
+    {"TMP75_CPU-4d", 0},
+    {"TMP75_FAN-4f", 0},
+    {"TMP75-4e", 0},
+    {"TMP75-4b", 0},
+    {"TMP431_REMOTE-4c", 0},
+    {"TMP431_LOCAL-4c", 0},
     {"PSU1_Temp_1", 0},
     {"PSU2_Temp_1", 0}
 };
@@ -498,51 +495,6 @@ int dni_bmc_psueeprom_info_get(char * r_data, char *device_name, int number)
 END:
     return rv;
 }
-#endif
-int hex_to_int(char hex_input)
-{
-    int first = hex_input / 16 - 3;
-    int second = hex_input % 16;
-    int result = first * 10 + second;
-
-    if(result > 9) result--;
-        return result;
-}
-
-int hex_to_ascii(char hex_high, char hex_low)
-{
-    int high = hex_to_int(hex_high) * 16;
-    int low = hex_to_int(hex_low);
-
-    return high + low;
-}
-
-int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info)
-{
-    int r_data = 0;
-
-    DNI_LOCK();
-    if(dev_info->size == 1)
-        r_data = onlp_i2c_readb(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
-    else
-        r_data = onlp_i2c_readw(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
-
-    DNI_UNLOCK();
-    return r_data;
-}
-
-int dni_i2c_lock_write(mux_info_t * mux_info, dev_info_t * dev_info)
-{
-    DNI_LOCK();
-    /* Write size */
-    if(dev_info->size == 1)
-        onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
-    else
-        onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
-
-    DNI_UNLOCK();
-    return 0;
-}
 
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
 {
@@ -553,96 +505,8 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
     if ((fd = open(fullpath, O_RDONLY)) >= 0)
     {
         if ((read(fd, r_data, nbytes)) > 0)
+        {
             rv = atoi(r_data);
-    }
-    close(fd);
-    DNI_UNLOCK();
-    return rv;
-}
-
-int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath)
-{
-    int fd, rv = -1;
-
-    DNI_LOCK();
-    /* Create output file descriptor */
-    if ((fd = open(fullpath, O_WRONLY, 0644)) >= 0)
-    {
-        if (write(fd, data, strlen(data)) > 0)
-        {
-            fsync(fd);
-            rv = 0;
-        }
-    }
-    close(fd);
-    DNI_UNLOCK();
-    return rv;
-}
-
-/* Use this function to select MUX and read data on CPLD */
-int dni_lock_cpld_read_attribute(char *cpld_path, int addr)
-{
-    int fd, fd1, nbytes = 10, data = 0, rv = -1;
-    char r_data[10] = {0};
-    char address[10] = {0};
-    char cpld_data_path[100] = {0};
-    char cpld_addr_path[100] = {0};
-
-    sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
-    sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
-    sprintf(address, "0x%02x", addr);
-    DNI_LOCK();
-    /* Create output file descriptor */
-    if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
-    {
-        if (write(fd, address, strlen(address)) > 0)
-        {
-            fsync(fd);
-            if ((fd1 = open(cpld_data_path, O_RDONLY, 0644)) >= 0)
-            {
-                if ((read(fd1, r_data, nbytes)) > 0)
-                {
-                    sscanf(r_data, "%x", &data);
-                    rv = data;
-                }
-            }
-            close(fd1);
-        }
-    }
-    close(fd);
-    DNI_UNLOCK();
-    return rv;
-}
-
-/* Use this function to select MUX and write data on CPLD */
-int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
-{
-    int fd, fd1, rv = -1;
-    char address[10] = {0};
-    char datas[10] = {0};
-    char cpld_data_path[100] = {0};
-    char cpld_addr_path[100] = {0};
-
-    sprintf(cpld_data_path, "%s/swpld1_reg_value", cpld_path);
-    sprintf(cpld_addr_path, "%s/swpld1_reg_addr", cpld_path);
-    sprintf(address, "0x%02x", addr);
-    DNI_LOCK();
-    /* Create output file descriptor */
-    if ((fd = open(cpld_addr_path, O_WRONLY, 0644)) >= 0)
-    {
-        if ((write(fd, address, strlen(address))) > 0)
-        {
-            fsync(fd);
-            if ((fd1 = open(cpld_data_path, O_WRONLY, 0644)) >= 0)
-            {
-                sprintf(datas, "0x%02x", data);
-                if (write(fd1, datas, strlen(datas)) > 0)
-                {
-                    fsync(fd1);
-                    rv = 0;
-                }
-            }
-            close(fd1);
         }
     }
     close(fd);
@@ -653,7 +517,6 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
 int dni_fan_present(int id)
 {
     int rv;
-#ifdef BMC
     uint8_t bit_data = 0;
     int data = 0;
     uint8_t present_bit = 0x00;
@@ -670,105 +533,5 @@ int dni_fan_present(int id)
     }
     else
        rv = ONLP_STATUS_E_INVALID;
-#elif defined I2C
-    int fantray_present = -1;
-    switch(id) {
-        case LED_REAR_FAN_TRAY_1:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_2:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_3:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_4:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
-            break;
-    }
-    if(fantray_present == 0)
-        rv = ONLP_STATUS_OK;
-    else if(fantray_present == 1)
-        rv = ONLP_STATUS_E_INVALID;
-#endif
     return rv;
 }
-
-int dni_fan_speed_good()
-{
-    int rpm = 0, rpm1 = 0, speed_good = 0;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    return speed_good;
-}
-
-int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len)
-{
-    int fd, rv = 0;
-    int len;
-    DNI_LOCK();
-
-    if ((buffer == NULL) || (buf_size < 0)) {
-        rv = -1;
-        goto ERROR;
-    }
-
-    if ((fd = open(filename, O_RDONLY)) == -1) {
-        rv = -1;
-        goto ERROR;
-    }
-
-    if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);
-        rv = -1;
-        goto ERROR;
-    }
-
-    if ((close(fd) == -1)) {
-        rv = -1;
-        goto ERROR;
-    }
-
-    if ((len > buf_size) || (data_len != 0 && len != data_len)) {
-        rv = -1;
-        goto ERROR;
-    }
-
-ERROR:
-    DNI_UNLOCK();
-    return rv;
-}
-
-int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len)
-{
-    int ret;
-
-    if (data_len >= buf_size)
-        return -1;
-
-    ret = dni_i2c_read_attribute_binary(filename, buffer, buf_size-1, data_len);
-    if (ret == 0)
-        buffer[buf_size-1] = '\0';
-
-    return ret;
-}
-

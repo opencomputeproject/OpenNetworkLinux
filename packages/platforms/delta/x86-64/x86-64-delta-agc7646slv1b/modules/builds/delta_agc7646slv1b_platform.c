@@ -24,10 +24,10 @@
 #define MUX_VAL_IDEEPROM      0xFC
 #define MUX_VAL_PCA9547       0xFD
 
-#define MUX_VAL_FAN1_EEPROM 0x00
-#define MUX_VAL_FAN2_EEPROM 0x01
-#define MUX_VAL_FAN3_EEPROM 0x02
-#define MUX_VAL_FAN4_EEPROM 0x03
+#define MUX_VAL_FAN1_EEPROM 0x08
+#define MUX_VAL_FAN2_EEPROM 0x09
+#define MUX_VAL_FAN3_EEPROM 0x0a
+#define MUX_VAL_FAN4_EEPROM 0x0b
 #define MUX_VAL_FAN_CTL     0x05
 #define MUX_VAL_FAN_TMP75   0x06
 #define MUX_VAL_FAN_IO_CTL  0x07
@@ -43,7 +43,7 @@
 #define BUS2_QSFP_DEV_NUM     6
 #define BUS2_QSFP_BASE_NUM   41
 #define BUS2_QSFP_MUX_REG  0x20
-#define BUS2_SFP_DEV_NUM    48
+#define BUS2_SFP_DEV_NUM    46
 #define BUS2_SFP_BASE_NUM   51
 #define BUS2_SFP_MUX_REG  0x21
 #define BUS5_DEV_NUM     7
@@ -68,7 +68,7 @@
 #define SWPLD3_SFP_PORT_19 19
 #define SWPLD3_SFP_PORT_29 29
 #define SWPLD3_SFP_PORT_39 39
-#define SWPLD3_SFP_PORT_48 48
+#define SWPLD3_SFP_PORT_46 46
 
 /* on SWPLD2 */
 #define SFP_PRESENCE_1 0x30
@@ -751,19 +751,13 @@ static struct i2c_device_platform_data agc7646slv1b_i2c_device_platform_data[] =
     {
         // tmp75
         .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp75", 0x4b) },
+        .info = { I2C_BOARD_INFO("tmp75", 0x4d) },
         .client = NULL,
     },
     {
         // tmp431
         .parent = 8,
         .info = { I2C_BOARD_INFO("tmp431", 0x4c) },
-        .client = NULL,
-    },
-    {
-        // tmp432
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp432", 0x4d) },
         .client = NULL,
     },
     {
@@ -817,13 +811,13 @@ static struct i2c_device_platform_data agc7646slv1b_i2c_device_platform_data[] =
     {
         // PSU 1 control
         .parent = 31,
-        .info = { I2C_BOARD_INFO("dni_agc7646slv1b_psu", 0x58) },
+        .info = { I2C_BOARD_INFO("agc7646slv1b_psu", 0x58) },
         .client = NULL,
     },
     {
         // PSU 2 control
         .parent = 32,
-        .info = { I2C_BOARD_INFO("dni_agc7646slv1b_psu", 0x58) },
+        .info = { I2C_BOARD_INFO("agc7646slv1b_psu", 0x58) },
         .client = NULL,
     },
     {
@@ -1138,18 +1132,6 @@ static struct i2c_device_platform_data agc7646slv1b_i2c_device_platform_data[] =
         .info = { .type = "optoe2", .addr = 0x50 },
         .client = NULL,
     },
-    {
-        // sfp 47 (0x50)
-        .parent = 97,
-        .info = { .type = "optoe2", .addr = 0x50 },
-        .client = NULL,
-    },
-    {
-        // sfp 48 (0x50)
-        .parent = 98,
-        .info = { .type = "optoe2", .addr = 0x50 },
-        .client = NULL,
-    },
 };
 
 static struct platform_device agc7646slv1b_i2c_device[] = {
@@ -1218,9 +1200,6 @@ static struct platform_device agc7646slv1b_i2c_device[] = {
     agc7646slv1b_i2c_device_num(62),
     agc7646slv1b_i2c_device_num(63),
     agc7646slv1b_i2c_device_num(64),
-    agc7646slv1b_i2c_device_num(65),
-    agc7646slv1b_i2c_device_num(66),
-    agc7646slv1b_i2c_device_num(67),
 };
 /* ---------------- I2C device - end ------------- */
 
@@ -1297,6 +1276,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
     struct cpld_platform_data *pdata2 = i2cdev_2->platform_data;
     long port_t = 0;
     u8 reg_t = 0x00;
+    u8 save_bytes = 0x00;
     int values[7] = {'\0'};
     int bit_t = 0x00;
     mutex_lock(&dni_lock);
@@ -1314,9 +1294,9 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 reg_t = SFP_PRESENCE_4;
             } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
                 reg_t = SFP_PRESENCE_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
+            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-46 */
                 reg_t = SFP_PRESENCE_6;
-            } else if (port_t > 48 && port_t < 55) { /* QSFP Port 1-6 */
+            } else if (port_t > 46 && port_t < 53) { /* QSFP Port 1-6 */
                 reg_t = QSFP_PRESENCE;
             } else {
                 values[0] = 1; /* return 1, module NOT present */
@@ -1324,11 +1304,10 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 return sprintf(buf, "%d\n", values[0]);
             }
 
-            if (port_t > 48 && port_t < 55) { /* QSFP */
+            if (port_t > 46 && port_t < 53) { /* QSFP */
                 VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
                 mutex_unlock(&dni_lock);
-                port_t = port_t - 1;
-                bit_t = 1 << (port_t % 8);
+                bit_t = 1 << (port_t % 47);
                 values[0] = values[0] & bit_t;
                 values[0] = values[0] / bit_t;
             }
@@ -1366,14 +1345,20 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
             /* SFP_PRESENT Ports 33-40 */
             VALIDATED_READ(buf, values[4],
                 i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_5), 0);
-            /* SFP_PRESENT Ports 41-48 */
+            /* SFP_PRESENT Ports 41-46 */
             VALIDATED_READ(buf, values[5],
                 i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_6), 0);
-            /* QSFP_PRESENT Ports 49-54 */
+            /* QSFP_PRESENT Ports 47-52 */
             VALIDATED_READ(buf, values[6],
                 i2c_smbus_read_byte_data(pdata1[swpld1].client, QSFP_PRESENCE), 0);
 
-            values[6] = values[6] & 0x3F;
+            values[6] &= 0x3F;
+            values[5] &= 0x3F;
+            save_bytes = values[6] & 0x03;
+            save_bytes = save_bytes << 6;
+            values[5] |= save_bytes;
+            values[6] &= 0x3c;
+            values[6] = values[6] >> 2;
 
             /* sfp_is_present_all value
              * return 0 is module present
@@ -1383,7 +1368,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
 
         case SFP_LP_MODE:
             port_t = sfp_port_data;
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+            if (port_t > 46 && port_t < 53) { /* QSFP Port 47-52 */
                 reg_t = QSFP_LPMODE;
             } else {
                 values[0] = 0; /* return 0, module is NOT in LP mode */
@@ -1391,15 +1376,14 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 return sprintf(buf, "%d\n", values[0]);
             }
 
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+            if (port_t > 46 && port_t < 53) { /* QSFP Port 47-52 */
                 VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
             } else { /* In agc7646slv1b only QSFP support control LP MODE */
                 values[0] = 0;
                 mutex_unlock(&dni_lock);
                 return sprintf(buf, "%d\n", values[0]);
             }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
+            bit_t = 1 << (port_t % 47);
             values[0] = values[0] & bit_t;
             values[0] = values[0] / bit_t;
 
@@ -1411,7 +1395,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
 
          case SFP_RESET:
             port_t = sfp_port_data;
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+            if (port_t > 46 && port_t < 53) { /* QSFP Port 49-54 */
                 reg_t = QSFP_RESET;
             } else {
                 values[0] = 1; /* return 1, module NOT in reset mode */
@@ -1419,15 +1403,14 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 return sprintf(buf, "%d\n", values[0]);
             }
 
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+            if (port_t > 46 && port_t < 53) { /* QSFP Port 49-54 */
                 VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
             } else { /* In agc7646slv1b only QSFP support control RESET MODE */
                 values[0] = 1;
                 mutex_unlock(&dni_lock);
                 return sprintf(buf, "%d\n", values[0]);
             }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
+            bit_t = 1 << (port_t % 47);
             values[0] = values[0] & bit_t;
             values[0] = values[0] / bit_t;
 
@@ -1449,7 +1432,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 reg_t = SFP_RXLOS_4;
             } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
                 reg_t = SFP_RXLOS_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
+            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-46 */
                 reg_t = SFP_RXLOS_6;
             } else {
                 values[0] = 1; /* return 1, module Error */
@@ -1457,7 +1440,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 return sprintf(buf, "%d\n", values[0]);
             }
 
-            if (port_t > 0 && port_t < 49) { /* SFP */
+            if (port_t > 0 && port_t < 47) { /* SFP */
                 VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
             } else { /* In agc7646slv1b only SFP support control RX_LOS MODE */
                 values[0] = 1;
@@ -1494,7 +1477,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
             /* SFP_RXLOS Ports 33-40 */
             VALIDATED_READ(buf, values[4],
                 i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_5), 0);
-            /* SFP_RXLOS Ports 41-48 */
+            /* SFP_RXLOS Ports 41-47 */
             VALIDATED_READ(buf, values[5],
                 i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_6), 0);
 
@@ -1516,7 +1499,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 reg_t = SFP_TXDIS_4;
             } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
                 reg_t = SFP_TXDIS_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
+            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-48 */
                 reg_t = SFP_TXDIS_6;
             } else {
                 values[0] = 1; /* return 1, module Transmitter Disabled */
@@ -1524,7 +1507,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 return sprintf(buf, "%d\n", values[0]);
             }
 
-            if (port_t > 0 && port_t < 49) { /* SFP */
+            if (port_t > 0 && port_t < 47) { /* SFP */
                 VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
             } else { /* In agc7646slv1b only SFP support control TX_DISABLE MODE */
                 values[0] = 1;
@@ -1554,7 +1537,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 reg_t = SFP_TXFAULT_4;
             } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
                 reg_t = SFP_TXFAULT_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
+            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-46 */
                 reg_t = SFP_TXFAULT_6;
             } else {
                 values[0] = 1; /* return 1, module is Fault */
@@ -1600,9 +1583,9 @@ static ssize_t set_port_data(struct device *dev, struct device_attribute *dev_at
     if(error)
         return error;
 
-    if(data < 1 || data > 54) /* valid port is 1-54 */
+    if(data < 1 || data > 52) /* valid port is 1-52 */
     {
-        printk(KERN_ALERT "select port out of range (1-54)\n");
+        printk(KERN_ALERT "select port out of range (1-52)\n");
         return count;
     }
     else
@@ -1627,7 +1610,7 @@ static ssize_t set_lpmode_data(struct device *dev, struct device_attribute *dev_
         return error;
     mutex_lock(&dni_lock);
     port_t = sfp_port_data;
-    if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+    if (port_t > 46 && port_t < 53) { /* QSFP Port 47-52 */
         reg_t = QSFP_LPMODE;
     } else {
         values = 0; /* return 0, module NOT in LP mode */
@@ -1643,14 +1626,13 @@ static ssize_t set_lpmode_data(struct device *dev, struct device_attribute *dev_
     /* Indicate the module is in LP mode or not
      * 0 = Disable
      * 1 = Enable */
-    port_t = port_t - 1;
     if (data == 0)
     {
-        bit_t = ~(1 << (port_t % 8));
+        bit_t = ~(1 << (port_t % 47));
         values = values & bit_t;
     }
     else if (data == 1){
-        bit_t = (1 << (port_t % 8));
+        bit_t = (1 << (port_t % 47));
         values = values | bit_t;
     }
     else
@@ -1685,7 +1667,7 @@ static ssize_t set_reset_data(struct device *dev, struct device_attribute *dev_a
     mutex_lock(&dni_lock);
     port_t = sfp_port_data;
 
-    if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
+    if (port_t > 46 && port_t < 53) { /* QSFP Port 47-52 */
         reg_t = QSFP_RESET;
     } else {
         values = 1; /* return 1, module NOT in reset mode */
@@ -1701,15 +1683,14 @@ static ssize_t set_reset_data(struct device *dev, struct device_attribute *dev_a
     /* Indicate the module is in reset mode or not
      * 0 = Reset
      * 1 = Normal */
-    port_t = port_t - 1;
     if (data == 0)
     {
-        bit_t = ~(1 << (port_t % 8));
+        bit_t = ~(1 << (port_t % 47));
         values = values & bit_t;
     }
     else if (data == 1)
     {
-        bit_t = (1 << (port_t % 8));
+        bit_t = (1 << (port_t % 47));
         values = values | bit_t;
     }
     else
@@ -1754,7 +1735,7 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *dev_a
 		reg_t = SFP_TXDIS_4;
 	} else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
 		reg_t = SFP_TXDIS_5;
-	} else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
+	} else if (port_t > 40 && port_t < 47) { /* SFP Port 41-46 */
 		reg_t = SFP_TXDIS_6;
     } else {
         values = 1; /* return 1, module NOT in reset mode */
@@ -2651,16 +2632,16 @@ static int swpld1_mux_select(struct i2c_mux_core *muxc, u32 chan)
                     bmc_swpld1_mux_val = MUX_VAL_FAN_IO_CTL;
                     break;
                 case 2:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN1_EEPROM + 0x08);
+                    bmc_swpld1_mux_val = MUX_VAL_FAN1_EEPROM;
                     break;
                 case 3:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN2_EEPROM + 0x09);
+                    bmc_swpld1_mux_val = MUX_VAL_FAN2_EEPROM;
                     break;
                 case 4:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN3_EEPROM + 0x09);
+                    bmc_swpld1_mux_val = MUX_VAL_FAN3_EEPROM;
                     break;
                 case 5:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN4_EEPROM + 0x09);
+                    bmc_swpld1_mux_val = MUX_VAL_FAN4_EEPROM;
                     break;
                 case 6:
                     bmc_swpld1_mux_val = (MUX_VAL_FAN_CTL + 0x08);
@@ -2837,8 +2818,8 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH4_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_29);
         }
-        /* SFP port 90-98, 9 ports, chan 39-47 */
-        else if ( chan >= SWPLD3_SFP_PORT_39 && chan < SWPLD3_SFP_PORT_48 ){
+        /* SFP port 90-96, 7 ports, chan 39-45 */
+        else if ( chan >= SWPLD3_SFP_PORT_39 && chan < SWPLD3_SFP_PORT_46 ){
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH5_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_39);
         }
