@@ -40,7 +40,7 @@ struct accton_as9716_32d_led_data {
     struct mutex	 update_lock;
     char			 valid;		   /* != 0 if registers are valid */
     unsigned long	last_updated;	/* In jiffies */
-    u8			   reg_val[1];	  /* only 1 register*/
+    u8			   reg_val[2];	  /* only 1 register*/
 };
 
 static struct accton_as9716_32d_led_data  *ledctl = NULL;
@@ -296,7 +296,7 @@ static void accton_as9716_32d_led_loc_set(struct led_classdev *led_cdev,
 static enum led_brightness accton_as9716_32d_led_loc_get(struct led_classdev *cdev)
 {
     accton_as9716_32d_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[0]);
+    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[1]);
 }
 
 static void accton_as9716_32d_led_fan_set(struct led_classdev *led_cdev,
@@ -308,7 +308,7 @@ static void accton_as9716_32d_led_fan_set(struct led_classdev *led_cdev,
 static enum led_brightness accton_as9716_32d_led_fan_get(struct led_classdev *cdev)
 {
     accton_as9716_32d_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[0]);
+    return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[1]);
 }
 
 static void accton_as9716_32d_led_psu1_set(struct led_classdev *led_cdev,
@@ -320,7 +320,7 @@ static void accton_as9716_32d_led_psu1_set(struct led_classdev *led_cdev,
 static enum led_brightness accton_as9716_32d_led_psu1_get(struct led_classdev *cdev)
 {
     accton_as9716_32d_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_PSU1, ledctl->reg_val[0]);
+    return led_reg_val_to_light_mode(LED_TYPE_PSU1, ledctl->reg_val[1]);
 }
 
 static void accton_as9716_32d_led_psu2_set(struct led_classdev *led_cdev,
@@ -332,7 +332,7 @@ static void accton_as9716_32d_led_psu2_set(struct led_classdev *led_cdev,
 static enum led_brightness accton_as9716_32d_led_psu2_get(struct led_classdev *cdev)
 {
     accton_as9716_32d_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_PSU2, ledctl->reg_val[0]);
+    return led_reg_val_to_light_mode(LED_TYPE_PSU2, ledctl->reg_val[1]);
 }
 
 static struct led_classdev accton_as9716_32d_leds[] = {

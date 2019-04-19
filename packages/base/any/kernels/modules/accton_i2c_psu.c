@@ -365,6 +365,7 @@ static int accton_i2c_psu_remove(struct i2c_client *client)
  */
 static const struct i2c_device_id accton_i2c_psu_id[] = {
     { "acbel_fsh082", 0 },
+    { "yesm1300am", 1 },
     {}
 };
 MODULE_DEVICE_TABLE(i2c, accton_i2c_psu_id);

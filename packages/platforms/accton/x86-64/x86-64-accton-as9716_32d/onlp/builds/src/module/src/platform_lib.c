@@ -90,7 +90,7 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define I2C_PSU_MODEL_NAME_LEN 9
+#define I2C_PSU_MODEL_NAME_LEN 10
 #define I2C_PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
@@ -107,12 +107,20 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         return PSU_TYPE_UNKNOWN;
     }
 	
-	if (!strncmp(model_name, "FSH082", strlen("FSH082")))
-	{
-	    if (modelname)
+    if (!strncmp(model_name, "FSH082", strlen("FSH082")))
+    {
+        if (modelname)
             strncpy(modelname, model_name, strlen("FSH082")<(modelname_len-1)?strlen("FSH082"):(modelname_len-1));
         
         return PSU_TYPE_ACBEL;
+    }
+    
+    if (!strncmp(model_name, "YESM1300AM", strlen("YESM1300AM")))
+    {
+        if (modelname)
+            strncpy(modelname, model_name, strlen("YESM1300AM")<(modelname_len-1)?strlen("YESM1300AM"):(modelname_len-1));
+
+        return PSU_TYPE_YESM1300;
     }
     if (!strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")))
     {

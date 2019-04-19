@@ -71,6 +71,7 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_ACBEL,
+    PSU_TYPE_YESM1300,    
     PSU_TYPE_YM2651Y,
     PSU_TYPE_AC_F2B,
     PSU_TYPE_AC_B2F
