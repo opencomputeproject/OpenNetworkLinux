@@ -165,6 +165,18 @@ void onlp_api_unlock(void);
         return _rv;                                                     \
     }
 
+#define ONLP_LOCKED_API6(_name, _t1, _v1, _t2, _v2, _t3, _v3, _t4, _v4, _t5, _v5, _t6, _v6) \
+    int _name (_t1 _v1, _t2 _v2, _t3 _v3, _t4 _v4, _t5 _v5, _t6 _v6)    \
+    {                                                                   \
+        ONLP_API_T0(_name);                                             \
+        ONLP_API_LOCK(#_name);                                          \
+        ONLP_API_T1(_name);                                             \
+        int _rv = ONLP_LOCKED_API_NAME(_name) (_v1, _v2, _v3, _v4, _v5, _v6); \
+        ONLP_API_UNLOCK();                                              \
+        ONLP_API_T2(_name);                                             \
+        return _rv;                                                     \
+    }
+
 #define ONLP_LOCKED_VAPI0(_name)                                 \
     void _name (void)                                            \
     {                                                            \
