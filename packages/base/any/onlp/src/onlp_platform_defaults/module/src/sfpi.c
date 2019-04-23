@@ -44,3 +44,5 @@ __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_readb(int port, uint8_t devaddr, ui
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr));
 __ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_read(int port, uint8_t devaddr, uint8_t addr, uint8_t *rdata, int size));
+__ONLP_DEFAULTI_IMPLEMENTATION(onlp_sfpi_dev_write(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size));
