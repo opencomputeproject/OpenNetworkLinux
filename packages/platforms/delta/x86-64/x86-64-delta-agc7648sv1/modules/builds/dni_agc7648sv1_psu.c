@@ -59,8 +59,8 @@ struct dps_800ab_16_d_data {
 	u8	fan_fault;
 	u16	fan_duty_cycle[2];
 	u16	fan_speed[2];
-	u8	mfr_model[14];
-	u8	mfr_serial[14];
+	u8	mfr_model[16];
+	u8	mfr_serial[16];
 };
 
 static int two_complement_to_int(u16 data, u8 valid_bit, int mask);

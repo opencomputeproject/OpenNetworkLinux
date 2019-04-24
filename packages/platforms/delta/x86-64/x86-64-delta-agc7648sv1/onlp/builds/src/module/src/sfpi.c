@@ -77,9 +77,10 @@ int onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
   
 int onlp_sfpi_is_present(int port)
 {
+    int present, present_bit = 0x00;
+#ifdef BMC
     uint8_t reg_t = 0x00;
     int bit_t = 0x00;
-    int present, present_bit = 0x00;
 
     if (port > 0 && port < 9) {          /* SFP Port 1-8 */
         reg_t = SFP_PRESENCE_1;
@@ -100,21 +101,39 @@ int onlp_sfpi_is_present(int port)
     }
 
     if (port > 48 && port < 55) { /* QSFP */
-        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &present_bit) != ONLP_STATUS_OK)
+        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &present_bit) != ONLP_STATUS_OK)
             return ONLP_STATUS_E_INTERNAL;
         port = port - 1;
         bit_t = 1 << (port % 8);
         present_bit = present_bit & bit_t;
         present_bit = present_bit / bit_t;
-	}
+        }
     else { /* SFP */
-        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &present_bit) != ONLP_STATUS_OK)
+        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &present_bit) != ONLP_STATUS_OK)
             return ONLP_STATUS_E_INTERNAL;
         port = port - 1;
         bit_t = 1 << (port % 8);
         present_bit = present_bit & bit_t;
         present_bit = present_bit / bit_t;
     }
+#elif defined I2C
+    char port_data[3] = {'\0'};
+
+    if(port > 0 && port < 55)
+    {
+        /* Select QSFP/SFP port */
+        sprintf(port_data, "%d", port );
+        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
+            AIM_LOG_ERROR("Unable to select port(%d)\r\n", port);
+        }
+
+        /* Read QSFP/SFP MODULE is present or not */
+        present_bit = dni_i2c_lock_read_attribute(NULL, SFP_IS_PRESENT_PATH);
+        if(present_bit < 0){
+            AIM_LOG_ERROR("Unable to read present or not from port(%d)\r\n", port);
+        }
+    }
+#endif
 
     /* From sfp_is_present value,
      * return 0 = The module is preset
@@ -134,11 +153,12 @@ int onlp_sfpi_is_present(int port)
 
 int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
+    int count = 0;
+    uint8_t bytes[7] = {0};
+#ifdef BMC
     uint8_t reg_t = 0x00;
     int present_data = 0x00;
     uint8_t r_array[7] = {0};
-    uint8_t bytes[7] = {0};
-    int count = 0;
 
     /* Read presence bitmap from SWPLD2 SFP+ and SWPLD1 QSFP28 Presence Register
      * if only port 0 is present,    return 3F FF FF FF FF FF FE
@@ -147,13 +167,13 @@ int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     for (count = 0; count < 7; count++) {
         if (count < 6) { /* SFP Port 1-48 */
             reg_t = SFP_PRESENCE_1 + count;
-            if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &present_data) != ONLP_STATUS_OK)
+            if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &present_data) != ONLP_STATUS_OK)
                 return ONLP_STATUS_E_INTERNAL;
             r_array[count] = present_data;
         }
         else { /* QSFP Port 49-54 */
             reg_t = QSFP_PRESENCE;
-            if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &present_data) != ONLP_STATUS_OK)
+            if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &present_data) != ONLP_STATUS_OK)
                  return ONLP_STATUS_E_INTERNAL;
             r_array[count] = present_data;
         }
@@ -163,13 +183,41 @@ int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     for (count = 0; count < 7; count++) {
         bytes[count] = ~r_array[6 - count];
     }
+#elif defined I2C
+    char present_all_data[21] = {'\0'};
+    char *r_byte;
+    char *r_array[7];
 
+    /* Read presence bitmap from SWPLD2 SFP+ and SWPLD1 QSFP28 Presence Register
+     * if only port 0 is present,    return 3F FF FF FF FF FF FE
+     * if only port 0 and 1 present, return 3F FF FF FF FF FF FC */
+
+    if(dni_i2c_read_attribute_string(SFP_IS_PRESENT_ALL_PATH, present_all_data,
+                                         sizeof(present_all_data), 0) < 0) {
+        return -1;
+    }
+
+    /* String split */
+    r_byte = strtok(present_all_data, " ");
+    while (r_byte != NULL) {
+        r_array[count++] = r_byte;
+        r_byte = strtok(NULL, " ");
+    }
+
+    /* Convert a string to unsigned 8 bit integer
+     * and saved into bytes[] */
+    for (count = 0; count < 7; count++) {
+        bytes[count] = ~strtol(r_array[count], NULL, 16);
+    }
+
+#endif
     /* Mask out non-existant SFP/QSFP ports */
     bytes[0] &= 0x3F;
 
     /* Convert to 64 bit integer in port order */
     int i = 0;
     uint64_t presence_all = 0;
+
 
     for(i = 0; i < AIM_ARRAYSIZE(bytes); i++) {
         presence_all <<= 8;
@@ -212,11 +260,12 @@ int onlp_sfpi_port_map(int port, int* rport)
 int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int value_t;
+#ifdef BMC
     uint8_t reg_t = 0x00;
     int rdata_bit = 0x00;
     int bit_t = 0x00;
 
-    switch (control) {   
+    switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
             /* From sfp_reset value,
              * return 0 = The module is in Reset
@@ -224,7 +273,7 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
             if (port > 48 && port < 55) { /* QSFP Port 49-54 */
                 reg_t = QSFP_RESET;
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &rdata_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &rdata_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
                 port = port - 1;
                 bit_t = 1 << (port % 8);
@@ -260,12 +309,12 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 } else if (port > 40 && port < 49) { /* SFP Port 41-48 */
                     reg_t = SFP_RXLOS_6;
                 }
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &rdata_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &rdata_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
-				port = port - 1;
-				bit_t = 1 << (port % 8);
-				rdata_bit = rdata_bit & bit_t;
-				rdata_bit = rdata_bit / bit_t;
+                                port = port - 1;
+                                bit_t = 1 << (port % 8);
+                                rdata_bit = rdata_bit & bit_t;
+                                rdata_bit = rdata_bit / bit_t;
             }
             else { /* In agc7648sv1 only SFP support control RX_LOS MODE */
                 rdata_bit = 1; /* return 1, module Error */
@@ -293,12 +342,12 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 } else if (port > 40 && port < 49) { /* SFP Port 41-48 */
                     reg_t = SFP_TXDIS_6;
                 }
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &rdata_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &rdata_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
-				port = port - 1;
-				bit_t = 1 << (port % 8);
-				rdata_bit = rdata_bit & bit_t;
-				rdata_bit = rdata_bit / bit_t;
+                                port = port - 1;
+                                bit_t = 1 << (port % 8);
+                                rdata_bit = rdata_bit & bit_t;
+                                rdata_bit = rdata_bit / bit_t;
             }
             else { /* In agc7648sv1 only SFP support control TX_DISABLE MODE */
                 rdata_bit = 1; /* return 1, module Transmitter Disabled */
@@ -326,12 +375,12 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 } else if (port > 40 && port < 49) { /* SFP Port 41-48 */
                     reg_t = SFP_TXFAULT_6;
                 }
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &rdata_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &rdata_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
-				port = port - 1;
-				bit_t = 1 << (port % 8);
-				rdata_bit = rdata_bit & bit_t;
-				rdata_bit = rdata_bit / bit_t;
+                                port = port - 1;
+                                bit_t = 1 << (port % 8);
+                                rdata_bit = rdata_bit & bit_t;
+                                rdata_bit = rdata_bit / bit_t;
             }
             else { /* In agc7648sv1 only SFP support control TX_FAULT MODE */
                 rdata_bit = 1; /* return 1, module is Fault */
@@ -347,7 +396,7 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
             if (port > 48 && port < 55) { /* QSFP Port 49-54 */
                 reg_t = QSFP_LPMODE;
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &rdata_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &rdata_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
                 port = port - 1;
                 bit_t = 1 << (port % 8);
@@ -364,12 +413,75 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             value_t = ONLP_STATUS_E_UNSUPPORTED;
             break;
     }
+#elif defined I2C
+    char port_data[3] = {'\0'};
+
+    if(port > 0 && port < 55)
+    {
+        /* Select SFP(1-48), QSFP(49-54) port */
+        sprintf(port_data, "%d", port );
+        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
+            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    switch (control) {
+        case ONLP_SFP_CONTROL_RESET_STATE:
+            /* From sfp_reset value,
+             * return 0 = The module is in Reset
+             * return 1 = The module is NOT in Reset */
+            *value = dni_i2c_lock_read_attribute(NULL, QSFP_RESET_PATH);
+            if (*value == 0)
+            {
+                *value = 1;
+            }
+            else if (*value == 1)
+            {
+                *value = 0;
+            }
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_RX_LOS:
+            /* From sfp_rx_los value,
+             * return 0 = The module is Normal Operation
+             * return 1 = The module is Error */
+            *value = dni_i2c_lock_read_attribute(NULL, SFP_RX_LOS_PATH);
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            /* From sfp_tx_disable value,
+             * return 0 = The module is Enable Transmitter on
+             * return 1 = The module is Transmitter Disabled */
+            *value = dni_i2c_lock_read_attribute(NULL, SFP_TX_DISABLE_PATH);
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_TX_FAULT:
+            /* From sfp_tx_fault value,
+             * return 0 = The module is Normal
+             * return 1 = The module is Fault */
+            *value = dni_i2c_lock_read_attribute(NULL, SFP_TX_FAULT_PATH);
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_LP_MODE:
+            /* From sfp_lp_mode value,
+             * return 0 = The module is NOT in LP mode
+             * return 1 = The module is in LP mode */
+            *value = dni_i2c_lock_read_attribute(NULL, QSFP_LP_MODE_PATH);
+            value_t = ONLP_STATUS_OK;
+            break;
+        default:
+            value_t = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+    }
+#endif
     return value_t;
 }
 
 int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int value_t;
+#ifdef BMC
     uint8_t reg_t = 0x00;
     int data_bit = 0x00;
     int bit_t = 0x00;
@@ -378,7 +490,7 @@ int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         case ONLP_SFP_CONTROL_RESET_STATE:
             if (port > 48 && port < 55) { /* QSFP Port 49-54 */
                 reg_t = QSFP_RESET;
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &data_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &data_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
                 /* Indicate the module is in reset mode or not
                  * 0 = Reset
@@ -419,7 +531,7 @@ int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                     reg_t = SFP_TXDIS_6;
                 }
 
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &data_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &data_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
                 /* Indicate the module is Enable Transmitter on or not
                  * 0 = Enable
@@ -447,7 +559,7 @@ int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         case ONLP_SFP_CONTROL_LP_MODE:
             if (port > 48 && port < 55) { /* QSFP Port 49-54 */
                 reg_t = QSFP_LPMODE;
-                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, 1, &data_bit) != ONLP_STATUS_OK)
+                if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &data_bit) != ONLP_STATUS_OK)
                     return ONLP_STATUS_E_INTERNAL;
                 /* Indicate the module is in LP mode or not
                  * 0 = Disable
@@ -473,6 +585,55 @@ int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             value_t = ONLP_STATUS_E_UNSUPPORTED;
             break;
     }
+#elif defined I2C
+    char port_data[3] = {'\0'};
+
+    if(port > 0 && port < 55)
+    {
+        /* Select SFP(1-48), QSFP(49-54) port */
+        sprintf(port_data, "%d", port );
+        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
+            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    switch (control) {
+        case ONLP_SFP_CONTROL_RESET_STATE:
+            sprintf(port_data, "%d", value);
+            if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_RESET_PATH) < 0){
+                AIM_LOG_INFO("Unable to control reset state from port(%d)\r\n", port);
+                value_t = ONLP_STATUS_E_INTERNAL;
+            }
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_RX_LOS:
+            value_t = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            sprintf(port_data, "%d", value);
+            if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_TX_DISABLE_PATH) < 0){
+                AIM_LOG_INFO("Unable to control tx disable from port(%d)\r\n", port);
+                value_t = ONLP_STATUS_E_INTERNAL;
+            }
+            value_t = ONLP_STATUS_OK;
+            break;
+        case ONLP_SFP_CONTROL_TX_FAULT:
+            value_t = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+        case ONLP_SFP_CONTROL_LP_MODE:
+            sprintf(port_data, "%d", value);
+            if(dni_i2c_lock_write_attribute(NULL, port_data, QSFP_LP_MODE_PATH) < 0){
+                AIM_LOG_INFO("Unable to control LP mode from port(%d)\r\n", port);
+                value_t = ONLP_STATUS_E_INTERNAL;
+            }
+            value_t = ONLP_STATUS_OK;
+            break;
+        default:
+            value_t = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+    }
+#endif
     return value_t;
 }
 
@@ -511,6 +672,19 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 
 int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
+#ifdef I2C
+    char port_data[3] = {'\0'};
+
+    if(port > 0 && port < 55)
+    {
+        /* Select SFP(1-48), QSFP(49-54) port */
+        sprintf(port_data, "%d", port);
+        if(dni_i2c_lock_write_attribute(NULL, port_data, SFP_SELECT_PORT_PATH) < 0){
+            AIM_LOG_INFO("Unable to select port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+#endif
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
             if(port > 48 && port < 55) /* QSFP */
@@ -555,11 +729,12 @@ int onlp_sfpi_denit(void)
 
 int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
+    int count = 0;
+    uint8_t bytes[6] = {0};
+#ifdef BMC
     uint8_t reg_t = 0x00;
     int rxlos_data = 0x00;
     uint8_t r_array[6] = {0};
-    uint8_t bytes[6] = {0};
-    int count = 0;
 
     /* Read rx_los bitmap from SWPLD2 SFP+ LOSS Register
      * if only port 0 is normal operation,    return FF FF FF FF FF FE
@@ -567,7 +742,7 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     for (count = 0; count < 6; count++) { /* SFP Port 1-48 */
         reg_t = SFP_RXLOS_1 + count;
-        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, 1, &rxlos_data) != ONLP_STATUS_OK)
+        if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &rxlos_data) != ONLP_STATUS_OK)
             return ONLP_STATUS_E_INTERNAL;
         r_array[count] = rxlos_data;
     }
@@ -576,6 +751,33 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     for (count = 0; count < 6; count++) {
         bytes[count] = r_array[5 - count];
     }
+#elif defined I2C
+    char rxlos_all_data[18] = {'\0'};
+    char *r_byte;
+    char *r_array[6];
+
+    /* Read rx_los bitmap from SWPLD2 SFP+ LOSS Register
+     * if only port 0 is normal operation,    return FF FF FF FF FF FE
+     * if only port 0 and 1 normal operation, return FF FF FF FF FF FC */
+
+    if(dni_i2c_read_attribute_string(SFP_RX_LOS_ALL_PATH, rxlos_all_data,
+                                         sizeof(rxlos_all_data), 0) < 0) {
+        return -1;
+    }
+
+    /* String split */
+    r_byte = strtok(rxlos_all_data, " ");
+    while (r_byte != NULL) {
+        r_array[count++] = r_byte;
+        r_byte = strtok(NULL, " ");
+    }
+
+    /* Convert a string to unsigned 8 bit integer
+     * and saved into bytes[] */
+    for (count = 0; count < 6; count++) {
+        bytes[count] = strtol(r_array[count], NULL, 16);
+    }
+#endif
 
     /* Convert to 64 bit integer in port order */
     int i = 0;
@@ -597,6 +799,7 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
         AIM_BITMAP_MOD(dst, i+1, 0);
 
     return ONLP_STATUS_OK;
+
 }
 
 int onlp_sfpi_dom_read(int port, uint8_t data[256])
