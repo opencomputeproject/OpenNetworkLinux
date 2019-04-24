@@ -51,20 +51,9 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 int
 onlp_sfpi_is_present(int port)
 {
-    int status, rc, gpio_num;
+    int status;
 
-    if (port >= 1 && port <= 16) {
-        gpio_num = 496 + ((port - 1) ^ 1);
-    } else if (port >= 17 && port <= 32) {
-        gpio_num = 464 + ((port - 1) ^ 1);
-    } else if (port == 33) {
-        gpio_num = 432;
-    } else if (port == 34) {
-        gpio_num = 433;
-    }
-
-    if ((rc = onlp_file_read_int(&status, "/sys/class/gpio/gpio%d/value",
-                                 gpio_num)) != ONLP_STATUS_OK) {
+    if (qsfp_present_get(port, &status) != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
 

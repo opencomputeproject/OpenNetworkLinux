@@ -9,9 +9,12 @@ class OnlPlatform_x86_64_ingrasys_s9100_r0(OnlPlatformIngrasys):
     
     def baseconfig(self):
                 
+        os.system("modprobe i2c_ismt")
         self.insmod("eeprom_mb")
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
+        os.system("modprobe gpio_pca953x")
+        self.insmod("optoe")
         
         ########### initialize I2C bus 1 ###########
         self.new_i2c_device('pca9548', 0x70, 1)

@@ -32,7 +32,7 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
         # vid to rov reg value mapping 
         rov_reg_array=( 0x79,  0x73,  0x69,  0x7D,  0x63, 0x77, 0x6D, 0x81 )
         
-        self.insmod("eeprom_mb")        
+        self.insmod("eeprom_mb") 
         # init SYS EEPROM devices
         self.new_i2c_devices(
             [
@@ -46,6 +46,8 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
         
         os.system("modprobe w83795")
         os.system("modprobe eeprom")
+        os.system("modprobe gpio_pca953x")
+        self.insmod("optoe") 
         
         ########### initialize I2C bus 0 ###########
         # init PCA9548
@@ -182,7 +184,7 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
             eeprom_busbase = 41 + (port_group * 8)
             eeprom_busshift = (phy_port-1)%8            
             eeprom_bus = eeprom_busbase + eeprom_busshift
-            self.new_i2c_device('sff8436', 0x50, eeprom_bus)
+            self.new_i2c_device('optoe1', 0x50, eeprom_bus)
 
         # _i2c_sfp_eeprom_init 
         for i in range(1, 3):
