@@ -167,12 +167,6 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
 int
 onlp_ledi_init(void)
 {
-    /*
-     * Turn off the LOCATION and DIAG LEDs at startup
-     */
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
-    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
-
     return ONLP_STATUS_OK;
 }
 
