@@ -1,0 +1,30 @@
+variables:
+  PLATFORM : x86-64-mitac-ly1200-b32h0-c3-r0
+
+prerequisites:
+  packages:
+    - "onl-vendor-config-mitac:all"
+    - "onl-platform-modules-x86-64-mitac-ly1200-b32h0-c3:amd64"
+
+common:
+  version: 1.0.0
+  arch: amd64
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+  changelog: None
+
+packages:
+  - name: onl-platform-config-$PLATFORM
+    depends: onl-vendor-config-mitac,onl-platform-modules-x86-64-mitac-ly1200-b32h0-c3
+    summary: ONL Platform Configuration Package for the $PLATFORM
+
+    files:
+      src/boot: /lib/platform-config/$PLATFORM/onl/boot
+      src/lib: /lib/platform-config/$PLATFORM/onl
+      src/python : ${PY_INSTALL}/onl/platform/
+
+  - name: onl-platform-build-$PLATFORM
+    summary: ONL Platform Build Package for the $PLATFORM
+    optional-files:
+      builds: $$PKG_INSTALL
