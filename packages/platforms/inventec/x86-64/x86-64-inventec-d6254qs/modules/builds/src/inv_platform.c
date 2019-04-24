@@ -273,6 +273,7 @@ static struct inv_i2c_board_info i2cdev_list[] = {
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
+#if 0
 static struct 	i2c_gpio_platform_data 	i2c_gpio_platdata = {
 	.scl_pin = 8,
 	.sda_pin = 9,
@@ -288,6 +289,7 @@ static struct 	platform_device 	magnolia_device_i2c_gpio = {
 	.id  	= 0, // adapter number
 	.dev.platform_data = &i2c_gpio_platdata,
 };
+#endif
 
 #define PLAT_MAX_I2C_CLIENTS 32
 static struct i2c_client *plat_i2c_client[PLAT_MAX_I2C_CLIENTS];
@@ -302,9 +304,7 @@ static int plat_i2c_client_add(struct i2c_client *e)
     return num_i2c_clients;
 }
 
-static void plat_i2c_client_remove_all(void);
-
-static void plat_i2c_client_remove_all()
+static void plat_i2c_client_remove_all(void)
 {
     int i;
     for (i = num_i2c_clients-1; i >= 0; i--)
