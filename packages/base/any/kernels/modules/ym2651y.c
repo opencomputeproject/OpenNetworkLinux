@@ -33,6 +33,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/string.h>
+#include <linux/version.h>
 
 #define MAX_FAN_DUTY_CYCLE      100
 #define I2C_RW_RETRY_COUNT      10
@@ -207,7 +208,7 @@ static ssize_t show_byte(struct device *dev, struct device_attribute *da,
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct ym2651y_data *data = ym2651y_update_device(dev);
-    
+
     if (!data->valid) {
         return 0;
     }
@@ -222,7 +223,7 @@ static ssize_t show_word(struct device *dev, struct device_attribute *da,
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct ym2651y_data *data = ym2651y_update_device(dev);
     u16 status = 0;
-    
+
     if (!data->valid) {
         return 0;
     }
@@ -291,8 +292,8 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
 
     if (!data->valid) {
         return 0;
-    }   
-    
+    }
+
     switch (attr->index) {
     case PSU_V_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
@@ -376,8 +377,8 @@ static ssize_t show_fan_fault(struct device *dev, struct device_attribute *da,
 
     if (!data->valid) {
         return 0;
-    }   
-    
+    }
+
     shift = (attr->index == PSU_FAN1_FAULT) ? 7 : 6;
 
     return sprintf(buf, "%d\n", data->fan_fault >> shift);
@@ -390,8 +391,8 @@ static ssize_t show_over_temp(struct device *dev, struct device_attribute *da,
 
     if (!data->valid) {
         return 0;
-    }   
-    
+    }
+
     return sprintf(buf, "%d\n", data->over_temp >> 7);
 }
 
@@ -404,8 +405,8 @@ static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
 
     if (!data->valid) {
         return 0;
-    }   
-    
+    }
+
     switch (attr->index) {
     case PSU_FAN_DIRECTION: /* psu_fan_dir */
         ptr = data->fan_dir + 1;  /* Skip the first byte since it is the length of string. */
@@ -496,12 +497,12 @@ static int ym2651y_probe(struct i2c_client *client,
         status = -EIO;
         goto exit;
     }
-    
+
     if (!i2c_check_functionality(client->adapter,
         I2C_FUNC_SMBUS_I2C_BLOCK)) {
         support_i2c_block = 0;
     }
-    
+
     data = kzalloc(sizeof(struct ym2651y_data), GFP_KERNEL);
     if (!data) {
         status = -ENOMEM;
@@ -519,7 +520,12 @@ static int ym2651y_probe(struct i2c_client *client,
         goto exit_free;
     }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "ym2651y",
+                                                      NULL, NULL, NULL);
+#else
     data->hwmon_dev = hwmon_device_register(&client->dev);
+#endif
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
@@ -722,7 +728,7 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
         }
 
         if (support_i2c_block) {
-            
+
             /* Read fan_direction */
             command = 0xC3;
             status = ym2651y_read_block(client, command, data->fan_dir,
@@ -739,54 +745,54 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
             status = ym2651y_read_block(client, command, data->mfr_id,
                                             ARRAY_SIZE(data->mfr_id)-1);
             data->mfr_id[ARRAY_SIZE(data->mfr_id)-1] = '\0';
-    
+
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
-    
+
             /* Read mfr_model */
             command = 0x9a;
             length  = 1;
-            
+
             /* Read first byte to determine the length of data */
             status = ym2651y_read_block(client, command, &buf, length);
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
-            
+
             status = ym2651y_read_block(client, command, data->mfr_model, buf+1);
             data->mfr_model[buf+1] = '\0';
-    
+
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
-    
+
             /* Read mfr_revsion */
             command = 0x9b;
             status = ym2651y_read_block(client, command, data->mfr_revsion,
                                             ARRAY_SIZE(data->mfr_revsion)-1);
             data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
-    
+
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
-    
+
             /* Read mfr_serial */
             command = 0x9e;
             status = ym2651y_read_block(client, command, data->mfr_serial,
                                             ARRAY_SIZE(data->mfr_serial)-1);
             data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
-    
+
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
         }
-        
+
         data->last_updated = jiffies;
         data->valid = 1;
     }

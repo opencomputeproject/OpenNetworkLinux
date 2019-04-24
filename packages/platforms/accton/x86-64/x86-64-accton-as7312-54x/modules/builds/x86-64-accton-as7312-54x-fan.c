@@ -416,7 +416,8 @@ static int as7312_54x_fan_probe(struct i2c_client *client,
         goto exit_free;
     }
 
-    data->hwmon_dev = hwmon_device_register(&client->dev);
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "as7312_54x_fan",
+                                                      NULL, NULL, NULL);
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
