@@ -123,7 +123,7 @@ $(K_ARCHIVE_PATH):
 # The extracted kernel sources
 #
 $(K_SOURCE_DIR)/Makefile: $(K_ARCHIVE_PATH)
-	rm -rf $(K_TARGET_DIR) && mkdir -p $(K_TARGET_DIR) && cd $(K_TARGET_DIR) && tar kxf $(K_ARCHIVE_PATH)
+	mkdir -p $(K_TARGET_DIR) && cd $(K_TARGET_DIR) && tar kxf $(K_ARCHIVE_PATH)
 	touch -c $(K_SOURCE_DIR)/Makefile
 	$(K_MAKE) mrproper
 
