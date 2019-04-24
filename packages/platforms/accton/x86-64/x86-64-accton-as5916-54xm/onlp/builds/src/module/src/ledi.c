@@ -210,7 +210,25 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
     if (!on_or_off) {
         return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
     }
+    else
+    {
+        /*Just pick a color to light*/
+        int rv, i;
+        onlp_led_info_t info;
+        uint32_t caps;
 
+        rv = onlp_ledi_info_get(id, &info);
+        if (rv < 0)
+            return rv;
+
+        caps = info.caps;
+        /*Bit scan*/
+        for (i = 1; i < sizeof(caps)*8; i++) {
+            if( caps & (1<<i)) {
+                return onlp_ledi_mode_set(id, i);
+            }
+        }
+    }
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
