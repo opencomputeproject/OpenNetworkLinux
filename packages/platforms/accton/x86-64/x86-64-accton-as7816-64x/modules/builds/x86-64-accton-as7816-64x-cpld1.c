@@ -55,6 +55,7 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
              char *buf);
+static ssize_t show_id(struct device *dev, struct device_attribute *da, char *buf);
 static int as7816_64x_cpld_read_internal(struct i2c_client *client, u8 reg);
 static int as7816_64x_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value);
 
@@ -74,6 +75,7 @@ static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 enum as7816_64x_cpld_sysfs_attributes {
 	CPLD_VERSION,
 	ACCESS,
+	CPLD_ID,
 	MODULE_PRESENT_ALL,
 	/* transceiver attributes */
 	TRANSCEIVER_PRESENT_ATTR_ID(1),
@@ -166,6 +168,8 @@ enum as7816_64x_cpld_sysfs_attributes {
 
 static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
+static SENSOR_DEVICE_ATTR(cpld_id, S_IRUGO, show_id, NULL, CPLD_ID);
+
 /* transceiver attributes */
 static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_present_all, NULL, MODULE_PRESENT_ALL);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(1);
@@ -240,6 +244,7 @@ DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
 static struct attribute *as7816_64x_cpld_attributes[] = {
     &sensor_dev_attr_version.dev_attr.attr,
     &sensor_dev_attr_access.dev_attr.attr,
+    &sensor_dev_attr_cpld_id.dev_attr.attr,
 	/* transceiver attributes */
 	&sensor_dev_attr_module_present_all.dev_attr.attr,
 	DECLARE_TRANSCEIVER_ATTR(1),
@@ -501,6 +506,36 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
 	}
 	mutex_unlock(&data->update_lock);
 	return count;
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+static ssize_t show_id(struct device *dev, struct device_attribute *da, char *buf)
+{
+	int i = 0;
+	u8 cpld_id[3] = {0};
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7816_64x_cpld_data *data = i2c_get_clientdata(client);
+	int status = 0;
+
+    mutex_lock(&data->update_lock);
+    for (i = 0; i < 2; i++) {
+    	status = as7816_64x_cpld_read_internal(client, 0xfd+i);
+    	if (unlikely(status < 0)) {
+    		goto exit;
+    	}
+
+        cpld_id[i] = status;
+    }
+	mutex_unlock(&data->update_lock);
+
+    if (cpld_id[0] == 0xff && cpld_id[1] == 0xff) {
+        return sprintf(buf, "NULL\n");
+    }
+    
+	return sprintf(buf, "%s\n", cpld_id);
 
 exit:
 	mutex_unlock(&data->update_lock);
