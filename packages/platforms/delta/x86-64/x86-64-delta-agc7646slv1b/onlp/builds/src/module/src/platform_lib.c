@@ -142,7 +142,6 @@ bmc_info_t dev[] =
     {"PSU2_Iout", 0},
     {"PSU2_Pin",0},
     {"PSU2_Pout",0},
-    {"Fan_Temp", 0},
     {"TMP75_CPU-4d", 0},
     {"TMP75_FAN-4f", 0},
     {"TMP75-4e", 0},
@@ -252,6 +251,7 @@ swpld_info_t swpld_table[]=
 {
    {"SWPLD_1", 0x6a, 0},
    {"SWPLD_2", 0x75, 0},
+   {"SWPLD_3", 0x73, 0},
 };
 
 int dni_bmc_data_get(int bus, int addr, int reg, int *r_data)
@@ -276,7 +276,7 @@ int dni_bmc_data_get(int bus, int addr, int reg, int *r_data)
 
     gettimeofday(&new_tv,NULL);
 
-    for(swpld_num = 0; swpld_num < 2; swpld_num++)
+    for(swpld_num = 0; swpld_num < SWPLD_NUM; swpld_num++)
     {
         if(swpld_table[swpld_num].addr == addr)
         {
@@ -498,7 +498,8 @@ END:
 
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
 {
-    int fd, nbytes = 10, rv = -1;
+    int fd, nbytes = 10;
+    long rv = -1;
     char r_data[10] = {0};
 
     DNI_LOCK();
@@ -506,7 +507,7 @@ int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath)
     {
         if ((read(fd, r_data, nbytes)) > 0)
         {
-            rv = atoi(r_data);
+            rv = strtol(r_data, NULL, 16);
         }
     }
     close(fd);

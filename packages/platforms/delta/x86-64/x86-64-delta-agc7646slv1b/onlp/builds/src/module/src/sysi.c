@@ -70,10 +70,18 @@ int onlp_sysi_onie_data_get(uint8_t** data, int* size)
 
 int onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
-    int cpld_version = 0x0;
+    long cpld_version = 0;
+    int swpld1_version = 0x0;
+    int swpld2_version = 0x0;
+    int swpld3_version = 0x0;
+    int reg_t = 0x01;
+
     cpld_version = dni_i2c_lock_read_attribute(NULL, CPU_CPLD_VERSION);
-    pi->cpld_versions = aim_fstrdup("%d", cpld_version);
-    
+    dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, reg_t, &swpld1_version);
+    dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &swpld2_version);
+    dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_3_ADDR, reg_t, &swpld3_version);
+
+    pi->cpld_versions = aim_fstrdup("%ld, SWPLD1_Version: %d, SWPLD2_Version: %d, SWPLD3_Version: %d", cpld_version, swpld1_version, swpld2_version, swpld3_version);
     return ONLP_STATUS_OK;
 }
 

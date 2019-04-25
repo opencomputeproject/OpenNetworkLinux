@@ -295,6 +295,7 @@ enum cpld_attributes {
     CPU_I2C_MUX_SEL,
 //SWPLD1
     BOARD_ID,
+    SWPLD1_VER,
     BCM88375_RST,
     B54616S_RST,
     PSU1_EN,
@@ -316,7 +317,10 @@ enum cpld_attributes {
     FAN3_LED,
     FAN4_LED,
     FAN_I2C_SEL,
+//SWPLD2
+    SWPLD2_VER,
 //SWPLD3
+    SWPLD3_VER,
     QSFP_I2C_SEL,
     SFP_CHAN_EN,
     SFP_SEL,
@@ -458,6 +462,11 @@ static struct cpld_attribute_data attribute_data[] = {
         .reg  = 0x00,       .mask = 0xf0,
         .note = "SW Board ID\n\"0000\": AGC7648."
     },
+    [SWPLD1_VER] = {
+        .bus  = BUS7,       .addr = SWPLD1_ADDR,
+        .reg  = 0x01,       .mask = 0x0f,
+        .note = "Main Board U21 CPLD Code Version, controlled by CPLD editor."
+    },
     [BCM88375_RST] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x04,       .mask = 1 << 6,
@@ -541,29 +550,40 @@ static struct cpld_attribute_data attribute_data[] = {
     [FAN1_LED] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x65,       .mask = 0xc0,
-        .note = "Indicate the FAN Tray 1 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
+        .note = "Indicate the FAN Tray 1 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Red.\n\"0x02\" = Solid Green.\n\"0x03\" = Off\n"
     },
     [FAN2_LED] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x65,       .mask = 0x30,
-        .note = "Indicate the FAN Tray 2 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
+        .note = "Indicate the FAN Tray 2 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Red..\n\"0x02\" = Solid Green.\n\"0x03\" = Off\n"
     },
     [FAN3_LED] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x65,       .mask = 0x0c,
-        .note = "Indicate the FAN Tray 3 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
+        .note = "Indicate the FAN Tray 3 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Red..\n\"0x02\" = Solid Green.\n\"0x03\" = Off\n"
     },
     [FAN4_LED] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x65,       .mask = 0x03,
-        .note = "Indicate the FAN Tray 4 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
+        .note = "Indicate the FAN Tray 4 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Red..\n\"0x02\" = Solid Green.\n\"0x03\" = Off\n"
     },
     [FAN_I2C_SEL] = {
         .bus  = BUS7,       .addr = SWPLD1_ADDR,
         .reg  = 0x67,       .mask = 0x07,
         .note = "FAN I2C channel selection\n\"0x00\" = FAN TRAY 1 EEPROM\n\"0x01\" = FAN TRAY 2 EEPROM\n\"0x02\" = FAN TRAY 3 EEPROM\n\"0x03\" = FAN TRAY 4 EEPROM\n\"0x04\" = Reserved;(Do not use)\n\"0x05\" = FAN Control IC (EMC2305)\n\"0x06\" = FAN Thermal Sensor (TMP75A)\n\"0x07\" = FAN IO Control (PCA9555DB)"
     },
+//SWPLD2
+    [SWPLD2_VER] = {
+        .bus  = BUS7,       .addr = SWPLD2_ADDR,
+        .reg  = 0x01,       .mask = 0x0f,
+        .note = "Main Board U215 CPLD Code Version, controlled by CPLD editor."
+    },
 //SWPLD3
+    [SWPLD3_VER] = {
+        .bus  = BUS7,       .addr = SWPLD3_ADDR,
+        .reg  = 0x01,       .mask = 0x0f,
+        .note = "Main Board U134 CPLD Code Version, controlled by CPLD editor."
+    },
     [QSFP_I2C_SEL] = {
         .bus  = BUS7,       .addr = SWPLD3_ADDR,
         .reg  = 0x20,       .mask = 0x07,
@@ -577,7 +597,7 @@ static struct cpld_attribute_data attribute_data[] = {
     [SFP_SEL] = {
         .bus  = BUS7,       .addr = SWPLD3_ADDR,
         .reg  = 0x21,       .mask = 0x07,
-        .note = "SFP+ I2C Mth selection. (From PORT1 ~ PORT48)\n\"0x00\": means M=0.\n\"0x01\": means M=1.\n...\n\"0x07\": means M=7\nSFP I2C Channel Number = 8 * N + M +1"
+        .note = "SFP+ I2C Mth selection. (From PORT1 ~ PORT46)\n\"0x00\": means M=0.\n\"0x01\": means M=1.\n...\n\"0x07\": means M=7\nSFP I2C Channel Number = 8 * N + M +1"
     },
 };
 
@@ -1499,7 +1519,7 @@ static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr,
                 reg_t = SFP_TXDIS_4;
             } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
                 reg_t = SFP_TXDIS_5;
-            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-48 */
+            } else if (port_t > 40 && port_t < 47) { /* SFP Port 41-46 */
                 reg_t = SFP_TXDIS_6;
             } else {
                 values[0] = 1; /* return 1, module Transmitter Disabled */
@@ -1860,10 +1880,31 @@ static ssize_t get_cpld_reg(struct device *dev, struct device_attribute *dev_att
             ret = i2c_smbus_read_byte_data(pdata[swpld3].client, swpld3_reg_addr);
             mutex_unlock(&dni_lock);
             return sprintf(buf, "0x%02x\n", ret);
-        case CPU_BOARD_ID1 ... SFP_SEL:
+        case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
             reg   = attribute_data[attr->index].reg;
             mask  = attribute_data[attr->index].mask;
-            value = i2c_smbus_read_byte_data(pdata[DEFAULT_CPLD].client, reg);
+            value = i2c_smbus_read_byte_data(pdata[system_cpld].client, reg);
+            sprintf(note, "\n%s\n",attribute_data[attr->index].note);
+            value = value & mask;
+            break;
+        case BOARD_ID ... FAN_I2C_SEL:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld1].client, reg);
+            sprintf(note, "\n%s\n",attribute_data[attr->index].note);
+            value = value & mask;
+            break;
+        case SWPLD2_VER:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld2].client, reg);
+            sprintf(note, "\n%s\n",attribute_data[attr->index].note);
+            value = value & mask;
+            break;
+        case SWPLD3_VER ... SFP_SEL:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld3].client, reg);
             sprintf(note, "\n%s\n",attribute_data[attr->index].note);
             value = value & mask;
             break;
@@ -1963,10 +2004,28 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
             i2c_smbus_write_byte_data(pdata[swpld3].client, swpld3_reg_addr, set_data);
             mutex_unlock(&dni_lock);
             return count;
-         case CPU_BOARD_ID1 ... SFP_SEL:
+         case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
             reg   = attribute_data[attr->index].reg;
             mask  = attribute_data[attr->index].mask;
-            value = i2c_smbus_read_byte_data(pdata[DEFAULT_CPLD].client, reg);
+            value = i2c_smbus_read_byte_data(pdata[system_cpld].client, reg);
+            mask_out = value & ~(mask);
+            break;
+         case BOARD_ID ... FAN_I2C_SEL:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld1].client, reg);
+            mask_out = value & ~(mask);
+            break;
+        case SWPLD2_VER:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld2].client, reg);
+            mask_out = value & ~(mask);
+            break;
+        case SWPLD3_VER ... SFP_SEL:
+            reg   = attribute_data[attr->index].reg;
+            mask  = attribute_data[attr->index].mask;
+            value = i2c_smbus_read_byte_data(pdata[swpld3].client, reg);
             mask_out = value & ~(mask);
             break;
         default:
@@ -2004,8 +2063,20 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
     }   
 
     switch (attr->index) {
-        case CPU_BOARD_ID1 ... SFP_SEL:
-            i2c_smbus_write_byte_data(pdata[DEFAULT_CPLD].client, reg, set_data);
+        case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
+            i2c_smbus_write_byte_data(pdata[system_cpld].client, reg, set_data);
+            mutex_unlock(&dni_lock);
+            break;
+        case BOARD_ID ... FAN_I2C_SEL:
+            i2c_smbus_write_byte_data(pdata[swpld1].client, reg, set_data);
+            mutex_unlock(&dni_lock);
+            break;
+        case SWPLD2_VER:
+            i2c_smbus_write_byte_data(pdata[swpld2].client, reg, set_data);
+            mutex_unlock(&dni_lock);
+            break;
+        case SWPLD3_VER ... SFP_SEL:
+            i2c_smbus_write_byte_data(pdata[swpld3].client, reg, set_data);
             mutex_unlock(&dni_lock);
             break;
         default:
@@ -2050,6 +2121,7 @@ static SENSOR_DEVICE_ATTR(cpu_i2c_mux_sel,     S_IRUGO | S_IWUSR, get_cpld_reg, 
 
 //SWPLD1
 static SENSOR_DEVICE_ATTR(board_id,        S_IRUGO,           get_cpld_reg, NULL,         BOARD_ID);
+static SENSOR_DEVICE_ATTR(swpld1_ver,      S_IRUGO,           get_cpld_reg, NULL,         SWPLD1_VER);
 static SENSOR_DEVICE_ATTR(bcm88375_rst,    S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, BCM88375_RST);
 static SENSOR_DEVICE_ATTR(b54616s_rst,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, B54616S_RST);
 static SENSOR_DEVICE_ATTR(psu1_en,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, PSU1_EN);
@@ -2072,7 +2144,11 @@ static SENSOR_DEVICE_ATTR(fan3_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_
 static SENSOR_DEVICE_ATTR(fan4_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN4_LED);
 static SENSOR_DEVICE_ATTR(fan_i2c_sel,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN_I2C_SEL);
 
+//SWPLD2
+static SENSOR_DEVICE_ATTR(swpld2_ver,      S_IRUGO,           get_cpld_reg, NULL,         SWPLD2_VER);
+
 //SWPLD3
+static SENSOR_DEVICE_ATTR(swpld3_ver,      S_IRUGO,           get_cpld_reg, NULL,         SWPLD3_VER);
 static SENSOR_DEVICE_ATTR(qsfp_i2c_sel,    S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, QSFP_I2C_SEL);
 static SENSOR_DEVICE_ATTR(sfp_chan_en,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SFP_CHAN_EN);
 static SENSOR_DEVICE_ATTR(sfp_sel,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SFP_SEL);
@@ -2119,6 +2195,7 @@ static struct attribute *swpld1_attrs[] = {
     &sensor_dev_attr_swpld1_reg_value.dev_attr.attr,
     &sensor_dev_attr_swpld1_reg_addr.dev_attr.attr, 
     &sensor_dev_attr_board_id.dev_attr.attr,
+    &sensor_dev_attr_swpld1_ver.dev_attr.attr,
     &sensor_dev_attr_bcm88375_rst.dev_attr.attr,
     &sensor_dev_attr_b54616s_rst.dev_attr.attr,
     &sensor_dev_attr_psu1_en.dev_attr.attr,
@@ -2156,12 +2233,14 @@ static struct attribute *swpld1_attrs[] = {
 static struct attribute *swpld2_attrs[] = {
     &sensor_dev_attr_swpld2_reg_value.dev_attr.attr,
     &sensor_dev_attr_swpld2_reg_addr.dev_attr.attr,
+    &sensor_dev_attr_swpld2_ver.dev_attr.attr,
     NULL,
 };
 
 static struct attribute *swpld3_attrs[] = {
     &sensor_dev_attr_swpld3_reg_value.dev_attr.attr,
     &sensor_dev_attr_swpld3_reg_addr.dev_attr.attr, 
+    &sensor_dev_attr_swpld3_ver.dev_attr.attr,
     &sensor_dev_attr_qsfp_i2c_sel.dev_attr.attr,
     &sensor_dev_attr_sfp_chan_en.dev_attr.attr,
     &sensor_dev_attr_sfp_sel.dev_attr.attr,
@@ -2790,7 +2869,7 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
             cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
             cmd_data[3] = swpld1_qsfp_modsel_val;
             cmd_data_len = sizeof(cmd_data);
-			dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+	    dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
         }
         else //BMC monitor off or BMC is not exist
         {
@@ -3347,5 +3426,5 @@ module_init(delta_agc7646slv1b_platform_init);
 module_exit(delta_agc7646slv1b_platform_exit);
 
 MODULE_DESCRIPTION("DELTA agc7646slv1b Platform Support");
-MODULE_AUTHOR("Stanley Chi <stanley.chi@deltaww.com>");
+MODULE_AUTHOR("Johnson Lu <johnson.lu@deltaww.com>");
 MODULE_LICENSE("GPL");

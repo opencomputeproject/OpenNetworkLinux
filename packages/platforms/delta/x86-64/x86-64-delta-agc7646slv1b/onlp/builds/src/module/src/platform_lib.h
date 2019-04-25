@@ -55,12 +55,11 @@ typedef unsigned int    UINT4;
 #define THERMAL_TIME_THRESHOLD       (10)
 #define PSU_EEPROM_TIME_THRESHOLD    (10)
 #define SWPLD_DATA_TIME_THRESHOLD    (5)
-#define DEV_NUM                      (32)
+#define DEV_NUM                      (30)
+#define SWPLD_NUM                    (3)
 
 #define CPU_CPLD_VERSION "/sys/devices/platform/delta-agc7646slv1b-cpld.0/cpuld_ver"
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0053/eeprom"
-#define SWPLD1_PATH "/sys/devices/platform/delta-agc7646slv1b-swpld1.0"
-#define SWPLD2_PATH "/sys/devices/platform/delta-agc7646slv1b-swpld2.0"
 #define PORT_EEPROM_FORMAT      "/sys/bus/i2c/devices/%d-0050/eeprom"
 #define CHECK_TIME_FILE "/tmp/check_time_file"
 #define BMC_INFO_TABLE "/tmp/bmc_info"
