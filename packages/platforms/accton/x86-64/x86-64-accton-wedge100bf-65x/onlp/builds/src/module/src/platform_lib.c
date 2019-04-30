@@ -33,7 +33,7 @@
 #define TTY_PROMPT                      "@bmc:"
 #define TTY_I2C_TIMEOUT                 55000
 #define TTY_BMC_LOGIN_TIMEOUT            1000000
-#define TTY_RETRY                       3 
+#define TTY_RETRY                       10
 #define MAXIMUM_TTY_BUFFER_LENGTH       1024
 #define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 
@@ -97,7 +97,7 @@ static int tty_login(void)
 
     for (i = 1; i <= TTY_RETRY; i++) {
         snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "\r\r");
-        if (!tty_exec_buf(0, TTY_PROMPT)) {
+        if (!tty_exec_buf(TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
             return 0;
         }
 
@@ -172,6 +172,46 @@ int bmc_send_command(char *cmd)
 
     AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
     return -1;
+}
+
+int bmc_file_read_str(char *file, char *result, int slen)
+{
+    char *curr = NULL;
+    char cmd[88] = {0};
+    char *delimit="^@\r\n";
+    int flag = 0, ret = 0;
+
+    ret = snprintf(cmd, sizeof(cmd), "cat %s\r\n", file);
+    if( ret >= sizeof(cmd) ){
+        AIM_LOG_ERROR("cmd size overwrite (%d,%d)\r\n", ret, sizeof(cmd));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    bmc_send_command(cmd);
+
+    strtok(tty_buf, delimit);
+    flag = 0;
+    while( (curr = strtok(NULL, delimit)) != NULL ){
+        switch (*curr) {
+        case '\n':
+        case '\r':
+        case '@':
+        case '^':
+            break;
+        default:
+            flag = 1;
+            break;
+        }
+        if( flag ){
+            break;
+        }
+    }
+
+    ret = snprintf(result, slen-1, "%s", curr);
+    if( ret >= (slen-1) ){
+        AIM_LOG_ERROR("result size overwrite (%d,%d)\r\n", ret, slen-1);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return 0;
 }
 
 int chk_numeric_char(char *data, int base)
@@ -287,6 +327,14 @@ bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
     char cmd[64] = {0};
     snprintf(cmd, sizeof(cmd), "i2cset -f -y %d 0x%x 0x%02x 0x%x\r\n", bus, devaddr, addr, value);
+    return bmc_send_command(cmd);
+}
+
+int
+bmc_i2c_write_quick_mode(uint8_t bus, uint8_t devaddr, uint8_t value)
+{
+    char cmd[64] = {0};
+    snprintf(cmd, sizeof(cmd), "i2cset -f -y %d 0x%x 0x%x\r\n", bus, devaddr, value);
     return bmc_send_command(cmd);
 }
 
