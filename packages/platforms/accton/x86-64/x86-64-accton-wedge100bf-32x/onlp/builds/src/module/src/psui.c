@@ -39,6 +39,16 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 
+#define SYS_CPLD_PATH_FMT	"/sys/bus/i2c/drivers/syscpld/12-0031/%s"
+#define PSU_PRESENT_FMT		"psu%d_present"
+#define PSU_PWROK_FMT		"psu%d_output_pwr_sts"
+
+#define PSU_PFE1100_PATH_FMT	"/sys/bus/i2c/devices/7-%s/%s\r\n"
+#define PSU_PFE1100_MODEL	"mfr_model_label"
+#define PSU_PFE1100_SERIAL	"mfr_serial_label"
+
+static const char *psu_pfedrv_i2c_devaddr[] = {"0059", "005a"};
+
 /*
  * Get all information about the given PSU oid.
  */
@@ -83,10 +93,10 @@ pmbus_parse_literal_format(uint16_t value)
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
-    int pid, value, addr;
+    int pid, value, addr, ret = 0;
+    char file[32] = {0};
+    char path[80] = {0};
     
-    uint8_t mask = 0;
-
     VALIDATE(id);
 
     pid  = ONLP_OID_ID_GET(id);
@@ -94,13 +104,22 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Get the present status
      */
-    mask = 1 << ((pid-1) * 4);
-    value = onlp_i2c_readb(1, 0x32, 0x10, ONLP_I2C_F_FORCE);
-    if (value < 0) {
+    ret = snprintf(file, sizeof(file), PSU_PRESENT_FMT, pid);
+    if( ret >= sizeof(file) ){
+        AIM_LOG_ERROR("file size overwrite (%d,%d)\r\n", ret, sizeof(file));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    ret = snprintf(path, sizeof(path), SYS_CPLD_PATH_FMT, file);
+    if( ret >= sizeof(path) ){
+        AIM_LOG_ERROR("path size overwrite (%d,%d)\r\n", ret, sizeof(path));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    if (bmc_file_read_int(&value, path, 16) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    if (value & mask) {
+    if (value) {
         info->status &= ~ONLP_PSU_STATUS_PRESENT;
         return ONLP_STATUS_OK;
     }
@@ -109,8 +128,22 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Get power good status 
      */
-    mask = 1 << ((pid-1) * 4 + 1);
-    if (!(value & mask)) {
+    ret = snprintf(file, sizeof(file), PSU_PWROK_FMT, pid);
+    if( ret >= sizeof(file) ){
+        AIM_LOG_ERROR("file size overwrite (%d,%d)\r\n", ret, sizeof(file));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    ret = snprintf(path, sizeof(path), SYS_CPLD_PATH_FMT, file);
+    if( ret >= sizeof(path) ){
+        AIM_LOG_ERROR("path size overwrite (%d,%d)\r\n", ret, sizeof(path));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    if (bmc_file_read_int(&value, path, 16) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (!value) {
         info->status |= ONLP_PSU_STATUS_FAILED;
         return ONLP_STATUS_OK;
     }
@@ -119,7 +152,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Get input output power status
      */
     value = (pid == PSU1_ID) ? 0x2 : 0x1; /* mux channel for psu */
-    if (bmc_i2c_writeb(7, 0x70, 0, value) < 0) {
+    if (bmc_i2c_write_quick_mode(7, 0x70, value) < 0) {
+        AIM_LOG_ERROR("Unable to set i2c device (7/0x70)\r\n");
         return ONLP_STATUS_E_INTERNAL;
     }
     usleep(1200);
@@ -166,10 +200,21 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Get model name */
-    bmc_i2c_readraw(7, addr, 0x9a, info->model, sizeof(info->model));
+    ret = snprintf(path, sizeof(path), PSU_PFE1100_PATH_FMT, psu_pfedrv_i2c_devaddr[pid-1], PSU_PFE1100_MODEL);
+    if( ret >= sizeof(path) ){
+        AIM_LOG_ERROR("path size overwrite (%d,%d)\r\n", ret, sizeof(path));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    bmc_file_read_str(path, info->model, sizeof(info->model));
 
     /* Get serial number */
-    return bmc_i2c_readraw(7, addr, 0x9e, info->serial, sizeof(info->serial));
+    ret = snprintf(path, sizeof(path), PSU_PFE1100_PATH_FMT, psu_pfedrv_i2c_devaddr[pid-1], PSU_PFE1100_SERIAL);
+    if( ret >= sizeof(path) ){
+        AIM_LOG_ERROR("path size overwrite (%d,%d)\r\n", ret, sizeof(path));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    bmc_file_read_str(path, info->serial, sizeof(info->serial));
+    return ONLP_STATUS_OK;
 }
 
 int
