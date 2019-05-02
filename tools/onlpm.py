@@ -872,8 +872,6 @@ class OnlPackageManager(object):
                 pg.filtered = True
             if not pg.archcheck(arches):
                 pg.filtered = True
-            if not pg.distcheck():
-                pg.filtered = True
 
     def load(self, basedir, usecache=True, rebuildcache=False):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
@@ -916,7 +914,8 @@ class OnlPackageManager(object):
                             logger.debug('Loading package file %s...' % os.path.join(root, f))
                             pg.load(os.path.join(root, f))
                             logger.debug('  Loaded package file %s' % os.path.join(root, f))
-                            self.package_groups.append(pg)
+                            if pg.distcheck():
+                                self.package_groups.append(pg)
                         except OnlPackageError, e:
                             logger.error("%s: " % e)
                             logger.warn("Skipping %s due to errors." % os.path.join(root, f))
@@ -1099,8 +1098,6 @@ class OnlPackageManager(object):
     def list_platforms(self, arch):
         platforms = []
         for pg in self.package_groups:
-            if not pg.distcheck():
-                continue
             for p in pg.packages:
                 (name, pkgArch) = OnlPackage.idparse(p.id())
                 m = re.match(r'onl-platform-config-(?P<platform>.*)', name)
