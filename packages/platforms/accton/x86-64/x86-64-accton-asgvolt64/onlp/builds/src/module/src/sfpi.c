@@ -83,13 +83,13 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 }
 int onlp_sfpi_get_cpld_addr(int port, int * addr, int *bus)
 {
-    
+
     if(port <0 || port >= 74)
         return ONLP_STATUS_E_INTERNAL;
-   
+
     /*gpon*/
     *addr=60;
-    *bus=9;  
+    *bus=9;
     if(port >=0 && port <=25)
     {
         if(port ==22 || port ==23 || port==18 || port==19)
@@ -98,7 +98,7 @@ int onlp_sfpi_get_cpld_addr(int port, int * addr, int *bus)
             *bus  = 10;
         }
         else
-        { 
+        {
             *addr = 60;
             *bus  = 9;
         }
@@ -133,7 +133,7 @@ int onlp_sfpi_get_cpld_addr(int port, int * addr, int *bus)
          *addr = 61;
          *bus  = 10;
     }
-    
+
     return ONLP_STATUS_OK;
 }
 
@@ -147,27 +147,27 @@ onlp_sfpi_is_present(int port)
      */
     int present;
     int bus=9, addr=0x60;
-    
+
     if(port <0 || port >= 74)
         return ONLP_STATUS_E_INTERNAL;
-    
-    if(onlp_sfpi_get_cpld_addr(port, &addr, &bus)!=ONLP_STATUS_OK)
+
+    if(onlp_sfpi_get_cpld_addr(port, &addr, &bus) != ONLP_STATUS_OK)
         return ONLP_STATUS_E_INTERNAL;
-    
-    
-	if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, bus, addr, (port+1)) < 0) {
+
+
+    if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, bus, addr, (port+1)) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
-    
-    
+
+
     return present;
 }
 
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    
+
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
@@ -175,7 +175,7 @@ int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     int i=0, val=0;
-   
+
     /* Populate bitmap */
     for(i = 0; i<74; i++) {
         val=0;
@@ -185,7 +185,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
             {
                 AIM_LOG_ERROR("Unable to read rx_loss status from port(%d)\r\n", i);
             }
-    
+
             if(val)
                 AIM_BITMAP_MOD(dst, i, 1);
             else
@@ -193,9 +193,9 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
         }
         else
             AIM_BITMAP_MOD(dst, i, 0);
-        
+
     }
-    
+
     return ONLP_STATUS_OK;
 }
 
@@ -211,7 +211,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     int size = 0;
     if(port <0 || port >= 74)
         return ONLP_STATUS_E_INTERNAL;
-    
+
     memset(data, 0, 256);
 
 	if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port)) != ONLP_STATUS_OK) {
@@ -232,10 +232,10 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
 {
     FILE* fp;
     char file[64] = {0};
-    
+
     if(port < 0 || port >=74)
         return ONLP_STATUS_E_INTERNAL;
-    
+
     sprintf(file, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port));
     fp = fopen(file, "r");
     if(fp == NULL) {
@@ -293,10 +293,10 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
     int rv;
     int addr=0x60;
     int bus=9;
-    
+
     if(port <0 || port >= 74)
         return ONLP_STATUS_E_INTERNAL;
-   
+
     if(onlp_sfpi_get_cpld_addr(port, &addr, &bus)!=ONLP_STATUS_OK)
         return ONLP_STATUS_E_INTERNAL;
 
@@ -308,7 +308,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 {
                     return ONLP_STATUS_OK;
                 }
-               
+
                 if (onlp_file_write_int(0, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
                     rv = ONLP_STATUS_E_INTERNAL;
@@ -316,7 +316,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 else {
                     rv = ONLP_STATUS_OK;
                 }
-                
+
                 break;
             }
 
@@ -334,13 +334,13 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     int rv;
     int addr=0x60;
     int bus=9;
-    
+
     if(port <0 || port >= 74)
         return ONLP_STATUS_E_INTERNAL;
-   
+
     if(onlp_sfpi_get_cpld_addr(port, &addr, &bus)!=ONLP_STATUS_OK)
         return ONLP_STATUS_E_INTERNAL;
-    
+
     switch(control)
         {
         case ONLP_SFP_CONTROL_RX_LOS:
