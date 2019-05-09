@@ -142,6 +142,37 @@ class OnlPackage(object):
         'DISTS' : g_dist_codename,
         }
 
+    @classmethod
+    def package_defaults_get(klass, pkg):
+        # Default key value dictionary
+        ddict = klass.DEFAULTS.copy()
+
+        #
+        # Walk up the directory heirarchy looking for either:
+        #
+        # PKG_DEFAULTS.yml -- an onlyaml file containing default package keys.
+        # PKG_DEFAULTS -- An executable producing yaml containing default package keys.
+        #
+        # All matches are evaluated and applied in reverse order such that
+        # keys deeper in the directory heirarchy override shallower keys.
+        #
+        searchdir = os.path.dirname(pkg)
+        results = []
+        while searchdir != '/':
+            f = os.path.join(searchdir, "PKG_DEFAULTS.yml")
+            if os.path.exists(f):
+                results.append(onlyaml.loadf(f))
+            f = os.path.join(searchdir, "PKG_DEFAULTS")
+            if os.path.exists(f) and os.access(f, os.X_OK):
+                results.append(yaml.load(subprocess.check_output(f, shell=True)))
+            searchdir = os.path.dirname(searchdir)
+
+        for d in reversed(results):
+            if d:
+                ddict.update(d)
+
+        return ddict
+
     ############################################################
     #
     # 'pdict' is the main package dictionary.
@@ -168,35 +199,6 @@ class OnlPackage(object):
 
         The union of 'pdict' + 'cdict' + 'ddict' must provide a complete
         package specification containing all required keys."""
-
-        # Default key value dictionary
-        if ddict is None:
-            ddict = self.DEFAULTS.copy()
-
-
-        #
-        # Walk up the directory heirarchy looking for either:
-        #
-        # PKG_DEFAULTS.yml -- an onlyaml file containing default package keys.
-        # PKG_DEFAULTS -- An executable producing yaml containing default package keys.
-        #
-        # All matches are evaluated and applied in reverse order such that
-        # keys deeper in the directory heirarchy override shallower keys.
-        #
-        searchdir = dir_
-        results = []
-        while searchdir != '/':
-            f = os.path.join(searchdir, "PKG_DEFAULTS.yml")
-            if os.path.exists(f):
-                results.append(onlyaml.loadf(f))
-            f = os.path.join(searchdir, "PKG_DEFAULTS")
-            if os.path.exists(f) and os.access(f, os.X_OK):
-                results.append(yaml.load(subprocess.check_output(f, shell=True)))
-            searchdir = os.path.dirname(searchdir)
-
-        for d in reversed(results):
-            if d:
-                ddict.update(d)
 
         # Optional common value dictionary
         if cdict is None:
@@ -553,7 +555,9 @@ class OnlPackageGroup(object):
         if not os.path.exists(pkg):
             raise OnlPackageError("Package file '%s' does not exist." % pkg)
 
-        pkg_data = onlyaml.loadf(pkg, OnlPackage.DEFAULTS)
+        ddict = OnlPackage.package_defaults_get(pkg)
+
+        pkg_data = onlyaml.loadf(pkg, ddict)
 
         pkglist = []
 
@@ -573,7 +577,7 @@ class OnlPackageGroup(object):
         for p in pkg_data['packages']:
             self.packages.append(OnlPackage(p, os.path.dirname(pkg),
                                             pkg_data.get('common', None),
-                                            None))
+                                            ddict))
 
         # This is used for the pkg_info dump
         self._pkg_info = pkg_data.copy()
