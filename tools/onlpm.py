@@ -171,7 +171,32 @@ class OnlPackage(object):
 
         # Default key value dictionary
         if ddict is None:
-            ddict = self.DEFAULTS
+            ddict = self.DEFAULTS.copy()
+
+
+        #
+        # Walk up the directory heirarchy looking for either:
+        #
+        # PKG_DEFAULTS.yml -- an onlyaml file containing default package keys.
+        # PKG_DEFAULTS -- An executable producing yaml containing default package keys.
+        #
+        # All matches are evaluated and applied in reverse order such that
+        # keys deeper in the directory heirarchy override shallower keys.
+        #
+        searchdir = dir_
+        results = []
+        while searchdir != '/':
+            f = os.path.join(searchdir, "PKG_DEFAULTS.yml")
+            if os.path.exists(f):
+                results.append(onlyaml.loadf(f))
+            f = os.path.join(searchdir, "PKG_DEFAULTS")
+            if os.path.exists(f) and os.access(f, os.X_OK):
+                results.append(yaml.load(subprocess.check_output(f, shell=True)))
+            searchdir = os.path.dirname(searchdir)
+
+        for d in reversed(results):
+            if d:
+                ddict.update(d)
 
         # Optional common value dictionary
         if cdict is None:
@@ -263,8 +288,8 @@ class OnlPackage(object):
 
         self._validate_key('name', str)
         self._validate_key('arch', str)
-        self._validate_key('copyright', str)
-        self._validate_key('changelog', str)
+        self._validate_key('copyright', str, False)
+        self._validate_key('changelog', str, False)
         self._validate_key('version', str)
         self._validate_key('maintainer', str)
         self._validate_key('depends', list, False)
@@ -272,8 +297,8 @@ class OnlPackage(object):
         self._validate_key('summary', str)
         self._validate_key('docs', list, False)
         self._validate_key('vendor', str)
-        self._validate_key('url', str)
-        self._validate_key('license', str)
+        self._validate_key('url', str, False)
+        self._validate_key('license', str, False)
 
         if not self._validate_key('desc', str, False):
             self.pkg['desc'] = self.pkg['summary']
