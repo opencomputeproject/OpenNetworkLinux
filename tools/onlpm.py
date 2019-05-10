@@ -150,26 +150,32 @@ class OnlPackage(object):
         #
         # Walk up the directory heirarchy looking for either:
         #
-        # PKG_DEFAULTS.yml -- an onlyaml file containing default package keys.
-        # PKG_DEFAULTS -- An executable producing yaml containing default package keys.
+        # [.]PKG_DEFAULTS.yml -- an onlyaml file containing default package keys.
+        # [.]PKG_DEFAULTS -- An executable producing yaml containing default package keys.
         #
         # All matches are evaluated and applied in reverse order such that
         # keys deeper in the directory heirarchy override shallower keys.
         #
-        searchdir = os.path.dirname(pkg)
-        results = []
-        while searchdir != '/':
-            f = os.path.join(searchdir, "PKG_DEFAULTS.yml")
-            if os.path.exists(f):
-                results.append(onlyaml.loadf(f))
-            f = os.path.join(searchdir, "PKG_DEFAULTS")
-            if os.path.exists(f) and os.access(f, os.X_OK):
-                results.append(yaml.load(subprocess.check_output(f, shell=True)))
-            searchdir = os.path.dirname(searchdir)
+        try:
+            searchdir = os.path.dirname(pkg)
+            results = []
+            while searchdir != '/':
+                for prefix in [ '', '.']:
+                    f = os.path.join(searchdir, "%sPKG_DEFAULTS.yml" % prefix)
+                    if os.path.exists(f):
+                        results.append(onlyaml.loadf(f))
+                    f = os.path.join(searchdir, "%sPKG_DEFAULTS" % prefix)
+                    if os.path.exists(f) and os.access(f, os.X_OK):
+                        results.append(yaml.load(subprocess.check_output(f, shell=True)))
+                searchdir = os.path.dirname(searchdir)
 
-        for d in reversed(results):
-            if d:
-                ddict.update(d)
+            for d in reversed(results):
+                if d:
+                    ddict.update(d)
+        except Exception, e:
+            sys.stderr.write("%s\n" % e)
+            sys.stderr.write("package file: %s\n" % pkg)
+            raise
 
         return ddict
 
