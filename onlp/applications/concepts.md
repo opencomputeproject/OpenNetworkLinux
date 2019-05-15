@@ -77,6 +77,8 @@ You can interrogate the Fan OID from the PSU using the normal Fan API, but the F
 These parent/child relationships allow the user of the ONLP APIs to enumerate the system topolology as a directed acyclic graph at any given time.
 OID relationships can change over time -- perhaps you remove an existing PSU which contains a temperature sensor and replace it with a PSU that does not.
 
+Here is an example OID inheritance relationship you might find on a normal pizza-box switch:
+<img src="http://opencomputeproject.github.io/OpenNetworkLinux/onlp/applications/oid-diagram.png">
 
 ## OID Interactions
 
