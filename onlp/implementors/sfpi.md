@@ -2,10 +2,11 @@
 
 The purpose of this module is to implement platform properties of the SFP OID.
 
-## ```onlp_sfpi_hdr_get()```
+## SFP OID Header
 
-You must implement this function. If an SFP is present then you must set the OID PRESENT status flag or no other operations will be performed.
-It will be assumed that the SFP module is absent.
+```onlp_sfpi_hdr_get()```
+
+The ```onlpi_sfpi_hdr_get()``` function must be implemented. If an SFP is present then you must set the OID PRESENT status flag or no other operations will be performed. It will be assumed that the SFP module is absent.
 
 ## SFP Operations
 
@@ -23,6 +24,15 @@ The MSA SFF decode for both identification and DOM information is parsed in the 
 ## SFP Implementations
 
 Supporting all relevant SFP controls, status bitmaps, and read/write operations is required to provide rich access to all required SFP features.
+
+### Bitmaps
+Supporting the SFP Bitmap APIs allows the application to aggregate important status. 
+
+### Read/Write Operations
+All sfpi_dev_{read,readb,readw,write,writeb,writew} functions should be implemented for any device/address. You should consider an SFP like a *bus, not a single device*. Module idproms @ 0x50, DOM information for SFP+ is @ 0x51, Embedded Copper PHYs @ 0x56, etc. Access to a static set of device addresses is insufficient so your ONLP implementation must be flexible enough to communicate with any given device address. 
+
+### SFP Controls
+A proper implementation of the Control API is necessary. Do not skip support for all available control fields, either get or set where applicable. 
 
 ## SFPi Documentation
 * [Doxygen](http://ocp.opennetlinux.org/onlp/group__sfpi.html)
