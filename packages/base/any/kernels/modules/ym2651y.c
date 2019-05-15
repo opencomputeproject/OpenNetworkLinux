@@ -410,6 +410,17 @@ static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
     switch (attr->index) {
     case PSU_FAN_DIRECTION: /* psu_fan_dir */
         ptr = data->fan_dir + 1;  /* Skip the first byte since it is the length of string. */
+        /* FAN direction for PTT1600's PSU, depends on 
+        4th and 3rd bit of return value of 0xC3 command */
+        if (strncmp((data->mfr_model + 1),"PTT1600", strlen("PTT1600")) == 0) {
+            /* Check if 4th bit is '1' and 3rd bit is '0' for "F2B (AFO)" FAN direction */
+            if((((data->fan_dir[0] >> 3) & 1) == 0) && (((data->fan_dir[0] >> 4) & 1) == 1)) {
+                strcpy(ptr,"AFO");
+            }/* Check if 4th bit is '0' and 3rd bit is '1' for "B2F (AFI)" FAN direction */
+            else if ((((data->fan_dir[0] >> 3) & 1) == 1) && (((data->fan_dir[0] >> 4) & 1) == 0)) {
+                strcpy(ptr,"AFI");
+            }
+        }
         break;
     case PSU_MFR_ID: /* psu_mfr_id */
             ptr = data->mfr_id + 1; /* The first byte is the count byte of string. */;
