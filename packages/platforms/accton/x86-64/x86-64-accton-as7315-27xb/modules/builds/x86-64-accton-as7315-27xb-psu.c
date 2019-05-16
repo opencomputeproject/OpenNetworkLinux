@@ -37,7 +37,7 @@
 #define PSU_STATUS_I2C_REG_OFFSET	0x2
 #define USE_BYTE_ACCESS     1       /*Somehow i2c block access is failed on this platform.*/
 
-#define IS_POWER_GOOD(id, value)	(!!(value & BIT(id + 4)))
+#define IS_POWER_GOOD(id, value)	(!!(value & BIT(id + 2)))
 #define IS_PRESENT(id, value)		(!(value & BIT(id)))
 
 static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
@@ -283,17 +283,19 @@ abort:
 #endif
 }
 
-enum psu_type {   
+enum psu_type {
     PSU_YM_1401_A,      /* AC110V - B2F */
     PSU_YM_2401_JCR,    /* AC110V - F2B */
     PSU_YM_2401_JDR,    /* AC110V - B2F */
-    PSU_YM_2401_TCR,    /* AC110V - B2F */ 
+    PSU_YM_2401_TCR,    /* AC110V - B2F */
     PSU_CPR_4011_4M11,  /* AC110V - F2B */
     PSU_CPR_4011_4M21,  /* AC110V - B2F */
     PSU_CPR_6011_2M11,  /* AC110V - F2B */
     PSU_CPR_6011_2M21,  /* AC110V - B2F */
     PSU_UM400D_01G,     /* DC48V  - F2B */
-    PSU_UM400D01_01G    /* DC48V  - B2F */
+    PSU_UM400D01_01G,   /* DC48V  - B2F */
+    PSU_BEL_TOT120,     /* DC48V  - N/A */
+
 };
 
 struct serial_number_info {
@@ -313,6 +315,7 @@ struct serial_number_info serials[] = {
     {PSU_CPR_6011_2M21, 0x46, 15},
     {PSU_UM400D_01G,    0x50,  9},
     {PSU_UM400D01_01G,  0x50, 12},
+    {PSU_BEL_TOT120,    0x25, 21},
 };
 
 static int as7315_27xb_psu_serial_number_get(struct device *dev, enum psu_type type)
@@ -330,6 +333,7 @@ static int as7315_27xb_psu_serial_number_get(struct device *dev, enum psu_type t
     case PSU_YM_2401_JCR:
     case PSU_YM_2401_TCR:
     case PSU_YM_2401_JDR:
+    case PSU_BEL_TOT120:
     {
         if(type >= sizeof(serials)/sizeof(struct serial_number_info))
             return -EINVAL;
@@ -373,7 +377,10 @@ struct model_name_info models[] = {
     {PSU_CPR_6011_2M21, 0x26, 13, "CPR-6011-2M21"},
     {PSU_UM400D_01G,    0x50,  9, "um400d01G"},
     {PSU_UM400D01_01G,  0x50, 12, "um400d01-01G"},
+    {PSU_BEL_TOT120,    0x0A, 12, "CRXT-T0T120G"},
 };
+
+
 
 static int as7315_27xb_psu_model_name_get(struct device *dev, int get_serial)
 {
