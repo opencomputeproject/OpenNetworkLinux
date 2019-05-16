@@ -28,8 +28,8 @@
 
 #include "x86_64_accton_as7315_27xb_log.h"
 
-#define CHASSIS_FAN_COUNT		2
-#define CHASSIS_THERMAL_COUNT	3
+#define CHASSIS_FAN_COUNT		7
+#define CHASSIS_THERMAL_COUNT	6
 #define CHASSIS_LED_COUNT		2
 #define CHASSIS_PSU_COUNT		2
 
@@ -42,17 +42,6 @@
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
 #define IDPROM_PATH "/sys/bus/i2c/devices/4-0057/eeprom"
-
-enum onlp_thermal_id
-{
-    THERMAL_RESERVED = 0,
-    THERMAL_CPU_CORE,
-    THERMAL_1_ON_MAIN_BROAD,
-    THERMAL_2_ON_MAIN_BROAD,
-    THERMAL_3_ON_MAIN_BROAD,
-    THERMAL_1_ON_PSU1,
-    THERMAL_1_ON_PSU2,
-};
 
 #define DEBUG_MODE 0
 
