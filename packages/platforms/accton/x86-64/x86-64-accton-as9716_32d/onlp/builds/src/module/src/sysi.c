@@ -325,7 +325,7 @@ int onlp_sysi_platform_manage_fans(void)
     if (onlp_file_read_int(&direction_val, FAN_DIRECTION_PATH) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", FAN_DIRECTION_PATH); 
     }
-    direction_val=0;
+    
     /* Get current temperature
      */
 
