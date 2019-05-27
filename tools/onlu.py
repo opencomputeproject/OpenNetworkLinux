@@ -199,13 +199,13 @@ class Lock(object):
         self.handle = open(filename, 'w')
 
     def take(self):
-        # logger.debug("taking lock %s" % self.filename)
+        logger.debug("taking lock %s" % self.filename)
         fcntl.flock(self.handle, fcntl.LOCK_EX)
-        # logger.debug("took lock %s" % self.filename)
+        logger.debug("took lock %s" % self.filename)
 
     def give(self):
         fcntl.flock(self.handle, fcntl.LOCK_UN)
-        # logger.debug("released lock %s" % self.filename)
+        logger.debug("released lock %s" % self.filename)
 
     def __enter__(self):
         self.take()
