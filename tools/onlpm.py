@@ -21,6 +21,7 @@ from string import Template
 import re
 import json
 import lsb_release
+import cPickle as pickle
 
 g_dist_codename = lsb_release.get_distro_information().get('CODENAME')
 
@@ -688,7 +689,7 @@ class OnlPackageGroup(object):
         with onlu.Lock(os.path.join(self._pkgs['__directory'], '.lock')):
             self.gmake_locked("clean", 'Clean')
 
-class OnlPackageRepo(object):
+class OnlPackageRepoUnlocked(object):
     """Package Repository and Interchange Class
 
     This class implements access to a single package repository.
@@ -716,58 +717,52 @@ class OnlPackageRepo(object):
         # The extract cache goes here
         self.extracts = os.path.join(root, 'extracts')
 
-        # All access to the repository is locked
-        self.lock = onlu.Lock(os.path.join(root, '.lock'))
-
     def add_packages(self, pkglist):
         """Add a package or list of packages to the repository."""
-        with self.lock:
-            for p in pkglist if type(pkglist) is list else [ pkglist ]:
-                if not os.path.exists(p):
-                    raise OnlPackageError("Package file '%s' does not exist." % p)
-                logger.info("adding package '%s'..." % p)
-                underscores = p.split('_')
-                # Package name is the first entry
-                package = os.path.split(underscores[0])[1]
-                # Architecture is the last entry (.deb)
-                arch = underscores[-1].split('.')[0]
-                logger.debug("+ /bin/cp %s %s/%s", p, self.repo, "binary-" + arch)
-                dstdir = os.path.join(self.repo, "binary-" + arch)
-                if not os.path.exists(dstdir):
-                    os.makedirs(dstdir)
-                logger.info("dstdir=%s"% dstdir)
+        for p in pkglist if type(pkglist) is list else [ pkglist ]:
+            if not os.path.exists(p):
+                raise OnlPackageError("Package file '%s' does not exist." % p)
+            logger.info("adding package '%s'..." % p)
+            underscores = p.split('_')
+            # Package name is the first entry
+            package = os.path.split(underscores[0])[1]
+            # Architecture is the last entry (.deb)
+            arch = underscores[-1].split('.')[0]
+            logger.debug("+ /bin/cp %s %s/%s", p, self.repo, "binary-" + arch)
+            dstdir = os.path.join(self.repo, "binary-" + arch)
+            if not os.path.exists(dstdir):
+                os.makedirs(dstdir)
+            logger.info("dstdir=%s"% dstdir)
 
-                # Remove any existing versions of this package.
-                for existing in glob.glob(os.path.join(dstdir, "%s_*.deb" % package)):
-                    logger.debug("Removing existing package %s" % existing)
-                    os.unlink(existing)
+            # Remove any existing versions of this package.
+            for existing in glob.glob(os.path.join(dstdir, "%s_*.deb" % package)):
+                logger.debug("Removing existing package %s" % existing)
+                os.unlink(existing)
 
-                shutil.copy(p, dstdir)
-                extract_dir = os.path.join(self.extracts, arch, package)
-                if os.path.exists(extract_dir):
-                    # Make sure the package gets re-extracted the next time it's requested by clearing any existing extract in the cache.
-                    logger.info("removed previous extract directory %s...", extract_dir)
-                    logger.debug("+ /bin/rm -fr %s", extract_dir)
-                    shutil.rmtree(extract_dir)
+            shutil.copy(p, dstdir)
+            extract_dir = os.path.join(self.extracts, arch, package)
+            if os.path.exists(extract_dir):
+                # Make sure the package gets re-extracted the next time it's requested by clearing any existing extract in the cache.
+                logger.info("removed previous extract directory %s...", extract_dir)
+                logger.debug("+ /bin/rm -fr %s", extract_dir)
+                shutil.rmtree(extract_dir)
 
     def remove_packages(self, pkglist):
-        with self.lock:
-            for p in pkglist if type(pkglist) is list else [ pkglist ]:
-                path = self.lookup(p)
-                if path:
-                    logger.info("removing package %s..." % p)
-                    os.unlink(path)
+        for p in pkglist if type(pkglist) is list else [ pkglist ]:
+            path = self.lookup(p)
+            if path:
+                logger.info("removing package %s..." % p)
+                os.unlink(path)
 
     def lookup_all(self, pkg):
         """Lookup all packages in the repo matching the given package identifier."""
-        with self.lock:
-            rv = []
-            (name, arch) = OnlPackage.idparse(pkg)
-            dirname = os.path.join(self.repo, "binary-" + arch)
-            if os.path.exists(dirname):
-                manifest = os.listdir(dirname)
-                rv = [ os.path.join(dirname, x) for x in manifest if arch in x and "%s_" % name in x ]
-            return rv
+        rv = []
+        (name, arch) = OnlPackage.idparse(pkg)
+        dirname = os.path.join(self.repo, "binary-" + arch)
+        if os.path.exists(dirname):
+            manifest = os.listdir(dirname)
+            rv = [ os.path.join(dirname, x) for x in manifest if arch in x and "%s_" % name in x ]
+        return rv
 
     def __contains__(self, pkg):
         r = self.lookup_all(pkg)
@@ -797,53 +792,52 @@ class OnlPackageRepo(object):
 
         PKG_TIMESTAMP = '.PKG.TIMESTAMP'
 
-        with self.lock:
-            path = self.lookup(pkg)
-            if path:
+        path = self.lookup(pkg)
+        if path:
 
-                if dstdir is None:
-                    dstdir = self.extracts
+            if dstdir is None:
+                dstdir = self.extracts
 
-                if prefix:
-                    edir = os.path.join(dstdir, pkg.replace(':', '_'))
+            if prefix:
+                edir = os.path.join(dstdir, pkg.replace(':', '_'))
+            else:
+                edir = dstdir
+
+            if not force and os.path.exists(os.path.join(edir, PKG_TIMESTAMP)):
+                if (os.path.getmtime(os.path.join(edir, PKG_TIMESTAMP)) ==
+                    os.path.getmtime(path)):
+                    # Existing extract is identical to source package
+                    logger.debug("Existing extract for %s matches the package file." % pkg)
                 else:
-                    edir = dstdir
-
-                if not force and os.path.exists(os.path.join(edir, PKG_TIMESTAMP)):
-                    if (os.path.getmtime(os.path.join(edir, PKG_TIMESTAMP)) ==
-                        os.path.getmtime(path)):
-                        # Existing extract is identical to source package
-                        logger.debug("Existing extract for %s matches the package file." % pkg)
-                    else:
-                        # Existing extract must be removed.
-                        logger.info("Existing extract for %s does not match." % pkg)
-                        force=True
-                else:
-                    # Status unknown. Really shouldn't happen.
+                    # Existing extract must be removed.
+                    logger.info("Existing extract for %s does not match." % pkg)
                     force=True
+            else:
+                # Status unknown. Really shouldn't happen.
+                force=True
 
-                if force:
-                    if os.path.exists(edir) and prefix:
-                        shutil.rmtree(edir)
-                    if not os.path.exists(edir):
-                        os.makedirs(edir)
+            if force:
+                if os.path.exists(edir) and prefix:
+                    logger.debug("rm -rf %s" % edir)
+                    shutil.rmtree(edir)
+                if not os.path.exists(edir):
+                    os.makedirs(edir)
 
-                    onlu.execute([ 'dpkg', '-x', path, edir ], sudo=sudo)
-                    onlu.execute([ 'touch', '-r', path, os.path.join(edir, PKG_TIMESTAMP) ], sudo=sudo)
+                onlu.execute([ 'dpkg', '-x', path, edir ], sudo=sudo)
+                onlu.execute([ 'touch', '-r', path, os.path.join(edir, PKG_TIMESTAMP) ], sudo=sudo)
 
-                if remove_ts and os.path.exists(os.path.join(edir, PKG_TIMESTAMP)):
-                    onlu.execute([ 'rm', os.path.join(edir, PKG_TIMESTAMP) ], sudo=sudo)
+            if remove_ts and os.path.exists(os.path.join(edir, PKG_TIMESTAMP)):
+                onlu.execute([ 'rm', os.path.join(edir, PKG_TIMESTAMP) ], sudo=sudo)
 
-                return edir
+            return edir
 
-            return False
+        return False
 
     def contents(self, pkg):
-        with self.lock:
-            path = self.lookup(pkg)
-            if path:
-                print "** %s contents:" % path
-                onlu.execute(['dpkg', '-c', path])
+        path = self.lookup(pkg)
+        if path:
+            print "** %s contents:" % path
+            onlu.execute(['dpkg', '-c', path])
 
 
     def get_file(self, pkg, filename, force=False, ex=True):
@@ -889,6 +883,48 @@ class OnlPackageRepo(object):
 
         return None
 
+
+class OnlPackageRepo(object):
+    def __init__(self, root, packagedir='packages'):
+        self.r = OnlPackageRepoUnlocked(root, packagedir)
+        self.lock = onlu.Lock(os.path.join(root, '.lock'))
+
+    def __contains__(self, pkg):
+        with self.lock:
+            return self.r.__contains__(pkg)
+
+    def get_dir(self, pkg, dirname, force=False, ex=True):
+        with self.lock:
+            return self.r.get_dir(pkg, dirname, force, ex)
+
+    def get_file(self, pkg, filename, force=False, ex=True):
+        with self.lock:
+            return self.r.get_file(pkg, filename, force, ex)
+
+    def add_packages(self, pkglist):
+        with self.lock:
+            return self.r.add_packages(pkglist)
+
+    def remove_packages(self, pkglist):
+        with self.lock:
+            return self.r.remove_packages(pkglist)
+
+    def lookup(self, pkg, ex=False):
+        with self.lock:
+            return self.r.lookup(pkg, ex)
+
+    def lookup_all(self, pkg):
+        with self.lock:
+            return self.r.lookup_all(pkg)
+
+    def extract(self, pkg, dstdir=None, prefix=True, force=False, remove_ts=False, sudo=False):
+        with self.lock:
+            return self.r.extract(pkg, dstdir, prefix, force, remove_ts, sudo)
+
+    def contents(self, pkg):
+        with self.lock:
+            return self.r.contents(pkg)
+
 class OnlPackageManager(object):
 
     def __init__(self):
@@ -908,35 +944,42 @@ class OnlPackageManager(object):
             if not pg.archcheck(arches):
                 pg.filtered = True
 
-    def load(self, basedir, usecache=True, rebuildcache=False):
+    def __cache_name(self, basedir):
+        return os.path.join(basedir, '.PKGs.cache.%s' % g_dist_codename)
+
+    def __write_cache(self, basedir):
+        cache = self.__cache_name(basedir)
+        logger.debug("Writing the package cache %s..." % cache)
+        pickle.dump(self.package_groups, open(cache, "wb"))
+
+    def __load_cache(self, basedir, ro):
+        cache=self.__cache_name(basedir)
+
+        # Lock the cache file
+        with onlu.Lock(cache + ".lock"):
+            if os.path.exists(cache):
+                logger.debug("Loading from package cache %s" % cache)
+
+                try:
+                    self.package_groups = pickle.load(open(cache, "rb"))
+                except Exception, e:
+                    logger.warn("The existing package cache is corrupted. It will be rebuilt.")
+                    return False
+
+                if ro:
+                    return True
+
+                # Validate and update the cache
+                for pg in self.package_groups:
+                    pg.reload()
+
+                self.__write_cache(basedir)
+                return True
+
+        return False
+
+    def __build_cache(self, basedir):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
-
-        import cPickle as pickle
-        CACHE=os.path.join(basedir, '.PKGs.cache.%s' % g_dist_codename)
-
-        # Lock the CACHE file
-        with onlu.Lock(CACHE + ".lock"):
-            if usecache:
-                if os.path.exists(CACHE):
-                    if rebuildcache:
-                        logger.debug("Removing package cache %s" % CACHE)
-                        os.unlink(CACHE)
-                    else:
-                        logger.debug("Loading from package cache %s" % CACHE)
-                        self.package_groups = pickle.load(open(CACHE, "rb"))
-
-                        # Validate and update the cache
-                        for pg in self.package_groups:
-                            pg.reload()
-
-                        # Update cache and return
-                        pickle.dump(self.package_groups, open(CACHE, "wb"))
-                        return
-            else:
-                if os.path.exists(CACHE):
-                    logger.debug("Removing package cache %s" % CACHE)
-                    os.unlink(CACHE)
-
 
         for root, dirs, files in os.walk(basedir):
             for f in files:
@@ -955,10 +998,16 @@ class OnlPackageManager(object):
                             logger.error("%s: " % e)
                             logger.warn("Skipping %s due to errors." % os.path.join(root, f))
 
+    def load(self, basedir, usecache=True, rebuildcache=False, roCache=False):
+        if usecache is True and rebuildcache is False:
+            if self.__load_cache(basedir, roCache):
+                return
+
+        self.__build_cache(basedir)
+
         if usecache:
             # Write the package cache
-            logger.debug("Writing the package cache %s..." % CACHE)
-            pickle.dump(self.package_groups, open(CACHE, "wb"))
+            self.__write_cache(basedir)
 
 
     def __contains__(self, pkg):
@@ -1088,22 +1137,30 @@ class OnlPackageManager(object):
 
             if d.get('broken', False):
                 TARGETS[target]['stage'] = 20
+            elif d.get('stage', False):
+                TARGETS[target]['stage'] = d.get('stage')
             elif len(depends) == 0:
                 TARGETS[target]['stage'] = 0
             else:
                 TARGETS[target]['stage'] = 1
 
+        handle.write("# -*- GNUMakefile -*-\n\n")
+        handle.write("THIS_DIR := $(dir $(lastword $(MAKEFILE_LIST)))\n")
+        handle.write("SHELL := /bin/bash\n")
+        handle.write("BUILDING := $(THIS_DIR)/building\n")
+        handle.write("FINISHED := $(THIS_DIR)/finished\n")
+        handle.write("$(shell mkdir -p $(BUILDING) $(FINISHED))\n\n")
 
         handle.write("############################################################\n")
         handle.write("#\n")
         handle.write("# These are the rules that build each individual package.\n")
         handle.write("#\n")
         handle.write("############################################################\n")
+
         for (t, d) in TARGETS.iteritems():
             handle.write("%s : %s\n" % (t, d['depends']))
-            handle.write("\ttouch building/%s\n" % t)
-            handle.write("\tonlpm.py --require %s\n" % d['package'])
-            handle.write("\tmv building/%s finished/\n" % (t))
+            handle.write("\tset -o pipefail && onlpm.py --ro-cache --require %s |& tee $(BUILDING)/$@\n" % (d['package']))
+            handle.write("\tmv $(BUILDING)/$@ $(FINISHED)/\n")
 
         for (arch, targets) in ARCHS.iteritems():
             handle.write("############################################################\n")
@@ -1203,6 +1260,7 @@ if __name__ == '__main__':
     ap.add_argument("--quiet", action='store_true')
     ap.add_argument("--rebuild-pkg-cache", action='store_true', default=os.environ.get('ONLPM_OPTION_REBUILD_PKG_CACHE', False))
     ap.add_argument("--no-pkg-cache", action='store_true', default=os.environ.get('ONLPM_OPTION_NO_PKG_CACHE', False))
+    ap.add_argument("--ro-cache", action='store_true', help="Assume existing package cache is up-to-date and read-only. Should be specified for parallel builds.")
     ap.add_argument("--pkg-info", action='store_true')
     ap.add_argument("--skip-missing", action='store_true')
     ap.add_argument("--try-arches", nargs='+', metavar='ARCH')
@@ -1266,7 +1324,7 @@ if __name__ == '__main__':
 
         for pdir in ops.packagedirs:
             logger.debug("Loading package dir %s..." % pdir)
-            pm.load(pdir, usecache=not ops.no_pkg_cache, rebuildcache=ops.rebuild_pkg_cache)
+            pm.load(pdir, usecache=not ops.no_pkg_cache, rebuildcache=ops.rebuild_pkg_cache, roCache=ops.ro_cache)
             logger.debug("  Loaded package dir %s" % pdir)
 
         if ops.list_tagged:
@@ -1334,19 +1392,19 @@ if __name__ == '__main__':
 
         if ops.find_file:
             (p, f) = ops.find_file
-            pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+            pm.require(p, force=ops.force, build_missing=False)
             path = pm.opr.get_file(p, f)
             print path
 
         if ops.find_dir:
             (p, d) = ops.find_dir
-            pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+            pm.require(p, force=ops.force, build_missing=False)
             path = pm.opr.get_dir(p, d)
             print path
 
         if ops.link_file:
             for (p, f, dst) in ops.link_file:
-                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+                pm.require(p, force=ops.force, build_missing=False)
                 path = pm.opr.get_file(p, f)
                 if dst == '.':
                     dst = f
@@ -1356,7 +1414,7 @@ if __name__ == '__main__':
 
         if ops.link_dir:
             for (p, d, dst) in ops.link_dir:
-                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+                pm.require(p, force=ops.force, build_missing=False)
                 path = pm.opr.get_dir(p, d)
                 if dst == '.':
                     dst = d
@@ -1366,7 +1424,7 @@ if __name__ == '__main__':
 
         if ops.copy_file:
             for (p, f, dst) in ops.copy_file:
-                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+                pm.require(p, force=ops.force, build_missing=False)
                 path = pm.opr.get_file(p, f)
                 if dst == '.':
                     dst = f
@@ -1376,7 +1434,7 @@ if __name__ == '__main__':
 
         if ops.extract_dir:
             for (p, d) in ops.extract_dir:
-                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
+                pm.require(p, force=ops.force, build_missing=False)
                 pm.opr.extract(p, dstdir=d, prefix=False, force=True, remove_ts=True, sudo=ops.sudo)
 
         ############################################################
