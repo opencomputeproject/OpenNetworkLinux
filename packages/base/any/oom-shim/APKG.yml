@@ -5,6 +5,9 @@
 # Requires: ARCH, TOOLCHAIN
 #
 ############################################################
+prerequisites:
+  packages: [ "onlp:$ARCH" ]
+
 variables:
     libdir: /lib/${TOOLCHAIN}
 
@@ -27,7 +30,3 @@ packages:
       builds/$BUILD_DIR/${TOOLCHAIN}/bin/liboom-south.so : $libdir/
 
     changelog:  Initial code for 2016 OCP Demo
-
-
-
-
