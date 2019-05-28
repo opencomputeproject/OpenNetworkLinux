@@ -1150,6 +1150,7 @@ class OnlPackageManager(object):
         handle.write("BUILDING := $(THIS_DIR)/building\n")
         handle.write("FINISHED := $(THIS_DIR)/finished\n")
         handle.write("$(shell mkdir -p $(BUILDING) $(FINISHED))\n\n")
+        handle.write("-include Make.local\n\n")
 
         handle.write("############################################################\n")
         handle.write("#\n")
