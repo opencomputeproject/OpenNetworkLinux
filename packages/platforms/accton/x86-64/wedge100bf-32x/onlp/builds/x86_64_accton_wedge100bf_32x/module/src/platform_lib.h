@@ -48,21 +48,26 @@ enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
-    THERMAL_1_ON_MAIN_BROAD,
-    THERMAL_2_ON_MAIN_BROAD,
-    THERMAL_3_ON_MAIN_BROAD,
-    THERMAL_4_ON_MAIN_BROAD,
-    THERMAL_5_ON_MAIN_BROAD,
-    THERMAL_6_ON_MAIN_BROAD,
-    THERMAL_7_ON_MAIN_BROAD,
+    THERMAL_1_ON_MAIN_BOARD,
+    THERMAL_2_ON_MAIN_BOARD,
+    THERMAL_3_ON_MAIN_BOARD,
+    THERMAL_4_ON_MAIN_BOARD,
+    THERMAL_5_ON_MAIN_BOARD,
+    THERMAL_6_ON_MAIN_BOARD,
+    THERMAL_7_ON_MAIN_BOARD,
 };
 
 int bmc_send_command(char *cmd);
+int bmc_file_read_str(char *file, char *result, int slen);
 int bmc_file_read_int(int* value, char *file, int base);
 int bmc_i2c_readb(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value);
+int bmc_i2c_write_quick_mode(uint8_t bus, uint8_t devaddr, uint8_t value);
 int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data_size);
+
+int bmc_tty_init(void);
+int bmc_tty_deinit(void);
 
 #endif  /* __PLATFORM_LIB_H__ */
 

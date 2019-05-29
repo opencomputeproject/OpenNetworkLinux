@@ -28,13 +28,6 @@
 #include <onlp/platformi/ledi.h>
 #include "platform_lib.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_LED(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
 /* LED related data
  */
 enum onlp_led_id
@@ -83,33 +76,58 @@ static onlp_led_info_t linfo[] =
     { }, /* Not used */
     {
         { ONLP_LED_ID_CREATE(LED_SYS1), "Chassis LED 1 (SYS LED 1)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF |
+        ONLP_LED_CAPS_OFF |
         ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_GREEN_BLINKING |
         ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_RED_BLINKING   |
         ONLP_LED_CAPS_BLUE   | ONLP_LED_CAPS_BLUE_BLINKING,
     },
     {
         { ONLP_LED_ID_CREATE(LED_SYS2), "Chassis LED 1 (SYS LED 2)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF |
+        ONLP_LED_CAPS_OFF |
         ONLP_LED_CAPS_GREEN  | ONLP_LED_CAPS_GREEN_BLINKING |
         ONLP_LED_CAPS_RED    | ONLP_LED_CAPS_RED_BLINKING   |
         ONLP_LED_CAPS_BLUE   | ONLP_LED_CAPS_BLUE_BLINKING,
     },
 };
 
-/*
- * This function will be called prior to any other onlp_ledi_* functions.
+/**
+ * @brief Software initialization of the LED module.
  */
-int
-onlp_ledi_init(void)
-{
+int onlp_ledi_sw_init(void) {
     return ONLP_STATUS_OK;
 }
 
-static int
-reg_value_to_onlp_led_mode(enum onlp_led_id id, int value)
+/**
+ * @brief Hardware initialization of the LED module.
+ * @param flags The hardware initialization flags.
+ */
+int onlp_ledi_hw_init(uint32_t flags) {
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Deinitialize the LED software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resource leaks.
+ */
+int onlp_ledi_sw_denit(void) {
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the LED's oid header.
+ * @param id The LED OID.
+ * @param[out] rv Receives the header.
+ */
+int onlp_ledi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* rv) {
+    onlp_led_info_t info;
+    onlp_ledi_info_get(id, &info);
+    *rv = info.hdr;
+    return ONLP_STATUS_OK;
+}
+
+static int reg_value_to_onlp_led_mode(enum onlp_led_id id, int value)
 {
     int i;
 
@@ -124,8 +142,7 @@ reg_value_to_onlp_led_mode(enum onlp_led_id id, int value)
     return ONLP_LED_MODE_AUTO;
 }
 
-static int
-onlp_led_mode_to_reg_value(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
+static int onlp_led_mode_to_reg_value(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
     int i;
 
@@ -140,51 +157,32 @@ onlp_led_mode_to_reg_value(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
     return 0;
 }
 
-int
-onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
+int onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
-    int  lid, value;
-
-    VALIDATE(id);
-    lid = ONLP_OID_ID_GET(id);
+    int  value;
 
     /* Set the onlp_oid_hdr_t and capabilities */
-    *info = linfo[ONLP_OID_ID_GET(id)];
+    *info = linfo[id];
 
-    value = onlp_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset, ONLP_I2C_F_FORCE);
+    value = onlp_i2c_readb(led_addr[id].bus, led_addr[id].devaddr, led_addr[id].offset, ONLP_I2C_F_FORCE);
     if (value < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    info->mode = reg_value_to_onlp_led_mode(lid, value);
-
-    /* Set the on/off status */
-    if (info->mode != ONLP_LED_MODE_OFF) {
-        info->status |= ONLP_LED_STATUS_ON;
-    }
+    info->mode = reg_value_to_onlp_led_mode(id, value);
 
     return ONLP_STATUS_OK;
 }
 
-/*
- * Turn an LED on or off.
- *
- * This function will only be called if the LED OID supports the ONOFF
- * capability.
- *
- * What 'on' means in terms of colors or modes for multimode LEDs is
- * up to the platform to decide. This is intended as baseline toggle mechanism.
+/**
+ * @brief Get the fan capabilities.
+ * @param id The fan id.
+ * @param[out] rv The fan capabilities
  */
-int
-onlp_ledi_set(onlp_oid_t id, int on_or_off)
-{
-    VALIDATE(id);
-
-    if (!on_or_off) {
-        return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
-    }
-
-    return ONLP_STATUS_E_UNSUPPORTED;
+int onlp_ledi_caps_get(onlp_oid_id_t id, uint32_t* rv) {
+    
+    *rv = linfo[id].caps;
+    return ONLP_STATUS_OK;
 }
 
 /*
@@ -193,16 +191,12 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
  *
  * Only modes reported in the LED's capabilities will be attempted.
  */
-int
-onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
+int onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    int  lid, value;    
-
-    VALIDATE(id);
-    lid = ONLP_OID_ID_GET(id);
-
-    value = onlp_led_mode_to_reg_value(lid, mode);
-    if (onlp_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset, value, ONLP_I2C_F_FORCE) < 0) {
+    int  value;    
+    
+    value = onlp_led_mode_to_reg_value(id, mode);
+    if (onlp_i2c_writeb(led_addr[id].bus, led_addr[id].devaddr, led_addr[id].offset, value, ONLP_I2C_F_FORCE) < 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -210,11 +204,14 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 }
 
 /*
- * Generic LED ioctl interface.
+ * This function sets the LED character of the given OID.
+ *
+ * This function is only relevant if the LED OID supports character
+ * set capabilities.
+ *
+ * This function is optional unless the functionality is available.
  */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
+int onlp_ledi_char_set(onlp_oid_t id, char c)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
