@@ -20,7 +20,7 @@ If the SET capability flags are set by ```onlp_ledi_info_get()``` then the ```on
 They will not be called unless the capabilities are reported.
 
 ## Ledi Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__ledi.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__ledi.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/ledi.h)
 * [Example Implementation](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/platforms/accton/x86-64/as7712-32x/onlp/builds/x86_64_accton_as7712_32x/module/src/ledi.c)
 

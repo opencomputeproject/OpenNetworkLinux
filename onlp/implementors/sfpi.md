@@ -35,7 +35,7 @@ All sfpi_dev_{read,readb,readw,write,writeb,writew} functions should be implemen
 A proper implementation of the Control API is necessary. Do not skip support for all available control fields, either get or set where applicable. 
 
 ## SFPi Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__sfpi.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__sfpi.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/sfpi.h)
 * [Example Implementation](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/platforms/accton/x86-64/as7712-32x/onlp/builds/x86_64_accton_as7712_32x/module/src/sfpi.c)
 

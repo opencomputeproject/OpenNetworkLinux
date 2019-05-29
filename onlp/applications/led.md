@@ -13,7 +13,7 @@ LED features include things like available colors, blinking modes, and character
 You can change the current mode of the LED if supported.
 
 ## LED Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-led.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__oid-led.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/led.h)
 
 ---

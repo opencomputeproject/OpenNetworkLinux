@@ -45,7 +45,7 @@ Aggregating ```TX_FAULT``` might still be a useful but no bitmap API is currentl
 
 ## SFP Documentation
 
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-sfp.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__oid-sfp.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/sfp.h)
 
 ---

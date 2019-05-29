@@ -24,7 +24,7 @@ Think linecard or module port chassis.
 Modules heirarchies are visible to the user.
 
 # Modulei Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__modulei.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__modulei.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/moduleii.h)
 
 

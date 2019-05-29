@@ -7,7 +7,7 @@ The current status of a temperature sensors is queried using ```onlp_thermal_inf
 Thermal features include current temperature and any warning or shutdown thresholds for the given sensor.
 
 ## Thermal Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/thermal_8h.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/thermal_8h.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/thermal.h)
 
 ---

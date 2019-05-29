@@ -21,7 +21,7 @@ While the Generic OID can be a parent container for other OIDs it is generally d
 There are no defined behaviors for the Generic OID.
 
 # Generici Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__generici.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__generici.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/genericii.h)
 
 

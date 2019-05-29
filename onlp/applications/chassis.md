@@ -24,7 +24,7 @@ It is possible to query the Chassis for any generic debug, internal state or sta
 
 ## Chassis Documentation
 
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__oid-chassis.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__oid-chassis.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/chassis.h)
 
 ---

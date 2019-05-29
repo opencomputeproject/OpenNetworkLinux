@@ -16,5 +16,5 @@ examine them directly in the case of system debugging or technical support.
 While you can call this API it is usually invoked via the command line tools.
 
 ## Platform Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__platform.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__platform.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platform.h)

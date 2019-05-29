@@ -16,7 +16,7 @@ Supporting these on anything other than the Chassis OID is optional.
 Should a FRU or Module support either of these attributes then you are encouraged to support them on those OIDs as well.
 
 ## Attributei Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__attributei.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__attributei.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/attributei.h)
 
 ---

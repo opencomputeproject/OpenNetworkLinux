@@ -16,4 +16,4 @@ The ONLP API user documentation for Platform developers who which to implement s
 
 ## ONLP API Reference
 
-The ONLP Reference Documentation is maintained using Doxygen and can be browsed [here](http://ocp.opennetlinux.org/onlp/index.html).
+The ONLP Reference Documentation is maintained using Doxygen and can be browsed [here](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/index.html).

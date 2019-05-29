@@ -25,7 +25,7 @@ This returns the full information structure for the PSU. This includes the capab
 There are no defined APIs for setting any PSU values. This may change in the future.
 
 ## PSUi Documentation
-* [Doxygen](http://ocp.opennetlinux.org/onlp/group__psui.html)
+* [Doxygen](http://opencomputeproject.github.io/OpenNetworkLinux/onlp/doxygen/html/group__psui.html)
 * [Header](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/base/any/onlp/src/onlp/module/inc/onlp/platformi/psui.h)
 * [Example Implementation](https://github.com/opencomputeproject/OpenNetworkLinux/blob/ONLPv2/packages/platforms/accton/x86-64/as7712-32x/onlp/builds/x86_64_accton_as7712_32x/module/src/psui.c)
 
