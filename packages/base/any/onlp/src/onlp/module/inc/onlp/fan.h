@@ -65,7 +65,7 @@ typedef struct onlp_fan_info_s {
     /** Current direction */
     onlp_fan_dir_t dir;
 
-    /** Capabilities - a combination of @ref onlp_fan_caps_t */
+    /** Capabilities - a combination of @ref onlp_fan_caps_e. */
     uint32_t caps;
 
     /** Current fan speed, in RPM, if available */

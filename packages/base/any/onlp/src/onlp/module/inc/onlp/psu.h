@@ -68,7 +68,7 @@ typedef struct onlp_psu_info_t {
     /** Serial Number */
     char serial[ONLP_CONFIG_INFO_STR_MAX];
 
-    /** Capabilities - a combination of @ref onlp_psu_caps_t */
+    /** Capabilities - a combination of @ref onlp_psu_caps_e */
     uint32_t caps;
 
     /** Type */
