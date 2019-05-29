@@ -1393,19 +1393,19 @@ if __name__ == '__main__':
 
         if ops.find_file:
             (p, f) = ops.find_file
-            pm.require(p, force=ops.force, build_missing=False)
+            pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
             path = pm.opr.get_file(p, f)
             print path
 
         if ops.find_dir:
             (p, d) = ops.find_dir
-            pm.require(p, force=ops.force, build_missing=False)
+            pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
             path = pm.opr.get_dir(p, d)
             print path
 
         if ops.link_file:
             for (p, f, dst) in ops.link_file:
-                pm.require(p, force=ops.force, build_missing=False)
+                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
                 path = pm.opr.get_file(p, f)
                 if dst == '.':
                     dst = f
@@ -1415,7 +1415,7 @@ if __name__ == '__main__':
 
         if ops.link_dir:
             for (p, d, dst) in ops.link_dir:
-                pm.require(p, force=ops.force, build_missing=False)
+                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
                 path = pm.opr.get_dir(p, d)
                 if dst == '.':
                     dst = d
@@ -1425,7 +1425,7 @@ if __name__ == '__main__':
 
         if ops.copy_file:
             for (p, f, dst) in ops.copy_file:
-                pm.require(p, force=ops.force, build_missing=False)
+                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
                 path = pm.opr.get_file(p, f)
                 if dst == '.':
                     dst = f
@@ -1435,7 +1435,7 @@ if __name__ == '__main__':
 
         if ops.extract_dir:
             for (p, d) in ops.extract_dir:
-                pm.require(p, force=ops.force, build_missing=False)
+                pm.require(p, force=ops.force, build_missing=not ops.no_build_missing)
                 pm.opr.extract(p, dstdir=d, prefix=False, force=True, remove_ts=True, sudo=ops.sudo)
 
         ############################################################
