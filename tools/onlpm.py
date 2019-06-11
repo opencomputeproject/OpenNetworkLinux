@@ -723,7 +723,7 @@ class OnlPackageRepoUnlocked(object):
             if not os.path.exists(p):
                 raise OnlPackageError("Package file '%s' does not exist." % p)
             logger.info("adding package '%s'..." % p)
-            underscores = p.split('_')
+            underscores = os.path.basename(p).split('_')
             # Package name is the first entry
             package = os.path.split(underscores[0])[1]
             # Architecture is the last entry (.deb)
@@ -736,7 +736,7 @@ class OnlPackageRepoUnlocked(object):
 
             # Remove any existing versions of this package.
             for existing in glob.glob(os.path.join(dstdir, "%s_*.deb" % package)):
-                logger.debug("Removing existing package %s" % existing)
+                logger.info("Removing existing package %s" % existing)
                 os.unlink(existing)
 
             shutil.copy(p, dstdir)
