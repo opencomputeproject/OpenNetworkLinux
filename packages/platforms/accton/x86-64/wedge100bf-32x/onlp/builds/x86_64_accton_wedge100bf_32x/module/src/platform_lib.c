@@ -164,7 +164,7 @@ int bmc_send_command(char *cmd)
         snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "%s", cmd);
         ret = tty_exec_buf(TTY_I2C_TIMEOUT, TTY_PROMPT);
         if (ret != 0) {
-//            AIM_LOG_ERROR("ERROR: bmc_send_command(%s) timed out\n", cmd);
+            AIM_LOG_ERROR("ERROR: bmc_send_command(%s) timed out\n", cmd);
             continue;
         }
 

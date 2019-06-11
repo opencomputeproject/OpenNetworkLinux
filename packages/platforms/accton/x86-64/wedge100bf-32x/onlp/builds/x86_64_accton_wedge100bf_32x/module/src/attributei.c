@@ -64,13 +64,5 @@ int onlp_attributei_asset_info_get(onlp_oid_t oid, onlp_asset_info_t* rp)
   ONIE_FIELD_CPY(rp, onie_info, serial_number)
   ONIE_FIELD_CPY(rp, onie_info, manufacture_date)
 
-  // FIXME: this is for testing only, not for production.....
-  rp->date = NULL;
-  rp->hardware_revision = NULL;
-  rp->firmware_revision = NULL;
-  rp->cpld_revision = NULL;
-  rp->description = NULL;
-  rp->additional = NULL;
-
   return ONLP_STATUS_OK;
 }
