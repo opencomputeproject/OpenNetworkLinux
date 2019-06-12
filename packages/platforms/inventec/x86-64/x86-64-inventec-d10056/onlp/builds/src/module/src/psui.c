@@ -97,7 +97,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     char *list1[]= {info->model,info->serial};
     int* list2[]= {0,0,&info->mvin,&info->mvout,&info->miin,&info->miout,&info->mpin,&info->mpout};
-    char* path_list[]= {"vender","serial","vin","vout","iin","iout","pin","pout"};
+    char* path_list[]= {"vendor","serial","vin","vout","iin","iout","pin","pout"};
 
     int i=0;
     for (i=0; i<8; i++) {
