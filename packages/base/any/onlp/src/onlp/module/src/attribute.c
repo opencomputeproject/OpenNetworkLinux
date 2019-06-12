@@ -109,8 +109,8 @@ onlp_attribute_get_locked__(onlp_oid_t oid, const char* attribute,
 ONLP_LOCKED_API3(onlp_attribute_get, onlp_oid_t, oid, const char*, attribute, void**, value)
 
 
-int
-onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rvp)
+static int
+onlp_attribute_onie_info_get_locked__(onlp_oid_t oid, onlp_onie_info_t** rvp)
 {
     int rv;
     onlp_onie_info_t* rp;
@@ -130,6 +130,7 @@ onlp_attribute_onie_info_get(onlp_oid_t oid, onlp_onie_info_t** rvp)
     *rvp = rp;
     return rv;
 }
+ONLP_LOCKED_API2(onlp_attribute_onie_info_get, onlp_oid_t, oid, onlp_onie_info_t**, rvp);
 
 int
 onlp_attribute_onie_info_free(onlp_oid_t oid, onlp_onie_info_t* p)
@@ -186,8 +187,8 @@ onlp_attribute_onie_info_show_json(onlp_oid_t oid, aim_pvs_t* pvs)
 }
 
 
-int
-onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rvp)
+static int
+onlp_attribute_asset_info_get_locked__(onlp_oid_t oid, onlp_asset_info_t** rvp)
 {
     int rv;
     onlp_asset_info_t* rp;
@@ -207,6 +208,7 @@ onlp_attribute_asset_info_get(onlp_oid_t oid, onlp_asset_info_t** rvp)
     *rvp = rp;
     return rv;
 }
+ONLP_LOCKED_API2(onlp_attribute_asset_info_get, onlp_oid_t, oid, onlp_asset_info_t**, rvp);
 
 int
 onlp_attribute_asset_info_free(onlp_oid_t oid, onlp_asset_info_t* p)
