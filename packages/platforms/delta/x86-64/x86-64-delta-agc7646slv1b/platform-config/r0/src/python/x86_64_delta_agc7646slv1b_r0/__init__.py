@@ -3,12 +3,10 @@ from onl.platform.delta import *
 import os.path
 import subprocess
 
-class OnlPlatform_x86_64_delta_agc7646slv1b_r0(OnlPlatformDelta,
-                                              OnlPlatformPortConfig_32x100):
+class OnlPlatform_x86_64_delta_agc7646slv1b_r0(OnlPlatformDelta, OnlPlatformPortConfig_46x10_6x100):
     PLATFORM='x86-64-delta-agc7646slv1b-r0'
     MODEL="AGC7646SLV1B"
     SYS_OBJECT_ID=".7648.1"
-
 
     def baseconfig(self):
         #Check BMC monitor status
@@ -20,9 +18,6 @@ class OnlPlatform_x86_64_delta_agc7646slv1b_r0(OnlPlatformDelta,
         os.system("i2cset -y 0 0x31 0x14 0xfd")
         os.system("echo 1 > /sys/bus/i2c/devices/i2c-0/firmware_node/physical_node/remove")
         os.system("echo 1 > /sys/bus/pci/rescan")
-
-        #Insert gpio_pca953x module
-        os.system('modprobe gpio_pca953x')
 
         #Insert tmp401(tmp431/tmp432) module
         os.system('modprobe tmp401')
@@ -38,12 +33,6 @@ class OnlPlatform_x86_64_delta_agc7646slv1b_r0(OnlPlatformDelta,
 
         #Insert qsfp mosule
         self.insmod('optoe')
-
-        #Fantray present(fan1:499, fan2:498, fan3:497, fan4:496)
-        os.system("echo 496 > /sys/class/gpio/export")
-        os.system("echo 497 > /sys/class/gpio/export")
-        os.system("echo 498 > /sys/class/gpio/export")
-        os.system("echo 499 > /sys/class/gpio/export")
 
         #Restore BMC Monitor status
         if bmc_mon_status == ' 00\n':
