@@ -89,6 +89,7 @@ enum onlp_thermal_id {
 };
 
 #define ONLP_THERMAL_COUNT 14 /*include "reserved"*/
+#define THERMAL_ON_CHASSIS 10
 
 /* Fan definitions*/
 enum onlp_fan_id {
@@ -102,6 +103,7 @@ enum onlp_fan_id {
 };
 
 #define ONLP_FAN_COUNT 6 /*include "reserved"*/
+#define FAN_ON_CHASSIS 4
 
 /* PSU definitions*/
 enum onlp_psu_id {
@@ -111,6 +113,7 @@ enum onlp_psu_id {
 };
 
 #define ONLP_PSU_COUNT 2 /*include "reserved"*/
+#define PSU_ON_CHASSIS 2
 
 /* LED definitions*/
 enum onlp_led_id {
@@ -123,7 +126,7 @@ enum onlp_led_id {
 };
 
 #define ONLP_LED_COUNT 5 /*include "reserved"*/
-
+#define LED_ON_CHASSIS 1
 
 /* platform functions*/
 #define PLATFORM_HWMON_DIAG_LOCK platform_hwmon_diag_enable_write(0)
