@@ -61,6 +61,19 @@ static char* cpu_coretemp_files[] =
     NULL,
 };
 
+static char* board_devfiles__[] =  /* must map with onlp_thermal_id */
+{
+    NULL,
+    NULL,                  /* CPU_CORE files */
+    NULL,
+    NULL,
+    NULL,
+    "/sys/bus/i2c/devices/13-005b/psu_temp1_input",
+    "/sys/bus/i2c/devices/12-0058/psu_temp1_input",
+};
+
+
+
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
     { }, /* Not used */
@@ -132,6 +145,13 @@ onlp_thermali_mb_channel_set(int tid)
     return ONLP_STATUS_OK;
 }
 
+
+int
+onlp_thermali_read_psu(int tid, onlp_thermal_info_t* info)
+{
+    return onlp_file_read_int(&info->mcelsius, board_devfiles__[tid]);
+}
+
 int
 onlp_thermali_read_mainboard(int tid, onlp_thermal_info_t* info)
 {
@@ -141,6 +161,10 @@ onlp_thermali_read_mainboard(int tid, onlp_thermal_info_t* info)
     uint8_t addr;
     int16_t s16;
     int32_t s32;
+
+    if (tid == THERMAL_1_ON_PSU1 || tid == THERMAL_1_ON_PSU2) {
+        return  onlp_thermali_read_psu(tid, info);
+    }
 
     if (tid < THERMAL_1_ON_MAIN_BROAD || tid > THERMAL_3_ON_MAIN_BROAD) {
         return ONLP_STATUS_E_PARAM;
@@ -167,9 +191,8 @@ onlp_thermali_read_mainboard(int tid, onlp_thermal_info_t* info)
 
     /*reg to mili-celsius*/
     s16 = rv;   /*unsigned to signed*/
-    s32 = s16;  /*enlarged before multiplied by 1000. Avoid overflow.*/
-    s32 = (rv >> 7) * 1000; /*DATA[15:7] in unit of 0.5 celsius*/
-    s32 = s32 >> 1;
+    s32 = s16 * 1000 ;  /*enlarged before multiplied by 1000. Avoid overflow.*/
+    s32 = (s32 >> 8) ; /*DATA[15:7] in unit of 0.5 celsius*/
     info->mcelsius = s32;
 
     return ONLP_STATUS_OK;
@@ -190,8 +213,8 @@ int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int   tid, rv ;
-    VALIDATE(id);
 
+    VALIDATE(id);
     tid = ONLP_OID_ID_GET(id);
 
     /* Set the onlp_oid_hdr_t and capabilities */

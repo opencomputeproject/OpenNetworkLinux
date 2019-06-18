@@ -80,6 +80,16 @@ get_DCorAC_cap(char *model)
     return ONLP_PSU_CAPS_AC;
 }
 
+static bool
+model_has_fan(char* m)
+{
+    if (!AIM_STRCMP(m, "CRXT-T0T120")) {
+        return 0;
+    }
+    return 1;
+}
+
+
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
@@ -91,10 +101,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
 
     VALIDATE(id);
-
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[pid]; /* Set the onlp_oid_hdr_t */
-
 
     bus = eeprom_cfg[zid][0];
     offset = eeprom_cfg[zid][1];
@@ -120,6 +128,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     if (val != PSU_STATUS_POWER_GOOD) {
         info->status |=  ONLP_PSU_STATUS_FAILED;
+        return ONLP_STATUS_OK;
     }
 
     if (info->status & ONLP_PSU_STATUS_FAILED) {
@@ -155,17 +164,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
 
-    /* Set the associated oid_table */
-    val = 0;
-    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_fan1_speed_rpm", bus, offset) == 0 && val) {
-        info->hdr.coids[0] = ONLP_FAN_ID_CREATE(pid);
-    }
-
-    val = 0;
-    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
-        info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(pid + 1);
-    }
-
     /* Read model */
     len = onlp_file_read_str(&string, PSU_SYSFS_PATH"psu_mfr_model", bus, offset);
     if (string && len) {
@@ -174,6 +172,17 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= get_DCorAC_cap (info->model);
     }
 
+    /* Set the associated oid_table */
+    val = 0;
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
+        info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(pid + CHASSIS_THERMAL_COUNT);
+    }
+    if (model_has_fan(info->model)) {
+        val = 0;
+        if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_fan1_speed_rpm", bus, offset) == 0 && val) {
+            info->hdr.coids[1] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
+        }
+    }
 
     return ret;
 }

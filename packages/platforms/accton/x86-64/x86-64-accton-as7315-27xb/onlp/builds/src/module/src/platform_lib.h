@@ -28,8 +28,8 @@
 
 #include "x86_64_accton_as7315_27xb_log.h"
 
-#define CHASSIS_FAN_COUNT		7
-#define CHASSIS_THERMAL_COUNT	6
+#define CHASSIS_FAN_COUNT		5
+#define CHASSIS_THERMAL_COUNT	4
 #define CHASSIS_LED_COUNT		2
 #define CHASSIS_PSU_COUNT		2
 

@@ -31,6 +31,7 @@
 #include <linux/mutex.h>
 #include <linux/sysfs.h>
 #include <linux/slab.h>
+#include <linux/printk.h>
 
 #define DRV_NAME        "as7315_27xb_psu"
 #define PSU_STATUS_I2C_ADDR			0x64
@@ -377,10 +378,8 @@ struct model_name_info models[] = {
     {PSU_CPR_6011_2M21, 0x26, 13, "CPR-6011-2M21"},
     {PSU_UM400D_01G,    0x50,  9, "um400d01G"},
     {PSU_UM400D01_01G,  0x50, 12, "um400d01-01G"},
-    {PSU_BEL_TOT120,    0x0A, 12, "CRXT-T0T120G"},
+    {PSU_BEL_TOT120,    0x0A, 11, "CRXT-T0T120"},
 };
-
-
 
 static int as7315_27xb_psu_model_name_get(struct device *dev, int get_serial)
 {

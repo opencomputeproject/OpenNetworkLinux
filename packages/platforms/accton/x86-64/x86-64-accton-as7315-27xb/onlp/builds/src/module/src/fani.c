@@ -23,14 +23,21 @@
  * Fan Platform Implementation Defaults.
  *
  ***********************************************************/
+#include <onlplib/onie.h>
+#include <onlp/sys.h>
+#include <onlp/platformi/sysi.h>
+#include <onlplib/i2c.h>
 #include <onlplib/file.h>
 #include <onlp/platformi/fani.h>
 #include "platform_lib.h"
+#include <onlp/platformi/psui.h>
 
 
-#define MAX_FAN_SPEED     25500
-#define MAX_PSU_FAN_SPEED 25500
 
+#define MAX_FAN_SPEED     13500
+#define MAX_PSU_FAN_SPEED 13500
+
+#define I2C_BUS      7
 
 #define CHASSIS_FAN_INFO(fid)           \
     { \
@@ -89,8 +96,19 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
     int     bus, offset;
     int     value, ret;
     int zid = pid - 1 ;   /*Turn to 0-base*/
+    onlp_psu_info_t psu_info;
 
-    info->status |= ONLP_FAN_STATUS_PRESENT;
+    onlp_psui_info_get(ONLP_PSU_ID_CREATE(pid), &psu_info);
+    if (psu_info.status & ONLP_PSU_STATUS_FAILED) {
+        info->status |= ONLP_FAN_STATUS_FAILED;
+        return ONLP_STATUS_OK;
+    }
+    if( psu_info.status & ONLP_PSU_STATUS_PRESENT) {
+        info->status |= ONLP_FAN_STATUS_PRESENT;
+    } else {
+        info->status &= ~ONLP_FAN_STATUS_PRESENT;
+        return ONLP_STATUS_OK;
+    }
 
     /* get fan direction
      */
@@ -128,80 +146,117 @@ onlp_fani_init(void)
     return ONLP_STATUS_OK;
 }
 
+int
+onlp_fani_cpld_channel_set(onlp_fan_info_t* info)
+{
+    int rv;
+    int channel = 1;
+    uint32_t flags = ONLP_I2C_F_FORCE;
+    uint8_t addr = 0x64;
+    uint8_t offset = 0x80;
+
+    if( (rv = onlp_i2c_readb(I2C_BUS, addr, offset, flags)) < 0) {
+        AIM_LOG_ERROR("Device %s: readb() failed: %d",
+                      info->hdr.description, rv);
+        return rv;
+    }
+    rv &= 0x0f; /*set bit [7:4] = 0.*/
+    rv |= (channel << 5); /*set bit [7:5] = channel.*/
+    rv = onlp_i2c_writeb(I2C_BUS, addr, offset, rv, flags);
+    if( rv < 0) {
+        AIM_LOG_ERROR("Device %s: writeb() failed: %d",
+                      info->hdr.description, rv);
+        return rv;
+    }
+    return ONLP_STATUS_OK;
+}
+
+
+#define USE_FAKE_FAN 0
+
+
+
+static bool
+_has_fan_control(void)
+{
+    int rv;
+    onlp_onie_info_t onie;
+
+    rv = onlp_sysi_onie_info_get(&onie);
+    if( rv < 0) {
+        AIM_LOG_ERROR("Failed: %d @%s", rv, __func__);
+        return 0;
+    }
+
+    if(!AIM_STRCMP(onie.label_revision, "R0A")) {
+        return 0;
+    }
+
+    return 1;
+}
+
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
-    int   value;
+    int rv;
+    bool has_fan_control;
+    uint8_t offset;
+    uint8_t addr = 0x66;
 
-#define USE_FAKE_FAN 1
-#if USE_FAKE_FAN
-    value = 11500;
-    info->status |= ONLP_FAN_STATUS_PRESENT;
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
-    info->status |=  ONLP_FAN_STATUS_F2B;
-    info->rpm = value;
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
-#else
-    /* get fan present status
-     */
-    if (onlp_file_read_int(&value, "%s""fan%d_present", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
+    has_fan_control = _has_fan_control();
 
-    if (value == 0) {
-        return ONLP_STATUS_OK; /* fan is not present */
-    }
-    info->status |= ONLP_FAN_STATUS_PRESENT;
+    if (!has_fan_control) {
+        info->status |= ONLP_FAN_STATUS_PRESENT;
+        info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+        info->status |=  ONLP_FAN_STATUS_F2B;
+        info->rpm = 11500;
+        info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+    } else {
+        rv = onlp_fani_cpld_channel_set(info);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Device %s: %s() failed!",
+                          info->hdr.description, __func__);
+            return rv;
+        }
 
-
-    /* get fan fault status (turn on when any one fails)
-     */
-    if (onlp_file_read_int(&value, "%s""fan%d_fault", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    if (value > 0) {
-        info->status |= ONLP_FAN_STATUS_FAILED;
-    }
-
-
-    /* get fan direction (both : the same)
-     */
-    if (onlp_file_read_int(&value, "%s""fan%d_direction", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    info->status |= value ? ONLP_FAN_STATUS_B2F : ONLP_FAN_STATUS_F2B;
-
-
-    /* get front fan speed
-     */
-    if (onlp_file_read_int(&value, "%s""fan%d_front_speed_rpm", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    info->rpm = value;
-
-    /* get rear fan speed
-     */
-    if (onlp_file_read_int(&value, "%s""fan%d_rear_speed_rpm", FAN_BOARD_PATH, fid) < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s)\r\n", FAN_BOARD_PATH);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    /* take the min value from front/rear fan speed
-     */
-    if (info->rpm > value) {
-        info->rpm = value;
-    }
-
-    /* get speed percentage from rpm
+        /* get fan present status
          */
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
-#endif
+        offset = 0x22 + (fid-FAN_1_ON_FAN_BOARD)*0x10;
+        rv = onlp_i2c_readb(I2C_BUS, addr, offset,  ONLP_I2C_F_FORCE);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Device %s: readb() failed: %d",
+                          info->hdr.description, rv);
+            return rv;
+        }
+        if ((rv & 0x1) == 1) {
+            return ONLP_STATUS_OK; /* fan is not present */
+        }
+        info->status |= ONLP_FAN_STATUS_PRESENT;
+
+
+        /* get fan fault status (turn on when any one fails)
+         */
+        if ((rv & 0x2) == 1) {
+            info->status |= ONLP_FAN_STATUS_FAILED;
+            return ONLP_STATUS_OK;
+        }
+
+        /* get fan speed
+         */
+        offset = 0x20 + (fid-FAN_1_ON_FAN_BOARD)*0x10;
+        rv = onlp_i2c_readb(I2C_BUS, addr, offset,  ONLP_I2C_F_FORCE);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Device %s: readb() failed: %d",
+                          info->hdr.description, rv);
+            return rv;
+        }
+
+        info->rpm = rv*370;
+        /* get speed percentage from rpm
+             */
+        info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -251,6 +306,42 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-    return ONLP_STATUS_E_INTERNAL;
+    bool has_fan_control;
+
+    has_fan_control = _has_fan_control();
+
+    if (!has_fan_control) {
+        return ONLP_STATUS_E_INTERNAL;
+    } else {
+        uint8_t offset, data;
+        uint8_t addr = 0x66;
+        int  fid, rv;
+        onlp_fan_info_t* info;
+
+        VALIDATE(id);
+        fid = ONLP_OID_ID_GET(id);
+        if (fid <FAN_1_ON_FAN_BOARD || fid > FAN_5_ON_FAN_BOARD)
+            return ONLP_STATUS_E_UNSUPPORTED;
+
+        info = &finfo[fid];
+        rv = onlp_fani_cpld_channel_set(info);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Device %s: %s() failed!",
+                          info->hdr.description, __func__);
+            return rv;
+        }
+
+        /* get fan present status
+         */
+        offset = 0x21 + (fid-FAN_1_ON_FAN_BOARD)*0x10;
+        data = p * 100 / 63;
+        rv = onlp_i2c_writeb(I2C_BUS, addr, offset, data, ONLP_I2C_F_FORCE);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Device %s: writeb() failed: %d",
+                          info->hdr.description, rv);
+            return rv;
+        }
+        return ONLP_STATUS_OK;
+    }
 }
 
