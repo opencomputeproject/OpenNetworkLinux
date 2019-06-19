@@ -36,7 +36,7 @@
 #define DRV_NAME        "as7315_27xb_psu"
 #define PSU_STATUS_I2C_ADDR			0x64
 #define PSU_STATUS_I2C_REG_OFFSET	0x2
-#define USE_BYTE_ACCESS     1       /*Somehow i2c block access is failed on this platform.*/
+#define USE_BYTE_ACCESS     0       /*Somehow i2c block access is failed on this platform.*/
 
 #define IS_POWER_GOOD(id, value)	(!!(value & BIT(id + 2)))
 #define IS_PRESENT(id, value)		(!(value & BIT(id)))
@@ -316,7 +316,7 @@ struct serial_number_info serials[] = {
     {PSU_CPR_6011_2M21, 0x46, 15},
     {PSU_UM400D_01G,    0x50,  9},
     {PSU_UM400D01_01G,  0x50, 12},
-    {PSU_BEL_TOT120,    0x25, 21},
+    {PSU_BEL_TOT120,    0x18,  8},
 };
 
 static int as7315_27xb_psu_serial_number_get(struct device *dev, enum psu_type type)
