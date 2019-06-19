@@ -33,10 +33,8 @@
 #include <onlp/platformi/psui.h>
 
 
-
 #define MAX_FAN_SPEED     13500
 #define MAX_PSU_FAN_SPEED 13500
-
 #define I2C_BUS      7
 
 #define CHASSIS_FAN_INFO(fid)           \
@@ -88,7 +86,9 @@ onlp_fan_info_t finfo[] = {
         }                                       \
     } while(0)
 
-static int pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
+static int  pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
+static char board_rev[32] = {0};
+
 
 static int
 _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
@@ -137,12 +137,52 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+
+static bool
+_read_syseeprom(onlp_onie_info_t *rv)
+{
+    uint8_t* ma = NULL;
+    int size;
+
+    if(onlp_sysi_onie_data_get(&ma, &size) == 0) {
+        if(ma) {
+            onlp_onie_decode(rv, ma, -1);
+            aim_free(ma);
+        }
+    }
+    return 0;
+}
+
+static bool
+_has_fan_control(void)
+{
+    int rv;
+    onlp_onie_info_t info;
+
+    /*Read rev from sys api if none.*/
+    if (!AIM_STRLEN(board_rev)) {
+        rv = _read_syseeprom(&info);
+        if( rv < 0) {
+            AIM_LOG_ERROR("Failed: %d @%s", rv, __func__);
+            return 0;
+        }
+        AIM_STRNCPY(board_rev, info.label_revision, sizeof(board_rev));
+    }
+
+    if(!AIM_STRCMP(board_rev, "R0A")) {
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * This function will be called prior to all of onlp_fani_* functions.
  */
 int
 onlp_fani_init(void)
 {
+
+    _has_fan_control();
     return ONLP_STATUS_OK;
 }
 
@@ -176,24 +216,15 @@ onlp_fani_cpld_channel_set(onlp_fan_info_t* info)
 
 
 
-static bool
-_has_fan_control(void)
-{
-    int rv;
-    onlp_onie_info_t onie;
 
-    rv = onlp_sysi_onie_info_get(&onie);
-    if( rv < 0) {
-        AIM_LOG_ERROR("Failed: %d @%s", rv, __func__);
-        return 0;
-    }
 
-    if(!AIM_STRCMP(onie.label_revision, "R0A")) {
-        return 0;
-    }
 
-    return 1;
-}
+
+
+
+
+
+
 
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
