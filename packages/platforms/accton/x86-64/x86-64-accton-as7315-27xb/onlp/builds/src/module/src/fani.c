@@ -33,7 +33,7 @@
 #include <onlp/platformi/psui.h>
 
 
-#define MAX_FAN_SPEED     13500
+#define MAX_FAN_SPEED     25300
 #define MAX_PSU_FAN_SPEED 13500
 #define I2C_BUS      7
 
@@ -86,8 +86,8 @@ onlp_fan_info_t finfo[] = {
         }                                       \
     } while(0)
 
-static int  pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
-static char board_rev[32] = {0};
+
+static int pmbus_cfg[CHASSIS_PSU_COUNT][2] = {{13, 0x5b}, {12, 0x58}};
 
 
 static int
@@ -148,14 +148,16 @@ _read_syseeprom(onlp_onie_info_t *rv)
         if(ma) {
             onlp_onie_decode(rv, ma, -1);
             aim_free(ma);
+            return ONLP_STATUS_OK;
         }
     }
-    return 0;
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 static bool
 _has_fan_control(void)
 {
+    static char board_rev[32] = {0};
     int rv;
     onlp_onie_info_t info;
 
@@ -163,7 +165,7 @@ _has_fan_control(void)
     if (!AIM_STRLEN(board_rev)) {
         rv = _read_syseeprom(&info);
         if( rv < 0) {
-            AIM_LOG_ERROR("Failed: %d @%s", rv, __func__);
+            AIM_LOG_ERROR("Failed: %d @_read_syseeprom", rv);
             return 0;
         }
         AIM_STRNCPY(board_rev, info.label_revision, sizeof(board_rev));
@@ -210,21 +212,6 @@ onlp_fani_cpld_channel_set(onlp_fan_info_t* info)
     }
     return ONLP_STATUS_OK;
 }
-
-
-#define USE_FAKE_FAN 0
-
-
-
-
-
-
-
-
-
-
-
-
 
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
@@ -282,7 +269,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
             return rv;
         }
 
-        info->rpm = rv*370;
+        info->rpm = rv * 750;
         /* get speed percentage from rpm
              */
         info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
