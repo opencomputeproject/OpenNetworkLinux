@@ -26,6 +26,12 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <linux/sockios.h>
+#include <errno.h> 
 #include "x86_64_accton_asgvolt64_log.h"
 
 #define CHASSIS_FAN_COUNT		4
@@ -43,6 +49,16 @@
 int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);
 int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_len);
+int mdio_read(int skfd, int location, struct ifreq ifr);
+void mdio_write(int skfd, int location, int value, struct ifreq ifr);
+
+
+struct mii_data {
+    unsigned short  int	phy_id;
+    unsigned short  int	reg_num;
+    unsigned short  int	val_in;
+    unsigned short  int	val_out;
+};
 
 
 enum onlp_thermal_id
