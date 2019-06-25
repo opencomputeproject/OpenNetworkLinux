@@ -31,7 +31,7 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 ('as7315_cpld1', 0x63, 8),
-                ('as7315_cpld2', 0x64, 7),  /*Also gen 4 more i2c buses*/
+                ('as7315_cpld2', 0x64, 7),  #Also gen 4 more i2c buses
             ]
         )
 
