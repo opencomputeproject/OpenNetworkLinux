@@ -11,6 +11,7 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
         self.insmod('optoe')
         self.insmod('ym2651y')
         self.insmod('at24_as7315_27xb')
+        self.insmod('accton_as7315_27xb_fan')
         for m in ['cpld', 'led', 'psu']:
             self.insmod("x86-64-accton-as7315-27xb-%s.ko" % m)
 
@@ -30,15 +31,23 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 ('as7315_cpld1', 0x63, 8),
-                ('as7315_cpld2', 0x64, 7),
+                ('as7315_cpld2', 0x64, 7),  /*Also gen 4 more i2c buses*/
             ]
         )
 
         self.new_i2c_devices(
             [
+                ('as7315_fan', 0x66, 50),
+
+                # inititate LM75
+                ('lm75', 0x49, 51),
+                ('lm75', 0x4a, 52),
+                ('lm75', 0x4c, 53),
+
                 # initiate PSU-2
                 ('as7315_27xb_psu2', 0x50, 12),
                 ('ym2401',  0x58, 12),
+
                 # initiate PSU-1
                 ('as7315_27xb_psu1', 0x53, 13),
                 ('ym2401',  0x5b, 13),
