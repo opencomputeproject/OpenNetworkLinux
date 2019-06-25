@@ -136,7 +136,6 @@ struct cpld_data {
 
     /*For mux function*/
     struct i2c_mux_core *muxc;
-    u8 last_chan;
 };
 
 struct cpld_client_node {
@@ -779,21 +778,22 @@ static int _cpld_mux_reg_write(struct i2c_adapter *adap,
 static int _mux_select_chan(struct i2c_mux_core *muxc,
                             u32 chan)
 {
+    u8 regval;
     struct i2c_client *client = i2c_mux_priv(muxc);
     struct cpld_data *data = i2c_get_clientdata(client);
-
-    u8 regval;
     int ret = 0;
+
     regval = (chan+1) << 5;
     mutex_lock(&data->update_lock);
-    /* Only select the channel if its different from the last channel */
-    if (data->last_chan != regval) {
-        ret = _cpld_mux_reg_write(muxc->parent, client, regval);
-        data->last_chan = regval;
+    ret = _cpld_mux_reg_write(muxc->parent, client, regval);
+    if (unlikely(ret < 0)) {
+        mutex_unlock(&data->update_lock);
+        return ret;
     }
     mutex_unlock(&data->update_lock);
     return ret;
 }
+
 
 static int _prealloc_attrs(struct cpld_data *data)
 {
