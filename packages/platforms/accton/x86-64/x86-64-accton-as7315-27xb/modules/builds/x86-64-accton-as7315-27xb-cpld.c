@@ -27,6 +27,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
+#include <linux/i2c-mux.h>
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/jiffies.h>
@@ -45,6 +46,8 @@
 #define  QSFP_1ST_PRST_REG   0x18
 
 #define  SFP_1ST_RXLOS_REG   0x13
+#define  MUX_CHANNEL_SELECT_REG 0x80
+
 
 enum models {
     MDL_CPLD_SFP,
@@ -65,7 +68,6 @@ enum models {
 #define ATTR_ALLOC_SIZE	1   /*For last attribute which is NUll.*/
 
 #define NAME_SIZE		24
-#define MAX_RESP_LENGTH	48
 
 typedef ssize_t (*show_func)( struct device *dev,
                               struct device_attribute *attr,
@@ -131,6 +133,10 @@ struct cpld_data {
     u16  sfp_num;
     u8   sfp_types;
     struct model_attrs *attrs;
+
+    /*For mux function*/
+    struct i2c_mux_core *muxc;
+    u8 last_chan;
 };
 
 struct cpld_client_node {
@@ -252,6 +258,29 @@ static struct mutex	 list_lock;
 /* Addresses scanned for as7315_i2c_cpld
  */
 static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
+
+struct chip_desc {
+    u8   nchans;
+    u8   deselectChan;
+};
+
+/* Provide specs for the PCA954x types we know about */
+static const struct chip_desc chips[] = {
+    [MDL_CPLD_SFP] = {0},
+    [MDL_CPLD_QSFP] = {
+        .nchans        = 4, /*Fan + 3*LM75*/
+        .deselectChan  = 0,
+    },
+};
+
+static const struct i2c_device_id as7315_cpld_id[] = {
+    { "as7315_cpld1", MDL_CPLD_SFP},
+    { "as7315_cpld2", MDL_CPLD_QSFP},
+    { },
+};
+MODULE_DEVICE_TABLE(i2c, as7315_cpld_id);
+
+
 
 
 static int get_sfp_spec(int model, u16 *num, u8 *types)
@@ -572,8 +601,6 @@ static int cpld_add_attribute(struct cpld_data *data, struct attribute *attr)
     if (!new_attrs)
         return -ENOMEM;
     data->group.attrs = new_attrs;
-
-
     data->group.attrs[data->num_attributes-1] = attr;
     data->group.attrs[data->num_attributes] = NULL;
 
@@ -664,7 +691,7 @@ static int add_attributes_portly(struct cpld_data *data, struct attrs **pa)
     struct base_attrs *b;
 
     if (NULL == pa)
-        return -1;
+        return -EFAULT;
 
     jump = 0;
     if (data->sfp_types == PT_SFP) {
@@ -715,79 +742,192 @@ static int add_attributes(struct i2c_client *client,
     return 0;
 }
 
-static int as7315_i2c_cpld_probe(struct i2c_client *client,
-                                 const struct i2c_device_id *dev_id)
+/* Write to mux register. Don't use i2c_transfer()/i2c_smbus_xfer()
+   for this as they will try to lock adapter a second time */
+static int _cpld_mux_reg_write(struct i2c_adapter *adap,
+                               struct i2c_client *client, u8 val)
+{
+    unsigned long orig_jiffies;
+    unsigned short flags;
+    union i2c_smbus_data data;
+    int try;
+    s32 res = -EIO;
+
+    data.byte = val;
+    flags = client->flags;
+    flags &= ~(I2C_M_TEN | I2C_CLIENT_PEC);
+
+    if (adap->algo->smbus_xfer) {
+        /* Retry automatically on arbitration loss */
+        orig_jiffies = jiffies;
+        for (res = 0, try = 0; try <= adap->retries; try++) {
+                        res = adap->algo->smbus_xfer(adap, client->addr, flags,
+                                                     I2C_SMBUS_WRITE, MUX_CHANNEL_SELECT_REG,
+                                                     I2C_SMBUS_BYTE_DATA, &data);
+                        if (res != -EAGAIN)
+                            break;
+                        if (time_after(jiffies,
+                                       orig_jiffies + adap->timeout))
+                            break;
+                    }
+    }
+
+    return res;
+}
+
+
+static int _mux_select_chan(struct i2c_mux_core *muxc,
+                            u32 chan)
+{
+    struct i2c_client *client = i2c_mux_priv(muxc);
+    struct cpld_data *data = i2c_get_clientdata(client);
+
+    u8 regval;
+    int ret = 0;
+    regval = (chan+1) << 5;
+    mutex_lock(&data->update_lock);
+    /* Only select the channel if its different from the last channel */
+    if (data->last_chan != regval) {
+        ret = _cpld_mux_reg_write(muxc->parent, client, regval);
+        data->last_chan = regval;
+    }
+    mutex_unlock(&data->update_lock);
+    return ret;
+}
+
+static int _prealloc_attrs(struct cpld_data *data)
+{
+    void *new_attrs = krealloc(data->group.attrs,
+                               ATTR_ALLOC_SIZE * sizeof(void *),
+                               GFP_KERNEL);
+    if (!new_attrs)
+        return -ENOMEM;
+    data->group.attrs = new_attrs;
+
+    return 0;
+}
+
+static int _add_sysfs_attributes(struct i2c_client *client,
+                                 struct cpld_data *data)
 {
     int status;
-    struct cpld_data *data = NULL;
-    struct device *dev = &client->dev;
-
-    if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
-        dev_dbg(dev, "i2c_check_functionality failed (0x%x)\n", client->addr);
-        return -EIO;
-    }
-
-    data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
-    if (!data) {
-        return -ENOMEM;
-    }
-
-    data->model = dev_id->driver_data;
-    data->attrs = &models_attr[data->model];
-    get_sfp_spec(data->model, &data->sfp_num, &data->sfp_types);
-
-    i2c_set_clientdata(client, data);
-    mutex_init(&data->update_lock);
-    data->dev = dev;
-    dev_info(dev, "chip found\n");
 
     status = add_attributes(client, data);
-    if (status)
-        goto out_kfree;
+    if (status) {
+        return status;
+    }
 
-    /*
-     * If there are no attributes, something is wrong.
+    /*If there are no attributes, something is wrong.
      * Bail out instead of trying to register nothing.
      */
     if (!data->num_attributes) {
-        dev_err(dev, "No attributes found\n");
-        status = -ENODEV;
-        goto out_kfree;
+        dev_err(&client->dev, "No attributes found\n");
+        return -ENODEV;
     }
 
     /* Register sysfs hooks */
     status = sysfs_create_group(&client->dev.kobj, &data->group);
     if (status) {
-        goto out_kfree;
+        return status;
     }
-
-    data->hwmon_dev = hwmon_device_register_with_info(&client->dev,
-                      client->name, NULL, NULL, NULL);
-    if (IS_ERR(data->hwmon_dev)) {
-        status = PTR_ERR(data->hwmon_dev);
-        goto exit_remove;
-    }
-
-    accton_i2c_cpld_add_client(client);
-    dev_info(dev, "%s: cpld '%s'\n",
-             dev_name(data->hwmon_dev), client->name);
 
     return 0;
-exit_remove:
+}
+
+
+static int _add_mux_channels(struct i2c_client *client,
+                             const struct i2c_device_id *id, struct cpld_data *data)
+{
+    int num, force, class;
+    int status;
+    struct i2c_mux_core *muxc;
+    struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
+    int model = id->driver_data;
+
+    data->muxc = i2c_mux_alloc(adap, &client->dev,
+                               chips[model].nchans,
+                               sizeof(client), 0,
+                               _mux_select_chan, NULL);
+
+    if (!data->muxc) {
+        return ENOMEM;
+    }
+    muxc = data->muxc;
+    muxc->priv = client;
+    for (num = 0; num < chips[model].nchans; num++) {
+        force = 0;			  /* dynamic adap number */
+        class = 0;			  /* no class by default */
+        status = i2c_mux_add_adapter(muxc, force, num, class);
+        if (status)
+            return status ;
+    }
+    dev_info(&client->dev,
+             "registered %d multiplexed busses for I2C %s\n",
+             num,  client->name);
+
+    return 0;
+}
+
+static int as7315_i2c_cpld_probe(struct i2c_client *client,
+                                 const struct i2c_device_id *dev_id)
+{
+    struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
+    int status;
+    struct cpld_data *data = NULL;
+    struct device *dev = &client->dev;
+
+    if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE_DATA))
+        return -ENODEV;
+
+    data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+    if (!data) {
+        return -ENOMEM;
+    }
+    data->model = dev_id->driver_data;
+    data->attrs = &models_attr[data->model];
+    get_sfp_spec(data->model, &data->sfp_num, &data->sfp_types);
+    mutex_init(&data->update_lock);
+    data->dev = dev;
+    dev_info(dev, "chip found\n");
+
+
+    status = _prealloc_attrs(data);
+    if (status)
+        return -ENOMEM;
+
+    status = _add_sysfs_attributes(client, data);
+    if (status)
+        goto out_kfree;
+
+    status = _add_mux_channels(client, dev_id, data);
+    if (status)
+        goto exit_rm_sys;
+
+    i2c_set_clientdata(client, data);
+    accton_i2c_cpld_add_client(client);
+    dev_info(dev, "%s: cpld '%s'\n",
+             dev_name(data->dev), client->name);
+
+    return 0;
+
+exit_rm_sys:
     sysfs_remove_group(&client->dev.kobj, &data->group);
 out_kfree:
     kfree(data->group.attrs);
     return status;
-
 }
+
 
 static int as7315_i2c_cpld_remove(struct i2c_client *client)
 {
     struct cpld_data *data = i2c_get_clientdata(client);
+    struct i2c_mux_core *muxc = data->muxc;
 
-    hwmon_device_unregister(data->hwmon_dev);
     sysfs_remove_group(&client->dev.kobj, &data->group);
     kfree(data->group.attrs);
+    if(muxc) {
+        i2c_mux_del_adapters(muxc);
+    }
     accton_i2c_cpld_remove_client(client);
     return 0;
 }
@@ -840,13 +980,6 @@ int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
 }
 EXPORT_SYMBOL(accton_i2c_cpld_write);
 
-
-static const struct i2c_device_id as7315_cpld_id[] = {
-    { "as7315_cpld1", MDL_CPLD_SFP},
-    { "as7315_cpld2", MDL_CPLD_QSFP},
-    { },
-};
-MODULE_DEVICE_TABLE(i2c, as7315_cpld_id);
 
 static struct i2c_driver as7315_i2c_cpld_driver = {
     .class        = I2C_CLASS_HWMON,
