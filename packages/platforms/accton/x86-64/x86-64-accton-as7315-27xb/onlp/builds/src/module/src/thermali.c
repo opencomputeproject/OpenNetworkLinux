@@ -28,10 +28,6 @@
 #include <onlp/platformi/thermali.h>
 #include "platform_lib.h"
 
-#define I2C_BUS      7
-
-
-
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
@@ -65,9 +61,9 @@ static char* board_devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
-    NULL,
-    NULL,
-    NULL,
+    "/sys/bus/i2c/devices/51-0049*temp1_input",
+    "/sys/bus/i2c/devices/52-004a*temp1_input",
+    "/sys/bus/i2c/devices/53-004c*temp1_input",
     "/sys/bus/i2c/devices/13-005b/psu_temp1_input",
     "/sys/bus/i2c/devices/12-0058/psu_temp1_input",
 };
@@ -109,17 +105,10 @@ static onlp_thermal_info_t linfo[] = {
 int
 onlp_thermali_init(void)
 {
-    int rv;
-
-    rv = onlp_i2c_writeb(I2C_BUS, 0x64, 0x80, 0, ONLP_I2C_F_FORCE);
-    if (rv < 0) {
-        AIM_LOG_ERROR("Device %s: %s writeb() failed: %d",
-                      __func__, "fpga", rv);
-        return rv;
-    }
     return ONLP_STATUS_OK;
 }
 
+#if 0
 int
 onlp_thermali_mb_channel_set(int tid)
 {
@@ -144,10 +133,10 @@ onlp_thermali_mb_channel_set(int tid)
     }
     return ONLP_STATUS_OK;
 }
-
+#endif
 
 int
-onlp_thermali_read_psu(int tid, onlp_thermal_info_t* info)
+onlp_thermali_read_devfile(int tid, onlp_thermal_info_t* info)
 {
     return onlp_file_read_int(&info->mcelsius, board_devfiles__[tid]);
 }
@@ -155,49 +144,12 @@ onlp_thermali_read_psu(int tid, onlp_thermal_info_t* info)
 int
 onlp_thermali_read_mainboard(int tid, onlp_thermal_info_t* info)
 {
-    int rv;
-    uint8_t offset = 0;
-    uint8_t addrs[] = {0x49, 0x4a, 0x4c};
-    uint8_t addr;
-    int16_t s16;
-    int32_t s32;
-
-    if (tid == THERMAL_1_ON_PSU1 || tid == THERMAL_1_ON_PSU2) {
-        return  onlp_thermali_read_psu(tid, info);
+    if (tid >= THERMAL_1_ON_MAIN_BROAD || tid <= THERMAL_1_ON_PSU2) {
+        return  onlp_thermali_read_devfile(tid, info);
     }
 
-    if (tid < THERMAL_1_ON_MAIN_BROAD || tid > THERMAL_3_ON_MAIN_BROAD) {
-        return ONLP_STATUS_E_PARAM;
-    }
-
-    rv =  onlp_thermali_mb_channel_set(tid);
-    if( rv < 0) {
-        AIM_LOG_ERROR("Device %s: onlp_thermali_mb_channel_set() failed!",
-                      linfo[tid].hdr.description);
-        return rv;
-    }
-
-
-    addr = addrs[tid - THERMAL_1_ON_MAIN_BROAD];
-    rv = onlp_i2c_readb(I2C_BUS, addr, offset,  ONLP_I2C_F_FORCE);
-    rv = onlp_i2c_readw(I2C_BUS, addr, offset,  ONLP_I2C_F_FORCE);
-    if( rv < 0) {
-        AIM_LOG_ERROR("Device %s: readb() failed: %d",
-                      linfo[tid].hdr.description, rv);
-        return rv;
-    }
-    /*byte swap*/
-    rv = ((rv&0xff) <<8)| (rv >> 8);
-
-    /*reg to mili-celsius*/
-    s16 = rv;   /*unsigned to signed*/
-    s32 = s16 * 1000 ;  /*enlarged before multiplied by 1000. Avoid overflow.*/
-    s32 = (s32 >> 8) ; /*DATA[15:7] in unit of 0.5 celsius*/
-    info->mcelsius = s32;
-
-    return ONLP_STATUS_OK;
+    return ONLP_STATUS_E_INVALID;
 }
-
 
 /*
  * Retrieve the information structure for the given thermal OID.
