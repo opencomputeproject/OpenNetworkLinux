@@ -37,17 +37,12 @@
 #define PSU_STATUS_I2C_ADDR			0x64
 #define PSU_STATUS_I2C_REG_OFFSET	0x2
 #define USE_BYTE_ACCESS     0       /*Somehow i2c block access is failed on this platform.*/
+#define UPDATE_PERIOD			    (HZ*2)
+#define MAX_OUTPUT_LENGTH   		32
+#define BASIC_EEPROM_SIZE   		32
 
 #define IS_POWER_GOOD(id, value)	(!!(value & BIT(id + 2)))
 #define IS_PRESENT(id, value)		(!(value & BIT(id)))
-
-static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_serial_number(struct device *dev, struct device_attribute *da,char *buf);
-static int as7315_27xb_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-static int as7315_27xb_psu_model_name_get(struct device *dev, int get_serial);
 
 /* Addresses scanned
  */
@@ -62,11 +57,9 @@ struct as7315_27xb_psu_data {
     unsigned long       last_updated;    /* In jiffies */
     u8  index;           /* PSU index */
     u8  status;          /* Status(present/power_good) register read from CPLD */
-    char model_name[14]; /* Model name, read from eeprom */
-    char serial[16]; /* Model name, read from eeprom */
+    char eeprom[BASIC_EEPROM_SIZE*2];    /* EEPROM*/
 };
 
-static struct as7315_27xb_psu_data *as7315_27xb_psu_update_device(struct device *dev);
 
 enum as7315_27xb_psu_sysfs_attributes {
     PSU_INDEX,
@@ -75,6 +68,54 @@ enum as7315_27xb_psu_sysfs_attributes {
     PSU_POWER_GOOD,
     PSU_SERIAL_NUMBER
 };
+
+enum psu_type {
+    PSU_YM_1401_A,      /* AC110V - B2F */
+    PSU_YM_2401_JCR,    /* AC110V - F2B */
+    PSU_YM_2401_JDR,    /* AC110V - B2F */
+    PSU_YM_2401_TCR,    /* AC110V - B2F */
+    PSU_CPR_4011_4M11,  /* AC110V - F2B */
+    PSU_CPR_4011_4M21,  /* AC110V - B2F */
+    PSU_CPR_6011_2M11,  /* AC110V - F2B */
+    PSU_CPR_6011_2M21,  /* AC110V - B2F */
+    PSU_UM400D_01G,     /* DC48V  - F2B */
+    PSU_UM400D01_01G,   /* DC48V  - B2F */
+    PSU_BEL_TOT120,     /* DC48V  - N/A */
+    PSU_TYPE_MAX
+};
+
+struct model_info {
+    enum psu_type type;
+    u8 offset;
+    char* model_name;
+    u8 serial_offset;
+};
+
+struct model_info models[] = {
+    {PSU_YM_1401_A,     0x20, "YM-1401ACR",0x35},
+    {PSU_YM_2401_JCR,   0x20, "YM-2401JCR",0x35},
+    {PSU_YM_2401_JDR,   0x20, "YM-2401JDR",0x35},
+    {PSU_YM_2401_TCR,   0x20, "YM-2401TCR",0x35},
+    {PSU_CPR_4011_4M11, 0x26, "CPR-4011-4M11",0x47},
+    {PSU_CPR_4011_4M21, 0x26, "CPR-4011-4M21",0x47},
+    {PSU_CPR_6011_2M11, 0x26, "CPR-6011-2M11",0x46},
+    {PSU_CPR_6011_2M21, 0x26, "CPR-6011-2M21",0x46},
+    {PSU_UM400D_01G,    0x50, "um400d01G",0x50},
+    {PSU_UM400D01_01G,  0x50, "um400d01-01G",0x50},
+    {PSU_BEL_TOT120,    0x0A, "CRXT-T0T120",0x18},
+};
+
+static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_serial_number(struct device *dev, struct device_attribute *da,char *buf);
+static int as7315_27xb_psu_block_read(struct i2c_client *client, u8 command, u8 *data,int data_len);
+static int as7315_27xb_psu_model_name_get(
+    struct device *dev, char *buf);
+static int as7315_27xb_psu_serial_number_get(
+    struct device *dev, enum psu_type type, char *out);
+static struct as7315_27xb_psu_data *as7315_27xb_psu_update_device(struct device *dev);
+extern int accton_i2c_cpld_read(u8 cpld_addr, u8 reg);
 
 /* sysfs attributes for hwmon
  */
@@ -126,6 +167,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 static ssize_t show_serial_number(struct device *dev, struct device_attribute *da,
                                   char *buf)
 {
+    int i;
     struct as7315_27xb_psu_data *data = as7315_27xb_psu_update_device(dev);
 
     if (!data->valid) {
@@ -136,10 +178,15 @@ static ssize_t show_serial_number(struct device *dev, struct device_attribute *d
         return 0;
     }
 
-    if (as7315_27xb_psu_model_name_get(dev, 1) < 0) {
+    i = as7315_27xb_psu_model_name_get(dev, buf);
+    if ( i < 0) {
         return -ENXIO;
     }
-    return sprintf(buf, "%s\n", data->serial);
+
+    if (as7315_27xb_psu_serial_number_get(dev, i, buf) < 0) {
+        return -ENXIO;
+    }
+    return sprintf(buf, "%s\n", buf);
 }
 
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
@@ -155,11 +202,11 @@ static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
         return 0;
     }
 
-    if (as7315_27xb_psu_model_name_get(dev, 0) < 0) {
+    if (as7315_27xb_psu_model_name_get(dev, buf) < 0) {
         return -ENXIO;
     }
 
-    return sprintf(buf, "%s\n", data->model_name);
+    return sprintf(buf, "%s\n", buf);
 }
 
 static const struct attribute_group as7315_27xb_psu_group = {
@@ -251,174 +298,108 @@ static struct i2c_driver as7315_27xb_psu_driver = {
     .address_list = normal_i2c,
 };
 
-static int as7315_27xb_psu_read_block(struct i2c_client *client, u8 command, u8 *data,
-                                      int data_len)
+static int as7315_27xb_psu_block_read(struct i2c_client *client,
+                                      u8 command, u8 *data,  int max_len)
 {
-#if USE_BYTE_ACCESS
-    int ret;
+    int result;
+
     u8 i, offset;
 
-    for (i = 0; i < data_len; i++) {
-        offset = command + i;
-        ret = i2c_smbus_read_byte_data(client, offset);
-        if (ret < 0) {
-            return -EIO;
+    if (i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_READ_I2C_BLOCK)) {
+        for (i = 0; i < max_len; i += 32) {
+            offset = i + command ;
+            result = i2c_smbus_read_i2c_block_data(client, offset,
+                                                   32, data + i);
+
+            if (result != 32) {
+                result = -EIO;
+                goto abort;
+            }
         }
-        data[i] = ret;
-    }
-    return 0;
-#else
-    int result = i2c_smbus_read_i2c_block_data(client, command, data_len, data);
 
-    if (unlikely(result < 0))
-        goto abort;
-    if (unlikely(result != data_len)) {
-        result = -EIO;
-        goto abort;
+    } else {
+        for (i = 0; i < max_len; i += 2) {
+            int word;
+            offset = i + command ;
+            word = i2c_smbus_read_word_data(client, offset);
+            if (word < 0) {
+                result = -EIO;
+                goto abort;
+            }
+            data[i] = word & 0xff;
+            data[i + 1] = word >> 8;
+        }
     }
-
     result = 0;
-
 abort:
     return result;
-#endif
 }
 
-enum psu_type {
-    PSU_YM_1401_A,      /* AC110V - B2F */
-    PSU_YM_2401_JCR,    /* AC110V - F2B */
-    PSU_YM_2401_JDR,    /* AC110V - B2F */
-    PSU_YM_2401_TCR,    /* AC110V - B2F */
-    PSU_CPR_4011_4M11,  /* AC110V - F2B */
-    PSU_CPR_4011_4M21,  /* AC110V - B2F */
-    PSU_CPR_6011_2M11,  /* AC110V - F2B */
-    PSU_CPR_6011_2M21,  /* AC110V - B2F */
-    PSU_UM400D_01G,     /* DC48V  - F2B */
-    PSU_UM400D01_01G,   /* DC48V  - B2F */
-    PSU_BEL_TOT120,     /* DC48V  - N/A */
-
-};
-
-struct serial_number_info {
-    enum psu_type type;
-    u8 offset;
-    u8 length;
-};
-
-struct serial_number_info serials[] = {
-    {PSU_YM_1401_A,     0x35, 19},
-    {PSU_YM_2401_JCR,   0x35, 19},
-    {PSU_YM_2401_JDR,   0x35, 19},
-    {PSU_YM_2401_TCR,   0x35, 19},
-    {PSU_CPR_4011_4M11, 0x47, 15},
-    {PSU_CPR_4011_4M21, 0x47, 15},
-    {PSU_CPR_6011_2M11, 0x46, 15},
-    {PSU_CPR_6011_2M21, 0x46, 15},
-    {PSU_UM400D_01G,    0x50,  9},
-    {PSU_UM400D01_01G,  0x50, 12},
-    {PSU_BEL_TOT120,    0x18,  8},
-};
-
-static int as7315_27xb_psu_serial_number_get(struct device *dev, enum psu_type type)
+static int as7315_27xb_psu_serial_number_get(
+    struct device *dev, enum psu_type type, char *out)
 {
-    struct i2c_client *client = to_i2c_client(dev);
-    struct as7315_27xb_psu_data *data = i2c_get_clientdata(client);
-    int status;
+    char *serial;
+    struct as7315_27xb_psu_data *data = as7315_27xb_psu_update_device(dev);
 
-    switch (type) {
-    case PSU_CPR_4011_4M11:
-    case PSU_CPR_4011_4M21:
-    case PSU_CPR_6011_2M11:
-    case PSU_CPR_6011_2M21:
-    case PSU_YM_1401_A:
-    case PSU_YM_2401_JCR:
-    case PSU_YM_2401_TCR:
-    case PSU_YM_2401_JDR:
-    case PSU_BEL_TOT120:
-    {
-        if(type >= sizeof(serials)/sizeof(struct serial_number_info))
-            return -EINVAL;
-        status = as7315_27xb_psu_read_block(client, serials[type].offset,
-                                            data->serial, serials[type].length);
-        if (status < 0) {
-            data->serial[0] = '\0';
-            dev_dbg(&client->dev, "unable to read serial number from (0x%x) offset(0x%x)\n",
-                    client->addr, serials[type].offset);
-            return status;
-        }
-        else {
-            data->serial[serials[type].length] = '\0';
-            return 0;
-        }
-    }
-    break;
-    default:
-        break;
+    if (type >= PSU_TYPE_MAX) {
+        return -EINVAL;
     }
 
-    return -ENODATA;
+    if (!data->valid) {
+        out[0] = '\0';
+        return 0;
+    }
+
+    serial = data->eeprom + models[type].serial_offset;
+    strncpy(out, serial, MAX_OUTPUT_LENGTH);
+    return 0;
 }
 
-
-struct model_name_info {
-    enum psu_type type;
-    u8 offset;
-    u8 length;
-    char* model_name;
-};
-
-struct model_name_info models[] = {
-    {PSU_YM_1401_A,     0x20, 11, "YM-1401ACR"},
-    {PSU_YM_2401_JCR,   0x20, 11, "YM-2401JCR"},
-    {PSU_YM_2401_JDR,   0x20, 11, "YM-2401JDR"},
-    {PSU_YM_2401_TCR,   0x20, 11, "YM-2401TCR"},
-    {PSU_CPR_4011_4M11, 0x26, 13, "CPR-4011-4M11"},
-    {PSU_CPR_4011_4M21, 0x26, 13, "CPR-4011-4M21"},
-    {PSU_CPR_6011_2M11, 0x26, 13, "CPR-6011-2M11"},
-    {PSU_CPR_6011_2M21, 0x26, 13, "CPR-6011-2M21"},
-    {PSU_UM400D_01G,    0x50,  9, "um400d01G"},
-    {PSU_UM400D01_01G,  0x50, 12, "um400d01-01G"},
-    {PSU_BEL_TOT120,    0x0A, 11, "CRXT-T0T120"},
-};
-
-static int as7315_27xb_psu_model_name_get(struct device *dev, int get_serial)
+static int find_model_name_from_eeprom( char *eeprom)
 {
-    struct i2c_client *client = to_i2c_client(dev);
-    struct as7315_27xb_psu_data *data = i2c_get_clientdata(client);
-    int i, status;
+    int i;
+    char *name;
 
     for (i = 0; i < ARRAY_SIZE(models); i++) {
-        memset(data->model_name, 0, sizeof(data->model_name));
-
-        status = as7315_27xb_psu_read_block(client, models[i].offset,
-                                            data->model_name, models[i].length);
-        if (status < 0) {
-            data->model_name[0] = '\0';
-            dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x%x)\n",
-                    client->addr, models[i].offset);
-            return status;
-        }
-        else {
-            data->model_name[models[i].length] = '\0';
-        }
-        if (i == PSU_YM_2401_JCR || i == PSU_YM_2401_JDR || i == PSU_YM_1401_A || i == PSU_YM_2401_TCR) {
-            /* Skip the meaningless data byte 8*/
-            data->model_name[8] = data->model_name[9];
-            data->model_name[9] = data->model_name[10];
-            data->model_name[10] = '\0';
-        }
-
-        /* Determine if the model name is known, if not, read next index
-         */
-        if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
-            return get_serial ? as7315_27xb_psu_serial_number_get(dev, i) : 0;
-        }
-        else {
-            data->model_name[0] = '\0';
+        name = eeprom + models[i].offset;
+        if (strncmp(name, models[i].model_name,
+                    strlen(models[i].model_name)) == 0) {
+            break;
         }
     }
 
-    return -ENODATA;
+    return (i == ARRAY_SIZE(models))? -EINVAL: i;
+}
+static int as7315_27xb_psu_model_name_get(
+    struct device *dev, char *buf)
+{
+    int i;
+    struct as7315_27xb_psu_data *data = as7315_27xb_psu_update_device(dev);
+
+    if (!data->valid) {
+        return sprintf(buf, "0\n");
+    }
+
+    /* Determine if the model name is known, if not, read next index
+     */
+    i = find_model_name_from_eeprom(data->eeprom);
+    if (i < 0) {
+        return -ENODATA;
+    }
+
+    mutex_lock(&data->update_lock);
+    strncpy(buf,  models[i].model_name, MAX_OUTPUT_LENGTH);
+    /*Work-around for some special models*/
+    if (i == PSU_YM_2401_JCR || i == PSU_YM_2401_JDR ||
+            i == PSU_YM_1401_A || i == PSU_YM_2401_TCR) {
+        /* Skip the meaningless data byte 8*/
+        buf[8] = buf[9];
+        buf[9] = buf[10];
+        buf = '\0';
+    }
+
+    mutex_unlock(&data->update_lock);
+    return i;
 }
 
 static struct as7315_27xb_psu_data *as7315_27xb_psu_update_device(struct device *dev)
@@ -427,33 +408,41 @@ static struct as7315_27xb_psu_data *as7315_27xb_psu_update_device(struct device 
     struct as7315_27xb_psu_data *data = i2c_get_clientdata(client);
 
     mutex_lock(&data->update_lock);
-
-    if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
+    if (time_after(jiffies, data->last_updated + UPDATE_PERIOD)
             || !data->valid) {
         int status = -1;
 
         dev_dbg(&client->dev, "Starting as7315_27xb update\n");
         data->valid = 0;
 
-
         /* Read psu status */
         status = accton_i2c_cpld_read(PSU_STATUS_I2C_ADDR, PSU_STATUS_I2C_REG_OFFSET);
-
         if (status < 0) {
-            dev_dbg(&client->dev, "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
+            dev_dbg(&client->dev,
+                    "cpld reg (0x%x) err %d\n", PSU_STATUS_I2C_ADDR, status);
             goto exit;
         }
         else {
             data->status = status;
         }
 
+
+        /*Read the eeprom of psu*/
+        memset(data->eeprom, 0, sizeof(data->eeprom));
+        status = as7315_27xb_psu_block_read(client, 0,
+                                            data->eeprom, sizeof(data->eeprom));
+
+        if (status < 0) {
+            dev_dbg(&client->dev, "unable to read eeprom from (0x%x)\n",
+                    client->addr);
+            goto exit;
+        }
         data->last_updated = jiffies;
         data->valid = 1;
     }
 
 exit:
     mutex_unlock(&data->update_lock);
-
     return data;
 }
 
