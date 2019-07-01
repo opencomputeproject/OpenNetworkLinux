@@ -36,6 +36,7 @@ include $(BUILDER)/dependmodules.mk
 
 SHAREDLIB := libonlp.so
 $(SHAREDLIB)_TARGETS := $(ALL_TARGETS)
+LDFLAGS += -Wl,--version-script=$(ONL)/make/onlp.version
 include $(BUILDER)/so.mk
 
 .DEFAULT_GOAL := sharedlibs
