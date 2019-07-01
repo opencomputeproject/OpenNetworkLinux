@@ -55,7 +55,7 @@ class OnlPlatform_x86_64_accton_as5916_54xk_r1(OnlPlatformAccton,
                 ('pca9548', 0x75, 31),
 
                 # initiate IDPROM
-                ('24c02', 0x56, 0),
+                ('24c02', 0x57, 0),
                 ]
             )
 

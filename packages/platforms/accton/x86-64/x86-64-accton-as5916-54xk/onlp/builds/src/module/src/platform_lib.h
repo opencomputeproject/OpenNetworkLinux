@@ -51,7 +51,7 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/9-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/bus/i2c/devices/0-0056/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/0-0057/eeprom"
 
 enum onlp_thermal_id
 {
