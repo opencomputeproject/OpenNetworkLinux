@@ -110,8 +110,8 @@ static struct led_type_mode led_type_mode_data[] = {
     {TYPE_LOC, TYPE_LOC_REG_MASK, ONLP_LED_MODE_OFF,       MODE_LOC_OFF_MASK},
 };
 
-extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
-extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+extern int accton_i2c_cpld_read (u8 cpld_addr, u8 reg);
+extern int accton_i2c_cpld_write(u8 cpld_addr, u8 reg, u8 value);
 
 
 static int pdata_init(struct accton_as7315_27xb_led_data  *data) {

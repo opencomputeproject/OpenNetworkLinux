@@ -177,7 +177,7 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
                       const char *buf, size_t count);
 
 int accton_i2c_cpld_read(u8 cpld_addr, u8 reg);
-int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+int accton_i2c_cpld_write(u8 cpld_addr, u8 reg, u8 value);
 
 
 struct base_attrs common_base_attrs[NUM_COMMON_ATTR] =
@@ -780,17 +780,13 @@ static int _mux_select_chan(struct i2c_mux_core *muxc,
 {
     u8 regval;
     struct i2c_client *client = i2c_mux_priv(muxc);
-    struct cpld_data *data = i2c_get_clientdata(client);
     int ret = 0;
 
     regval = (chan+1) << 5;
-    mutex_lock(&data->update_lock);
     ret = _cpld_mux_reg_write(muxc->parent, client, regval);
     if (unlikely(ret < 0)) {
-        mutex_unlock(&data->update_lock);
         return ret;
     }
-    mutex_unlock(&data->update_lock);
     return ret;
 }
 
@@ -956,7 +952,7 @@ int accton_i2c_cpld_read(u8 cpld_addr, u8 reg)
 }
 EXPORT_SYMBOL(accton_i2c_cpld_read);
 
-int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value)
+int accton_i2c_cpld_write(u8 cpld_addr, u8 reg, u8 value)
 {
     struct list_head   *list_node = NULL;
     struct cpld_client_node *cpld_node = NULL;
