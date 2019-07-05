@@ -1,6 +1,34 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
+import commands
+
+#IR3570A chip casue problem when read eeprom by i2c-block mode.
+#It happen when read 16th-byte offset that value is 0x8. So disable chip 
+def disable_i2c_ir3570a(addr):
+    cmd = "i2cset -y 0 0x%x 0xE5 0x01" % addr
+    status, output = commands.getstatusoutput(cmd)
+    cmd = "i2cset -y 0 0x%x 0x12 0x02" % addr
+    status, output = commands.getstatusoutput(cmd)
+    return status
+
+def ir3570_check():
+    cmd = "i2cdump -y 0 0x42 s 0x9a"
+    try:
+        status, output = commands.getstatusoutput(cmd)
+        lines = output.split('\n')
+        hn = re.findall(r'\w+', lines[-1])
+        version = int(hn[1], 16)
+        if version == 0x24:  #Find IR3570A
+            ret = disable_i2c_ir3570a(4)
+        else:
+            ret = 0
+    except Exception as e:
+        print "Error on ir3570_check() e:" + str(e)
+        return -1
+    return ret
+
+
 class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
                                              OnlPlatformPortConfig_20x100):
     PLATFORM='x86-64-accton-asgvolt64-r0'
@@ -60,6 +88,7 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
         # initiate IDPROM
         self.new_i2c_device('24c02', 0x57, 0)
         
+        ir3570_check()
 
         return True
 
