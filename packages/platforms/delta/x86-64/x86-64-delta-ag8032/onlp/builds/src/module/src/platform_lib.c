@@ -24,7 +24,10 @@
  *
  *
  ***********************************************************/
+#include <glob.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <onlplib/file.h>
 #include "platform_lib.h"
@@ -291,7 +294,7 @@ int plat_psu_state_update (plat_psu_t *psu)
 				break;
 			}
 
-			if (onlp_i2c_readb (psu->pmbus_bus, psu->pmbus_addr, 0x00, 
+			if (onlp_i2c_readb (psu->pmbus_bus, psu->pmbus_addr, 0x00,
 					ONLP_I2C_F_FORCE | ONLP_I2C_F_DISABLE_READ_RETRIES) >= 0) {
 
 				psu->state = PLAT_PSU_STATE_PMBUS_READY;
@@ -315,7 +318,7 @@ int plat_psu_state_update (plat_psu_t *psu)
 				break;
 			}
 			// If pmbus interface is not ok, remove kernel module
-			if (onlp_i2c_readb (psu->pmbus_bus, psu->pmbus_addr, 0x00, 
+			if (onlp_i2c_readb (psu->pmbus_bus, psu->pmbus_addr, 0x00,
 					ONLP_I2C_F_FORCE | ONLP_I2C_F_DISABLE_READ_RETRIES) < 0) {
 
 				psu->state = PLAT_PSU_STATE_PRESENT;
@@ -341,22 +344,22 @@ int plat_psu_state_update (plat_psu_t *psu)
 // OS HELP ROUTINE
 static char *plat_os_path_complete (char *path_pattern, char *buff, int len)
 {
-	FILE *fp;
-
-	snprintf (buff, len, "realpath -z %s 2>/dev/null", path_pattern);
-	fp = popen (buff, "r");
-	if (fp) {
-		fgets (buff, len, fp);
-		pclose (fp);
-	} else {
-		snprintf (buff, len, "%s", path_pattern);
+	glob_t globbuf;
+	int rv = glob(path_pattern, 0, NULL, &globbuf);
+	if (rv != 0) {
+		globfree(&globbuf);
+		snprintf(buff, len, "%s", path_pattern);
+		return buff;
 	}
+
+	snprintf(buff, len, "%s", globbuf.gl_pathv[0]);
+	globfree(&globbuf);
 	return buff;
 }
 
 int plat_os_file_is_existed (char *path)
 {
-	char buff[1024];
+	char buff[PATH_MAX+1] = {0};
 
 	if (path)
 		return access (plat_os_path_complete(path, buff, sizeof(buff)), F_OK) == 0 ? 1 : 0;
@@ -365,22 +368,18 @@ int plat_os_file_is_existed (char *path)
 
 int plat_os_file_read (uint8_t *data, int max, int *len, char *path, ...)
 {
-	char buff[1024];
+	char buff[PATH_MAX+1] = {0};
 	return onlp_file_read (data, max, len, plat_os_path_complete(path, buff, sizeof(buff)), NULL);
 }
 
 int plat_os_file_read_int (int *val, char *path, ...)
 {
-	char buff[1024];
+	char buff[PATH_MAX+1] = {0};
 	return onlp_file_read_int (val, plat_os_path_complete(path, buff, sizeof(buff)), NULL);
 }
 
 int plat_os_file_write_int(int val, char *path, ...)
 {
-	char buff[1024];
+	char buff[PATH_MAX+1] = {0};
 	return onlp_file_write_int (val, plat_os_path_complete(path, buff, sizeof(buff)), NULL);
 }
-
-
-
-

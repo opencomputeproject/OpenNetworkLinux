@@ -26,6 +26,7 @@
 
 #include <onlp/platformi/fani.h>
 #include <onlplib/file.h>
+#include "x86_64_delta_ag8032_log.h"
 #include "platform_lib.h"
 #include "eeprom_info.h"
 
@@ -251,13 +252,17 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 	int fid;
 	int present = 1;
 
-    if (!ONLP_OID_IS_FAN(id))
+	if (!ONLP_OID_IS_FAN(id)) {
+		AIM_LOG_ERROR("not a valid oid");
 		return ONLP_STATUS_E_INVALID;
+	}
 
-    fid = ONLP_OID_ID_GET(id);
+	fid = ONLP_OID_ID_GET(id);
 
-	if (!plat_fan_is_valid(fid))
+	if (!plat_fan_is_valid(fid)) {
+		AIM_LOG_ERROR("plat_fan_is_valid failed");
 		return ONLP_STATUS_E_INVALID;
+	}
 
 	fan = &plat_fans[fid];
 
@@ -282,6 +287,7 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 		info->status |= ONLP_FAN_STATUS_PRESENT;
 		if (info->caps & ONLP_FAN_CAPS_GET_RPM) {
 			if (plat_os_file_read_int(&info->rpm, fan->rpm_get_path, NULL) < 0) {
+				AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_FAN_CAPS_GET_RPM rpm_path=%s", fan->rpm_get_path);
 				error ++;
 			} else {
 				if (fan->rpm_set_value > 0) {
@@ -293,6 +299,7 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 		}
 		if (info->caps & ONLP_FAN_CAPS_GET_PERCENTAGE) {
 			if (plat_os_file_read_int(&info->percentage, fan->per_get_path, NULL) < 0) {
+				AIM_LOG_TRACE("plat_os_file_read_int failed for ONLP_FAN_CAPS_GET_PERCENTAGE path=%s", fan->per_get_path);
 				error ++;
 			} else {
 				if (fan->per_set_value > 0) {
@@ -356,7 +363,7 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
     }
 
 	fan->rpm_set_value = rpm;
-    
+
     return ONLP_STATUS_OK;
 }
 
@@ -388,7 +395,7 @@ int onlp_fani_percentage_set(onlp_oid_t id, int p)
     }
 
 	fan->per_set_value = p;
-    
+
     return ONLP_STATUS_OK;
 
 }
