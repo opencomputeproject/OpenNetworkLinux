@@ -24,37 +24,32 @@
  *
  ***********************************************************/
 #include <onlplib/file.h>
+#include <onlp/platformi/base.h>
 #include <onlp/platformi/fani.h>
 #include "platform_lib.h"
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_FAN(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
 #define MAX_FAN_SPEED    15400
-#define BIT(i)            (1 << (i))
+#define BIT(i) (1 << (i))
 
 enum fan_id {
-    FAN_1_ON_FAN_BOARD = 1,
-    FAN_2_ON_FAN_BOARD,
-    FAN_3_ON_FAN_BOARD,
-    FAN_4_ON_FAN_BOARD,
-    FAN_5_ON_FAN_BOARD,
+  FAN_1_ON_FAN_BOARD = 1,
+  FAN_2_ON_FAN_BOARD,
+  FAN_3_ON_FAN_BOARD,
+  FAN_4_ON_FAN_BOARD,
+  FAN_5_ON_FAN_BOARD,
 };
 
-#define FAN_BOARD_PATH    "/sys/bus/i2c/devices/8-0033/"
+#define FAN_BOARD_PATH "/sys/bus/i2c/devices/8-0033/"
 
 #define CHASSIS_FAN_INFO(fid)        \
     { \
         { ONLP_FAN_ID_CREATE(FAN_##fid##_ON_FAN_BOARD), "Chassis Fan - "#fid, 0 },\
-        0x0,\
+        ONLP_FAN_DIR_F2B,\
         ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE,\
         0,\
         0,\
-        ONLP_FAN_MODE_INVALID,\
+        "",\
+        "",\
     }
 
 /* Static fan information */
@@ -67,26 +62,61 @@ onlp_fan_info_t finfo[] = {
     CHASSIS_FAN_INFO(5)
 };
 
-/*
- * This function will be called prior to all of onlp_fani_* functions.
+
+/**
+ * @brief Software initialization of the Fan module.
  */
-int
-onlp_fani_init(void)
-{
+int onlp_fani_sw_init(void) {
+  return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Hardware initialization of the Fan module.
+ * @param flags The hardware initialization flags.
+ */
+int onlp_fani_hw_init(uint32_t flags) {
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
-{
+/**
+ * @brief Deinitialize the fan software module.
+ * @note The primary purpose of this API is to properly
+ * deallocate any resources used by the module in order
+ * faciliate detection of real resouce leaks.
+ */
+int onlp_fani_sw_denit(void) {
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Retrieve the fan's OID hdr.
+ * @param id The fan id.
+ * @param[out] hdr Receives the OID header.
+ */
+int onlp_fani_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr) {
+    onlp_fan_info_t info;
+    onlp_fani_info_get(id, &info);
+    *hdr = info.hdr;
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the information structure for the given fan OID.
+ * @param id The fan id
+ * @param[out] rv Receives the fan information.
+ */
+int onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info) {
+    
     int  value = 0, fid;
     char path[64] = {0};
-    VALIDATE(id);
 
     fid = ONLP_OID_ID_GET(id);
     *info = finfo[fid];
 
     /* get fan present status
+     *
+     * 0x0 Present
+     * 0x1 Not present
      */
     sprintf(path, "%s""fantray_present", FAN_BOARD_PATH);
 
@@ -96,10 +126,12 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     }
 
     if (value & BIT(fid-1)) {
+        // Not present bit set for fan N.
+        // Return latest info for the fan.
         return ONLP_STATUS_OK;
     }
-    info->status |= ONLP_FAN_STATUS_PRESENT;
 
+    info->hdr.status |= ONLP_OID_STATUS_FLAG_PRESENT;
 
     /* get front fan rpm
      */
@@ -108,7 +140,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     if (bmc_file_read_int(&value, path, 10) < 0) {
         AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", path);
         return ONLP_STATUS_E_INTERNAL;
-    }    
+    }
     info->rpm = value;
 
     /* get rear fan rpm
@@ -126,23 +158,32 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
         info->rpm = value;
     }
 
-
     /* set fan status based on rpm
      */
     if (!info->rpm) {
-        info->status |= ONLP_FAN_STATUS_FAILED;
+        info->hdr.status |= ONLP_OID_STATUS_FLAG_FAILED;
         return ONLP_STATUS_OK;
     }
 
-
-    /* get speed percentage from rpm 
+    /* get speed percentage from rpm
      */
     info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
 
     /* set fan direction
      */
-    info->status |= ONLP_FAN_STATUS_F2B;
+    info->dir = ONLP_FAN_DIR_F2B;
 
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the fan capabilities.
+ * @param id The fan id.
+ * @param[out] rv The fan capabilities
+ */
+int onlp_fani_caps_get(onlp_oid_id_t id, uint32_t* rv) {
+    int fid = ONLP_OID_ID_GET(id);
+    *rv = finfo[fid].caps;
     return ONLP_STATUS_OK;
 }
 
@@ -183,18 +224,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     return ONLP_STATUS_OK;
 }
 
-/*
- * This function sets the fan speed of the given OID as per
- * the predefined ONLP fan speed modes: off, slow, normal, fast, max.
- *
- * Interpretation of these modes is up to the platform.
- *
- */
-int
-onlp_fani_mode_set(onlp_oid_t id, onlp_fan_mode_t mode)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
 
 /*
  * This function sets the fan direction of the given OID.
@@ -210,13 +239,5 @@ onlp_fani_dir_set(onlp_oid_t id, onlp_fan_dir_t dir)
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
-/*
- * Generic fan ioctl. Optional.
- */
-int
-onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}
 
 
