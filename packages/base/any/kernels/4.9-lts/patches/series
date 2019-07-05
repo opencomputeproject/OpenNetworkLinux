@@ -31,3 +31,4 @@ driver-add-the-support-max6620.patch
 0029-mlxsw-core-Prevent-reading-unsupported-slave-address.patch
 0029-mlxsw-core-add-support-for-Gear-Box-temperatures-in-.patch
 0030-mlxsw-minimal-Provide-optimization-for-I2C-bus-acces.patch
+0031-platform-x86-mlx-platform-Add-support-for-new-system.patch
