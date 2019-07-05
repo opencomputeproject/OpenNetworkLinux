@@ -86,10 +86,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         return ONLP_STATUS_E_INVALID;
     }
 
-
     *info = __onlp_psu_info[LOCAL_ID_TO_INFO_IDX(local_id)]; /* Set the onlp_oid_hdr_t */
 
-    ret = onlp_file_read(temp, ONLP_CONFIG_INFO_STR_MAX, &len, INV_HWMON_PREFIX"psoc_psu%d_vender", local_id);
+    ret = onlp_file_read(temp, ONLP_CONFIG_INFO_STR_MAX, &len, INV_HWMON_PREFIX"psoc_psu%d_vendor", local_id);
     if(ret != ONLP_STATUS_OK){ return ret; }
     /*remove the '\n'*/
     temp[strlen((char*)temp)-1] = 0;
@@ -166,7 +165,7 @@ int onlp_psui_status_get(onlp_oid_t id, uint32_t* rv)
     if(local_id >= ONLP_PSU_MAX) {
         result = ONLP_STATUS_E_INVALID;
     } else {
-        result = onlp_file_read((uint8_t*)&buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%s""psu%d", INV_HWMON_PREFIX, local_id-1);
+        result = onlp_file_read((uint8_t*)&buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%s""psu%d", INV_HWMON_PREFIX, local_id);
         if( result != ONLP_STATUS_OK ){return result;}
         psu_state = (uint8_t)strtoul(buf, NULL, 0);
         if( psu_state == HWMON_PSU_UNPOWERED) {

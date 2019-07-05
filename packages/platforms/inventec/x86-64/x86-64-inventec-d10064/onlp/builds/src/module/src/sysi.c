@@ -36,8 +36,8 @@
 #include <onlp/platformi/fani.h>
 #include <onlp/platformi/psui.h>
 
-#include "x86_64_inventec_d5264q28b_int.h"
-#include "x86_64_inventec_d5264q28b_log.h"
+#include "x86_64_inventec_d10064_int.h"
+#include "x86_64_inventec_d10064_log.h"
 
 #include "platform_lib.h"
 
@@ -248,7 +248,7 @@ static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
 const char*
 onlp_sysi_platform_get(void)
 {
-    return "x86-64-inventec-d5264q28b-r0";
+    return "x86-64-inventec-d10064-r0";
 }
 
 
@@ -385,6 +385,7 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     return;
 }
 
+
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
 {
@@ -406,7 +407,6 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     }
     return ONLP_STATUS_OK;
 }
-
 
 int
 onlp_sysi_platform_manage_fans(void)

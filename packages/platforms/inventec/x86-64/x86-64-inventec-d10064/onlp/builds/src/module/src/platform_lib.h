@@ -26,9 +26,9 @@
 #ifndef __PLATFORM_LIB_H__
 #define __PLATFORM_LIB_H__
 
-#include "x86_64_inventec_d5264q28b_log.h"
+#include "x86_64_inventec_d10064_log.h"
 
-/* This is definitions for x86-64-inventec-d5264q28b*/
+/* This is definitions for x86-64-inventec-d10064*/
 /* OID map*/
 /*
  *  SYS---------ONLP_THERMAL_CPU_PHY
