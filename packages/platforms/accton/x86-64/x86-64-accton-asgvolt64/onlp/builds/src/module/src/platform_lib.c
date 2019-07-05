@@ -90,3 +90,27 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
+
+int mdio_read(int skfd, int location, struct ifreq ifr)
+{
+    struct mii_data *mii = (struct mii_data *)&ifr.ifr_data;
+    mii->reg_num = location;
+    if (ioctl(skfd, SIOCGMIIREG, &ifr) < 0) {
+        fprintf(stderr, "SIOCGMIIREG on %s failed: %s\n", ifr.ifr_name,
+        strerror(errno));
+        return -1;
+    }
+    return mii->val_out;
+}
+
+void mdio_write(int skfd, int location, int value, struct ifreq ifr)
+{
+    struct mii_data *mii = (struct mii_data *)&ifr.ifr_data;
+    mii->reg_num = location;
+    mii->val_in = value;
+    if (ioctl(skfd, SIOCSMIIREG, &ifr) < 0) {
+        fprintf(stderr, "SIOCSMIIREG on %s failed: %s\n", ifr.ifr_name,
+        strerror(errno));
+    }
+}
+

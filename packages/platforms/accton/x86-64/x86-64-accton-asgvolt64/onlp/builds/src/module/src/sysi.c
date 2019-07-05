@@ -44,6 +44,38 @@ onlp_sysi_platform_get(void)
 }
 
 int
+onlp_sysi_init(void)
+{
+    int skfd = -1;
+    char interface[64];
+    struct ifreq ifr;
+    
+    if ((skfd = socket(AF_INET, SOCK_DGRAM,0)) < 0) {
+        perror("socket");
+        return ONLP_STATUS_OK;
+    }
+    memset(interface, 0x0, 64);
+    strncpy(interface, "eth0", strlen("eth0"));
+	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+    if (ioctl(skfd, SIOCGMIIPHY, &ifr) < 0) {
+        if (errno != ENODEV)
+            fprintf(stderr, "SIOCGMIIPHY on '%s' failed: %s\n",
+                interface, strerror(errno));
+
+        close(skfd);	
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    /* fix mgt port led issue */
+    mdio_write(skfd, 0x16, 3, ifr);
+    mdio_write(skfd, 0x10, 0x7204, ifr);    
+    mdio_write(skfd, 0x11, 0x4455, ifr);
+    mdio_write(skfd, 0x16, 0, ifr);
+    close(skfd);
+    
+    return ONLP_STATUS_OK;
+}
+
+int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
     uint8_t* rdata = aim_zmalloc(512);
