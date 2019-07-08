@@ -1,4 +1,4 @@
-LIBONLP_1.0 {
+LIBONLP_2.0 {
     local: cjson*;
            cJSON*;
            aim*;
