@@ -1,1 +1,1 @@
-../x86-64-inventec-d5264q28b/Makefile
+include $(ONL)/make/pkg.mk

@@ -1,1 +1,2 @@
-../../../x86-64-inventec-d5264q28b/onlp/builds/Makefile
+FILTER=src
+include $(ONL)/make/subdirs.mk

@@ -1,1 +1,1 @@
-../../../../../x86-64-inventec-d5264q28b/platform-config/r0/src/lib/healthstatus.sh
+../../../../../d5264q28b/platform-config/r0/src/lib/healthstatus.sh
