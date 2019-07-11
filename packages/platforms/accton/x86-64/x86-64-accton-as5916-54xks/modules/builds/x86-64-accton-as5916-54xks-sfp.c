@@ -835,7 +835,7 @@ static ssize_t show_all(struct device *dev, struct device_attribute *da, char *b
             /* Update sfp rxlos status */
             for (i = (NUM_OF_SFP-1); i >= 0; i--) {
                 values <<= 1;
-                values |= !(data->ipmi_resp.sfp_resp[SFP_RXLOS][i] & 0x1);
+                values |= (data->ipmi_resp.sfp_resp[SFP_RXLOS][i] & 0x1);
             }
 
             mutex_unlock(&data->update_lock);
@@ -1095,7 +1095,7 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
                 goto exit;
             }
 
-            value = !data->ipmi_resp.sfp_resp[SFP_RXLOS][pid];
+            value = data->ipmi_resp.sfp_resp[SFP_RXLOS][pid];
             break;
         }
 		default:
