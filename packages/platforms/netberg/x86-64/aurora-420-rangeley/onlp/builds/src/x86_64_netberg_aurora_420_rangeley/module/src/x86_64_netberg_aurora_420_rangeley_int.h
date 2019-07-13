@@ -82,10 +82,14 @@ extern aim_map_si_t fan_oid_desc_map[];
 
 /** led_id */
 typedef enum led_id_e {
-    LED_ID_LED1 = 1,
-    LED_ID_LED2 = 2,
-    LED_ID_LED3 = 3,
-    LED_ID_LED4 = 4,
+    LED_ID_STAT = 1,
+    LED_ID_FAN = 2,
+    LED_ID_PSU1 = 3,
+    LED_ID_PSU2 = 4,
+    LED_ID_LED1 = 5,
+    LED_ID_LED2 = 6,
+    LED_ID_LED3 = 7,
+    LED_ID_LED4 = 8,
 } led_id_t;
 
 /** Enum names. */
@@ -111,10 +115,14 @@ extern aim_map_si_t led_id_desc_map[];
 
 /** led_oid */
 typedef enum led_oid_e {
-    LED_OID_LED1 = ONLP_LED_ID_CREATE(1),
-    LED_OID_LED2 = ONLP_LED_ID_CREATE(2),
-    LED_OID_LED3 = ONLP_LED_ID_CREATE(3),
-    LED_OID_LED4 = ONLP_LED_ID_CREATE(4),
+    LED_OID_STAT = ONLP_LED_ID_CREATE(1),
+    LED_OID_FAN = ONLP_LED_ID_CREATE(2),
+    LED_OID_PSU1 = ONLP_LED_ID_CREATE(3),
+    LED_OID_PSU2 = ONLP_LED_ID_CREATE(4),
+    LED_OID_LED1 = ONLP_LED_ID_CREATE(5),
+    LED_OID_LED2 = ONLP_LED_ID_CREATE(6),
+    LED_OID_LED3 = ONLP_LED_ID_CREATE(7),
+    LED_OID_LED4 = ONLP_LED_ID_CREATE(8),
 } led_oid_t;
 
 /** Enum names. */

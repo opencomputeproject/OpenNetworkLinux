@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if x86_64_inventec_d5254_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if X86_64_INVENTEC_D5254_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_inventec_d5254_MALLOC
+#ifndef X86_64_INVENTEC_D5254_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_inventec_d5254_MALLOC GLOBAL_MALLOC
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_MALLOC malloc
+        #define X86_64_INVENTEC_D5254_MALLOC GLOBAL_MALLOC
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_MALLOC malloc
     #else
-        #error The macro x86_64_inventec_d5254_MALLOC is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_FREE
+#ifndef X86_64_INVENTEC_D5254_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_inventec_d5254_FREE GLOBAL_FREE
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_FREE free
+        #define X86_64_INVENTEC_D5254_FREE GLOBAL_FREE
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_FREE free
     #else
-        #error The macro x86_64_inventec_d5254_FREE is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_MEMSET
+#ifndef X86_64_INVENTEC_D5254_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_inventec_d5254_MEMSET GLOBAL_MEMSET
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_MEMSET memset
+        #define X86_64_INVENTEC_D5254_MEMSET GLOBAL_MEMSET
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_MEMSET memset
     #else
-        #error The macro x86_64_inventec_d5254_MEMSET is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_MEMCPY
+#ifndef X86_64_INVENTEC_D5254_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_inventec_d5254_MEMCPY GLOBAL_MEMCPY
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_MEMCPY memcpy
+        #define X86_64_INVENTEC_D5254_MEMCPY GLOBAL_MEMCPY
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_MEMCPY memcpy
     #else
-        #error The macro x86_64_inventec_d5254_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_STRNCPY
+#ifndef X86_64_INVENTEC_D5254_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_inventec_d5254_STRNCPY GLOBAL_STRNCPY
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_STRNCPY strncpy
+        #define X86_64_INVENTEC_D5254_STRNCPY GLOBAL_STRNCPY
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_STRNCPY strncpy
     #else
-        #error The macro x86_64_inventec_d5254_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_VSNPRINTF
+#ifndef X86_64_INVENTEC_D5254_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_inventec_d5254_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_VSNPRINTF vsnprintf
+        #define X86_64_INVENTEC_D5254_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_inventec_d5254_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_SNPRINTF
+#ifndef X86_64_INVENTEC_D5254_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_inventec_d5254_SNPRINTF GLOBAL_SNPRINTF
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_SNPRINTF snprintf
+        #define X86_64_INVENTEC_D5254_SNPRINTF GLOBAL_SNPRINTF
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_SNPRINTF snprintf
     #else
-        #error The macro x86_64_inventec_d5254_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_inventec_d5254_STRLEN
+#ifndef X86_64_INVENTEC_D5254_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_inventec_d5254_STRLEN GLOBAL_STRLEN
-    #elif x86_64_inventec_d5254_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_inventec_d5254_STRLEN strlen
+        #define X86_64_INVENTEC_D5254_STRLEN GLOBAL_STRLEN
+    #elif X86_64_INVENTEC_D5254_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INVENTEC_D5254_STRLEN strlen
     #else
-        #error The macro x86_64_inventec_d5254_STRLEN is required but cannot be defined.
+        #error The macro X86_64_INVENTEC_D5254_STRLEN is required but cannot be defined.
     #endif
 #endif
 

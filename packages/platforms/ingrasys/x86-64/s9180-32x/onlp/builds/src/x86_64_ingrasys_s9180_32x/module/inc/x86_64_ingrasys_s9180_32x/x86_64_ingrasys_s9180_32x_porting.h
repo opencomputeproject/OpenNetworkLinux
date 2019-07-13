@@ -7,11 +7,11 @@
  * @{
  *
  ***********************************************************/
-#ifndef __X86_64_INGRAYSYS_S9180_32X_PORTING_H__
-#define __X86_64_INGRAYSYS_S9180_32X_PORTING_H__
+#ifndef __X86_64_INGRASYS_S9180_32X_PORTING_H__
+#define __X86_64_INGRASYS_S9180_32X_PORTING_H__
 
 /* <auto.start.portingmacro(ALL).define> */
-#if X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,88 +19,88 @@
 #include <memory.h>
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_MALLOC
+#ifndef X86_64_INGRASYS_S9180_32X_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define X86_64_INGRAYSYS_S9180_32X_MALLOC GLOBAL_MALLOC
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_MALLOC malloc
+        #define X86_64_INGRASYS_S9180_32X_MALLOC GLOBAL_MALLOC
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_MALLOC malloc
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_MALLOC is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_FREE
+#ifndef X86_64_INGRASYS_S9180_32X_FREE
     #if defined(GLOBAL_FREE)
-        #define X86_64_INGRAYSYS_S9180_32X_FREE GLOBAL_FREE
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_FREE free
+        #define X86_64_INGRASYS_S9180_32X_FREE GLOBAL_FREE
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_FREE free
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_FREE is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_MEMSET
+#ifndef X86_64_INGRASYS_S9180_32X_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define X86_64_INGRAYSYS_S9180_32X_MEMSET GLOBAL_MEMSET
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_MEMSET memset
+        #define X86_64_INGRASYS_S9180_32X_MEMSET GLOBAL_MEMSET
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_MEMSET memset
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_MEMSET is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_MEMCPY
+#ifndef X86_64_INGRASYS_S9180_32X_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define X86_64_INGRAYSYS_S9180_32X_MEMCPY GLOBAL_MEMCPY
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_MEMCPY memcpy
+        #define X86_64_INGRASYS_S9180_32X_MEMCPY GLOBAL_MEMCPY
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_MEMCPY memcpy
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_STRNCPY
+#ifndef X86_64_INGRASYS_S9180_32X_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define X86_64_INGRAYSYS_S9180_32X_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_STRNCPY strncpy
+        #define X86_64_INGRASYS_S9180_32X_STRNCPY GLOBAL_STRNCPY
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_STRNCPY strncpy
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_VSNPRINTF
+#ifndef X86_64_INGRASYS_S9180_32X_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define X86_64_INGRAYSYS_S9180_32X_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_VSNPRINTF vsnprintf
+        #define X86_64_INGRASYS_S9180_32X_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_VSNPRINTF vsnprintf
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_SNPRINTF
+#ifndef X86_64_INGRASYS_S9180_32X_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define X86_64_INGRAYSYS_S9180_32X_SNPRINTF GLOBAL_SNPRINTF
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_SNPRINTF snprintf
+        #define X86_64_INGRASYS_S9180_32X_SNPRINTF GLOBAL_SNPRINTF
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_SNPRINTF snprintf
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef X86_64_INGRAYSYS_S9180_32X_STRLEN
+#ifndef X86_64_INGRASYS_S9180_32X_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define X86_64_INGRAYSYS_S9180_32X_STRLEN GLOBAL_STRLEN
-    #elif X86_64_INGRAYSYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INGRAYSYS_S9180_32X_STRLEN strlen
+        #define X86_64_INGRASYS_S9180_32X_STRLEN GLOBAL_STRLEN
+    #elif X86_64_INGRASYS_S9180_32X_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_INGRASYS_S9180_32X_STRLEN strlen
     #else
-        #error The macro X86_64_INGRAYSYS_S9180_32X_STRLEN is required but cannot be defined.
+        #error The macro X86_64_INGRASYS_S9180_32X_STRLEN is required but cannot be defined.
     #endif
 #endif
 
 /* <auto.end.portingmacro(ALL).define> */
 
 
-#endif /* __X86_64_INGRAYSYS_S9180_32X_PORTING_H__ */
+#endif /* __X86_64_INGRASYS_S9180_32X_PORTING_H__ */
 /* @} */

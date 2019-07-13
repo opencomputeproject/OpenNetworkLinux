@@ -75,7 +75,7 @@ arm_delta_ag6248c_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; arm_delta_ag6248c_config_settings[i].name; i++) {
-        if(strcmp(arm_delta_ag6248c_config_settings[i].name, setting)) {
+        if(!strcmp(arm_delta_ag6248c_config_settings[i].name, setting)) {
             return arm_delta_ag6248c_config_settings[i].value;
         }
     }

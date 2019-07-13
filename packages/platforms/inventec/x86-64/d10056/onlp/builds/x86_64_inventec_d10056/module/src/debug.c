@@ -1,6 +1,6 @@
 #include "x86_64_inventec_d10056_int.h"
 
-#if x86_64_inventec_d10056_CONFIG_INCLUDE_DEBUG == 1
+#if X86_64_INVENTEC_D10056_CONFIG_INCLUDE_DEBUG == 1
 
 #include <unistd.h>
 

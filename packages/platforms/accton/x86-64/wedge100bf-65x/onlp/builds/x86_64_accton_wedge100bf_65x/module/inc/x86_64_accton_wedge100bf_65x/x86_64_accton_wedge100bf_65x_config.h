@@ -129,7 +129,7 @@ const char* x86_64_accton_wedge100bf_65x_config_lookup(const char* setting);
  */
 int x86_64_accton_wedge100bf_65x_config_show(struct aim_pvs_s* pvs);
 
-/* <auto.end.cdefs(x86_64_accton_wedge100bf_65x_CONFIG_HEADER).header> */
+/* <auto.end.cdefs(X86_64_ACCTON_WEDGE100BF_65X_CONFIG_HEADER).header> */
 
 #include "x86_64_accton_wedge100bf_65x_porting.h"
 

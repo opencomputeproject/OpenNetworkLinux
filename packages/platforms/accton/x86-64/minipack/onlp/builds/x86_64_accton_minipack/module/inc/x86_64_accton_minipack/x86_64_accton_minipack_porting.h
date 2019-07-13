@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_accton_minipack_MALLOC
+#ifndef X86_64_ACCTON_MINIPACK_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_accton_minipack_MALLOC GLOBAL_MALLOC
+        #define X86_64_ACCTON_MINIPACK_MALLOC GLOBAL_MALLOC
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_MALLOC malloc
+        #define X86_64_ACCTON_MINIPACK_MALLOC malloc
     #else
-        #error The macro x86_64_accton_minipack_MALLOC is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_FREE
+#ifndef X86_64_ACCTON_MINIPACK_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_accton_minipack_FREE GLOBAL_FREE
+        #define X86_64_ACCTON_MINIPACK_FREE GLOBAL_FREE
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_FREE free
+        #define X86_64_ACCTON_MINIPACK_FREE free
     #else
-        #error The macro x86_64_accton_minipack_FREE is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_MEMSET
+#ifndef X86_64_ACCTON_MINIPACK_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_accton_minipack_MEMSET GLOBAL_MEMSET
+        #define X86_64_ACCTON_MINIPACK_MEMSET GLOBAL_MEMSET
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_MEMSET memset
+        #define X86_64_ACCTON_MINIPACK_MEMSET memset
     #else
-        #error The macro x86_64_accton_minipack_MEMSET is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_MEMCPY
+#ifndef X86_64_ACCTON_MINIPACK_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_accton_minipack_MEMCPY GLOBAL_MEMCPY
+        #define X86_64_ACCTON_MINIPACK_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_MEMCPY memcpy
+        #define X86_64_ACCTON_MINIPACK_MEMCPY memcpy
     #else
-        #error The macro x86_64_accton_minipack_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_STRNCPY
+#ifndef X86_64_ACCTON_MINIPACK_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_accton_minipack_STRNCPY GLOBAL_STRNCPY
+        #define X86_64_ACCTON_MINIPACK_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_STRNCPY strncpy
+        #define X86_64_ACCTON_MINIPACK_STRNCPY strncpy
     #else
-        #error The macro x86_64_accton_minipack_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_VSNPRINTF
+#ifndef X86_64_ACCTON_MINIPACK_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_accton_minipack_VSNPRINTF GLOBAL_VSNPRINTF
+        #define X86_64_ACCTON_MINIPACK_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_VSNPRINTF vsnprintf
+        #define X86_64_ACCTON_MINIPACK_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_accton_minipack_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_SNPRINTF
+#ifndef X86_64_ACCTON_MINIPACK_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_accton_minipack_SNPRINTF GLOBAL_SNPRINTF
+        #define X86_64_ACCTON_MINIPACK_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_SNPRINTF snprintf
+        #define X86_64_ACCTON_MINIPACK_SNPRINTF snprintf
     #else
-        #error The macro x86_64_accton_minipack_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_minipack_STRLEN
+#ifndef X86_64_ACCTON_MINIPACK_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_accton_minipack_STRLEN GLOBAL_STRLEN
+        #define X86_64_ACCTON_MINIPACK_STRLEN GLOBAL_STRLEN
     #elif X86_64_ACCTON_MINIPACK_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_minipack_STRLEN strlen
+        #define X86_64_ACCTON_MINIPACK_STRLEN strlen
     #else
-        #error The macro x86_64_accton_minipack_STRLEN is required but cannot be defined.
+        #error The macro X86_64_ACCTON_MINIPACK_STRLEN is required but cannot be defined.
     #endif
 #endif
 

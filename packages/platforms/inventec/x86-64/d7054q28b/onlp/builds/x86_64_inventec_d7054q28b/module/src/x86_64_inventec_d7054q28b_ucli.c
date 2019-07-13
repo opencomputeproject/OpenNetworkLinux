@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <x86_64_inventec_d7054q28b/x86_64_inventec_d7054q28b_config.h>
 
-#if x86_64_inventec_d7054q28b_CONFIG_INCLUDE_UCLI == 1
+#if X86_64_INVENTEC_D7054Q28B_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

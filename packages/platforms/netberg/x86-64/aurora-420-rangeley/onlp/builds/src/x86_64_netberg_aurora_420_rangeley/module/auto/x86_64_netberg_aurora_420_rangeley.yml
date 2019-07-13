@@ -100,6 +100,10 @@ definitions:
         - FAN      : 2
         - PSU1     : 3
         - PSU2     : 4
+        - LED1     : 5
+        - LED2     : 6
+        - LED3     : 7
+        - LED4     : 8
 
     led_oid:
       members:
@@ -107,6 +111,10 @@ definitions:
         - FAN      : ONLP_LED_ID_CREATE(2)
         - PSU1     : ONLP_LED_ID_CREATE(3)
         - PSU2     : ONLP_LED_ID_CREATE(4)
+        - LED1     : ONLP_LED_ID_CREATE(5)
+        - LED2     : ONLP_LED_ID_CREATE(6)
+        - LED3     : ONLP_LED_ID_CREATE(7)
+        - LED4     : ONLP_LED_ID_CREATE(8)
 
   portingmacro:
     X86_64_NETBERG_AURORA_420_RANGELEY:

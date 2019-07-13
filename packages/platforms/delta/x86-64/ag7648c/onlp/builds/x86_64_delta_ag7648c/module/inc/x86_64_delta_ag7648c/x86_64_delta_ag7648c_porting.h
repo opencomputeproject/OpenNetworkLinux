@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_delta_ag7648c_MALLOC
+#ifndef X86_64_DELTA_AG7648C_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_delta_ag7648c_MALLOC GLOBAL_MALLOC
+        #define X86_64_DELTA_AG7648C_MALLOC GLOBAL_MALLOC
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_MALLOC malloc
+        #define X86_64_DELTA_AG7648C_MALLOC malloc
     #else
-        #error The macro x86_64_delta_ag7648c_MALLOC is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_FREE
+#ifndef X86_64_DELTA_AG7648C_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_delta_ag7648c_FREE GLOBAL_FREE
+        #define X86_64_DELTA_AG7648C_FREE GLOBAL_FREE
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_FREE free
+        #define X86_64_DELTA_AG7648C_FREE free
     #else
-        #error The macro x86_64_delta_ag7648c_FREE is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_MEMSET
+#ifndef X86_64_DELTA_AG7648C_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_delta_ag7648c_MEMSET GLOBAL_MEMSET
+        #define X86_64_DELTA_AG7648C_MEMSET GLOBAL_MEMSET
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_MEMSET memset
+        #define X86_64_DELTA_AG7648C_MEMSET memset
     #else
-        #error The macro x86_64_delta_ag7648c_MEMSET is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_MEMCPY
+#ifndef X86_64_DELTA_AG7648C_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_delta_ag7648c_MEMCPY GLOBAL_MEMCPY
+        #define X86_64_DELTA_AG7648C_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_MEMCPY memcpy
+        #define X86_64_DELTA_AG7648C_MEMCPY memcpy
     #else
-        #error The macro x86_64_delta_ag7648c_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_STRNCPY
+#ifndef X86_64_DELTA_AG7648C_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_delta_ag7648c_STRNCPY GLOBAL_STRNCPY
+        #define X86_64_DELTA_AG7648C_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_STRNCPY strncpy
+        #define X86_64_DELTA_AG7648C_STRNCPY strncpy
     #else
-        #error The macro x86_64_delta_ag7648c_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_VSNPRINTF
+#ifndef X86_64_DELTA_AG7648C_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_delta_ag7648c_VSNPRINTF GLOBAL_VSNPRINTF
+        #define X86_64_DELTA_AG7648C_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_VSNPRINTF vsnprintf
+        #define X86_64_DELTA_AG7648C_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_delta_ag7648c_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_SNPRINTF
+#ifndef X86_64_DELTA_AG7648C_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_delta_ag7648c_SNPRINTF GLOBAL_SNPRINTF
+        #define X86_64_DELTA_AG7648C_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_SNPRINTF snprintf
+        #define X86_64_DELTA_AG7648C_SNPRINTF snprintf
     #else
-        #error The macro x86_64_delta_ag7648c_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_delta_ag7648c_STRLEN
+#ifndef X86_64_DELTA_AG7648C_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_delta_ag7648c_STRLEN GLOBAL_STRLEN
+        #define X86_64_DELTA_AG7648C_STRLEN GLOBAL_STRLEN
     #elif X86_64_DELTA_AG7648C_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_delta_ag7648c_STRLEN strlen
+        #define X86_64_DELTA_AG7648C_STRLEN strlen
     #else
-        #error The macro x86_64_delta_ag7648c_STRLEN is required but cannot be defined.
+        #error The macro X86_64_DELTA_AG7648C_STRLEN is required but cannot be defined.
     #endif
 #endif
 

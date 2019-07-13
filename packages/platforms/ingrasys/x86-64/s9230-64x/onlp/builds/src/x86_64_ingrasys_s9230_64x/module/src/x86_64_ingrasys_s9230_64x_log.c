@@ -30,9 +30,9 @@
  * x86_64_ingrasys_s9230_64x log struct.
  */
 AIM_LOG_STRUCT_DEFINE(
-                      X86_64_INGRAYSYS_S9230_64X_CONFIG_LOG_OPTIONS_DEFAULT,
-                      X86_64_INGRAYSYS_S9230_64X_CONFIG_LOG_BITS_DEFAULT,
+                      X86_64_INGRASYS_S9230_64X_CONFIG_LOG_OPTIONS_DEFAULT,
+                      X86_64_INGRASYS_S9230_64X_CONFIG_LOG_BITS_DEFAULT,
                       NULL, /* Custom log map */
-                      X86_64_INGRAYSYS_S9230_64X_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+                      X86_64_INGRASYS_S9230_64X_CONFIG_LOG_CUSTOM_BITS_DEFAULT
                      );
 

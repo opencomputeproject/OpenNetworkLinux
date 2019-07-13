@@ -1,9 +1,9 @@
 ###############################################################################
 #
-# 
+#
 #
 ###############################################################################
-include ../../init.mk
+include $(ONL)/make/config.mk
 MODULE := x86_64_accton_wedge100bf_65x
 AUTOMODULE := x86_64_accton_wedge100bf_65x
 include $(BUILDER)/definemodule.mk

@@ -1,6 +1,6 @@
 #include "x86_64_mitac_ly1200_b32h0_c3_int.h"
 
-#if x86_64_mitac_ly1200_b32h0_c3_CONFIG_INCLUDE_DEBUG == 1
+#if X86_64_MITAC_LY1200_B32H0_C3_CONFIG_INCLUDE_DEBUG == 1
 
 #include <unistd.h>
 

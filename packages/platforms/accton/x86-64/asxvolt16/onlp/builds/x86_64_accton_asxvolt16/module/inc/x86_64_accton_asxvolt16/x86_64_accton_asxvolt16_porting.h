@@ -12,7 +12,7 @@
 
 
 /* <auto.start.portingmacro(ALL).define> */
-#if x86_64_accton_asxvolt16_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
+#if X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS == 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_accton_asxvolt16_MALLOC
+#ifndef X86_64_ACCTON_ASXVOLT16_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_accton_asxvolt16_MALLOC GLOBAL_MALLOC
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_MALLOC malloc
+        #define X86_64_ACCTON_ASXVOLT16_MALLOC GLOBAL_MALLOC
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_MALLOC malloc
     #else
-        #error The macro x86_64_accton_asxvolt16_MALLOC is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_FREE
+#ifndef X86_64_ACCTON_ASXVOLT16_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_accton_asxvolt16_FREE GLOBAL_FREE
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_FREE free
+        #define X86_64_ACCTON_ASXVOLT16_FREE GLOBAL_FREE
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_FREE free
     #else
-        #error The macro x86_64_accton_asxvolt16_FREE is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_MEMSET
+#ifndef X86_64_ACCTON_ASXVOLT16_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_accton_asxvolt16_MEMSET GLOBAL_MEMSET
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_MEMSET memset
+        #define X86_64_ACCTON_ASXVOLT16_MEMSET GLOBAL_MEMSET
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_MEMSET memset
     #else
-        #error The macro x86_64_accton_asxvolt16_MEMSET is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_MEMCPY
+#ifndef X86_64_ACCTON_ASXVOLT16_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_accton_asxvolt16_MEMCPY GLOBAL_MEMCPY
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_MEMCPY memcpy
+        #define X86_64_ACCTON_ASXVOLT16_MEMCPY GLOBAL_MEMCPY
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_MEMCPY memcpy
     #else
-        #error The macro x86_64_accton_asxvolt16_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_STRNCPY
+#ifndef X86_64_ACCTON_ASXVOLT16_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_accton_asxvolt16_STRNCPY GLOBAL_STRNCPY
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_STRNCPY strncpy
+        #define X86_64_ACCTON_ASXVOLT16_STRNCPY GLOBAL_STRNCPY
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_STRNCPY strncpy
     #else
-        #error The macro x86_64_accton_asxvolt16_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_VSNPRINTF
+#ifndef X86_64_ACCTON_ASXVOLT16_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_accton_asxvolt16_VSNPRINTF GLOBAL_VSNPRINTF
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_VSNPRINTF vsnprintf
+        #define X86_64_ACCTON_ASXVOLT16_VSNPRINTF GLOBAL_VSNPRINTF
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_accton_asxvolt16_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_SNPRINTF
+#ifndef X86_64_ACCTON_ASXVOLT16_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_accton_asxvolt16_SNPRINTF GLOBAL_SNPRINTF
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_SNPRINTF snprintf
+        #define X86_64_ACCTON_ASXVOLT16_SNPRINTF GLOBAL_SNPRINTF
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_SNPRINTF snprintf
     #else
-        #error The macro x86_64_accton_asxvolt16_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_asxvolt16_STRLEN
+#ifndef X86_64_ACCTON_ASXVOLT16_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_accton_asxvolt16_STRLEN GLOBAL_STRLEN
-    #elif x86_64_accton_asxvolt16_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_asxvolt16_STRLEN strlen
+        #define X86_64_ACCTON_ASXVOLT16_STRLEN GLOBAL_STRLEN
+    #elif X86_64_ACCTON_ASXVOLT16_CONFIG_PORTING_STDLIB == 1
+        #define X86_64_ACCTON_ASXVOLT16_STRLEN strlen
     #else
-        #error The macro x86_64_accton_asxvolt16_STRLEN is required but cannot be defined.
+        #error The macro X86_64_ACCTON_ASXVOLT16_STRLEN is required but cannot be defined.
     #endif
 #endif
 

@@ -1,6 +1,6 @@
 #include "x86_64_accton_asgvolt64_int.h"
 
-#if x86_64_accton_asgvolt64_CONFIG_INCLUDE_DEBUG == 1
+#if X86_64_ACCTON_ASGVOLT64_CONFIG_INCLUDE_DEBUG == 1
 
 #include <unistd.h>
 

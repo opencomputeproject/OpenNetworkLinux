@@ -1,9 +1,9 @@
 ###############################################################################
 #
-# 
+#
 #
 ###############################################################################
-include ../../init.mk
+include $(ONL)/make/config.mk
 MODULE := x86_64_delta_ag7648c
 AUTOMODULE := x86_64_delta_ag7648c
 include $(BUILDER)/definemodule.mk

@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <x86_64_inventec_d10056/x86_64_inventec_d10056_config.h>
 
-#if x86_64_inventec_d10056_CONFIG_INCLUDE_UCLI == 1
+#if X86_64_INVENTEC_D10056_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

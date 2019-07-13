@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <x86_64_accton_minipack/x86_64_accton_minipack_config.h>
 
-/* <auto.start.cdefs(x86_64_accton_minipack_CONFIG_HEADER).source> */
+/* <auto.start.cdefs(X86_64_ACCTON_MINIPACK_CONFIG_HEADER).source> */
 #define __x86_64_accton_minipack_config_STRINGIFY_NAME(_x) #_x
 #define __x86_64_accton_minipack_config_STRINGIFY_VALUE(_x) __x86_64_accton_minipack_config_STRINGIFY_NAME(_x)
 x86_64_accton_minipack_config_settings_t x86_64_accton_minipack_config_settings[] =
@@ -60,7 +60,7 @@ x86_64_accton_minipack_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; x86_64_accton_minipack_config_settings[i].name; i++) {
-        if(strcmp(x86_64_accton_minipack_config_settings[i].name, setting)) {
+        if(!strcmp(x86_64_accton_minipack_config_settings[i].name, setting)) {
             return x86_64_accton_minipack_config_settings[i].value;
         }
     }

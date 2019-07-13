@@ -5,7 +5,7 @@
  *****************************************************************************/
 #include <x86_64_accton_asgvolt64/x86_64_accton_asgvolt64_config.h>
 
-#if x86_64_accton_asgvolt64_CONFIG_INCLUDE_UCLI == 1
+#if X86_64_ACCTON_ASGVOLT64_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

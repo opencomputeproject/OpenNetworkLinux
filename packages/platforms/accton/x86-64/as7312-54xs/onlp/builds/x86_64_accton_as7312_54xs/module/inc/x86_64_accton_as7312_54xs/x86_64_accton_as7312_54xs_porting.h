@@ -20,83 +20,83 @@
 #include <memory.h>
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_MALLOC
+#ifndef X86_64_ACCTON_AS7312_54XS_MALLOC
     #if defined(GLOBAL_MALLOC)
-        #define x86_64_accton_as7312_54xs_MALLOC GLOBAL_MALLOC
+        #define X86_64_ACCTON_AS7312_54XS_MALLOC GLOBAL_MALLOC
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_MALLOC malloc
+        #define X86_64_ACCTON_AS7312_54XS_MALLOC malloc
     #else
-        #error The macro x86_64_accton_as7312_54xs_MALLOC is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_MALLOC is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_FREE
+#ifndef X86_64_ACCTON_AS7312_54XS_FREE
     #if defined(GLOBAL_FREE)
-        #define x86_64_accton_as7312_54xs_FREE GLOBAL_FREE
+        #define X86_64_ACCTON_AS7312_54XS_FREE GLOBAL_FREE
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_FREE free
+        #define X86_64_ACCTON_AS7312_54XS_FREE free
     #else
-        #error The macro x86_64_accton_as7312_54xs_FREE is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_FREE is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_MEMSET
+#ifndef X86_64_ACCTON_AS7312_54XS_MEMSET
     #if defined(GLOBAL_MEMSET)
-        #define x86_64_accton_as7312_54xs_MEMSET GLOBAL_MEMSET
+        #define X86_64_ACCTON_AS7312_54XS_MEMSET GLOBAL_MEMSET
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_MEMSET memset
+        #define X86_64_ACCTON_AS7312_54XS_MEMSET memset
     #else
-        #error The macro x86_64_accton_as7312_54xs_MEMSET is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_MEMSET is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_MEMCPY
+#ifndef X86_64_ACCTON_AS7312_54XS_MEMCPY
     #if defined(GLOBAL_MEMCPY)
-        #define x86_64_accton_as7312_54xs_MEMCPY GLOBAL_MEMCPY
+        #define X86_64_ACCTON_AS7312_54XS_MEMCPY GLOBAL_MEMCPY
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_MEMCPY memcpy
+        #define X86_64_ACCTON_AS7312_54XS_MEMCPY memcpy
     #else
-        #error The macro x86_64_accton_as7312_54xs_MEMCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_MEMCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_STRNCPY
+#ifndef X86_64_ACCTON_AS7312_54XS_STRNCPY
     #if defined(GLOBAL_STRNCPY)
-        #define x86_64_accton_as7312_54xs_STRNCPY GLOBAL_STRNCPY
+        #define X86_64_ACCTON_AS7312_54XS_STRNCPY GLOBAL_STRNCPY
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_STRNCPY strncpy
+        #define X86_64_ACCTON_AS7312_54XS_STRNCPY strncpy
     #else
-        #error The macro x86_64_accton_as7312_54xs_STRNCPY is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_STRNCPY is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_VSNPRINTF
+#ifndef X86_64_ACCTON_AS7312_54XS_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
-        #define x86_64_accton_as7312_54xs_VSNPRINTF GLOBAL_VSNPRINTF
+        #define X86_64_ACCTON_AS7312_54XS_VSNPRINTF GLOBAL_VSNPRINTF
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_VSNPRINTF vsnprintf
+        #define X86_64_ACCTON_AS7312_54XS_VSNPRINTF vsnprintf
     #else
-        #error The macro x86_64_accton_as7312_54xs_VSNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_VSNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_SNPRINTF
+#ifndef X86_64_ACCTON_AS7312_54XS_SNPRINTF
     #if defined(GLOBAL_SNPRINTF)
-        #define x86_64_accton_as7312_54xs_SNPRINTF GLOBAL_SNPRINTF
+        #define X86_64_ACCTON_AS7312_54XS_SNPRINTF GLOBAL_SNPRINTF
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_SNPRINTF snprintf
+        #define X86_64_ACCTON_AS7312_54XS_SNPRINTF snprintf
     #else
-        #error The macro x86_64_accton_as7312_54xs_SNPRINTF is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_SNPRINTF is required but cannot be defined.
     #endif
 #endif
 
-#ifndef x86_64_accton_as7312_54xs_STRLEN
+#ifndef X86_64_ACCTON_AS7312_54XS_STRLEN
     #if defined(GLOBAL_STRLEN)
-        #define x86_64_accton_as7312_54xs_STRLEN GLOBAL_STRLEN
+        #define X86_64_ACCTON_AS7312_54XS_STRLEN GLOBAL_STRLEN
     #elif X86_64_ACCTON_AS7312_54XS_CONFIG_PORTING_STDLIB == 1
-        #define x86_64_accton_as7312_54xs_STRLEN strlen
+        #define X86_64_ACCTON_AS7312_54XS_STRLEN strlen
     #else
-        #error The macro x86_64_accton_as7312_54xs_STRLEN is required but cannot be defined.
+        #error The macro X86_64_ACCTON_AS7312_54XS_STRLEN is required but cannot be defined.
     #endif
 #endif
 

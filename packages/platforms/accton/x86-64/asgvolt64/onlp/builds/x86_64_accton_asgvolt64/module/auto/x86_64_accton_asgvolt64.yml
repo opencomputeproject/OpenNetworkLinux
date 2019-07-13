@@ -22,7 +22,7 @@ cdefs: &cdefs
     default: 1
 - X86_64_ACCTON_ASGVOLT64_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
     doc: "Include standard library headers for stdlib porting macros."
-    default: x86_64_accton_asgvolt64_CONFIG_PORTING_STDLIB
+    default: X86_64_ACCTON_ASGVOLT64_CONFIG_PORTING_STDLIB
 - X86_64_ACCTON_ASGVOLT64_CONFIG_INCLUDE_UCLI:
     doc: "Include generic uCli support."
     default: 0

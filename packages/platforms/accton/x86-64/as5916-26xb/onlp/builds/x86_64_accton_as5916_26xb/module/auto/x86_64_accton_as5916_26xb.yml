@@ -33,7 +33,7 @@ cdefs: &cdefs
 
 definitions:
   cdefs:
-    X86_64_ACCTON_AS5916_26xb_CONFIG_HEADER:
+    X86_64_ACCTON_AS5916_26XB_CONFIG_HEADER:
       defs: *cdefs
       basename: x86_64_accton_as5916_26xb_config
 

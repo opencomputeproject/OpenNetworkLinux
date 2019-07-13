@@ -1,6 +1,6 @@
 #include "x86_64_accton_csp9250_int.h"
 
-#if x86_64_accton_csp9250_CONFIG_INCLUDE_DEBUG == 1
+#if X86_64_ACCTON_CSP9250_CONFIG_INCLUDE_DEBUG == 1
 
 #include <unistd.h>
 
