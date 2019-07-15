@@ -1,0 +1,44 @@
+variables:
+  r0_platform  :  powerpc-accton-as5710-54x
+  r0b_platform1 : powerpc-as5710-54x
+  r0b_platform2 : powerpc-accton-as5710-54x
+
+  r0_install   : /lib/platform-config/${r0_platform}-r0/onl
+  r0b_install1  : /lib/platform-config/${r0b_platform1}-r0b/onl
+  r0b_install2  : /lib/platform-config/${r0b_platform2}-r0b/onl
+
+common:
+  version: 1.0.0
+  arch: powerpc
+  copyright: Copyright 2013, 2014, 2015 Big Switch Networks
+  maintainer: support@bigswitch.com
+  support: opennetworklinux@googlegroups.com
+
+packages:
+  - name: onlp-${r0_platform}-r0
+    summary: ONLP Package for the ${r0_platform}-r0 platform.
+
+    files:
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0_install}/lib/libonlp-${r0_platform}.so
+      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r0_install}/bin/
+
+    changelog:  Change changes changes.,
+
+
+  - name: onlp-${r0b_platform1}-r0b
+    summary: ONLP Package for the ${r0b_platform1}-r0b platform.
+
+    files:
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0b_install1}/lib/libonlp-${r0b_platform1}-r0b.so
+      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r0b_install1}/bin/
+
+    changelog:  Change changes changes.,
+
+  - name: onlp-${r0b_platform2}-r0b
+    summary: ONLP Package for the ${r0b_platform2}-r0b platform.
+
+    files:
+      builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${r0_platform}.so : ${r0b_install2}/lib/libonlp-${r0b_platform2}-r0b.so
+      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r0b_install2}/bin/
+
+    changelog:  Change changes changes.,

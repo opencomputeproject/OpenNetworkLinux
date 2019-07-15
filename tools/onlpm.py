@@ -546,6 +546,12 @@ class OnlPackageGroup(object):
                     return False
         return True
 
+    def buildercheck(self, builder_arches):
+        for p in self.packages:
+            if p.arch() not in builder_arches:
+                return False
+        return True
+
     def prerequisite_packages(self):
         rv = []
         for e in list(onlu.sflatten(self._pkgs.get('prerequisites', {}).get('packages', []))):
@@ -978,8 +984,16 @@ class OnlPackageManager(object):
 
         return False
 
+
+    def __builder_arches(self):
+        arches = [ 'all', 'amd64' ]
+        arches = arches + subprocess.check_output(['dpkg', '--print-foreign-architectures']).split()
+        return arches
+
     def __build_cache(self, basedir):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
+
+        builder_arches = self.__builder_arches()
 
         for root, dirs, files in os.walk(basedir):
             for f in files:
@@ -992,7 +1006,7 @@ class OnlPackageManager(object):
                             logger.debug('Loading package file %s...' % os.path.join(root, f))
                             pg.load(os.path.join(root, f))
                             logger.debug('  Loaded package file %s' % os.path.join(root, f))
-                            if pg.distcheck():
+                            if pg.distcheck() and pg.buildercheck(builder_arches):
                                 self.package_groups.append(pg)
                         except OnlPackageError, e:
                             logger.error("%s: " % e)
