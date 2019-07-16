@@ -1,527 +1,505 @@
 /*
- * A LED driver for the accton_asgvolt64_led
+ * Copyright (C)  Jostar Yang <jostar_yang@accton.com.tw>
  *
- * Copyright (C) 2014 Accton Technology Corporation.
- * Brandon Chuang <brandon_chuang@accton.com.tw>
+ * Based on:
+ *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
+ * Copyright (C) 2006
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * Based on:
+ *	pca954x.c from Ken Harrenstien
+ * Copyright (C) 2004 Google, Inc. (Ken Harrenstien)
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Based on:
+ *	i2c-virtual_cb.c from Brian Kuschak <bkuschak@yahoo.com>
+ * and
+ *	pca9540.c from Jean Delvare <khali@linux-fr.org>.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2. This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
  */
-
-/*#define DEBUG*/
 
 #include <linux/module.h>
-#include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/platform_device.h>
-#include <linux/err.h>
-#include <linux/leds.h>
 #include <linux/slab.h>
-#include <linux/dmi.h>
+#include <linux/device.h>
+#include <linux/version.h>
+#include <linux/stat.h>
+#include <linux/sysfs.h>
+#include <linux/hwmon-sysfs.h>
+#include <linux/ipmi.h>
+#include <linux/ipmi_smi.h>
+#include <linux/platform_device.h>
 
-extern int asgvolt64_cpld_read (unsigned short cpld_addr, u8 reg);
-extern int asgvolt64_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
+#define DRVNAME "asgvolt64_led"
+#define ACCTON_IPMI_NETFN   0x34
+#define IPMI_LED_READ_CMD   0x1A
+#define IPMI_LED_WRITE_CMD  0x1B
+#define IPMI_TIMEOUT		(20 * HZ)
 
-#define DRVNAME "accton_asgvolt64_led"
+static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
+static ssize_t set_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_led(struct device *dev, struct device_attribute *attr, char *buf);
+static int asgvolt64_led_probe(struct platform_device *pdev);
+static int asgvolt64_led_remove(struct platform_device *pdev);
 
-struct accton_asgvolt64_led_data {
+enum led_data_index {
+    LOC_INDEX=1, /* UID LED */
+    FAN_INDEX,
+    AIR_INDEX, /* AIR Filter */
+    PSU2_INDEX,
+    PSU1_INDEX,
+    ALARM_INDEX,
+    STATE_INDEX,
+    MAX_LED_INDEX=8,
+};
+
+struct ipmi_data {
+    struct completion   read_complete;
+    struct ipmi_addr	address;
+    ipmi_user_t         user;
+    int                 interface;
+    struct kernel_ipmi_msg tx_message;
+    long                   tx_msgid;
+    void            *rx_msg_data;
+    unsigned short   rx_msg_len;
+    unsigned char    rx_result;
+    int              rx_recv_type;
+    struct ipmi_user_hndl ipmi_hndlrs;
+};
+
+struct asgvolt64_led_data {
     struct platform_device *pdev;
-    struct mutex	 update_lock;
-    char			 valid;		   /* != 0 if registers are valid */
-    unsigned long	last_updated;	/* In jiffies */
-    u8			   reg_val[2];	  /* only 1 register*/
+    struct mutex     update_lock;
+    char             valid;           /* != 0 if registers are valid */
+    unsigned long    last_updated;    /* In jiffies */
+    unsigned char    ipmi_tx_data[2]; /* [0]: LED IDX, [1]: Color or off*/
+    unsigned char    ipmi_resp[7]; /*[0]:LOC_INDEX status, [1]:FAN_INDEX .. [6]:STATE_INDEX*/
+    struct ipmi_data ipmi;
 };
 
-static struct accton_asgvolt64_led_data  *ledctl = NULL;
-
-/* LED related data
- */
-
-#define LED_CNTRLER_I2C_ADDRESS	(0x60)
-
-#define LED_TYPE_STATE_REG_MASK	        (0x8|0x10|0x20)
-#define LED_MODE_STATE_RED_VALUE         0x18
-#define LED_MODE_STATE_BLUE_VALUE        0x28
-#define LED_MODE_STATE_GREEN_VALUE       0x30
-#define LED_MODE_STATE_OFF_VALUE         0
-
-#define LED_TYPE_ALARM_REG_MASK	        (0x1|0x2|0x4)
-#define LED_MODE_ALARM_RED_VALUE         0x3
-#define LED_MODE_ALARM_BLUE_VALUE        0x5
-#define LED_MODE_ALARM_GREEN_VALUE       0x6
-#define LED_MODE_ALARM_OFF_VALUE         0
-
-#define LED_TYPE_LOC_REG_MASK	        0x1
-#define LED_MODE_LOC_AMBER_BLINK_VALUE  0x0
-#define LED_MODE_LOC_OFF_VALUE	        0x1
-
-#define LED_TYPE_FAN_REG_MASK           (0x20|0x10)
-#define LED_MODE_FAN_GREEN_VALUE        0x10
-#define LED_MODE_FAN_OFF_VALUE	        (0x0)
-
-#define LED_TYPE_PSU2_REG_MASK          (0x80|0x40)
-#define LED_MODE_PSU2_RED_VALUE          0x40
-#define LED_MODE_PSU2_GREEN_VALUE        0x80
-#define LED_MODE_PSU2_OFF_VALUE	        (0x0)
-
-#define LED_TYPE_PSU1_REG_MASK          (0x20|0x10)
-#define LED_MODE_PSU1_RED_VALUE          0x10
-#define LED_MODE_PSU1_GREEN_VALUE        0x20
-#define LED_MODE_PSU1_OFF_VALUE	        (0x0)
-
-enum led_type {
-    LED_TYPE_LOC,
-    LED_TYPE_STATE,    
-    LED_TYPE_ALARM,
-    LED_TYPE_FAN,
-    LED_TYPE_PSU1,
-    LED_TYPE_PSU2
-};
-
-struct led_reg {
-    u32  types;
-    u8   reg_addr;
-};
-
-static const struct led_reg led_reg_map[] = {    
-    { (1<<LED_TYPE_PSU1) | (1<<LED_TYPE_PSU2) | (1<<LED_TYPE_LOC)  , 0x38},
-    { (1<<LED_TYPE_STATE) | (1<<LED_TYPE_ALARM) , 0x39},
-};
-
-
-enum led_light_mode {
-    LED_MODE_OFF = 0,
-    LED_MODE_GREEN,
-    LED_MODE_AMBER,
-    LED_MODE_RED,
-    LED_MODE_BLUE,
-    LED_MODE_GREEN_BLINK,
-    LED_MODE_AMBER_BLINK,
-    LED_MODE_RED_BLINK,
-    LED_MODE_BLUE_BLINK,
-    LED_MODE_AUTO,
-    LED_MODE_UNKNOWN
-};
-
-struct led_type_mode {
-    enum led_type type;
-    enum led_light_mode mode;
-    int  reg_bit_mask;
-    int  mode_value;
-};
-
-static struct led_type_mode led_type_mode_data[] = {
-  {LED_TYPE_LOC,LED_MODE_OFF,    LED_TYPE_LOC_REG_MASK,  LED_MODE_LOC_OFF_VALUE},  
-  {LED_TYPE_LOC,LED_MODE_AMBER_BLINK,  LED_TYPE_LOC_REG_MASK,  LED_MODE_LOC_AMBER_BLINK_VALUE},
-  
-  {LED_TYPE_STATE,LED_MODE_OFF,   LED_TYPE_STATE_REG_MASK, LED_MODE_STATE_OFF_VALUE},
-  {LED_TYPE_STATE,LED_MODE_RED,   LED_TYPE_STATE_REG_MASK, LED_MODE_STATE_RED_VALUE},
-  {LED_TYPE_STATE,LED_MODE_BLUE,  LED_TYPE_STATE_REG_MASK, LED_MODE_STATE_BLUE_VALUE},
-  {LED_TYPE_STATE,LED_MODE_GREEN, LED_TYPE_STATE_REG_MASK, LED_MODE_STATE_GREEN_VALUE},
-  
-  {LED_TYPE_ALARM,LED_MODE_OFF,   LED_TYPE_ALARM_REG_MASK, LED_MODE_ALARM_OFF_VALUE},
-  {LED_TYPE_ALARM,LED_MODE_RED,   LED_TYPE_ALARM_REG_MASK, LED_MODE_ALARM_RED_VALUE},
-  {LED_TYPE_ALARM,LED_MODE_BLUE,  LED_TYPE_ALARM_REG_MASK, LED_MODE_ALARM_BLUE_VALUE},
-  {LED_TYPE_ALARM,LED_MODE_GREEN, LED_TYPE_ALARM_REG_MASK, LED_MODE_ALARM_GREEN_VALUE},
-  
-  {LED_TYPE_FAN,LED_MODE_OFF,    LED_TYPE_FAN_REG_MASK,  LED_MODE_FAN_OFF_VALUE},
-  {LED_TYPE_FAN,LED_MODE_GREEN,  LED_TYPE_FAN_REG_MASK,  LED_MODE_FAN_GREEN_VALUE},
-  
-  {LED_TYPE_PSU1,LED_MODE_OFF,   LED_TYPE_PSU1_REG_MASK, LED_MODE_PSU1_OFF_VALUE},
-  {LED_TYPE_PSU1,LED_MODE_RED,   LED_TYPE_PSU1_REG_MASK, LED_MODE_PSU1_RED_VALUE},
-  {LED_TYPE_PSU1,LED_MODE_GREEN, LED_TYPE_PSU1_REG_MASK, LED_MODE_PSU1_GREEN_VALUE},
-  
-  {LED_TYPE_PSU2,LED_MODE_OFF,   LED_TYPE_PSU2_REG_MASK, LED_MODE_PSU2_OFF_VALUE},
-  {LED_TYPE_PSU2,LED_MODE_RED,   LED_TYPE_PSU2_REG_MASK, LED_MODE_PSU2_RED_VALUE},
-  {LED_TYPE_PSU2,LED_MODE_GREEN, LED_TYPE_PSU2_REG_MASK, LED_MODE_PSU2_GREEN_VALUE},
-  
-};
-
-
-
-static void accton_asgvolt64_led_set(struct led_classdev *led_cdev,
-                                      enum led_brightness led_light_mode, enum led_type type);
-
-
-
-
-
-static int accton_getLedReg(enum led_type type, u8 *reg)
-{
-    int i;
-    
-    for (i = 0; i < ARRAY_SIZE(led_reg_map); i++) {        
-        if(led_reg_map[i].types & (1<<type)) {            
-            *reg = led_reg_map[i].reg_addr;
-            return 0;
-        }
-    }
-    
-    return 1;
-}
-
-
-static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {
-    int i;
-
-    for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
-
-        if (type != led_type_mode_data[i].type)
-            continue;
-
-        if ((led_type_mode_data[i].reg_bit_mask & reg_val) ==
-                led_type_mode_data[i].mode_value)
-        {
-            return led_type_mode_data[i].mode;
-        }
-    }
-
-    return 0;
-}
-
-static u8 led_light_mode_to_reg_val(enum led_type type,
-                                    enum led_light_mode mode, u8 reg_val) {
-    int i;
-
-    for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
-        if (type != led_type_mode_data[i].type)
-            continue;
-
-        if (mode != led_type_mode_data[i].mode)
-            continue;
-        reg_val = led_type_mode_data[i].mode_value |
-                  (reg_val & (~led_type_mode_data[i].reg_bit_mask));
-        break;
-    }
-
-    return reg_val;
-}
-
-static int accton_asgvolt64_led_read_value(u8 reg)
-{
-    return asgvolt64_cpld_read(LED_CNTRLER_I2C_ADDRESS, reg);
-}
-
-static int accton_asgvolt64_led_write_value(u8 reg, u8 value)
-{
-    return asgvolt64_cpld_write(LED_CNTRLER_I2C_ADDRESS, reg, value);
-}
-
-static void accton_asgvolt64_led_update(void)
-{
-    mutex_lock(&ledctl->update_lock);
-
-    if (time_after(jiffies, ledctl->last_updated + HZ + HZ / 2)
-            || !ledctl->valid) {
-        int i;
-
-        dev_dbg(&ledctl->pdev->dev, "Starting accton_asgvolt64_led update\n");
-
-        /* Update LED data
-         */
-        for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
-            int status = accton_asgvolt64_led_read_value(led_reg_map[i].reg_addr);
-
-            if (status < 0) {
-                ledctl->valid = 0;
-                dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg_map[i].reg_addr, status);
-                goto exit;
-            }
-            else
-            {
-                ledctl->reg_val[i] = status;
-            }
-        }
-
-        ledctl->last_updated = jiffies;
-        ledctl->valid = 1;
-    }
-
-exit:
-    mutex_unlock(&ledctl->update_lock);
-}
-
-static void accton_asgvolt64_led_set(struct led_classdev *led_cdev,
-                                      enum led_brightness led_light_mode,
-                                      enum led_type type)
-{
-    int reg_val;
-    u8 reg	;
-    mutex_lock(&ledctl->update_lock);
-
-    if( !accton_getLedReg(type, &reg))
-    {
-        dev_dbg(&ledctl->pdev->dev, "Not match item for %d.\n", type);
-    }
-    
-    
-    reg_val = accton_asgvolt64_led_read_value(reg);
-    if (reg_val < 0) {
-        dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", reg, reg_val);
-        goto exit;
-    }
-    reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);
-    
-    accton_asgvolt64_led_write_value(reg, reg_val);
-
-    /* to prevent the slow-update issue */
-    ledctl->valid = 0;
-
-exit:
-    mutex_unlock(&ledctl->update_lock);
-}
-
-
-static void accton_asgvolt64_led_loc_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_LOC);
-}
-
-static enum led_brightness accton_asgvolt64_led_loc_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[0]);
-}
-
-
-static void accton_asgvolt64_led_state_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_STATE);
-}
-
-static enum led_brightness accton_asgvolt64_led_state_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_STATE, ledctl->reg_val[1]);
-}
-
-static void accton_asgvolt64_led_alarm_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_ALARM);
-}
-
-static enum led_brightness accton_asgvolt64_led_alarm_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_ALARM, ledctl->reg_val[1]);
-}
-
-static void accton_asgvolt64_led_fan_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_FAN);
-}
-
-static enum led_brightness accton_asgvolt64_led_fan_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[0]);
-}
-
-static void accton_asgvolt64_led_psu1_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_PSU1);
-}
-
-static enum led_brightness accton_asgvolt64_led_psu1_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_PSU1, ledctl->reg_val[0]);
-}
-
-static void accton_asgvolt64_led_psu2_set(struct led_classdev *led_cdev,
-        enum led_brightness led_light_mode)
-{
-    accton_asgvolt64_led_set(led_cdev, led_light_mode, LED_TYPE_PSU2);
-}
-
-static enum led_brightness accton_asgvolt64_led_psu2_get(struct led_classdev *cdev)
-{
-    accton_asgvolt64_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_PSU2, ledctl->reg_val[0]);
-}
-
-static struct led_classdev accton_asgvolt64_leds[] = {
-    [LED_TYPE_LOC] = {
-        .name			 = "loc",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_loc_set,
-        .brightness_get	 = accton_asgvolt64_led_loc_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness	 = LED_MODE_LOC_AMBER_BLINK_VALUE,
-    },
-    [LED_TYPE_STATE] = {
-        .name			 = "state",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_state_set,
-        .brightness_get	 = accton_asgvolt64_led_state_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness	 = LED_MODE_RED,
-    },
-    [LED_TYPE_ALARM] = {
-        .name			 = "alarm",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_alarm_set,
-        .brightness_get	 = accton_asgvolt64_led_alarm_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness	 = LED_MODE_RED,
-    },
-    [LED_TYPE_FAN] = {
-        .name			 = "fan",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_fan_set,
-        .brightness_get  = accton_asgvolt64_led_fan_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness  = LED_MODE_AUTO,
-    },
-    [LED_TYPE_PSU1] = {
-        .name			 = "psu1",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_psu1_set,
-        .brightness_get  = accton_asgvolt64_led_psu1_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness  = LED_MODE_AUTO,
-    },
-    [LED_TYPE_PSU2] = {
-        .name			 = "psu2",
-        .default_trigger = "unused",
-        .brightness_set	 = accton_asgvolt64_led_psu2_set,
-        .brightness_get  = accton_asgvolt64_led_psu2_get,
-        .flags			 = LED_CORE_SUSPENDRESUME,
-        .max_brightness  = LED_MODE_AUTO,
-    },
-};
-
-static int accton_asgvolt64_led_suspend(struct platform_device *dev,
-        pm_message_t state)
-{
-    int i = 0;
-
-    for (i = 0; i < ARRAY_SIZE(accton_asgvolt64_leds); i++) {
-        led_classdev_suspend(&accton_asgvolt64_leds[i]);
-    }
-
-    return 0;
-}
-
-static int accton_asgvolt64_led_resume(struct platform_device *dev)
-{
-    int i = 0;
-
-    for (i = 0; i < ARRAY_SIZE(accton_asgvolt64_leds); i++) {
-        led_classdev_resume(&accton_asgvolt64_leds[i]);
-    }
-
-    return 0;
-}
-
-static int accton_asgvolt64_led_probe(struct platform_device *pdev)
-{
-    int ret, i;
-
-    ret=0;
-    i=0;
- 
-    for (i = 0; i < ARRAY_SIZE(accton_asgvolt64_leds); i++) {
-        ret = led_classdev_register(&pdev->dev, &accton_asgvolt64_leds[i]);
-        if (ret < 0)
-        {
-            break;
-        }
-    }
-
-    /* Check if all LEDs were successfully registered */
-    if (i != ARRAY_SIZE(accton_asgvolt64_leds)) {
-        int j;
-
-        /* only unregister the LEDs that were successfully registered */
-        for (j = 0; j < i; j++) {
-            led_classdev_unregister(&accton_asgvolt64_leds[i]);
-        }
-    }
-
-    return ret;
-}
-
-static int accton_asgvolt64_led_remove(struct platform_device *pdev)
-{
-    int i;
-
-    for (i = 0; i < ARRAY_SIZE(accton_asgvolt64_leds); i++) {
-        led_classdev_unregister(&accton_asgvolt64_leds[i]);
-    }
-
-    return 0;
-}
-
-static struct platform_driver accton_asgvolt64_led_driver = {
-    .probe	  = accton_asgvolt64_led_probe,
-    .remove	 = accton_asgvolt64_led_remove,
-    .suspend	= accton_asgvolt64_led_suspend,
-    .resume	 = accton_asgvolt64_led_resume,
-    .driver	 = {
+struct asgvolt64_led_data *data = NULL;
+
+static struct platform_driver asgvolt64_led_driver = {
+    .probe      = asgvolt64_led_probe,
+    .remove     = asgvolt64_led_remove,
+    .driver     = {
         .name   = DRVNAME,
         .owner  = THIS_MODULE,
     },
 };
 
-static int __init accton_asgvolt64_led_init(void)
+enum led_light_mode {
+    LED_MODE_OFF,
+    LED_MODE_RED             = 10,
+    LED_MODE_RED_BLINKING    = 11,
+    LED_MODE_ORANGE 	     = 12,
+    LED_MODE_ORANGE_BLINKING = 13,
+    LED_MODE_YELLOW          = 14,
+    LED_MODE_YELLOW_BLINKING = 15,
+    LED_MODE_GREEN           = 16,
+    LED_MODE_GREEN_BLINKING  = 17,
+    LED_MODE_BLUE            = 18,
+    LED_MODE_BLUE_BLINKING   = 19,
+    LED_MODE_PURPLE          = 20,
+    LED_MODE_PURPLE_BLINKING = 21,
+    LED_MODE_AUTO            = 22,
+    LED_MODE_AUTO_BLINKING   = 23,
+    LED_MODE_WHITE           = 24,
+    LED_MODE_WHITE_BLINKING  = 25,
+    LED_MODE_CYAN            = 26,
+    LED_MODE_CYAN_BLINKING   = 27,
+    LED_MODE_UNKNOWN         = 99
+};
+
+enum asgvolt64_led_sysfs_attrs {
+    LED_LOC,
+    LED_STATE,
+    LED_ALARM,
+    LED_AIR,
+    LED_PSU1,
+    LED_PSU2,
+    LED_FAN
+};
+
+static SENSOR_DEVICE_ATTR(led_loc, S_IWUSR | S_IRUGO, show_led, set_led, LED_LOC);
+static SENSOR_DEVICE_ATTR(led_state, S_IWUSR | S_IRUGO, show_led, set_led, LED_STATE);
+static SENSOR_DEVICE_ATTR(led_alarm, S_IWUSR | S_IRUGO, show_led, set_led, LED_ALARM);
+static SENSOR_DEVICE_ATTR(led_air, S_IWUSR | S_IRUGO, show_led, set_led, LED_AIR);
+static SENSOR_DEVICE_ATTR(led_psu1,  S_IRUGO, show_led, NULL, LED_PSU1);
+static SENSOR_DEVICE_ATTR(led_psu2,  S_IRUGO, show_led, NULL, LED_PSU2);
+static SENSOR_DEVICE_ATTR(led_fan,   S_IRUGO, show_led, NULL, LED_FAN);
+
+static struct attribute *asgvolt64_led_attributes[] = {
+    &sensor_dev_attr_led_loc.dev_attr.attr,
+    &sensor_dev_attr_led_state.dev_attr.attr,
+    &sensor_dev_attr_led_alarm.dev_attr.attr,
+    &sensor_dev_attr_led_air.dev_attr.attr,
+    &sensor_dev_attr_led_psu1.dev_attr.attr,
+    &sensor_dev_attr_led_psu2.dev_attr.attr,
+    &sensor_dev_attr_led_fan.dev_attr.attr,
+    NULL
+};
+
+static const struct attribute_group asgvolt64_led_group = {
+    .attrs = asgvolt64_led_attributes,
+};
+
+/* Functions to talk to the IPMI layer */
+
+/* Initialize IPMI address, message buffers and user data */
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
+			      struct device *dev)
+{
+    int err;
+
+    init_completion(&ipmi->read_complete);
+
+    /* Initialize IPMI address */
+    ipmi->address.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
+    ipmi->address.channel = IPMI_BMC_CHANNEL;
+    ipmi->address.data[0] = 0;
+    ipmi->interface = iface;
+
+     /* Initialize message buffers */
+    ipmi->tx_msgid = 0;
+    ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
+
+    ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
+
+    /* Create IPMI messaging interface user */
+    err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
+                            ipmi, &ipmi->user);
+    if (err < 0) {
+        dev_err(dev, "Unable to register user with IPMI "
+                        "interface %d\n", ipmi->interface);
+         return -EACCES;
+    }
+
+    return 0;
+}
+
+/* Send an IPMI command */
+static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+                                     unsigned char *tx_data, unsigned short tx_len,
+                                     unsigned char *rx_data, unsigned short rx_len)
+{
+    int err;
+
+    ipmi->tx_message.cmd      = cmd;
+    ipmi->tx_message.data     = tx_data;
+    ipmi->tx_message.data_len = tx_len;
+    ipmi->rx_msg_data         = rx_data;
+    ipmi->rx_msg_len          = rx_len;
+
+    err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
+    if (err)
+        goto addr_err;
+
+    ipmi->tx_msgid++;
+    err = ipmi_request_settime(ipmi->user, &ipmi->address, ipmi->tx_msgid,
+                                &ipmi->tx_message, ipmi, 0, 0, 0);
+    if (err)
+        goto ipmi_req_err;
+
+    err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
+    if (!err)
+        goto ipmi_timeout_err;
+
+    return 0;
+
+ipmi_timeout_err:
+    err = -ETIMEDOUT;
+    dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
+    return err;
+ipmi_req_err:
+	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
+	return err;
+addr_err:
+	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
+	return err;
+}
+
+/* Dispatch IPMI messages to callers */
+static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
+{
+	unsigned short rx_len;
+	struct ipmi_data *ipmi = user_msg_data;
+
+	if (msg->msgid != ipmi->tx_msgid) {
+		dev_err(&data->pdev->dev, "Mismatch between received msgid "
+			"(%02x) and transmitted msgid (%02x)!\n",
+			(int)msg->msgid,
+			(int)ipmi->tx_msgid);
+		ipmi_free_recv_msg(msg);
+		return;
+	}
+
+	ipmi->rx_recv_type = msg->recv_type;
+	if (msg->msg.data_len > 0)
+		ipmi->rx_result = msg->msg.data[0];
+	else
+		ipmi->rx_result = IPMI_UNKNOWN_ERR_COMPLETION_CODE;
+
+	if (msg->msg.data_len > 1) {
+		rx_len = msg->msg.data_len - 1;
+		if (ipmi->rx_msg_len < rx_len)
+			rx_len = ipmi->rx_msg_len;
+		ipmi->rx_msg_len = rx_len;
+		memcpy(ipmi->rx_msg_data, msg->msg.data + 1, ipmi->rx_msg_len);
+	} else
+		ipmi->rx_msg_len = 0;
+
+	ipmi_free_recv_msg(msg);
+	complete(&ipmi->read_complete);
+}
+
+static struct asgvolt64_led_data *asgvolt64_led_update_device(void)
+{
+    int status = 0;
+
+    if (time_before(jiffies, data->last_updated + HZ * 5) && data->valid) {
+        return data;
+    }
+
+    data->valid = 0;
+    status = ipmi_send_message(&data->ipmi, IPMI_LED_READ_CMD, NULL, 0,
+                                data->ipmi_resp, sizeof(data->ipmi_resp));
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    data->last_updated = jiffies;
+    data->valid = 1;
+
+exit:
+    return data;
+}
+
+static ssize_t show_led(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
+    data = asgvolt64_led_update_device();
+    if (!data->valid) {
+        error = -EIO;
+        goto exit;
+    }
+    
+    switch (attr->index) {
+         case LED_LOC:
+            if (data->ipmi_resp[LOC_INDEX-1]==1)
+                value=LED_MODE_BLUE;
+            else
+                value=LED_MODE_OFF;
+            break;
+           
+		case LED_STATE:
+            if (data->ipmi_resp[STATE_INDEX-1]==1)
+                value = LED_MODE_BLUE;
+            else if (data->ipmi_resp[STATE_INDEX-1]==2)
+                value = LED_MODE_GREEN;
+            else if (data->ipmi_resp[STATE_INDEX-1]==3)
+                value = LED_MODE_RED;
+            else
+                value = LED_MODE_OFF;
+			break;
+	    case LED_ALARM:
+	        if (data->ipmi_resp[ALARM_INDEX-1]==1)
+                value = LED_MODE_GREEN;
+            else if (data->ipmi_resp[ALARM_INDEX-1]==2)
+                value = LED_MODE_BLUE;
+            else if (data->ipmi_resp[ALARM_INDEX-1]==3)
+                value = LED_MODE_RED;
+            else
+                value = LED_MODE_OFF;
+			break;
+        case LED_AIR:
+	    if (data->ipmi_resp[AIR_INDEX-1]==1)
+                value = LED_MODE_RED;
+            else 
+                value = LED_MODE_OFF;
+            break;
+        case LED_PSU1:
+        case LED_PSU2:
+        case LED_FAN:
+            value = LED_MODE_AUTO;
+            break;
+        default:
+            error = -EINVAL;
+            goto exit;
+    }
+
+    mutex_unlock(&data->update_lock);
+    return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
+}
+
+static ssize_t set_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    long mode;
+    int status;
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+
+    status = kstrtol(buf, 10, &mode);
+    if (status) {
+        return status;
+    }
+
+    mutex_lock(&data->update_lock);
+       
+    switch (attr->index) {
+        case LED_LOC:
+            data->ipmi_tx_data[0] =LOC_INDEX;
+            if (mode==LED_MODE_BLUE)               
+                data->ipmi_tx_data[1] =1;
+            else            
+                data->ipmi_tx_data[1] =0;            
+            break;
+        case LED_STATE:
+            data->ipmi_tx_data[0] =STATE_INDEX;
+            if (mode == LED_MODE_BLUE)
+                data->ipmi_tx_data[1]=1;
+            else if (mode == LED_MODE_GREEN)
+                data->ipmi_tx_data[1]=2;
+            else if (mode == LED_MODE_RED)
+                data->ipmi_tx_data[1]=3;
+            else
+                data->ipmi_tx_data[1]=0;
+            break;
+        case LED_ALARM:
+            data->ipmi_tx_data[0] =ALARM_INDEX;
+            if (mode == LED_MODE_GREEN)
+                data->ipmi_tx_data[1]=1;
+            else if (mode == LED_MODE_BLUE)
+                data->ipmi_tx_data[1]=2;
+            else if (mode == LED_MODE_RED)
+                data->ipmi_tx_data[1]=3;
+            else
+                data->ipmi_tx_data[1]=0;
+            break;
+        case LED_AIR:
+            data->ipmi_tx_data[0]=AIR_INDEX;
+            if (mode == LED_MODE_RED)
+                data->ipmi_tx_data[1]=1;
+            else
+                data->ipmi_tx_data[1]=0;
+            break;
+		default:
+			status = -EINVAL;
+            goto exit;
+    }
+
+    /* Send IPMI write command */
+    status = ipmi_send_message(&data->ipmi, IPMI_LED_WRITE_CMD,
+                                data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+}
+
+static int asgvolt64_led_probe(struct platform_device *pdev)
+{
+    int status = -1;
+
+	/* Register sysfs hooks */
+	status = sysfs_create_group(&pdev->dev.kobj, &asgvolt64_led_group);
+	if (status) {
+		goto exit;
+	}
+    
+    dev_info(&pdev->dev, "device created\n");
+
+    return 0;
+
+exit:
+    return status;
+}
+
+static int asgvolt64_led_remove(struct platform_device *pdev)
+{
+    sysfs_remove_group(&pdev->dev.kobj, &asgvolt64_led_group);	
+
+    return 0;
+}
+
+static int __init asgvolt64_led_init(void)
 {
     int ret;
 
-
-    ret = platform_driver_register(&accton_asgvolt64_led_driver);
-    if (ret < 0) {
-        goto exit;
-    }
-
-    ledctl = kzalloc(sizeof(struct accton_asgvolt64_led_data), GFP_KERNEL);
-    if (!ledctl) {
+    data = kzalloc(sizeof(struct asgvolt64_led_data), GFP_KERNEL);
+    if (!data) {
         ret = -ENOMEM;
-        platform_driver_unregister(&accton_asgvolt64_led_driver);
-        goto exit;
+        goto alloc_err;
     }
 
-    mutex_init(&ledctl->update_lock);
+	mutex_init(&data->update_lock);
+    data->valid = 0;
 
-    ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-    if (IS_ERR(ledctl->pdev)) {
-        ret = PTR_ERR(ledctl->pdev);
-        platform_driver_unregister(&accton_asgvolt64_led_driver);
-        kfree(ledctl);
-        goto exit;
+    ret = platform_driver_register(&asgvolt64_led_driver);
+    if (ret < 0) {
+        goto dri_reg_err;
     }
 
-exit:
+    data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+    if (IS_ERR(data->pdev)) {
+        ret = PTR_ERR(data->pdev);
+        goto dev_reg_err;
+    }
+
+	/* Set up IPMI interface */
+	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
+	if (ret)
+		goto ipmi_err;
+
+    return 0;
+
+ipmi_err:
+    platform_device_unregister(data->pdev);
+dev_reg_err:
+    platform_driver_unregister(&asgvolt64_led_driver);
+dri_reg_err:
+    kfree(data);
+alloc_err:
     return ret;
-  ;
 }
 
-static void __exit accton_asgvolt64_led_exit(void)
+static void __exit asgvolt64_led_exit(void)
 {
-    platform_device_unregister(ledctl->pdev);
-    platform_driver_unregister(&accton_asgvolt64_led_driver);
-    kfree(ledctl);
+    ipmi_destroy_user(data->ipmi.user);
+    platform_device_unregister(data->pdev);
+    platform_driver_unregister(&asgvolt64_led_driver);
+    kfree(data);
 }
 
-module_init(accton_asgvolt64_led_init);
-module_exit(accton_asgvolt64_led_exit);
-
-MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("accton_asgvolt64_led driver");
+MODULE_AUTHOR("Jostar Yang <jostar_yang@accton.com.tw>");
+MODULE_DESCRIPTION("ASGVOLT64 led driver");
 MODULE_LICENSE("GPL");
+
+module_init(asgvolt64_led_init);
+module_exit(asgvolt64_led_exit);
+
