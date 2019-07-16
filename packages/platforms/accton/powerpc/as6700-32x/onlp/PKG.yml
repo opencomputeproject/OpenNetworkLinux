@@ -18,11 +18,11 @@ packages:
 
     files:
       builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${platformbase}.so : ${r0_install}/lib/libonlp-${platformbase}.so
-      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r0_install}/bin/
+      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r0_install}/bin/onlpdump
 
   - name: onlp-${platformbase}-r1
     summary: ONLP Package for the ${platformbase}-r1 platform.
 
     files:
       builds/lib/$BUILD_DIR/powerpc-linux-gnu/bin/libonlp-${platformbase}.so : ${r1_install}/lib/libonlp-${platformbase}.so
-      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r1_install}/bin/
+      builds/onlpdump/$BUILD_DIR/powerpc-linux-gnu/bin/onlps : ${r1_install}/bin/onlpdump
