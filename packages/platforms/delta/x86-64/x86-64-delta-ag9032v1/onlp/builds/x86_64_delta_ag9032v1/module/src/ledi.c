@@ -46,67 +46,122 @@ static onlp_led_info_t linfo[] =
 {
     { }, /* Not used */
     {
-        { ONLP_LED_ID_CREATE(LED_FRONT_FAN), "FRONT LED (FAN LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_FRONT_FAN),
+            .description = "FRONT LED (FAN LED)",
+            .poid = ONLP_OID_CHASSIS,
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FRONT_SYS), "FRONT LED  (SYS LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_RED,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_FRONT_SYS),
+            .description = "FRONT LED  (SYS LED)",
+            .poid = ONLP_OID_CHASSIS,
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_RED
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FRONT_PWR1), "FRONT LED  (PWR1 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_FRONT_PWR1),
+            .description = "FRONT LED  (PWR1 LED)",
+            .poid = ONLP_OID_CHASSIS,
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_FRONT_PWR2), "FRONT LED (PWR2 LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_FRONT_PWR2),
+            .description = "FRONT LED  (PWR2 LED)",
+            .poid = ONLP_OID_CHASSIS,
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_ORANGE_BLINKING | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1), "FAN TRAY 1 LED", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_1),
+            .description = "FAN TRAY 1 LED",
+            .poid = ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2), "FAN TRAY 2 LED", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_2),
+            .description = "FAN TRAY 2 LED",
+            .poid = ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3), "FAN TRAY 3 LED", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_3),
+            .description = "FAN TRAY 3 LED",
+            .poid = ONLP_FAN_ID_CREATE(FAN_3_ON_FAN_BOARD),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4), "FAN TRAY 4 LED", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_4),
+            .description = "FAN TRAY 4 LED",
+            .poid = ONLP_FAN_ID_CREATE(FAN_4_ON_FAN_BOARD),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN
     },
     {
-        { ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_5), "FAN TRAY 5 LED", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN,
-    },
+        .hdr = {
+            .id = ONLP_LED_ID_CREATE(LED_REAR_FAN_TRAY_5),
+            .description = "FAN TRAY 5 LED",
+            .poid = ONLP_FAN_ID_CREATE(FAN_5_ON_FAN_BOARD),
+            .status = ONLP_OID_STATUS_FLAG_PRESENT
+        },
+        .caps = ONLP_LED_CAPS_OFF | ONLP_LED_CAPS_RED | ONLP_LED_CAPS_GREEN
+    }
 };
-
 
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
  */
 int
-onlp_ledi_init(void)
+onlp_ledi_sw_init(void)
+{
+    lockinit();
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_ledi_sw_denit(void)
 {
     return ONLP_STATUS_OK;
+}
+
+int
+onlp_ledi_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
+{
+    *hdr = linfo[ONLP_OID_ID_GET(oid)].hdr;
+    return 0;
+}
+
+int onlp_ledi_caps_get(onlp_oid_t oid, uint32_t* caps)
+{
+    *caps = linfo[ONLP_OID_ID_GET(oid)].caps;
+    return 0;
 }
 
 int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int r_data = 0, fantray_present = -1;
-    VALIDATE(id);
+    //VALIDATE(id);
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
@@ -178,8 +233,6 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                else
                   info->mode = ONLP_LED_MODE_OFF;
            }
-           else
-               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_2:
            /* Select fan tray 2 */
@@ -196,8 +249,6 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                else
                   info->mode = ONLP_LED_MODE_OFF;
            }
-           else
-               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_3:
            /* Select fan tray 3 */
@@ -214,8 +265,6 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                else
                   info->mode = ONLP_LED_MODE_OFF;
            }
-           else
-               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_4:
            /* Select fan tray 4 */
@@ -232,8 +281,6 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                else
                   info->mode = ONLP_LED_MODE_OFF;
            }
-           else
-               info->status = ONLP_LED_STATUS_FAILED;
            break;
         case LED_REAR_FAN_TRAY_5:
            /* Select fan tray 5 */
@@ -250,41 +297,21 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
                else
                   info->mode = ONLP_LED_MODE_OFF;
            }
-           else
-               info->status = ONLP_LED_STATUS_FAILED;
 	   break; 
         default:
             break;
     }
 
     /* Set the on/off status */
+    ONLP_OID_STATUS_FLAGS_CLR(info);
     if (info->mode == ONLP_LED_MODE_OFF) 
-        info->status |= ONLP_LED_STATUS_FAILED;
+        ONLP_OID_STATUS_FLAG_SET(info, UNPLUGGED);
+    else if (info->mode == ONLP_LED_MODE_GREEN || info->mode == ONLP_LED_MODE_GREEN_BLINKING)
+        ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
     else
-	info->status |=ONLP_LED_STATUS_PRESENT;
-
+        ONLP_OID_STATUS_FLAG_SET(info, FAILED);
 
     return ONLP_STATUS_OK;
-}
-
-/*
- * Turn an LED on or off.
- *
- * This function will only be called if the LED OID supports the ONOFF
- * capability.
- *
- * What 'on' means in terms of colors or modes for multimode LEDs is
- * up to the platform to decide. This is intended as baseline toggle mechanism.
- */
-int
-onlp_ledi_set(onlp_oid_t id, int on_or_off)
-{
-    if (!on_or_off)
-    {
-        return onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
-    }
-
-    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 /*
@@ -296,7 +323,7 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
-    VALIDATE(id);
+    //VALIDATE(id);
     int local_id = ONLP_OID_ID_GET(id);
     uint8_t front_panel_led_value, fan_tray_led_reg_value,fan_tray_led_reg_2_value;
 
@@ -310,16 +337,16 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             front_panel_led_value &= ~0x3;
             if(mode == ONLP_LED_MODE_GREEN)
             {
-               front_panel_led_value |= 0x01;
-               dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                front_panel_led_value |= 0x01;
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE)
             {
                 front_panel_led_value |= 0x02;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             break;
          case LED_FRONT_PWR1: 
             /* Clean bit 7,6 */
@@ -329,18 +356,18 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             {
                 /* Green */
                 front_panel_led_value |= 0x40;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE_BLINKING)
             {
                 /* BLINKING ORANGE */
                 front_panel_led_value |= 0x80;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_OFF)
             {
                 front_panel_led_value &= ~0xC0;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else
                 return ONLP_STATUS_E_UNSUPPORTED;
@@ -353,18 +380,18 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             {
                 /* Green */
                 front_panel_led_value |= 0x10;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_ORANGE_BLINKING)
             { 
                 /* BLINKING ORANGE */
                 front_panel_led_value |= 0x20;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_OFF)
             {
                 front_panel_led_value &= ~0x30;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else
                 return ONLP_STATUS_E_UNSUPPORTED;
@@ -376,20 +403,20 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             if(mode == ONLP_LED_MODE_GREEN_BLINKING)
             {
                 front_panel_led_value |= 0x08;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if (mode == ONLP_LED_MODE_GREEN)
             {
                 front_panel_led_value |= 0x04;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else if (mode == ONLP_LED_MODE_RED) 
             {
                 front_panel_led_value |= 0x0c;
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(LED_REG, front_panel_led_value);
+                dni_swpld_write_attribute(LED_REG, front_panel_led_value, BUS_LOCK);
             break;
  
         case LED_REAR_FAN_TRAY_1:
@@ -397,85 +424,77 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
              if(mode == ONLP_LED_MODE_GREEN)
              {/* Green light */
                  fan_tray_led_reg_value |= 0x40;
-                 dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                 dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
              }
              else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_value |= 0x80;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
              }
              else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
              break;
         case LED_REAR_FAN_TRAY_2:
             fan_tray_led_reg_value &= ~0x30;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x10;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x20;
-               dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+               dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             break;
         case LED_REAR_FAN_TRAY_3:
             fan_tray_led_reg_value &= ~0x0c;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x04;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                fan_tray_led_reg_value |= 0x08;
-               dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+               dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             break;
         case LED_REAR_FAN_TRAY_4:
             fan_tray_led_reg_value &= ~0x03;
             if(mode == ONLP_LED_MODE_GREEN)
             {/* Green light */
                 fan_tray_led_reg_value |= 0x01;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else if(mode == ONLP_LED_MODE_RED)
             {/* Red light */
                 fan_tray_led_reg_value |= 0x02;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             }
             else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
             break;
          case LED_REAR_FAN_TRAY_5:
              fan_tray_led_reg_2_value &= ~0xC0;
              if(mode == ONLP_LED_MODE_GREEN)
              {/* Green light */
                 fan_tray_led_reg_2_value |= 0x40;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value, BUS_LOCK);
              }
              else if(mode == ONLP_LED_MODE_RED)
              {/* Red light */
                 fan_tray_led_reg_2_value |= 0x80;
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG_2, fan_tray_led_reg_2_value, BUS_LOCK);
              }
              else
-                dni_lock_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value);
+                dni_swpld_write_attribute(FAN_TRAY_LED_REG, fan_tray_led_reg_value, BUS_LOCK);
              break;
     }
     return ONLP_STATUS_OK;
 }
 
-/*
- * Generic LED ioctl interface.
- */
-int
-onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}

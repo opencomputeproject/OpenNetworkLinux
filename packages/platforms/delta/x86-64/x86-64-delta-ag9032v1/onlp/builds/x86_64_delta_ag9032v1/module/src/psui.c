@@ -30,40 +30,38 @@
 #include "platform_lib.h"
 #include <onlplib/i2c.h>
 
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
 static int
 dni_psu_pmbus_info_get(int id, char *node, int *value)
 {
-    int  ret = 0;
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
     *value = 0;
 
     switch (id) {
-    case PSU1_ID:
-        sprintf(node_path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);   	
-	break;
-    case PSU2_ID:
-        sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
-	break;
-    default:
-	break;
+        case PSU1_ID:
+            sprintf(node_path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
+	        break;
+        case PSU2_ID:
+            sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
+	        break;
+        default:
+	        break;
     }
 
     /* Read attribute value */
     *value = dni_i2c_lock_read_attribute(NULL, node_path);
-    
-    return ret;
+
+    return ONLP_STATUS_OK;
 }
 
 int
-onlp_psui_init(void)
+onlp_psui_sw_init(void)
+{
+    lockinit();
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_psui_sw_denit(void)
 {
     return ONLP_STATUS_OK;
 }
@@ -77,7 +75,7 @@ dni_psu_info_get(onlp_psu_info_t* info)
     char node_path[PSU_NODE_MAX_PATH_LEN] = {'\0'};
 
     /* Set capability */
-    info->caps |= ONLP_PSU_CAPS_AC;
+    info->caps |= ONLP_PSU_TYPE_AC;
 
     /* Set the associated oid_table
      * Set PSU's fan and thermal to child OID
@@ -98,32 +96,32 @@ dni_psu_info_get(onlp_psu_info_t* info)
     /* Read voltage, current and power */
     if (dni_psu_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_VOUT;
     }
 
     if (dni_psu_pmbus_info_get(index, "psu_v_in", &val) == 0) {
         info->mvin = val;
-        info->caps |= ONLP_PSU_CAPS_VIN;
+        info->caps |= ONLP_PSU_CAPS_GET_VIN;
     }
 
     if (dni_psu_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
+        info->caps |= ONLP_PSU_CAPS_GET_IOUT;
     }
     
     if (dni_psu_pmbus_info_get(index, "psu_i_in", &val) == 0) {
         info->miin = val;
-        info->caps |= ONLP_PSU_CAPS_IIN;
+        info->caps |= ONLP_PSU_CAPS_GET_PIN;
     }
 
     if (dni_psu_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
+        info->caps |= ONLP_PSU_CAPS_GET_POUT;
     }   
 
     if (dni_psu_pmbus_info_get(index, "psu_p_in", &val) == 0) {
         info->mpin = val;
-        info->caps |= ONLP_PSU_CAPS_PIN;
+        info->caps |= ONLP_PSU_CAPS_GET_PIN;
     }   
 
     return ONLP_STATUS_OK;
@@ -132,16 +130,49 @@ dni_psu_info_get(onlp_psu_info_t* info)
 /*
  * Get all information about the given PSU oid.
  */
-static onlp_psu_info_t pinfo[] =
+static onlp_psu_info_t pinfo[NUM_OF_PSU_ON_PSU_BOARD + 1] =
 {
     { }, /* Not used */
     {
-        { ONLP_PSU_ID_CREATE(PSU1_ID), "PSU-1", 0 },
+        .hdr = {
+            .id = ONLP_PSU_ID_CREATE(PSU1_ID),
+            .description = "PSU-1",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
+                ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1),
+                ONLP_FAN_ID_CREATE(FAN_1_ON_PSU1)
+            },
+        },
+            .model = "",
+            .serial = "",
+            .caps = ONLP_PSU_CAPS_GET_VIN|ONLP_PSU_CAPS_GET_VOUT|ONLP_PSU_CAPS_GET_IIN|ONLP_PSU_CAPS_GET_IOUT|ONLP_PSU_CAPS_GET_PIN|ONLP_PSU_CAPS_GET_POUT,
+            .type = ONLP_PSU_TYPE_AC,
     },
     {
-        { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0 },
+        .hdr = {
+            .id = ONLP_PSU_ID_CREATE(PSU2_ID),
+            .description = "PSU-2",
+            .poid = ONLP_OID_CHASSIS,
+            .coids = {
+                ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2),
+                ONLP_FAN_ID_CREATE(FAN_1_ON_PSU2)
+            },
+        },
+            .model = "",
+            .serial = "",
+            .caps = ONLP_PSU_CAPS_GET_VIN|ONLP_PSU_CAPS_GET_VOUT|ONLP_PSU_CAPS_GET_IIN|ONLP_PSU_CAPS_GET_IOUT|ONLP_PSU_CAPS_GET_PIN|ONLP_PSU_CAPS_GET_POUT,
+            .type = ONLP_PSU_TYPE_AC,
     }
 };
+
+int
+onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    onlp_psu_info_t info;
+    ONLP_TRY(onlp_psui_info_get(id, &info));
+    *hdr = info.hdr;
+    return ONLP_STATUS_OK;
+}
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -154,21 +185,19 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     mux_info_t mux_info;
     dev_info_t dev_info;
 
-    VALIDATE(id);
-
     /* Set the onlp_oid_hdr_t */
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index];
 
     switch (index) {
-    case PSU1_ID:
-    	channel = PSU_I2C_SEL_PSU1_EEPROM;
-	break;
-    case PSU2_ID:
-        channel = PSU_I2C_SEL_PSU2_EEPROM;
-	break;
-    default:
-	break;
+        case PSU1_ID:
+            channel = PSU_I2C_SEL_PSU1_EEPROM;
+            break;
+        case PSU2_ID:
+            channel = PSU_I2C_SEL_PSU2_EEPROM;
+            break;
+        default:
+            break;
     }
 
     mux_info.offset = SWPLD_PSU_FAN_I2C_MUX_REG;
@@ -184,7 +213,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     sprintf(channel_data, "%x", channel);
     dni_i2c_lock_write_attribute(NULL, channel_data, PSU_SELECT_MEMBER_PATH);
 
-
     /* Check PSU have voltage input or not */
     dni_psu_pmbus_info_get(index, "psu_v_in", &val);
 
@@ -196,23 +224,18 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     {
         /* Unable to read PSU EEPROM */
         /* Able to read PSU VIN(psu_power_not_good) */
-        info->status |= ONLP_PSU_STATUS_FAILED;
+        ONLP_OID_STATUS_FLAG_SET(info, FAILED);
         return ONLP_STATUS_OK;
     }
     else if(val == 0){
         /* Unable to read PSU VIN(psu_power_good) */
-        info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+        ONLP_OID_STATUS_FLAG_SET(info, UNPLUGGED);
     } 
     else {
-        info->status |= ONLP_PSU_STATUS_PRESENT;
+        ONLP_OID_STATUS_FLAG_SET(info, PRESENT);
     }
 
     ret = dni_psu_info_get(info);
     return ret;
 }
 
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
-}

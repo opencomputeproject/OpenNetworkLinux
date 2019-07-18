@@ -34,23 +34,17 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
-#include <linux/dmi.h>
 #include <linux/version.h>
 #include <linux/ctype.h>
+#include <linux/stat.h>
+#include <linux/hwmon-sysfs.h>
+#include <linux/delay.h>
 
-
+#define I2C_RW_RETRY_COUNT 10
+#define I2C_RW_RETRY_INTERVAL 60 /* ms */
+#define CPLD_CHANNEL_SELECT_REG 0x2
 #define NUM_OF_CPLD1_CHANS 0x0
 #define I2C_CPLD_MUX_MAX_NCHANS NUM_OF_CPLD1_CHANS
-
-
-static struct dmi_system_id cpld_dmi_table[] =
-{
-  {
-    .matches = {
-      DMI_MATCH(DMI_BOARD_VENDOR, "DELTA"),
-    },
-  },
-};
 
 static LIST_HEAD(cpld_client_list);
 static struct mutex   list_lock;
@@ -70,8 +64,10 @@ enum cpld_mux_type
 struct i2c_cpld_mux
 {
   enum cpld_mux_type type;
-  struct i2c_adapter *virt_adaps[I2C_CPLD_MUX_MAX_NCHANS];
+  struct i2c_client *client;
   u8 last_chan;  /* last register value */
+  struct device      *hwmon_dev;
+  struct mutex        update_lock;
 };
 
 struct chip_desc
@@ -95,13 +91,6 @@ static const struct i2c_device_id i2c_cpld_mux_id[] =
   { }
 };
 MODULE_DEVICE_TABLE(i2c, i2c_cpld_mux_id);
-
-int platform_cpld(void)
-{
-  return dmi_check_system(cpld_dmi_table);
-}
-EXPORT_SYMBOL(platform_cpld);
-
 
 /* Write to mux register. Don't use i2c_transfer()/i2c_smbus_xfer()
    for this as they will try to lock adapter a second time */
@@ -128,7 +117,7 @@ static int i2c_cpld_mux_reg_write(struct i2c_adapter *adap,
              try++)
           {
             res = adap->algo->smbus_xfer(adap, client->addr, flags,
-                                         I2C_SMBUS_WRITE, 0x2,
+                                         I2C_SMBUS_WRITE, CPLD_CHANNEL_SELECT_REG,
                                          I2C_SMBUS_BYTE_DATA, &data);
             if (res != -EAGAIN)
             {
@@ -145,10 +134,11 @@ static int i2c_cpld_mux_reg_write(struct i2c_adapter *adap,
   return res;
 }
 
-static int i2c_cpld_mux_select_chan(struct i2c_adapter *adap,
-                                    void *client, u32 chan)
+static int i2c_cpld_mux_select_chan(struct i2c_mux_core *muxc,
+                                    u32 chan)
 {
-  struct i2c_cpld_mux *data = i2c_get_clientdata(client);
+  struct i2c_cpld_mux *data = i2c_mux_priv(muxc);
+  struct i2c_client *client = data->client;
   u8 regval;
   int ret = 0;
 
@@ -157,23 +147,24 @@ static int i2c_cpld_mux_select_chan(struct i2c_adapter *adap,
   /* Only select the channel if its different from the last channel */
   if (data->last_chan != regval)
   {
-    ret = i2c_cpld_mux_reg_write(adap, client, regval);
+    ret = i2c_cpld_mux_reg_write(muxc->parent, client, regval);
     data->last_chan = regval;
   }
 
   return ret;
 }
 
-static int i2c_cpld_mux_deselect_mux(struct i2c_adapter *adap,
-                                     void *client, u32 chan)
+static int i2c_cpld_mux_deselect_mux(struct i2c_mux_core *muxc,
+                                     u32 chan)
 {
-  struct i2c_cpld_mux *data = i2c_get_clientdata(client);
+  struct i2c_cpld_mux *data = i2c_mux_priv(muxc);
+  struct i2c_client *client = data->client;
 
   /* Deselect active channel */
   data->last_chan = chips[data->type].deselectChan;
 
   //return i2c_cpld_mux_reg_write(adap, client, data->last_chan);
-  i2c_cpld_mux_reg_write(adap, client, data->last_chan);
+  i2c_cpld_mux_reg_write(muxc->parent, client, data->last_chan);
   return 0;
 }
 
@@ -337,41 +328,40 @@ static int i2c_cpld_mux_probe(struct i2c_client *client,
                               const struct i2c_device_id *id)
 {
   struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
-  int chan = 0;
+  int force, class;
+  struct i2c_mux_core *muxc;
   struct i2c_cpld_mux *data;
-  int ret = -ENODEV;
+  int ret = 0;
+  int chan = 0;
 
   if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
-  {
-    goto err;
-  }
+    return -ENODEV;
 
-  data = kzalloc(sizeof(struct i2c_cpld_mux), GFP_KERNEL);
-  if (!data)
-  {
-    ret = -ENOMEM;
-    goto err;
-  }
+  muxc = i2c_mux_alloc(adap, &client->dev,
+			     chips[id->driver_data].nchans, sizeof(*data), 0,
+			     i2c_cpld_mux_select_chan, i2c_cpld_mux_deselect_mux);
+  if (!muxc)
+    return -ENOMEM;
 
-  i2c_set_clientdata(client, data);
+  i2c_set_clientdata(client, muxc);
+  data = i2c_mux_priv(muxc);
+  data->client = client;
 
   data->type = id->driver_data;
   data->last_chan =
     chips[data->type].deselectChan; /* force the first selection */
 
+  mutex_init(&data->update_lock);
   /* Now create an adapter for each channel */
   for (chan = 0; chan < chips[data->type].nchans; chan++)
   {
-    data->virt_adaps[chan] = i2c_add_mux_adapter(adap, &client->dev, client, 0,
-                                                 chan,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0)
-                                                 I2C_CLASS_HWMON | I2C_CLASS_SPD,
-#endif
-                                                 i2c_cpld_mux_select_chan,
-                                                 i2c_cpld_mux_deselect_mux);
-    if (data->virt_adaps[chan] == NULL)
+    force = 0;  /* dynamic adap number */
+    class = 0;  /* no class by default */
+
+    ret = i2c_mux_add_adapter(muxc, force, chan, class);
+
+    if (ret)
     {
-      ret = -ENODEV;
       dev_err(&client->dev, "failed to register multiplexed adapter %d\n", chan);
       goto virt_reg_failed;
     }
@@ -401,36 +391,56 @@ static int i2c_cpld_mux_probe(struct i2c_client *client,
   return 0;
 
 virt_reg_failed:
-  for (chan--; chan >= 0; chan--)
-  {
-    i2c_del_mux_adapter(data->virt_adaps[chan]);
-  }
-  kfree(data);
-err:
+  i2c_mux_del_adapters(muxc);
   return ret;
 }
 
 static int i2c_cpld_mux_remove(struct i2c_client *client)
 {
-  struct i2c_cpld_mux *data = i2c_get_clientdata(client);
-  const struct chip_desc *chip = &chips[data->type];
-  int chan;
+  struct i2c_mux_core *muxc = i2c_get_clientdata(client);
 
   sysfs_remove_file(&client->dev.kobj, &ver.attr);
 
-  for (chan = 0; chan < chip->nchans; ++chan)
-  {
-    if (data->virt_adaps[chan])
-    {
-      i2c_del_mux_adapter(data->virt_adaps[chan]);
-      data->virt_adaps[chan] = NULL;
-    }
-  }
-
-  kfree(data);
   i2c_cpld_remove_client(client);
+  i2c_mux_del_adapters(muxc);
 
   return 0;
+}
+
+static int i2c_cpld_read_internal(struct i2c_client *client, u8 reg)
+{
+  int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+  while (retry) 
+  {
+    status = i2c_smbus_read_byte_data(client, reg);
+    if (unlikely(status < 0)) 
+    {
+      msleep(I2C_RW_RETRY_INTERVAL);
+      retry--;
+      continue;
+    }
+    break;
+  }
+  return status;
+}
+
+static int i2c_cpld_write_internal(struct i2c_client *client, u8 reg, u8 value)
+{
+  int status = 0, retry = I2C_RW_RETRY_COUNT;
+
+  while (retry)
+  {
+    status = i2c_smbus_write_byte_data(client, reg, value);
+    if (unlikely(status < 0))
+    {
+      msleep(I2C_RW_RETRY_INTERVAL);
+      retry--;
+      continue;
+    }
+    break;
+  }
+  return status;
 }
 
 int i2c_cpld_read(int bus, unsigned short cpld_addr, u8 reg)
@@ -448,7 +458,7 @@ int i2c_cpld_read(int bus, unsigned short cpld_addr, u8 reg)
     if ((cpld_node->client->adapter->nr == bus) &&
         (cpld_node->client->addr == cpld_addr) )
     {
-      ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
+      ret = i2c_cpld_read_internal(cpld_node->client, reg);
       break;
     }
   }
@@ -474,7 +484,7 @@ int i2c_cpld_write(int bus, unsigned short cpld_addr, u8 reg, u8 value)
     if ((cpld_node->client->adapter->nr == bus) &&
         (cpld_node->client->addr == cpld_addr) )
     {
-      ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
+      ret = i2c_cpld_write_internal(cpld_node->client, reg, value);
       break;
     }
   }
