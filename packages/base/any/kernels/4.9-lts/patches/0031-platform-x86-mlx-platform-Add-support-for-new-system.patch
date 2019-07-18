@@ -411,7 +411,7 @@ index d5d2448dc7e4..5b1e8d989358 100644
 +	{
 +		.callback = mlxplat_dmi_comex_matched,
 +		.matches = {
-+			DMI_MATCH(DMI_BOARD_NAME, "VMOD0008"),
++			DMI_MATCH(DMI_BOARD_NAME, "VMOD0009"),
 +		},
 +	},
 +	{
