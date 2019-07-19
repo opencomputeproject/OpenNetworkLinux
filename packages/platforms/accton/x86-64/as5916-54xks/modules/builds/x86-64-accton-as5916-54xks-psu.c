@@ -306,6 +306,7 @@ static struct as5916_54xks_psu_data *as5916_54xks_psu_update_device(struct devic
     }
 
     data->valid[pid] = 0;
+    data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff; /* To be compatible for older BMC firmware */
 
     /* Get status from ipmi */
     data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
@@ -435,7 +436,6 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da, char *
 
     mutex_lock(&data->update_lock);
 
-    data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff; /* To be compatible for older BMC firmware */
     data = as5916_54xks_psu_update_device(da);
     if (!data->valid[pid]) {
         error = -EIO;
