@@ -1,0 +1,7 @@
+#!/bin/bash
+d=$(mktemp -d)
+cd $d
+if wget $1; then
+    dpkg -i *.deb
+fi
+rm -rf $d

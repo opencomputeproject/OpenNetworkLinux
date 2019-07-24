@@ -1,0 +1,564 @@
+From 4df1b8e3a873293a8ad59afe276bb4a48dd2f613 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 25 Feb 2019 07:18:14 +0000
+Subject: [PATCH backport 5.1] mlxsw-Align-code-with-kernel-v-5.1.patch
+
+Add latest hwmon and thermal ASIC modules amendments.
+
+Fix LED driver.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/leds/leds-mlxreg.c                         |  21 ++-
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |   8 +-
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 168 +--------------------
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c          |  10 +-
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      |  85 ++++++-----
+ 5 files changed, 77 insertions(+), 215 deletions(-)
+
+diff --git a/drivers/leds/leds-mlxreg.c b/drivers/leds/leds-mlxreg.c
+index 2db200075cfc..0c14a7406c6e 100644
+--- a/drivers/leds/leds-mlxreg.c
++++ b/drivers/leds/leds-mlxreg.c
+@@ -22,6 +22,7 @@
+ #define MLXREG_LED_AMBER_SOLID		0x09 /* Solid amber */
+ #define MLXREG_LED_BLINK_3HZ		167 /* ~167 msec off/on - HW support */
+ #define MLXREG_LED_BLINK_6HZ		83 /* ~83 msec off/on - HW support */
++#define MLXREG_LED_CAPABILITY_CLEAR	GENMASK(31, 8) /* Clear mask */
+ 
+ /**
+  * struct mlxreg_led_data - led control data:
+@@ -100,7 +101,7 @@ mlxreg_led_get_hw(struct mlxreg_led_data *led_data)
+ 	struct mlxreg_core_platform_data *led_pdata = priv->pdata;
+ 	struct mlxreg_core_data *data = led_data->data;
+ 	u32 regval;
+-	int ret;
++	int err;
+ 
+ 	/*
+ 	 * Each LED is controlled through low or high nibble of the relevant
+@@ -112,10 +113,10 @@ mlxreg_led_get_hw(struct mlxreg_led_data *led_data)
+ 	 * 0xf0 - lower nibble is to be used (bits from 0 to 3), mask 0x0f -
+ 	 * higher nibble (bits from 4 to 7).
+ 	 */
+-	ret = regmap_read(led_pdata->regmap, data->reg, &regval);
+-	if (ret < 0) {
++	err = regmap_read(led_pdata->regmap, data->reg, &regval);
++	if (err < 0) {
+ 		dev_warn(led_data->led_cdev.dev, "Failed to get current brightness, error: %d\n",
+-			 ret);
++			 err);
+ 		/* Assume the LED is OFF */
+ 		return LED_OFF;
+ 	}
+@@ -125,11 +126,9 @@ mlxreg_led_get_hw(struct mlxreg_led_data *led_data)
+ 		 data->bit) : ror32(regval, data->bit + 4);
+ 	if (regval >= led_data->base_color &&
+ 	    regval <= (led_data->base_color + MLXREG_LED_OFFSET_BLINK_6HZ))
+-		ret = LED_FULL;
+-	else
+-		ret = LED_OFF;
++		return LED_FULL;
+ 
+-	return ret;
++	return LED_OFF;
+ }
+ 
+ static int
+@@ -208,6 +207,12 @@ static int mlxreg_led_config(struct mlxreg_led_priv_data *priv)
+ 			}
+ 			if (!(regval & data->bit))
+ 				continue;
++			/*
++			 * Field "bit" can contain one capability bit in 0 byte
++			 * and offset bit in 1-3 bytes. Clear capability bit and
++			 * keep only offset bit.
++			 */
++			data->bit &= MLXREG_LED_CAPABILITY_CLEAR;
+ 		}
+ 
+ 		led_cdev = &led_data->led_cdev;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index f1ada4cdbd6b..6956bbebe2f1 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -208,7 +208,7 @@ static ssize_t mlxsw_hwmon_module_temp_show(struct device *dev,
+ 			    1);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
+ 	if (err) {
+-		dev_err(dev, "Failed to query module temprature sensor\n");
++		dev_err(dev, "Failed to query module temperature sensor\n");
+ 		return err;
+ 	}
+ 
+@@ -251,7 +251,7 @@ static ssize_t mlxsw_hwmon_module_temp_fault_show(struct device *dev,
+ 			    1);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
+ 	if (err) {
+-		dev_err(dev, "Failed to query module temprature sensor\n");
++		dev_err(dev, "Failed to query module temperature sensor\n");
+ 		return err;
+ 	}
+ 
+@@ -291,7 +291,7 @@ mlxsw_hwmon_module_temp_critical_show(struct device *dev,
+ 	err = mlxsw_env_module_temp_thresholds_get(mlxsw_hwmon->core, module,
+ 						   SFP_TEMP_HIGH_WARN, &temp);
+ 	if (err) {
+-		dev_err(dev, "Failed to query module temprature thresholds\n");
++		dev_err(dev, "Failed to query module temperature thresholds\n");
+ 		return err;
+ 	}
+ 
+@@ -314,7 +314,7 @@ mlxsw_hwmon_module_temp_emergency_show(struct device *dev,
+ 	err = mlxsw_env_module_temp_thresholds_get(mlxsw_hwmon->core, module,
+ 						   SFP_TEMP_HIGH_ALARM, &temp);
+ 	if (err) {
+-		dev_err(dev, "Failed to query module temprature thresholds\n");
++		dev_err(dev, "Failed to query module temperature thresholds\n");
+ 		return err;
+ 	}
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 0a2e7a2f1569..002654918ee9 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -23,7 +23,6 @@
+ #define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
+ #define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
+ #define MLXSW_THERMAL_ZONE_MAX_NAME	16
+-#define MLXSW_THERMAL_TEMP_SCORE_MAX	0xffffffff
+ #define MLXSW_THERMAL_MAX_STATE	10
+ #define MLXSW_THERMAL_MAX_DUTY	255
+ /* Minimum and maximum fan allowed speed in percent: from 20% to 100%. Values
+@@ -113,8 +112,6 @@ struct mlxsw_thermal {
+ 	enum thermal_device_mode mode;
+ 	struct mlxsw_thermal_module *tz_module_arr;
+ 	unsigned int tz_module_num;
+-	int tz_highest;
+-	struct mutex tz_update_lock;
+ };
+ 
+ static inline u8 mlxsw_state_to_duty(int state)
+@@ -179,7 +176,7 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+ 	/* According to the system thermal requirements, the thermal zones are
+ 	 * defined with four trip points. The critical and emergency
+ 	 * temperature thresholds, provided by QSFP module are set as "active"
+-	 * and "hot" trip points, "normal" and "critical" trip points ar
++	 * and "hot" trip points, "normal" and "critical" trip points are
+ 	 * derived from "active" and "hot" by subtracting or adding double
+ 	 * hysteresis value.
+ 	 */
+@@ -199,140 +196,6 @@ mlxsw_thermal_module_trips_update(struct device *dev, struct mlxsw_core *core,
+ 	return 0;
+ }
+ 
+-static void mlxsw_thermal_tz_score_get(struct mlxsw_thermal_trip *trips,
+-				       int temp, int *score)
+-{
+-	struct mlxsw_thermal_trip *trip = trips;
+-	int delta, i, shift = 1;
+-
+-	/* Calculate thermal zone score, if temperature is above the critical
+-	 * threshold score is set to MLXSW_THERMAL_TEMP_SCORE_MAX.
+-	 */
+-	*score = MLXSW_THERMAL_TEMP_SCORE_MAX;
+-	for (i = MLXSW_THERMAL_TEMP_TRIP_NORM; i < MLXSW_THERMAL_NUM_TRIPS;
+-	     i++, trip++) {
+-		if (temp < trip->temp) {
+-			delta = DIV_ROUND_CLOSEST(temp, trip->temp - temp);
+-			*score = delta * shift;
+-			break;
+-		}
+-		shift *= 256;
+-	}
+-}
+-
+-static int
+-mlxsw_thermal_highest_tz_get(struct device *dev, struct mlxsw_thermal *thermal,
+-			     int module_count, unsigned int seed_temp,
+-			     int *max_tz, int *max_score)
+-{
+-	char mtbr_pl[MLXSW_REG_MTBR_LEN];
+-	struct mlxsw_thermal_module *tz;
+-	int i, j, index, off, score;
+-	u16 temp;
+-	int err;
+-
+-	mlxsw_thermal_tz_score_get(thermal->trips, seed_temp, max_score);
+-	/* Read modules temperature. */
+-	index = 0;
+-	while (index < module_count) {
+-		off = min_t(u8, MLXSW_REG_MTBR_REC_MAX_COUNT,
+-			    module_count - index);
+-		mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX +
+-				    index, off);
+-		err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtbr), mtbr_pl);
+-		if (err) {
+-			dev_err(dev, "Failed to get temp from index %d\n",
+-				off);
+-			return err;
+-		}
+-
+-		for (i = 0, j = index; i < off; i++, j++) {
+-			mlxsw_reg_mtbr_temp_unpack(mtbr_pl, i, &temp, NULL);
+-			/* Update status and temperature cache. */
+-			switch (temp) {
+-			case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
+-			case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
+-			case MLXSW_REG_MTBR_INDEX_NA: /* fall-through */
+-			case MLXSW_REG_MTBR_BAD_SENS_INFO:
+-				temp = 0;
+-				break;
+-			default:
+-				tz = &thermal->tz_module_arr[j];
+-				if (!tz)
+-					break;
+-				/* Reset all trip point. */
+-				mlxsw_thermal_module_trips_reset(tz);
+-				temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
+-				/* Do not consider zero temperature. */
+-				if (!temp)
+-					break;
+-
+-				err = mlxsw_thermal_module_trips_update(dev,
+-								thermal->core,
+-								tz);
+-				if (err) {
+-					dev_err(dev, "Failed to update trips for %s\n",
+-						tz->tzdev->type);
+-					return err;
+-				}
+-
+-				score = 0;
+-				mlxsw_thermal_tz_score_get(tz->trips, temp,
+-							   &score);
+-				if (score > *max_score) {
+-					*max_score = score;
+-					*max_tz = j + 1;
+-				}
+-				break;
+-			}
+-		}
+-		index += off;
+-	}
+-
+-	return 0;
+-}
+-
+-static int
+-mlxsw_thermal_highest_tz_notify(struct device *dev,
+-				struct thermal_zone_device *tzdev,
+-				struct mlxsw_thermal *thermal,
+-				int module_count, unsigned int temp)
+-{
+-	char env_record[24];
+-	char *envp[2] = { env_record, NULL };
+-	struct mlxsw_thermal_module *tz_module;
+-	struct thermal_zone_device *tz;
+-	int max_tz = 0, max_score = 0;
+-	int err;
+-
+-	err = mlxsw_thermal_highest_tz_get(dev, thermal,
+-					   thermal->tz_module_num, temp,
+-					   &max_tz, &max_score);
+-	if (err) {
+-		dev_err(dev, "Failed to query module temp sensor\n");
+-		return err;
+-	}
+-
+-	if (thermal->tz_highest != max_tz) {
+-		sprintf(env_record, "TZ_HIGHEST==%u", max_score);
+-		if (max_tz && (&thermal->tz_module_arr[max_tz - 1])) {
+-			tz_module = &thermal->tz_module_arr[max_tz - 1];
+-			tz = tz_module->tzdev;
+-			err = kobject_uevent_env(&tz->device.kobj, KOBJ_CHANGE,
+-						 envp);
+-		} else {
+-			err = kobject_uevent_env(&tzdev->device.kobj,
+-						 KOBJ_CHANGE, envp);
+-		}
+-		if (err)
+-			dev_err(dev, "Error sending uevent %s\n", envp[0]);
+-		else
+-			thermal->tz_highest = max_tz;
+-	}
+-
+-	return 0;
+-}
+-
+ static int mlxsw_thermal_bind(struct thermal_zone_device *tzdev,
+ 			      struct thermal_cooling_device *cdev)
+ {
+@@ -398,20 +261,15 @@ static int mlxsw_thermal_set_mode(struct thermal_zone_device *tzdev,
+ 
+ 	mutex_lock(&tzdev->lock);
+ 
+-	if (mode == THERMAL_DEVICE_ENABLED) {
+-		thermal->tz_highest = 0;
++	if (mode == THERMAL_DEVICE_ENABLED)
+ 		tzdev->polling_delay = thermal->polling_delay;
+-	} else {
++	else
+ 		tzdev->polling_delay = 0;
+-	}
+ 
+ 	mutex_unlock(&tzdev->lock);
+ 
+ 	thermal->mode = mode;
+-
+-	mutex_lock(&thermal->tz_update_lock);
+ 	thermal_zone_device_update(tzdev, THERMAL_EVENT_UNSPECIFIED);
+-	mutex_unlock(&thermal->tz_update_lock);
+ 
+ 	return 0;
+ }
+@@ -433,15 +291,7 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 		return err;
+ 	}
+ 	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
+-#if 0
+-	if (thermal->tz_module_arr) {
+-		err = mlxsw_thermal_highest_tz_notify(dev, tzdev, thermal,
+-						      thermal->tz_module_num,
+-						      temp);
+-		if (err)
+-			dev_err(dev, "Failed to query module temp sensor\n");
+-	}
+-#endif
++
+ 	*p_temp = (int) temp;
+ 	return 0;
+ }
+@@ -589,10 +439,7 @@ static int mlxsw_thermal_module_mode_set(struct thermal_zone_device *tzdev,
+ 	mutex_unlock(&tzdev->lock);
+ 
+ 	tz->mode = mode;
+-
+-	mutex_lock(&thermal->tz_update_lock);
+ 	thermal_zone_device_update(tzdev, THERMAL_EVENT_UNSPECIFIED);
+-	mutex_unlock(&thermal->tz_update_lock);
+ 
+ 	return 0;
+ }
+@@ -993,7 +840,6 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 
+ 	thermal->core = core;
+ 	thermal->bus_info = bus_info;
+-	mutex_init(&thermal->tz_update_lock);
+ 	memcpy(thermal->trips, default_thermal_trips, sizeof(thermal->trips));
+ 
+ 	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mfcr), mfcr_pl);
+@@ -1028,8 +874,8 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 			struct thermal_cooling_device *cdev;
+ 
+ 			cdev = thermal_cooling_device_register("mlxsw_fan",
+-							thermal,
+-							&mlxsw_cooling_ops);
++							       thermal,
++							       &mlxsw_cooling_ops);
+ 			if (IS_ERR(cdev)) {
+ 				err = PTR_ERR(cdev);
+ 				dev_err(dev, "Failed to register cooling device\n");
+@@ -1069,6 +915,8 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 	*p_thermal = thermal;
+ 	return 0;
+ 
++err_unreg_modules_tzdev:
++	mlxsw_thermal_modules_fini(thermal);
+ err_unreg_tzdev:
+ 	if (thermal->tzdev) {
+ 		thermal_zone_device_unregister(thermal->tzdev);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index b1471c2b6af2..307fd5fcd302 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -399,7 +399,10 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 		if (reg_size % MLXSW_I2C_BLK_MAX)
+ 			num++;
+ 
+-		mutex_lock(&mlxsw_i2c->cmd.lock);
++		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
++			dev_err(&client->dev, "Could not acquire lock");
++			return -EINVAL;
++		}
+ 
+ 		err = mlxsw_i2c_write(dev, reg_size, in_mbox, num, status);
+ 		if (err)
+@@ -415,7 +418,10 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 		reg_size = MLXSW_I2C_MAX_DATA_SIZE;
+ 		num = reg_size / MLXSW_I2C_BLK_MAX;
+ 
+-		mutex_lock(&mlxsw_i2c->cmd.lock);
++		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
++			dev_err(&client->dev, "Could not acquire lock");
++			return -EINVAL;
++		}
+ 
+ 		err = mlxsw_i2c_write_init_cmd(client, mlxsw_i2c, opcode,
+ 					       in_mod);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 9312f42c8f9b..740b3753de44 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -1,5 +1,5 @@
+ // SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+-/* Copyright (c) 2016-2018 Mellanox Technologies. All rights reserved */
++/* Copyright (c) 2016-2019 Mellanox Technologies. All rights reserved */
+ 
+ #include <linux/netdevice.h>
+ #include <linux/etherdevice.h>
+@@ -50,11 +50,8 @@ static int mlxsw_m_get_module_info(struct net_device *netdev,
+ {
+ 	struct mlxsw_m_port *mlxsw_m_port = netdev_priv(netdev);
+ 	struct mlxsw_core *core = mlxsw_m_port->mlxsw_m->core;
+-	int err;
+-
+-	err = mlxsw_env_get_module_info(core, mlxsw_m_port->module, modinfo);
+ 
+-	return err;
++	return mlxsw_env_get_module_info(core, mlxsw_m_port->module, modinfo);
+ }
+ 
+ static int
+@@ -63,12 +60,9 @@ mlxsw_m_get_module_eeprom(struct net_device *netdev, struct ethtool_eeprom *ee,
+ {
+ 	struct mlxsw_m_port *mlxsw_m_port = netdev_priv(netdev);
+ 	struct mlxsw_core *core = mlxsw_m_port->mlxsw_m->core;
+-	int err;
+-
+-	err = mlxsw_env_get_module_eeprom(netdev, core,
+-					  mlxsw_m_port->module, ee, data);
+ 
+-	return err;
++	return mlxsw_env_get_module_eeprom(netdev, core, mlxsw_m_port->module,
++					   ee, data);
+ }
+ 
+ static const struct ethtool_ops mlxsw_m_port_ethtool_ops = {
+@@ -199,7 +193,7 @@ static int mlxsw_m_port_module_map(struct mlxsw_m *mlxsw_m, u8 local_port,
+ 	u8 module, width;
+ 	int err;
+ 
+-	/* Fill out  to local port mapping array */
++	/* Fill out to local port mapping array */
+ 	err = mlxsw_m_port_module_info_get(mlxsw_m, local_port, &module,
+ 					   &width);
+ 	if (err)
+@@ -216,57 +210,39 @@ static int mlxsw_m_port_module_map(struct mlxsw_m *mlxsw_m, u8 local_port,
+ 	return 0;
+ }
+ 
+-static int mlxsw_m_port_module_unmap(struct mlxsw_m *mlxsw_m, u8 module)
++static void mlxsw_m_port_module_unmap(struct mlxsw_m *mlxsw_m, u8 module)
+ {
+ 	mlxsw_m->module_to_port[module] = -1;
+-
+-	return 0;
+-}
+-
+-static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m)
+-{
+-	int i;
+-
+-	for (i = 0; i < mlxsw_m->max_ports; i++) {
+-		if (mlxsw_m->module_to_port[i] > 0) {
+-			mlxsw_m_port_remove(mlxsw_m,
+-					    mlxsw_m->module_to_port[i]);
+-			mlxsw_m_port_module_unmap(mlxsw_m, i);
+-		}
+-	}
+-
+-	kfree(mlxsw_m->module_to_port);
+-	kfree(mlxsw_m->ports);
+ }
+ 
+ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ {
+-	unsigned int max_port = mlxsw_core_max_ports(mlxsw_m->core);
+-	u8 last_module = max_port;
++	unsigned int max_ports = mlxsw_core_max_ports(mlxsw_m->core);
++	u8 last_module = max_ports;
+ 	int i;
+ 	int err;
+ 
+-	mlxsw_m->ports = kcalloc(max_port, sizeof(*mlxsw_m->ports),
++	mlxsw_m->ports = kcalloc(max_ports, sizeof(*mlxsw_m->ports),
+ 				 GFP_KERNEL);
+ 	if (!mlxsw_m->ports)
+ 		return -ENOMEM;
+ 
+-	mlxsw_m->module_to_port = kmalloc_array(max_port, sizeof(int),
++	mlxsw_m->module_to_port = kmalloc_array(max_ports, sizeof(int),
+ 						GFP_KERNEL);
+ 	if (!mlxsw_m->module_to_port) {
+ 		err = -ENOMEM;
+-		goto err_port_create;
++		goto err_module_to_port_alloc;
+ 	}
+ 
+ 	/* Invalidate the entries of module to local port mapping array */
+-	for (i = 0; i < max_port; i++)
++	for (i = 0; i < max_ports; i++)
+ 		mlxsw_m->module_to_port[i] = -1;
+ 
+ 	/* Fill out module to local port mapping array */
+-	for (i = 1; i < max_port; i++) {
++	for (i = 1; i < max_ports; i++) {
+ 		err = mlxsw_m_port_module_map(mlxsw_m, i, &last_module);
+ 		if (err)
+-			goto err_port_create;
++			goto err_module_to_port_map;
+ 	}
+ 
+ 	/* Create port objects for each valid entry */
+@@ -276,17 +252,44 @@ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ 						  mlxsw_m->module_to_port[i],
+ 						  i);
+ 			if (err)
+-				goto err_port_create;
++				goto err_module_to_port_create;
+ 		}
+ 	}
+ 
+ 	return 0;
+ 
+-err_port_create:
+-	mlxsw_m_ports_remove(mlxsw_m);
++err_module_to_port_create:
++	for (i--; i >= 0; i--) {
++		if (mlxsw_m->module_to_port[i] > 0)
++			mlxsw_m_port_remove(mlxsw_m,
++					    mlxsw_m->module_to_port[i]);
++	}
++	i = max_ports;
++err_module_to_port_map:
++	for (i--; i > 0; i--)
++		mlxsw_m_port_module_unmap(mlxsw_m, i);
++	kfree(mlxsw_m->module_to_port);
++err_module_to_port_alloc:
++	kfree(mlxsw_m->ports);
+ 	return err;
+ }
+ 
++static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m)
++{
++	int i;
++
++	for (i = 0; i < mlxsw_m->max_ports; i++) {
++		if (mlxsw_m->module_to_port[i] > 0) {
++			mlxsw_m_port_remove(mlxsw_m,
++					    mlxsw_m->module_to_port[i]);
++			mlxsw_m_port_module_unmap(mlxsw_m, i);
++		}
++	}
++
++	kfree(mlxsw_m->module_to_port);
++	kfree(mlxsw_m->ports);
++}
++
+ static int mlxsw_m_init(struct mlxsw_core *mlxsw_core,
+ 			const struct mlxsw_bus_info *mlxsw_bus_info)
+ {
+-- 
+2.11.0
+

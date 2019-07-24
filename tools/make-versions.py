@@ -22,11 +22,17 @@ class OnlVersionsGenerator(object):
 
         self.ops = ops
 
-        cmd = ('git', 'rev-list', 'HEAD', '-1',)
-        self.build_sha1 = subprocess.check_output(cmd).strip()
+        if ops.sha1:
+            self.build_sha1 = ops.sha1
+        else:
+            cmd = ('git', 'rev-list', 'HEAD', '-1',)
+            self.build_sha1 = subprocess.check_output(cmd).strip()
 
-        fmt = "%Y-%m-%d.%H:%M"
-        self.build_timestamp = time.strftime(fmt, time.localtime())
+        if ops.timestamp:
+            self.build_timestamp = ops.timestamp
+        else:
+            fmt = "%Y-%m-%d.%H:%M"
+            self.build_timestamp = time.strftime(fmt, time.localtime())
 
     def generate_all(self):
         for product in self.implementation.PRODUCTS:
@@ -97,11 +103,10 @@ if __name__ == '__main__':
     ap.add_argument("--force", action='store_true', help="Force regeneration.")
     ap.add_argument("--export", action='store_true', help="Include export keyword in .sh and .mk versions.")
     ap.add_argument("--print", action='store_true', help="Print version data.", dest='print_')
+    ap.add_argument("--sha1", help="Use the given sha1.")
+    ap.add_argument("--timestamp", help="Use the given timestamp.")
+
     ops = ap.parse_args()
 
     o = OnlVersionsGenerator(ops)
     o.generate_all()
-
-
-
-

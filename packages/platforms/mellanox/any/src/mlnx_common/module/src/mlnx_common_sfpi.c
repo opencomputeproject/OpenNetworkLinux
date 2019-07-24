@@ -74,16 +74,16 @@ static char*
 mc_sfp_get_port_path(int port, char *node_name)
 {
     if (node_name)
-        sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d%s", port, node_name);
+        sprintf(sfp_node_path, "%s/qsfp%d%s", QSFP_PATH, port, node_name);
     else
-        sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d", port);
+        sprintf(sfp_node_path, "%s/qsfp%d", QSFP_PATH, port);
     return sfp_node_path;
 }
 
 static char*
 mc_sfp_convert_i2c_path(int port, int devaddr)
 {
-    sprintf(sfp_node_path, "/bsp/qsfp/qsfp%d", port);
+    sprintf(sfp_node_path, "%s/qsfp%d", QSFP_PATH, port);
     return sfp_node_path;
 }
 

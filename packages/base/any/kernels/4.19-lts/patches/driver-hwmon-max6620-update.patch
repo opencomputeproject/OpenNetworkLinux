@@ -1,0 +1,113 @@
+Update MAX6620 driver to support newer kernel version
+
+From: Shuotian Cheng <shuche@microsoft.com>
+
+
+---
+ drivers/hwmon/max6620.c |   25 +++++++++++--------------
+ 1 file changed, 11 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
+index 76c1f7f..fb49195 100644
+--- a/drivers/hwmon/max6620.c
++++ b/drivers/hwmon/max6620.c
+@@ -183,7 +183,7 @@ static struct i2c_driver max6620_driver = {
+ 		.name	= "max6620",
+ 	},
+ 	.probe		= max6620_probe,
+-	.remove		= __devexit_p(max6620_remove),
++	.remove		= max6620_remove,
+ 	.id_table	= max6620_id,
+ 	.address_list	= normal_i2c,
+ };
+@@ -231,6 +231,7 @@ static ssize_t get_fan(struct device *dev, struct device_attribute *devattr, cha
+ 	} else {
+ 		rpm = (60 * sr * clock)/(tach * np);
+ 	}
++
+ 	return sprintf(buf, "%d\n", rpm);
+ }
+ 
+@@ -262,17 +263,17 @@ static ssize_t set_target(struct device *dev, struct device_attribute *devattr,
+ 	struct i2c_client *client = to_i2c_client(dev);
+ 	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
+ 	struct max6620_data *data = i2c_get_clientdata(client);
+-	u32 rpm;
++	unsigned long rpm;
+ 	int err;
+-	u32 target;
+-	u32 target1;
+-	u32 target2;
++	unsigned long target;
++	unsigned long target1;
++	unsigned long target2;
+ 
+ 	err = kstrtoul(buf, 10, &rpm);
+ 	if (err)
+ 		return err;
+ 
+-	rpm = SENSORS_LIMIT(rpm, FAN_RPM_MIN, FAN_RPM_MAX);
++	rpm = clamp_val(rpm, FAN_RPM_MIN, FAN_RPM_MAX);
+ 
+ 	mutex_lock(&data->update_lock);
+ 
+@@ -326,7 +327,7 @@ static ssize_t set_pwm(struct device *dev, struct device_attribute *devattr, con
+ 	if (err)
+ 		return err;
+ 
+-	pwm = SENSORS_LIMIT(pwm, 0, 255);
++	pwm = clamp_val(pwm, 0, 255);
+ 
+ 	mutex_lock(&data->update_lock);
+ 
+@@ -534,7 +535,7 @@ static struct attribute_group max6620_attr_grp = {
+  * Real code
+  */
+ 
+-static int __devinit max6620_probe(struct i2c_client *client, const struct i2c_device_id *id) {
++static int max6620_probe(struct i2c_client *client, const struct i2c_device_id *id) {
+ 
+ 	struct max6620_data *data;
+ 	int err;
+@@ -575,7 +576,7 @@ dev_info(&client->dev, "Sysfs entries created\n");
+ 	return err;
+ }
+ 
+-static int __devexit max6620_remove(struct i2c_client *client) {
++static int max6620_remove(struct i2c_client *client) {
+ 
+ 	struct max6620_data *data = i2c_get_clientdata(client);
+ 
+@@ -599,7 +600,6 @@ static int max6620_init_client(struct i2c_client *client) {
+ 		return err;
+ 	}
+ 
+-
+ 	/*
+ 	 * Set bit 4, disable other fans from going full speed on a fail
+ 	 * failure.
+@@ -615,14 +615,13 @@ static int max6620_init_client(struct i2c_client *client) {
+ 		data->fancfg[i] |= 0xa8;		// enable TACH monitoring
+ 		i2c_smbus_write_byte_data(client, config_reg[i], data->fancfg[i]);
+ 		data->fandyn[i] = i2c_smbus_read_byte_data(client, dyn_reg[i]);
+-                /* 2 counts (001) and Rate change 100 (0.125 secs) */
++		/* 2 counts (001) and Rate change 100 (0.125 secs) */
+ 		data-> fandyn[i] = 0x30;
+ 		i2c_smbus_write_byte_data(client, dyn_reg[i], data->fandyn[i]);
+ 		data->tach[i] = i2c_smbus_read_byte_data(client, tach_reg[i]);
+ 		data->volt[i] = i2c_smbus_read_byte_data(client, volt_reg[i]);
+ 		data->target[i] = i2c_smbus_read_byte_data(client, target_reg[i]);
+ 		data->dac[i] = i2c_smbus_read_byte_data(client, dac_reg[i]);
+-
+ 	}
+ 	return 0;
+ }
+@@ -665,8 +664,6 @@ static struct max6620_data *max6620_update_device(struct device *dev)
+ 	return data;
+ }
+ 
+-// module_i2c_driver(max6620_driver);
+-
+ static int __init max6620_init(void)
+ {
+ 	return i2c_add_driver(&max6620_driver);

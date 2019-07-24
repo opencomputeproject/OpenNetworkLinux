@@ -1,0 +1,33 @@
+From ed87f7294ec22fe2e9780fec900f25954a720c8f Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 3 Jan 2019 18:02:06 +0000
+Subject: [PATCH 2/4] qsfp_sysfs: Fix dmidecode call
+
+---
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index 07cc7ea..c072b91 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -231,14 +231,14 @@ mlxsw_qsfp_cpld_show(struct device *dev, struct device_attribute *attr,
+ 	return sprintf(buf, "%u\n", version);
+ }
+ 
+-static int __init mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
++static int mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
+ {
+ 	mlxsw_qsfp_cpld_num = MLXSW_QSFP_MAX_CPLD_NUM;
+ 
+ 	return 1;
+ };
+ 
+-static struct dmi_system_id mlxsw_qsfp_dmi_table[] __initdata = {
++static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 	{
+ 		.callback = mlxsw_qsfp_dmi_set_cpld_num,
+ 		.matches = {
+-- 
+2.1.4
+

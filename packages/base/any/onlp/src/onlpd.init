@@ -57,6 +57,18 @@ case $1 in
 		status=$?
 	        log_end_msg $status
 		;;
+        pause)
+                log_daemon_msg "Pausing ONLP Platform Agent" "onlpd"
+                start-stop-daemon --stop $QUIET --oknodo --pidfile $PIDFILE --signal 19
+		status=$?
+	        log_end_msg $status
+		;;
+        continue)
+                log_daemon_msg "Continuing ONLP Platform Agent" "onlpd"
+                start-stop-daemon --stop $QUIET --oknodo --pidfile $PIDFILE --signal 18
+		status=$?
+	        log_end_msg $status
+		;;
 	status)
 		status_of_proc $DAEMON "ONLP Platform Agent"
 		;;

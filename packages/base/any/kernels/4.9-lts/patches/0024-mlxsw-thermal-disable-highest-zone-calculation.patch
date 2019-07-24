@@ -1,0 +1,35 @@
+From 5da6a599af1072f278b5f41ed648bed2142d42f0 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 21 Jan 2019 19:13:29 +0000
+Subject: [PATCH mlxsw] mlxsw thermal: disable highest zone calculation
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 444455c..0a2e7a2 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -433,7 +433,7 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 		return err;
+ 	}
+ 	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
+-
++#if 0
+ 	if (thermal->tz_module_arr) {
+ 		err = mlxsw_thermal_highest_tz_notify(dev, tzdev, thermal,
+ 						      thermal->tz_module_num,
+@@ -441,7 +441,7 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 		if (err)
+ 			dev_err(dev, "Failed to query module temp sensor\n");
+ 	}
+-
++#endif
+ 	*p_temp = (int) temp;
+ 	return 0;
+ }
+-- 
+2.1.4
+

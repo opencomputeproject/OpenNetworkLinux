@@ -1,0 +1,52 @@
+---
+
+######################################################################
+#
+# platform-config for LY1200
+#
+######################################################################
+
+x86-64-mitac-ly1200-b32h0-c3-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-4-14
+
+    args: >-
+      nopat
+      nohpet
+      intel_iommu=off
+      console=ttyS0,115200n8
+      acpi_enforce_resources=lax
+      pcie_aspm=off
+      irqpoll
+      i2c-ismt.delay=1000
+
+  installer:
+  - ONL-BOOT:
+      =: 128MiB
+      format: ext4
+  - ONL-CONFIG:
+      =: 128MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 1GiB
+      format: ext4
+  - ONL-DATA:
+      =: 10GiB
+      format: ext4
+
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:1c.0/0000:0a:00.0

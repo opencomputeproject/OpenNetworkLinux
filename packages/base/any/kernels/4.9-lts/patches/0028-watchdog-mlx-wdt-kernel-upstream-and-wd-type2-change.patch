@@ -1,0 +1,665 @@
+diff -Nur a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+--- a/drivers/platform/x86/mlx-platform.c	2019-02-21 13:41:06.654605472 +0000
++++ b/drivers/platform/x86/mlx-platform.c	2019-02-21 13:48:22.670032634 +0000
+@@ -61,9 +61,11 @@
+ #define MLXPLAT_CPLD_LPC_REG_WD1_TMR_OFFSET	0xc9
+ #define MLXPLAT_CPLD_LPC_REG_WD1_ACT_OFFSET	0xcb
+ #define MLXPLAT_CPLD_LPC_REG_WD2_TMR_OFFSET	0xcd
++#define MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET	0xce
+ #define MLXPLAT_CPLD_LPC_REG_WD2_ACT_OFFSET	0xcf
+ #define MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET	0xd1
+-#define MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET	0xd2
++#define MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET	0xd2
++#define MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET	0xd3
+ #define MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET	0xe3
+ #define MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET	0xe4
+ #define MLXPLAT_CPLD_LPC_REG_TACHO2_OFFSET	0xe5
+@@ -1369,7 +1371,9 @@
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_default_fan_data),
+ };
+ 
+-/* Type1 watchdog implementation on MSN2700, MSN2100 and MSN2140 systems */
++/* Watchdog type1: hardware implementation version1
++ * (MSN2700, MSN2410, MSN2740, MSN2100 and MSN2140 systems).
++ */
+ static struct mlxreg_core_data mlxplat_mlxcpld_wd_main_regs_type1[] = {
+ 	{
+ 		.label = "action",
+@@ -1422,17 +1426,19 @@
+ 	{
+ 		.data = mlxplat_mlxcpld_wd_main_regs_type1,
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_wd_main_regs_type1),
++		.version = MLX_WDT_TYPE1,
+ 		.identity = "mlx-wdt-main",
+ 	},
+ 	{
+ 		.data = mlxplat_mlxcpld_wd_aux_regs_type1,
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_wd_aux_regs_type1),
++		.version = MLX_WDT_TYPE1,
+ 		.identity = "mlx-wdt-aux",
+ 	},
+ };
+ 
+-/* Type2 watchdog implementation on MSB8700 and up systems
+- * To differentiate: ping reg == action reg
++/* Watchdog type2: hardware implementation version 2
++ * (all systems except (MSN2700, MSN2410, MSN2740, MSN2100 and MSN2140).
+  */
+ static struct mlxreg_core_data mlxplat_mlxcpld_wd_main_regs_type2[] = {
+ 	{
+@@ -1448,6 +1454,11 @@
+ 		.health_cntr = MLXPLAT_CPLD_WD_DFLT_TIMEOUT,
+ 	},
+ 	{
++		.label = "timeleft",
++		.reg = MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET,
++		.mask = MLXPLAT_CPLD_WD_TYPE2_TO_MASK,
++	},
++	{
+ 		.label = "ping",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_WD2_ACT_OFFSET,
+ 		.mask = MLXPLAT_CPLD_WD_RESET_ACT_MASK,
+@@ -1475,6 +1486,11 @@
+ 		.health_cntr = MLXPLAT_CPLD_WD_DFLT_TIMEOUT,
+ 	},
+ 	{
++		.label = "timeleft",
++		.reg = MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET,
++		.mask = MLXPLAT_CPLD_WD_TYPE2_TO_MASK,
++	},
++	{
+ 		.label = "ping",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET,
+ 		.mask = MLXPLAT_CPLD_WD_FAN_ACT_MASK,
+@@ -1486,11 +1502,13 @@
+ 	{
+ 		.data = mlxplat_mlxcpld_wd_main_regs_type2,
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_wd_main_regs_type2),
++		.version = MLX_WDT_TYPE2,
+ 		.identity = "mlx-wdt-main",
+ 	},
+ 	{
+ 		.data = mlxplat_mlxcpld_wd_aux_regs_type2,
+ 		.counter = ARRAY_SIZE(mlxplat_mlxcpld_wd_aux_regs_type2),
++		.version = MLX_WDT_TYPE2,
+ 		.identity = "mlx-wdt-aux",
+ 	},
+ };
+@@ -1573,8 +1591,10 @@
+ 	case MLXPLAT_CPLD_LPC_REG_WD1_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD1_ACT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD2_TMR_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD2_ACT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET:
+@@ -1634,7 +1654,9 @@
+ 	case MLXPLAT_CPLD_LPC_REG_FAN_EVENT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_FAN_MASK_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD2_TMR_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO2_OFFSET:
+@@ -2094,8 +2116,8 @@
+ 	for (j = 0; j < MLXPLAT_CPLD_WD_MAX_DEVS; j++) {
+ 		if (mlxplat_wd_data[j]) {
+ 			mlxplat_wd_data[j]->regmap = mlxplat_hotplug->regmap;
+-			priv->pdev_wd[j] = platform_device_register_resndata(
+-						&mlxplat_dev->dev,
++			priv->pdev_wd[j] = platform_device_register_resndata
++						(&mlxplat_dev->dev,
+ 						"mlx-wdt", j, NULL, 0,
+ 						mlxplat_wd_data[j],
+ 						sizeof(*mlxplat_wd_data[j]));
+@@ -2115,8 +2137,10 @@
+ 	return 0;
+ 
+ fail_platform_wd_register:
+-	while (--j >= 0)
+-		platform_device_unregister(priv->pdev_wd[j]);
++	while (--j >= 0) {
++		if (priv->pdev_wd[j])
++			platform_device_unregister(priv->pdev_wd[j]);
++	}
+ 	if (mlxplat_fan)
+ 		platform_device_unregister(priv->pdev_fan);
+ fail_platform_io_regs_register:
+@@ -2142,16 +2166,16 @@
+ 	struct mlxplat_priv *priv = platform_get_drvdata(mlxplat_dev);
+ 	int i;
+ 
++	for (i = MLXPLAT_CPLD_WD_MAX_DEVS - 1; i >= 0 ; i--) {
++		if (mlxplat_wd_data[i])
++			platform_device_unregister(priv->pdev_wd[i]);
++	}
+ 	if (priv->pdev_fan)
+ 		platform_device_unregister(priv->pdev_fan);
+ 	if (priv->pdev_io_regs)
+ 		platform_device_unregister(priv->pdev_io_regs);
+ 	platform_device_unregister(priv->pdev_led);
+ 	platform_device_unregister(priv->pdev_hotplug);
+-	for (i = MLXPLAT_CPLD_WD_MAX_DEVS - 1; i >= 0 ; i--) {
+-		if (mlxplat_wd_data[i])
+-			platform_device_unregister(priv->pdev_wd[i]);
+-	}
+ 	for (i = ARRAY_SIZE(mlxplat_mux_data) - 1; i >= 0 ; i--)
+ 		platform_device_unregister(priv->pdev_mux[i]);
+ 
+diff -Nur a/drivers/watchdog/Kconfig b/drivers/watchdog/Kconfig
+--- a/drivers/watchdog/Kconfig	2019-02-21 13:41:44.518903255 +0000
++++ b/drivers/watchdog/Kconfig	2019-02-21 13:54:11.964775375 +0000
+@@ -141,21 +141,6 @@
+ 	  This driver can also be built as a module. If so the module
+ 	  will be called menf21bmc_wdt.
+ 
+-config MLX_WDT
+-	tristate "Mellanox Watchdog"
+-	select WATCHDOG_CORE
+-	select REGMAP
+-	---help---
+-	  This is the driver for the hardware watchdog on Mellanox systems.
+-	  If you are going to use it, say Y here, otherwise N.
+-	  This driver can be used together with the watchdog daemon.
+-	  It can also watch your kernel to make sure it doesn't freeze,
+-	  and if it does, it reboots your system after a certain amount of
+-	  time.
+-
+-	  To compile this driver as a module, choose M here: the
+-	  module will be called mlx-wdt.
+-
+ config TANGOX_WATCHDOG
+ 	tristate "Sigma Designs SMP86xx/SMP87xx watchdog"
+ 	select WATCHDOG_CORE
+@@ -218,6 +203,22 @@
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called ziirave_wdt.
+ 
++config MLX_WDT
++	tristate "Mellanox Watchdog"
++	depends on MELLANOX_PLATFORM
++	select WATCHDOG_CORE
++	select REGMAP
++	help
++	  This is the driver for the hardware watchdog on Mellanox systems.
++	  If you are going to use it, say Y here, otherwise N.
++	  This driver can be used together with the watchdog daemon.
++	  It can also watch your kernel to make sure it doesn't freeze,
++	  and if it does, it reboots your system after a certain amount of
++	  time.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called mlx-wdt.
++
+ # ALPHA Architecture
+ 
+ # ARM Architecture
+diff -Nur a/drivers/watchdog/mlx_wdt.c b/drivers/watchdog/mlx_wdt.c
+--- a/drivers/watchdog/mlx_wdt.c	2019-02-21 13:42:09.119096705 +0000
++++ b/drivers/watchdog/mlx_wdt.c	2019-02-21 15:36:44.116225080 +0000
+@@ -2,8 +2,8 @@
+ /*
+  * Mellanox watchdog driver
+  *
+- * Copyright (C) 2018 Mellanox Technologies
+- * Copyright (C) 2018 Michael Shych <mshych@mellanox.com>
++ * Copyright (C) 2019 Mellanox Technologies
++ * Copyright (C) 2019 Michael Shych <mshych@mellanox.com>
+  */
+ 
+ #include <linux/bitops.h>
+@@ -21,20 +21,9 @@
+ #define MLXREG_WDT_CLOCK_SCALE		1000
+ #define MLXREG_WDT_MAX_TIMEOUT_TYPE1	32
+ #define MLXREG_WDT_MAX_TIMEOUT_TYPE2	255
+-#define MLXREG_WDT_MIN_TIMEOUT	1
+-#define MLXREG_WDT_HW_TIMEOUT_CONVERT(hw_timeout) ((1 << (hw_timeout)) \
+-						   / MLXREG_WDT_CLOCK_SCALE)
+-
+-/**
+- * enum mlxreg_wdt_type - type of HW watchdog
+- *
+- * TYPE1 can be differentiated by different register/mask
+- *	 for WD action set and ping.
+- */
+-enum mlxreg_wdt_type {
+-	MLX_WDT_TYPE1,
+-	MLX_WDT_TYPE2,
+-};
++#define MLXREG_WDT_MIN_TIMEOUT		1
++#define MLXREG_WDT_OPTIONS_BASE (WDIOF_KEEPALIVEPING | WDIOF_MAGICCLOSE | \
++				 WDIOF_SETTIMEOUT)
+ 
+ /**
+  * struct mlxreg_wdt - wd private data:
+@@ -44,16 +33,12 @@
+  * @pdata:	data received from platform driver;
+  * @regmap:	register map of parent device;
+  * @timeout:	defined timeout in sec.;
+- * @hw_timeout:	real timeout set in hw;
+- *		It will be roundup base of 2 in WD type 1,
+- *		in WD type 2 it will be same number of sec as timeout;
+  * @action_idx:	index for direct access to action register;
+  * @timeout_idx:index for direct access to TO register;
++ * @tleft_idx:	index for direct access to time left register;
+  * @ping_idx:	index for direct access to ping register;
+  * @reset_idx:	index for direct access to reset cause register;
+  * @wd_type:	watchdog HW type;
+- * @hw_timeout:	actual HW timeout;
+- * @io_lock:	spinlock for io access;
+  */
+ struct mlxreg_wdt {
+ 	struct watchdog_device wdd;
+@@ -61,138 +46,61 @@
+ 	void *regmap;
+ 	int action_idx;
+ 	int timeout_idx;
++	int tleft_idx;
+ 	int ping_idx;
+ 	int reset_idx;
+ 	enum mlxreg_wdt_type wdt_type;
+-	u8 hw_timeout;
+-	spinlock_t io_lock;	/* the lock for io operations */
+ };
+ 
+-static int mlxreg_wdt_roundup_to_base_2(struct mlxreg_wdt *wdt, int timeout)
+-{
+-	timeout *= MLXREG_WDT_CLOCK_SCALE;
+-
+-	wdt->hw_timeout = order_base_2(timeout);
+-	dev_info(wdt->wdd.parent,
+-		 "watchdog %s timeout %d was rounded up to %lu (msec)\n",
+-		 wdt->wdd.info->identity, timeout, roundup_pow_of_two(timeout));
+-
+-	return 0;
+-}
+-
+-static enum mlxreg_wdt_type
+-mlxreg_wdt_check_watchdog_type(struct mlxreg_wdt *wdt,
+-			       struct mlxreg_core_platform_data *pdata)
+-{
+-	if ((pdata->data[wdt->action_idx].reg ==
+-	     pdata->data[wdt->ping_idx].reg) &&
+-	    (pdata->data[wdt->action_idx].mask ==
+-	     pdata->data[wdt->ping_idx].mask))
+-		return MLX_WDT_TYPE2;
+-	else
+-		return MLX_WDT_TYPE1;
+-}
+-
+-static int mlxreg_wdt_check_card_reset(struct mlxreg_wdt *wdt)
++static void mlxreg_wdt_check_card_reset(struct mlxreg_wdt *wdt)
+ {
+ 	struct mlxreg_core_data *reg_data;
+ 	u32 regval;
+ 	int rc;
+ 
+ 	if (wdt->reset_idx == -EINVAL)
+-		return -EINVAL;
++		return;
+ 
+ 	if (!(wdt->wdd.info->options & WDIOF_CARDRESET))
+-		return 0;
++		return;
+ 
+-	spin_lock(&wdt->io_lock);
+ 	reg_data = &wdt->pdata->data[wdt->reset_idx];
+ 	rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+-	spin_unlock(&wdt->io_lock);
+-	if (rc)
+-		goto read_error;
+-
+-	if (regval & ~reg_data->mask) {
+-		wdt->wdd.bootstatus = WDIOF_CARDRESET;
+-		dev_info(wdt->wdd.parent,
+-			 "watchdog previously reset the CPU\n");
++	if (!rc) {
++		if (regval & ~reg_data->mask) {
++			wdt->wdd.bootstatus = WDIOF_CARDRESET;
++			dev_info(wdt->wdd.parent,
++				 "watchdog previously reset the CPU\n");
++		}
+ 	}
+-
+-read_error:
+-	return rc;
+ }
+ 
+ static int mlxreg_wdt_start(struct watchdog_device *wdd)
+ {
+ 	struct mlxreg_wdt *wdt = watchdog_get_drvdata(wdd);
+ 	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->action_idx];
+-	u32 regval;
+-	int rc;
+-
+-	spin_lock(&wdt->io_lock);
+-	rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+-	if (rc) {
+-		spin_unlock(&wdt->io_lock);
+-		goto read_error;
+-	}
+-
+-	regval = (regval & reg_data->mask) | BIT(reg_data->bit);
+-	rc = regmap_write(wdt->regmap, reg_data->reg, regval);
+-	spin_unlock(&wdt->io_lock);
+-	if (!rc) {
+-		set_bit(WDOG_HW_RUNNING, &wdt->wdd.status);
+-		dev_info(wdt->wdd.parent, "watchdog %s started\n",
+-			 wdd->info->identity);
+-	}
+ 
+-read_error:
+-	return rc;
++	return regmap_update_bits(wdt->regmap, reg_data->reg, ~reg_data->mask,
++				  BIT(reg_data->bit));
+ }
+ 
+ static int mlxreg_wdt_stop(struct watchdog_device *wdd)
+ {
+ 	struct mlxreg_wdt *wdt = watchdog_get_drvdata(wdd);
+ 	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->action_idx];
+-	u32 regval;
+-	int rc;
+-
+-	spin_lock(&wdt->io_lock);
+-	rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+-	if (rc) {
+-		spin_unlock(&wdt->io_lock);
+-		goto read_error;
+-	}
+ 
+-	regval = (regval & reg_data->mask) & ~BIT(reg_data->bit);
+-	rc = regmap_write(wdt->regmap, reg_data->reg, regval);
+-	spin_unlock(&wdt->io_lock);
+-	if (!rc)
+-		dev_info(wdt->wdd.parent, "watchdog %s stopped\n",
+-			 wdd->info->identity);
+-
+-read_error:
+-	return rc;
++	return regmap_update_bits(wdt->regmap, reg_data->reg, ~reg_data->mask,
++				  ~BIT(reg_data->bit));
+ }
+ 
+ static int mlxreg_wdt_ping(struct watchdog_device *wdd)
+ {
+ 	struct mlxreg_wdt *wdt = watchdog_get_drvdata(wdd);
+ 	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->ping_idx];
+-	u32 regval;
+-	int rc;
+ 
+-	spin_lock(&wdt->io_lock);
+-	rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+-	if (rc)
+-		goto read_error;
+-
+-	regval = (regval & reg_data->mask) | BIT(reg_data->bit);
+-	rc = regmap_write(wdt->regmap, reg_data->reg, regval);
+-
+-read_error:
+-	spin_unlock(&wdt->io_lock);
+-
+-	return rc;
++	return regmap_update_bits_base(wdt->regmap, reg_data->reg,
++				       ~reg_data->mask, BIT(reg_data->bit),
++				       NULL, false, true);
+ }
+ 
+ static int mlxreg_wdt_set_timeout(struct watchdog_device *wdd,
+@@ -200,25 +108,37 @@
+ {
+ 	struct mlxreg_wdt *wdt = watchdog_get_drvdata(wdd);
+ 	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->timeout_idx];
+-	u32 regval;
++	u32 regval, set_time, hw_timeout;
+ 	int rc;
+ 
+-	spin_lock(&wdt->io_lock);
+-
+ 	if (wdt->wdt_type == MLX_WDT_TYPE1) {
+ 		rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+ 		if (rc)
+-			goto read_error;
+-		regval = (regval & reg_data->mask) | wdt->hw_timeout;
++			return rc;
++
++		hw_timeout = order_base_2(timeout * MLXREG_WDT_CLOCK_SCALE);
++		regval = (regval & reg_data->mask) | hw_timeout;
++		/* Rowndown to actual closest number of sec. */
++		set_time = BIT(hw_timeout) / MLXREG_WDT_CLOCK_SCALE;
+ 	} else {
+-		wdt->hw_timeout = timeout;
++		set_time = timeout;
+ 		regval = timeout;
+ 	}
+ 
++	wdd->timeout = set_time;
+ 	rc = regmap_write(wdt->regmap, reg_data->reg, regval);
+ 
+-read_error:
+-	spin_unlock(&wdt->io_lock);
++	if (!rc) {
++		/*
++		 * Restart watchdog with new timeout period
++		 * if watchdog is already started.
++		 */
++		if (watchdog_active(wdd)) {
++			rc = mlxreg_wdt_stop(wdd);
++			if (!rc)
++				rc = mlxreg_wdt_start(wdd);
++		}
++	}
+ 
+ 	return rc;
+ }
+@@ -226,23 +146,13 @@
+ static unsigned int mlxreg_wdt_get_timeleft(struct watchdog_device *wdd)
+ {
+ 	struct mlxreg_wdt *wdt = watchdog_get_drvdata(wdd);
+-	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->timeout_idx];
++	struct mlxreg_core_data *reg_data = &wdt->pdata->data[wdt->tleft_idx];
+ 	u32 regval;
+ 	int rc;
+ 
+-	if (wdt->wdt_type == MLX_WDT_TYPE1)
+-		return 0;
+-
+-	spin_lock(&wdt->io_lock);
+ 	rc = regmap_read(wdt->regmap, reg_data->reg, &regval);
+-	if (rc)
+-		rc = 0;
+-	else
+-		rc = regval;
+-
+-	spin_unlock(&wdt->io_lock);
+-
+-	return rc;
++	/* Return 0 timeleft in case of failure register read. */
++	return rc == 0 ? regval : 0;
+ }
+ 
+ static const struct watchdog_ops mlxreg_wdt_ops_type1 = {
+@@ -263,26 +173,22 @@
+ };
+ 
+ static const struct watchdog_info mlxreg_wdt_main_info = {
+-	.options	= WDIOF_KEEPALIVEPING
+-			| WDIOF_MAGICCLOSE
+-			| WDIOF_SETTIMEOUT
++	.options	= MLXREG_WDT_OPTIONS_BASE
+ 			| WDIOF_CARDRESET,
+ 	.identity	= "mlx-wdt-main",
+ };
+ 
+ static const struct watchdog_info mlxreg_wdt_aux_info = {
+-	.options	= WDIOF_KEEPALIVEPING
+-			| WDIOF_MAGICCLOSE
+-			| WDIOF_SETTIMEOUT
++	.options	= MLXREG_WDT_OPTIONS_BASE
+ 			| WDIOF_ALARMONLY,
+ 	.identity	= "mlx-wdt-aux",
+ };
+ 
+-static int mlxreg_wdt_config(struct mlxreg_wdt *wdt,
+-			     struct mlxreg_core_platform_data *pdata)
++static void mlxreg_wdt_config(struct mlxreg_wdt *wdt,
++			      struct mlxreg_core_platform_data *pdata)
+ {
+ 	struct mlxreg_core_data *data = pdata->data;
+-	int i, timeout;
++	int i;
+ 
+ 	wdt->reset_idx = -EINVAL;
+ 	for (i = 0; i < pdata->counter; i++, data++) {
+@@ -290,6 +196,8 @@
+ 			wdt->action_idx = i;
+ 		else if (strnstr(data->label, "timeout", sizeof(data->label)))
+ 			wdt->timeout_idx = i;
++		else if (strnstr(data->label, "timeleft", sizeof(data->label)))
++			wdt->tleft_idx = i;
+ 		else if (strnstr(data->label, "ping", sizeof(data->label)))
+ 			wdt->ping_idx = i;
+ 		else if (strnstr(data->label, "reset", sizeof(data->label)))
+@@ -303,24 +211,24 @@
+ 	else
+ 		wdt->wdd.info = &mlxreg_wdt_aux_info;
+ 
+-	timeout = pdata->data[wdt->timeout_idx].health_cntr;
+-	wdt->wdt_type = mlxreg_wdt_check_watchdog_type(wdt, pdata);
++	wdt->wdt_type = pdata->version;
+ 	if (wdt->wdt_type == MLX_WDT_TYPE2) {
+-		wdt->hw_timeout = timeout;
+ 		wdt->wdd.ops = &mlxreg_wdt_ops_type2;
+-		wdt->wdd.timeout = wdt->hw_timeout;
+ 		wdt->wdd.max_timeout = MLXREG_WDT_MAX_TIMEOUT_TYPE2;
+ 	} else {
+-		mlxreg_wdt_roundup_to_base_2(wdt, timeout);
+ 		wdt->wdd.ops = &mlxreg_wdt_ops_type1;
+-		/* Rowndown to actual closest number of sec. */
+-		wdt->wdd.timeout =
+-			MLXREG_WDT_HW_TIMEOUT_CONVERT(wdt->hw_timeout);
+ 		wdt->wdd.max_timeout = MLXREG_WDT_MAX_TIMEOUT_TYPE1;
+ 	}
+ 	wdt->wdd.min_timeout = MLXREG_WDT_MIN_TIMEOUT;
++}
+ 
+-	return -EINVAL;
++static int mlxreg_wdt_init_timeout(struct mlxreg_wdt *wdt,
++				   struct mlxreg_core_platform_data *pdata)
++{
++	u32 timeout;
++
++	timeout = pdata->data[wdt->timeout_idx].health_cntr;
++	return mlxreg_wdt_set_timeout(&wdt->wdd, timeout);
+ }
+ 
+ static int mlxreg_wdt_probe(struct platform_device *pdev)
+@@ -338,48 +246,38 @@
+ 	if (!wdt)
+ 		return -ENOMEM;
+ 
+-	spin_lock_init(&wdt->io_lock);
+-
+ 	wdt->wdd.parent = &pdev->dev;
+ 	wdt->regmap = pdata->regmap;
+ 	mlxreg_wdt_config(wdt, pdata);
+ 
+-	if ((pdata->features & MLXREG_CORE_WD_FEATURE_NOSTOP_AFTER_START))
++	if ((pdata->features & MLXREG_CORE_WD_FEATURE_NOWAYOUT))
+ 		watchdog_set_nowayout(&wdt->wdd, WATCHDOG_NOWAYOUT);
+ 	watchdog_stop_on_reboot(&wdt->wdd);
+-	watchdog_init_timeout(&wdt->wdd, 0, &pdev->dev);
+ 	watchdog_set_drvdata(&wdt->wdd, wdt);
++	rc = mlxreg_wdt_init_timeout(wdt, pdata);
++	if (rc)
++		goto register_error;
+ 
++	if ((pdata->features & MLXREG_CORE_WD_FEATURE_START_AT_BOOT)) {
++		rc = mlxreg_wdt_start(&wdt->wdd);
++		if (rc)
++			goto register_error;
++		set_bit(WDOG_HW_RUNNING, &wdt->wdd.status);
++	}
+ 	mlxreg_wdt_check_card_reset(wdt);
+ 	rc = devm_watchdog_register_device(&pdev->dev, &wdt->wdd);
+-	if (rc) {
++
++register_error:
++	if (rc)
+ 		dev_err(&pdev->dev,
+ 			"Cannot register watchdog device (err=%d)\n", rc);
+-		return rc;
+-	}
+-
+-	mlxreg_wdt_set_timeout(&wdt->wdd, wdt->wdd.timeout);
+-	if ((pdata->features & MLXREG_CORE_WD_FEATURE_START_AT_BOOT))
+-		mlxreg_wdt_start(&wdt->wdd);
+-
+ 	return rc;
+ }
+ 
+-static int mlxreg_wdt_remove(struct platform_device *pdev)
+-{
+-	struct mlxreg_wdt *wdt = dev_get_platdata(&pdev->dev);
+-
+-	mlxreg_wdt_stop(&wdt->wdd);
+-	watchdog_unregister_device(&wdt->wdd);
+-
+-	return 0;
+-}
+-
+ static struct platform_driver mlxreg_wdt_driver = {
+ 	.probe	= mlxreg_wdt_probe,
+-	.remove	= mlxreg_wdt_remove,
+ 	.driver	= {
+-		.name = "mlx-wdt",
++			.name = "mlx-wdt",
+ 	},
+ };
+ 
+diff -Nur a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+--- a/include/linux/platform_data/mlxreg.h	2019-02-21 13:58:39.410873888 +0000
++++ b/include/linux/platform_data/mlxreg.h	2019-02-21 13:59:41.015345425 +0000
+@@ -35,8 +35,19 @@
+ #define __LINUX_PLATFORM_DATA_MLXREG_H
+ 
+ #define MLXREG_CORE_LABEL_MAX_SIZE	32
+-#define MLXREG_CORE_WD_FEATURE_NOSTOP_AFTER_START	BIT(0)
+-#define MLXREG_CORE_WD_FEATURE_START_AT_BOOT		BIT(1)
++#define MLXREG_CORE_WD_FEATURE_NOWAYOUT		BIT(0)
++#define MLXREG_CORE_WD_FEATURE_START_AT_BOOT	BIT(1)
++
++/**
++ * enum mlxreg_wdt_type - type of HW watchdog
++ *
++ * TYPE1 HW watchdog implementation exist in old systems.
++ * All new systems have TYPE2 HW watchdog.
++ */
++enum mlxreg_wdt_type {
++	MLX_WDT_TYPE1,
++	MLX_WDT_TYPE2,
++};
+ 
+ /**
+  * struct mlxreg_hotplug_device - I2C device data:
+@@ -115,6 +126,7 @@
+  * @regmap: register map of parent device;
+  * @counter: number of instances;
+  * @features: supported features of device;
++ * @version: implementation version;
+  * @identity: device identity name;
+  */
+ struct mlxreg_core_platform_data {
+@@ -122,6 +134,7 @@
+ 	void *regmap;
+ 	int counter;
+ 	u32 features;
++	u32 version;
+ 	char identity[MLXREG_CORE_LABEL_MAX_SIZE];
+ };
+ 

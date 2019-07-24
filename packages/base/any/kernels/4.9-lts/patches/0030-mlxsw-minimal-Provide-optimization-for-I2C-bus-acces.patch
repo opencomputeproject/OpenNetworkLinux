@@ -1,0 +1,668 @@
+From 8c964a3e17bb41eef69c81d45864d72cbc1185f4 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Fri, 17 May 2019 09:22:21 +0000
+Subject: [PATCH backport 5.2] mlxsw: minimal: Provide optimization for I2C bus
+ access
+
+Use register MTMP instead of MTBR.
+Use maximum buffer size allowed by I2C adapter.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c                   |  2 +-
+ drivers/net/ethernet/mellanox/mlxsw/core.c         |  6 ++
+ drivers/net/ethernet/mellanox/mlxsw/core.h         |  2 +
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c     | 29 ++-----
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   | 98 +++++++++-------------
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 60 +++++++------
+ drivers/net/ethernet/mellanox/mlxsw/i2c.c          | 56 +++++++++----
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      | 18 ++++
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          |  7 +-
+ 9 files changed, 144 insertions(+), 134 deletions(-)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 745ed43a22d6..2fd717d8dd30 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -503,6 +503,7 @@ static int mlxcpld_i2c_probe(struct platform_device *pdev)
+ 	platform_set_drvdata(pdev, priv);
+ 
+ 	priv->dev = &pdev->dev;
++	priv->base_addr = MLXPLAT_CPLD_LPC_I2C_BASE_ADDR;
+ 
+ 	/* Register with i2c layer */
+ 	mlxcpld_i2c_adapter.timeout = usecs_to_jiffies(MLXCPLD_I2C_XFER_TO);
+@@ -518,7 +519,6 @@ static int mlxcpld_i2c_probe(struct platform_device *pdev)
+ 		mlxcpld_i2c_adapter.nr = pdev->id;
+ 	priv->adap = mlxcpld_i2c_adapter;
+ 	priv->adap.dev.parent = &pdev->dev;
+-	priv->base_addr = MLXPLAT_CPLD_LPC_I2C_BASE_ADDR;
+ 	i2c_set_adapdata(&priv->adap, priv);
+ 
+ 	err = i2c_add_numbered_adapter(&priv->adap);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
+index e420451942e2..9a74ae8beb43 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.c
+@@ -122,6 +122,12 @@ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core)
+ }
+ EXPORT_SYMBOL(mlxsw_core_driver_priv);
+ 
++bool mlxsw_core_res_query_enabled(const struct mlxsw_core *mlxsw_core)
++{
++	return mlxsw_core->driver->res_query_enabled;
++}
++EXPORT_SYMBOL(mlxsw_core_res_query_enabled);
++
+ struct mlxsw_rx_listener_item {
+ 	struct list_head list;
+ 	struct mlxsw_rx_listener rxl;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.h b/drivers/net/ethernet/mellanox/mlxsw/core.h
+index 76e8fd76ef36..1e1bcfd8d032 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.h
+@@ -28,6 +28,8 @@ unsigned int mlxsw_core_max_ports(const struct mlxsw_core *mlxsw_core);
+ 
+ void *mlxsw_core_driver_priv(struct mlxsw_core *mlxsw_core);
+ 
++bool mlxsw_core_res_query_enabled(const struct mlxsw_core *mlxsw_core);
++
+ int mlxsw_core_driver_register(struct mlxsw_driver *mlxsw_driver);
+ void mlxsw_core_driver_unregister(struct mlxsw_driver *mlxsw_driver);
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index edcf1b656cbf..d2c7ce67c300 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -92,33 +92,20 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 		u16 temp;
+ 	} temp_thresh;
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN] = {0};
+-	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
+-	u16 module_temp;
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	unsigned int module_temp;
+ 	bool qsfp;
+ 	int err;
+ 
+-	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
+-			    1);
+-	err = mlxsw_reg_query(core, MLXSW_REG(mtbr), mtbr_pl);
++	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN + module,
++			    false, false);
++	err = mlxsw_reg_query(core, MLXSW_REG(mtmp), mtmp_pl);
+ 	if (err)
+ 		return err;
+-
+-	/* Don't read temperature thresholds for module with no valid info. */
+-	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &module_temp, NULL);
+-	switch (module_temp) {
+-	case MLXSW_REG_MTBR_BAD_SENS_INFO: /* fall-through */
+-	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
+-	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
+-	case MLXSW_REG_MTBR_INDEX_NA:
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &module_temp, NULL, NULL);
++	if (!module_temp) {
+ 		*temp = 0;
+ 		return 0;
+-	default:
+-		/* Do not consider thresholds for zero temperature. */
+-		if (!MLXSW_REG_MTMP_TEMP_TO_MC(module_temp)) {
+-			*temp = 0;
+-			return 0;
+-		}
+-		break;
+ 	}
+ 
+ 	/* Read Free Side Device Temperature Thresholds from page 03h
+@@ -196,7 +183,7 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 		}
+ 		break;
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
+-		/* Verify if transceiver provides digital diagnostic monitoring page */
++		/* Verify if transceiver provides diagnostic monitoring page */
+ 		err = mlxsw_env_query_module_eeprom(mlxsw_core, module,
+ 						    SFP_DIAGMON, 1, &diag_mon,
+ 						    &read_size);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 976f81a2bbba..a414a09efb5d 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -15,9 +15,6 @@
+ #define MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT 127
+ #define MLXSW_HWMON_ATTR_COUNT (MLXSW_HWMON_TEMP_SENSOR_MAX_COUNT * 4 + \
+ 				MLXSW_MFCR_TACHOS_MAX + MLXSW_MFCR_PWMS_MAX)
+-#define MLXSW_HWMON_GET_ATTR_INDEX(ind, count)				\
+-				(((ind) >= (count)) ? (ind) % (count) + \
+-				 MLXSW_REG_MTMP_GBOX_INDEX_MIN : (ind))
+ 
+ struct mlxsw_hwmon_attr {
+ 	struct device_attribute dev_attr;
+@@ -26,6 +23,14 @@ struct mlxsw_hwmon_attr {
+ 	char name[32];
+ };
+ 
++static int mlxsw_hwmon_get_attr_index(int index, int count)
++{
++	if (index >= count)
++		return index % count + MLXSW_REG_MTMP_GBOX_INDEX_MIN;
++
++	return index;
++}
++
+ struct mlxsw_hwmon {
+ 	struct mlxsw_core *core;
+ 	const struct mlxsw_bus_info *bus_info;
+@@ -51,7 +56,7 @@ static ssize_t mlxsw_hwmon_temp_show(struct device *dev,
+ 	int index;
+ 	int err;
+ 
+-	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++	index = mlxsw_hwmon_get_attr_index(mlwsw_hwmon_attr->type_index,
+ 					   mlxsw_hwmon->module_sensor_count);
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+@@ -75,7 +80,7 @@ static ssize_t mlxsw_hwmon_temp_max_show(struct device *dev,
+ 	int index;
+ 	int err;
+ 
+-	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++	index = mlxsw_hwmon_get_attr_index(mlwsw_hwmon_attr->type_index,
+ 					   mlxsw_hwmon->module_sensor_count);
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+@@ -105,7 +110,7 @@ static ssize_t mlxsw_hwmon_temp_rst_store(struct device *dev,
+ 	if (val != 1)
+ 		return -EINVAL;
+ 
+-	index = MLXSW_HWMON_GET_ATTR_INDEX(mlwsw_hwmon_attr->type_index,
++	index = mlxsw_hwmon_get_attr_index(mlwsw_hwmon_attr->type_index,
+ 					   mlxsw_hwmon->module_sensor_count);
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, index, true, true);
+ 	err = mlxsw_reg_write(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
+@@ -209,38 +214,18 @@ static ssize_t mlxsw_hwmon_module_temp_show(struct device *dev,
+ 	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
+ 			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
+ 	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
+-	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
+-	u16 temp;
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	unsigned int temp;
+ 	u8 module;
+ 	int err;
+ 
+ 	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
+-	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
+-			    1);
+-	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
+-	if (err) {
+-		dev_err(dev, "Failed to query module temperature sensor\n");
++	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN + module,
++			    false, false);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
++	if (err)
+ 		return err;
+-	}
+-
+-	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
+-	/* Update status and temperature cache. */
+-	switch (temp) {
+-	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
+-	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
+-	case MLXSW_REG_MTBR_INDEX_NA:
+-		temp = 0;
+-		break;
+-	case MLXSW_REG_MTBR_BAD_SENS_INFO:
+-		/* Untrusted cable is connected. Reading temperature from its
+-		 * sensor is faulty.
+-		 */
+-		temp = 0;
+-		break;
+-	default:
+-		temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
+-		break;
+-	}
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
+ 
+ 	return sprintf(buf, "%u\n", temp);
+ }
+@@ -252,37 +237,18 @@ static ssize_t mlxsw_hwmon_module_temp_fault_show(struct device *dev,
+ 	struct mlxsw_hwmon_attr *mlwsw_hwmon_attr =
+ 			container_of(attr, struct mlxsw_hwmon_attr, dev_attr);
+ 	struct mlxsw_hwmon *mlxsw_hwmon = mlwsw_hwmon_attr->hwmon;
+-	char mtbr_pl[MLXSW_REG_MTBR_LEN] = {0};
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	u8 module, fault;
+-	u16 temp;
+ 	int err;
+ 
+ 	module = mlwsw_hwmon_attr->type_index - mlxsw_hwmon->sensor_count;
+-	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
+-			    1);
+-	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtbr), mtbr_pl);
+-	if (err) {
+-		dev_err(dev, "Failed to query module temperature sensor\n");
+-		return err;
+-	}
+-
+-	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
+-
+-	/* Update status and temperature cache. */
+-	switch (temp) {
+-	case MLXSW_REG_MTBR_BAD_SENS_INFO:
+-		/* Untrusted cable is connected. Reading temperature from its
+-		 * sensor is faulty.
+-		 */
++	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX + module,
++			    false, false);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mtmp), mtmp_pl);
++	if (err)
+ 		fault = 1;
+-		break;
+-	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
+-	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
+-	case MLXSW_REG_MTBR_INDEX_NA:
+-	default:
++	else
+ 		fault = 0;
+-		break;
+-	}
+ 
+ 	return sprintf(buf, "%u\n", fault);
+ }
+@@ -551,6 +517,9 @@ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	u8 width;
+ 	int err;
+ 
++	if (!mlxsw_core_res_query_enabled(mlxsw_hwmon->core))
++		return 0;
++
+ 	/* Add extra attributes for module temperature. Sensor index is
+ 	 * assigned to sensor_count value, while all indexed before
+ 	 * sensor_count are already utilized by the sensors connected through
+@@ -593,8 +562,9 @@ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 
+ static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ {
++	int index, max_index, sensor_index;
+ 	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
+-	int index, max_index;
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	u8 gbox_num;
+ 	int err;
+ 
+@@ -610,6 +580,16 @@ static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	index = mlxsw_hwmon->module_sensor_count;
+ 	max_index = mlxsw_hwmon->module_sensor_count + gbox_num;
+ 	while (index < max_index) {
++		sensor_index = index % mlxsw_hwmon->module_sensor_count +
++			       MLXSW_REG_MTMP_GBOX_INDEX_MIN;
++		mlxsw_reg_mtmp_pack(mtmp_pl, sensor_index, true, true);
++		err = mlxsw_reg_write(mlxsw_hwmon->core,
++				      MLXSW_REG(mtmp), mtmp_pl);
++		if (err) {
++			dev_err(mlxsw_hwmon->bus_info->dev, "Failed to setup temp sensor number %d\n",
++				sensor_index);
++			return err;
++		}
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon, MLXSW_HWMON_ATTR_TYPE_TEMP,
+ 				     index, index);
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 5f970798ab6a..e9451e447bf0 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -452,36 +452,27 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 	struct mlxsw_thermal_module *tz = tzdev->devdata;
+ 	struct mlxsw_thermal *thermal = tz->parent;
+ 	struct device *dev = thermal->bus_info->dev;
+-	char mtbr_pl[MLXSW_REG_MTBR_LEN];
+-	u16 temp;
++	char mtmp_pl[MLXSW_REG_MTMP_LEN];
++	unsigned int temp;
+ 	int err;
+ 
+ 	/* Read module temperature. */
+-	mlxsw_reg_mtbr_pack(mtbr_pl, MLXSW_REG_MTBR_BASE_MODULE_INDEX +
+-			    tz->module, 1);
+-	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtbr), mtbr_pl);
+-	if (err)
+-		return err;
+-
+-	mlxsw_reg_mtbr_temp_unpack(mtbr_pl, 0, &temp, NULL);
+-	/* Update temperature. */
+-	switch (temp) {
+-	case MLXSW_REG_MTBR_NO_CONN: /* fall-through */
+-	case MLXSW_REG_MTBR_NO_TEMP_SENS: /* fall-through */
+-	case MLXSW_REG_MTBR_INDEX_NA: /* fall-through */
+-	case MLXSW_REG_MTBR_BAD_SENS_INFO:
++	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN +
++			    tz->module, false, false);
++	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtmp), mtmp_pl);
++	if (err) {
++		dev_err(dev, "Failed to query temp sensor\n");
+ 		temp = 0;
+-		break;
+-	default:
+-		temp = MLXSW_REG_MTMP_TEMP_TO_MC(temp);
+-		/* Reset all trip point. */
+-		mlxsw_thermal_module_trips_reset(tz);
+-		/* Update trip points. */
++		*p_temp = (int) temp;
++		return 0;
++	}
++	mlxsw_reg_mtmp_unpack(mtmp_pl, &temp, NULL, NULL);
++
++	if (temp) {
+ 		err = mlxsw_thermal_module_trips_update(dev, thermal->core,
+ 							tz);
+ 		if (err)
+ 			return err;
+-		break;
+ 	}
+ 
+ 	*p_temp = (int) temp;
+@@ -714,12 +705,12 @@ mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
+ 	snprintf(tz_name, sizeof(tz_name), "mlxsw-module%d",
+ 		 module_tz->module + 1);
+ 	module_tz->tzdev = thermal_zone_device_register(tz_name,
+-						  MLXSW_THERMAL_NUM_TRIPS,
+-						  MLXSW_THERMAL_TRIP_MASK,
+-						  module_tz,
+-						  &mlxsw_thermal_module_ops,
+-						  &mlxsw_thermal_module_params,
+-						  0, 0);
++							MLXSW_THERMAL_NUM_TRIPS,
++							MLXSW_THERMAL_TRIP_MASK,
++							module_tz,
++							&mlxsw_thermal_module_ops,
++							&mlxsw_thermal_module_params,
++							0, 0);
+ 	if (IS_ERR(module_tz->tzdev)) {
+ 		err = PTR_ERR(module_tz->tzdev);
+ 		return err;
+@@ -789,6 +780,9 @@ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ 	struct mlxsw_thermal_module *module_tz;
+ 	int i, err;
+ 
++	if (!mlxsw_core_res_query_enabled(core))
++		return 0;
++
+ 	thermal->tz_module_arr = kcalloc(module_count,
+ 					 sizeof(*thermal->tz_module_arr),
+ 					 GFP_KERNEL);
+@@ -801,8 +795,7 @@ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ 			goto err_unreg_tz_module_arr;
+ 	}
+ 
+-	module_count -= 1;
+-	for (i = 0; i < module_count; i++) {
++	for (i = 0; i < module_count - 1; i++) {
+ 		module_tz = &thermal->tz_module_arr[i];
+ 		if (!module_tz->parent)
+ 			continue;
+@@ -814,7 +807,7 @@ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ 	return 0;
+ 
+ err_unreg_tz_module_arr:
+-	for (i = module_count; i >= 0; i--)
++	for (i = module_count - 1; i >= 0; i--)
+ 		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
+ 	kfree(thermal->tz_module_arr);
+ 	return err;
+@@ -826,6 +819,9 @@ mlxsw_thermal_modules_fini(struct mlxsw_thermal *thermal)
+ 	unsigned int module_count = mlxsw_core_max_ports(thermal->core);
+ 	int i;
+ 
++	if (!mlxsw_core_res_query_enabled(thermal->core))
++		return;
++
+ 	for (i = module_count - 1; i >= 0; i--)
+ 		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
+ 	kfree(thermal->tz_module_arr);
+@@ -910,7 +906,7 @@ mlxsw_thermal_gearboxes_fini(struct mlxsw_thermal *thermal)
+ 	int i;
+ 
+ 	for (i = thermal->tz_gearbox_num - 1; i >= 0; i--)
+-		mlxsw_thermal_gearbox_tz_fini(&thermal->tz_gearbox_arr[i]);
++		mlxsw_thermal_gearbox_tz_fini(&thermal->tz_gearbox_arr[i]); /*Remove*/
+ 	kfree(thermal->tz_gearbox_arr);
+ }
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/i2c.c b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+index 307fd5fcd302..08c774875d1e 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/i2c.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/i2c.c
+@@ -43,11 +43,10 @@
+ #define MLXSW_I2C_PREP_SIZE		(MLXSW_I2C_ADDR_WIDTH + 28)
+ #define MLXSW_I2C_MBOX_SIZE		20
+ #define MLXSW_I2C_MBOX_OUT_PARAM_OFF	12
+-#define MLXSW_I2C_MAX_BUFF_SIZE		32
+ #define MLXSW_I2C_MBOX_OFFSET_BITS	20
+ #define MLXSW_I2C_MBOX_SIZE_BITS	12
+ #define MLXSW_I2C_ADDR_BUF_SIZE		4
+-#define MLXSW_I2C_BLK_MAX		32
++#define MLXSW_I2C_BLK_DEF		32
+ #define MLXSW_I2C_RETRY			5
+ #define MLXSW_I2C_TIMEOUT_MSECS		5000
+ #define MLXSW_I2C_MAX_DATA_SIZE		256
+@@ -62,6 +61,7 @@
+  * @dev: I2C device;
+  * @core: switch core pointer;
+  * @bus_info: bus info block;
++ * @block_size: maximum block size allowed to pass to under layer;
+  */
+ struct mlxsw_i2c {
+ 	struct {
+@@ -74,6 +74,7 @@ struct mlxsw_i2c {
+ 	struct device *dev;
+ 	struct mlxsw_core *core;
+ 	struct mlxsw_bus_info bus_info;
++	u16 block_size;
+ };
+ 
+ #define MLXSW_I2C_READ_MSG(_client, _addr_buf, _buf, _len) {	\
+@@ -315,20 +316,26 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	struct i2c_client *client = to_i2c_client(dev);
+ 	struct mlxsw_i2c *mlxsw_i2c = i2c_get_clientdata(client);
+ 	unsigned long timeout = msecs_to_jiffies(MLXSW_I2C_TIMEOUT_MSECS);
+-	u8 tran_buf[MLXSW_I2C_MAX_BUFF_SIZE + MLXSW_I2C_ADDR_BUF_SIZE];
+ 	int off = mlxsw_i2c->cmd.mb_off_in, chunk_size, i, j;
+ 	unsigned long end;
++	u8 *tran_buf;
+ 	struct i2c_msg write_tran =
+-		MLXSW_I2C_WRITE_MSG(client, tran_buf, MLXSW_I2C_PUSH_CMD_SIZE);
++		MLXSW_I2C_WRITE_MSG(client, NULL, MLXSW_I2C_PUSH_CMD_SIZE);
+ 	int err;
+ 
++	tran_buf = kmalloc(mlxsw_i2c->block_size + MLXSW_I2C_ADDR_BUF_SIZE,
++			   GFP_KERNEL);
++	if (!tran_buf)
++		return -ENOMEM;
++
++	write_tran.buf = tran_buf;
+ 	for (i = 0; i < num; i++) {
+-		chunk_size = (in_mbox_size > MLXSW_I2C_BLK_MAX) ?
+-			     MLXSW_I2C_BLK_MAX : in_mbox_size;
++		chunk_size = (in_mbox_size > mlxsw_i2c->block_size) ?
++			     mlxsw_i2c->block_size : in_mbox_size;
+ 		write_tran.len = MLXSW_I2C_ADDR_WIDTH + chunk_size;
+ 		mlxsw_i2c_set_slave_addr(tran_buf, off);
+ 		memcpy(&tran_buf[MLXSW_I2C_ADDR_BUF_SIZE], in_mbox +
+-		       MLXSW_I2C_BLK_MAX * i, chunk_size);
++		       mlxsw_i2c->block_size * i, chunk_size);
+ 
+ 		j = 0;
+ 		end = jiffies + timeout;
+@@ -342,9 +349,10 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 			 (j++ < MLXSW_I2C_RETRY));
+ 
+ 		if (err != 1) {
+-			if (!err)
++			if (!err) {
+ 				err = -EIO;
+-			return err;
++				goto mlxsw_i2c_write_exit;
++			}
+ 		}
+ 
+ 		off += chunk_size;
+@@ -355,24 +363,28 @@ mlxsw_i2c_write(struct device *dev, size_t in_mbox_size, u8 *in_mbox, int num,
+ 	err = mlxsw_i2c_write_cmd(client, mlxsw_i2c, 0);
+ 	if (err) {
+ 		dev_err(&client->dev, "Could not start transaction");
+-		return -EIO;
++		err = -EIO;
++		goto mlxsw_i2c_write_exit;
+ 	}
+ 
+ 	/* Wait until go bit is cleared. */
+ 	err = mlxsw_i2c_wait_go_bit(client, mlxsw_i2c, p_status);
+ 	if (err) {
+ 		dev_err(&client->dev, "HW semaphore is not released");
+-		return err;
++		goto mlxsw_i2c_write_exit;
+ 	}
+ 
+ 	/* Validate transaction completion status. */
+ 	if (*p_status) {
+ 		dev_err(&client->dev, "Bad transaction completion status %x\n",
+ 			*p_status);
+-		return -EIO;
++		err = -EIO;
+ 	}
+ 
+-	return 0;
++mlxsw_i2c_write_exit:
++	kfree(tran_buf);
++
++	return err;
+ }
+ 
+ /* Routine executes I2C command. */
+@@ -395,8 +407,8 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 
+ 	if (in_mbox) {
+ 		reg_size = mlxsw_i2c_get_reg_size(in_mbox);
+-		num = reg_size / MLXSW_I2C_BLK_MAX;
+-		if (reg_size % MLXSW_I2C_BLK_MAX)
++		num = reg_size / mlxsw_i2c->block_size;
++		if (reg_size % mlxsw_i2c->block_size)
+ 			num++;
+ 
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+@@ -416,7 +428,7 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 	} else {
+ 		/* No input mailbox is case of initialization query command. */
+ 		reg_size = MLXSW_I2C_MAX_DATA_SIZE;
+-		num = reg_size / MLXSW_I2C_BLK_MAX;
++		num = reg_size / mlxsw_i2c->block_size;
+ 
+ 		if (mutex_lock_interruptible(&mlxsw_i2c->cmd.lock) < 0) {
+ 			dev_err(&client->dev, "Could not acquire lock");
+@@ -432,8 +444,8 @@ mlxsw_i2c_cmd(struct device *dev, u16 opcode, u32 in_mod, size_t in_mbox_size,
+ 	/* Send read transaction to get output mailbox content. */
+ 	read_tran[1].buf = out_mbox;
+ 	for (i = 0; i < num; i++) {
+-		chunk_size = (reg_size > MLXSW_I2C_BLK_MAX) ?
+-			     MLXSW_I2C_BLK_MAX : reg_size;
++		chunk_size = (reg_size > mlxsw_i2c->block_size) ?
++			     mlxsw_i2c->block_size : reg_size;
+ 		read_tran[1].len = chunk_size;
+ 		mlxsw_i2c_set_slave_addr(tran_buf, off);
+ 
+@@ -546,6 +558,7 @@ static const struct mlxsw_bus mlxsw_i2c_bus = {
+ static int mlxsw_i2c_probe(struct i2c_client *client,
+ 			   const struct i2c_device_id *id)
+ {
++	const struct i2c_adapter_quirks *quirks = client->adapter->quirks;
+ 	struct mlxsw_i2c *mlxsw_i2c;
+ 	u8 status;
+ 	int err;
+@@ -554,6 +567,13 @@ static int mlxsw_i2c_probe(struct i2c_client *client,
+ 	if (!mlxsw_i2c)
+ 		return -ENOMEM;
+ 
++	if (quirks)
++		 mlxsw_i2c->block_size = max_t(u16, MLXSW_I2C_BLK_DEF,
++					       min_t(u16, quirks->max_read_len,
++					       quirks->max_write_len));
++	else
++		mlxsw_i2c->block_size = MLXSW_I2C_BLK_DEF;
++
+ 	i2c_set_clientdata(client, mlxsw_i2c);
+ 	mutex_init(&mlxsw_i2c->cmd.lock);
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index cac36c231864..5290993ff93f 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -45,6 +45,23 @@ static const struct net_device_ops mlxsw_m_port_netdev_ops = {
+ 	.ndo_stop		= mlxsw_m_port_dummy_open_stop,
+ };
+ 
++static void mlxsw_m_module_get_drvinfo(struct net_device *dev,
++				       struct ethtool_drvinfo *drvinfo)
++{
++	struct mlxsw_m_port *mlxsw_m_port = netdev_priv(dev);
++	struct mlxsw_m *mlxsw_m = mlxsw_m_port->mlxsw_m;
++
++	strlcpy(drvinfo->driver, mlxsw_m->bus_info->device_kind,
++		sizeof(drvinfo->driver));
++	snprintf(drvinfo->fw_version, sizeof(drvinfo->fw_version),
++		 "%d.%d.%d",
++		 mlxsw_m->bus_info->fw_rev.major,
++		 mlxsw_m->bus_info->fw_rev.minor,
++		 mlxsw_m->bus_info->fw_rev.subminor);
++	strlcpy(drvinfo->bus_info, mlxsw_m->bus_info->device_name,
++		sizeof(drvinfo->bus_info));
++}
++
+ static int mlxsw_m_get_module_info(struct net_device *netdev,
+ 				   struct ethtool_modinfo *modinfo)
+ {
+@@ -66,6 +83,7 @@ mlxsw_m_get_module_eeprom(struct net_device *netdev, struct ethtool_eeprom *ee,
+ }
+ 
+ static const struct ethtool_ops mlxsw_m_port_ethtool_ops = {
++	.get_drvinfo		= mlxsw_m_module_get_drvinfo,
+ 	.get_module_info	= mlxsw_m_get_module_info,
+ 	.get_module_eeprom	= mlxsw_m_get_module_eeprom,
+ };
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index f16d27e115d2..eb58940d2e9c 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -7589,17 +7589,18 @@ MLXSW_ITEM32(reg, mtcap, sensor_count, 0x00, 0, 7);
+  */
+ #define MLXSW_REG_MTMP_ID 0x900A
+ #define MLXSW_REG_MTMP_LEN 0x20
+-#define MLXSW_REG_MTMP_GBOX_INDEX_MIN 256
+ 
+ MLXSW_REG_DEFINE(mtmp, MLXSW_REG_MTMP_ID, MLXSW_REG_MTMP_LEN);
+ 
++#define MLXSW_REG_MTMP_MODULE_INDEX_MIN 64
++#define MLXSW_REG_MTMP_GBOX_INDEX_MIN 256
+ /* reg_mtmp_sensor_index
+  * Sensors index to access.
+  * 64-127 of sensor_index are mapped to the SFP+/QSFP modules sequentially
+  * (module 0 is mapped to sensor_index 64).
+  * Access: Index
+  */
+-MLXSW_ITEM32(reg, mtmp, sensor_index, 0x00, 0, 11);
++MLXSW_ITEM32(reg, mtmp, sensor_index, 0x00, 0, 12);
+ 
+ /* Convert to milli degrees Celsius */
+ #define MLXSW_REG_MTMP_TEMP_TO_MC(val) (val * 125)
+@@ -7710,7 +7711,7 @@ MLXSW_REG_DEFINE(mtbr, MLXSW_REG_MTBR_ID, MLXSW_REG_MTBR_LEN);
+  * 64-127 are mapped to the SFP+/QSFP modules sequentially).
+  * Access: Index
+  */
+-MLXSW_ITEM32(reg, mtbr, base_sensor_index, 0x00, 0, 7);
++MLXSW_ITEM32(reg, mtbr, base_sensor_index, 0x00, 0, 12);
+ 
+ /* reg_mtbr_num_rec
+  * Request: Number of records to read
+-- 
+2.11.0
+
