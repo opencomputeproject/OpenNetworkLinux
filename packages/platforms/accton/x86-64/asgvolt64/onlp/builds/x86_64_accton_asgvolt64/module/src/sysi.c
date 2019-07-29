@@ -85,10 +85,7 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
   
     for (i = 0; i < 128; i++) {
         ret = onlp_i2c_readw(0, 0x57, i*2, ONLP_I2C_F_FORCE);
-        if (ret < 0) {
-            printf ("i=%d, ret<0\n",i);
-            perror("perror:");  
-            printf("strerror:%s\n", strerror(errno));
+        if (ret < 0) {            
             aim_free(rdata);
             *size = 0;
             return ret;
