@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <onlplib/i2c.h>
 #include <onlplib/file.h>
 #include <onlp/platformi/sysi.h>
 #include <onlp/platformi/ledi.h>
@@ -56,7 +57,7 @@ onlp_sysi_init(void)
     }
     memset(interface, 0x0, 64);
     strncpy(interface, "eth0", strlen("eth0"));
-	strncpy(ifr.ifr_name, interface, IFNAMSIZ);
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ);
     if (ioctl(skfd, SIOCGMIIPHY, &ifr) < 0) {
         if (errno != ENODEV)
             fprintf(stderr, "SIOCGMIIPHY on '%s' failed: %s\n",
@@ -78,17 +79,29 @@ onlp_sysi_init(void)
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
-    uint8_t* rdata = aim_zmalloc(512);
-    if(onlp_file_read(rdata, 512, size, IDPROM_PATH) == ONLP_STATUS_OK) {
-        if(*size == 512) {
-            *data = rdata;
-            return ONLP_STATUS_OK;
+    int ret = ONLP_STATUS_OK;
+    int i = 0;
+    uint8_t* rdata = aim_zmalloc(256);
+  
+    for (i = 0; i < 128; i++) {
+        ret = onlp_i2c_readw(0, 0x57, i*2, ONLP_I2C_F_FORCE);
+        if (ret < 0) {
+            printf ("i=%d, ret<0\n",i);
+            perror("perror:");  
+            printf("strerror:%s\n", strerror(errno));
+            aim_free(rdata);
+            *size = 0;
+            return ret;
         }
+
+        rdata[i*2]   = ret & 0xff;
+        rdata[i*2+1] = (ret >> 8) & 0xff;
     }
 
-    aim_free(rdata);
-    *size = 0;
-    return ONLP_STATUS_E_INTERNAL;
+    *size = 256;
+    *data = rdata;
+
+    return ONLP_STATUS_OK;
 }
 
 int
