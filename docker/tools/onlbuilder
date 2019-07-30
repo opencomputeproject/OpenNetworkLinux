@@ -17,25 +17,33 @@ g_current_user = getpass.getuser()
 g_current_uid  = os.getuid()
 g_timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H%M%S")
 
-g_builder7_image_name="opennetworklinux/builder7:1.2"
-g_builder8_image_name="opennetworklinux/builder8:1.10"
-g_builder9_image_name="opennetworklinux/builder9:1.5"
+g_builders = {
+   'default' : 8,
+   'builders' : {
+      7  : ('wheezy', 'opennetworklinux/builder7:1.2'),
+      8  : ('jessie',  'opennetworklinux/builder8:1.10'),
+      9  : ('stretch', 'opennetworklinux/builder9:1.5' ),
+      10 : ('buster',  'opennetworklinux/builder10:1.0'),
+      },
+}
 
-g_default_image_name=g_builder8_image_name
+g_default_image_name = g_builders['builders'][g_builders['default']][1]
 g_default_container_name = "%s_%s" % (g_current_user, g_timestamp)
 g_default_user="%s:%s" % (g_current_user, g_current_uid)
 
 ap = argparse.ArgumentParser("ONL Docker Build")
 
-ap.add_argument('--9', '-9',
-                help="Run the Debian 9 version.",
-                action='store_true', dest='debian9')
-ap.add_argument('--8', '-8',
-                help="Run the Debian 8 version.",
-                action='store_true', dest='debian8')
-ap.add_argument('--7', '-7',
-                help="Run the debian 7 version.",
-                action='store_true', dest='debian7')
+for v in reversed(sorted(g_builders['builders'].keys())):
+   (n, i) = g_builders['builders'][v]
+   ap.add_argument('--' + str(v), '-' + str(v),
+                   '--' + n, '-' + n,
+                   help="Run the Debian %s (%s) image." % (v, n.capitalize()),
+                   action='store_const', const=i,
+                   dest='image', default=g_default_image_name)
+
+ap.add_argument("--image", "-i",
+                help="The docker image to use. The default is %s." % g_default_image_name,
+                dest='image', default=g_default_image_name)
 
 ap.add_argument("--pull",
                 help="Pull the docker image before running to make sure it is up to date.",
@@ -48,10 +56,6 @@ ap.add_argument("--dry",
 ap.add_argument("--verbose", "-v",
                 help="Verbose logging.",
                 action='store_true')
-
-ap.add_argument("--image", "-i",
-                help="The docker image to use. The default is %s." % g_default_image_name,
-                default=g_default_image_name)
 
 ap.add_argument("--exec", "-e",
                 help="Execute in running container instead of starting a new one.",
@@ -114,15 +118,6 @@ ap.add_argument("--command", "-c",
                 default=['bash'])
 
 ops = ap.parse_args()
-
-if ops.debian7:
-   ops.image = g_builder7_image_name
-
-if ops.debian8:
-   ops.image = g_builder8_image_name
-
-if ops.debian9:
-   ops.image = g_builder9_image_name
 
 if ops.verbose or ops.dry:
    logger.setLevel(logging.DEBUG)
