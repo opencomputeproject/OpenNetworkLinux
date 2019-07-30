@@ -59,6 +59,10 @@ cdefs: &cdefs
     doc: "Include the custom i2c header (include/linux/i2c-devices.h) to avoid conflicts with the kernel and i2c-dev packages."
     default: 1
 
+- ONLPLIB_CONFIG_I2C_INCLUDE_SMBUS:
+    doc: "Include <i2c/smbus.h>"
+    default: 0
+
 definitions:
   cdefs:
     ONLPLIB_CONFIG_HEADER:

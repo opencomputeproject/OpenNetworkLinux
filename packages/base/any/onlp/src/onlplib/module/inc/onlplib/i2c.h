@@ -29,6 +29,7 @@
 
 #if ONLPLIB_CONFIG_INCLUDE_I2C == 1
 
+
 /**
  * Use TENBIT mode. Default is to disable TENBIT mode.
  */
@@ -350,7 +351,15 @@ extern onlp_i2c_mux_driver_t onlp_i2c_mux_driver_pca9548;
 
 
 
+#if ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER == 1
+#include <linux/i2c-devices.h>
+#else
+#include <linux/i2c-dev.h>
+#endif
 
+#if ONLPLIB_CONFIG_I2C_INCLUDE_SMBUS == 1
+#include <i2c/smbus.h>
+#endif
 
 
 #endif /* ONLPLIB_CONFIG_INCLUDE_I2C */
