@@ -40,16 +40,6 @@
     #endif
 #endif
 
-#ifndef POWERPC_QUANTA_LB9_R0_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define POWERPC_QUANTA_LB9_R0_STRNCPY GLOBAL_STRNCPY
-    #elif POWERPC_QUANTA_LB9_R0_CONFIG_PORTING_STDLIB == 1
-        #define POWERPC_QUANTA_LB9_R0_STRNCPY strncpy
-    #else
-        #error The macro POWERPC_QUANTA_LB9_R0_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef POWERPC_QUANTA_LB9_R0_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define POWERPC_QUANTA_LB9_R0_VSNPRINTF GLOBAL_VSNPRINTF

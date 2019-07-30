@@ -109,21 +109,21 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	if (!strncmp(model_name, "FSH082", strlen("FSH082")))
 	{
 	    if (modelname)
-            strncpy(modelname, model_name, strlen("FSH082")<(modelname_len-1)?strlen("FSH082"):(modelname_len-1));
+            aim_strlcpy(modelname, model_name, strlen("FSH082")<(modelname_len-1)?strlen("FSH082"):(modelname_len-1));
         
         return PSU_TYPE_ACBEL;
     }
     if (!strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")))
     {
         if (modelname)
-            strncpy(modelname, model_name, modelname_len-1);   
+            aim_strlcpy(modelname, model_name, modelname_len-1);   
         return PSU_TYPE_YM2651Y;
     }
     
     if (!strncmp(model_name, "YPEB1200A", strlen("YPEB1200A")))
     {
         if (modelname)
-            strncpy(modelname, model_name, modelname_len-1);   
+            aim_strlcpy(modelname, model_name, modelname_len-1);   
         return PSU_TYPE_YPEB1200A;
     }
     return PSU_TYPE_UNKNOWN;

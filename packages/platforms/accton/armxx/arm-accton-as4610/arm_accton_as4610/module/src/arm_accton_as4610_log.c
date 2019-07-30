@@ -30,9 +30,9 @@
  * arm_accton_as4610 log struct.
  */
 AIM_LOG_STRUCT_DEFINE(
-                      ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT,
-                      ONLPSIM_CONFIG_LOG_BITS_DEFAULT,
+                      ARM_ACCTON_AS4610_CONFIG_LOG_OPTIONS_DEFAULT,
+                      ARM_ACCTON_AS4610_CONFIG_LOG_BITS_DEFAULT,
                       NULL, /* Custom log map */
-                      ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT
+                      ARM_ACCTON_AS4610_CONFIG_LOG_CUSTOM_BITS_DEFAULT
                      );
 

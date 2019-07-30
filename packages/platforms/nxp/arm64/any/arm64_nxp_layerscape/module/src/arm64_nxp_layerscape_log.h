@@ -23,22 +23,10 @@
  *
  ***********************************************************/
 
-#include <arm64_nxp_layerscape/arm64_nxp_layerscape_config.h>
+#ifndef __ARM64_NXP_LAYERSCAPE_LOG_H__
+#define __ARM64_NXP_LAYERSCAPE_LOG_H__
 
-#include "arm64_nxp_layerscape_log.h"
+#define AIM_LOG_MODULE_NAME arm64_nxp_layerscape
+#include <AIM/aim_log.h>
 
-static int
-datatypes_init__(void)
-{
-#define ONLPSIM_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
-#include <arm64_nxp_layerscape/arm64_nxp_layerscape.x>
-    return 0;
-}
-
-void __arm64_nxp_layerscape_module_init__(void)
-{
-    AIM_LOG_STRUCT_REGISTER();
-    datatypes_init__();
-}
-
-int __onlp_platform_version__ = 1;
+#endif /* __ARM64_NXP_LAYERSCAPE_LOG_H__ */

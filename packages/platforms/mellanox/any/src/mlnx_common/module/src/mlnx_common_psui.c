@@ -102,7 +102,7 @@ _psu_info_get_type1(onlp_psu_info_t* info)
     int index = ONLP_OID_ID_GET(info->hdr.id);
     const char psu_model[]=PSU_MODEL;
 
-    strncpy(info->model, psu_model, sizeof(info->model));
+    aim_strlcpy(info->model, psu_model, sizeof(info->model));
 
     /* Set capability */
     info->caps = ONLP_PSU_CAPS_AC;

@@ -1,5 +1,5 @@
 /************************************************************
- * <bsn.cl fy=2014 v=onl>
+ * <bsn.cl fy=2016 v=onl>
  * 
  *        Copyright 2016 NXP Semiconductor, Inc.
  * 
@@ -23,10 +23,29 @@
  *
  ***********************************************************/
 
-#ifndef __ONLPSIM_LOG_H__
-#define __ONLPSIM_LOG_H__
+/********************************************************//**
+ *
+ * arm64_nxp_layerscape Doxygen Header
+ *
+ ***********************************************************/
+#ifndef __ARM64_NXP_LAYERSCAPE_DOX_H__
+#define __ARM64_NXP_LAYERSCAPE_DOX_H__
 
-#define AIM_LOG_MODULE_NAME arm64_nxp_layerscape
-#include <AIM/aim_log.h>
+/**
+ * @defgroup arm64_nxp_layerscape arm64_nxp_layerscape - onlpsim Description
+ *
 
-#endif /* __ONLPSIM_LOG_H__ */
+The documentation overview for this module should go here.
+
+ *
+ * @{
+ *
+ * @defgroup arm64_nxp_layerscape-arm64_nxp_layerscape Public Interface
+ * @defgroup arm64_nxp_layerscape-config Compile Time Configuration
+ * @defgroup arm64_nxp_layerscape-porting Porting Macros
+ *
+ * @}
+ *
+ */
+
+#endif /* __ARM64_NXP_LAYERSCAPE_DOX_H__ */

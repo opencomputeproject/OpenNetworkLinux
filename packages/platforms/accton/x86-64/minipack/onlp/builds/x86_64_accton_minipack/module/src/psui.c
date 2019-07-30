@@ -198,15 +198,15 @@ onlp_psui_get_string(int pid, onlp_psu_info_t* info)
             SEM_UNLOCK;
             return ONLP_STATUS_E_INTERNAL;
         }
-        strncpy(ps->model, info->model, sizeof(ps->model));
-        strncpy(ps->serial, info->serial, sizeof(ps->serial));
+        aim_strlcpy(ps->model, info->model, sizeof(ps->model));
+        aim_strlcpy(ps->serial, info->serial, sizeof(ps->serial));
         ps->status = info->status;
         ps->caps = info->caps;
         ps->valid = true;
         ps->last_poll = time (NULL);
     } else {
-        strncpy(info->model, ps->model, sizeof(info->model));
-        strncpy(info->serial, ps->serial, sizeof(info->serial));
+        aim_strlcpy(info->model, ps->model, sizeof(info->model));
+        aim_strlcpy(info->serial, ps->serial, sizeof(info->serial));
         info->status = ps->status;
         info->caps =  ps->caps;
     }

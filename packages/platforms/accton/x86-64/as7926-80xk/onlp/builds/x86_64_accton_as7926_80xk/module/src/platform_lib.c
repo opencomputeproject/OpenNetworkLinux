@@ -149,7 +149,7 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
     }
 
     if (modelname) {
-        strncpy(modelname, model_name, PSU_MODEL_NAME_LEN - 1);
+        aim_strlcpy(modelname, model_name, PSU_MODEL_NAME_LEN - 1);
     }
 
     switch(id)

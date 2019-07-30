@@ -24,12 +24,14 @@
  *
  ***********************************************************/
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <AIM/aim.h>
+#include <onlplib/i2c.h>
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
 
@@ -42,20 +44,20 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
-
-    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {    
-        return -1;  
     }
 
-    if ((len = write(fd, buffer, buf_size)) < 0) {    
-        close(fd);    
+    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {
+        return -1;
+    }
+
+    if ((len = write(fd, buffer, buf_size)) < 0) {
+        close(fd);
         return -1;
     }
 
     if ((close(fd) == -1)) {
         return -1;
-    }  
+    }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
         return -1;
@@ -73,25 +75,25 @@ int deviceNodeWriteInt(char *filename, int value, int data_len)
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
-    {    
+    {
     int fd;
     int len;
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
+    }
 
     if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;  
+        return -1;
     }
 
     if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);    
+        close(fd);
         return -1;
-    }  
-    
-    if ((close(fd) == -1)) {    
-        return -1;  
+    }
+
+    if ((close(fd) == -1)) {
+        return -1;
     }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
@@ -108,7 +110,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
     if (data_len >= buf_size || data_len < 0) {
         return -1;
     }
-    
+
     ret = deviceNodeReadBinary(filename, buffer, buf_size-1, data_len);
 
     if (ret == 0) {
@@ -119,7 +121,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
             buffer[buf_size-1] = '\0';
         }
     }
-    
+
     return ret;
 }
 
@@ -134,12 +136,12 @@ int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask)
 
 
 /*
-i2c APIs: access i2c device by ioctl 
-static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)  
-static int i2c_read_byte(int i2cbus, int addr, int offset, char* data) 
+i2c APIs: access i2c device by ioctl
+static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
+static int i2c_read_byte(int i2cbus, int addr, int offset, char* data)
 static int i2c_read_word(int i2cbus, int addr, int command)
-static int i2c_write_byte(int i2cbus, int addr, int offset, char val) 
-static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val) 
+static int i2c_write_byte(int i2cbus, int addr, int offset, char val)
+static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
 */
 int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
 {
@@ -172,9 +174,9 @@ int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    //if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -247,14 +249,14 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
         return -errno;
     }
-    /* 
+    /*
       Sequential Read for at24c128
         use i2c_smbus_write_byte_data to write 24c128 address counter(two 8-bit data word addresses)
         24c128:
@@ -266,8 +268,8 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
                     +----------------------------------------------------+
                     | S | Device  | Wr | A | Command | A | Data      | A |...
                     |   | Address |    |   |         |   |           |   |
-                    +----------------------------------------------------+        
-     
+                    +----------------------------------------------------+
+
       */
     res = i2c_smbus_write_byte_data(file, (uint8_t)offset>>8,(uint8_t)offset);
 
@@ -279,7 +281,7 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     for (i = 0; i<length; i++)
     {
         res = i2c_smbus_read_byte(file);
-  
+
         if (res < 0 && DEBUG_FLAG)
         {
             AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset+i);
@@ -324,9 +326,9 @@ int i2c_read_rps_status(int i2cbus, int addr, int offset)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -377,9 +379,9 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", offset, strerror(errno));
         close(file);
@@ -388,7 +390,7 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
 
     #if 1
     int res = 0;
-    
+
     res = i2c_smbus_read_word_data(file, offset);
     if (res < 0 && DEBUG_FLAG)
     {
@@ -487,7 +489,7 @@ int _i2c_read_block_data(int i2cbus, int addr, uint8_t offset, uint8_t *data, in
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
@@ -640,9 +642,9 @@ int i2c_write_byte(int i2cbus, int addr, int offset, char val)
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -828,4 +830,3 @@ int eeprom_tlv_read(uint8_t *rdata, char type, char *data)
     }
     return 0;
 }
- 

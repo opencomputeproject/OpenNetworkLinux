@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <onlplib/file.h>
 #include <fcntl.h>
+#include <limits.h>
 #include "platform_lib.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD   "/sys/devices/platform/as6812_32x_fan/"
@@ -137,7 +138,7 @@ onlp_fan_info_t linfo[] = {
 #define SET_PSU_TYPE_AC_B2F_FAN(info) \
     info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F); \
     info->caps   |=  ONLP_FAN_CAPS_SET_PERCENTAGE | ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE
-    
+
 #define SET_PSU_TYPE_UM400D_F2B_FAN(info) \
     info->status |= (ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_F2B)
 
@@ -150,7 +151,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[65] = {0};
+    char  fullpath[PATH_MAX] = {0};
 
     /* get fan/fanr fault status (turn on when any one fails)
      */
@@ -166,13 +167,13 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 
     /* get fan/fanr direction (both : the same)
      */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].direction);	
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);    
-   
+    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].direction);
+    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+
     if (atoi(r_data) == 0) /*F2B*/
         info->status |= ONLP_FAN_STATUS_F2B;
-    else 
-        info->status |= ONLP_FAN_STATUS_B2F;    
+    else
+        info->status |= ONLP_FAN_STATUS_B2F;
 
     /* get fan/fanr speed (take the min from two speeds)
      */
@@ -205,7 +206,7 @@ _onlp_fani_info_get_fan_on_psu_ym2401(int pid, onlp_fan_info_t* info)
     if (psu_ym2401_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
         info->status |= (val > 0) ? 0 : ONLP_FAN_STATUS_FAILED;
         info->rpm = val;
-        info->percentage = (info->rpm * 100) / 21600;	    
+        info->percentage = (info->rpm * 100) / 21600;
     }
 
     return ONLP_STATUS_OK;
@@ -217,7 +218,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     int   psu_id;
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[80] = {0};
+    char  fullpath[PATH_MAX] = {0};
     psu_type_t psu_type;
 
     /* get fan fault status
@@ -251,18 +252,18 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     if (psu_type == PSU_TYPE_AC_COMPUWARE_F2B ||
         psu_type == PSU_TYPE_AC_COMPUWARE_B2F  )
     {
-        /* get fan fault status 
+        /* get fan fault status
          */
-        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);	
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].status);
         OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
         if (atoi(r_data) > 0)
             info->status |= ONLP_FAN_STATUS_FAILED;
-     
+
         /* get fan speed
          */
-        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);	
-        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);    
-        info->rpm = atoi(r_data); 
+        sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].speed);
+        OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+        info->rpm = atoi(r_data);
 
         /* get speed percentage from rpm */
         info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
@@ -343,7 +344,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
     int  fd, len, nbytes=10, local_id;
     char data[10] = {0};
-    char fullpath[70] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -371,7 +372,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
                 return psu_ym2401_pmbus_info_set(psu_id, "psu_fan1_duty_cycle_percentage", p);
             }
 
-            sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].ctrl_speed);		
+            sprintf(fullpath, "%s%s", PREFIX_PATH_ON_PSU, fan_path[local_id].ctrl_speed);
             break;
         }
         case FAN_1_ON_MAIN_BOARD:
@@ -439,4 +440,3 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

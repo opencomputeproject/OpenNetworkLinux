@@ -128,7 +128,6 @@ definitions:
       macros:
         - memset
         - memcpy
-        - strncpy
         - vsnprintf
         - snprintf
         - strlen

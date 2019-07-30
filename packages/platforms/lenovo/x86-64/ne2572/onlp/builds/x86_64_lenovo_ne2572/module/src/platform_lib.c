@@ -24,6 +24,7 @@
  *
  ***********************************************************/
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -32,6 +33,7 @@
 #include <AIM/aim.h>
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
+#include <onlplib/i2c.h>
 
 #define DEBUG_FLAG 0
 
@@ -148,12 +150,12 @@ int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask)
 
 
 /*
-i2c APIs: access i2c device by ioctl 
-static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)  
-static int i2c_read_byte(int i2cbus, int addr, int offset, char* data) 
+i2c APIs: access i2c device by ioctl
+static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
+static int i2c_read_byte(int i2cbus, int addr, int offset, char* data)
 static int i2c_read_word(int i2cbus, int addr, int command)
-static int i2c_write_byte(int i2cbus, int addr, int offset, char val) 
-static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val) 
+static int i2c_write_byte(int i2cbus, int addr, int offset, char val)
+static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
 */
 int i2c_read(int i2cbus, int addr, int offset, int length, char *data)
 {
@@ -271,7 +273,7 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char *data
         close(file);
         return -errno;
     }
-    /* 
+    /*
       Sequential Read for at24c128
         use i2c_smbus_write_byte_data to write 24c128 address counter(two 8-bit data word addresses)
         24c128:
@@ -283,8 +285,8 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char *data
                     +----------------------------------------------------+
                     | S | Device  | Wr | A | Command | A | Data      | A |...
                     |   | Address |    |   |         |   |           |   |
-                    +----------------------------------------------------+        
-     
+                    +----------------------------------------------------+
+
       */
     res = i2c_smbus_write_byte_data(file, (uint8_t)offset >> 8, (uint8_t)offset);
 
@@ -826,7 +828,7 @@ char diag_debug_pause_platform_manage_check(void)
     fclose(file);
 
     return (flag == '1') ? 1 : 0;
-} 
+}
 
 #define ONIE_EEPROM_HEADER_LENGTH 11
 int eeprom_tlv_read(uint8_t *rdata, char type, char *data)
@@ -855,4 +857,3 @@ int eeprom_tlv_read(uint8_t *rdata, char type, char *data)
     }
     return 0;
 }
- 

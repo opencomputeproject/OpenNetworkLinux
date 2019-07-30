@@ -33,7 +33,7 @@
 #include <linux/i2c-dev.h>
 #include <errno.h>
 #include <stdlib.h>
-
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 #define MAX_SFP_PATH 64

@@ -85,16 +85,6 @@
     #endif
 #endif
 
-#ifndef ONLPSIM_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define ONLPSIM_STRNCPY GLOBAL_STRNCPY
-    #elif ONLPSIM_CONFIG_PORTING_STDLIB == 1
-        #define ONLPSIM_STRNCPY strncpy
-    #else
-        #error The macro ONLPSIM_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef ONLPSIM_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define ONLPSIM_VSNPRINTF GLOBAL_VSNPRINTF

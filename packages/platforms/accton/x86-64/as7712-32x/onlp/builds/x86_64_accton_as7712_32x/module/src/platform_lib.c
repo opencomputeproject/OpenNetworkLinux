@@ -139,7 +139,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651Y", 8) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -158,7 +158,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651V", 8) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -177,7 +177,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
 	if (strncmp(model_name, "PSU-12V-750", 11) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 11);
+			aim_strlcpy(modelname, model_name, 11);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
@@ -200,7 +200,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "FSF019", 6) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 11); /* Copy full model name */
+			aim_strlcpy(modelname, model_name, 11); /* Copy full model name */
 	    }
 
         /* Read model */
@@ -211,7 +211,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
             return PSU_TYPE_UNKNOWN;
         }
 
-        strncpy(fan_dir, string, len);
+        aim_strlcpy(fan_dir, string, len);
         aim_free(string);
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
@@ -260,7 +260,7 @@ int psu_acbel_serial_number_get(int id, char *serial, int serial_len)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    strncpy(serial, serial_number, len);
+    aim_strlcpy(serial, serial_number, len);
     aim_free(serial_number);
 
 	serial[len] = '\0';

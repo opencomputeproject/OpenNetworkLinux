@@ -67,7 +67,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651Y", 8) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -86,7 +86,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651V", 8) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -105,7 +105,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
 	if (strncmp(model_name, "PSU-12V-750", 11) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 11);
+			aim_strlcpy(modelname, model_name, 11);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
@@ -128,7 +128,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
 	if (strncmp(model_name, "DPS-150AB-10", 12) == 0) {
 	    if (modelname) {
-			strncpy(modelname, model_name, 12);
+			aim_strlcpy(modelname, model_name, 12);
 	    }
 
 	    return PSU_TYPE_DC_12V_F2B;

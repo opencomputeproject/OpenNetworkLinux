@@ -40,16 +40,6 @@
     #endif
 #endif
 
-#ifndef X86_64_QUANTA_LY8_RANGELEY_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_QUANTA_LY8_RANGELEY_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_QUANTA_LY8_RANGELEY_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_QUANTA_LY8_RANGELEY_STRNCPY strncpy
-    #else
-        #error The macro X86_64_QUANTA_LY8_RANGELEY_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_QUANTA_LY8_RANGELEY_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_QUANTA_LY8_RANGELEY_VSNPRINTF GLOBAL_VSNPRINTF

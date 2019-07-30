@@ -121,7 +121,7 @@ int get_psu_serial_number(int id, char *serial, int serial_len)
 {
 	char *node = NULL;
 	char  sn[PSU_SERIAL_NUMBER_LEN + 1] = {0};
-	
+
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_serial_numer) : PSU2_AC_HWMON_NODE(psu_serial_numer);
 
@@ -130,7 +130,7 @@ int get_psu_serial_number(int id, char *serial, int serial_len)
     }
 
     if (serial) {
-        strncpy(serial, sn, sizeof(sn));
+        aim_strlcpy(serial, sn, sizeof(sn));
     }
 
 	return ONLP_STATUS_OK;
@@ -149,7 +149,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     }
 
     if (modelname) {
-        strncpy(modelname, model_name, sizeof(model_name));
+        aim_strlcpy(modelname, model_name, sizeof(model_name));
     }
 
     if (strncmp(model_name, "YM-2401JCR", 10) == 0) {

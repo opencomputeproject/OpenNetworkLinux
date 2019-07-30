@@ -134,25 +134,25 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "CPR-4011-4M11", STRLEN("CPR-4011-4M11")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, sizeof(model_name));
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_F2B;
         }
         else if (strncmp(model_name, "CPR-4011-4M21", STRLEN("CPR-4011-4M21")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, sizeof(model_name));
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_B2F;
         }
         else if (strncmp(model_name, "CPR-6011-2M11", STRLEN("CPR-6011-2M11")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, sizeof(model_name));
+                aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_F2B;
         }
         else if (strncmp(model_name, "CPR-6011-2M21", STRLEN("CPR-6011-2M21")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, sizeof(model_name));
+                aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_B2F;
         }
@@ -166,14 +166,14 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         if (strncmp(model_name, "YM-2401JCR", STRLEN("YM-2401JCR")) == 0) {
             if (modelname) {
             model_name[STRLEN("YM-2401JCR")] = 0;
-            strncpy(modelname, model_name, 11);
+            aim_strlcpy(modelname, model_name, 11);
             }
             return PSU_TYPE_AC_3YPOWER_F2B;
         }
         else if (strncmp(model_name, "YM-2401JDR", STRLEN("YM-2401JDR")) == 0) {
             if (modelname) {
             model_name[STRLEN("YM-2401JDR")] = 0;
-            strncpy(modelname, model_name, 11);
+            aim_strlcpy(modelname, model_name, 11);
             }
             return PSU_TYPE_AC_3YPOWER_B2F;
         }
@@ -187,14 +187,14 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         if (strncmp(model_name, "um400d01G", STRLEN("um400d01G")) == 0) {
             if (modelname) {
             model_name[STRLEN("um400d01G")] = 0;
-            strncpy(modelname, model_name, 10);
+            aim_strlcpy(modelname, model_name, 10);
             }
             return PSU_TYPE_DC_48V_B2F;
         }
         else if (strncmp(model_name, "um400d01-01G", STRLEN("um400d01-01G")) == 0) {
             if (modelname) {
             model_name[STRLEN("um400d01-01G")] = 0;
-            strncpy(modelname, model_name, 13);
+            aim_strlcpy(modelname, model_name, 13);
             }
             return PSU_TYPE_DC_48V_F2B;
         }

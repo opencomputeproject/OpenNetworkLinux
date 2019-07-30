@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
-
+#include <limits.h>
 #include <onlplib/mmap.h>
 
 #define VALIDATE(_id)                           \
@@ -196,7 +196,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  fd, len, nbytes=1, local_id;
     char data[2] = {0};
-    char fullpath[50] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -270,7 +270,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  fd, len, driver_mode, nbytes=1, local_id;
     char data[2] = {0};
-    char fullpath[50] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 

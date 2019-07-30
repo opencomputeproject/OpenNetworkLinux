@@ -529,7 +529,7 @@ as5610_52x_psu_type_t as5610_52x_get_psu_type(int id, char* modelname, int model
 
     if(modelname) {
         /* Return the model name in the given buffer */
-        strncpy(modelname, model_name, modelname_len-1);
+        aim_strlcpy(modelname, model_name, modelname_len-1);
     }
 
     return ret;

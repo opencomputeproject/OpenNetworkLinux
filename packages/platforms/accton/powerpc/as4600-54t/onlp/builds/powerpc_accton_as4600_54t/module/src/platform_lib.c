@@ -333,7 +333,7 @@ int as4600_54t_get_psu_type(int pid, char* modelname, int modelname_len)
 
     if(modelname) {
         /* Return the model name in the given buffer */
-        strncpy(modelname, model_name, modelname_len-1);
+        aim_strlcpy(modelname, model_name, modelname_len-1);
     }
 
     return ret;

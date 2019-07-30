@@ -91,23 +91,23 @@ int eeprom_info_get(uint8_t *eeprom, int len, char *type, char *v)
 	index = eeprom_info_find(eep,len,psu_model_key,1);
 	if(index <0)
 		return -1;
-	strncpy(model,&eep[index],PSU_MODEL_LEN);
+	aim_strlcpy(model,&eep[index],PSU_MODEL_LEN);
 
 	if((strcmp(type,"psu_model"))==0){
-		strncpy(v,model,PSU_MODEL_LEN);
+		aim_strlcpy(v,model,PSU_MODEL_LEN);
 	}
 	else if ((strcmp(type,"psu_series"))==0){
 		if(strstr(model,"460")){
 			index = eeprom_info_find(eep,len,psu_460_series_key,0);
 			if(index <0)
 				return -1;
-			strncpy(v,&eep[index],PSU_SERIES_LEN);
+			aim_strlcpy(v,&eep[index],PSU_SERIES_LEN);
 		}
 		else if(strstr(model,"550")){
 			index = eeprom_info_find(eep,len,psu_550_series_key,0);
 			if(index <0)
 				return -1;
-			strncpy(v,&eep[index],PSU_SERIES_LEN);
+			aim_strlcpy(v,&eep[index],PSU_SERIES_LEN);
 		} 
 	}
 	else{

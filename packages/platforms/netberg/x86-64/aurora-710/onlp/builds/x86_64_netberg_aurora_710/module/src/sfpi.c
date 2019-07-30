@@ -97,7 +97,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     char eeprom_path[512], eeprom_addr[32];
     memset(eeprom_path, 0, sizeof(eeprom_path));    
     memset(eeprom_addr, 0, sizeof(eeprom_addr));    
-    strncpy(eeprom_addr, "0050", sizeof(eeprom_addr));    
+    aim_strlcpy(eeprom_addr, "0050", sizeof(eeprom_addr));    
     
     memset(data, 0, 256);
     

@@ -25,7 +25,7 @@
 
 #include <arm_accton_as4610/arm_accton_as4610_config.h>
 
-#if ONLPSIM_CONFIG_INCLUDE_UCLI == 1
+#if ARM_ACCTON_AS4610_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>

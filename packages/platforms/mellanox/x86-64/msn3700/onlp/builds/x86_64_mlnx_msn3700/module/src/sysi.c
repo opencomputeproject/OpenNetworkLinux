@@ -42,10 +42,10 @@ static const char* __ONL_PLATFORM_NAME = NULL;
 int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform)
 {
 	if (!__ONL_PLATFORM_NAME) {
-		strncpy(mlnx_platform->onl_platform_name, "x86-64-mlnx-msn3700-all", PLATFORM_NAME_MAX_LEN);
+		aim_strlcpy(mlnx_platform->onl_platform_name, "x86-64-mlnx-msn3700-all", PLATFORM_NAME_MAX_LEN);
 	}
 	else {
-		strncpy(mlnx_platform->onl_platform_name, __ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
+		aim_strlcpy(mlnx_platform->onl_platform_name, __ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
 	}
 
 	if (!strcmp(mlnx_platform->onl_platform_name, "x86-64-mlnx_msn3700c-r0")) {

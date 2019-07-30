@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef POWERPC_ACCTON_AS4600_54T_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define POWERPC_ACCTON_AS4600_54T_STRNCPY GLOBAL_STRNCPY
-    #elif POWERPC_ACCTON_AS4600_54T_CONFIG_PORTING_STDLIB == 1
-        #define POWERPC_ACCTON_AS4600_54T_STRNCPY strncpy
-    #else
-        #error The macro POWERPC_ACCTON_AS4600_54T_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef POWERPC_ACCTON_AS4600_54T_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define POWERPC_ACCTON_AS4600_54T_VSNPRINTF GLOBAL_VSNPRINTF

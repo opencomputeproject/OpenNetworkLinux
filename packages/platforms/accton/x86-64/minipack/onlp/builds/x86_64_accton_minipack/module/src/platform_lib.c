@@ -222,7 +222,7 @@ tty_transaction(const char *cmd, uint32_t udelay, char *resp, int max_size)
         AIM_LOG_ERROR("ERROR: Cannot read/write TTY device\n");
         goto exit;
     }
-    strncpy(resp, buf, max_size);
+    aim_strlcpy(resp, buf, max_size);
 exit:
     free(buf);
     tty_close(&tty_fd);

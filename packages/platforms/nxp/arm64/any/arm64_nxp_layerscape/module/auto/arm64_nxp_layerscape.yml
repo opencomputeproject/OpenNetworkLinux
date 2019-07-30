@@ -24,45 +24,52 @@
 ############################################################
 
 cdefs: &cdefs
-- ONLPSIM_CONFIG_INCLUDE_LOGGING:
+- ARM64_NXP_LAYERSCAPE_CONFIG_INCLUDE_LOGGING:
     doc: "Include or exclude logging."
     default: 1
-- ONLPSIM_CONFIG_LOG_OPTIONS_DEFAULT:
+- ARM64_NXP_LAYERSCAPE_CONFIG_LOG_OPTIONS_DEFAULT:
     doc: "Default enabled log options."
     default: AIM_LOG_OPTIONS_DEFAULT
-- ONLPSIM_CONFIG_LOG_BITS_DEFAULT:
+- ARM64_NXP_LAYERSCAPE_CONFIG_LOG_BITS_DEFAULT:
     doc: "Default enabled log bits."
     default: AIM_LOG_BITS_DEFAULT
-- ONLPSIM_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
+- ARM64_NXP_LAYERSCAPE_CONFIG_LOG_CUSTOM_BITS_DEFAULT:
     doc: "Default enabled custom log bits."
     default: 0
-- ONLPSIM_CONFIG_PORTING_STDLIB:
+- ARM64_NXP_LAYERSCAPE_CONFIG_PORTING_STDLIB:
     doc: "Default all porting macros to use the C standard libraries."
     default: 1
-- ONLPSIM_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
+- ARM64_NXP_LAYERSCAPE_CONFIG_PORTING_INCLUDE_STDLIB_HEADERS:
     doc: "Include standard library headers for stdlib porting macros."
-    default: ONLPSIM_CONFIG_PORTING_STDLIB
-- ONLPSIM_CONFIG_INCLUDE_UCLI:
+    default: ARM64_NXP_LAYERSCAPE_CONFIG_PORTING_STDLIB
+- ARM64_NXP_LAYERSCAPE_CONFIG_INCLUDE_UCLI:
     doc: "Include generic uCli support."
     default: 0
-- ONLPSIM_CONFIG_SFP_COUNT:
+- ARM64_NXP_LAYERSCAPE_CONFIG_SFP_COUNT:
     doc: "SFP Count."
     default: 0
 
 definitions:
   cdefs:
-    ONLPSIM_CONFIG_HEADER:
+    ARM64_NXP_LAYERSCAPE_CONFIG_HEADER:
       defs: *cdefs
       basename: arm64_nxp_layerscape_config
 
+  enum:
+    platform_id:
+      members:
+        - ARM64_NXP_LS2088ARDB_R0
+        - ARM64_NXP_LS1043ARDB_R0
+        - ARM64_NXP_LS1046ARDB_R0
+        - ARM64_NXP_LS1088ARDB_R0
+
   portingmacro:
-    ONLPSIM:
+    ARM64_NXP_LAYERSCAPE:
       macros:
         - malloc
         - free
         - memset
         - memcpy
-        - strncpy
         - vsnprintf
         - snprintf
         - strlen

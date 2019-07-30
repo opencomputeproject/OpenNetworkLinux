@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef X86_64_INVENTEC_D6254QS_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_INVENTEC_D6254QS_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_INVENTEC_D6254QS_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_INVENTEC_D6254QS_STRNCPY strncpy
-    #else
-        #error The macro X86_64_INVENTEC_D6254QS_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_INVENTEC_D6254QS_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_INVENTEC_D6254QS_VSNPRINTF GLOBAL_VSNPRINTF

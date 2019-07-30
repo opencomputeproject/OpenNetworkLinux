@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS9716_32D_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_ACCTON_AS9716_32D_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_ACCTON_AS9716_32D_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS9716_32D_STRNCPY strncpy
-    #else
-        #error The macro X86_64_ACCTON_AS9716_32D_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_ACCTON_AS9716_32D_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_ACCTON_AS9716_32D_VSNPRINTF GLOBAL_VSNPRINTF

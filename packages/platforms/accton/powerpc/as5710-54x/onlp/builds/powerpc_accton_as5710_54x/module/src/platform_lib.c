@@ -135,13 +135,13 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "CPR-4011-4M11", strlen("CPR-4011-4M11")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, 13);
+                aim_strlcpy(modelname, model_name, 13);
             }
             return PSU_TYPE_AC_F2B;
         }
         else if (strncmp(model_name, "CPR-4011-4M21", strlen("CPR-4011-4M21")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, 13);
+                aim_strlcpy(modelname, model_name, 13);
             }
             return PSU_TYPE_AC_B2F;
         }
@@ -154,20 +154,20 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "um400d01G", strlen("um400d01G")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, 9);
+            aim_strlcpy(modelname, model_name, 9);
             }
             return PSU_TYPE_DC_48V_B2F;
         }
         else if (strncmp(model_name, "um400d01-01G", strlen("um400d01-01G")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, 12);
+            aim_strlcpy(modelname, model_name, 12);
             }
             return PSU_TYPE_DC_48V_F2B;
         }
 
         if (strncmp(model_name, "PSU-12V-650", 11) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, 11);
+                aim_strlcpy(modelname, model_name, 11);
             }
 
             node = (id == PSU1_ID) ? PSU1_DC_HWMON_NODE(psu_fan_dir) : PSU2_DC_HWMON_NODE(psu_fan_dir);

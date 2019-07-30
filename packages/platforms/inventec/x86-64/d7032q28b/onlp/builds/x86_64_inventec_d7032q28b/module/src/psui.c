@@ -41,12 +41,12 @@ static char* module_devfiles__[PSU_MAX] =  /* must map with onlp_psu_id */
     INV_PSOC_PREFIX"/psoc_psu2_%s",
 };
 
-static int 
+static int
 psu_status_info_get(int id, char *node, int *value)
 {
     int ret = 0;
     char node_path[ONLP_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
     if (PSU1_ID == id) {
 	sprintf(node_path, status_devfiles__[id]);
@@ -54,7 +54,7 @@ psu_status_info_get(int id, char *node, int *value)
     else if (PSU2_ID == id) {
 	sprintf(node_path, status_devfiles__[id]);
     }
-    
+
     ret = onlp_file_read_int(value, node_path);
 
     if (ret < 0) {
@@ -96,7 +96,7 @@ psu_module_name_get(int id, onlp_psu_info_t* info)
     }
     else {
         AIM_LOG_ERROR("Unable to read model name from file(%s)\r\n", node_path);
-        strncpy(info->model, "N/A", 3);
+        aim_strlcpy(info->model, "N/A", 3);
     }
 
     memset(node_path, 0, ONLP_NODE_MAX_PATH_LEN);
@@ -109,7 +109,7 @@ psu_module_name_get(int id, onlp_psu_info_t* info)
     }
     else {
         AIM_LOG_ERROR("Unable to read model name from file(%s)\r\n", node_path);
-        strncpy(info->serial, "N/A", 3);
+        aim_strlcpy(info->serial, "N/A", 3);
     }
 }
 

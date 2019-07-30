@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef X86_64_DELTA_WB2448_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_DELTA_WB2448_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_DELTA_WB2448_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_DELTA_WB2448_STRNCPY strncpy
-    #else
-        #error The macro X86_64_DELTA_WB2448_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_DELTA_WB2448_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_DELTA_WB2448_VSNPRINTF GLOBAL_VSNPRINTF

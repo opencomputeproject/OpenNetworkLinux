@@ -361,25 +361,25 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
     return ret;
 }
 
-/* 
+/*
   Reset and LP mode can control by CPLD so the setting will be keep in CPLD.
   For other options, control is get/set to QSFP28.
   Control options set to QSFP28 will be lost when the QSFP28 is removed.
-  Upper layer software system should keep the configuration and set it again when detect a new sfp module insert. 
+  Upper layer software system should keep the configuration and set it again when detect a new sfp module insert.
     [QSFP]
      function                            R/W  CPLD           EEPROM
     ------------------------------------ ---  -------------  -----------------
     ONLP_SFP_CONTROL_RESET                W   0x7
-    ONLP_SFP_CONTROL_RESET_STATE         R/W  0x7  
+    ONLP_SFP_CONTROL_RESET_STATE         R/W  0x7
     ONLP_SFP_CONTROL_RX_LOS               R   none           byte 4
     ONLP_SFP_CONTROL_TX_FAULT             R   none           byte 3
     ONLP_SFP_CONTROL_TX_DISABLE          R/W  none           byte 86
     ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL  R/W  none           byte 86
-    ONLP_SFP_CONTROL_LP_MODE             R/W  0x9          
+    ONLP_SFP_CONTROL_LP_MODE             R/W  0x9
     ONLP_SFP_CONTROL_POWER_OVERRIDE      R/W  none           byte 93
     [SFP]
-     function                            R/W  CPLD       
-    ------------------------------------ ---  ---------------  
+     function                            R/W  CPLD
+    ------------------------------------ ---  ---------------
     ONLP_SFP_CONTROL_RESET               Not Support(There is no RESET pin in SFP module)
     ONLP_SFP_CONTROL_RESET_STATE         Not Support(There is no RESET pin in SFP module)
     ONLP_SFP_CONTROL_RX_LOS               R   0x13/0x14/0x15
@@ -465,7 +465,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         }
         else
         {
-            optval &= !(1 << port_bit);
+            optval &= ~(1 << port_bit);
         }
         rv = onlp_i2c_writeb(cpld_bus, addr, offset, optval, ONLP_I2C_F_FORCE);
         if (rv < 0)
@@ -511,9 +511,9 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 else
                 {
-                    optval &= !(1 << port_bit);
+                    optval &= ~(1 << port_bit);
                 }
-                
+
                 rv = onlp_i2c_writeb(cpld_bus, addr, offset, optval, ONLP_I2C_F_FORCE);
                 if (rv < 0)
                 {
@@ -537,7 +537,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 else
                 {
-                    optval &= !(0x0f);
+                    optval &= ~(0x0f);
                 }
                 rv = onlp_i2c_writeb(bus, addr, offset, optval, ONLP_I2C_F_FORCE);
                 if (rv < 0)
@@ -581,7 +581,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 else
                 {
-                    optval &= !(0x01);
+                    optval &= ~(0x01);
                 }
                 rv = onlp_i2c_writeb(bus, addr, offset, optval, ONLP_I2C_F_FORCE);
                 if (rv < 0)
@@ -600,7 +600,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 else
                 {
-                    optval &= !(1 << port_bit);
+                    optval &= ~(1 << port_bit);
                 }
                 rv = onlp_i2c_writeb(cpld_bus, addr, offset, optval, ONLP_I2C_F_FORCE);
                 if (rv < 0)
@@ -824,4 +824,3 @@ onlp_sfpi_denit(void)
     DIAG_PRINT("%s", __FUNCTION__);
     return ONLP_STATUS_OK;
 }
-

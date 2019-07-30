@@ -26,6 +26,7 @@
 #include <onlp/platformi/fani.h>
 #include <onlplib/mmap.h>
 #include <fcntl.h>
+#include <limits.h>
 #include "platform_lib.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD   "/sys/bus/i2c/devices/2-0066/"
@@ -171,7 +172,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[65] = {0};
+    char  fullpath[PATH_MAX] = {0};
 
     /* check if fan is present
      */
@@ -191,14 +192,14 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
         return ONLP_STATUS_OK;
     }
 
-    /* get fan/fanr direction (both : the same) 
+    /* get fan/fanr direction (both : the same)
      */
-    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].direction);	
-    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);    
-   
+    sprintf(fullpath, "%s%s", PREFIX_PATH_ON_MAIN_BOARD, fan_path[local_id].direction);
+    OPEN_READ_FILE(fd,fullpath,r_data,nbytes,len);
+
     if (atoi(r_data) == 0) /*B2F*/
         info->status |= ONLP_FAN_STATUS_B2F;
-    else 
+    else
         info->status |= ONLP_FAN_STATUS_F2B;
 
     /* get fan speed (take the min from two speeds)
@@ -224,7 +225,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
 {
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[80] = {0};
+    char  fullpath[PATH_MAX] = {0};
 
     /* get fan direction
      */
@@ -317,7 +318,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
     int  fd, len, nbytes=10, local_id;
     char data[10] = {0};
-    char fullpath[70] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -401,4 +402,3 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
