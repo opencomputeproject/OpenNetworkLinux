@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <linux/i2c-devices.h>
+#include <AIM/aim.h>
 #include "platform_lib.h"
 
 #define CPLD_BASE_ADDRESS       0xEA000000
@@ -534,4 +535,3 @@ as5610_52x_psu_type_t as5610_52x_get_psu_type(int id, char* modelname, int model
 
     return ret;
 }
-

@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <linux/i2c-devices.h>
 #include "platform_lib.h"
+#include <AIM/aim.h>
 
 #define MAX_I2C_BUSSES               2
 #define I2C_PSU_MAX_EEPROM_ADDR      1
@@ -338,4 +339,3 @@ int as4600_54t_get_psu_type(int pid, char* modelname, int modelname_len)
 
     return ret;
 }
-
