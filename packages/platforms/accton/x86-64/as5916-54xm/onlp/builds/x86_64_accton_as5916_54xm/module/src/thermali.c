@@ -175,7 +175,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         devfile = fname;
 
         /*Replace description*/
-        strncpy(tmp, *des, sizeof(tmp));
+        aim_strlcpy(tmp, *des, sizeof(tmp));
         snprintf(*des, sizeof(*des), tmp, t1_addr);
     }
 

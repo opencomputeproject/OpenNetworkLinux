@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef X86_64_ACCTON_AS5912_54XK_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_ACCTON_AS5912_54XK_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_ACCTON_AS5912_54XK_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_ACCTON_AS5912_54XK_STRNCPY strncpy
-    #else
-        #error The macro X86_64_ACCTON_AS5912_54XK_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_ACCTON_AS5912_54XK_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_ACCTON_AS5912_54XK_VSNPRINTF GLOBAL_VSNPRINTF

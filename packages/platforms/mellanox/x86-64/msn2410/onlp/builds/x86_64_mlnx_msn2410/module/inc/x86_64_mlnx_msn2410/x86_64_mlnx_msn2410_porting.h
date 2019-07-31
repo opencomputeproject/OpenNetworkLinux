@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef X86_64_MLNX_MSN2410_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_MLNX_MSN2410_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_MLNX_MSN2410_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_MLNX_MSN2410_STRNCPY strncpy
-    #else
-        #error The macro X86_64_MLNX_MSN2410_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_MLNX_MSN2410_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_MLNX_MSN2410_VSNPRINTF GLOBAL_VSNPRINTF

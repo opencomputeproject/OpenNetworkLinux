@@ -44,10 +44,10 @@ static const char* __ONL_PLATFORM_NAME = NULL;
 int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform)
 {
 	if (!__ONL_PLATFORM_NAME) {
-	    strncpy(mlnx_platform->onl_platform_name, "x86-64-mlnx-msn2410-all", PLATFORM_NAME_MAX_LEN);
+	    aim_strlcpy(mlnx_platform->onl_platform_name, "x86-64-mlnx-msn2410-all", PLATFORM_NAME_MAX_LEN);
 	}
 	else {
-	    strncpy(mlnx_platform->onl_platform_name, __ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
+	    aim_strlcpy(mlnx_platform->onl_platform_name, __ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
 	}
 	mlnx_platform->sfp_num = SFP_PORT_COUNT;
 	mlnx_platform->led_num = CHASSIS_LED_COUNT;

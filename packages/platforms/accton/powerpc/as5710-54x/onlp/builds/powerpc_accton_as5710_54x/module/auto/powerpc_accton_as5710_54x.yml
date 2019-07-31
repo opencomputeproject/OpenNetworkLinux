@@ -54,7 +54,7 @@ definitions:
         - free
         - memset
         - memcpy
-        - strncpy
+        
         - vsnprintf
         - snprintf
         - strlen

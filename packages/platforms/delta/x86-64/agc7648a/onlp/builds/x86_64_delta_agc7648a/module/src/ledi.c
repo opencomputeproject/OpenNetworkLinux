@@ -100,7 +100,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     VALIDATE(id);
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
-    
+
     mux_info_t mux_info;
     mux_info.bus = I2C_BUS_5;
     mux_info.addr = SWPLD;
@@ -121,10 +121,10 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     {
         case LED_FRONT_FAN:
             if((r_data & 0x02) == 0x02)
-	            info->mode = ONLP_LED_MODE_GREEN;
-	        else if((r_data & 0x01) == 0x01)
-	            info->mode = ONLP_LED_MODE_ORANGE;
-            else if((r_data & 0x01) == 0x03)
+                info->mode = ONLP_LED_MODE_GREEN;
+            else if((r_data & 0x01) == 0x01)
+                info->mode = ONLP_LED_MODE_ORANGE;
+            else if((r_data & 0x03) == 0x03)
                 info->mode = ONLP_LED_MODE_ORANGE_BLINKING;
             else if((r_data & 0x01) == 0x00)
                 info->mode = ONLP_LED_MODE_OFF;
@@ -133,9 +133,9 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             break;
         case LED_FRONT_SYS:
             if((r_data & 0xF0) == 0x10)
-	            info->mode = ONLP_LED_MODE_GREEN;
+                info->mode = ONLP_LED_MODE_GREEN;
             else if((r_data & 0xF0) == 0x20)
-	            info->mode = ONLP_LED_MODE_ORANGE;
+                info->mode = ONLP_LED_MODE_ORANGE;
             else if((r_data & 0xF0) == 0xa0)
                 info->mode = ONLP_LED_MODE_ORANGE_BLINKING;
             else if((r_data & 0xF0) == 0x90)
@@ -221,7 +221,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
             else
                 info->status = ONLP_LED_STATUS_FAILED;
             break;
-        
+
         default:
             break;
     }
@@ -250,7 +250,7 @@ int
 onlp_ledi_set(onlp_oid_t id, int on_or_off)
 {
     VALIDATE(id);
-    
+
     if(on_or_off == 0)
         onlp_ledi_mode_set(id, ONLP_LED_MODE_OFF);
     else
@@ -345,7 +345,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
             {
                 dni_lock_cpld_write_attribute(SWPLD_PATH,LED_REG,front_panel_led_value);
             }
-            else 
+            else
                 return ONLP_STATUS_E_UNSUPPORTED;
             break;
         case LED_REAR_FAN_TRAY_1:
@@ -421,6 +421,3 @@ onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
-
-

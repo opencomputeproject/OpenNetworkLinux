@@ -43,7 +43,7 @@
 
 int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform)
 {
-	strncpy(mlnx_platform->onl_platform_name, ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
+	aim_strlcpy(mlnx_platform->onl_platform_name, ONL_PLATFORM_NAME, PLATFORM_NAME_MAX_LEN);
 	mlnx_platform->sfp_num = SFP_PORT_COUNT;
 	mlnx_platform->led_num = CHASSIS_LED_COUNT;
 	mlnx_platform->psu_num = CHASSIS_PSU_COUNT;

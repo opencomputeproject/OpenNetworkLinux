@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef POWERPC_ACCTON_AS6700_32X_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define POWERPC_ACCTON_AS6700_32X_STRNCPY GLOBAL_STRNCPY
-    #elif POWERPC_ACCTON_AS6700_32X_CONFIG_PORTING_STDLIB == 1
-        #define POWERPC_ACCTON_AS6700_32X_STRNCPY strncpy
-    #else
-        #error The macro POWERPC_ACCTON_AS6700_32X_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef POWERPC_ACCTON_AS6700_32X_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define POWERPC_ACCTON_AS6700_32X_VSNPRINTF GLOBAL_VSNPRINTF

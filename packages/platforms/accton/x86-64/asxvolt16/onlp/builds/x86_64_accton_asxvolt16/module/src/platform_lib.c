@@ -132,7 +132,7 @@ int get_psu_serial_number(int id, char *serial, int serial_len)
 	sn[PSU_SERIAL_NUMBER_LEN] = 0;
 
     if (serial) {
-        strncpy(serial, sn, sizeof(sn));
+        aim_strlcpy(serial, sn, sizeof(sn));
     }
 
 	return ONLP_STATUS_OK;
@@ -156,7 +156,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     }
 
     if (modelname) {
-        strncpy(modelname, model_name, sizeof(model_name)-1);
+        aim_strlcpy(modelname, model_name, sizeof(model_name)-1);
     }
 
     node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);

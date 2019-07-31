@@ -138,14 +138,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        strncpy(info->model, string, len);
+        aim_strlcpy(info->model, string, len);
         aim_free(string);
     }
 
     /* Read serial */
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        strncpy(info->serial, string, len);
+        aim_strlcpy(info->serial, string, len);
         aim_free(string);
     }
 

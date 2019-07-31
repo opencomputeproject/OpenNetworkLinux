@@ -91,11 +91,11 @@ _onlp_fani_read_fan_eeprom(int local_id, onlp_fan_info_t* info)
 
     /* Reading serial number */
     offset = data[block1_start] * multiplier + serial_offset;
-    strncpy(info->serial, (char *)&data[offset], serial_len);
+    aim_strlcpy(info->serial, (char *)&data[offset], serial_len);
 
     /* Reading part number */
     offset += serial_len;
-    strncpy(info->model, (char *)&data[offset], part_len);
+    aim_strlcpy(info->model, (char *)&data[offset], part_len);
 
     /* Reading fan direction */
     if (data[block2_start + 1] != block2_type) {
@@ -127,7 +127,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
     const char fan_model[]=FAN_MODEL;
     mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
     if(mlnx_platform_info->fan_type == FAN_TYPE_NO_EEPROM)
-        strncpy(info->model, fan_model, sizeof(info->model));
+        aim_strlcpy(info->model, fan_model, sizeof(info->model));
 
     if(!mlnx_platform_info->fan_fixed) {
       /* not fixed FAN's can have more than 1 FAN per FRU.

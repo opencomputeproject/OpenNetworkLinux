@@ -4,7 +4,7 @@
 #
 ###############################################################################
 
-cdefs: &cdefs 
+cdefs: &cdefs
 - X86_64_INGRASYS_S9100_CONFIG_INCLUDE_LOGGING:
     doc: "Include or exclude logging."
     default: 1
@@ -41,7 +41,6 @@ definitions:
         - free
         - memset
         - memcpy
-        - strncpy
         - vsnprintf
         - snprintf
         - strlen

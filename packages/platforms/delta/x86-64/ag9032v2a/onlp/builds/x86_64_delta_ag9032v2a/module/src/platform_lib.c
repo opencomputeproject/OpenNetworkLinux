@@ -56,10 +56,10 @@ void lockinit()
 {
     static int sem_inited = 0;
     if(!sem_inited)
-    {   
+    {
         onlp_shlock_create(DNILOCK_MAGIC, &dni_lock, "bus-lock");
         sem_inited = 1;
-    }   
+    }
 }
 
 int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier)
@@ -176,7 +176,7 @@ int dni_psu_present(int *r_data)
 {
     FILE *fptr        = NULL;
     int rv            = ONLP_STATUS_OK;
-    char cmd[35]      = {0};
+    char cmd[256]      = {0};
     char str_data[50] = {0};
     sprintf(cmd, "ipmitool raw 0x38 0x2 3 0x6a 0x03 1");
     fptr = popen(cmd, "r");
@@ -199,10 +199,10 @@ dni_psui_eeprom_info_get(char * r_data,char *device_name,int number)
     int i = 0;
     int rv            = ONLP_STATUS_OK;
     FILE *fptr        = NULL;
-    char cmd[35]      = {0};
+    char cmd[256]      = {0};
     char str_data[50] = {0} ;
     char buf;
-    char* renewCh; 
+    char* renewCh;
     sprintf(cmd, "ipmitool fru print %d | grep '%s'  | awk -F':' '{print $2}'",number,device_name);
     fptr = popen(cmd, "r");
     while((buf = fgetc(fptr)) != EOF)
@@ -515,4 +515,3 @@ int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, in
 
     return ret;
 }
-

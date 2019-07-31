@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <onlplib/mmap.h>
 
 #include "platform_lib.h"
@@ -173,7 +174,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  local_id;
 	char data[2] = {0};
-    char fullpath[50] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -232,7 +233,7 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  local_id;
-    char fullpath[50] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -255,4 +256,3 @@ onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

@@ -59,16 +59,6 @@
     #endif
 #endif
 
-#ifndef X86_64_NETBERG_AURORA_710_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define X86_64_NETBERG_AURORA_710_STRNCPY GLOBAL_STRNCPY
-    #elif X86_64_NETBERG_AURORA_710_CONFIG_PORTING_STDLIB == 1
-        #define X86_64_NETBERG_AURORA_710_STRNCPY strncpy
-    #else
-        #error The macro X86_64_NETBERG_AURORA_710_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef X86_64_NETBERG_AURORA_710_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define X86_64_NETBERG_AURORA_710_VSNPRINTF GLOBAL_VSNPRINTF

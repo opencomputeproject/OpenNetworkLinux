@@ -26,6 +26,7 @@
 #include <onlp/platformi/fani.h>
 #include <onlplib/mmap.h>
 #include <fcntl.h>
+#include <limits.h>
 #include "platform_lib.h"
 
 #define PREFIX_PATH_ON_MAIN_BOARD  "/sys/devices/platform/as5512_54x_fan/"
@@ -155,7 +156,7 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t* info)
 {
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[65] = {0};
+    char  fullpath[PATH_MAX] = {0};
 
     /* get fan/fanr fault status (turn on when any one fails)
      */
@@ -205,7 +206,7 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info)
     int   psu_id, is_ac=0;
     int   fd, len, nbytes = 10;
     char  r_data[10]   = {0};
-    char  fullpath[50] = {0};
+    char  fullpath[PATH_MAX] = {0};
     psu_type_t psu_type;
 
     /* get fan other cap status according to psu type
@@ -335,7 +336,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
     int  fd, len, nbytes=10, local_id;
     char data[10] = {0};
-    char fullpath[70] = {0};
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
 
@@ -416,5 +417,3 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
-

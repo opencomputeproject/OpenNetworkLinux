@@ -40,20 +40,20 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
-
-    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {    
-        return -1;  
     }
 
-    if ((len = write(fd, buffer, buf_size)) < 0) {    
-        close(fd);    
+    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {
+        return -1;
+    }
+
+    if ((len = write(fd, buffer, buf_size)) < 0) {
+        close(fd);
         return -1;
     }
 
     if ((close(fd) == -1)) {
         return -1;
-    }  
+    }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
         return -1;
@@ -71,25 +71,25 @@ int deviceNodeWriteInt(char *filename, int value, int data_len)
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
-    {    
+    {
     int fd;
     int len;
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
+    }
 
     if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;  
+        return -1;
     }
 
     if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);    
+        close(fd);
         return -1;
-    }  
-    
-    if ((close(fd) == -1)) {    
-        return -1;  
+    }
+
+    if ((close(fd) == -1)) {
+        return -1;
     }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
@@ -106,7 +106,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
     if (data_len >= buf_size || data_len < 0) {
         return -1;
     }
-	
+
 	ret = deviceNodeReadBinary(filename, buffer, buf_size-1, data_len);
 
     if (ret == 0) {
@@ -117,7 +117,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
             buffer[buf_size-1] = '\0';
         }
     }
-    
+
     return ret;
 }
 
@@ -135,25 +135,25 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "CPR-4011-4M11", STRLEN("CPR-4011-4M11")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, sizeof(model_name));
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_F2B;
         }
         else if (strncmp(model_name, "CPR-4011-4M21", STRLEN("CPR-4011-4M21")) == 0) {
             if (modelname) {
-            strncpy(modelname, model_name, sizeof(model_name));
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_B2F;
         }
         else if (strncmp(model_name, "CPR-6011-2M11", STRLEN("CPR-6011-2M11")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, sizeof(model_name));
+                aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_F2B;
         }
         else if (strncmp(model_name, "CPR-6011-2M21", STRLEN("CPR-6011-2M21")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, sizeof(model_name));
+                aim_strlcpy(modelname, model_name, sizeof(model_name));
             }
             return PSU_TYPE_AC_COMPUWARE_B2F;
         }
@@ -161,20 +161,20 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     /* Check 3Y-Power AC model name */
     memset(model_name, 0, sizeof(model_name));
-    node = (id == PSU1_ID) ? PSU1_AC_3YPOWER_EEPROM_NODE(psu_model_name) : PSU2_AC_3YPOWER_EEPROM_NODE(psu_model_name);	
+    node = (id == PSU1_ID) ? PSU1_AC_3YPOWER_EEPROM_NODE(psu_model_name) : PSU2_AC_3YPOWER_EEPROM_NODE(psu_model_name);
 
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "YM-2401JCR", STRLEN("YM-2401JCR")) == 0) {
             if (modelname) {
             model_name[STRLEN("YM-2401JCR")] = 0;
-            strncpy(modelname, model_name, 11);
+            aim_strlcpy(modelname, model_name, 11);
             }
             return PSU_TYPE_AC_3YPOWER_F2B;
         }
         else if (strncmp(model_name, "YM-2401JDR", STRLEN("YM-2401JDR")) == 0) {
             if (modelname) {
             model_name[STRLEN("YM-2401JDR")] = 0;
-            strncpy(modelname, model_name, 11);
+            aim_strlcpy(modelname, model_name, 11);
             }
             return PSU_TYPE_AC_3YPOWER_B2F;
         }
@@ -188,14 +188,14 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         if (strncmp(model_name, "um400d01G", STRLEN("um400d01G")) == 0) {
             if (modelname) {
             model_name[STRLEN("um400d01G")] = 0;
-            strncpy(modelname, model_name, 10);
+            aim_strlcpy(modelname, model_name, 10);
             }
             return PSU_TYPE_DC_48V_B2F;
         }
         else if (strncmp(model_name, "um400d01-01G", STRLEN("um400d01-01G")) == 0) {
             if (modelname) {
             model_name[STRLEN("um400d01-01G")] = 0;
-            strncpy(modelname, model_name, 13);
+            aim_strlcpy(modelname, model_name, 13);
             }
             return PSU_TYPE_DC_48V_F2B;
         }
@@ -208,7 +208,7 @@ int psu_ym2401_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
     char path[64] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -248,4 +248,3 @@ int psu_ym2401_pmbus_info_set(int id, char *node, int value)
 
     return ONLP_STATUS_OK;
 }
-

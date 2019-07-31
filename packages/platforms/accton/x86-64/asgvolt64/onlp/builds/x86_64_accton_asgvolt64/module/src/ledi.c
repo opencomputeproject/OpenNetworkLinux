@@ -25,6 +25,8 @@
  ***********************************************************/
 #include <onlplib/file.h>
 #include <onlp/platformi/ledi.h>
+#include <limits.h>
+
 #include "platform_lib.h"
 
 #define VALIDATE(_id)                           \
@@ -160,7 +162,7 @@ static onlp_led_info_t linfo[] =
 static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driver_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for (i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && driver_led_mode == led_map[i].driver_led_mode)
@@ -168,14 +170,14 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driv
             return led_map[i].onlp_led_mode;
         }
     }
-    
+
     return 0;
 }
 
 static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for(i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && onlp_led_mode == led_map[i].onlp_led_mode)
@@ -183,7 +185,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
             return led_map[i].driver_led_mode;
         }
     }
-    
+
     return 0;
 }
 
@@ -240,6 +242,7 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
     }
      
     return ONLP_STATUS_E_UNSUPPORTED;
+
 }
 
 /*
@@ -250,12 +253,13 @@ onlp_ledi_set(onlp_oid_t id, int on_or_off)
  */
 int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
-{
+{  
     int  lid;	
     VALIDATE(id);
 
     lid = ONLP_OID_ID_GET(id);
     if (onlp_file_write_int(onlp_to_driver_led_mode(lid , mode), LED_FORMAT, leds[lid]) < 0) {
+
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -270,4 +274,3 @@ onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-

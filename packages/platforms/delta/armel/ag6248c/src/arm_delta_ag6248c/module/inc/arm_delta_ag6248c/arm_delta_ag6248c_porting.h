@@ -79,16 +79,6 @@
     #endif
 #endif
 
-#ifndef ARM_DELTA_AG6248C_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define ARM_DELTA_AG6248C_STRNCPY GLOBAL_STRNCPY
-    #elif ARM_DELTA_AG6248C_CONFIG_PORTING_STDLIB == 1
-        #define ARM_DELTA_AG6248C_STRNCPY strncpy
-    #else
-        #error The macro ARM_DELTA_AG6248C_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef ARM_DELTA_AG6248C_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define ARM_DELTA_AG6248C_VSNPRINTF GLOBAL_VSNPRINTF

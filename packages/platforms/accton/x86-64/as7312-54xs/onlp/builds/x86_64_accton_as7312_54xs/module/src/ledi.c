@@ -29,7 +29,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <onlplib/mmap.h>
-
+#include <limits.h>
 #include "platform_lib.h"
 
 #define prefix_path "/sys/class/leds/accton_as7312_54xs_led::"
@@ -53,7 +53,7 @@ enum onlp_led_id
     LED_PSU1,
     LED_PSU2
 };
-        
+
 enum led_light_mode {
 	LED_MODE_OFF = 0,
 	LED_MODE_GREEN,
@@ -132,7 +132,7 @@ static onlp_led_info_t linfo[] =
 static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driver_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for (i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && driver_led_mode == led_map[i].driver_led_mode)
@@ -140,14 +140,14 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driv
             return led_map[i].onlp_led_mode;
         }
     }
-    
+
     return 0;
 }
 
 static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
     int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
-    
+
     for(i = 0; i < nsize; i++)
     {
         if (id == led_map[i].id && onlp_led_mode == led_map[i].onlp_led_mode)
@@ -155,7 +155,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
             return led_map[i].driver_led_mode;
         }
     }
-    
+
     return 0;
 }
 
@@ -175,17 +175,13 @@ int
 onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  local_id;
-	char data[2] = {0};
-    char fullpath[50] = {0};
-		
+    char data[2] = {0};
+    char fullpath[PATH_MAX] = {0};
     VALIDATE(id);
-	
     local_id = ONLP_OID_ID_GET(id);
-    		
     /* get fullpath */
     sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
-		
-	/* Set the onlp_oid_hdr_t and capabilities */
+    /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
 
     /* Set LED mode */
@@ -235,13 +231,13 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  local_id;
-    char fullpath[50] = {0};		
+    char fullpath[PATH_MAX] = {0};
 
     VALIDATE(id);
-	
+
     local_id = ONLP_OID_ID_GET(id);
-    sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);	
-    
+    sprintf(fullpath, "%s%s/%s", prefix_path, last_path[local_id], filename);
+
     if (onlp_file_write_integer(fullpath, onlp_to_driver_led_mode(local_id, mode)) != 0)
     {
         return ONLP_STATUS_E_INTERNAL;
@@ -258,4 +254,3 @@ onlp_ledi_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
