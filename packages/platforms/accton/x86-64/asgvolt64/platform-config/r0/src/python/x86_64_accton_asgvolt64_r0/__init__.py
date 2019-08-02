@@ -35,6 +35,25 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
     MODEL="ASGVOLT64"
     SYS_OBJECT_ID=".volt.64"
 
+    port_map={           
+        1: 0,
+        2: 1,
+        3: 15,
+        4: 14,
+        5: 2,
+        6: 3,
+        7: 13,
+        8: 12,
+        9: 4,
+        10:5, 
+        11:11,
+        12:10,
+        13:6,
+        14:7,
+        15:9,
+        16:8
+    }
+
     def baseconfig(self):
         #self.insmod('ym2651y')
         self.insmod('optoe')
@@ -73,11 +92,19 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
         # initialize XFP port 1~64
         for port in range(41, 105):
             self.new_i2c_device('optoe2', 0x50, port)
-            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port-40, port), shell=True)
+        
+        base=41    
+        for port in range(1, 65):
+            q=port/16
+            r=port%16
+            if r==0:
+                r=16
+		q=q-1
+            bus=base+q*16+self.port_map[r]
+            subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus), shell=True)
             
         # initialize QSFP port 1~2 (port_name=port65~66)
         for port in range(20, 22):
-            self.new_i2c_device('optoe1', 0x50, port)
             self.new_i2c_device('optoe1', 0x50, port)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port+45, port), shell=True)        
         
@@ -86,7 +113,7 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
             self.new_i2c_device('optoe2', 0x50, port)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port+41, port), shell=True)
         # initiate IDPROM
-        self.new_i2c_device('24c02', 0x57, 0)
+        #self.new_i2c_device('24c02', 0x57, 0)
         
         ir3570_check()
 
