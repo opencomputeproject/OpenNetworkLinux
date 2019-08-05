@@ -35,7 +35,7 @@ Applications using the ONLP APIs can run on all supported platforms.
 
 Nothing really. But most open networking platforms do not have a BMC (and none at all when we started the ONLP project) but still require all of this functionality. Systems which do have a BMC can simply implement their ONLP interfaces using IPMI.
 IPMI deals with the Fans, PSUs, and Thermals, and running the thermal plan for the system to make sure it doesn't light on fire. But it has no models for SFF pluggables and their control structures.
-Likewise there are other proposals for communicating to system software through interfaces like APCI but these are not standardized either.
+Likewise there are other proposals for communicating to system software through interfaces like ACPI but these are not standardized either.
 
 ONLP is the standard for all platforms supported by Open Network Linux and Open Network Linux support is required for all platforms accepted by the Open Compute Project.
 
