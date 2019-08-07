@@ -98,7 +98,7 @@ class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
         # initialize QSFP port 1~32. SFP port 33~34
         for port in range(1, 35):
             if port <= 32 :
-            self.new_i2c_device('optoe1', 0x50, port+24)
+                self.new_i2c_device('optoe1', 0x50, port+24)
             else:
                 self.new_i2c_device('optoe2', 0x50, port+24)
             
