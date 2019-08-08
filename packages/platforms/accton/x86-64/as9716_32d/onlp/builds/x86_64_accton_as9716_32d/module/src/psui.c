@@ -29,11 +29,6 @@
 #include <string.h>
 #include "platform_lib.h"
 
-#define PSU_STATUS_PRESENT    1
-#define PSU_STATUS_POWER_GOOD 1
-
-
-
 #define VALIDATE(_id)                           \
     do {                                        \
         if(!ONLP_OID_IS_PSU(_id)) {             \
@@ -41,28 +36,6 @@
         }                                       \
     } while(0)
 
-static int 
-psu_status_info_get(int id, char *node, int *value)
-{
-    int ret = 0;
-    char path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
-    *value = 0;
-
-    
-    if (PSU1_ID == id) {
-        sprintf(path, "%s%s", PSU1_AC_HWMON_PREFIX, node);
-    }
-    else if (PSU2_ID == id) {
-        sprintf(path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
-    }
-    if (onlp_file_read_int(value, path) < 0) {
-        AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    return ret;
-}
 
 int
 onlp_psui_init(void)

@@ -37,6 +37,9 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 
+#define PSU_STATUS_PRESENT    1
+#define PSU_STATUS_POWER_GOOD 1
+
 #define PSU_NODE_MAX_INT_LEN  8
 #define PSU_NODE_MAX_PATH_LEN 64
 
@@ -67,6 +70,7 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
 int psu_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
+int psu_status_info_get(int id, char *node, int *value);
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
