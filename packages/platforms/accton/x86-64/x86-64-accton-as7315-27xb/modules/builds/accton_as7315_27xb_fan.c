@@ -39,7 +39,7 @@
 #define DRV_NAME "as5812_54x_fan"
 
 #define FAN_MAX_NUMBER                   5
-#define FAN_SPEED_TACH_TO_RPM_STEP       750
+#define FAN_SPEED_TACH_TO_RPM_STEP       178
 #define FAN_SPEED_PWM_STEPS              31
 #define FAN_DUTY_CYCLE_MIN               0   /* 10% ??*/
 #define FAN_DUTY_CYCLE_MAX               100  /* 100% */
