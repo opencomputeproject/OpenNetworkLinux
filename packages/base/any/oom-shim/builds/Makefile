@@ -1,4 +1,4 @@
-# -*- Makefile -*-
+# -*- GNUMakefile -*-
 ############################################################
 # <bsn.cl fy=2014 v=onl>
 #
@@ -29,9 +29,7 @@ include $(BUILDER)/standardinit.mk
 
 DEPENDMODULES := AIM onlplib onlp oom_shim cjson cjson_util sff IOF timer_wheel OS
 
-#LIBONLP_PLATFORM_DEFAULTS := ../onlp-platform-defaults/$(BUILD_DIR)/bin/libonlp-platform-defaults.so
-#LIBONLP_PLATFORM := ../onlp-platform/$(BUILD_DIR)/bin/libonlp-platform.so
-LIBONLP := $(shell $(ONLPM) --find-file onlp:$(ARCH) libonlp.so)
+$(eval $(call onlpm_find_file,LIBONLP, onlp:$(ARCH), libonlp.so))
 
 include $(BUILDER)/dependmodules.mk
 

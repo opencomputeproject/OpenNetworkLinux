@@ -1,0 +1,75 @@
+From c6a95c1ea4518a19cf46e8d0c844ae980df4c5da Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 3 Jan 2019 18:05:01 +0000
+Subject: [PATCH v1] mlxsw: qsfp_sysfs: Support extended port numbers for
+ Spectrume2 chip
+
+Add system type detection through DMI table in order to distinct between
+the systems supporting  up to 64 and up to 128 ports.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index c072b91..bee2a08 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -47,7 +47,7 @@
+ #define MLXSW_QSFP_SUB_PAGE_NUM		3
+ #define MLXSW_QSFP_SUB_PAGE_SIZE	48
+ #define MLXSW_QSFP_LAST_SUB_PAGE_SIZE	32
+-#define MLXSW_QSFP_MAX_NUM		64
++#define MLXSW_QSFP_MAX_NUM		128
+ #define MLXSW_QSFP_MIN_REQ_LEN		4
+ #define MLXSW_QSFP_STATUS_VALID_TIME	(120 * HZ)
+ #define MLXSW_QSFP_MAX_CPLD_NUM		3
+@@ -88,6 +88,7 @@ struct mlxsw_qsfp {
+ };
+ 
+ static int mlxsw_qsfp_cpld_num = MLXSW_QSFP_MIN_CPLD_NUM;
++static int mlxsw_qsfp_num = MLXSW_QSFP_MAX_NUM / 2;
+ 
+ static int
+ mlxsw_qsfp_query_module_eeprom(struct mlxsw_qsfp *mlxsw_qsfp, u8 index,
+@@ -238,6 +239,13 @@ static int mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
+ 	return 1;
+ };
+ 
++static int mlxsw_qsfp_dmi_set_qsfp_num(const struct dmi_system_id *dmi)
++{
++	mlxsw_qsfp_num = MLXSW_QSFP_MAX_NUM;
++
++	return 1;
++};
++
+ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 	{
+ 		.callback = mlxsw_qsfp_dmi_set_cpld_num,
+@@ -253,6 +261,13 @@ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "MSN27"),
+ 		},
+ 	},
++	{
++		.callback = mlxsw_qsfp_dmi_set_qsfp_num,
++		.matches = {
++			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "MSN37"),
++		},
++	},
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(dmi, mlxsw_qsfp_dmi_table);
+@@ -283,7 +298,7 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	mlxsw_qsfp->bus_info = mlxsw_bus_info;
+ 	mlxsw_bus_info->dev->platform_data = mlxsw_qsfp;
+ 
+-	for (i = 1; i <= MLXSW_QSFP_MAX_NUM; i++) {
++	for (i = 1; i <= mlxsw_qsfp_num; i++) {
+ 		mlxsw_reg_pmlp_pack(pmlp_pl, i);
+ 		err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(pmlp),
+ 				      pmlp_pl);
+-- 
+2.1.4
+

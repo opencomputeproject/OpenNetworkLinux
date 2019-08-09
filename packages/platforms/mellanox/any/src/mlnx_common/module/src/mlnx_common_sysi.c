@@ -42,7 +42,8 @@ static char arr_cplddev_name[MAX_NUM_OF_CPLD][30] =
 {
     "cpld_brd_version",
     "cpld_mgmt_version",
-    "cpld_port_version"
+    "cpld_port_version",
+    "cpld_gearbox_version",
 };
 
 mlnx_platform_info_t* get_platform_info()
@@ -80,6 +81,9 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
         pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d", v[0], v[1]);
         break;
     case 3:
+        pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d, port=%d", v[0], v[1], v[2]);
+        break;
+    case 4:
         pi->cpld_versions = aim_fstrdup("brd=%d, mgmt=%d, port=%d", v[0], v[1], v[2]);
         break;
     case 0:
@@ -382,15 +386,12 @@ onlp_sysi_platform_manage_leds_type2(void)
 int
 onlp_sysi_platform_manage_leds_type3(void)
 {
-    int fan_number, psu_number;
+    int fan_number, fan_sub, fan_idx, psu_number;
     onlp_led_mode_t mode, system_mode;
     int min_fan_speed;
-
     int fan_led_id[6] = { LED_FAN1, LED_FAN2, LED_FAN3, LED_FAN4, LED_FAN5, LED_FAN6 };
-
     int fan_problem = 0;
     int psu_problem = 0;
-
     /*
      * FAN Indicators
      *
@@ -399,59 +400,37 @@ onlp_sysi_platform_manage_leds_type3(void)
      *     Off   - No power
      *
      */
-    for (fan_number = 1; fan_number <= mlnx_platform_info.fan_num; fan_number += 2)
+    fan_idx=0;
+    for (fan_number = 1; fan_number <= mlnx_platform_info.fan_num; fan_idx++)
     {
-        /* each 2 fans had same led_fan */
         onlp_fan_info_t fi;
-        /* check fans */
         mode = ONLP_LED_MODE_GREEN;
-        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number), &fi) < 0)
-        {
-            mode = ONLP_LED_MODE_ORANGE;
-            fan_problem = 1;
-        } else if ((fi.status & ONLP_FAN_STATUS_PRESENT) == 0) {
-            if (mlnx_platform_info.fan_fixed == false)
-            {
-                /* Not present */
-                mode = ONLP_LED_MODE_ORANGE;
-                fan_problem = 1;
-            }
-        } else if (fi.status & ONLP_FAN_STATUS_FAILED) {
-            mode = ONLP_LED_MODE_ORANGE;
-            fan_problem = 1;
-        } else {
-            min_fan_speed = onlp_fani_get_min_rpm(fan_number);
-            if (fi.rpm < min_fan_speed)
-            {
-                mode = ONLP_LED_MODE_ORANGE;
-                fan_problem = 1;
-            }
-        }
-        /* check fan i+1 */
-        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number + 1), &fi) < 0)
-        {
-            mode = ONLP_LED_MODE_ORANGE;
-            fan_problem = 1;
-        } else if ((fi.status & 0x1) == 0) {
-            if (mlnx_platform_info.fan_fixed == false)
-            {
-                /* Not present */
-                mode = ONLP_LED_MODE_ORANGE;
-                fan_problem = 1;
-            }
-        } else if (fi.status & ONLP_FAN_STATUS_FAILED)
-        {
-            mode = ONLP_LED_MODE_ORANGE;
-            fan_problem = 1;
-        } else {
-            min_fan_speed = onlp_fani_get_min_rpm(fan_number + 1);
-            if (fi.rpm < min_fan_speed)
-            {
-                mode = ONLP_LED_MODE_ORANGE;
-                fan_problem = 1;
-            }
-        }
-        onlp_ledi_mode_set( ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, fan_led_id[fan_number / 2]), mode);
+        for (fan_sub = 0; fan_sub < mlnx_platform_info.fan_per_module; fan_sub++, fan_number++) {
+            /* check fans */
+	        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(fan_number), &fi) < 0)
+	        {
+	            mode = ONLP_LED_MODE_ORANGE;
+	            fan_problem = 1;
+	        } else if ((fi.status & ONLP_FAN_STATUS_PRESENT) == 0) {
+	            if (mlnx_platform_info.fan_fixed == false)
+	            {
+	                /* Not present */
+	                mode = ONLP_LED_MODE_ORANGE;
+	                fan_problem = 1;
+	            }
+	        } else if (fi.status & ONLP_FAN_STATUS_FAILED) {
+	            mode = ONLP_LED_MODE_ORANGE;
+	            fan_problem = 1;
+	        } else {
+	            min_fan_speed = onlp_fani_get_min_rpm(fan_number);
+	            if (fi.rpm < min_fan_speed)
+	            {
+	                mode = ONLP_LED_MODE_ORANGE;
+	                fan_problem = 1;
+	            }
+	        }
+	    }
+        onlp_ledi_mode_set( ONLP_OID_TYPE_CREATE(ONLP_OID_TYPE_LED, fan_led_id[fan_idx]), mode);
     }
 
     for (psu_number = 1; psu_number <= mlnx_platform_info.psu_num; psu_number++)

@@ -316,6 +316,12 @@ class OnlRfsBuilder(object):
         self.kwargs = kwargs
         self.arch = arch
         self.kwargs['ARCH'] = arch
+
+        # Hack -- we have to pull powerpc from the archive
+        # This will need a cleaner fix.
+        if arch == 'powerpc':
+            self.DEFAULTS['DEBIAN_MIRROR'] = 'archive.debian.org/debian/'
+
         self.kwargs.update(self.DEFAULTS)
         self.__load(config)
         self.__validate()
@@ -511,29 +517,30 @@ rm -f /usr/sbin/policy-rc.d
                         onlu.execute('sudo rm %s' % f,
                                      ex=OnlRfsError('Could not remove file %s' % f))
 
-                if not options.get('ttys', False):
-                    f = os.path.join(dir_, 'etc/inittab')
-                    ua.chmod('a+w', f)
-                    ua.chmod('a+w', os.path.dirname(f))
+                if os.path.exists(os.path.join(dir_, 'etc/inittab')):
+                    if not options.get('ttys', False):
+                        f = os.path.join(dir_, 'etc/inittab')
+                        ua.chmod('a+w', f)
+                        ua.chmod('a+w', os.path.dirname(f))
 
-                    logger.info("Clearing %s ttys..." % f)
-                    for line in fileinput.input(f, inplace=True):
-                        if re.match("^[123456]:.*", line):
-                           line = "#" + line
-                        print line,
+                        logger.info("Clearing %s ttys..." % f)
+                        for line in fileinput.input(f, inplace=True):
+                            if re.match("^[123456]:.*", line):
+                               line = "#" + line
+                            print line,
 
-                    ua.chmod('go-w', f)
-                    ua.chmod('go-w', os.path.dirname(f))
+                        ua.chmod('go-w', f)
+                        ua.chmod('go-w', os.path.dirname(f))
 
-                if options.get('console', True):
-                    logger.info('Configuring Console Access in %s' % f)
-                    f = os.path.join(dir_, 'etc/inittab')
-                    ua.chmod('a+w', f)
-                    ua.chmod('a+w', os.path.dirname(f))
-                    with open(f, 'a') as h:
-                        h.write("T0:23:respawn:/sbin/pgetty\n")
-                    ua.chmod('go-w', f)
-                    ua.chmod('go-w', os.path.dirname(f))
+                    if options.get('console', True):
+                        logger.info('Configuring Console Access in %s' % f)
+                        f = os.path.join(dir_, 'etc/inittab')
+                        ua.chmod('a+w', f)
+                        ua.chmod('a+w', os.path.dirname(f))
+                        with open(f, 'a') as h:
+                            h.write("T0:23:respawn:/sbin/pgetty\n")
+                        ua.chmod('go-w', f)
+                        ua.chmod('go-w', os.path.dirname(f))
 
                 if options.get('asr', None):
                     asropts = options.get('asr')

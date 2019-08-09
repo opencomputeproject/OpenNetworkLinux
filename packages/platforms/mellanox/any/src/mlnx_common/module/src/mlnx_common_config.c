@@ -55,7 +55,7 @@ mlnx_common_config_lookup(const char* setting)
 {
     int i;
     for(i = 0; mlnx_common_config_settings[i].name; i++) {
-        if(strcmp(mlnx_common_config_settings[i].name, setting)) {
+        if(!strcmp(mlnx_common_config_settings[i].name, setting)) {
             return mlnx_common_config_settings[i].value;
         }
     }

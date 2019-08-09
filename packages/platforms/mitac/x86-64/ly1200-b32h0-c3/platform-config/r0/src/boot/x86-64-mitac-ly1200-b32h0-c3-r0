@@ -1,0 +1,3 @@
+#!/bin/sh
+
+#insmod /lib/platform-config/x86-64-mitac-ly1200-b32h0-c3-r0/onl/boot/ixgbe.ko
