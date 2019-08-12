@@ -114,7 +114,8 @@ static onlp_led_info_t linfo[] =
 
 static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driver_led_mode)
 {
-    int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
+    int i;
+    int nsize = AIM_ARRAYSIZE(led_map);
 
     for (i = 0; i < nsize; i++)
     {
@@ -129,7 +130,8 @@ static int driver_to_onlp_led_mode(enum onlp_led_id id, enum led_light_mode driv
 
 static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led_mode)
 {
-    int i, nsize = sizeof(led_map)/sizeof(led_map[0]);
+    int i;
+    int nsize = AIM_ARRAYSIZE(led_map);
 
     for(i = 0; i < nsize; i++)
     {
@@ -165,6 +167,9 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     VALIDATE(id);
 
     lid = ONLP_OID_ID_GET(id);
+    if (lid >= AIM_ARRAYSIZE(linfo) || lid == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[ONLP_OID_ID_GET(id)];
@@ -234,8 +239,12 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  lid;
+
     VALIDATE(id);
     lid = ONLP_OID_ID_GET(id);
+    if (lid >= AIM_ARRAYSIZE(linfo) || lid == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
 
     if (onlp_file_write_int(onlp_to_driver_led_mode(lid, mode), LED_CFILE, leds[lid]) < 0) {
         return ONLP_STATUS_E_INTERNAL;

@@ -71,7 +71,7 @@ static char* board_devfiles__[] =  /* must map with onlp_thermal_id */
 
 
 /* Static values */
-static onlp_thermal_info_t linfo[] = {
+static onlp_thermal_info_t tinfo[] = {
     { }, /* Not used */
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0},
         ONLP_THERMAL_STATUS_PRESENT,
@@ -108,40 +108,13 @@ onlp_thermali_init(void)
     return ONLP_STATUS_OK;
 }
 
-#if 0
-int
-onlp_thermali_mb_channel_set(int tid)
-{
-    int rv;
-    int channel = tid - THERMAL_1_ON_MAIN_BROAD + 2;
-    uint32_t flags = ONLP_I2C_F_FORCE;
-    uint8_t addr = 0x64;
-    uint8_t offset = 0x80;
-
-    if( (rv = onlp_i2c_readb(I2C_BUS, addr, offset, flags)) < 0) {
-        AIM_LOG_ERROR("Device %s: readb() failed: %d",
-                      linfo[tid].hdr.description, rv);
-        return rv;
-    }
-    rv &= 0x0f; /*set bit [7:4] = 0.*/
-    rv |= (channel << 5); /*set bit [7:5] = channel.*/
-    rv = onlp_i2c_writeb(I2C_BUS, addr, offset, rv, flags);
-    if( rv < 0) {
-        AIM_LOG_ERROR("Device %s: readb() failed: %d",
-                      linfo[tid].hdr.description, rv);
-        return rv;
-    }
-    return ONLP_STATUS_OK;
-}
-#endif
-
-int
+static int
 onlp_thermali_read_devfile(int tid, onlp_thermal_info_t* info)
 {
     return onlp_file_read_int(&info->mcelsius, board_devfiles__[tid]);
 }
 
-int
+static int
 onlp_thermali_read_mainboard(int tid, onlp_thermal_info_t* info)
 {
     if (tid >= THERMAL_1_ON_MAIN_BROAD || tid <= THERMAL_1_ON_PSU2) {
@@ -168,10 +141,12 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 
     VALIDATE(id);
     tid = ONLP_OID_ID_GET(id);
+    if (tid >= AIM_ARRAYSIZE(tinfo) || tid == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
 
     /* Set the onlp_oid_hdr_t and capabilities */
-    *info = linfo[tid];
-
+    *info = tinfo[tid];
     if(tid == THERMAL_CPU_CORE) {
         rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
     } else {

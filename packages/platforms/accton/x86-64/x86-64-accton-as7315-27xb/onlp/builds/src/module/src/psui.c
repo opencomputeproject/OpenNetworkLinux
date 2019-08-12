@@ -80,16 +80,6 @@ get_DCorAC_cap(char *model)
     return ONLP_PSU_CAPS_AC;
 }
 
-static bool
-model_has_fan(char* m)
-{
-    if (!AIM_STRCMP(m, "CRXT-T0T120")) {
-        return 0;
-    }
-    return 1;
-}
-
-
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
@@ -101,6 +91,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
 
     VALIDATE(id);
+    if (pid >= AIM_ARRAYSIZE(pinfo) || pid == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
+
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[pid]; /* Set the onlp_oid_hdr_t */
 
@@ -176,12 +170,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
         info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(pid + CHASSIS_THERMAL_COUNT);
-    }
-    if (model_has_fan(info->model)) {
-        val = 0;
-        if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_fan1_speed_rpm", bus, offset) == 0 && val) {
-            info->hdr.coids[1] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
-        }
     }
 
     return ret;
