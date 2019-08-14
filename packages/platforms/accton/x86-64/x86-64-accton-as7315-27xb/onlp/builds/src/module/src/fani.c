@@ -187,6 +187,9 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     VALIDATE(id);
 
     fid = ONLP_OID_ID_GET(id);
+    if (fid >= AIM_ARRAYSIZE(finfo) || fid == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
     *info = finfo[fid];
 
     switch (fid)
