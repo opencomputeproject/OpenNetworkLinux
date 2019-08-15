@@ -1,0 +1,530 @@
+From 1a2d774224abf9536be53031f476a1d0411b7f63 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 7 Aug 2019 09:57:18 +0000
+Subject: [PATCH 5.3 backport 2/3] mlxsw: minimal: Provide optimization for
+ module number detection
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Use new filed ‘num_of_modules’ in MGPIR register in order to get
+the number of modules supported by system directly from system
+configuration, instead of getting it from port to module mapping info.
+
+Taking this info through MGPIR register is faster and also does not
+depend on possible dynamic re-configuration of ports.
+In case of port dynamic re-configuration some modules can logically
+“disappeared” or “appeared” as a result of port split and un-spilt
+operations, which can cause missing of some modules, in case this info
+is taken from port to module mapping info.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   |  55 +++++------
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c |  44 +++++----
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      | 104 +++++----------------
+ drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c   |  41 ++++++--
+ drivers/net/ethernet/mellanox/mlxsw/reg.h          |  23 +++--
+ 5 files changed, 112 insertions(+), 155 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 5bd08650e0fc..9cb19ec47e4d 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -528,56 +528,47 @@ static int mlxsw_hwmon_fans_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 
+ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ {
+-	unsigned int module_count = mlxsw_core_max_ports(mlxsw_hwmon->core);
+-	u8 width, module, last_module = module_count;
+-	char pmlp_pl[MLXSW_REG_PMLP_LEN] = {0};
+-	int i, index;
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	int index, i;
+ 	int err;
+ 
+ 	if (!mlxsw_core_res_query_enabled(mlxsw_hwmon->core))
+ 		return 0;
+ 
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(mgpir), mgpir_pl);
++	if (err)
++		return err;
++
++	mlxsw_reg_mgpir_unpack(mgpir_pl, NULL, NULL, NULL,
++			       &mlxsw_hwmon->module_sensor_count);
++	if (!mlxsw_hwmon->module_sensor_count)
++		return 0;
++
+ 	/* Add extra attributes for module temperature. Sensor index is
+ 	 * assigned to sensor_count value, while all indexed before
+ 	 * sensor_count are already utilized by the sensors connected through
+ 	 * mtmp register by mlxsw_hwmon_temp_init().
+ 	 */
+-	index = mlxsw_hwmon->sensor_count;
+-	for (i = 1; i < module_count; i++) {
+-		mlxsw_reg_pmlp_pack(pmlp_pl, i);
+-		err = mlxsw_reg_query(mlxsw_hwmon->core, MLXSW_REG(pmlp),
+-				      pmlp_pl);
+-		if (err) {
+-			dev_err(mlxsw_hwmon->bus_info->dev, "Failed to read module index %d\n",
+-				i);
+-			return err;
+-		}
+-		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+-		if (!width)
+-			continue;
+-		module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
+-		/* Skip, if port belongs to the cluster */
+-		if (module == last_module)
+-			continue;
+-		last_module = module;
++	index = mlxsw_hwmon->sensor_count + mlxsw_hwmon->module_sensor_count;
++	mlxsw_hwmon->module_sensor_count += mlxsw_hwmon->sensor_count;
++	for (i = mlxsw_hwmon->sensor_count;
++	     i < mlxsw_hwmon->module_sensor_count; i++) {
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+-				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE, index,
+-				     index);
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE, i, i);
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+ 				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_FAULT,
+-				     index, index);
++				     i, i);
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+-				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT,
+-				     index, index);
++				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_CRIT, i,
++				     i);
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+ 				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_EMERG,
+-				     index, index);
++				     i, i);
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+ 				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE_LABEL,
+-				     index, index);
+-		index++;
++				     i, i);
+ 	}
+-	mlxsw_hwmon->module_sensor_count = index;
+ 
+ 	return 0;
+ }
+@@ -595,7 +586,7 @@ static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	if (err)
+ 		return 0;
+ 
+-	mlxsw_reg_mgpir_unpack(mgpir_pl, &gbox_num, NULL, NULL);
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &gbox_num, NULL, NULL, NULL);
+ 	if (!gbox_num)
+ 		return 0;
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 8051b62af38a..17a340aa9f75 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -111,6 +111,7 @@ struct mlxsw_thermal {
+ 	struct mlxsw_thermal_trip trips[MLXSW_THERMAL_NUM_TRIPS];
+ 	enum thermal_device_mode mode;
+ 	struct mlxsw_thermal_module *tz_module_arr;
++	u8 tz_module_num;
+ 	struct mlxsw_thermal_module *tz_gearbox_arr;
+ 	u8 tz_gearbox_num;
+ 	unsigned int tz_highest_score;
+@@ -720,23 +721,10 @@ static void mlxsw_thermal_module_tz_fini(struct thermal_zone_device *tzdev)
+ 
+ static int
+ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+-			  struct mlxsw_thermal *thermal, u8 local_port)
++			  struct mlxsw_thermal *thermal, u8 module)
+ {
+ 	struct mlxsw_thermal_module *module_tz;
+-	char pmlp_pl[MLXSW_REG_PMLP_LEN];
+-	u8 width, module;
+-	int err;
+-
+-	mlxsw_reg_pmlp_pack(pmlp_pl, local_port);
+-	err = mlxsw_reg_query(core, MLXSW_REG(pmlp), pmlp_pl);
+-	if (err)
+-		return err;
+ 
+-	width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+-	if (!width)
+-		return 0;
+-
+-	module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
+ 	module_tz = &thermal->tz_module_arr[module];
+ 	/* Skip if parent is already set (case of port split). */
+ 	if (module_tz->parent)
+@@ -764,26 +752,36 @@ static int
+ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ 			   struct mlxsw_thermal *thermal)
+ {
+-	unsigned int module_count = mlxsw_core_max_ports(core);
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
+ 	struct mlxsw_thermal_module *module_tz;
+ 	int i, err;
+ 
+ 	if (!mlxsw_core_res_query_enabled(core))
+ 		return 0;
+ 
+-	thermal->tz_module_arr = kcalloc(module_count,
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(core, MLXSW_REG(mgpir), mgpir_pl);
++	if (err)
++		return err;
++
++	mlxsw_reg_mgpir_unpack(mgpir_pl, NULL, NULL, NULL,
++			       &thermal->tz_module_num);
++	if (!thermal->tz_module_num)
++		return 0;
++
++	thermal->tz_module_arr = kcalloc(thermal->tz_module_num,
+ 					 sizeof(*thermal->tz_module_arr),
+ 					 GFP_KERNEL);
+ 	if (!thermal->tz_module_arr)
+ 		return -ENOMEM;
+ 
+-	for (i = 1; i < module_count; i++) {
++	for (i = 0; i < thermal->tz_module_num; i++) {
+ 		err = mlxsw_thermal_module_init(dev, core, thermal, i);
+ 		if (err)
+ 			goto err_unreg_tz_module_arr;
+ 	}
+ 
+-	for (i = 0; i < module_count - 1; i++) {
++	for (i = 0; i < thermal->tz_module_num; i++) {
+ 		module_tz = &thermal->tz_module_arr[i];
+ 		if (!module_tz->parent)
+ 			continue;
+@@ -795,7 +793,7 @@ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ 	return 0;
+ 
+ err_unreg_tz_module_arr:
+-	for (i = module_count - 1; i >= 0; i--)
++	for (i = thermal->tz_module_num - 1; i >= 0; i--)
+ 		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
+ 	kfree(thermal->tz_module_arr);
+ 	return err;
+@@ -804,13 +802,12 @@ mlxsw_thermal_modules_init(struct device *dev, struct mlxsw_core *core,
+ static void
+ mlxsw_thermal_modules_fini(struct mlxsw_thermal *thermal)
+ {
+-	unsigned int module_count = mlxsw_core_max_ports(thermal->core);
+ 	int i;
+ 
+ 	if (!mlxsw_core_res_query_enabled(thermal->core))
+ 		return;
+ 
+-	for (i = module_count - 1; i >= 0; i--)
++	for (i = thermal->tz_module_num - 1; i >= 0; i--)
+ 		mlxsw_thermal_module_fini(&thermal->tz_module_arr[i]);
+ 	kfree(thermal->tz_module_arr);
+ }
+@@ -858,7 +855,8 @@ mlxsw_thermal_gearboxes_init(struct device *dev, struct mlxsw_core *core,
+ 	if (err)
+ 		return 0;
+ 
+-	mlxsw_reg_mgpir_unpack(mgpir_pl, &thermal->tz_gearbox_num, NULL, NULL);
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &thermal->tz_gearbox_num, NULL, NULL,
++			       NULL);
+ 	if (!thermal->tz_gearbox_num)
+ 		return 0;
+ 
+@@ -995,7 +993,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 	if (err)
+ 		goto err_unreg_modules_tzdev;
+ 
+-	thermal->mode = THERMAL_DEVICE_ENABLED;
++	thermal->mode = THERMAL_DEVICE_DISABLED;
+ 	*p_thermal = thermal;
+ 	return 0;
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 0aa3abc974ff..564b85c06a9a 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -89,23 +89,6 @@ static const struct ethtool_ops mlxsw_m_port_ethtool_ops = {
+ };
+ 
+ static int
+-mlxsw_m_port_module_info_get(struct mlxsw_m *mlxsw_m, u8 local_port,
+-			     u8 *p_module, u8 *p_width)
+-{
+-	char pmlp_pl[MLXSW_REG_PMLP_LEN];
+-	int err;
+-
+-	mlxsw_reg_pmlp_pack(pmlp_pl, local_port);
+-	err = mlxsw_reg_query(mlxsw_m->core, MLXSW_REG(pmlp), pmlp_pl);
+-	if (err)
+-		return err;
+-	*p_module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
+-	*p_width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+-
+-	return 0;
+-}
+-
+-static int
+ mlxsw_m_port_dev_addr_get(struct mlxsw_m_port *mlxsw_m_port)
+ {
+ 	struct mlxsw_m *mlxsw_m = mlxsw_m_port->mlxsw_m;
+@@ -158,7 +141,7 @@ mlxsw_m_port_create(struct mlxsw_m *mlxsw_m, u8 local_port, u8 module)
+ 	mlxsw_m_port = netdev_priv(dev);
+ 	mlxsw_m_port->dev = dev;
+ 	mlxsw_m_port->mlxsw_m = mlxsw_m;
+-	mlxsw_m_port->local_port = local_port;
++	mlxsw_m_port->local_port = module;
+ 	mlxsw_m_port->module = module;
+ 
+ 	dev->netdev_ops = &mlxsw_m_port_netdev_ops;
+@@ -205,87 +188,48 @@ static void mlxsw_m_port_remove(struct mlxsw_m *mlxsw_m, u8 local_port)
+ 	mlxsw_core_port_fini(mlxsw_m->core, local_port);
+ }
+ 
+-static int mlxsw_m_port_module_map(struct mlxsw_m *mlxsw_m, u8 local_port,
+-				   u8 *last_module)
++static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ {
+-	u8 module, width;
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	int i;
+ 	int err;
+ 
+-	/* Fill out to local port mapping array */
+-	err = mlxsw_m_port_module_info_get(mlxsw_m, local_port, &module,
+-					   &width);
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(mlxsw_m->core, MLXSW_REG(mgpir), mgpir_pl);
+ 	if (err)
+ 		return err;
+ 
+-	if (!width)
++	mlxsw_reg_mgpir_unpack(mgpir_pl, NULL, NULL, NULL,
++			       &mlxsw_m->max_ports);
++	if (!mlxsw_m->max_ports)
+ 		return 0;
+-	/* Skip, if port belongs to the cluster */
+-	if (module == *last_module)
+-		return 0;
+-	*last_module = module;
+-	mlxsw_m->module_to_port[module] = ++mlxsw_m->max_ports;
+-
+-	return 0;
+-}
+ 
+-static void mlxsw_m_port_module_unmap(struct mlxsw_m *mlxsw_m, u8 module)
+-{
+-	mlxsw_m->module_to_port[module] = -1;
+-}
+-
+-static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+-{
+-	unsigned int max_ports = mlxsw_core_max_ports(mlxsw_m->core);
+-	u8 last_module = max_ports;
+-	int i;
+-	int err;
+-
+-	mlxsw_m->ports = kcalloc(max_ports, sizeof(*mlxsw_m->ports),
++	mlxsw_m->ports = kcalloc(mlxsw_m->max_ports, sizeof(*mlxsw_m->ports),
+ 				 GFP_KERNEL);
+ 	if (!mlxsw_m->ports)
+ 		return -ENOMEM;
+ 
+-	mlxsw_m->module_to_port = kmalloc_array(max_ports, sizeof(int),
++	mlxsw_m->module_to_port = kmalloc_array(mlxsw_m->max_ports, sizeof(int),
+ 						GFP_KERNEL);
+ 	if (!mlxsw_m->module_to_port) {
+ 		err = -ENOMEM;
+ 		goto err_module_to_port_alloc;
+ 	}
+ 
+-	/* Invalidate the entries of module to local port mapping array */
+-	for (i = 0; i < max_ports; i++)
+-		mlxsw_m->module_to_port[i] = -1;
+-
+-	/* Fill out module to local port mapping array */
+-	for (i = 1; i < max_ports; i++) {
+-		err = mlxsw_m_port_module_map(mlxsw_m, i, &last_module);
+-		if (err)
+-			goto err_module_to_port_map;
+-	}
+-
+ 	/* Create port objects for each valid entry */
+-	for (i = 0; i < max_ports; i++) {
+-		if (mlxsw_m->module_to_port[i] > 0) {
+-			err = mlxsw_m_port_create(mlxsw_m,
+-						  mlxsw_m->module_to_port[i],
+-						  i);
+-			if (err)
+-				goto err_module_to_port_create;
+-		}
++	for (i = 0; i < mlxsw_m->max_ports; i++) {
++		mlxsw_m->module_to_port[i] = i;
++		err = mlxsw_m_port_create(mlxsw_m, mlxsw_m->module_to_port[i],
++					  i);
++		if (err)
++			goto err_module_to_port_create;
+ 	}
+ 
+ 	return 0;
+ 
+ err_module_to_port_create:
+-	for (i--; i >= 0; i--) {
+-		if (mlxsw_m->module_to_port[i] > 0)
+-			mlxsw_m_port_remove(mlxsw_m,
+-					    mlxsw_m->module_to_port[i]);
+-	}
+-	i = max_ports;
+-err_module_to_port_map:
+-	for (i--; i > 0; i--)
+-		mlxsw_m_port_module_unmap(mlxsw_m, i);
++	for (i--; i >= 0; i--)
++		mlxsw_m_port_remove(mlxsw_m, mlxsw_m->module_to_port[i]);
+ 	kfree(mlxsw_m->module_to_port);
+ err_module_to_port_alloc:
+ 	kfree(mlxsw_m->ports);
+@@ -294,16 +238,10 @@ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ 
+ static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m)
+ {
+-	unsigned int max_ports = mlxsw_core_max_ports(mlxsw_m->core);
+ 	int i;
+ 
+-	for (i = 0; i < max_ports; i++) {
+-		if (mlxsw_m->module_to_port[i] > 0) {
+-			mlxsw_m_port_remove(mlxsw_m,
+-					    mlxsw_m->module_to_port[i]);
+-			mlxsw_m_port_module_unmap(mlxsw_m, i);
+-		}
+-	}
++	for (i = 0; i < mlxsw_m->max_ports; i++)
++		mlxsw_m_port_remove(mlxsw_m, mlxsw_m->module_to_port[i]);
+ 
+ 	kfree(mlxsw_m->module_to_port);
+ 	kfree(mlxsw_m->ports);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index fdf2b796e724..49563a703d75 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -279,16 +279,36 @@ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ };
+ MODULE_DEVICE_TABLE(dmi, mlxsw_qsfp_dmi_table);
+ 
++static int mlxsw_qsfp_set_module_num(struct mlxsw_qsfp *mlxsw_qsfp)
++{
++	char pmlp_pl[MLXSW_REG_PMLP_LEN];
++	u8 width;
++	int i, err;
++
++	for (i = 1; i <= mlxsw_qsfp_num; i++) {
++		mlxsw_reg_pmlp_pack(pmlp_pl, i);
++		err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(pmlp),
++				      pmlp_pl);
++		if (err)
++			return err;
++		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
++		if (!width)
++			continue;
++		mlxsw_qsfp->module_count++;
++	}
++
++	return 0;
++}
++
+ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 		    const struct mlxsw_bus_info *mlxsw_bus_info,
+ 		    struct mlxsw_qsfp **p_qsfp)
+ {
+ 	struct device_attribute *dev_attr, *cpld_dev_attr;
+-	char pmlp_pl[MLXSW_REG_PMLP_LEN];
++	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
+ 	struct mlxsw_qsfp *mlxsw_qsfp;
+ 	struct bin_attribute *eeprom;
+ 	int i, count;
+-	u8 width;
+ 	int err;
+ 
+ 	if (!strcmp(mlxsw_bus_info->device_kind, "i2c"))
+@@ -305,16 +325,17 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	mlxsw_qsfp->bus_info = mlxsw_bus_info;
+ 	mlxsw_bus_info->dev->platform_data = mlxsw_qsfp;
+ 
+-	for (i = 1; i <= mlxsw_qsfp_num; i++) {
+-		mlxsw_reg_pmlp_pack(pmlp_pl, i);
+-		err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(pmlp),
+-				      pmlp_pl);
++	mlxsw_reg_mgpir_pack(mgpir_pl);
++	err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(mgpir), mgpir_pl);
++	if (err) {
++		err = mlxsw_qsfp_set_module_num(mlxsw_qsfp);
+ 		if (err)
+ 			return err;
+-		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+-		if (!width)
+-			continue;
+-		mlxsw_qsfp->module_count++;
++	} else {
++		mlxsw_reg_mgpir_unpack(mgpir_pl, NULL, NULL, NULL,
++			       &mlxsw_qsfp->module_count);
++		if (!mlxsw_qsfp->module_count)
++			return 0;
+ 	}
+ 
+ 	count = mlxsw_qsfp->module_count + 1;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index 31296d888fb8..a8cd53f068ce 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -8593,6 +8593,11 @@ static inline void mlxsw_reg_mprs_pack(char *payload, u16 parsing_depth,
+ 
+ MLXSW_REG_DEFINE(mgpir, MLXSW_REG_MGPIR_ID, MLXSW_REG_MGPIR_LEN);
+ 
++enum mlxsw_reg_mgpir_device_type {
++	MLXSW_REG_MGPIR_DEVICE_TYPE_NONE,
++	MLXSW_REG_MGPIR_DEVICE_TYPE_GEARBOX_DIE,
++};
++
+ /* device_type
+  * Access: RO
+  */
+@@ -8610,19 +8615,21 @@ MLXSW_ITEM32(reg, mgpir, devices_per_flash, 0x00, 16, 8);
+  */
+ MLXSW_ITEM32(reg, mgpir, num_of_devices, 0x00, 0, 8);
+ 
+-enum mlxsw_reg_mgpir_device_type {
+-	MLXSW_REG_MGPIR_TYPE_NONE,
+-	MLXSW_REG_MGPIR_TYPE_GEARBOX_DIE,
+-};
++/* num_of_modules
++ * Number of modules.
++ * Access: RO
++ */
++MLXSW_ITEM32(reg, mgpir, num_of_modules, 0x04, 0, 8);
+ 
+ static inline void mlxsw_reg_mgpir_pack(char *payload)
+ {
+ 	MLXSW_REG_ZERO(mgpir, payload);
+ }
+ 
+-static inline void mlxsw_reg_mgpir_unpack(char *payload, u8 *num_of_devices,
+-					  u8 *device_type,
+-					  u8 *devices_per_flash)
++static inline void
++mlxsw_reg_mgpir_unpack(char *payload, u8 *num_of_devices,
++		       enum mlxsw_reg_mgpir_device_type *device_type,
++		       u8 *devices_per_flash, u8 *num_of_modules)
+ {
+ 	if (num_of_devices)
+ 		*num_of_devices = mlxsw_reg_mgpir_num_of_devices_get(payload);
+@@ -8631,6 +8638,8 @@ static inline void mlxsw_reg_mgpir_unpack(char *payload, u8 *num_of_devices,
+ 	if (devices_per_flash)
+ 		*devices_per_flash =
+ 				mlxsw_reg_mgpir_devices_per_flash_get(payload);
++	if (num_of_modules)
++		*num_of_modules = mlxsw_reg_mgpir_num_of_modules_get(payload);
+ }
+ 
+ /* TNGCR - Tunneling NVE General Configuration Register
+-- 
+2.11.0
+
