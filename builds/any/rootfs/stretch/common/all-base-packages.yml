@@ -79,3 +79,11 @@
 - tcpdump
 - strace
 - sysstat
+- tmux
+- lm-sensors
+- hddtemp
+- bc
+- vim
+- htop
+- tree
+- memtester

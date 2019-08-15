@@ -16,12 +16,8 @@ packages:
     summary: Open Network Linux Root Filesystem
 
     files:
-      builds/rootfs-$ARCH.cpio.gz : $$PKG_INSTALL/
-      builds/rootfs-$ARCH.sqsh : $$PKG_INSTALL/
-      builds/manifest.json : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/rootfs-$ARCH.cpio.gz : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/rootfs-$ARCH.sqsh : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/manifest.json : $$PKG_INSTALL/
 
     changelog:  Change changes changes.,
-
-
-
-

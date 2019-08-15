@@ -1,0 +1,4 @@
+# These platforms rely on the older 3.2 iproc kernel (which it too old to build past jessie).
+# If these platforms are ported to the 4.14 iproc kernel then this restriction can be removed.
+
+dists: jessie

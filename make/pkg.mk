@@ -53,6 +53,11 @@ pkg:
 	$(ONL_V_GEN) $(ONLPM_ENVIRONMENT) NOBUILD=1 $(ONLPM) $(ONLPM_OPTS) --build all --arches $(ARCHES)
 
 
+#
+# Run the module autogen on all modules under the current directory.
+#
+autogen:
+	$(BUILDER)/tools/modtool.py --load-dir . --foreach-module 'make -C %(dir)s autogen'
 
 #
 # Generate a rule for all available packages

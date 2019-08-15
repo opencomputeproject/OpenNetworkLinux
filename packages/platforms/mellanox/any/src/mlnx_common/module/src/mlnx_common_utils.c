@@ -67,17 +67,17 @@ psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info, onlp_fan_info_t* fan_i
     /* Serial number */
     index += strlen(sanity_check);
     if (psu_info) {
-        strncpy(psu_info->serial, &data[index], sizeof(psu_info->serial));
+        aim_strlcpy(psu_info->serial, &data[index], sizeof(psu_info->serial));
     } else if (fan_info) {
-        strncpy(fan_info->serial, &data[index], sizeof(fan_info->serial));
+        aim_strlcpy(fan_info->serial, &data[index], sizeof(fan_info->serial));
     }
 
     /* Part number */
     index += serial_len;
     if (psu_info) {
-        strncpy(psu_info->model, &data[index], sizeof(psu_info->model));
+        aim_strlcpy(psu_info->model, &data[index], sizeof(psu_info->model));
     } else if (fan_info) {
-        strncpy(fan_info->model, &data[index], sizeof(fan_info->model));
+        aim_strlcpy(fan_info->model, &data[index], sizeof(fan_info->model));
     }
 
     return ONLP_STATUS_OK;

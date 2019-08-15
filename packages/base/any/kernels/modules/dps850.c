@@ -32,6 +32,7 @@
 #include <linux/sysfs.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/version.h>
 
 #define I2C_RW_RETRY_COUNT		10
 #define I2C_RW_RETRY_INTERVAL	60 /* ms */
@@ -254,7 +255,12 @@ static int dps850_probe(struct i2c_client *client,
 		goto exit_free;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "dps850",
+                                                      NULL, NULL, NULL);
+#else
 	data->hwmon_dev = hwmon_device_register(&client->dev);
+#endif
 	if (IS_ERR(data->hwmon_dev)) {
 		status = PTR_ERR(data->hwmon_dev);
 		goto exit_remove;

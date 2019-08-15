@@ -23,10 +23,10 @@
  *
  ***********************************************************/
 
-#ifndef __ONLPSIM_LOG_H__
-#define __ONLPSIM_LOG_H__
+#ifndef __ARM_ACCTON_AS4610_LOG_H__
+#define __ARM_ACCTON_AS4610_LOG_H__
 
 #define AIM_LOG_MODULE_NAME arm_accton_as4610
 #include <AIM/aim_log.h>
 
-#endif /* __ONLPSIM_LOG_H__ */
+#endif /* __ARM_ACCTON_AS4610_LOG_H__ */

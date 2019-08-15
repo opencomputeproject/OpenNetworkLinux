@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-config-platform.yml ARCH=amd64 VENDOR=lenovo BASENAME=x86-64-lenovo-ne2572 REVISION=r0

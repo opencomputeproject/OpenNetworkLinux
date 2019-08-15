@@ -71,7 +71,9 @@ led_light_mode_map_t led_map[] = {
     {LED_SYSTEM, LED_MODE_OFF,         ONLP_LED_MODE_OFF},
     {LED_SYSTEM, LED_MODE_GREEN,       ONLP_LED_MODE_GREEN},
     {LED_SYSTEM, LED_MODE_RED,         ONLP_LED_MODE_RED},
+    {LED_SYSTEM, LED_MODE_ORANGE,      ONLP_LED_MODE_ORANGE},
     {LED_SYSTEM, LED_MODE_RED_BLINK,   ONLP_LED_MODE_RED_BLINKING},
+    {LED_SYSTEM, LED_MODE_ORANGE_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
     {LED_SYSTEM, LED_MODE_GREEN_BLINK, ONLP_LED_MODE_GREEN_BLINKING},
     {LED_SYSTEM, LED_MODE_AUTO,        ONLP_LED_MODE_AUTO},
 
@@ -305,7 +307,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 
     mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
     /* Set the onlp_oid_hdr_t and capabilities */
-    *info = mlnx_platform_info->linfo[ONLP_OID_ID_GET(id)];
+    *info = mlnx_platform_info->linfo[local_id];
 
     /* Get LED mode */
     if (mc_get_kernel_ver() >= KERNEL_VERSION(4,9,30)) {

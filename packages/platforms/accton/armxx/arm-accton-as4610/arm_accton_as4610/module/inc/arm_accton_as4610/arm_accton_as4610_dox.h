@@ -28,8 +28,8 @@
  * arm_accton_as4610 Doxygen Header
  *
  ***********************************************************/
-#ifndef __ONLPSIM_DOX_H__
-#define __ONLPSIM_DOX_H__
+#ifndef __ARM_ACCTON_AS4610_DOX_H__
+#define __ARM_ACCTON_AS4610_DOX_H__
 
 /**
  * @defgroup arm_accton_as4610 arm_accton_as4610 - onlpsim Description
@@ -48,4 +48,4 @@ The documentation overview for this module should go here.
  *
  */
 
-#endif /* __ONLPSIM_DOX_H__ */
+#endif /* __ARM_ACCTON_AS4610_DOX_H__ */

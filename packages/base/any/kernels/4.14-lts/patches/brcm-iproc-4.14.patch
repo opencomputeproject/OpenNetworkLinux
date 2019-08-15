@@ -25301,7 +25301,7 @@ diff -uprN -EbwB --no-dereference -X /home/kevin/BRCM_DISK/disk1/xldksw/INTERNAL
  #define BSPI_BPP_MODE_SELECT_MASK		BIT(8)
  #define BSPI_BPP_ADDR_SELECT_MASK		BIT(16)
  
--#define BSPI_READ_LENGTH			512
+-#define BSPI_READ_LENGTH			256
 +//#define BSPI_READ_LENGTH			512
  
  /* MSPI register offsets */
