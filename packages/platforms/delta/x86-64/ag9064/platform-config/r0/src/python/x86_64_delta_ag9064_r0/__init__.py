@@ -8,9 +8,21 @@ class OnlPlatform_x86_64_delta_ag9064_r0(OnlPlatformDelta,
     SYS_OBJECT_ID=".9064.1"
     
     def baseconfig(self):
-        
-        # initiate eeprom
-        self.new_i2c_device('24c02', 0x56, 0)
-        
+
+        #Insert MEI-I2C module
+        self.insmod('i2c-mei')
+
+        #Insert qsfp mosule
+        self.insmod('optoe')
+
+        #Insert platform module
+        self.insmod('delta_ag9064_platform')
+
+        #Insert cpld module
+        self.insmod('delta_ag9064_cpld')
+
+        #Insert swpld module
+        self.insmod('delta_ag9064_swpld')
+
         return True
 
