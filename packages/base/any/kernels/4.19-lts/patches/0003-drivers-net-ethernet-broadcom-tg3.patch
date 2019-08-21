@@ -1,10 +1,10 @@
-diff -Naur a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
---- a/drivers/net/ethernet/broadcom/tg3.c	2019-03-27 13:13:56.000000000 +0800
-+++ b/drivers/net/ethernet/broadcom/tg3.c	2019-04-26 11:08:20.307848693 +0800
-@@ -11734,6 +11734,12 @@
+diff -urpN a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom/tg3.c
+--- a/drivers/net/ethernet/broadcom/tg3.c	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/net/ethernet/broadcom/tg3.c	2019-08-21 20:35:43.091346979 +0000
+@@ -11765,6 +11765,12 @@ static int tg3_open(struct net_device *d
  		pci_set_power_state(tp->pdev, PCI_D3hot);
  	}
-
+ 
 +	if (tg3_asic_rev(tp) == ASIC_REV_5720){
 +		/*Fixed ASIC_REV_5720 support 100M/10M feature */
 +       __tg3_writephy(tp, 0x8, 0x10, 0x1d0);
@@ -13,4 +13,4 @@ diff -Naur a/drivers/net/ethernet/broadcom/tg3.c b/drivers/net/ethernet/broadcom
 +
  	return err;
  }
-
+ 
