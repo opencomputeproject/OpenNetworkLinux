@@ -3,3 +3,6 @@
 0003-drivers-net-ethernet-broadcom-tg3.patch
 driver-ixgbe-external-phy.patch
 driver-hwmon-max6620.patch
+0001-mlx-amendments-fixes-new-kernel-alignmnet.patch
+0002-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
+0003-mlxsw-new-features-amendments-new-kernel-alignment.patch
