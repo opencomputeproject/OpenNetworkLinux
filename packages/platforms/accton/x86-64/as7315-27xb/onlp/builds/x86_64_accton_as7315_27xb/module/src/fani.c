@@ -136,16 +136,49 @@ onlp_fani_init(void)
     return ONLP_STATUS_OK;
 }
 
+int
+fani_enable_fan(int fid, bool enable)
+{
+    char path[256];
+
+    ONLPLIB_SNPRINTF(path, sizeof(path)-1,
+                     FAN_BOARD_PATH"fan%d_enable", fid);
+
+    if (onlp_file_write_int(!!enable, path) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return ONLP_STATUS_OK;
+}
+
+int
+fani_is_fan_enabled(int fid, bool *enable)
+{
+    char path[256];
+    int val;
+
+    ONLPLIB_SNPRINTF(path, sizeof(path)-1,
+                     FAN_BOARD_PATH"fan%d_enable", fid);
+    if (onlp_file_read_int(&val, path) < 0) {
+        AIM_LOG_ERROR("Unable to get data from file (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    *enable = val;
+    return ONLP_STATUS_OK;
+}
+
+
+
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 {
-    bool has_fan_control;
+    bool has_fan_control, enable;
 
     has_fan_control = _has_fan_control();
 
     if (!has_fan_control) {
         info->status |= ONLP_FAN_STATUS_PRESENT;
-        info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
         info->status |=  ONLP_FAN_STATUS_F2B;
         info->rpm = 11500;
         info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
@@ -179,7 +212,12 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
             return ONLP_STATUS_E_INTERNAL;
         }
 
-        if (value > 0) {
+        /*True fault if fan is enabled.*/
+        if( fani_is_fan_enabled(fid,&enable) != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (value && enable) {
             info->status |= ONLP_FAN_STATUS_FAILED;
             return ONLP_STATUS_OK;
         }
@@ -250,10 +288,11 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
         VALIDATE(id);
         fid = ONLP_OID_ID_GET(id);
-
-        /* reject p=0 (p=0, stop fan) */
+        /* Cannot set 0, CPLD treat 0 as full speed.
+         * Contrast to set duty, turn the fan off.
+         */
         if (p == 0) {
-            return ONLP_STATUS_E_INVALID;
+            return fani_enable_fan(fid, 0);
         }
 
         i = get_fan_dir();

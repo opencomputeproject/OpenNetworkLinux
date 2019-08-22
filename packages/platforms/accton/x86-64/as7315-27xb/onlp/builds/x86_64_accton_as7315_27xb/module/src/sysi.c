@@ -101,3 +101,221 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
+
+
+
+
+
+#define FAN_DUTY_MAX  (100)
+
+
+
+extern int fani_enable_fan(int fid, bool enable) ;
+extern int fani_is_fan_enabled(int fid, bool *enable);
+
+static int
+_set_all_fans_pwm(int duty)
+{
+    int i, ret;
+    int duties_nor[CHASSIS_FAN_COUNT] = {[0 ... CHASSIS_FAN_COUNT-1] = duty};
+    /*Low-duty may not drive fan rotating.*/
+    int duties_low[CHASSIS_FAN_COUNT] = {0, 41, 0, 41, 0};
+    int *duties;
+
+    if (duty <= 20) {
+        duties = duties_low;
+    } else {
+        duties = duties_nor;
+    }
+
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i+1), duties[i]);
+        printf("set Fan %d = %d\n", i, duties[i]);
+
+        if (ret != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to onlp_fani_percentage_set(%d), ret:%d\r\n",
+                          i+1, ret);
+            return ret;
+        }
+        ret = fani_enable_fan(i+1, !!duties[i]);
+        if (ret != ONLP_STATUS_OK) {
+            return ret;
+        }
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+static int
+sysi_fanctrl_fan_fault_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                              onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                              int *adjusted)
+{
+    int i, fault;
+    bool enable;
+
+    *adjusted = 0;
+    /* Bring fan speed to FAN_DUTY_MAX if any fan is not operational */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        if (!ONLP_FAN_STATUS_PRESENT(fi[i])) {
+            *adjusted = 1;
+            break;
+        }
+
+        /*True fault if fan is enabled.*/
+        if( fani_is_fan_enabled(i+1,&enable) != ONLP_STATUS_OK) {
+            *adjusted = 1;
+            break;
+        }
+        fault = !!ONLP_FAN_STATUS_FAILED(fi[i]);
+
+        printf("%d: fault:%d enable:%d\n", i, fault, enable);
+        if (fault && enable) {
+            *adjusted = 1;
+            break;
+        }
+    }
+
+    if (*adjusted) {
+        return _set_all_fans_pwm(FAN_DUTY_MAX);
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+
+
+
+static int
+sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                         onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                         int *adjusted)
+{
+    static int last_temp = 0;
+    static int last_duty = -1;
+    int i, duty, *threshs, ret;
+    int temp = 0;
+    enum trend_e {E_FALL, E_RISE, E_TRENDS} trend = 0;
+    //int policys[E_TRENDS][2] = {{1000, 33000}, {11000, 43000}};
+    //int duties[] = {20, 30, 100};
+    int policys[E_TRENDS][2] = {{33500, 34500}, {34000, 35000}};
+    int duties[] = {20, 30, 50};
+
+    temp = ti[2].mcelsius;  /*Take LM75 0x4a*/
+    if (temp == last_temp) {
+        return ONLP_STATUS_OK;
+    }
+    printf("%d => %d\n", last_temp, temp);
+    trend = (temp - last_temp) > 0 ? E_RISE: E_FALL;
+    last_temp = temp;
+
+    duty = last_duty;
+    threshs = policys[trend];
+    if (trend == E_RISE) {
+        for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
+            printf("%d: temp:%d, threshs:%d\n", i, temp, threshs[i]);
+            if (temp > threshs[i]) {
+                duty = duties[i+1];
+            }
+        }
+
+    } else if (trend == E_FALL) {
+        for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
+            printf("%d: temp:%d, threshs:%d\n", i, temp, threshs[i]);
+            if (temp < threshs[i]) {
+                duty = duties[i];
+                break;
+            }
+        }
+
+    }
+
+    printf("trend:%d, duty:%d\n", trend, duty);
+
+    if (last_duty == duty) {
+        return ONLP_STATUS_OK;
+    } else {
+        *adjusted = 1;
+        ret = _set_all_fans_pwm(duty);
+        if (ret == ONLP_STATUS_OK) {
+            last_duty = duty;
+        }
+        return ret;
+    }
+}
+
+
+static int
+sysi_fanctrl_thermal_shutdown_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                                     onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                                     int *adjusted)
+{
+    /*Not implemented yet.*/
+    *adjusted = 0;
+    return ONLP_STATUS_OK;
+}
+
+typedef int (*fan_control_policy)(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                                  onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                                  int *adjusted);
+
+fan_control_policy fan_control_policies[] = {
+    sysi_fanctrl_thermal_shutdown_policy,
+    sysi_fanctrl_fan_fault_policy,
+    sysi_fanctrl_main_policy,
+};
+
+int
+onlp_sysi_platform_manage_fans(void)
+{
+    int i, rc;
+    onlp_fan_info_t fi[CHASSIS_FAN_COUNT];
+    onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT];
+
+    memset(fi, 0, sizeof(fi));
+    memset(ti, 0, sizeof(ti));
+
+    /* Get fan status
+     */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        rc = onlp_fani_info_get(ONLP_FAN_ID_CREATE(i+1), &fi[i]);
+
+        if (rc != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to get fan(%d) status\r\n", i+1);
+            _set_all_fans_pwm(FAN_DUTY_MAX);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    /* Get thermal sensor status
+     */
+    for (i = 0; i < CHASSIS_THERMAL_COUNT; i++) {
+        rc = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i+1), &ti[i]);
+
+        if (rc != ONLP_STATUS_OK) {
+            _set_all_fans_pwm(FAN_DUTY_MAX);
+            AIM_LOG_ERROR("Unable to get thermal(%d) status\r\n", i+1);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    /* Apply thermal policy according the policy list,
+     * If fan duty is adjusted by one of the policies, skip the others
+     */
+    for (i = 0; i < AIM_ARRAYSIZE(fan_control_policies); i++) {
+        int adjusted = 0;
+
+        printf("policy:%d\n", i);
+
+        rc = fan_control_policies[i](fi, ti, &adjusted);
+        if (!adjusted) {
+            continue;
+        }
+
+        return rc;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+
