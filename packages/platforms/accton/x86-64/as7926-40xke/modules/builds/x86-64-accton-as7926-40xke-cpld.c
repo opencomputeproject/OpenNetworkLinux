@@ -51,6 +51,11 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 
+static ssize_t access(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_version(struct device *dev, struct device_attribute *da,
+            char *buf);
+
 struct as7926_40xke_cpld_data {
     struct device      *hwmon_dev;
     struct mutex        update_lock;
