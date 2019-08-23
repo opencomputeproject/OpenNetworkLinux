@@ -130,8 +130,6 @@ _set_all_fans_pwm(int duty)
 
     for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
         ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i+1), duties[i]);
-        printf("set Fan %d = %d\n", i, duties[i]);
-
         if (ret != ONLP_STATUS_OK) {
             AIM_LOG_ERROR("Unable to onlp_fani_percentage_set(%d), ret:%d\r\n",
                           i+1, ret);
@@ -168,8 +166,6 @@ sysi_fanctrl_fan_fault_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
             break;
         }
         fault = !!ONLP_FAN_STATUS_FAILED(fi[i]);
-
-        printf("%d: fault:%d enable:%d\n", i, fault, enable);
         if (fault && enable) {
             *adjusted = 1;
             break;
@@ -183,9 +179,6 @@ sysi_fanctrl_fan_fault_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     return ONLP_STATUS_OK;
 }
 
-
-
-
 static int
 sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                          onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
@@ -195,33 +188,28 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     static int last_duty = -1;
     int i, duty, *threshs, ret;
     int temp = 0;
-    enum trend_e {E_FALL, E_RISE, E_TRENDS} trend = 0;
-    //int policys[E_TRENDS][2] = {{1000, 33000}, {11000, 43000}};
-    //int duties[] = {20, 30, 100};
-    int policys[E_TRENDS][2] = {{33500, 34500}, {34000, 35000}};
-    int duties[] = {20, 30, 50};
+    enum trend_e {E_TREND_FALL, E_TREND_RISE, E_TRENDS} trend = 0;
+    int policys[E_TRENDS][2] = {{1000, 33000}, {11000, 43000}};
+    int duties[] = {20, 30, 100};
 
     temp = ti[2].mcelsius;  /*Take LM75 0x4a*/
     if (temp == last_temp) {
         return ONLP_STATUS_OK;
     }
-    printf("%d => %d\n", last_temp, temp);
-    trend = (temp - last_temp) > 0 ? E_RISE: E_FALL;
+    trend = (temp - last_temp) > 0 ? E_TREND_RISE: E_TREND_FALL;
     last_temp = temp;
 
     duty = last_duty;
     threshs = policys[trend];
-    if (trend == E_RISE) {
+    if (trend == E_TREND_RISE) {
         for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
-            printf("%d: temp:%d, threshs:%d\n", i, temp, threshs[i]);
             if (temp > threshs[i]) {
                 duty = duties[i+1];
             }
         }
 
-    } else if (trend == E_FALL) {
+    } else if (trend == E_TREND_FALL) {
         for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
-            printf("%d: temp:%d, threshs:%d\n", i, temp, threshs[i]);
             if (temp < threshs[i]) {
                 duty = duties[i];
                 break;
@@ -229,8 +217,6 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
         }
 
     }
-
-    printf("trend:%d, duty:%d\n", trend, duty);
 
     if (last_duty == duty) {
         return ONLP_STATUS_OK;
@@ -304,9 +290,6 @@ onlp_sysi_platform_manage_fans(void)
      */
     for (i = 0; i < AIM_ARRAYSIZE(fan_control_policies); i++) {
         int adjusted = 0;
-
-        printf("policy:%d\n", i);
-
         rc = fan_control_policies[i](fi, ti, &adjusted);
         if (!adjusted) {
             continue;
