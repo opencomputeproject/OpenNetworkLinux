@@ -70,7 +70,7 @@ static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index)   	MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index)   		MODULE_RXLOS_##index
 
-enum as7926_40xke_cpld1_sysfs_attributes {
+enum as7926_40xke_cpld_sysfs_attributes {
 	/* transceiver attributes */
 	TRANSCEIVER_PRESENT_ATTR_ID(1),
 	TRANSCEIVER_PRESENT_ATTR_ID(2),
@@ -214,6 +214,13 @@ DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(53);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(54);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(55);
 
+static struct attribute *as7926_40xke_cpld1_attributes[] = {
+    &sensor_dev_attr_version.dev_attr.attr,
+    &sensor_dev_attr_access.dev_attr.attr,
+	NULL
+};
+
+
 static struct attribute *as7926_40xke_cpld2_attributes[] = {
 	/* transceiver attributes */
 	DECLARE_TRANSCEIVER_ATTR(1),
@@ -289,6 +296,12 @@ static struct attribute *as7926_40xke_cpld4_attributes[] = {
     &sensor_dev_attr_access.dev_attr.attr,	
     NULL
 };
+
+static const struct attribute_group as7926_40xke_cpld1_group = {
+	.attrs = as7926_40xke_cpld1_attributes,
+};
+
+
 
 static const struct attribute_group as7926_40xke_cpld2_group = {
 	.attrs = as7926_40xke_cpld2_attributes,
@@ -584,6 +597,8 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr, c
 	
 	mutex_lock(&data->update_lock);
     switch(data->index) {
+        case 0: status = as7926_40xke_cpld_read(11,0x60, 0x1);
+            break;
         case 1: status = as7926_40xke_cpld_read(12,0x62, 0x1);
             break;
         case 2: status = as7926_40xke_cpld_read(13,0x63, 0x1);
@@ -633,6 +648,8 @@ static int as7926_40xke_cpld_probe(struct i2c_client *client,
     
 	/* Register sysfs hooks */
     switch(data->index) {
+        case 0: status = sysfs_create_group(&client->dev.kobj, &as7926_40xke_cpld1_group);
+                break;
         case 1: status = sysfs_create_group(&client->dev.kobj, &as7926_40xke_cpld2_group);
                 break;
         case 2: status = sysfs_create_group(&client->dev.kobj, &as7926_40xke_cpld3_group);
@@ -660,6 +677,7 @@ static int as7926_40xke_cpld_probe(struct i2c_client *client,
     return 0;
 
 exit_remove:
+    sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld1_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld2_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld3_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld4_group);
@@ -675,6 +693,7 @@ static int as7926_40xke_cpld_remove(struct i2c_client *client)
     struct as7926_40xke_cpld_data *data = i2c_get_clientdata(client);
 
     hwmon_device_unregister(data->hwmon_dev);
+    sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld1_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld2_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld3_group);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_cpld4_group);
@@ -685,6 +704,7 @@ static int as7926_40xke_cpld_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id as7926_40xke_cpld_id[] = {
+    { "as7926_40xke_cpld1", 0 },
     { "as7926_40xke_cpld2", 1 },
     { "as7926_40xke_cpld3", 2 },
     { "as7926_40xke_cpld4", 3 },

@@ -45,7 +45,6 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod('ym2651y')
-        self.insmod('accton_i2c_cpld')
         for m in [ 'fan', 'cpld', 'psu', 'leds']:
             self.insmod("x86-64-accton-as7926-40xke-%s.ko" % m)
 
@@ -90,7 +89,7 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
                 ('pca9548', 0x74, 75),
                 
                 #initiate CPLD
-                ('accton_i2c_cpld',    0x60, 11),
+                ('as7926_40xke_cpld1', 0x60, 11),
                 ('as7926_40xke_cpld2', 0x62, 12),
                 ('as7926_40xke_cpld3', 0x63, 13),
                 ('as7926_40xke_cpld4', 0x64, 76),                

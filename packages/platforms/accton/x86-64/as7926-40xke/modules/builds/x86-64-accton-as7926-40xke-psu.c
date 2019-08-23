@@ -34,8 +34,14 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
+#define LED_CPLD_I2C_BUS_NUM         11
+#define LED_CNTRLER_I2C_ADDRESS		(0x60)
+
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
-extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
+
+extern int as7926_40xke_cpld_read(int bus_num, unsigned short cpld_addr, u8 reg);
+
+
 
 /* Addresses scanned 
  */
@@ -200,7 +206,7 @@ static struct as7926_40xke_psu_data *as7926_40xke_psu_update_device(struct devic
         dev_dbg(&client->dev, "Starting as7926_40xke update\n");
 
         /* Read psu present */
-        psu_present = accton_i2c_cpld_read(0x60, 0x51);
+        psu_present=as7926_40xke_cpld_read(LED_CPLD_I2C_BUS_NUM, LED_CNTRLER_I2C_ADDRESS, 0x51);
         
         if (psu_present < 0) {
             dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", psu_present);
@@ -211,7 +217,7 @@ static struct as7926_40xke_psu_data *as7926_40xke_psu_update_device(struct devic
         }
         
         /* Read psu power good */
-        power_good = accton_i2c_cpld_read(0x60, 0x52);
+        power_good = as7926_40xke_cpld_read(LED_CPLD_I2C_BUS_NUM, LED_CNTRLER_I2C_ADDRESS, 0x52);
         
         if (power_good < 0) {
             dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", power_good);
