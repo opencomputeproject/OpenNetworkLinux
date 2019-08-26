@@ -1,7 +1,6 @@
-diff --git a/drivers/i2c/muxes/Kconfig b/drivers/i2c/muxes/Kconfig
-index 0f5c8fc..f93099c 100644
---- a/drivers/i2c/muxes/Kconfig
-+++ b/drivers/i2c/muxes/Kconfig
+diff -urpN a/drivers/i2c/muxes/Kconfig b/drivers/i2c/muxes/Kconfig
+--- a/drivers/i2c/muxes/Kconfig	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/i2c/muxes/Kconfig	2019-08-21 17:52:53.157929606 +0000
 @@ -73,6 +73,13 @@ config I2C_MUX_PCA954x
  	  This driver can also be built as a module.  If so, the module
  	  will be called i2c-mux-pca954x.
@@ -16,11 +15,10 @@ index 0f5c8fc..f93099c 100644
  config I2C_MUX_PINCTRL
  	tristate "pinctrl-based I2C multiplexer"
  	depends on PINCTRL
-diff --git a/drivers/i2c/muxes/i2c-mux-pca954x.c b/drivers/i2c/muxes/i2c-mux-pca954x.c
-index 7b992db..bdca051 100644
---- a/drivers/i2c/muxes/i2c-mux-pca954x.c
-+++ b/drivers/i2c/muxes/i2c-mux-pca954x.c
-@@ -218,8 +218,10 @@ static int pca954x_deselect_mux(struct i2c_mux_core *muxc, u32 chan)
+diff -urpN a/drivers/i2c/muxes/i2c-mux-pca954x.c b/drivers/i2c/muxes/i2c-mux-pca954x.c
+--- a/drivers/i2c/muxes/i2c-mux-pca954x.c	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/i2c/muxes/i2c-mux-pca954x.c	2019-08-21 17:52:53.157929606 +0000
+@@ -255,8 +255,10 @@ static int pca954x_deselect_mux(struct i
  	struct pca954x *data = i2c_mux_priv(muxc);
  	struct i2c_client *client = data->client;
  
@@ -31,4 +29,3 @@ index 7b992db..bdca051 100644
  
  	/* Deselect active channel */
  	data->last_chan = 0;
-

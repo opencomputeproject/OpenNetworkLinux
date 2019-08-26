@@ -3,5 +3,3 @@
 0003-drivers-net-ethernet-broadcom-tg3.patch
 driver-ixgbe-external-phy.patch
 driver-hwmon-max6620.patch
-driver-hwmon-max6620-fix-rpm-calc.patch
-driver-hwmon-max6620-update.patch

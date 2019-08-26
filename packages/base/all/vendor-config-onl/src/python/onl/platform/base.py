@@ -257,7 +257,7 @@ class OnlPlatformBase(object):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
             data = {}
-            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine.conf; set | egrep ^onie_.*=" """, shell=True)
+            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine*.conf; set | egrep ^onie_.*=" """, shell=True)
             for entry in mcconf.split():
                 (k,e,v) = entry.partition('=')
                 if v and (v.startswith("'") or v.startswith('"')):
@@ -525,11 +525,11 @@ class OnlPlatformPortConfig_32x100(object):
 class OnlPlatformPortConfig_64x100(object):
     PORT_COUNT=64
     PORT_CONFIG="64x100"
-    
+
 class OnlPlatformPortConfig_80x100(object):
     PORT_COUNT=80
     PORT_CONFIG="80x100"
-    
+
 class OnlPlatformPortConfig_128x100(object):
     PORT_COUNT=128
     PORT_CONFIG="128x100"
@@ -577,4 +577,3 @@ class OnlPlatformPortConfig_46x10_6x100(object):
 class OnlPlatformPortConfig_20x10_4x25_3x100(object):
     PORT_COUNT=27
     PORT_CONFIG="20x10 + 4x25 + 3x100"
-

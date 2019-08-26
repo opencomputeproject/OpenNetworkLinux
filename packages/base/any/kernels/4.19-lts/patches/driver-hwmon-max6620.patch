@@ -1,20 +1,7 @@
-Driver for MAX6620 Fan sensor
-
-From: Cumulus Networks <support@cumulusnetworks.com>
-
-
----
- drivers/hwmon/Kconfig   |   10 +
- drivers/hwmon/Makefile  |    1 
- drivers/hwmon/max6620.c |  702 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 713 insertions(+)
- create mode 100644 drivers/hwmon/max6620.c
-
-diff --git a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
-index 02d3d85..ca38e05 100644
---- a/drivers/hwmon/Kconfig
-+++ b/drivers/hwmon/Kconfig
-@@ -784,6 +784,16 @@ config SENSORS_MAX6650
+diff -urpN a/drivers/hwmon/Kconfig b/drivers/hwmon/Kconfig
+--- a/drivers/hwmon/Kconfig	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/hwmon/Kconfig	2019-08-21 20:40:03.434307483 +0000
+@@ -905,6 +905,16 @@ config SENSORS_MAX6650
  	  This driver can also be built as a module.  If so, the module
  	  will be called max6650.
  
@@ -31,24 +18,21 @@ index 02d3d85..ca38e05 100644
  config SENSORS_MAX6697
  	tristate "Maxim MAX6697 and compatibles"
  	depends on I2C
-diff --git a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
-index 3dc0f02..8837a7b 100644
---- a/drivers/hwmon/Makefile
-+++ b/drivers/hwmon/Makefile
-@@ -111,6 +111,7 @@ obj-$(CONFIG_SENSORS_MAX197)	+= max197.o
+diff -urpN a/drivers/hwmon/Makefile b/drivers/hwmon/Makefile
+--- a/drivers/hwmon/Makefile	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/hwmon/Makefile	2019-08-21 20:40:03.434307483 +0000
+@@ -124,6 +124,7 @@ obj-$(CONFIG_SENSORS_MAX6621)	+= max6621
  obj-$(CONFIG_SENSORS_MAX6639)	+= max6639.o
  obj-$(CONFIG_SENSORS_MAX6642)	+= max6642.o
  obj-$(CONFIG_SENSORS_MAX6650)	+= max6650.o
 +obj-$(CONFIG_SENSORS_MAX6620)	+= max6620.o
  obj-$(CONFIG_SENSORS_MAX6697)	+= max6697.o
+ obj-$(CONFIG_SENSORS_MAX31790)	+= max31790.o
  obj-$(CONFIG_SENSORS_MC13783_ADC)+= mc13783-adc.o
- obj-$(CONFIG_SENSORS_MCP3021)	+= mcp3021.o
-diff --git a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
-new file mode 100644
-index 0000000..3c337c7
---- /dev/null
-+++ b/drivers/hwmon/max6620.c
-@@ -0,0 +1,702 @@
+diff -urpN a/drivers/hwmon/max6620.c b/drivers/hwmon/max6620.c
+--- a/drivers/hwmon/max6620.c	1970-01-01 00:00:00.000000000 +0000
++++ b/drivers/hwmon/max6620.c	2019-08-21 20:40:03.438307405 +0000
+@@ -0,0 +1,686 @@
 +/*
 + * max6620.c - Linux Kernel module for hardware monitoring.
 + *
@@ -97,6 +81,8 @@ index 0000000..3c337c7
 +
 +/* clock: The clock frequency of the chip the driver should assume */
 +static int clock = 8192;
++static u32 sr = 2;
++static u32 np = 2;
 +
 +module_param(clock, int, S_IRUGO);
 +
@@ -232,7 +218,7 @@ index 0000000..3c337c7
 +		.name	= "max6620",
 +	},
 +	.probe		= max6620_probe,
-+	.remove		= __devexit_p(max6620_remove),
++	.remove		= max6620_remove,
 +	.id_table	= max6620_id,
 +	.address_list	= normal_i2c,
 +};
@@ -264,20 +250,21 @@ index 0000000..3c337c7
 +
 +	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 +	struct max6620_data *data = max6620_update_device(dev);
-+	int rpm;
++	struct i2c_client *client = to_i2c_client(dev);
++	u32 rpm = 0;
++	u32 tach = 0;
++	u32 tach1 = 0;
++	u32 tach2 = 0;
 +
-+	/*
-+	 * Calculation details:
-+	 *
-+	 * Each tachometer counts over an interval given by the "count"
-+	 * register (0.25, 0.5, 1 or 2 seconds). This module assumes
-+	 * that the fans produce two pulses per revolution (this seems
-+	 * to be the most common).
-+	 */
-+	if(data->tach[attr->index] == 0 || data->tach[attr->index] == 255) {
++	tach1 = i2c_smbus_read_byte_data(client, tach_reg[attr->index]);
++	tach1 = (tach1 << 3) & 0x7f8;
++	tach2 = i2c_smbus_read_byte_data(client, tach_reg[attr->index] + 1);
++	tach2 = (tach2 >> 5) & 0x7;
++	tach = tach1 | tach2;
++	if (tach == 0) {
 +		rpm = 0;
 +	} else {
-+		rpm = ((clock / (data->tach[attr->index] << 3)) * 30 * DIV_FROM_REG(data->fandyn[attr->index]));
++		rpm = (60 * sr * clock)/(tach * np);
 +	}
 +
 +	return sprintf(buf, "%d\n", rpm);
@@ -287,22 +274,21 @@ index 0000000..3c337c7
 +
 +	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 +	struct max6620_data *data = max6620_update_device(dev);
-+	int kscale, ktach, rpm;
++	struct i2c_client *client = to_i2c_client(dev);
++	u32 rpm;
++	u32 target;
++	u32 target1;
++	u32 target2;
 +
-+	/*
-+	 * Use the datasheet equation:
-+	 *
-+	 *    FanSpeed = KSCALE x fCLK / [256 x (KTACH + 1)]
-+	 *
-+	 * then multiply by 60 to give rpm.
-+	 */
-+
-+	kscale = DIV_FROM_REG(data->fandyn[attr->index]);
-+	ktach = data->target[attr->index];
-+	if(ktach == 0) {
++	target1 = i2c_smbus_read_byte_data(client, target_reg[attr->index]);
++	target1 = (target1 << 3) & 0x7f8;
++	target2 = i2c_smbus_read_byte_data(client, target_reg[attr->index] + 1);
++	target2 = (target2 >> 5) & 0x7;
++	target = target1 | target2;
++	if (target == 0) {
 +		rpm = 0;
 +	} else {
-+		rpm = ((60 * kscale * clock) / (ktach << 3));
++		rpm = (60 * sr * clock)/(target * np);
 +	}
 +	return sprintf(buf, "%d\n", rpm);
 +}
@@ -312,35 +298,25 @@ index 0000000..3c337c7
 +	struct i2c_client *client = to_i2c_client(dev);
 +	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
 +	struct max6620_data *data = i2c_get_clientdata(client);
-+	int kscale, ktach;
 +	unsigned long rpm;
 +	int err;
++	unsigned long target;
++	unsigned long target1;
++	unsigned long target2;
 +
 +	err = kstrtoul(buf, 10, &rpm);
 +	if (err)
 +		return err;
 +
-+	rpm = SENSORS_LIMIT(rpm, FAN_RPM_MIN, FAN_RPM_MAX);
-+
-+	/*
-+	 * Divide the required speed by 60 to get from rpm to rps, then
-+	 * use the datasheet equation:
-+	 *
-+	 *     KTACH = [(fCLK x KSCALE) / (256 x FanSpeed)] - 1
-+	 */
++	rpm = clamp_val(rpm, FAN_RPM_MIN, FAN_RPM_MAX);
 +
 +	mutex_lock(&data->update_lock);
 +
-+	kscale = DIV_FROM_REG(data->fandyn[attr->index]);
-+	ktach = ((60 * kscale * clock) / rpm);
-+	if (ktach < 0)
-+		ktach = 0;
-+	if (ktach > 255)
-+		ktach = 255;
-+	data->target[attr->index] = ktach;
-+
-+	i2c_smbus_write_byte_data(client, target_reg[attr->index], data->target[attr->index]);
-+	i2c_smbus_write_byte_data(client, target_reg[attr->index]+0x01, 0x00);
++	target = (60 * sr * 8192)/(rpm * np);
++	target1 = (target >> 3) & 0xff;
++	target2 = (target << 5) & 0xe0;
++	i2c_smbus_write_byte_data(client, target_reg[attr->index], target1);
++	i2c_smbus_write_byte_data(client, target_reg[attr->index] + 1, target2);
 +
 +	mutex_unlock(&data->update_lock);
 +
@@ -386,7 +362,7 @@ index 0000000..3c337c7
 +	if (err)
 +		return err;
 +
-+	pwm = SENSORS_LIMIT(pwm, 0, 255);
++	pwm = clamp_val(pwm, 0, 255);
 +
 +	mutex_lock(&data->update_lock);
 +
@@ -594,7 +570,7 @@ index 0000000..3c337c7
 + * Real code
 + */
 +
-+static int __devinit max6620_probe(struct i2c_client *client, const struct i2c_device_id *id) {
++static int max6620_probe(struct i2c_client *client, const struct i2c_device_id *id) {
 +
 +	struct max6620_data *data;
 +	int err;
@@ -635,7 +611,7 @@ index 0000000..3c337c7
 +	return err;
 +}
 +
-+static int __devexit max6620_remove(struct i2c_client *client) {
++static int max6620_remove(struct i2c_client *client) {
 +
 +	struct max6620_data *data = i2c_get_clientdata(client);
 +
@@ -659,9 +635,11 @@ index 0000000..3c337c7
 +		return err;
 +	}
 +
-+
-+
-+	if (i2c_smbus_write_byte_data(client, MAX6620_REG_CONFIG, config)) {
++	/*
++	 * Set bit 4, disable other fans from going full speed on a fail
++	 * failure.
++	 */
++	if (i2c_smbus_write_byte_data(client, MAX6620_REG_CONFIG, config | 0x10)) {
 +		dev_err(&client->dev, "Config write error, aborting.\n");
 +		return err;
 +	}
@@ -669,27 +647,19 @@ index 0000000..3c337c7
 +	data->config = config;
 +	for (i = 0; i < 4; i++) {
 +		data->fancfg[i] = i2c_smbus_read_byte_data(client, config_reg[i]);
-+		data->fancfg[i] |= 0x80;		// enable TACH monitoring
++		data->fancfg[i] |= 0xa8;		// enable TACH monitoring
 +		i2c_smbus_write_byte_data(client, config_reg[i], data->fancfg[i]);
 +		data->fandyn[i] = i2c_smbus_read_byte_data(client, dyn_reg[i]);
-+		data-> fandyn[i] |= 0x1C;
++		/* 2 counts (001) and Rate change 100 (0.125 secs) */
++		data-> fandyn[i] = 0x30;
 +		i2c_smbus_write_byte_data(client, dyn_reg[i], data->fandyn[i]);
 +		data->tach[i] = i2c_smbus_read_byte_data(client, tach_reg[i]);
 +		data->volt[i] = i2c_smbus_read_byte_data(client, volt_reg[i]);
 +		data->target[i] = i2c_smbus_read_byte_data(client, target_reg[i]);
 +		data->dac[i] = i2c_smbus_read_byte_data(client, dac_reg[i]);
-+
-+
-+
 +	}
-+
-+
-+
 +	return 0;
 +}
-+
-+
-+
 +
 +static struct max6620_data *max6620_update_device(struct device *dev)
 +{
@@ -728,8 +698,6 @@ index 0000000..3c337c7
 +
 +	return data;
 +}
-+
-+module_i2c_driver(max6620_driver);
 +
 +static int __init max6620_init(void)
 +{
