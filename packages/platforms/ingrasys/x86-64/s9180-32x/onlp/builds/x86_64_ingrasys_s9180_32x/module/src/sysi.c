@@ -84,6 +84,14 @@ onlp_sysi_onie_data_get(uint8_t** data, int* size)
     return ONLP_STATUS_E_INTERNAL;
 }
 
+void
+onlp_sysi_onie_data_free(uint8_t* data)
+{
+    if (data) {
+        aim_free(data);
+    }
+}
+
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
 {
@@ -379,5 +387,17 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
     }
     
     return ONLP_STATUS_OK;
+}
+
+void
+onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
+{
+    if (pi->cpld_versions) {
+        aim_free(pi->cpld_versions);
+    }
+
+    if (pi->cpld_versions) {
+        aim_free(pi->other_versions);
+    }
 }
 
