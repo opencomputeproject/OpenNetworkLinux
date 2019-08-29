@@ -25,7 +25,7 @@ include $(ONL)/packages/base/any/onlp/builds/platform/common.mk
 MODULE := onlps
 include $(BUILDER)/standardinit.mk
 
-DEPENDMODULES := $(DEPENDMODULES) AIM IOF onlp onlplib $(PLATFORM_MODULE) onlp_platform_defaults sff cjson cjson_util timer_wheel OS uCli ELS $(EXTRA_MODULES)
+DEPENDMODULES := $(DEPENDMODULES) AIM IOF onlp onlplib $(PLATFORM_MODULE) $(EXTRA_MODULES) sff cjson cjson_util timer_wheel OS uCli ELS onlp_platform_defaults
 
 include $(BUILDER)/dependmodules.mk
 
