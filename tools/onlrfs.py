@@ -698,14 +698,14 @@ rm -f /usr/sbin/policy-rc.d
                     src2 = os.path.join("/tmp", b)
 
                     logger.info("installing %s into %s", pkg, dir_)
-                    cmd = ('/usr/bin/rfs-dpkg', '-i', src2,)
+                    cmd = ('/usr/bin/dpkg', '-i', src2,)
                     onlu.execute(cmd,
                                  chroot=dir_,
                                  ex=OnlRfsError("install of %s failed" % pkg))
 
                     name, _, _ = pkg.partition(':')
                     logger.info("updating dependencies for %s", pkg)
-                    cmd = ('/usr/bin/rfs-apt-get', '-f', 'install', name,)
+                    cmd = ('/usr/bin/apt-get', '-f', 'install', name,)
                     onlu.execute(cmd,
                                  chroot=dir_,
                                  ex=OnlRfsError("install of %s failed" % pkg))
