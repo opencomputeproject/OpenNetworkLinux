@@ -622,6 +622,9 @@ rm -f /usr/sbin/policy-rc.d
                         json.dump(md, f, indent=2)
                     onlu_execute_sudo("chmod a-w %s" % mname)
 
+                for v in Configure.get('files', {}).get('link', []):
+                    onlu_execute_sudo("ln {} {} {}/{}".format('-s' if v.get('symbolic', True) else '', v['src'], dir_, v['dst']))
+
                 for (fname, v) in Configure.get('files', {}).get('add', {}).iteritems():
                     if fname.startswith('/'):
                         fname = fname[1:]
