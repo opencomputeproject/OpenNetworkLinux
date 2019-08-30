@@ -220,7 +220,7 @@ class OnlMultistrapConfig(object):
 
         for entry in [ 'debootstrap', 'aptsources' ]:
             sectionlist = []
-            for e in general[entry].split():
+            for e in general.get(entry, "").split():
                 if e not in self.config:
                     raise OnlRfsError("Section '%s' is specified in the %s option but does not exist in the configuration." % (e, entry))
 
