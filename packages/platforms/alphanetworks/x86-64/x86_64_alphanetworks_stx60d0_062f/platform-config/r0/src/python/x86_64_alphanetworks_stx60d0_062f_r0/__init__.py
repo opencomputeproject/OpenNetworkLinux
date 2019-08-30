@@ -1,7 +1,7 @@
 from onl.platform.base import *
 from onl.platform.alphanetworks import *
 
-class OnlPlatform_x86_64_alphanetworks_stx60d0_062f_r0(OnlPlatformAlphanetworks,
+class OnlPlatform_x86_64_alphanetworks_stx60d0_062f_r0(OnlPlatformAlphaNetworks,
                                               OnlPlatformPortConfig_8x1_8x10):
     PLATFORM='x86-64-alphanetworks-stx60d0-062f-r0'
     MODEL="STX60D0-062F"
