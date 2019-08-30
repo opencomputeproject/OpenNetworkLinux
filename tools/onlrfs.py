@@ -389,7 +389,7 @@ class OnlRfsBuilder(object):
     def msconfig(self, fname):
         return self.ms.generate_file(fname)
 
-    def multistrap(self, dir_):
+    def multistrap(self, dir_, use_existing_rootfs=False):
         msconfig = self.ms.generate_file()
 
         # Optional local package updates
@@ -399,7 +399,7 @@ class OnlRfsBuilder(object):
                 if os.path.exists(os.path.join(r, 'Makefile')):
                     onlu.execute("make -C %s" % r)
 
-        if os.path.exists(dir_):
+        if os.path.exists(dir_) and not use_existing_rootfs:
             onlu_execute_sudo("rm -rf %s" % dir_,
                               ex=OnlRfsError("Could not remove target directory."))
 
@@ -715,6 +715,7 @@ if __name__ == '__main__':
     ap.add_argument("--cpio")
     ap.add_argument("--squash")
     ap.add_argument("--enable-root")
+    ap.add_argument("--use-existing-rootfs", action='store_true')
 
     ap.add_argument("--no-configure", action='store_true')
     ap.add_argument("--update", action='append')
@@ -766,11 +767,11 @@ if __name__ == '__main__':
                 sys.exit(0)
 
         if ops.multistrap_only:
-            x.multistrap(ops.dir)
+            x.multistrap(ops.dir, ops.use_exisiting_rootfs)
             sys.exit(0)
 
         if not ops.no_multistrap and not os.getenv('NO_MULTISTRAP'):
-            x.multistrap(ops.dir)
+            x.multistrap(ops.dir, ops.use_existing_rootfs)
 
         if not ops.no_configure and not os.getenv('NO_CONFIGURE'):
             x.configure(ops.dir)
