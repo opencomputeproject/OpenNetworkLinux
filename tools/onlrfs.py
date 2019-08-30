@@ -533,14 +533,22 @@ rm -f /usr/sbin/policy-rc.d
                     config = os.path.join(dir_, 'etc/ssh/sshd_config')
                     ua.chmod('a+rw', config)
                     lines = open(config).readlines()
+                    changed = False
                     with open(config, "w") as f:
                         for line in lines:
                             if line.startswith('PermitRootLogin'):
                                 v = options['PermitRootLogin']
                                 logger.info("Setting PermitRootLogin to %s" % v)
                                 f.write('PermitRootLogin %s\n' % v)
+                                changed = True
                             else:
                                 f.write(line)
+
+                        if not changed:
+                            v = options['PermitRootLogin']
+                            logger.info("Setting PermitRootLogin to %s" % v)
+                            f.write('PermitRootLogin %s\n' % v)
+
                     ua.chmod('644', config)
 
                 if not options.get('securetty', True):
