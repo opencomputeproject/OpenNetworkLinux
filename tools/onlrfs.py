@@ -503,7 +503,7 @@ rm -f /usr/sbin/policy-rc.d
 
                 for command in Configure.get('commands', []):
                     if '__rfs__' in command:
-                        command = command % dict(__rfs__=dir_)
+                        command = command.replace('__rfs__', dir_)
                     logger.info("Configuration command '%s'..." % command)
                     onlu.execute(command,
                                  ex=OnlRfsError("Command '%s' failed." % command))
