@@ -34,6 +34,30 @@ def onlu_execute_sudo(*args, **kwargs):
     kwargs['sudo'] = True
     return onlu.execute(*args, **kwargs)
 
+def onlu_execute_pivot_root(pivot, cmd, **kwargs):
+    script = "/tmp/pivot_root.sh"
+    with open(script, "w") as f:
+        os.chmod(script, 0700)
+        f.write("""#!/bin/bash -eux
+rm -rf /tmp/newroot && mkdir /tmp/newroot
+rm -rf $1/oldroot && mkdir $1/oldroot
+mount --bind $1 /tmp/newroot
+cd /tmp/newroot
+
+pivot_root . oldroot
+
+hash -r # clear cache of commands
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+
+$2
+""")
+    ret = onlu_execute_sudo('unshare -pfm {} {} {}'.format(script, pivot, cmd), **kwargs)
+    os.unlink(script)
+    return ret
+
 class OnlRfsError(Exception):
     """General Error Exception"""
     def __init__(self, value):
@@ -426,11 +450,10 @@ rm -f /usr/sbin/policy-rc.d
     """)
 
         logger.info("dpkg-configure filesystem...")
+        onlu_execute_pivot_root(dir_, '/tmp/configure.sh',
+                                ex=OnlRfsError("Post Configuration failed."))
 
-        onlu_execute_sudo("unshare -pf --mount-proc chroot %s /tmp/configure.sh" % dir_,
-                          ex=OnlRfsError("Post Configuration failed."))
         os.unlink(script)
-
 
 
     def configure(self, dir_):
