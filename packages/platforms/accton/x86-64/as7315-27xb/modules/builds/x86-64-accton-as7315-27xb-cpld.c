@@ -82,6 +82,7 @@ enum port_type {
 };
 
 enum common_attrs {
+    CMN_PCBVER,
     CMN_VERSION,
     CMN_ACCESS,
     CMN_PRESENT_ALL,
@@ -165,6 +166,8 @@ struct model_attrs {
 
 static ssize_t show_bit(struct device *dev,
                         struct device_attribute *devattr, char *buf);
+static ssize_t show_byte(struct device *dev,
+                        struct device_attribute *devattr, char *buf);
 static ssize_t show_rxlos_all(struct device *dev,
                               struct device_attribute *devattr, char *buf);
 static ssize_t show_presnet_all(struct device *dev,
@@ -182,19 +185,22 @@ int accton_i2c_cpld_write(u8 cpld_addr, u8 reg, u8 value);
 
 struct base_attrs common_base_attrs[NUM_COMMON_ATTR] =
 {
-    [CMN_VERSION] = {"version", S_IRUGO, show_bit, NULL},
+    [CMN_PCBVER] = {"pcb_version", S_IRUGO, show_byte, NULL},
+    [CMN_VERSION] = {"version", S_IRUGO, show_byte, NULL},
     [CMN_ACCESS] =  {"access",  S_IWUSR, NULL, set_byte},
     [CMN_PRESENT_ALL] = {"module_present_all", S_IRUGO, show_presnet_all, NULL},
     [CMN_RXLOS_ALL] = {"rx_los_all", S_IRUGO, show_rxlos_all, NULL},
 };
 
 struct attrs common_attrs[] = {
+    [CMN_PCBVER]   = {0x00, false, &common_base_attrs[CMN_PCBVER]},
     [CMN_VERSION]   = {0x01, false, &common_base_attrs[CMN_VERSION]},
     [CMN_ACCESS]    = {-1, false, &common_base_attrs[CMN_ACCESS]},
     [CMN_PRESENT_ALL] = {-1, false, &common_base_attrs[CMN_PRESENT_ALL]},
     [CMN_RXLOS_ALL] = {-1, false, &common_base_attrs[CMN_RXLOS_ALL]},
 };
 struct attrs plain_common[] = {
+    [CMN_PCBVER]   = {0x00, false, &common_base_attrs[CMN_PCBVER]},
     [CMN_VERSION] = {0x01, false, &common_base_attrs[CMN_VERSION]},
 };
 
@@ -220,6 +226,7 @@ struct attrs as7315_port[NUM_SFP_SB_ATTR] = {
 };
 
 struct attrs *as7315_cmn_list[] = {
+    &common_attrs[CMN_PCBVER],
     &common_attrs[CMN_VERSION],
     &common_attrs[CMN_ACCESS],
     &common_attrs[CMN_PRESENT_ALL],
@@ -228,6 +235,7 @@ struct attrs *as7315_cmn_list[] = {
 };
 
 struct attrs *plain_cmn_list[] = {
+    &common_attrs[CMN_PCBVER],
     &plain_common[CMN_VERSION],
     NULL
 };
@@ -451,6 +459,22 @@ exit:
     return value;
 }
 
+static ssize_t show_byte(struct device *dev,
+                        struct device_attribute *devattr, char *buf)
+{
+    int value;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct cpld_data *data = i2c_get_clientdata(client);
+    struct cpld_sensor *sensor = to_cpld_sensor(devattr);
+
+    mutex_lock(&data->update_lock);
+    value = cpld_read_internal(client, sensor->reg);
+    mutex_unlock(&data->update_lock);
+
+    return snprintf(buf, PAGE_SIZE, "%x\n", value);
+}
+
+
 static ssize_t show_bit(struct device *dev,
                         struct device_attribute *devattr, char *buf)
 {
@@ -662,14 +686,11 @@ static int add_attributes_cmn(struct cpld_data *data, struct attrs **cmn)
     for (i = 0; cmn[i]; i++)
     {
         a = cmn[i];
-
         reg = a->reg;
         invert = a->invert;
-
         b = a->base;
         if (NULL == b)
-            break;
-
+            continue;
         if (add_sensor(data, b->name,
                        reg, 0xff, invert,
                        true, b->mode,

@@ -581,6 +581,12 @@ static int fan_probe(struct i2c_client *client,
     if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE_DATA))
         return -ENODEV;
 
+    /*Confirm slave is valid.*/
+    if (i2c_smbus_read_byte_data(client, 0) < 0) {
+        dev_warn(dev, "probe failed\n");
+        return -ENODEV;
+    }
+
     data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
     if (!data) {
         return -ENOMEM;

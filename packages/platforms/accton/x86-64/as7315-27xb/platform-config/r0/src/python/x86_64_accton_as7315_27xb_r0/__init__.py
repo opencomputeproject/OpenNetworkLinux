@@ -37,7 +37,8 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
 
         self.new_i2c_devices(
             [
-                ('as7315_fan', 0x66, 50),
+                ('as7315_fan', 0x66, 50), #For R0B and R0A
+                ('as7315_fan', 0x66, 9),  #For R0C and later.
 
                 # inititate LM75
                 ('lm75', 0x49, 51),

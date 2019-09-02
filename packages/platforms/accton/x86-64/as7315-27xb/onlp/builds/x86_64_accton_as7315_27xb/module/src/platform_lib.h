@@ -38,8 +38,7 @@
 
 #define PSU_SYSFS_PATH  "/sys/bus/i2c/devices/%d-00%02x/"
 
-#define FAN_BOARD_PATH	"/sys/bus/i2c/devices/50-0066/"
-#define FAN_NODE(node)	FAN_BOARD_PATH#node
+
 
 #define IDPROM_PATH "/sys/bus/i2c/devices/4-0057/eeprom"
 
