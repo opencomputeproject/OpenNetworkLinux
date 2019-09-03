@@ -374,46 +374,46 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     struct as7926_40xke_cpld_data *data = i2c_get_clientdata(client);
 	int status = 0;
 	u8 reg = 0, mask = 0, revert = 1;
-    int qsfp_dd_index=0;
-
-	switch (attr->index) {
+    
+    switch (attr->index) {
 	case MODULE_PRESENT_1 ... MODULE_PRESENT_8:
-		reg  = 0x10;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_1);
-		break;
+            reg  = 0x10;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_1);
+            break;
 	case MODULE_PRESENT_9 ... MODULE_PRESENT_16:
-		reg  = 0x11;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_9);
-		break;
+            reg  = 0x11;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_9);
+            break;
 	case MODULE_PRESENT_17 ... MODULE_PRESENT_20:
-		reg  = 0x12;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_17);
-		break;
+            reg  = 0x12;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_17);
+            break;
 	case MODULE_PRESENT_21 ... MODULE_PRESENT_28:
-		reg  = 0x10;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_21);
-		break;
+            reg  = 0x10;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_21);
+            break;
 	case MODULE_PRESENT_29 ... MODULE_PRESENT_36:
-		reg  = 0x11;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_29);
-		break;
+            reg  = 0x11;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_29);
+            break;
 	case MODULE_PRESENT_37 ... MODULE_PRESENT_40:
-		reg  = 0x12;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_37);
-		break;
+            reg  = 0x12;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_37);
+            break;
 	case MODULE_PRESENT_41 ... MODULE_PRESENT_42:
-		reg  = 0x13;
-		mask = 0x1 << (attr->index - MODULE_PRESENT_41);
-		break;
+            reg  = 0x13;
+            mask = 0x1 << (attr->index - MODULE_PRESENT_41);
+            break;
         case MODULE_TXDISABLE_41 ... MODULE_TXDISABLE_42:
-                reg  = 0xB;
-		mask = 0x1 << (attr->index - MODULE_TXDISABLE_41);
+            reg  = 0xB;
+            mask = 0x1 << (attr->index - MODULE_TXDISABLE_41);
+            revert=0;
 	    break;
 	case MODULE_RXLOS_41 ... MODULE_RXLOS_42:
-        reg  = 0x23;
-		mask = 0x1 << (attr->index - MODULE_RXLOS_41);
-		revert=0;
-		break;
+            reg  = 0x23;
+            mask = 0x1 << (attr->index - MODULE_RXLOS_41);
+            revert=0;
+            break;
         case MODULE_PRESENT_43 ... MODULE_PRESENT_50: /*QSFP-DD*/
             reg  = 0x50;
             mask = 0x1 << (attr->index - MODULE_PRESENT_43);
@@ -431,17 +431,17 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
         /* Port 1-20, 41-42 present statuus: read from i2c bus number '12'
             and CPLD slave address 0x62 */
         case 1: status = as7926_40xke_cpld_read(12,0x62, reg);
-                break;
+            break;
         /* Port 21-40 present statuus: read from i2c bus number '13'
             and CPLD slave address 0x63 */
         case 2: status = as7926_40xke_cpld_read(13,0x63, reg);
-                break;
+            break;
         /* Port 43-55 plug-unplug read from i2c bus number '76'
             and CPLD slave address 0x64 */
         case 3: status = as7926_40xke_cpld_read(76,0x64, reg);
-                break;
+            break;
         default: status = -ENXIO;
-                break;
+            break;
     }
         
 	if (unlikely(status < 0)) {
@@ -460,10 +460,10 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	struct i2c_client *client = to_i2c_client(dev);
-	struct as7926_40xke_cpld_data *data = i2c_get_clientdata(client);
-	long disable;
-	int status, val;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7926_40xke_cpld_data *data = i2c_get_clientdata(client);
+    long disable;
+    int status, val;
     u8 reg = 0, mask = 0;
      
 	status = kstrtol(buf, 10, &disable);
@@ -490,11 +490,10 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 
 	/* Update tx_disable status */
 	if (disable) {
-		val &= ~mask;
+		val |= mask;
 	}
 	else {
-		
-		val |= mask;
+		val &= ~mask;
 	}
 
     status = as7926_40xke_cpld_write(12, 0x62, reg, val);
