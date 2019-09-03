@@ -80,7 +80,7 @@ enum psu_type {
     PSU_CPR_6011_2M21,  /* AC110V - B2F */
     PSU_UM400D_01G,     /* DC48V  - F2B */
     PSU_UM400D01_01G,   /* DC48V  - B2F */
-    PSU_BEL_TOT120,     /* DC48V  - N/A */
+    PSU_BEL_TOT12,     /* DC48V  - N/A */
     PSU_TYPE_MAX
 };
 
@@ -102,7 +102,7 @@ struct model_info models[] = {
     {PSU_CPR_6011_2M21, 0x26, "CPR-6011-2M21",0x46},
     {PSU_UM400D_01G,    0x50, "um400d01G",0x50},
     {PSU_UM400D01_01G,  0x50, "um400d01-01G",0x50},
-    {PSU_BEL_TOT120,    0x0A, "CRXT-T0T120",0x18},
+    {PSU_BEL_TOT12,     0x0A, "CRXT-T0T12",0x18},
 };
 
 static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
