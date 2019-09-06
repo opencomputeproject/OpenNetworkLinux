@@ -146,78 +146,115 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
    Default fan pwm will be 100%(fan_state=LEVEL_FAN_MAX).
    If all below case meet with, set to 75%(LEVEL_FAN_MID).
  MB board
- LM75-1(0X48)¡Ø57¢J
- LM75-2(0X49)¡Ø47.3¢J
- LM75-3(0X4A)¡Ø45¢J
- LM75-4(0X4C)¡Ø45.1¢J
- LM75-5(0X4E)¡Ø40.75¢J
- LM75-6(0X4F)¡Ø42.1¢J
+ LM75-1(0X48)<=57
+ LM75-2(0X49)<=47.3
+ LM75-3(0X4A)<=45
+ LM75-4(0X4C)<=45.1
+ LM75-5(0X4E)<=40.75
+ LM75-6(0X4F)<=42.1
  CPU board
- Core¡Ø44 
- LM75-1(0X4B)¡Ø35¢J
+ Core<=44 
+ LM75-1(0X4B)<=35
  
    When fan_state=LEVEL_FAN_MID, meet with below case,  Fan pwm will be 100%(LEVEL_FAN_DAX)
  (MB board)
-   LM75-1(0X48)¡Ù61.5¢J
-   LM75-2(0X49)¡Ù51.5¢J
-   LM75-3(0X4A)¡Ù49.4¢J
-   LM75-4(0X4C)¡Ù49.4¢J
-   LM75-5(0X4E)¡Ù45.1¢J
-   LM75-6(0X4F)¡Ù46.75¢J
+   LM75-1(0X48)>=61.5
+   LM75-2(0X49)>=51.5
+   LM75-3(0X4A)>=49.4
+   LM75-4(0X4C)>=49.4
+   LM75-5(0X4E)>=45.1
+   LM75-6(0X4F)>=46.75
  (CPU board)
-   Core¡Ù48 
-   LM75-1(0X4B)¡Ù38.5¢J
+   Core>=48 
+   LM75-1(0X4B)>=38.5
 
  2. For AFO:
   At default, FAN pwm was 100%(LEVEL_FAN_MAX). If all below case meet with, set to 75%(LEVEL_FAN_MID).
  (MB board)
- LM75-1(0X48)¡Ø59¢J
- LM75-2(0X49)¡Ø53.5¢J
- LM75-3(0X4A)¡Ø55.3¢J
- LM75-4(0X4C)¡Ø50.3¢J
- LM75-5(0X4E)¡Ø50¢J
- LM75-6(0X4F)¡Ø52.5¢J
+ LM75-1(0X48)<=59
+ LM75-2(0X49)<=53.5
+ LM75-3(0X4A)<=55.3
+ LM75-4(0X4C)<=50.3
+ LM75-5(0X4E)<=50
+ LM75-6(0X4F)<=52.5
  (CPU board)
- Core¡Ø59
- LM75-1(0X4B)¡Ø41.1¢J
+ Core<=59
+ LM75-1(0X4B)<=41.1
 
  When FAN pwm was 75%(LEVEL_FAN_MID). If all below case meet with, set to 50%(LEVEL_FAN_DEF).
  (MB board)
- LM75-1(0X48)¡Ø55.8¢J
- LM75-2(0X49)¡Ø50.5¢J
- LM75-3(0X4A)¡Ø51.1¢J
- LM75-4(0X4C)¡Ø47.6¢J
- LM75-5(0X4E)¡Ø45.75¢J
- LM75-6(0X4F)¡Ø50.1¢J
+ LM75-1(0X48)<=55.8
+ LM75-2(0X49)<=50.5
+ LM75-3(0X4A)<=51.1
+ LM75-4(0X4C)<=47.6
+ LM75-5(0X4E)<=45.75
+ LM75-6(0X4F)<=50.1
  (CPU board)
- Core¡Ø57
- LM75-1(0X4B)¡Ø36.6¢J
+ Core<=57
+ LM75-1(0X4B)<=36.6
 
  When fan_speed 50%(LEVEL_FAN_DEF).
  Meet with below case, Fan pwm will be 75%(LEVEL_FAN_MID)
  (MB board)
- LM75-1(0X48)¡Ù70¢J
- LM75-2(0X49)¡Ù66¢J
- LM75-3(0X4A)¡Ù68¢J
- LM75-4(0X4C)¡Ù62¢J
- LM75-5(0X4E)¡Ù62¢J
- LM75-6(0X4F)¡Ù67¢J
+ LM75-1(0X48)>=70
+ LM75-2(0X49)>=66
+ LM75-3(0X4A)>=68
+ LM75-4(0X4C)>=62
+ LM75-5(0X4E)>=62
+ LM75-6(0X4F)>=67
  (CPU board)
- Core¡Ù77
- LM75-1(0X4B)¡Ù50¢J
+ Core>=77
+ LM75-1(0X4B)>=50
 
  
  When FAN pwm was 75%(LEVEL_FAN_MID). If all below case meet with, set to 100%(LEVEL_FAN_MAX).
  (MB board)
- LM75-1(0X48)¡Ù67¢J
- LM75-2(0X49)¡Ù62.5¢J
- LM75-3(0X4A)¡Ù65¢J
- LM75-4(0X4C)¡Ù59¢J
- LM75-5(0X4E)¡Ù58.5¢J
- LM75-6(0X4F)¡Ù63¢J
+ LM75-1(0X48)>=67
+ LM75-2(0X49)>=62.5
+ LM75-3(0X4A)>=65
+ LM75-4(0X4C)>=59
+ LM75-5(0X4E)>=58.5
+ LM75-6(0X4F)>=63
  (CPU board)
- Core >=69¢J
- LM75-1(0X4B)¡Ù49¢J
+ Core >=69
+ LM75-1(0X4B)>=49
+ 
+ Yellow Alarm
+ MB board
+ LM75-1(0X48)>=68
+ LM75-2(0X49)>=64
+ LM75-3(0X4A)>=65
+ LM75-4(0X4C)>=61
+ LM75-5(0X4E)>=60
+ LM75-6(0X4F)>=64
+ CPU Board
+ Core>=70
+ LM75-1(0X4B)>=68
+
+ Red Alarm
+ MB board
+ LM75-1(0X48)>=72
+ LM75-2(0X49)>=68
+ LM75-3(0X4A)>=69
+ LM75-4(0X4C)>=65
+ LM75-5(0X4E)>=64
+ LM75-6(0X4F)>=68
+ CPU Board
+ Core>=74
+ LM75-1(0X4B)>=72
+
+ Shutdown
+ MB board
+ LM75-1(0X48)>=77
+ LM75-2(0X49)>=73
+ LM75-3(0X4A)>=74
+ LM75-4(0X4C)>=70
+ LM75-5(0X4E)>=69
+ LM75-6(0X4F)>=73
+ CPU Board
+ Core>=79
+ LM75-1(0X4B)>=77
+
 
  */
 
@@ -236,13 +273,19 @@ typedef struct afo_temp_range{
     int mid_to_max_temp[8];
     int max_to_mid_temp[8];
     int mid_to_min_temp[8];
+    int max_to_yellow_alarm_temp[8];
+    int yellow_to_red_alarm_temp[8];
+    int red_alarm_to_shutdown_temp[8];
 } afo_temp_range_t; 
   
 afo_temp_range_t afo_thermal_spec={
  {70000, 66000, 68000, 62000, 62000, 67000, 77000, 50000},
  {67000, 62000, 65000, 59000, 58500, 63000, 69000, 49000}, 
  {59000, 53500, 55300, 50300, 50000, 52500, 59000, 41100},
- {55800, 50500, 51100, 47600, 45750, 50100, 57000, 36600}
+ {55800, 50500, 51100, 47600, 45750, 50100, 57000, 36600},
+ {68000, 64000, 65000, 61000, 60000, 64000, 70000, 68000},
+ {72000, 68000, 69000, 65000, 64000, 68000, 74000, 72000}, 
+ {77000, 73000, 74000, 70000, 69000, 73000, 79000, 77000}
 };
 
 typedef struct fan_ctrl_policy {
@@ -261,6 +304,9 @@ enum
    LEVEL_FAN_MID=2,
    LEVEL_FAN_MAX=3,
    LEVEL_FAN_DEF=LEVEL_FAN_MAX,
+   LEVEL_FAN_YELLOW_ALARM=4,
+   LEVEL_FAN_RED_ALARM=5,
+   LEVEL_FAN_SHUTDOWN=6,
 };
 
 fan_ctrl_policy_t  fan_thermal_policy_f2b[] = { /*AFO*/
@@ -275,6 +321,14 @@ fan_ctrl_policy_t  fan_thermal_policy_b2f[] = { /*AFI*/
 {100, 0xf, LEVEL_FAN_MAX}
 };
     
+void onlp_sysi_shutdown(void)
+{
+    char cmd_str[64];
+    memset(cmd_str, 0x0, strlen(cmd_str));    
+    snprintf(cmd_str, 63, "i2cset -y -f 19 0x60 0x60 0x10");
+    system(cmd_str); 
+}
+    
 int onlp_sysi_get_duty_cycle_by_fan_state(int state, int direction)
 {
     int i;
@@ -287,7 +341,6 @@ int onlp_sysi_get_duty_cycle_by_fan_state(int state, int direction)
                 return fan_thermal_policy_b2f[i].duty_cycle;
             }
         }
-        
     }
     else
     {
@@ -312,7 +365,7 @@ int onlp_sysi_get_duty_cycle_by_fan_state(int state, int direction)
  */ 
 int onlp_sysi_check_psu_loading(void)
 {
-    int psu_present[2]={0, 0};
+    int psu_power_good[2]={1, 1};
     int psu_p_in[2]={0, 0};
     int psu_p_out[2]={0, 0};
     int id=1;
@@ -320,21 +373,19 @@ int onlp_sysi_check_psu_loading(void)
     
     for (id=1; id<=2; id++)
     {
-        if (psu_status_info_get(id, "psu_present", &psu_present[id-1]) != 0) {
-            AIM_LOG_ERROR("Unable to read PSU(%d) node(psu_present)\r\n", id);
+        if (psu_status_info_get(id, "psu_power_good", &psu_power_good[id-1]) != 0) {
+            AIM_LOG_ERROR("Unable to read PSU(%d) node(psu_power_good)\r\n", id);
         }
-        if (psu_present[id-1] != PSU_STATUS_PRESENT)
+        if (psu_power_good[id-1] != PSU_STATUS_POWER_GOOD)
         {
             check_psu_watt=1;
-            break;
         }
     }
-    
     if (check_psu_watt)
     {
         for (id=1; id<=2; id++)
         {
-            if(psu_present[id-1]== PSU_STATUS_PRESENT)
+            if(psu_power_good[id-1]== PSU_STATUS_POWER_GOOD)
             {  /*check watt*/
                  if (psu_pmbus_info_get(id, "psu_p_in", &psu_p_in[id-1]) == 0)
                  {
@@ -358,9 +409,9 @@ int onlp_sysi_check_psu_loading(void)
         return 0;
     
     
+    return 0;
     
 }
-
 
 #define FAN_SPEED_CTRL_PATH "/sys/bus/i2c/devices/17-0066/fan_duty_cycle_percentage"
 #define FAN_DIRECTION_PATH "/sys/bus/i2c/devices/17-0066/fan1_direction"
@@ -369,6 +420,9 @@ int onlp_sysi_check_psu_loading(void)
 static int fan_state=LEVEL_FAN_INIT;
 static int fan_fail = 0;
 
+static int fan_alarm_state=LEVEL_FAN_INIT;
+static int send_yellow_alarm=0;
+static int send_red_alarm=0;
 static int count_check=0;
 
 int current_duty_cycle, new_duty_cycle;
@@ -488,7 +542,7 @@ int onlp_sysi_platform_manage_fans(void)
                 if (thermal[i].mcelsius >= afo_thermal_spec.mid_to_max_temp[i])
                 {
                     current_state=LEVEL_FAN_MAX;
-        	    break;
+                    break;
                 }
                 else
                 {
@@ -500,22 +554,67 @@ int onlp_sysi_platform_manage_fans(void)
             }
             else if (ori_state==LEVEL_FAN_MIN)
             {
-                if (thermal[i].mcelsius >= afo_thermal_spec.min_to_mid_temp[i])
+                if(psu_full_load)
+                     current_state=LEVEL_FAN_MID;
+                else if (thermal[i].mcelsius >= afo_thermal_spec.min_to_mid_temp[i])
                 {
                     current_state=LEVEL_FAN_MID;               
                 }
             }
             else
-            {
+            {                
                 if (thermal[i].mcelsius <= afo_thermal_spec.max_to_mid_temp[i])
                 {
                     max_to_mid++;
                 }    
+                if (!fan_alarm_state)
+                {
+                    if (thermal[i].mcelsius >= afo_thermal_spec.max_to_yellow_alarm_temp[i])
+                    {
+                        fan_alarm_state=LEVEL_FAN_YELLOW_ALARM;
+                        if(send_yellow_alarm==0)
+                        {
+                            send_yellow_alarm=1;
+                            AIM_SYSLOG_WARN("Temperature high", "Temperature high","Alarm-Yellow for temperature high is detected");
+                        }
+                    }
+                }
+                else if (fan_alarm_state==LEVEL_FAN_YELLOW_ALARM)
+                {
+                    if (thermal[i].mcelsius >= afo_thermal_spec.yellow_to_red_alarm_temp[i])
+                    {
+                        fan_alarm_state=LEVEL_FAN_RED_ALARM;
+                        if(send_red_alarm==0)
+                        {
+                            send_red_alarm=1;
+                            AIM_SYSLOG_WARN("Temperature high", "Temperature high","Alarm-Red for temperature high is detected");
+                        }
+                    }
+                }
+                else if (fan_alarm_state==LEVEL_FAN_RED_ALARM)
+                {
+                    if (thermal[i].mcelsius >= afo_thermal_spec.red_alarm_to_shutdown_temp[i])
+                    {
+                        fan_alarm_state=LEVEL_FAN_SHUTDOWN;
+                        sleep(1);
+                        AIM_SYSLOG_CRIT("Temperature critical", "Temperature critical", "Alarm for temperature critical is detected, Shutdown DUT");
+                        system("sync");
+                        onlp_sysi_shutdown();                        
+                    }
+                }
+                
             }
         }
         if(max_to_mid==CHASSIS_THERMAL_COUNT && ori_state==LEVEL_FAN_MAX)
         {
             current_state=LEVEL_FAN_MID;
+            if (fan_alarm_state)
+            {
+                fan_alarm_state=0;
+                send_yellow_alarm=0;
+                send_red_alarm=0;
+                AIM_SYSLOG_INFO("Temperature high is clean", "Temperature high is clear", "Alarm for temperature high is cleared");
+            }
         }
         if(mid_to_min==CHASSIS_THERMAL_COUNT && ori_state==LEVEL_FAN_MID)
         {
@@ -525,19 +624,6 @@ int onlp_sysi_platform_manage_fans(void)
             }
         }
     }
-    /*
-    for(i=0; i < sizeof(fan_thermal_policy_f2b)/sizeof(fan_ctrl_policy_t); i++)
-    {
-        if (temp > fan_thermal_policy[i].temp_down)
-        {           
-            if (temp <= fan_thermal_policy[i].temp_up)
-            {
-                current_state =i;
-            }
-        }
-    }
-    
-    */
 
     /* Get each fan status
      */
@@ -579,22 +665,6 @@ int onlp_sysi_platform_manage_fans(void)
         {
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
         }
-
-         switch (ori_state)
-         {
-             case LEVEL_FAN_INIT:                 
-                 break;
-             case LEVEL_FAN_DEF:
-                 break;
-             case LEVEL_FAN_MID:
-                 break;
-             case LEVEL_FAN_MAX:
-                 break;
-             default:
-                AIM_SYSLOG_WARN("onlp_sysi_platform_manage_fans abnormal state", "onlp_sysi_platform_manage_fans  abnormal state", "onlp_sysi_platform_manage_fans at abnormal state\n");
-                 break;
-        }
-    
     }
   
     return 0;
