@@ -47,7 +47,7 @@ def _8v89307_init():
     return True
 
 class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
-                                              OnlPlatformPortConfig_48x25_6x100):
+                                              OnlPlatformPortConfig_32x100):
 
     PLATFORM='x86-64-accton-as7726-32x-r0'
     MODEL="AS7726-32X"
