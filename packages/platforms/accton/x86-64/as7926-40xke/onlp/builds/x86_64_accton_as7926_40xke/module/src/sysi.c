@@ -126,6 +126,24 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 int
 onlp_sysi_platform_manage_init(void)
 {
+   /* Set cs4227 to normal state . need to do before network interface start.
+    * So we set net to down, csp4227, do net to up.
+    */
+    char cmd_str[64];
+    
+    memset(cmd_str, 0x0, strlen(cmd_str));    
+    snprintf(cmd_str, 63, "ifconfig eth1 down");
+    system(cmd_str);    
+    snprintf(cmd_str, 63, "ifconfig eth2 down");
+    system(cmd_str);  
+  
+    snprintf(cmd_str, 63, "i2cset -y -f 11 0x60 0x9 0xf");
+    system(cmd_str);
+    
+    snprintf(cmd_str, 63, "ifconfig eth1 up");
+    system(cmd_str);
+    snprintf(cmd_str, 63, "ifconfig eth2 up");
+    system(cmd_str);
     return 0;
 }
 
