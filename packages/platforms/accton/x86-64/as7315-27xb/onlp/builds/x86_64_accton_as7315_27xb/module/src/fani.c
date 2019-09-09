@@ -24,6 +24,7 @@
  *
  ***********************************************************/
 #include <fcntl.h>
+#include <unistd.h>
 #include <onlplib/onie.h>
 #include <onlp/sys.h>
 #include <onlp/platformi/sysi.h>
@@ -121,6 +122,7 @@ static int get_fan_devnode(void) {
     for (i=1; i<AIM_ARRAYSIZE(FAN_BOARD_PATHS); i++) {
         ret = onlp_file_open(O_DIRECTORY, 0, "%s%s", FAN_BOARD_PATHS[i], "driver/");
         if (ret >= 0) {
+            close(ret);
             return i;
         }
     }
