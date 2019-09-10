@@ -31,7 +31,7 @@
 
 #define PSU_NODE_MAX_PATH_LEN 64
 #define PSU_FAN_DIR_LEN         3
-#define PSU_MODEL_NAME_LEN 		10
+#define PSU_MODEL_NAME_LEN 		11
 #define PSU_SERIAL_NUMBER_LEN	18
 
 int get_psu_serial_number(int id, char *serial, int serial_len)
@@ -96,6 +96,12 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         }
 
         aim_free(fd);
+    }
+    else if (strncmp(mn, "DPS400AB33A", PSU_MODEL_NAME_LEN) == 0) {
+        ptype = PSU_TYPE_AC_F2B;
+    }
+    else if (strncmp(mn, "DPS400AB34A", PSU_MODEL_NAME_LEN) == 0) {
+        ptype = PSU_TYPE_AC_B2F;
     }
 
     aim_free(mn);
