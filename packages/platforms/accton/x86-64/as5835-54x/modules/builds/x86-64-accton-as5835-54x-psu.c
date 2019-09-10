@@ -38,7 +38,7 @@
 #define PSU_STATUS_I2C_ADDR			0x60
 #define PSU_STATUS_I2C_REG_OFFSET	0x2
 
-#define MODEL_NAME_LEN				11
+#define MODEL_NAME_LEN				12
 #define MODEL_NAME_REG_OFFSET		0x20
 
 #define SERIAL_NUM_LEN				18
@@ -313,9 +313,9 @@ static struct as5835_54x_psu_data *as5835_54x_psu_update_device(struct device *d
 			}
 			else {
 				/* Skip the meaningless data byte 8*/
-				data->model_name[8] = data->model_name[9];
-				data->model_name[9] = data->model_name[10];
-				data->model_name[10] = '\0';
+				char buf[4] = {0};
+				memcpy(buf, &data->model_name[9], sizeof(buf));
+				memcpy(&data->model_name[8], buf, sizeof(buf));
 			}
 
 			/* Read serial number */
