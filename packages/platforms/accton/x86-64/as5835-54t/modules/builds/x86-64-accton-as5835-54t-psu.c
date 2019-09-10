@@ -313,9 +313,9 @@ static struct as5835_54t_psu_data *as5835_54t_psu_update_device(struct device *d
 			}
 			else {
 				/* Skip the meaningless data byte 8*/
-                char buf[4] = {0};
-                memcpy(buf, &data->model_name[9], sizeof(buf));
-                memcpy(&data->model_name[8], buf, sizeof(buf));
+				char buf[4] = {0};
+				memcpy(buf, &data->model_name[9], sizeof(buf));
+				memcpy(&data->model_name[8], buf, sizeof(buf));
 			}
 
 			/* Read serial number */
