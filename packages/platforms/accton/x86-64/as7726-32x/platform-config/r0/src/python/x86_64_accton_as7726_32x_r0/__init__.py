@@ -140,7 +140,7 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
 
         # initialize SFP port 33~34
         for port in range(33, 35):
-            self.new_i2c_device('optoe1', 0x50, port-18)
+            self.new_i2c_device('optoe2', 0x50, port-18)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port-18), shell=True)
 
         self.new_i2c_device('24c02', 0x56, 0)
