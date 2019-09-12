@@ -17,22 +17,12 @@ packages:
     summary: Open Network Linux $ARCH Installer
 
     files:
-      builds/*INSTALLER        : $$PKG_INSTALL/
-      builds/*.md5sum          : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/*INSTALLER        : $$PKG_INSTALL/
+      builds/$ONL_DEBIAN_SUITE/*.md5sum          : $$PKG_INSTALL/
 
     changelog:  Change changes changes.,
 
 
 release:
-  - builds/*INSTALLER : $ARCH/
-  - builds/*.md5sum   : $ARCH/
-
-
-
-
-
-
-
-
-
-
+  - builds/$ONL_DEBIAN_SUITE/*INSTALLER : $ARCH/
+  - builds/$ONL_DEBIAN_SUITE/*.md5sum   : $ARCH/

@@ -155,6 +155,16 @@
 #define ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER 1
 #endif
 
+/**
+ * ONLPLIB_CONFIG_INCLUDE_I2C_SMBUS
+ *
+ * Include <i2c/smbus.h> */
+
+
+#ifndef ONLPLIB_CONFIG_INCLUDE_I2C_SMBUS
+#define ONLPLIB_CONFIG_INCLUDE_I2C_SMBUS 0
+#endif
+
 
 
 /**

@@ -1,0 +1,74 @@
+From 7f31d9b833b0c31f5c8d75416758a9f30add6190 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 15 May 2019 15:22:44 +0000
+Subject: [PATCH backport v5.2] mlxsw: core: Prevent reading unsupported slave
+ address from SFP EEPROM
+
+Prevent reading unsupported slave address from SFP EEPROM by testing
+Diagnostic Monitoring Type byte in EEPROM. Read only page zero of
+EEPROM, in case this byte is zero.
+
+If some SFP transceiver don't support Digital Optical Monitoring (DOM),
+thus reading SFP EEPROM slave address 0x51 could return error.
+Availability of DOM support is verified by reading from zero page
+Diagnostic Monitoring Type byte describing how diagnostic monitoring is
+implemented by transceiver. If bit 6 of this byte is set, it indicates
+that digital diagnostic monitoring has been implemented. Otherwise it is
+not and transceiver could fail to reply to transaction for slave address
+0x51 [1010001X (A2h)], which is used to access measurements page.
+
+Such issue has been observed when reading cable MCP2M00-xxxx,
+MCP7F00-xxxx, and few others.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index 7a15e932ed2f..edcf1b656cbf 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/err.h>
++#include <linux/sfp.h>
+ 
+ #include "core.h"
+ #include "core_env.h"
+@@ -162,7 +163,7 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ {
+ 	u8 module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE];
+ 	u16 offset = MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE;
+-	u8 module_rev_id, module_id;
++	u8 module_rev_id, module_id, diag_mon;
+ 	unsigned int read_size;
+ 	int err;
+ 
+@@ -195,8 +196,21 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 		}
+ 		break;
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
++		/* Verify if transceiver provides digital diagnostic monitoring page */
++		err = mlxsw_env_query_module_eeprom(mlxsw_core, module,
++						    SFP_DIAGMON, 1, &diag_mon,
++						    &read_size);
++		if (err)
++			return err;
++
++		if (read_size < 1)
++			return -EIO;
++
+ 		modinfo->type       = ETH_MODULE_SFF_8472;
+-		modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
++		if (diag_mon)
++			modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN;
++		else
++			modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN / 2;
+ 		break;
+ 	default:
+ 		return -EINVAL;
+-- 
+2.11.0
+

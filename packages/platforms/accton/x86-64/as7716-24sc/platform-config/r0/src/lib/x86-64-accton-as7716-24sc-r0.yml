@@ -1,0 +1,33 @@
+---
+
+######################################################################
+#
+# platform-config for AS7716
+#
+######################################################################
+
+x86-64-accton-as7716-24sc-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-4-14
+
+    args: >-
+      nopat
+      console=ttyS0,115200n8
+      tg3.short_preamble=1
+      tg3.bcm5718s_reset=1
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:1c.0/0000:0a:00.0

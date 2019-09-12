@@ -23,10 +23,10 @@
  *
  ***********************************************************/
 
-#ifndef __ONLPSIM_INT_H__
-#define __ONLPSIM_INT_H__
+#ifndef __ARM_ACCTON_AS4610_INT_H__
+#define __ARM_ACCTON_AS4610_INT_H__
 
 #include <arm_accton_as4610/arm_accton_as4610_config.h>
 
 
-#endif /* __ONLPSIM_INT_H__ */
+#endif /* __ARM_ACCTON_AS4610_INT_H__ */

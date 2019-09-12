@@ -102,7 +102,7 @@ _psu_info_get_type1(onlp_psu_info_t* info)
     int index = ONLP_OID_ID_GET(info->hdr.id);
     const char psu_model[]=PSU_MODEL;
 
-    strncpy(info->model, psu_model, sizeof(info->model));
+    aim_strlcpy(info->model, psu_model, sizeof(info->model));
 
     /* Set capability */
     info->caps = ONLP_PSU_CAPS_AC;
@@ -188,6 +188,63 @@ _psu_info_get_type2(onlp_psu_info_t* info)
     return psu_read_eeprom(index, info, NULL);
 }
 
+static int
+_psu_info_get_type3(onlp_psu_info_t* info)
+{
+    int val   = 0;
+    int index = ONLP_OID_ID_GET(info->hdr.id);
+
+    mlnx_platform_info_t* mlnx_platform_info = get_platform_info();
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_AC;
+
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Set the associated oid_table */
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + mlnx_platform_info->fan_num);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + mlnx_platform_info->thermal_num);
+
+    /* Read voltage, current and power */
+    if (psu_power_info_get(index, "volt_in", &val) == 0 &&
+            0 != val) {
+        info->mvin = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+
+        if (psu_power_info_get(index, "volt_out2", &val) == 0) {
+            info->mvout = val;
+            info->caps |= ONLP_PSU_CAPS_VOUT;
+        }
+
+        if (psu_power_info_get(index, "curr_in", &val) == 0) {
+            info->miin = val;
+            info->caps |= ONLP_PSU_CAPS_IIN;
+        }
+
+        if (psu_power_info_get(index, "curr", &val) == 0) {
+            info->miout = val;
+            info->caps |= ONLP_PSU_CAPS_IOUT;
+        }
+
+        if (psu_power_info_get(index, "power_in", &val) == 0) {
+            info->mpin = val;
+            info->caps |= ONLP_PSU_CAPS_PIN;
+        }
+
+        if (psu_power_info_get(index, "power", &val) == 0) {
+            info->mpout = val;
+            info->caps |= ONLP_PSU_CAPS_POUT;
+        }
+    } else {
+        info->status |= ONLP_PSU_STATUS_FAILED;
+        return ONLP_STATUS_OK;
+    }
+
+    return psu_read_eeprom(index, info, NULL);
+}
+
 int _psu_info_get(onlp_psu_info_t* info)
 {
     int res;
@@ -199,6 +256,9 @@ int _psu_info_get(onlp_psu_info_t* info)
       case PSU_TYPE_2:
 	  res=_psu_info_get_type2(info);
 	  break;
+      case PSU_TYPE_3:
+      res=_psu_info_get_type3(info);
+      break;
     }
     return res;
 }

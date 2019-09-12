@@ -30,7 +30,7 @@
 static int
 datatypes_init__(void)
 {
-#define ONLPSIM_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
+#define ARM_ACCTON_AS4610_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
 #include <arm_accton_as4610/arm_accton_as4610.x>
     return 0;
 }

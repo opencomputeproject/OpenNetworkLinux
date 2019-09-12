@@ -30,7 +30,7 @@
 #include <onlp/platformi/thermali.h>
 #include "mlnx_common/mlnx_common.h"
 
-#define prefix_path "/bsp/thermal"
+#define prefix_path HW_MANAGEMENT_PATH"/thermal"
 
 #define VALIDATE(_id)                           \
     do {                                        \

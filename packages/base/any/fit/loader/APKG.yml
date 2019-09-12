@@ -1,6 +1,7 @@
 prerequisites:
   packages:
     - onl-loader-initrd:$ARCH
+  stage: 3
 
 common:
   arch: $ARCH

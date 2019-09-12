@@ -431,3 +431,19 @@ onlp_sfp_dev_writew_locked__(int port, uint8_t devaddr, uint8_t addr, uint16_t v
     return onlp_sfpi_dev_writew(port, devaddr, addr, value);
 }
 ONLP_LOCKED_API4(onlp_sfp_dev_writew, int, port, uint8_t, devaddr, uint8_t, addr, uint16_t, value);
+
+int
+onlp_sfp_dev_read_locked__(int port, uint8_t devaddr, uint8_t addr, uint8_t* rdata, int size)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_read(port, devaddr, addr, rdata, size);
+}
+ONLP_LOCKED_API5(onlp_sfp_dev_read, int, port, uint8_t, devaddr, uint8_t, addr, uint8_t*, rdata, int, size);
+
+int
+onlp_sfp_dev_write_locked__(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size)
+{
+    ONLP_SFP_PORT_VALIDATE_AND_MAP(port);
+    return onlp_sfpi_dev_write(port, devaddr, addr, data, size);
+}
+ONLP_LOCKED_API5(onlp_sfp_dev_write, int, port, uint8_t, devaddr, uint8_t, addr, uint8_t*, data, int, size);

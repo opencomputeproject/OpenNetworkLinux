@@ -1,0 +1,63 @@
+From 87859cbda6affc45fc8d513c12eb4318e2c81073 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 24 Jan 2019 09:58:23 +0000
+Subject: [PATCH platform] platform/x86: mlx-platform: Add CPLD4 register
+
+Signed-off-by: <Vadim Pasternal vadimp@mellanox.com>
+---
+ drivers/platform/x86/mlx-platform.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index fc8d655..a80b968 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -25,6 +25,7 @@
+ #define MLXPLAT_CPLD_LPC_REG_CPLD1_VER_OFFSET	0x00
+ #define MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET	0x01
+ #define MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET	0x02
++#define MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET	0x03
+ #define MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET	0x1d
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET	0x1e
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET	0x1f
+@@ -1163,6 +1164,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.mode = 0444,
+ 	},
+ 	{
++		.label = "cpld4_version",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
+ 		.label = "reset_long_pb",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+ 		.mask = GENMASK(7, 0) & ~BIT(0),
+@@ -1251,7 +1258,7 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.label = "fan_dir",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_FAN_DIRECTION,
+ 		.bit = GENMASK(7, 0),
+-		.mode = 0200,
++		.mode = 0444,
+ 	},
+ };
+ 
+@@ -1531,6 +1538,7 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD1_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET:
+@@ -1597,6 +1605,7 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD1_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET:
+-- 
+2.1.4
+

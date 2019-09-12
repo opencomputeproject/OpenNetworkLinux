@@ -257,7 +257,7 @@ class OnlPlatformBase(object):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
             data = {}
-            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine.conf; set | egrep ^onie_.*=" """, shell=True)
+            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine*.conf; set | egrep ^onie_.*=" """, shell=True)
             for entry in mcconf.split():
                 (k,e,v) = entry.partition('=')
                 if v and (v.startswith("'") or v.startswith('"')):
@@ -526,6 +526,14 @@ class OnlPlatformPortConfig_64x100(object):
     PORT_COUNT=64
     PORT_CONFIG="64x100"
 
+class OnlPlatformPortConfig_80x100(object):
+    PORT_COUNT=80
+    PORT_CONFIG="80x100"
+
+class OnlPlatformPortConfig_128x100(object):
+    PORT_COUNT=128
+    PORT_CONFIG="128x100"
+
 class OnlPlatformPortConfig_24x1_4x10(object):
     PORT_COUNT=28
     PORT_CONFIG="24x1 + 4x10"
@@ -542,9 +550,17 @@ class OnlPlatformPortConfig_12x10_3x100(object):
     PORT_COUNT=15
     PORT_CONFIG="12x10 + 3x100"
 
+class OnlPlatformPortConfig_12x25_3x100(object):
+    PORT_COUNT=15
+    PORT_CONFIG="12x25 + 3x100"
+
 class OnlPlatformPortConfig_24x10_2x100(object):
     PORT_COUNT=26
     PORT_CONFIG="24x10 + 2x100"
+
+class OnlPlatformPortConfig_24x25_4x100(object):
+    PORT_COUNT=28
+    PORT_CONFIG="24x25 + 4x100"
 
 class OnlPlatformPortConfig_20x100(object):
     PORT_COUNT=20
@@ -553,3 +569,7 @@ class OnlPlatformPortConfig_20x100(object):
 class OnlPlatformPortConfig_16x10_8x25_2x100(object):
     PORT_COUNT=26
     PORT_CONFIG="16x10 + 8x25 + 2x100"
+
+class OnlPlatformPortConfig_46x10_6x100(object):
+    PORT_COUNT=52
+    PORT_CONFIG="46x10 + 6x100"

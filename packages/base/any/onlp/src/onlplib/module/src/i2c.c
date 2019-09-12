@@ -30,12 +30,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#if ONLPLIB_CONFIG_I2C_USE_CUSTOM_HEADER == 1
-#include <linux/i2c-devices.h>
-#else
-#include <linux/i2c-dev.h>
-#endif
-
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <errno.h>
