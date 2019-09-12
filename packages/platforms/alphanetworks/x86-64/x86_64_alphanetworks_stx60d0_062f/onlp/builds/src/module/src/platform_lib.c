@@ -511,12 +511,13 @@ int bmc_command_read(char *cmd, char *data)
         return -1/*FALSE*/;
     }
 
-//apple test
+//debug
 //printf("[%s(%d)]result_buf:%s\n", __func__, __LINE__,result_buf);
 
     /* the return value of ipmitool is hex string, transfer to dec integer. ex:0x1f-> 31 */
     int result_dec = (int)strtol(result_buf,NULL,16);
-//apple test
+
+//debug
 //printf("[%s(%d)] result_dec:%d \n", __func__, __LINE__, result_dec);
 
     /* finally, return dec integer*/
@@ -526,18 +527,11 @@ int bmc_command_read(char *cmd, char *data)
      
 }
 
-
-//int bmc_i2c_readb(uint8_t bus, uint8_t devaddr, uint8_t addr)
 int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data)
 {
     int ret = 0;
-//    int value;    
     char cmd[128] = {0};
 
-//apple t est
-//printf("[%s(%d)] bus:%d, devaddr 0x%x, offset:0x%02x \n", __func__, __LINE__, bus, devaddr, offset);
-
-#if 1 /*Use ipmitool */
     int raw_bus_id=0;
 
     raw_bus_id = bmc_get_raw_bus_id(bus);
@@ -546,16 +540,52 @@ int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data)
         snprintf(cmd, sizeof(cmd), "ipmitool raw 0x06 0x52 0x%02x 0x%x 1 0x%02x", raw_bus_id, devaddr, offset);        
     else
         return ret;
-#else /* Use spv_ipmi tool */
-    snprintf(cmd, sizeof(cmd), "spv_ipmi i2c bus=%d 0x%x 1 0x%02x", bus, devaddr, offset);
-#endif
 
-//apple t est
+//debug
 //printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
 
     ret = bmc_command_read(cmd, data);
 
-//apple t est
+//debug
+//printf("[%s(%d)] data:%d, ret %d \n", __func__, __LINE__, *data, ret);
+
+    return ret;
+
+}
+
+int bmc_read_raw_fan_speed(int sensor_num, char* data)
+{
+    int ret = 0;
+    char cmd[128] = {0};
+
+    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x04 0x2d 0x%02x", sensor_num);        
+
+//debug
+//printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
+
+    ret = bmc_command_read(cmd, data);
+
+//debug
+//printf("[%s(%d)] data:%d, ret %d \n", __func__, __LINE__, *data, ret);
+
+    return ret;
+
+}
+
+/* Get PWM : ipmitool raw 0x34 0x03 <PWM number 0x01 ~ 0x04> */
+int bmc_read_raw_fan_pwm(int pwm_num, char* data)
+{
+    int ret = 0;
+    char cmd[128] = {0};
+
+    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x34 0x03 0x%02x", pwm_num);        
+
+//debug
+//printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
+
+    ret = bmc_command_read(cmd, data);
+
+//debug
 //printf("[%s(%d)] data:%d, ret %d \n", __func__, __LINE__, *data, ret);
 
     return ret;
@@ -802,36 +832,48 @@ int bmc_command_write(char *cmd)
     return 1/*TRUE*/;     
 }
 
-//int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value)
 int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value)    
 {
     int ret = 0;
     char cmd[128] = {0};
-
-#if 1 /*Use ipmitool */
     int raw_bus_id=0;
 
     raw_bus_id = bmc_get_raw_bus_id(bus);
 
     if (raw_bus_id)
-        snprintf(cmd, sizeof(cmd), "ipmitool raw 0x06 0x52 0x%02x 0x%x 0x00 0x%02x 0x%2X", raw_bus_id, devaddr, offset, (unsigned char)value);   //<- OK 0x80     
+        snprintf(cmd, sizeof(cmd), "ipmitool raw 0x06 0x52 0x%02x 0x%x 0x00 0x%02x 0x%02X", raw_bus_id, devaddr, offset, (unsigned char)value);
     else
         return ret;
-#else
-    snprintf(cmd, sizeof(cmd), "spv_ipmi i2c bus=%d 0x%x 0 0x%02x 0x%x\r\n", bus, devaddr, offset, value);
-#endif
 
-//apple t est
+//debug
 //printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
 
     ret = bmc_command_write(cmd);
 
-//apple t est
+//debug
 //printf("[%s(%d)] ret:%d \n", __func__, __LINE__, ret);
 
     return ret;
 }
 
+/* Set PWM : ipmitool raw 0x34 0x04 <PWM number 0x01 ~ 0x04> <Duty Cycle 0x00 ~ 0x64> */
+int bmc_write_raw_fan_pwm(int pwm_num, char value)    
+{
+    int ret = 0;
+    char cmd[128] = {0};
+
+    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x34 0x04 0x%02x 0x%02X", pwm_num, (unsigned char)value);
+
+//debug
+//printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
+
+    ret = bmc_command_write(cmd);
+
+//debug
+//printf("[%s(%d)] ret:%d \n", __func__, __LINE__, ret);
+
+    return ret;
+}
 
 int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
 {

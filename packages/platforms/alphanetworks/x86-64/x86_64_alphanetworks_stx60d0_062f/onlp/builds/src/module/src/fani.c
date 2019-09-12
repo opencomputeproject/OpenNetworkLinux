@@ -42,6 +42,16 @@
 #define CPLD_FAN3_SPEED_ADDR_OFFSET   0x18
 #define CPLD_FAN4_SPEED_ADDR_OFFSET   0x17
 
+#define BMC_FAN1_SENSOR_NUM                 0x34 //0x31
+#define BMC_FAN2_SENSOR_NUM                 0x32//0x32
+#define BMC_FAN3_SENSOR_NUM                 0x32 //0x33
+#define BMC_FAN4_SENSOR_NUM                 0x31 //0x34
+
+#define BMC_FAN1_PWM_NUM                 0x04 //0x01
+#define BMC_FAN2_PWM_NUM                 0x03 //0x02
+#define BMC_FAN3_PWM_NUM                 0x02 //0x03
+#define BMC_FAN4_PWM_NUM                 0x01 //0x04
+
 #define CPLD_FAN_MIN_RPS_ADDR_OFFSET        0x22
 #define CPLD_FAN_PWM_ADDR_OFFSET            0x23
 #define CPLD_FAN_SEL_CONTROL_ADDR_OFFSET    0x24  /* 0: CPLD control, 1: BMC control */
@@ -163,21 +173,40 @@ _onlp_fani_get_fan_status_addr_offset(int local_id)
     return 0;
 }
 
-/* Get the CPLD address offset for fan speed */
+/* Get the BMC fan sensor number for fan speed */
 static char
-_onlp_fani_get_fan_speed_addr_offset(int local_id)
+_onlp_fani_get_bmc_fan_num(int local_id)
 {
     DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
     switch (local_id)
     {
         case FAN_1:
-            return CPLD_FAN1_SPEED_ADDR_OFFSET;
+            return BMC_FAN1_SENSOR_NUM;
         case FAN_2:
-            return CPLD_FAN2_SPEED_ADDR_OFFSET;
+            return BMC_FAN2_SENSOR_NUM;
         case FAN_3:
-            return CPLD_FAN3_SPEED_ADDR_OFFSET;
+            return BMC_FAN3_SENSOR_NUM;
         case FAN_4:
-            return CPLD_FAN4_SPEED_ADDR_OFFSET;
+            return BMC_FAN4_SENSOR_NUM;
+    }
+    return 0;
+}
+
+/* Get the BMC fan PWM number */
+static char
+_onlp_fani_get_bmc_pwm_num(int local_id)
+{
+    DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
+    switch (local_id)
+    {
+        case FAN_1:
+            return BMC_FAN1_PWM_NUM;
+        case FAN_2:
+            return BMC_FAN2_PWM_NUM;
+        case FAN_3:
+            return BMC_FAN3_PWM_NUM;
+        case FAN_4:
+            return BMC_FAN4_PWM_NUM;
     }
     return 0;
 }
@@ -187,16 +216,15 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t *info)
 {
     DIAG_PRINT("%s, local_id=%d", __FUNCTION__, local_id);
     _CPLD_FAN_STATUS_REG_T fan_status_reg;
-    char status_addr_offset = 0, speed0_addr_offset = 0;
+    char status_addr_offset = 0;
+    char bmc_fan_number = 0;
+    char bmc_pwm_number = 0;
     char data = 0;
     unsigned char tach_speed0 = 0;
     int ret = 0;
 
     /* Get the CPLD address offset for fan status */
     status_addr_offset = _onlp_fani_get_fan_status_addr_offset(local_id);
-
-//apple test
-//printf("[%s(%d)] ready to call bmc_i2c_read_byte -----\n", __func__,__LINE__);
 
     ret = bmc_i2c_read_byte(BMC_CPLD_I2C_BUS_ID, BMC_CPLD_I2C_ADDR, status_addr_offset, &data);
     if (ret < 0)
@@ -228,37 +256,37 @@ _onlp_fani_info_get_fan(int local_id, onlp_fan_info_t *info)
         info->status |= ONLP_FAN_STATUS_FAILED;
     }
 
-    /* Get the CPLD address offset for fan speed */
-    speed0_addr_offset = _onlp_fani_get_fan_speed_addr_offset(local_id);
+    /* Get the BMC fan sensor number for fan speed */
+    bmc_fan_number = _onlp_fani_get_bmc_fan_num(local_id);
 
-    ret = bmc_i2c_read_byte(BMC_CPLD_I2C_BUS_ID, BMC_CPLD_I2C_ADDR, speed0_addr_offset, (char *)&tach_speed0);
+    ret = bmc_read_raw_fan_speed(bmc_fan_number, (char *)&tach_speed0);
     if (ret < 0)
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
         return ret;
     }
     if (DEBUG)
-        AIM_LOG_INFO("%s:%d id[%d],speed0_addr_offset[%02x],read_byte[%02x]\n",
-                     __FUNCTION__, __LINE__, local_id, (unsigned char)speed0_addr_offset, (unsigned char)tach_speed0);
+        AIM_LOG_INFO("%s:%d id[%d],bmc_fan_number[%02x],read_byte[%02x]\n",
+                     __FUNCTION__, __LINE__, local_id, (unsigned char)bmc_fan_number, (unsigned char)tach_speed0);
 
     /* Get fan rpm */
-    info->rpm = (int)tach_speed0 * 150;
+    info->rpm = (int)tach_speed0 * 118;
 
+    /* Get the BMC pwm number */
+    bmc_pwm_number = _onlp_fani_get_bmc_pwm_num(local_id);
 
-
-    ret = bmc_i2c_read_byte(BMC_CPLD_I2C_BUS_ID, BMC_CPLD_I2C_ADDR, CPLD_FAN_PWM_ADDR_OFFSET, &data);
+    ret = bmc_read_raw_fan_pwm(bmc_pwm_number, (char *)&data);
     if (ret < 0)
     {
         AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
         return ret;
     }
     if (DEBUG)
-        AIM_LOG_INFO("%s:%d id[%d],pwm_addr_offset[%02x],read_byte[%02x]\n",
-                     __FUNCTION__, __LINE__, local_id, CPLD_FAN_PWM_ADDR_OFFSET, (unsigned char)data);
+        AIM_LOG_INFO("%s:%d id[%d],bmc_pwm_number[%02x],read_byte[%02x]\n",
+                     __FUNCTION__, __LINE__, local_id, bmc_pwm_number, (unsigned char)data);
 
     /* Get fan duty cycle */
-    info->percentage = round(((unsigned char)data * 100) / 255);
-
+    info->percentage = data;
 
     return ONLP_STATUS_OK;
 }
@@ -332,21 +360,18 @@ _onlp_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t *info)
 int
 onlp_fani_init(void)
 {
+#if 0 //onlpdump call this and reset fan pwm.
     DIAG_PRINT("%s", __FUNCTION__);
 
-#if 1 //By HW design, percentage is apply on all fans.
-    onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(FAN_1), DEFAULT_FAN_SPEED);
-#else
     int i = 0;
 
     for (i = FAN_1;
-         i <= FAN_6;
+         i <= FAN_4;
          i++)
     {
         onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), DEFAULT_FAN_SPEED);
     }
 #endif
-
     return ONLP_STATUS_OK;
 }
 
@@ -445,10 +470,9 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 int
 onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-
     int ret = 0, local_id = 0;
-    float val = (float)p * 2.55;
-    char data = (char)round(val);
+    char data = (char)p;
+    char bmc_pwm_number = 0;
 
     DIAG_PRINT("%s, id=%d, p=%d (0x%2X)", __FUNCTION__, id, p, (unsigned char)data);
 
@@ -459,22 +483,19 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     /* Not support to stop fan */
     if (p == 0)
         return ONLP_STATUS_E_INVALID;
-    else if (p == 100)
-        data = 0xff;
 
-    /* Cannot control PWM for each fan modules respectively. 
-     * All fan modules PWM will be the same.
-     */
-
-    ret = bmc_i2c_write_byte(BMC_CPLD_I2C_BUS_ID, BMC_CPLD_I2C_ADDR, CPLD_FAN_PWM_ADDR_OFFSET, data);
+    bmc_pwm_number = _onlp_fani_get_bmc_pwm_num(local_id);
+    
+    ret = bmc_write_raw_fan_pwm(bmc_pwm_number, data);
     if (ret < 0)
         AIM_LOG_INFO("%s:%d data[%02x] fail[%d]\n", __FUNCTION__, __LINE__, data, ret);
 
     if (DEBUG)
-        AIM_LOG_INFO("%s:%d id[%d],pwm_addr_offset[%02x],write_byte[%02x]\n",
-                     __FUNCTION__, __LINE__, local_id, CPLD_FAN_PWM_ADDR_OFFSET, (unsigned char)data);
+        AIM_LOG_INFO("%s:%d id[%d],bmc_pwm_number[%02x],write_byte[%02x]\n",
+                     __FUNCTION__, __LINE__, local_id, bmc_pwm_number, (unsigned char)data);
 
     return ONLP_STATUS_OK;
+
 }
 
 

@@ -34,23 +34,14 @@
 
 #define PSU1_ID 1
 #define PSU2_ID 2
-#if 1 //apple porting
 #define PSUI_BUS_ID_OFFSET      4
-#else
-#define PSUI_BUS_ID_OFFSET      9
-#endif
 #define PSU1_BUS_ID             (PSUI_BUS_ID_OFFSET + PSU1_ID)
 #define PSU2_BUS_ID             (PSUI_BUS_ID_OFFSET + PSU2_ID)
 
 #define CHASSIS_THERMAL_COUNT 2
-#if 1 //applr porting
 #define CHASSIS_FAN_COUNT     4
 #define CHASSIS_PSU_COUNT     2
-#else
-#define CHASSIS_FAN_COUNT     6
-#endif
 
-#if 1 //apple porting
 enum onlp_bmc_i2c_id
 {
     BMC_I2C1 = 0,
@@ -76,8 +67,6 @@ enum onlp_bmc_i2c_id
   */
 #define BMC_CPLD_I2C_ADDR                   0xBE
 
-#endif
-
 #define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/57-003c/"
 #define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/58-003f/"
 
@@ -91,17 +80,11 @@ enum onlp_bmc_i2c_id
 #define PSU2_AC_HWMON_NODE(node) PSU2_AC_HWMON_PREFIX#node
 #define PSU2_DC_HWMON_NODE(node) PSU2_DC_HWMON_PREFIX#node
 
-#if 1
 //#define NUM_OF_RJ45_PORT 4  /*  RJ-45 Port 1-4  */
 #define NUM_OF_SFP_PORT 4  /*  SFP+ Port 5-6 and SFP+ uplink Port 7-8  */
 #define SFP_START_INDEX 4 
-#define SFP_PLUS_EEPROM_I2C_ADDR            0x50  /* SFP+ EEPROM Physical Address in the I2C */  //apple, should check the i2c address of SFP+ EEPROM is 0x50 or 0x51??
+#define SFP_PLUS_EEPROM_I2C_ADDR            0x50  /* SFP+ EEPROM Physical Address in the I2C */  
 #define SFP_DOM_EEPROM_I2C_ADDR         0x51
-
-#else
-#define NUM_OF_SFP_PORT 32
-#define QSFP28_EEPROM_I2C_ADDR            0x50  /* QSFP28 EEPROM Physical Address in the I2C */
-#endif
 
 #define QSFP28_EEPROM_TXRX_LOS_OFFSET     3
 #define QSFP28_EEPROM_TX_FAULT_OFFSET     4
@@ -199,7 +182,6 @@ int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask);
  */
 enum onlp_fan_id
 {
-#if 1 //apple porting
     FAN_RESERVED = 0,
     FAN_1,
     FAN_2,
@@ -207,17 +189,6 @@ enum onlp_fan_id
     FAN_4,
     FAN_1_ON_PSU1,
     FAN_1_ON_PSU2,
-#else
-    FAN_RESERVED = 0,
-    FAN_1,
-    FAN_2,
-    FAN_3,
-    FAN_4,
-    FAN_5,
-    FAN_6,
-    FAN_1_ON_PSU1,
-    FAN_1_ON_PSU2,
-#endif    
 };
 
 /* 
@@ -225,31 +196,12 @@ enum onlp_fan_id
  */
 enum onlp_led_id
 {
-#if 1 //apple porting
     LED_RESERVED = 0,
     LED_POWER,
     LED_PSU1,
     LED_PSU2,
     LED_SYSTEM,
     LED_FAN,
-#else
-    LED_RESERVED = 0,
-    LED_SERVICE,
-    LED_STACKING,
-    LED_PWR,
-    LED_FAN1,
-    LED_FAN2,
-    LED_FAN3,
-    LED_FAN4,
-    LED_FAN5,
-    LED_FAN6,
-    LED_REAR_FAN1,
-    LED_REAR_FAN2,
-    LED_REAR_FAN3,
-    LED_REAR_FAN4,
-    LED_REAR_FAN5,
-    LED_REAR_FAN6,
-#endif    
 };
 
 /*
@@ -283,16 +235,17 @@ i2c APIs: access i2c device by ioctl
 int i2c_read(int i2cbus, int addr, int offset, int length, char* data);
 int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data);
 int i2c_read_byte(int i2cbus, int addr, int offset, char* data);
-#if 1 //apple porting
 int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data);
-#endif
+int bmc_read_raw_fan_speed(int sensor_num, char* data);
+int bmc_read_raw_fan_pwm(int pwm_num, char* data);
+
 int i2c_read_word(int i2cbus, int addr, int command);
 int i2c_read_block(int i2cbus, int addr, uint8_t offset, uint8_t *data, int length);
 int i2c_read_i2c_block_dump(int i2cbus, int addr, uint8_t *data);
 int i2c_write_byte(int i2cbus, int addr, int offset, char val); 
-#if 1 //apple porting
 int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value);
-#endif
+int bmc_write_raw_fan_pwm(int pwm_num, char value);
+
 int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val); 
 int i2c_read_rps_status(int i2cbus, int addr, int offset);
 

@@ -47,10 +47,7 @@
 #define PSUI_MANUFACTURER_NAME_REG  0x0C
 #define PSUI_PRODUCT_NAME_REG_PART1       0x20
 #define PSUI_PRODUCT_NAME_REG_PART2       0x2A
-#define PSUI_MODEL_NO_REG           0x1D //apple, maybe not use.
-#define PSUI_PRODUCT_VER_NO_REG     0x1F//apple, maybe not use.
-#define PSUI_PRODUCT_SER_NO_REG_F2B     0x23//apple, maybe not use.
-#define PSUI_PRODUCT_SER_NO_REG_B2F     0x25//apple, maybe not use.
+
 #define PSUI_PRODUCT_SER_NO_REG         0x35
 #define PSUI_RPS_STATUS_REG0        0x03 /* PSU Status Register for PSU#1 */ //from DCGS_TYPE1_ Power_CPLD_Spec_v02_20190611.docx
 #define PSUI_RPS_STATUS_REG1        0x04 /* PSU Status Register for PSU#2 */
@@ -300,24 +297,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
     memset(name, 0, sizeof(name));
     *info = pinfo[index]; /* Set the onlp_oid_hdr_t */
 
-    /* Get PSU type and product name, bus ID=index+10*/
-    psu_type = get_psu_type(index + PSUI_BUS_ID_OFFSET, info->model, sizeof(info->model));
-   
-    //debug
-    DIAG_PRINT("%s, id:%d, index:%d, psu_type:%d\n", __FUNCTION__, id, index, psu_type);
-    
-    ret = psu_stx60d0_info_get(index + PSUI_BUS_ID_OFFSET, info); /* Get PSU electric info from PMBus */
-
-    /* Get the product serial number, bus ID=index+10 */
-    if (psu_info_get_product_ser(psu_type, index + PSUI_BUS_ID_OFFSET, product_ser) < 0)
-    {
-        printf("Unable to read PSU(%d) item(serial number)\r\n", index);
-    }
-    else
-    {
-        memcpy(info->serial, product_ser, sizeof(product_ser));
-    }
-
+    /* Should Get psu status First, 
+      * if power no good, do not get psu info,
+      * if power not present, do not get any information.      
+      */
+      
     /* Get psu status from CPLD */
     if (psu_info_get_status(index, &status) < 0)
     {
@@ -332,9 +316,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
         power_on = GET_RPS_STATUS_BIT(rps_status, PSU_STATUS_POWER_ON);
 
         /* Empty */
-        if (!power_present)
+        if (power_present)
         {
-            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
+            info->status |= ONLP_PSU_STATUS_PRESENT;
         }
 
         if (!power_ok)
@@ -342,14 +326,38 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
             info->status |= ONLP_PSU_STATUS_FAILED;
         }
 
-        if (power_on)
+        if(!power_on)
         {
-            info->status |= ONLP_PSU_STATUS_PRESENT;
+            info->status |= ONLP_PSU_STATUS_UNPLUGGED;
         }
 
         DIAG_PRINT("rps_status:0x%x ,info->status:0x%x\n", rps_status, info->status);
         DIAG_PRINT("present:%d, ok:%d, on:%d\n", power_present, power_ok, power_on);
 
+    }
+
+    if (!(info->status & ONLP_PSU_STATUS_PRESENT))
+    {
+        /* Just dispaly "Not present." when empty by Psu.c (packages\base\any\onlp\src\onlp\module\src) onlp_psu_dump()*/
+        return ONLP_STATUS_OK;
+    }
+
+    /* Get PSU type and product name, bus ID=index+10*/
+    psu_type = get_psu_type(index + PSUI_BUS_ID_OFFSET, info->model, sizeof(info->model));
+   
+    //debug
+    DIAG_PRINT("%s, id:%d, index:%d, psu_type:%d\n", __FUNCTION__, id, index, psu_type);
+
+    ret = psu_stx60d0_info_get(index + PSUI_BUS_ID_OFFSET, info); /* Get PSU electric info from PMBus */
+
+    /* Get the product serial number, bus ID=index+10 */
+    if (psu_info_get_product_ser(psu_type, index + PSUI_BUS_ID_OFFSET, product_ser) < 0)
+    {
+        printf("Unable to read PSU(%d) item(serial number)\r\n", index);
+    }
+    else
+    {
+        memcpy(info->serial, product_ser, sizeof(product_ser));
     }
 
     return ret;

@@ -54,32 +54,32 @@
 #define PORT_CPLD_LOWPWR_ADDR_OFFSET    0x09
 #define PORT_CPLD_MOD_SEL_ADDR_OFFSET   0x0B  /* Module Select of QSFP ports */
 
-#define PAC9539_NUM1_I2C_BUS_ID           13
+#define PCA9539_NUM1_I2C_BUS_ID           13
 
-#define PAC9539_NUM1_I2C_ADDR              0x76  /* PAC9539#1 Physical Address in the I2C */
+#define PCA9539_NUM1_I2C_ADDR              0x76  /* PCA9539#1 Physical Address in the I2C */
 
-#define PAC9539_IO_INPUT 1
-#define PAC9539_IO_OUTPUT 0
+#define PCA9539_IO_INPUT 1
+#define PCA9539_IO_OUTPUT 0
 
-#define PAC9539_NUM1_IO0_INPUT_OFFSET   0x00 /* used to read SFP+ P1 and SFP+ P2 data */
-#define PAC9539_NUM1_IO1_INPUT_OFFSET   0x01 /* used to read SFP+ uplink P1 and SFP+ uplink P2 data */
+#define PCA9539_NUM1_IO0_INPUT_OFFSET   0x00 /* used to read SFP+ P1 and SFP+ P2 data */
+#define PCA9539_NUM1_IO1_INPUT_OFFSET   0x01 /* used to read SFP+ uplink P1 and SFP+ uplink P2 data */
 
-#define PAC9539_NUM1_IO0_OUTPUT_OFFSET   0x02 /* used to write SFP+ P1 and SFP+ P2 TXDIS bit (IO0_0 and IO0_4)*/
-#define PAC9539_NUM1_IO1_OUTPUT_OFFSET   0x03 /* used to write SFP+ uplink P1 and SFP+ uplink P2 TXDIS bit (IO1_0 and IO1_4)*/
+#define PCA9539_NUM1_IO0_OUTPUT_OFFSET   0x02 /* used to write SFP+ P1 and SFP+ P2 TXDIS bit (IO0_0 and IO0_4)*/
+#define PCA9539_NUM1_IO1_OUTPUT_OFFSET   0x03 /* used to write SFP+ uplink P1 and SFP+ uplink P2 TXDIS bit (IO1_0 and IO1_4)*/
 
 /* configures the directions of the I/O pin. 1:input, 0:output */
-#define PAC9539_NUM1_IO0_DIRECTION_OFFSET   0x06 
-#define PAC9539_NUM1_IO1_DIRECTION_OFFSET   0x07
+#define PCA9539_NUM1_IO0_DIRECTION_OFFSET   0x06 
+#define PCA9539_NUM1_IO1_DIRECTION_OFFSET   0x07
 
 
-#define PAC9539_NUM1_P1_TXDIS_BIT    0
-#define PAC9539_NUM1_P1_TXFAULT_BIT    1
-#define PAC9539_NUM1_P1_PRESENT_BIT    2
-#define PAC9539_NUM1_P1_RXLOS_BIT    3
-#define PAC9539_NUM1_P2_TXDIS_BIT    4
-#define PAC9539_NUM1_P2_TXFAULT_BIT    5
-#define PAC9539_NUM1_P2_PRESENT_BIT    6
-#define PAC9539_NUM1_P2_RXLOS_BIT    7
+#define PCA9539_NUM1_P1_TXDIS_BIT    0
+#define PCA9539_NUM1_P1_TXFAULT_BIT    1
+#define PCA9539_NUM1_P1_PRESENT_BIT    2
+#define PCA9539_NUM1_P1_RXLOS_BIT    3
+#define PCA9539_NUM1_P2_TXDIS_BIT    4
+#define PCA9539_NUM1_P2_TXFAULT_BIT    5
+#define PCA9539_NUM1_P2_PRESENT_BIT    6
+#define PCA9539_NUM1_P2_RXLOS_BIT    7
 
 #define SFP_I2C_BUS_ID_BASE             9
 
@@ -107,36 +107,36 @@ port_to_pca9539_sfp_offset(int port, int direction)
 {
     int ret = 0;
 
-    if (direction == PAC9539_IO_INPUT)
+    if (direction == PCA9539_IO_INPUT)
     {
         switch (port)
         {
             case SFP_PLUS_P1:
             case SFP_PLUS_P2:
-                ret = PAC9539_NUM1_IO0_INPUT_OFFSET;
+                ret = PCA9539_NUM1_IO0_INPUT_OFFSET;
                 break;
 
             case SFP_PLUS_UPLINK_P1:
             case SFP_PLUS_UPLINK_P2:
-                ret = PAC9539_NUM1_IO1_INPUT_OFFSET;
+                ret = PCA9539_NUM1_IO1_INPUT_OFFSET;
                 break;
                
             default:
                 break;        
         }
     }
-    else if (direction == PAC9539_IO_OUTPUT)
+    else if (direction == PCA9539_IO_OUTPUT)
     {
         switch (port)
         {
             case SFP_PLUS_P1:
             case SFP_PLUS_P2:
-                ret = PAC9539_NUM1_IO0_OUTPUT_OFFSET;
+                ret = PCA9539_NUM1_IO0_OUTPUT_OFFSET;
                 break;
 
             case SFP_PLUS_UPLINK_P1:
             case SFP_PLUS_UPLINK_P2:
-                ret = PAC9539_NUM1_IO1_OUTPUT_OFFSET;
+                ret = PCA9539_NUM1_IO1_OUTPUT_OFFSET;
                 break;
                
             default:
@@ -158,12 +158,12 @@ port_to_pca9539_txdis_bit(int port)
     {
         case SFP_PLUS_P1:
         case SFP_PLUS_UPLINK_P1:
-            index = PAC9539_NUM1_P1_TXDIS_BIT;
+            index = PCA9539_NUM1_P1_TXDIS_BIT;
             break;
 
         case SFP_PLUS_P2:
         case SFP_PLUS_UPLINK_P2:
-            index = PAC9539_NUM1_P2_TXDIS_BIT;
+            index = PCA9539_NUM1_P2_TXDIS_BIT;
             break;
            
         default:
@@ -184,12 +184,12 @@ port_to_pca9539_txfault_bit(int port)
     {
         case SFP_PLUS_P1:
         case SFP_PLUS_UPLINK_P1:
-            index = PAC9539_NUM1_P1_TXFAULT_BIT;
+            index = PCA9539_NUM1_P1_TXFAULT_BIT;
             break;
 
         case SFP_PLUS_P2:
         case SFP_PLUS_UPLINK_P2:
-            index = PAC9539_NUM1_P2_TXFAULT_BIT;
+            index = PCA9539_NUM1_P2_TXFAULT_BIT;
             break;
            
         default:
@@ -210,12 +210,12 @@ port_to_pca9539_present_bit(int port)
     {
         case SFP_PLUS_P1:
         case SFP_PLUS_UPLINK_P1:
-            index = PAC9539_NUM1_P1_PRESENT_BIT;
+            index = PCA9539_NUM1_P1_PRESENT_BIT;
             break;
 
         case SFP_PLUS_P2:
         case SFP_PLUS_UPLINK_P2:
-            index = PAC9539_NUM1_P2_PRESENT_BIT;
+            index = PCA9539_NUM1_P2_PRESENT_BIT;
             break;
            
         default:
@@ -236,12 +236,12 @@ port_to_pca9539_rxlos_bit(int port)
     {
         case SFP_PLUS_P1:
         case SFP_PLUS_UPLINK_P1:
-            index = PAC9539_NUM1_P1_RXLOS_BIT;
+            index = PCA9539_NUM1_P1_RXLOS_BIT;
             break;
 
         case SFP_PLUS_P2:
         case SFP_PLUS_UPLINK_P2:
-            index = PAC9539_NUM1_P2_RXLOS_BIT;
+            index = PCA9539_NUM1_P2_RXLOS_BIT;
             break;
            
         default:
@@ -266,12 +266,12 @@ stx60d0_sfp_present(int port)
     {
         case SFP_PLUS_P1:
         case SFP_PLUS_P2:
-            ret = i2c_read_byte(PAC9539_NUM1_I2C_BUS_ID, PAC9539_NUM1_I2C_ADDR, PAC9539_NUM1_IO0_INPUT_OFFSET, &data);
+            ret = i2c_read_byte(PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, PCA9539_NUM1_IO0_INPUT_OFFSET, &data);
             break;
 
         case SFP_PLUS_UPLINK_P1:
         case SFP_PLUS_UPLINK_P2:
-            ret = i2c_read_byte(PAC9539_NUM1_I2C_BUS_ID, PAC9539_NUM1_I2C_ADDR, PAC9539_NUM1_IO1_INPUT_OFFSET, &data);
+            ret = i2c_read_byte(PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_I2C_ADDR, PCA9539_NUM1_IO1_INPUT_OFFSET, &data);
             break;
            
         default:
@@ -284,13 +284,13 @@ stx60d0_sfp_present(int port)
         return ret;
     }
 
-//apple test
+//debug
 //printf("%s:%d port[%d],busid[%d],reg[%02x],read_byte[%02x]\n", __FUNCTION__, __LINE__,
-//             port, PAC9539_NUM1_I2C_BUS_ID, PAC9539_NUM1_IO0_INPUT_OFFSET, (unsigned char)data);
+//             port, PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_IO0_INPUT_OFFSET, (unsigned char)data);
 
     if (DEBUG)
         AIM_LOG_INFO("%s:%d port[%d],busid[%d],reg[%02x],read_byte[%02x]\n", __FUNCTION__, __LINE__,
-                     port, PAC9539_NUM1_I2C_BUS_ID, PAC9539_NUM1_IO0_INPUT_OFFSET, (unsigned char)data);
+                     port, PCA9539_NUM1_I2C_BUS_ID, PCA9539_NUM1_IO0_INPUT_OFFSET, (unsigned char)data);
 
     /* SFP+_P1_PRESENT_L. "0" indicates Module Present. */
     if (!(data & (1 << port_to_pca9539_present_bit(port))))
@@ -310,21 +310,21 @@ static int
 stx60d0_sfp_pca9539_direction_set(int IO_port)
 {
     int offset = 0;
-    int pca9539_bus = PAC9539_NUM1_I2C_BUS_ID;
-    int addr = PAC9539_NUM1_I2C_ADDR;
+    int pca9539_bus = PCA9539_NUM1_I2C_BUS_ID;
+    int addr = PCA9539_NUM1_I2C_ADDR;
     char data = 0;
     int ret = 0;
 
     if (IO_port == 0)
-        offset = PAC9539_NUM1_IO0_DIRECTION_OFFSET;
+        offset = PCA9539_NUM1_IO0_DIRECTION_OFFSET;
     else
-        offset = PAC9539_NUM1_IO1_DIRECTION_OFFSET;
+        offset = PCA9539_NUM1_IO1_DIRECTION_OFFSET;
     
     data = onlp_i2c_readb(pca9539_bus, addr, offset, ONLP_I2C_F_FORCE);
 
     /* configuration direction to output, input:1, output:0.  */
-    data &= ~(1 << PAC9539_NUM1_P1_TXDIS_BIT);
-    data &= ~(1 << PAC9539_NUM1_P2_TXDIS_BIT);
+    data &= ~(1 << PCA9539_NUM1_P1_TXDIS_BIT);
+    data &= ~(1 << PCA9539_NUM1_P2_TXDIS_BIT);
 
     ret = onlp_i2c_writeb(pca9539_bus, addr, offset, data, ONLP_I2C_F_FORCE);
     if (ret < 0)
@@ -341,25 +341,6 @@ stx60d0_sfp_init(void)
 {
     DIAG_PRINT("%s", __FUNCTION__);
 
-#if 0 //apple test, why return 0x00 after i2cget -y 13 0x76 0x06 at the monent???
-    int ret = 0;
-
-    /* config pca9539#1 IO port0 direction */
-    ret = stx60d0_sfp_pca9539_direction_set(0);
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-
-    /* config pca9539#1 IO port1 direction */
-    ret = stx60d0_sfp_pca9539_direction_set(1);
-    if (ret < 0)
-    {
-        AIM_LOG_INFO("%s:%d fail[%d]\n", __FUNCTION__, __LINE__, ret);
-        return ret;
-    }
-#endif
     return 0;
 }
 
@@ -586,8 +567,8 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int rv = ONLP_STATUS_OK;
     int bus = port_to_busid(port);
-    int pca9539_bus = PAC9539_NUM1_I2C_BUS_ID;
-    int addr = PAC9539_NUM1_I2C_ADDR;
+    int pca9539_bus = PCA9539_NUM1_I2C_BUS_ID;
+    int addr = PCA9539_NUM1_I2C_ADDR;
     int offset = 0;
     int port_bit = port_to_pca9539_txdis_bit(port);
     int supported = 0;
@@ -622,7 +603,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         {
             /* TXDIS is Output direction!!!! */
             case ONLP_SFP_CONTROL_TX_DISABLE:
-                offset = port_to_pca9539_sfp_offset(port, PAC9539_IO_OUTPUT);
+                offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_OUTPUT);
                 break;
             default:
                 return ONLP_STATUS_E_UNSUPPORTED;
@@ -658,8 +639,8 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
 {
     int rv = ONLP_STATUS_OK;
-    int pca9539_bus = PAC9539_NUM1_I2C_BUS_ID;
-    int addr = PAC9539_NUM1_I2C_ADDR;
+    int pca9539_bus = PCA9539_NUM1_I2C_BUS_ID;
+    int addr = PCA9539_NUM1_I2C_ADDR;
     int offset = 0;
     int port_bit;
     int supported = 0;
@@ -681,17 +662,17 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int *value)
     switch (control)
     {
         case ONLP_SFP_CONTROL_RX_LOS:
-            offset = port_to_pca9539_sfp_offset(port, PAC9539_IO_INPUT);               
+            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_INPUT);               
             port_bit = port_to_pca9539_rxlos_bit(port);
             break;
             
         case ONLP_SFP_CONTROL_TX_FAULT:
-            offset = port_to_pca9539_sfp_offset(port, PAC9539_IO_INPUT);
+            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_INPUT);
             port_bit = port_to_pca9539_txfault_bit(port);
             break;
             
         case ONLP_SFP_CONTROL_TX_DISABLE:
-            offset = port_to_pca9539_sfp_offset(port, PAC9539_IO_INPUT);
+            offset = port_to_pca9539_sfp_offset(port, PCA9539_IO_INPUT);
             port_bit = port_to_pca9539_txdis_bit(port);
             break;
             
