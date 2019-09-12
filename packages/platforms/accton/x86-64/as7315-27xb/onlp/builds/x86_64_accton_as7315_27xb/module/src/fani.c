@@ -184,7 +184,21 @@ fani_is_fan_enabled(int fid, bool *enable)
     return ONLP_STATUS_OK;
 }
 
+int
+fani_get_fan_duty(int fid, int *duty)
+{
+    char path[256];
+    const char *dpath = FAN_BOARD_PATHS[fan_support_e];
 
+    ONLPLIB_SNPRINTF(path, sizeof(path)-1,
+                     "%sfan%d_pwm",dpath, fid);
+
+    if (onlp_file_read_int(duty, path) < 0) {
+        AIM_LOG_ERROR("Unable to read from (%s)\r\n", path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return ONLP_STATUS_OK;
+}
 
 static int
 _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)

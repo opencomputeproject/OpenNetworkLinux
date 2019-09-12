@@ -112,6 +112,7 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 
 extern int fani_enable_fan(int fid, bool enable) ;
 extern int fani_is_fan_enabled(int fid, bool *enable);
+extern int fani_get_fan_duty(int fid, int *duty);
 
 static int
 _set_all_fans_pwm(int duty)
@@ -185,8 +186,7 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                          int *adjusted)
 {
     static int last_temp = 0;
-    static int last_duty = -1;
-    int i, duty, *threshs, ret;
+    int i, duty, *threshs, curr_duty;
     int temp = 0;
     enum trend_e {E_TREND_FALL, E_TREND_RISE, E_TRENDS} trend = 0;
     int policys[E_TRENDS][2] = {{1000, 33000}, {11000, 43000}};
@@ -199,7 +199,13 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     trend = (temp - last_temp) > 0 ? E_TREND_RISE: E_TREND_FALL;
     last_temp = temp;
 
-    duty = last_duty;
+    /*Take fan 1 only.*/
+    if( fani_get_fan_duty(1, &curr_duty) != ONLP_STATUS_OK) {
+        *adjusted = 1;
+        return _set_all_fans_pwm(FAN_DUTY_MAX);
+    }
+
+    duty = curr_duty;
     threshs = policys[trend];
     if (trend == E_TREND_RISE) {
         for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
@@ -218,16 +224,12 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
 
     }
 
-    if (last_duty == duty) {
-        return ONLP_STATUS_OK;
-    } else {
+    if (curr_duty != duty) {
         *adjusted = 1;
-        ret = _set_all_fans_pwm(duty);
-        if (ret == ONLP_STATUS_OK) {
-            last_duty = duty;
-        }
-        return ret;
+        return _set_all_fans_pwm(duty);
     }
+
+    return ONLP_STATUS_OK;
 }
 
 
