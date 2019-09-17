@@ -59,6 +59,7 @@ onlp_sysi_init(void)
     aim_strlcpy(interface, "ma1", strlen("ma1")+1);
     aim_strlcpy(ifr.ifr_name, interface, IFNAMSIZ);
     if (ioctl(skfd, SIOCGMIIPHY, &ifr) < 0) {
+        perror("ioctl\n");
         if (errno != ENODEV)
             fprintf(stderr, "SIOCGMIIPHY on '%s' failed: %s\n",
                 interface, strerror(errno));
