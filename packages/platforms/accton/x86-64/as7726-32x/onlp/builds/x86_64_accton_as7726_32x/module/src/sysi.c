@@ -272,7 +272,9 @@ int onlp_sysi_platform_manage_fans(void)
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
             fan_fail=1;
             break;
-        }
+        } else {
+	    fan_fail = 0;
+	}
         /* Decision 1: Set fan as full speed if any fan is failed.
          */
         if (fan_info.status & ONLP_FAN_STATUS_FAILED || !(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
@@ -280,7 +282,9 @@ int onlp_sysi_platform_manage_fans(void)
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
             fan_fail=1;
             break;
-        }
+        } else {
+            fan_fail = 0;
+	}
     }
 
     if(current_state!=ori_state)
