@@ -39,7 +39,7 @@
 #define USE_BYTE_ACCESS     0       /*Somehow i2c block access is failed on this platform.*/
 #define UPDATE_PERIOD			    (HZ*2)
 #define MAX_OUTPUT_LENGTH   		32
-#define BASIC_EEPROM_SIZE   		32
+#define I2C_BURST_LEN   		32
 
 #define IS_POWER_GOOD(id, value)	(!!(value & BIT(id + 2)))
 #define IS_PRESENT(id, value)		(!(value & BIT(id)))
@@ -57,7 +57,7 @@ struct as7315_27xb_psu_data {
     unsigned long       last_updated;    /* In jiffies */
     u8  index;           /* PSU index */
     u8  status;          /* Status(present/power_good) register read from CPLD */
-    char eeprom[BASIC_EEPROM_SIZE*2];    /* EEPROM*/
+    char eeprom[I2C_BURST_LEN*2];    /* EEPROM*/
 };
 
 
@@ -89,20 +89,21 @@ struct model_info {
     u8 offset;
     char* model_name;
     u8 serial_offset;
+    u8 serial_length;
 };
 
 struct model_info models[] = {
-    {PSU_YM_1401_A,     0x20, "YM-1401ACR",0x35},
-    {PSU_YM_2401_JCR,   0x20, "YM-2401JCR",0x35},
-    {PSU_YM_2401_JDR,   0x20, "YM-2401JDR",0x35},
-    {PSU_YM_2401_TCR,   0x20, "YM-2401TCR",0x35},
-    {PSU_CPR_4011_4M11, 0x26, "CPR-4011-4M11",0x47},
-    {PSU_CPR_4011_4M21, 0x26, "CPR-4011-4M21",0x47},
-    {PSU_CPR_6011_2M11, 0x26, "CPR-6011-2M11",0x46},
-    {PSU_CPR_6011_2M21, 0x26, "CPR-6011-2M21",0x46},
-    {PSU_UM400D_01G,    0x50, "um400d01G",0x50},
-    {PSU_UM400D01_01G,  0x50, "um400d01-01G",0x50},
-    {PSU_BEL_TOT12,     0x0A, "CRXT-T0T12",0x18},
+    {PSU_BEL_TOT12,     0x0A, "CRXT-T0T12",0x18, 8},
+    {PSU_YM_1401_A,     0x20, "YM-1401ACR",0x35,MAX_OUTPUT_LENGTH},
+    {PSU_YM_2401_JCR,   0x20, "YM-2401JCR",0x35,MAX_OUTPUT_LENGTH},
+    {PSU_YM_2401_JDR,   0x20, "YM-2401JDR",0x35,MAX_OUTPUT_LENGTH},
+    {PSU_YM_2401_TCR,   0x20, "YM-2401TCR",0x35,MAX_OUTPUT_LENGTH},
+    {PSU_CPR_4011_4M11, 0x26, "CPR-4011-4M11",0x47,MAX_OUTPUT_LENGTH},
+    {PSU_CPR_4011_4M21, 0x26, "CPR-4011-4M21",0x47,MAX_OUTPUT_LENGTH},
+    {PSU_CPR_6011_2M11, 0x26, "CPR-6011-2M11",0x46,MAX_OUTPUT_LENGTH},
+    {PSU_CPR_6011_2M21, 0x26, "CPR-6011-2M21",0x46,MAX_OUTPUT_LENGTH},
+    {PSU_UM400D_01G,    0x50, "um400d01G",0x50,MAX_OUTPUT_LENGTH},
+    {PSU_UM400D01_01G,  0x50, "um400d01-01G",0x50,MAX_OUTPUT_LENGTH},
 };
 
 static ssize_t show_index(struct device *dev, struct device_attribute *da, char *buf);
@@ -306,12 +307,12 @@ static int as7315_27xb_psu_block_read(struct i2c_client *client,
     u8 i, offset;
 
     if (i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_READ_I2C_BLOCK)) {
-        for (i = 0; i < max_len; i += 32) {
+        for (i = 0; i < max_len; i += I2C_BURST_LEN) {
             offset = i + command ;
             result = i2c_smbus_read_i2c_block_data(client, offset,
-                                                   32, data + i);
+                                                   I2C_BURST_LEN, data + i);
 
-            if (result != 32) {
+            if (result != I2C_BURST_LEN) {
                 result = -EIO;
                 goto abort;
             }
@@ -351,7 +352,8 @@ static int as7315_27xb_psu_serial_number_get(
     }
 
     serial = data->eeprom + models[type].serial_offset;
-    strncpy(out, serial, MAX_OUTPUT_LENGTH);
+    strncpy(out, serial, models[type].serial_length);
+    out[models[type].serial_length] = '\0';
     return 0;
 }
 
@@ -425,7 +427,6 @@ static struct as7315_27xb_psu_data *as7315_27xb_psu_update_device(struct device 
         else {
             data->status = status;
         }
-
 
         /*Read the eeprom of psu*/
         memset(data->eeprom, 0, sizeof(data->eeprom));
