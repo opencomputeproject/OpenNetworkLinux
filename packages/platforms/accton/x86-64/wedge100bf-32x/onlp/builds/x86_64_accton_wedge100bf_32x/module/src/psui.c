@@ -126,6 +126,7 @@ int onlp_psui_info_get(onlp_oid_id_t id, onlp_psu_info_t* info) {
     char path[80] = {0};
     
     *info = pinfo[id]; /* Set the onlp_oid_hdr_t */
+    bmc_tty_init();
 
     /* Get the present status
      */

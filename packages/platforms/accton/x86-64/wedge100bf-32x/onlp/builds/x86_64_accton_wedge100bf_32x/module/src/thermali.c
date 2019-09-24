@@ -122,6 +122,7 @@ int onlp_thermali_info_get(onlp_oid_id_t id, onlp_thermal_info_t* info) {
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = linfo[tid];
+    bmc_tty_init();
 
     /* get path */
     if (THERMAL_CPU_CORE == tid) {

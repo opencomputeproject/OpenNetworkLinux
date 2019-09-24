@@ -112,7 +112,8 @@ int onlp_fani_info_get(onlp_oid_id_t id, onlp_fan_info_t* info) {
 
     fid = ONLP_OID_ID_GET(id);
     *info = finfo[fid];
-
+    bmc_tty_init();
+    
     /* get fan present status
      *
      * 0x0 Present
@@ -215,7 +216,8 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
     char cmd[32] = {0};
 
     sprintf(cmd, "set_fan_speed.sh %d", p);
-
+    bmc_tty_init();
+    
     if (bmc_send_command(cmd) < 0) {
         AIM_LOG_ERROR("Unable to send command to bmc(%s)\r\n", cmd);
         return ONLP_STATUS_E_INTERNAL;
