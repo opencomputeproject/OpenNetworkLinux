@@ -4,7 +4,7 @@ from onl.platform.accton import *
 import commands
 
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
-#It happen when read 16th-byte offset that value is 0x8. So disable chip 
+#It happen when read 16th-byte offset that value is 0x8. So disable chip
 def disable_i2c_ir3570a(addr):
     check_i2c="i2cget -y 0 0x4 0x1"
     status, output = commands.getstatusoutput(check_i2c)
@@ -35,6 +35,16 @@ def ir3570_check():
         print "Error on ir3570_check() e:" + str(e)
         return -1
     return ret
+
+def _8v89307_init():
+    script = os.path.join(os.path.dirname(os.path.realpath(__file__)), "8v89307_init.sh")
+    if os.path.exists(script):
+        status, output = commands.getstatusoutput(script)
+        print output
+        if status != 0:
+            print "Error in 8v89307_init: " + str(e)
+            return False
+    return True
 
 class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
                                               OnlPlatformPortConfig_48x25_8x100):
@@ -113,7 +123,7 @@ class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
         for port in range(1, 49):
             bus = sfp_map[port-1]
             self.new_i2c_device('optoe2', 0x50, bus)
-    
+
         self.new_i2c_device('optoe2', 0x50, sfp_map[57-1])
         self.new_i2c_device('optoe2', 0x50, sfp_map[58-1])
 
@@ -127,5 +137,8 @@ class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus), shell=True)
 
         self.new_i2c_device('24c04', 0x56, 0)
+
         ir3570_check()
+        _8v89307_init()
+
         return True

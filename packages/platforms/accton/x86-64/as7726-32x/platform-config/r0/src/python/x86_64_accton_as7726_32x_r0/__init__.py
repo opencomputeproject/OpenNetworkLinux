@@ -4,7 +4,7 @@ from onl.platform.accton import *
 import commands
 
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
-#It happen when read 16th-byte offset that value is 0x8. So disable chip 
+#It happen when read 16th-byte offset that value is 0x8. So disable chip
 def disable_i2c_ir3570a(addr):
     check_i2c="i2cget -y 0 0x4 0x1"
     status, output = commands.getstatusoutput(check_i2c)
@@ -36,9 +36,18 @@ def ir3570_check():
         return -1
     return ret
 
+def _8v89307_init():
+    script = os.path.join(os.path.dirname(os.path.realpath(__file__)), "8v89307_init.sh")
+    if os.path.exists(script):
+        status, output = commands.getstatusoutput(script)
+        print output
+        if status != 0:
+            print "Error in 8v89307_init: " + str(e)
+            return False
+    return True
 
 class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
-                                              OnlPlatformPortConfig_48x25_6x100):
+                                              OnlPlatformPortConfig_32x100):
 
     PLATFORM='x86-64-accton-as7726-32x-r0'
     MODEL="AS7726-32X"
@@ -51,7 +60,7 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
             self.insmod("x86-64-accton-as7726-32x-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
-        # initialize multiplexer (PCA9548)        
+        # initialize multiplexer (PCA9548)
         self.new_i2c_device('pca9548', 0x77, 0)
         # initiate multiplexer (PCA9548)
         self.new_i2c_devices(
@@ -65,7 +74,7 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
                 ('pca9548', 0x71, 2)
                 ]
             )
-        
+
         self.new_i2c_devices([
             # initialize CPLD
             ('as7726_32x_cpld1', 0x60, 11),
@@ -98,17 +107,17 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
         for port in range(1, 5):
             self.new_i2c_device('optoe1', 0x50, port+20)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+20), shell=True)
-            
-        self.new_i2c_device('optoe1', 0x50, 26) 
+
+        self.new_i2c_device('optoe1', 0x50, 26)
         subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (5, 26), shell=True)
-        self.new_i2c_device('optoe1', 0x50, 25) 
+        self.new_i2c_device('optoe1', 0x50, 25)
         subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (6, 25), shell=True)
-        self.new_i2c_device('optoe1', 0x50, 28) 
+        self.new_i2c_device('optoe1', 0x50, 28)
         subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (7, 28), shell=True)
-        self.new_i2c_device('optoe1', 0x50, 27) 
+        self.new_i2c_device('optoe1', 0x50, 27)
         subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (8, 27), shell=True)
-        
-        # initialize QSFP port 9~16    
+
+        # initialize QSFP port 9~16
         for port in range(9, 13):
             self.new_i2c_device('optoe1', 0x50, port+8)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+8), shell=True)
@@ -128,14 +137,15 @@ class OnlPlatform_x86_64_accton_as7726_32x_r0(OnlPlatformAccton,
         for port in range(25, 33):
             self.new_i2c_device('optoe1', 0x50, port+12)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+12), shell=True)
-        
+
         # initialize SFP port 33~34
         for port in range(33, 35):
-            self.new_i2c_device('optoe1', 0x50, port-18)
+            self.new_i2c_device('optoe2', 0x50, port-18)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port-18), shell=True)
 
         self.new_i2c_device('24c02', 0x56, 0)
 
-        ir3570_check() 
+        ir3570_check()
+        _8v89307_init()
 
         return True

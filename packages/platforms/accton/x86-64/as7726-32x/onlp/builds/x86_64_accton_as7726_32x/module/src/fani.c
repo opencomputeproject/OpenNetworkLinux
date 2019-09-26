@@ -28,7 +28,7 @@
 
 #define PSU_PREFIX_PATH  "/sys/bus/i2c/devices/"
 
-#define MAX_FAN_SPEED     25500
+#define MAX_FAN_SPEED     18500
 #define MAX_PSU_FAN_SPEED 25500
 
 enum fan_id {
@@ -318,7 +318,7 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
             return ONLP_STATUS_E_INVALID;
     }
 
-	DEBUG_PRINT("Fan path = (%s)", path);
+    DEBUG_PRINT("Fan path = (%s)", path);
 	
     if (onlp_file_write_integer(path, p) < 0) {
         AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);

@@ -98,15 +98,16 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     char *node = NULL;
     char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
     char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
-    
+
 
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_mfr_model) : PSU2_AC_PMBUS_NODE(psu_mfr_model);
     if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
-	
-    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) != 0) {
+
+    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) != 0 &&
+        strncmp(model_name, "FSF019", strlen("FSF019")) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
 
@@ -127,7 +128,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
         return PSU_TYPE_AC_B2F;
     }
-    
+
     return PSU_TYPE_UNKNOWN;
 }
 
@@ -135,7 +136,7 @@ int psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
 {
     int  ret = 0;
     char path[PSU_NODE_MAX_PATH_LEN] = {0};
-    
+
     *value = 0;
 
     if (PSU1_ID == id) {
@@ -181,7 +182,7 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
 int psu_serial_number_get(int id, char *serial, int serial_len)
 {
 	int   size = 0;
-	int   ret  = ONLP_STATUS_OK; 
+	int   ret  = ONLP_STATUS_OK;
 	char *prefix = NULL;
 
 	if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN) {
@@ -199,4 +200,3 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
 	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
 	return ONLP_STATUS_OK;
 }
-

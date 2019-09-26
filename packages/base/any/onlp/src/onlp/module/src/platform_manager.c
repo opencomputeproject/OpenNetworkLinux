@@ -306,6 +306,8 @@ platform_psus_notify__(void)
         ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, PSU) {
             psu_oid_table[i++] = *oidp;
         }
+        /* free allocated memory */
+        onlp_sys_info_free(&si);
     }
 
     for(i = 0; i < AIM_ARRAYSIZE(psu_oid_table); i++) {
@@ -417,6 +419,8 @@ platform_fans_notify__(void)
         ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, FAN) {
             fan_oid_table[i++] = *oidp;
         }
+        /* free allocated memory */
+        onlp_sys_info_free(&si);
     }
 
     for(i = 0; i < AIM_ARRAYSIZE(fan_oid_table); i++) {
