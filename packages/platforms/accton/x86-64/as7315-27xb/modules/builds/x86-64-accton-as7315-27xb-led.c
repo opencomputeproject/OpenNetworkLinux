@@ -35,6 +35,7 @@
 enum led_type {
     TYPE_DIAG,
     TYPE_LOC,
+    TYPE_ALARM,
     TYPE_MAX
 };
 
@@ -44,8 +45,9 @@ struct led_list_s {
     u8   reg_addr;
     u8   slave_addr;
 } led_list[TYPE_MAX] = {
-    {TYPE_DIAG, "as7315_27xb_diag", 0x41, CPLD_I2C_ADDR},
-    {TYPE_LOC,  "as7315_27xb_loc", 0x40, CPLD_I2C_ADDR}
+    {TYPE_DIAG, "as7315_27xb_diag",  0x41, CPLD_I2C_ADDR},
+    {TYPE_LOC,  "as7315_27xb_loc",   0x40, CPLD_I2C_ADDR},
+    {TYPE_ALARM,"as7315_27xb_alarm", 0x41, CPLD_I2C_ADDR}
 };
 
 struct accton_as7315_27xb_led_data {
@@ -72,6 +74,10 @@ static struct accton_as7315_27xb_led_data  *ledctl = NULL;
 #define MODE_LOC_OFF_MASK     0x40
 #define MODE_LOC_BLINK_MASK   0x00
 
+#define TYPE_ALARM_REG_MASK    0xC0
+#define MODE_ALARM_RED_MASK    0x80
+#define MODE_ALARM_GBLINK_MASK 0x40
+#define MODE_ALARM_OFF_MASK    0xC0
 
 typedef enum onlp_led_mode_e {
     ONLP_LED_MODE_OFF,
@@ -108,6 +114,9 @@ static struct led_type_mode led_type_mode_data[] = {
     {TYPE_DIAG, TYPE_DIAG_REG_MASK, ONLP_LED_MODE_OFF,   MODE_DIAG_OFF_MASK},
     {TYPE_LOC, TYPE_LOC_REG_MASK, ONLP_LED_MODE_BLUE_BLINKING,  MODE_LOC_BLINK_MASK},
     {TYPE_LOC, TYPE_LOC_REG_MASK, ONLP_LED_MODE_OFF,       MODE_LOC_OFF_MASK},
+    {TYPE_ALARM, TYPE_ALARM_REG_MASK, ONLP_LED_MODE_GREEN_BLINKING, MODE_ALARM_GBLINK_MASK},
+    {TYPE_ALARM, TYPE_ALARM_REG_MASK, ONLP_LED_MODE_RED, MODE_ALARM_RED_MASK},
+    {TYPE_ALARM, TYPE_ALARM_REG_MASK, ONLP_LED_MODE_OFF,   MODE_ALARM_OFF_MASK},
 };
 
 extern int accton_i2c_cpld_read (u8 cpld_addr, u8 reg);
@@ -290,6 +299,14 @@ static struct led_classdev accton_as7315_27xb_leds[TYPE_MAX] = {
         .brightness_get  = led_mode_get,
         .flags             = LED_CORE_SUSPENDRESUME,
         .max_brightness  = ONLP_LED_MODE_AUTO,
+    },
+    [TYPE_ALARM] = {
+        .name             = led_list[TYPE_ALARM].name,
+        .default_trigger  = "unused",
+        .brightness_set   = led_mode_set,
+        .brightness_get   = led_mode_get,
+        .flags            = LED_CORE_SUSPENDRESUME,
+        .max_brightness   = ONLP_LED_MODE_AUTO,
     },
 };
 

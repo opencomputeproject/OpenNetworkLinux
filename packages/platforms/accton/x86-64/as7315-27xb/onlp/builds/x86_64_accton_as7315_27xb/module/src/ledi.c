@@ -46,6 +46,7 @@ enum onlp_led_id
     LED_RESERVED = 0,
     LED_LOC,
     LED_DIAG,
+    LED_ALARM,
 };
 
 enum led_light_mode {
@@ -84,6 +85,9 @@ led_light_mode_map_t led_map[] = {
     {LED_DIAG, LED_MODE_GREEN,           ONLP_LED_MODE_GREEN},
     {LED_DIAG, LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
     {LED_DIAG, LED_MODE_ORANGE, ONLP_LED_MODE_ORANGE},
+    {LED_ALARM, LED_MODE_OFF,             ONLP_LED_MODE_OFF},
+    {LED_ALARM, LED_MODE_GREEN_BLINKING,  ONLP_LED_MODE_GREEN_BLINKING},
+    {LED_ALARM, LED_MODE_RED,             ONLP_LED_MODE_RED},
 };
 
 static char *leds[] =  /* must map with onlp_led_id */
@@ -91,6 +95,7 @@ static char *leds[] =  /* must map with onlp_led_id */
     NULL,
     "loc",
     "diag",
+    "alarm",
 };
 
 /*
@@ -108,6 +113,12 @@ static onlp_led_info_t linfo[] =
         { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 2 (DIAG LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_ORANGE
+        | ONLP_LED_CAPS_GREEN_BLINKING,
+    },
+    {
+        { ONLP_LED_ID_CREATE(LED_ALARM), "Chassis LED 3 (ALARM LED)", 0 },
+        ONLP_LED_STATUS_PRESENT,
+        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED
         | ONLP_LED_CAPS_GREEN_BLINKING,
     },
 };
@@ -155,6 +166,7 @@ onlp_ledi_init(void)
      */
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_OFF);
     onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_LOC), ONLP_LED_MODE_OFF);
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_ALARM), ONLP_LED_MODE_OFF);
 
     return ONLP_STATUS_OK;
 }

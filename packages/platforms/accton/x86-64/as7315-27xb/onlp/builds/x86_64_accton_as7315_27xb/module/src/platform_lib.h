@@ -30,7 +30,7 @@
 
 #define CHASSIS_FAN_COUNT		5
 #define CHASSIS_THERMAL_COUNT	4
-#define CHASSIS_LED_COUNT		2
+#define CHASSIS_LED_COUNT		3
 #define CHASSIS_PSU_COUNT		2
 
 #define PSU1_ID 1
