@@ -45,6 +45,9 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
                 ('lm75', 0x4a, 52),
                 ('lm75', 0x4c, 53),
 
+                # initiate power monitor
+                ('ucd90160', 0x34, 11),
+
                 # initiate PSU-2
                 ('as7315_27xb_psu2', 0x50, 12),
                 ('ym2401',  0x58, 12),
@@ -70,6 +73,33 @@ class OnlPlatform_x86_64_accton_as7315_27xb_r0(OnlPlatformAccton,
             self.new_i2c_device('optoe1', 0x50, bus)
             cmd = 'echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus)
             subprocess.call(cmd, shell=True)
+
+
+        # Write sensors.conf for ucd90160
+        lines = """
+        bus "i2c-11" "i2c-1-mux (chan_id 1)"
+            chip "ucd90160-i2c-*-34"
+                label in1  "H_VCC12_MON"
+                label in2  "VCC12_MON"
+                label in3  "USB_VCC5P0_MON"
+                label in4  "VCC5P0_MON"
+                label in5  "VDD3P3_MON"
+                label in6  "VDD1P8_MON"
+                label in7  "VDD1P0_MON"
+                label in8  "SFP_3P3_MON"
+                label in9  "VDD1P0_ROV_MON"
+                label in10 "VPP_DDR2P5_MON"
+                label in11 "VDD1P2_DDR_MON"
+                label in12 "VDD0P6_MON"
+                label in13 "Vmonitor_3V3_MON"
+                label in14 "FPGA_2V5_MON"
+                label in15 "FPGA_1V2_MON"
+                label in16 "MANG_2P5_MON"
+        """
+        f= open("/etc/sensors.d/sensors.conf1","w+")
+        f.write(lines)
+        f.close()
+
 
         return True
 
