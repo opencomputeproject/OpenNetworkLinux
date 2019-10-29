@@ -1,16 +1,14 @@
 #include <linux/i2c.h>
-//#include <linux/i2c-algo-bit.h>
 #include <linux/i2c-gpio.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 
-#include <linux/i2c/pca954x.h>
+#include <linux/platform_data/pca954x.h>
 #include <linux/platform_data/pca953x.h>
 #include <linux/platform_data/at24.h>
 
-//#include <asm/gpio.h>
 #define IO_EXPAND_BASE    64
 #define IO_EXPAND_NGPIO   16
 
@@ -111,39 +109,6 @@ static struct inv_i2c_board_info i2cdev_list[] = {
     {bus_id(5), ARRAY_SIZE(i2c_device_info5),  i2c_device_info5 },  //mux 3
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////
-static struct 	i2c_gpio_platform_data 	i2c_gpio_platdata0 = {
-	.scl_pin = 8,
-	.sda_pin = 9,
-    
-	.udelay  = 5, //5:100kHz
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.scl_is_output_only = 0
-};
-
-static struct 	i2c_gpio_platform_data 	i2c_gpio_platdata1 = {
-	.scl_pin = 12,
-	.sda_pin = 11,
-    
-	.udelay  = 5, //5:100kHz
-	.sda_is_open_drain = 0,
-	.scl_is_open_drain = 0,
-	.scl_is_output_only = 0
-};
-
-static struct 	platform_device 	device_i2c_gpio0 = {
-	.name 	= "i2c-gpio",
-	.id  	= 0, // adapter number
-	.dev.platform_data = &i2c_gpio_platdata0,
-};
-
-static struct 	platform_device 	device_i2c_gpio1 = {
-	.name 	= "i2c-gpio",
-	.id  	= 1, // adapter number
-	.dev.platform_data = &i2c_gpio_platdata1,
-};
-
 static int __init plat_redwood_x86_init(void)
 {
     struct i2c_adapter *adap = NULL;
@@ -153,24 +118,6 @@ static int __init plat_redwood_x86_init(void)
 
     printk("el6661 plat_redwood_x86_init  \n");
 
-#if 0  //disable for ICOS
-    //use i2c-gpio    
-    //register i2c gpio
-    //config gpio8,9 to gpio function
-    outl( inl(0x500) | (1<<8 | 1<<9), 0x500);
-    
-	ret = platform_device_register(&device_i2c_gpio0);
-	if (ret) {
-		printk(KERN_ERR "i2c-gpio: device_i2c_gpio0 register fail %d\n", ret);
-	}
-	
-    outl( inl(0x500) | (1<<11 | 1<<12), 0x500);
-	ret = platform_device_register(&device_i2c_gpio1);
-	if (ret) {
-		printk(KERN_ERR "i2c-gpio: device_i2c_gpio1 register fail %d\n", ret);
-	}
-#endif
-    
     for(i=0; i<ARRAY_SIZE(i2cdev_list); i++) {
         
         adap = i2c_get_adapter( i2cdev_list[i].ch );
@@ -190,7 +137,6 @@ static int __init plat_redwood_x86_init(void)
 }
 
 module_init(plat_redwood_x86_init);
-//arch_initcall(plat_redwood_x86_init);
 
 MODULE_AUTHOR("Inventec");
 MODULE_DESCRIPTION("Redwood_x86 Platform devices");
