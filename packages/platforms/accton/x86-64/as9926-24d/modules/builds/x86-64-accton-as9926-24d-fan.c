@@ -301,6 +301,8 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
     if (value < 0 || value > FAN_MAX_DUTY_CYCLE) {
         return -EINVAL;
     }
+
+    mutex_lock(&data->update_lock);
 	
 	/* Disable the watchdog timer
 	 */
@@ -308,22 +310,29 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 	
 	if (error != 0) {
 		dev_dbg(&client->dev, "Unable to disable the watchdog timer\n");
-		return error;
+		count = error;
+        goto exit;
 	}	
 
     as9926_24d_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
 	data->valid = 0;
 
+exit:
+    mutex_unlock(&data->update_lock);
 	return count;
 }
 
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+	struct as9926_24d_fan_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as9926_24d_fan_data *data = as9926_24d_fan_update_device(dev);
     ssize_t ret = 0;
-    
+
+    mutex_lock(&data->update_lock);
+
+    data = as9926_24d_fan_update_device(dev);
     if (data->valid) {
         switch (attr->index) {
             case FAN_DUTY_CYCLE_PERCENTAGE:
@@ -376,10 +385,13 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                 break;
 			case FAN_MAX_RPM:
 				ret = sprintf(buf, "%d\n", MAX_FAN_SPEED_RPM);
+                break;
             default:
                 break;
         }        
     }
+
+    mutex_unlock(&data->update_lock);
     
     return ret;
 }
@@ -392,8 +404,6 @@ static struct as9926_24d_fan_data *as9926_24d_fan_update_device(struct device *d
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as9926_24d_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2) || 
         !data->valid) {
@@ -421,8 +431,6 @@ static struct as9926_24d_fan_data *as9926_24d_fan_update_device(struct device *d
         data->last_updated = jiffies;
         data->valid = 1;
     }
-    
-    mutex_unlock(&data->update_lock);
 
     return data;
 }
