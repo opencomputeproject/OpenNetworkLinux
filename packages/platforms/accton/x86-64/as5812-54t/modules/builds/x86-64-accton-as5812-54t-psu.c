@@ -98,11 +98,16 @@ static ssize_t show_index(struct device *dev, struct device_attribute *da,
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5812_54t_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5812_54t_psu_data *data = as5812_54t_psu_update_device(dev);
     u8 status = 0;
 
+    mutex_lock(&data->update_lock);
+    data = as5812_54t_psu_update_device(dev);
+
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return sprintf(buf, "0\n");
     }
 
@@ -113,27 +118,41 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
         status = IS_POWER_GOOD(data->index, data->status);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
              char *buf)
 {
-    struct as5812_54t_psu_data *data = as5812_54t_psu_update_device(dev);
+    int ret = 0;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5812_54t_psu_data *data = i2c_get_clientdata(client);
 
+    mutex_lock(&data->update_lock);
+
+    data = as5812_54t_psu_update_device(dev);
     if (!data->valid) {
-        return 0;
+        ret = 0;
+        goto exit;
     }
 
     if (!IS_PRESENT(data->index, data->status)) {
-        return 0;
+        ret = 0;
+        goto exit;
     }
 
     if (as5812_54t_psu_model_name_get(dev) < 0) {
-        return -ENXIO;
+        ret = -ENXIO;
+        goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%s\n", data->model_name);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return ret;
 }
 
 static const struct attribute_group as5812_54t_psu_group = {
@@ -318,8 +337,6 @@ static struct as5812_54t_psu_data *as5812_54t_psu_update_device(struct device *d
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as5812_54t_psu_data *data = i2c_get_clientdata(client);
-    
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
         || !data->valid) {
@@ -344,7 +361,6 @@ static struct as5812_54t_psu_data *as5812_54t_psu_update_device(struct device *d
     }
 
 exit:
-    mutex_unlock(&data->update_lock);
 
     return data;
 }

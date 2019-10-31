@@ -84,28 +84,40 @@ static struct attribute *as7716_24xc_expansion_card_attributes[] = {
 static ssize_t show_present(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7716_24xc_expansion_card_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7716_24xc_expansion_card_data *data = update_device(dev, 0);
     ssize_t status = 0;
-	u8 present = !(data->status[CARD_PRESENT] & BIT(data->driver_slot));
+	u8 present = 0;
 
+    mutex_lock(&data->update_lock);
+    
+    data = update_device(dev, 0);
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return -EIO;
     }
+    present = !(data->status[CARD_PRESENT] & BIT(data->driver_slot));
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", (int)present);
 }
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7716_24xc_expansion_card_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7716_24xc_expansion_card_data *data = update_device(dev, 1);
     ssize_t status = 0;
 	u8 present = 0;
 
+    mutex_lock(&data->update_lock);
+
+    data = update_device(dev, 1);
     if (!data->valid) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
 	present = !(data->status[CARD_PRESENT] & BIT(data->driver_slot));
@@ -118,14 +130,20 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		status = present ? (data->status[CARD_SLOT] & 0x7) : -EIO;
 		break;
 	default:
-		return -EINVAL;
+		status = -EINVAL;
+        goto exit;
 	}
 
 	if (status < 0) {
-		return status;
+        goto exit;
 	}
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", (int)status);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t set_slot(struct device *dev, struct device_attribute *da,
@@ -258,8 +276,6 @@ static struct as7716_24xc_expansion_card_data *update_device(struct device *dev,
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as7716_24xc_expansion_card_data *data = i2c_get_clientdata(client);
-    
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
         || !data->valid) {
@@ -298,8 +314,6 @@ static struct as7716_24xc_expansion_card_data *update_device(struct device *dev,
     }
 
 exit:
-    mutex_unlock(&data->update_lock);
-
     return data;
 }
 

@@ -79,11 +79,16 @@ static struct attribute *as7716_24sc_psu_attributes[] = {
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7716_24sc_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7716_24sc_psu_data *data = as7716_24sc_psu_update_device(dev);
     u8 status = 0;
 
+    mutex_lock(&data->update_lock);
+
+    data = as7716_24sc_psu_update_device(dev);
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return -EIO;
     }
 
@@ -94,6 +99,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
         status = IS_POWER_GOOD(data->index, data->status);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
@@ -192,8 +198,6 @@ static struct as7716_24sc_psu_data *as7716_24sc_psu_update_device(struct device 
     struct i2c_client *client = to_i2c_client(dev);
     struct as7716_24sc_psu_data *data = i2c_get_clientdata(client);
     
-    mutex_lock(&data->update_lock);
-
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
         || !data->valid) {
         int status;
@@ -217,7 +221,6 @@ static struct as7716_24sc_psu_data *as7716_24sc_psu_update_device(struct device 
     }
 
 exit:
-    mutex_unlock(&data->update_lock);
 
     return data;
 }

@@ -302,7 +302,8 @@ static u8 is_fan_fault(struct as7326_56x_fan_data *data, enum fan_id id)
 static ssize_t set_enable(struct device *dev, struct device_attribute *da,
                           const char *buf, size_t count)
 {
-    struct as7326_56x_fan_data *data = as7326_56x_fan_update_device(dev);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_fan_data *data = i2c_get_clientdata(client);
     int error, value;
 
     error = kstrtoint(buf, 10, &value);
@@ -312,11 +313,17 @@ static ssize_t set_enable(struct device *dev, struct device_attribute *da,
     if (value < 0 || value > 1)
         return -EINVAL;
 
+    mutex_lock(&data->update_lock);
+    data = as7326_56x_fan_update_device(dev);
+
     data->enable = value;
     if (value == 0)
     {
+        mutex_unlock(&data->update_lock);
         return set_duty_cycle(dev, da, buf, FAN_MAX_DUTY_CYCLE);
     }
+
+    mutex_unlock(&data->update_lock);
     return count;
 }
 
@@ -324,7 +331,16 @@ static ssize_t set_enable(struct device *dev, struct device_attribute *da,
 static ssize_t get_enable(struct device *dev, struct device_attribute *da,
                           char *buf)
 {
-    struct as7326_56x_fan_data *data = as7326_56x_fan_update_device(dev);
+    u8 enable = 0;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_fan_data *data = i2c_get_clientdata(client);
+
+    mutex_lock(&data->update_lock);
+    
+    data = as7326_56x_fan_update_device(dev);
+    enable = data->enable;
+    
+    mutex_unlock(&data->update_lock);
 
     return sprintf(buf, "%u\n", data->enable);
 }
@@ -594,8 +610,12 @@ static ssize_t get_sys_temp(struct device *dev, struct device_attribute *da,
                             char *buf)
 {
     ssize_t ret = 0;
-    struct as7326_56x_fan_data *data = as7326_56x_fan_update_device(dev);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_fan_data *data = i2c_get_clientdata(client);
 
+    mutex_lock(&data->update_lock);
+    data = as7326_56x_fan_update_device(dev);
+    
     data->system_temp=0;
     data->sensors_found=0;
     i2c_for_each_dev(data, _find_lm75_device);
@@ -606,6 +626,7 @@ static ssize_t get_sys_temp(struct device *dev, struct device_attribute *da,
         data->system_temp = INT_MAX;
     }
     ret = sprintf(buf, "%d\n",data->system_temp);
+    mutex_unlock(&data->update_lock);
     return ret;
 }
 
@@ -613,8 +634,12 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                               char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7326_56x_fan_data *data = as7326_56x_fan_update_device(dev);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7326_56x_fan_data *data = i2c_get_clientdata(client);
     ssize_t ret = 0;
+
+    mutex_lock(&data->update_lock);
+    data = as7326_56x_fan_update_device(dev);
 
     if (data->valid) {
         switch (attr->index) {
@@ -671,6 +696,7 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
         }
     }
 
+    mutex_unlock(&data->update_lock);
     return ret;
 }
 
@@ -682,8 +708,6 @@ static struct as7326_56x_fan_data *as7326_56x_fan_update_device(struct device *d
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as7326_56x_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2) ||
             !data->valid) {
@@ -699,7 +723,6 @@ static struct as7326_56x_fan_data *as7326_56x_fan_update_device(struct device *d
 
             if (status < 0) {
                 data->valid = 0;
-                mutex_unlock(&data->update_lock);
                 dev_dbg(&client->dev, "reg %d, err %d\n", fan_reg[i], status);
                 return data;
             }
@@ -711,8 +734,6 @@ static struct as7326_56x_fan_data *as7326_56x_fan_update_device(struct device *d
         data->last_updated = jiffies;
         data->valid = 1;
     }
-
-    mutex_unlock(&data->update_lock);
 
     return data;
 }

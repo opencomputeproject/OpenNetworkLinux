@@ -84,11 +84,16 @@ static struct attribute *asxvolt16_psu_attributes[] = {
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asxvolt16_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct asxvolt16_psu_data *data = asxvolt16_psu_update_device(dev, 0);
     u8 status = 0;
 
+    mutex_lock(&data->update_lock);
+
+    data = asxvolt16_psu_update_device(dev, 0);
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return -EIO;
     }
 
@@ -99,6 +104,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		status = IS_POWER_GOOD(data->index, data->status);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
@@ -196,8 +202,6 @@ static struct asxvolt16_psu_data *asxvolt16_psu_update_device(struct device *dev
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct asxvolt16_psu_data *data = i2c_get_clientdata(client);
-    
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
         || !data->valid) {
@@ -222,8 +226,6 @@ static struct asxvolt16_psu_data *asxvolt16_psu_update_device(struct device *dev
 	}
 
 exit:
-	mutex_unlock(&data->update_lock);
-
 	return data;
 }
 

@@ -273,9 +273,22 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
     if (value < 0 || value > FAN_MAX_DUTY_CYCLE) {
         return -EINVAL;
     }
-	
-    as5822_54x_fan_write_value(0x33, 0); /* Disable fan speed watch dog */
+
+    mutex_lock(&fan_data->update_lock);
+
+	/* Disable the watchdog timer
+	 */
+	error = as5822_54x_fan_write_value(0x33, 0);
+	if (error != 0) {
+		dev_dbg(fan_data->hwmon_dev, "Unable to disable the watchdog timer\n");
+		mutex_unlock(&fan_data->update_lock);
+		return error;
+	}
+
     as5822_54x_fan_write_value(fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
+    fan_data->valid = 0;
+    
+    mutex_unlock(&fan_data->update_lock);
     return count;
 }
 
@@ -283,8 +296,11 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5822_54x_fan_data *data = as5822_54x_fan_update_device(dev);
+    struct as5822_54x_fan_data *data = NULL;
     ssize_t ret = 0;
+
+    mutex_lock(&fan_data->update_lock);
+    data = as5822_54x_fan_update_device(dev);
     
     if (data->valid) {
         switch (attr->index) {
@@ -337,7 +353,8 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                 break;
         }        
     }
-    
+
+    mutex_unlock(&fan_data->update_lock);
     return ret;
 }
 
@@ -347,8 +364,6 @@ static const struct attribute_group as5822_54x_fan_group = {
 
 static struct as5822_54x_fan_data *as5822_54x_fan_update_device(struct device *dev)
 {
-    mutex_lock(&fan_data->update_lock);
-
     if (time_after(jiffies, fan_data->last_updated + HZ + HZ / 2) || 
         !fan_data->valid) {
         int i;
@@ -363,7 +378,6 @@ static struct as5822_54x_fan_data *as5822_54x_fan_update_device(struct device *d
             
             if (status < 0) {
                 fan_data->valid = 0;
-                mutex_unlock(&fan_data->update_lock);
                 dev_dbg(fan_data->hwmon_dev, "reg %d, err %d\n", fan_reg[i], status);
                 return fan_data;
             }
@@ -375,8 +389,6 @@ static struct as5822_54x_fan_data *as5822_54x_fan_update_device(struct device *d
         fan_data->last_updated = jiffies;
         fan_data->valid = 1;
     }
-    
-    mutex_unlock(&fan_data->update_lock);
 
     return fan_data;
 }
