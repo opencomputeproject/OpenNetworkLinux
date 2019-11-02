@@ -99,6 +99,10 @@ class OnlPlatform_x86_64_accton_as7926_80xk_r0(OnlPlatformAccton,
 
                 ('24c02', 0x57, 0),
                 
+                # initialize SFP port 81-82 of bottom board
+                ('optoe1', 0x50, 30),
+                ('optoe1', 0x50, 31),
+                
                 # initiate leaf multiplexer (PCA9548) of top board
                 ('pca9548', 0x75, 1),
                 ('pca9548', 0x71, 2),
@@ -241,6 +245,8 @@ class OnlPlatform_x86_64_accton_as7926_80xk_r0(OnlPlatformAccton,
         subprocess.call('echo port78 > /sys/bus/i2c/devices/134-0050/port_name', shell=True)
         subprocess.call('echo port79 > /sys/bus/i2c/devices/135-0050/port_name', shell=True)
         subprocess.call('echo port80 > /sys/bus/i2c/devices/136-0050/port_name', shell=True)
-                
+        
+        subprocess.call('echo port81 > /sys/bus/i2c/devices/30-0050/port_name', shell=True)     
+        subprocess.call('echo port82 > /sys/bus/i2c/devices/31-0050/port_name', shell=True)        
                 
         return True

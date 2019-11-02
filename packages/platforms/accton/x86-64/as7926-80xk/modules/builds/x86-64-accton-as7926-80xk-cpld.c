@@ -142,6 +142,8 @@ enum as7926_80xk_cpld1_sysfs_attributes {
     TRANSCEIVER_PRESENT_ATTR_ID(78),
     TRANSCEIVER_PRESENT_ATTR_ID(79),
     TRANSCEIVER_PRESENT_ATTR_ID(80),
+    TRANSCEIVER_PRESENT_ATTR_ID(81),
+    TRANSCEIVER_PRESENT_ATTR_ID(82),
 };
 
 /* sysfs attributes for hwmon 
@@ -234,6 +236,8 @@ DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(77);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(78);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(79);
 DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(80);
+DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(81);
+DECLARE_TRANSCEIVER_SENSOR_DEVICE_ATTR(82);
 
 static struct attribute *as7926_80xk_cpld1_attributes[] = {
 	/* transceiver attributes */
@@ -257,6 +261,8 @@ static struct attribute *as7926_80xk_cpld1_attributes[] = {
 	DECLARE_TRANSCEIVER_ATTR(18),
 	DECLARE_TRANSCEIVER_ATTR(19),
 	DECLARE_TRANSCEIVER_ATTR(20),
+	DECLARE_TRANSCEIVER_ATTR(81),
+	DECLARE_TRANSCEIVER_ATTR(82),
 	NULL
 };
 
@@ -456,13 +462,17 @@ static ssize_t show_present(struct device *dev, struct device_attribute *da,
 		reg  = 0x12;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_77);
 		break;
+    case MODULE_PRESENT_81 ... MODULE_PRESENT_82:
+		reg  = 0x13;
+		mask = 0x1 << (attr->index - MODULE_PRESENT_81);
+		break;
 	default:
 		return 0;
 	}
 
     mutex_lock(&data->update_lock);
     switch(data->index) {
-        /* Port 1-20 plug-unplug read from i2c bus number '12'
+        /* Port 1-20,81-82 plug-unplug read from i2c bus number '12'
             and CPLD slave address 0x62 */
         case 0: status = as7926_80xk_cpld_read(12,0x62, reg);
                 break;

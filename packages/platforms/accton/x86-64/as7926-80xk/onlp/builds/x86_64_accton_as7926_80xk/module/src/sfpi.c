@@ -30,7 +30,7 @@
 
 #define EEPROM_I2C_ADDR 0x50
 #define EEPROM_START_OFFSET 0x0
-#define NUM_OF_SFP_PORT 		80
+#define NUM_OF_SFP_PORT 		82
 static const int port_bus_index[NUM_OF_SFP_PORT] = {
 33, 34, 35, 36, 37, 38, 39, 40,
 41, 42, 43, 44, 45, 46, 47, 48,
@@ -43,7 +43,7 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 116, 117, 118, 119, 120, 121,
 122, 123, 124, 125, 126, 127,
 128, 129, 130, 131, 132, 133, 
-134, 135, 136,
+134, 135, 136, 30, 31
 };
 
 #define PORT_BUS_INDEX(port) (port_bus_index[port])
@@ -69,7 +69,7 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {0, 80}
+     * Ports {0, 82}
      */
     int p;
     AIM_BITMAP_CLR_ALL(bmap);
@@ -111,6 +111,12 @@ onlp_sfpi_is_present(int port)
     }
     else if (port >= 60 && port <=79){
         if (onlp_file_read_int(&present, MODULE_PRESENT_TOP_BOARD_CPLD4_FORMAT, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+    else if (port >= 80 && port <=81){
+        if (onlp_file_read_int(&present, MODULE_PRESENT_BOTTOM_BOARD_CPLD1_FORMAT, (port+1)) < 0) {
             AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
