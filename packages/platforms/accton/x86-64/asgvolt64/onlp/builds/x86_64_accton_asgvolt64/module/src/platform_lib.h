@@ -44,7 +44,7 @@
 
 #define PSU_SYSFS_PATH  "/sys/devices/platform/asgvolt64_psu/"
 #define FAN_BOARD_PATH	"/sys/devices/platform/asgvolt64_fan/"
-#define IDPROM_PATH     "/sys/i2c/devices/0-0057/eeprom"
+#define IDPROM_PATH     "/sys/bus/i2c/devices/0-0057/eeprom"
 
 int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);
