@@ -182,11 +182,15 @@ _onlp_get_fan_direction_on_psu(void)
             continue;
         }
 
-        if (PSU_TYPE_AC_F2B == psu_type) {
-            return ONLP_FAN_STATUS_F2B;
-        }
-        else {
-            return ONLP_FAN_STATUS_B2F;
+        switch (psu_type) {
+            case PSU_TYPE_AC_F2B:
+            case PSU_TYPE_DC_48V_F2B:
+                return ONLP_FAN_STATUS_F2B;
+            case PSU_TYPE_AC_B2F:
+            case PSU_TYPE_DC_48V_B2F:
+                return ONLP_FAN_STATUS_B2F;
+            default:
+                break;
         }
     }
 

@@ -90,15 +90,15 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define I2C_PSU_MODEL_NAME_LEN 9
-#define I2C_PSU_FAN_DIR_LEN    3
+#define PSU_MODEL_NAME_LEN 9
+#define PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
+    int   ret = 0;
     char *node = NULL;
-    char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
-    char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
-    
+    char  model_name[PSU_MODEL_NAME_LEN + 1] = {0};
+    psu_type_t ptype = PSU_TYPE_UNKNOWN;
 
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_mfr_model) : PSU2_AC_PMBUS_NODE(psu_mfr_model);
@@ -106,29 +106,53 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         return PSU_TYPE_UNKNOWN;
     }
 	
-    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) != 0) {
-        return PSU_TYPE_UNKNOWN;
+    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) == 0) {
+        if (modelname) {
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
+        }
+
+        char *fd = aim_zmalloc(PSU_FAN_DIR_LEN + 1);
+        
+        node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
+        ret = onlp_file_read_str(&fd, node);
+
+        if (ret <= 0 || ret > PSU_FAN_DIR_LEN) {
+            ptype = PSU_TYPE_UNKNOWN;
+        }
+        else if (strncmp(fd, "F2B", PSU_FAN_DIR_LEN) == 0) {
+            ptype = PSU_TYPE_AC_F2B;
+        }
+        else {
+            ptype = PSU_TYPE_AC_B2F;
+        }
+
+        aim_free(fd);
     }
 
-    if (modelname) {
-        aim_strlcpy(modelname, model_name, modelname_len-1);
+    if (strncmp(model_name, "YM-2651V", 8) == 0) {
+        if (modelname) {
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
+        }
+
+        char *fd = aim_zmalloc(PSU_FAN_DIR_LEN + 1);
+        
+        node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
+        ret = onlp_file_read_str(&fd, node);
+
+        if (ret <= 0 || ret > PSU_FAN_DIR_LEN) {
+            ptype = PSU_TYPE_UNKNOWN;
+        }
+        else if (strncmp(fd, "F2B", PSU_FAN_DIR_LEN) == 0) {
+            ptype = PSU_TYPE_DC_48V_F2B;
+        }
+        else {
+            ptype = PSU_TYPE_DC_48V_B2F;
+        }
+
+        aim_free(fd);
     }
 
-    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-
-    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
-        return PSU_TYPE_UNKNOWN;
-    }
-
-    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-        return PSU_TYPE_AC_F2B;
-    }
-
-    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-        return PSU_TYPE_AC_B2F;
-    }
-
-    return PSU_TYPE_UNKNOWN;
+    return ptype;
 }
 
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
