@@ -37,7 +37,8 @@
 #define IPMI_QSFP_WRITE_CMD     0x11
 #define IPMI_SFP_READ_CMD       0x1C
 #define IPMI_SFP_WRITE_CMD      0x1D
-#define IPMI_TIMEOUT		(20 * HZ)
+#define IPMI_TIMEOUT		    (5 * HZ)
+#define IPMI_ERR_RETRY_TIMES    1
 #define IPMI_DATA_MAX_LEN       128
 
 #define SFP_EEPROM_SIZE         768
@@ -437,7 +438,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 }
 
 /* Send an IPMI command */
-static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
                                      unsigned char *tx_data, unsigned short tx_len,
                                      unsigned char *rx_data, unsigned short rx_len)
 {
@@ -475,6 +476,31 @@ ipmi_req_err:
 addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
+}
+
+/* Send an IPMI command with retry */
+static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+                                     unsigned char *tx_data, unsigned short tx_len,
+                                     unsigned char *rx_data, unsigned short rx_len)
+{
+    int status = 0, retry = 0;
+
+    for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+        if (unlikely(status != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n", retry, status);
+            continue;
+        }
+
+        if (unlikely(ipmi->rx_result != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err rx_result(%d)\r\n", retry, ipmi->rx_result);
+            continue;
+        }
+
+        break;
+    }
+
+    return status;
 }
 
 /* Dispatch IPMI messages to callers */
@@ -835,7 +861,7 @@ static ssize_t show_all(struct device *dev, struct device_attribute *da, char *b
             /* Update sfp rxlos status */
             for (i = (NUM_OF_SFP-1); i >= 0; i--) {
                 values <<= 1;
-                values |= !(data->ipmi_resp.sfp_resp[SFP_RXLOS][i] & 0x1);
+                values |= (data->ipmi_resp.sfp_resp[SFP_RXLOS][i] & 0x1);
             }
 
             mutex_unlock(&data->update_lock);
@@ -1095,7 +1121,7 @@ static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *b
                 goto exit;
             }
 
-            value = !data->ipmi_resp.sfp_resp[SFP_RXLOS][pid];
+            value = data->ipmi_resp.sfp_resp[SFP_RXLOS][pid];
             break;
         }
 		default:

@@ -40,7 +40,8 @@
 #define IPMI_TCAM_INT_MASK_SUBCMD   3
 
 #define IPMI_SYSEEPROM_READ_CMD 0x18
-#define IPMI_TIMEOUT		(20 * HZ)
+#define IPMI_TIMEOUT		    (5 * HZ)
+#define IPMI_ERR_RETRY_TIMES    1
 #define IPMI_READ_MAX_LEN       128
 
 #define EEPROM_NAME				"eeprom"
@@ -222,7 +223,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 }
 
 /* Send an IPMI command */
-static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
                                      unsigned char *tx_data, unsigned short tx_len,
                                      unsigned char *rx_data, unsigned short rx_len)
 {
@@ -260,6 +261,31 @@ ipmi_req_err:
 addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
+}
+
+/* Send an IPMI command with retry */
+static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+                                     unsigned char *tx_data, unsigned short tx_len,
+                                     unsigned char *rx_data, unsigned short rx_len)
+{
+    int status = 0, retry = 0;
+
+    for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+        if (unlikely(status != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n", retry, status);
+            continue;
+        }
+
+        if (unlikely(ipmi->rx_result != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err rx_result(%d)\r\n", retry, ipmi->rx_result);
+            continue;
+        }
+
+        break;
+    }
+
+    return status;
 }
 
 /* Dispatch IPMI messages to callers */
