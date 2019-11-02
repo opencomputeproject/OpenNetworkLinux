@@ -56,7 +56,17 @@ int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
     uint8_t* rdata = aim_zmalloc(256);
-    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK) {
+    char* idprom_path = NULL; 
+    int   ret = ONLP_STATUS_OK;
+
+    ret = onlp_file_find("/sys/bus/i2c/devices/0-0056/", "eeprom", &idprom_path);
+    if (idprom_path) {
+        free(idprom_path);
+    }
+
+    idprom_path = (ONLP_STATUS_OK == ret) ? IDPROM_PATH_1 : IDPROM_PATH_2;
+
+    if(onlp_file_read(rdata, 256, size, idprom_path) == ONLP_STATUS_OK) {
         if(*size == 256) {
             *data = rdata;
             return ONLP_STATUS_OK;
