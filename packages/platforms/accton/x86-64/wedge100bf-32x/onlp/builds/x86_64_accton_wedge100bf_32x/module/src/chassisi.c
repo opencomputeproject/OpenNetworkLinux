@@ -69,7 +69,6 @@ int onlp_chassisi_hdr_get(onlp_oid_id_t id, onlp_oid_hdr_t* hdr)
     *e++ = ONLP_SFP_ID_CREATE(i);
   }
   
-  bmc_tty_init();
   return ONLP_STATUS_OK;
 }
 
