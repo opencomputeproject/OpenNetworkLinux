@@ -41,21 +41,8 @@
 
 #define NUM_OF_CPLD                      3
 #define FAN_DUTY_CYCLE_MAX         (100)
-#define FAN_DUTY_CYCLE_DEFAULT     (32)
-#define FAN_DUTY_PLUS_FOR_DIR      (13)
 /* Note, all chassis fans share 1 single duty setting. 
  * Here use fan 1 to represent global fan duty value.*/
-#define FAN_ID_FOR_SET_FAN_DUTY    (1)
-#define CELSIUS_RECORD_NUMBER      (2)  /*Must >= 2*/
-
-typedef struct fan_ctrl_policy {
-   int duty_cycle;        /* In percetage */  
-   int step_up_thermal;   /* In mini-Celsius */
-   int step_dn_thermal;   /* In mini-Celsius */
-} fan_ctrl_policy_t;
-
-
-
 
 const char*
 onlp_sysi_platform_get(void)
@@ -129,352 +116,152 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
-/* Thermal plan:
- * $TMP = (CPU_core + LM75_1+ LM75_2 + LM75_3 + LM75_4)/5
- * 1. If any FAN failed, set all the other fans as full speed, 100%.
- * 2. If any sensor is high than 45 degrees, set fan speed to duty 62.5%.
- * 3. If any sensor is high than 50 degrees, set fan speed to duty 100%.
- * 4. When $TMP >= 40 C, set fan speed to duty 62.5%.
- * 5. When $TMP >= 45 C, set fan speed to duty 100%.
- * 6. When $TMP <  35 C, set fan speed to duty 31.25%. 
- * 7. Direction factor, when B2F, duty + 12.5%.
- *
- * Note, all chassis fans share 1 single duty setting.
+/* Temperature Policy
+ * If any fan fail , please set fan speed register to 16
+ * The max value of fan speed register is 14
+ * LM77(48)+LM75(4B)+LM75(4A)  >  140, Set 10
+ * LM77(48)+LM75(4B)+LM75(4A)  >  150, Set 12
+ * LM77(48)+LM75(4B)+LM75(4A)  >  160, Set 14
+ * LM77(48)+LM75(4B)+LM75(4A)  <  140, Set 8
+ * LM77(48)+LM75(4B)+LM75(4A)  <  150, Set 10
+ * LM77(48)+LM75(4B)+LM75(4A)  <  160, Set 12
+ * Reset DUT:LM77(48)>=70C
  */
-fan_ctrl_policy_t  fan_ctrl_policy_avg[] = {
-{FAN_DUTY_CYCLE_MAX     ,   45000,  INT_MIN},
-{63                     ,   40000,  INT_MIN},
-{32                     , INT_MAX,  35000},
-};
 
-fan_ctrl_policy_t  fan_ctrl_policy_single[] = {
-{FAN_DUTY_CYCLE_MAX     ,   50000,  INT_MIN},
-{63                     ,   45000,  INT_MIN},
-};
-
-struct fan_control_data_s {
+typedef struct fan_ctrl_policy {
    int duty_cycle; 
-   int dir_plus;
-   int mc_avg_pre[CELSIUS_RECORD_NUMBER];
-   int mc_high_pre[CELSIUS_RECORD_NUMBER];
+   int pwm;
+   int temp_down; /* The boundary temperature to down adjust fan speed */
+   int temp_up;   /* The boundary temperature to up adjust fan speed */
+   int state;
+} fan_ctrl_policy_t;
    
-} fan_control_data_pre = 
+enum
 {
-    .duty_cycle = FAN_DUTY_CYCLE_DEFAULT,
-    .dir_plus = 0,
-    .mc_avg_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
-    .mc_high_pre = {INT_MIN+1, INT_MIN},    /*init as thermal rising to avoid full speed.*/
+   LEVEL_FAN_MIN=0,
+   LEVEL_FAN_NORMAL,   
+   LEVEL_FAN_MID,
+   LEVEL_FAN_HIGH,
+   LEVEL_TEMP_CRITICAL
+};
     
+fan_ctrl_policy_t  fan_thermal_policy[] = {
+{50,  8,  0,      140000, LEVEL_FAN_MIN},
+{62,  10, 140000, 150000, LEVEL_FAN_NORMAL},
+{75,  12, 150000, 160000, LEVEL_FAN_MID},
+{88,  14, 160000, 240000, LEVEL_FAN_HIGH},
+{100, 16, 240000, 300000, LEVEL_TEMP_CRITICAL },
 };
 
-static int 
-sysi_check_fan(uint32_t *fan_dir){
-    int i, present;
+#define FAN_SPEED_CTRL_PATH "/sys/bus/i2c/devices/3-0060/fan_duty_cycle_percentage"
+#define SHUTDOWN_DUT_CMD "i2cset -y -f 3 0x60 0x4 0xE4"
     
-    for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
-    {
-        onlp_fan_info_t fan_info;
+static int fan_state=LEVEL_FAN_MIN;
+static int fan_fail = 0;
 
-        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
-            AIM_LOG_ERROR("Unable to get fan(%d) status\r\n", i);
+int onlp_sysi_platform_manage_fans(void)
+    {
+    int i=0, ori_state=LEVEL_FAN_MIN, current_state=LEVEL_FAN_MIN;
+    int  fd, len;
+    int cur_duty_cycle, new_duty_cycle, temp=0;
+    onlp_thermal_info_t thermali[3];
+    char  buf[10] = {0};
+
+    /* Get current temperature
+     */
+    for (i=0; i<3; i++)
+    {
+        if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i+2), &thermali[i]) != ONLP_STATUS_OK  )
+        {   
+            AIM_LOG_ERROR("Unable to read thermal status, set fans to 87% speed");
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fan_thermal_policy[LEVEL_FAN_HIGH].duty_cycle);
             return ONLP_STATUS_E_INTERNAL;
         }
-
-        present = fan_info.status & ONLP_FAN_STATUS_PRESENT;     
-        if ((fan_info.status & ONLP_FAN_STATUS_FAILED) || !present) {
-            AIM_LOG_WARN("Fan(%d) is not working, set the other fans as full speed\r\n", i);
-            int ret = onlp_fani_percentage_set(
-                    ONLP_FAN_ID_CREATE(FAN_ID_FOR_SET_FAN_DUTY), FAN_DUTY_CYCLE_MAX);
-            if (ret != ONLP_STATUS_OK) 
-                return ret; 
-            else    
-                return ONLP_STATUS_E_MISSING;                    
-        }
-        
-        /* Get fan direction (Only get the first one since all fan direction are the same)
-         */
-        if (i == 1) {
-            *fan_dir = fan_info.status & (ONLP_FAN_STATUS_F2B|ONLP_FAN_STATUS_B2F);
-        }        
+        temp+=thermali[i].mcelsius;
     }
-    
-    return ONLP_STATUS_OK;
-}    
 
-static int
-sysi_get_fan_duty(int *cur_duty_cycle){
-    int   fd, len;
-    char  buf[10] = {0};
-    char  *node = FAN_NODE(fan_duty_cycle_percentage);
     
-    /* Get current fan duty*/
-    fd = open(node, O_RDONLY);
+    /* Get current fan pwm percent
+     */
+    fd = open(FAN_SPEED_CTRL_PATH, O_RDONLY);
     if (fd == -1){
-        AIM_LOG_ERROR("Unable to open fan speed control node (%s)", node);
+        AIM_LOG_ERROR("Unable to open fan speed control node (%s)", FAN_SPEED_CTRL_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
-
     len = read(fd, buf, sizeof(buf));
     close(fd);
     if (len <= 0) {
-        AIM_LOG_ERROR("Unable to read fan speed from (%s)", node);
+        AIM_LOG_ERROR("Unable to read fan speed from (%s)", FAN_SPEED_CTRL_PATH);
         return ONLP_STATUS_E_INTERNAL;
     }
-    *cur_duty_cycle = atoi(buf);
-    
-    return ONLP_STATUS_OK;    
-}    
-
-static int 
-sysi_get_thermal_sum(int *mcelsius){
-    onlp_thermal_info_t thermal_info;
-    int i; 
-
-    *mcelsius = 0;
-    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
-        if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal_info) 
-            != ONLP_STATUS_OK) {
-            AIM_LOG_ERROR("Unable to read thermal status");
-            return ONLP_STATUS_E_INTERNAL;
+    cur_duty_cycle = atoi(buf);
+    ori_state=fan_state;
+    /* Inpunt temp to get theraml_polyc state and new pwm percent. */
+    for(i=0; i < sizeof(fan_thermal_policy)/sizeof(fan_ctrl_policy_t); i++)
+    {
+        if (temp > fan_thermal_policy[i].temp_down)
+        {
+            if (temp <= fan_thermal_policy[i].temp_up)
+            {
+                current_state =i;
+            }
         }
-        *mcelsius += thermal_info.mcelsius;
-
-        DEBUG_PRINT("Thermal %d: %d \n ", i, thermal_info.mcelsius);
-        
     }
-    
-    return ONLP_STATUS_OK;    
-    
-}
-
-static int 
-sysi_get_highest_thermal(int *mcelsius){
-    onlp_thermal_info_t thermal_info;
-    int i, highest; 
-
-    highest = 0;
-    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
-        if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal_info) 
-            != ONLP_STATUS_OK) {
-            AIM_LOG_ERROR("Unable to read thermal status");
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        highest = (thermal_info.mcelsius > highest)? 
-                thermal_info.mcelsius : highest;
-    }
-    *mcelsius = highest;
-    return ONLP_STATUS_OK;    
-}
-
-/* Anaylze thermal changing history to judge if the change is a stable trend. */
-static int _is_thermal_a_trend(int *mc_history){
-    int i, trend, trended;
-
-    if (mc_history == NULL) {
-        AIM_LOG_ERROR("Unable to get history of thermal\n");
+    if(current_state > LEVEL_TEMP_CRITICAL || current_state < LEVEL_FAN_MIN)
+    {
+        AIM_LOG_ERROR("onlp_sysi_platform_manage_fans get error  current_state\n");
         return 0;
     }
-        
-    /* Get heat up/down trend. */
-    trend = 0;
-    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) {    
-        if (( mc_history[i+1] < mc_history[i])){  
-            trend++;
-        }else if (( mc_history[i+1] > mc_history[i])){    
-            trend--;   
-        }            
-    }
-    
-    trended = (abs(trend) >= ((CELSIUS_RECORD_NUMBER+1)/2))? 1:0;
-#if (DEBUG_MODE == 1)
-    DEBUG_PRINT("[INFO]%s#%d, trended: %d, UP/DW: %d mcelsius:", 
-            __func__, __LINE__, trended, trend );    
-    for (i = 0; i <= CELSIUS_RECORD_NUMBER; i++) { 
-        DEBUG_PRINT(" %d =>", mc_history[i]);
-    }
-    DEBUG_PRINT("%c\n", ' ');
-#endif
-
-    /*For more than half changes are same direction, it's a firm trend.*/
-    return trended;
-}
-
-
-/* Decide duty by highest value of thermal sensors.*/
-static int 
-sysi_get_duty_by_highest(int *duty_cycle){
-    int i, ret, maxtrix_len;
-    int new_duty_cycle = 0 ;
-    int mc_history[CELSIUS_RECORD_NUMBER+1] = {0};
-    int *mcelsius_pre_p = &mc_history[1];
-    int *mcelsius_now_p = &mc_history[0];    
-    
-    /* Fill up mcelsius array, 
-     * [0] is current temperature, others are history.
+    /* Decision 3: Decide new fan pwm percent.
      */
-    ret = sysi_get_highest_thermal(mcelsius_now_p);
-    if(ONLP_STATUS_OK != ret){
-        return ret;
-    }
-    memcpy (mcelsius_pre_p, fan_control_data_pre.mc_high_pre, 
-        sizeof(fan_control_data_pre.mc_high_pre));
-    
-    DEBUG_PRINT("[INFO]%s#%d, highest mcelsius:%d!\n", 
-                __func__, __LINE__, *mcelsius_now_p);
-    
-    /* Shift records to the right */
-    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) { 
-        fan_control_data_pre.mc_high_pre[i] = mc_history[i];        
-    }
-
-    /* Only change duty on consecutive heat rising or falling.*/    
-    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_single);
-
-    /* Only change duty when the thermal changing are firm. */    
-    if (_is_thermal_a_trend(mc_history))
+    if (fan_fail==0 &&cur_duty_cycle!=fan_thermal_policy[current_state].duty_cycle)
     {
-        int matched = 0;
-    	for (i = 0; i < maxtrix_len; i++) {
-            if ((*mcelsius_now_p > fan_ctrl_policy_single[i].step_up_thermal)) {
-        	    new_duty_cycle = fan_ctrl_policy_single[i].duty_cycle;
-        	    matched = !matched;
-        	    break;
-        	}
-        }
-/*        if (!matched) {
-            DEBUG_PRINT("%s#%d, celsius(%d) falls into undefined range!!\n", 
-                    __func__, __LINE__, *mcelsius_now_p);
-    	}    	*/
+        new_duty_cycle = fan_thermal_policy[current_state].duty_cycle;
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), new_duty_cycle);
     }
-    *duty_cycle = new_duty_cycle;
-    return ONLP_STATUS_OK;
-}
-
-/* Decide duty by average value of thermal sensors.*/
-static int 
-sysi_get_duty_by_average(int *duty_cycle){
-    int i, mcelsius_avg, ret, maxtrix_len;
-    int new_duty_cycle=0;
-    int mc_history[CELSIUS_RECORD_NUMBER+1] = {0};
-    int *mcelsius_pre_p = &mc_history[1];
-    int *mcelsius_now_p = &mc_history[0];    
-    
-    /* Fill up mcelsius array, 
-     * [0] is current temperature, others are history.
+    /* Get each fan status
      */
-    *mcelsius_now_p = 0; 
-    ret = sysi_get_thermal_sum(mcelsius_now_p);
-    if(ONLP_STATUS_OK != ret){
-        return ret;
-    }
-    mcelsius_avg = (*mcelsius_now_p)/CHASSIS_THERMAL_COUNT;
-
-    memcpy (mcelsius_pre_p, fan_control_data_pre.mc_avg_pre, 
-        sizeof(fan_control_data_pre.mc_avg_pre));
-
-    DEBUG_PRINT("[INFO]%s#%d, mcelsius:%d!\n", __func__, __LINE__, mcelsius_avg);    
-
-    /* Shift records to the right */
-    for (i = 0; i < CELSIUS_RECORD_NUMBER; i++) { 
-        fan_control_data_pre.mc_avg_pre[i] = mc_history[i];        
-    }
-
-    /* Only change duty on consecutive heat rising or falling.*/    
-    maxtrix_len = AIM_ARRAYSIZE(fan_ctrl_policy_avg);    
-
-    /* Only change duty when the thermal changing are firm. */
-    if (_is_thermal_a_trend(mc_history))
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++)
     {
-        int matched = 0;
-    	for (i = 0; i < maxtrix_len; i++) {
-            if ((mcelsius_avg >= fan_ctrl_policy_avg[i].step_up_thermal)) {
-        	    new_duty_cycle = fan_ctrl_policy_avg[i].duty_cycle;
-        	    matched = !matched;
-        	    break;
-        	}
+        onlp_fan_info_t fan_info;
+        if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to get fan(%d) status, try to set the other fans as full speed\r\n", i);
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            fan_fail=1;
+            break;
         }
-    	for (i = maxtrix_len-1; i>=0; i--) {        
-    	    if ((mcelsius_avg < fan_ctrl_policy_avg[i].step_dn_thermal)) {
-        	    new_duty_cycle = fan_ctrl_policy_avg[i].duty_cycle;
-        	    matched = !matched;            	    
-        	    break;
-            }            	    
-    	}
-        /*if (!matched) {
-            DEBUG_PRINT("%s#%d, celsius(%d) falls into undefined range!!\n", 
-                    __func__, __LINE__, mcelsius_avg);
-    	} */   	
-    }
-    
-    *duty_cycle = new_duty_cycle;
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sysi_platform_manage_fans(void)
-{
-    uint32_t fan_dir;
-    int ret;
-    int cur_duty_cycle, new_duty_cycle, tmp;    
-    int direct_addon = 0;
-    onlp_oid_t fan_duty_oid = ONLP_FAN_ID_CREATE(FAN_ID_FOR_SET_FAN_DUTY);
-    
-    /**********************************************************
-     * Decision 1: Set fan as full speed if any fan is failed.
-     **********************************************************/
-    ret = sysi_check_fan(&fan_dir);
-    if(ONLP_STATUS_OK != ret){
-        return ret;
-    }
-
-    if (fan_dir & ONLP_FAN_STATUS_B2F) {
-        direct_addon = FAN_DUTY_PLUS_FOR_DIR;
-    }
-    
-    /**********************************************************
-     * Decision 2: If no matched fan speed is found from the policy,
-     *             use FAN_DUTY_CYCLE_MIN as default speed
-     **********************************************************/
-    ret = sysi_get_fan_duty(&cur_duty_cycle);
-    if(ONLP_STATUS_OK != ret){
-        return ret;
-    }
-	
-    /**********************************************************
-     * Decision 3: Decide new fan speed depend on fan direction and temperature
-     **********************************************************/
-    ret = sysi_get_duty_by_average(&new_duty_cycle);
-    if (ONLP_STATUS_OK != ret){
-        return ret;
-    }    
-    ret = sysi_get_duty_by_highest(&tmp);
-    if (ONLP_STATUS_OK != ret){
-        return ret;
-    }
-    
-    new_duty_cycle = (tmp > new_duty_cycle)? tmp : new_duty_cycle;
-    if (new_duty_cycle == 0)
-    {
-        new_duty_cycle = fan_control_data_pre.duty_cycle;
-    } else {
-        fan_control_data_pre.duty_cycle = new_duty_cycle; 
-    }        
-    fan_control_data_pre.dir_plus = direct_addon;    
-    DEBUG_PRINT("[INFO]%s#%d, new duty: %d = %d + %d (%d)!\n", __func__, __LINE__, 
-    new_duty_cycle + direct_addon, new_duty_cycle, direct_addon, cur_duty_cycle);
-    
-    new_duty_cycle += direct_addon;
-    new_duty_cycle = (new_duty_cycle > FAN_DUTY_CYCLE_MAX)?
-         FAN_DUTY_CYCLE_MAX : new_duty_cycle;
-       
-	if (new_duty_cycle == cur_duty_cycle) {
-        /* Duty cycle does not change, just return */
-	    return ONLP_STATUS_OK;
+        else
+        {
+            fan_fail = 0;
 	}
+        /* Decision 1: Set fan as full speed if any fan is failed.
+         */
+        if (fan_info.status & ONLP_FAN_STATUS_FAILED || !(fan_info.status & ONLP_FAN_STATUS_PRESENT))
+        {
+            AIM_LOG_ERROR("Fan(%d) is not working, set the other fans as full speed\r\n", i);
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            fan_fail=1;
+            break;
+        }
+        else 
+        {
+            fan_fail = 0;
+        }
+    }
+    if(thermali[2].mcelsius >= 70000) /*LM75-48*/
+    {
+        /*critical case*/
+        AIM_SYSLOG_CRIT("Temperature critical", "Temperature critical", "Alarm for temperature critical is detected, reset DUT");
+        sleep(2);
+        system(SHUTDOWN_DUT_CMD);
+    }
+    if(current_state!=ori_state)
+    {
+        fan_state=current_state;
+    }
 
-    return onlp_fani_percentage_set(fan_duty_oid, new_duty_cycle);
+    return 0;
 }
-
 int
 onlp_sysi_platform_manage_leds(void)
 {
