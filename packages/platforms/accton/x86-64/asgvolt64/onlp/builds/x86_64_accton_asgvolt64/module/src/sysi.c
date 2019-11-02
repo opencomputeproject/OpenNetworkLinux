@@ -56,9 +56,10 @@ onlp_sysi_init(void)
         return ONLP_STATUS_OK;
     }
     memset(interface, 0x0, 64);
-    aim_strlcpy(interface, "eth0", strlen("eth0"));
-	  aim_strlcpy(ifr.ifr_name, interface, IFNAMSIZ);
+    aim_strlcpy(interface, "ma1", strlen("ma1")+1);
+    aim_strlcpy(ifr.ifr_name, interface, IFNAMSIZ);
     if (ioctl(skfd, SIOCGMIIPHY, &ifr) < 0) {
+        perror("ioctl\n");
         if (errno != ENODEV)
             fprintf(stderr, "SIOCGMIIPHY on '%s' failed: %s\n",
                 interface, strerror(errno));
