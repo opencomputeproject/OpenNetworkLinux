@@ -265,26 +265,46 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 {
     int error, value;
     struct i2c_client *client = to_i2c_client(dev);
-    
+    struct as5916_54xk_fan_data *data = i2c_get_clientdata(client);
+
     error = kstrtoint(buf, 10, &value);
-    if (error)
+    if (error) {
         return error;
-        
-    if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
+    }
+
+    if (value < 0 || value > FAN_MAX_DUTY_CYCLE) {
         return -EINVAL;
+    }
+
+    mutex_lock(&data->update_lock);
+
+	/* Disable the watchdog timer
+	 */
+	error = as5916_54xk_fan_write_value(client, 0x33, 0);
 	
-    as5916_54xk_fan_write_value(client, 0x33, 0); /* Disable fan speed watch dog */
+	if (error != 0) {
+		dev_dbg(&client->dev, "Unable to disable the watchdog timer\n");
+		mutex_unlock(&data->update_lock);
+		return error;
+	}
     as5916_54xk_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
+	data->valid = 0;
+
+    mutex_unlock(&data->update_lock);
     return count;
 }
 
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as5916_54xk_fan_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_54xk_fan_data *data = as5916_54xk_fan_update_device(dev);
     ssize_t ret = 0;
-    
+
+    mutex_lock(&data->update_lock);
+
+    data = as5916_54xk_fan_update_device(dev);
     if (data->valid) {
         switch (attr->index) {
             case FAN_DUTY_CYCLE_PERCENTAGE:
@@ -341,6 +361,8 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                 break;
         }        
     }
+
+    mutex_unlock(&data->update_lock);
     
     return ret;
 }
@@ -353,8 +375,6 @@ static struct as5916_54xk_fan_data *as5916_54xk_fan_update_device(struct device 
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as5916_54xk_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2) || 
         !data->valid) {
@@ -382,8 +402,6 @@ static struct as5916_54xk_fan_data *as5916_54xk_fan_update_device(struct device 
         data->last_updated = jiffies;
         data->valid = 1;
     }
-    
-    mutex_unlock(&data->update_lock);
 
     return data;
 }

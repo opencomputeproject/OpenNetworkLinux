@@ -190,10 +190,12 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
     struct  sensor_device_attribute *attr = to_sensor_dev_attr(da);
     ssize_t ret = 0;
     int     data_index, type_index;
-    
+
+    mutex_lock(&fan_data->update_lock);
     accton_as6812_32x_fan_update_device(dev);
 
     if (fan_data->valid == 0) {
+        mutex_unlock(&fan_data->update_lock);
         return ret;
     }
 
@@ -230,6 +232,7 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
             break;
     }
     
+    mutex_unlock(&fan_data->update_lock);
     return ret;
 }
 /*******************/
@@ -245,9 +248,11 @@ static ssize_t fan_set_duty_cycle(struct device *dev, struct device_attribute *d
     if (value < FAN_DUTY_CYCLE_MIN || value > FAN_DUTY_CYCLE_MAX)
         return -EINVAL;
 
+    mutex_lock(&fan_data->update_lock);
     accton_as6812_32x_fan_write_value(CPLD_REG_FAN_PWM_CYCLE_OFFSET, value/FAN_SPEED_PRECENT_TO_CPLD_STEP);
     
     fan_data->valid = 0;
+    mutex_unlock(&fan_data->update_lock);
 
     return count;
 }
@@ -270,14 +275,12 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
 {
     int speed, r_speed, fault, r_fault, direction, ctrl_speed;
     int i, retry_count;
-    
-    mutex_lock(&fan_data->update_lock);
 
     DEBUG_PRINT("Starting accton_as6812_32x_fan update \n");    
 
     if (!(time_after(jiffies, fan_data->last_updated + HZ + HZ / 2) || !fan_data->valid)) {
         /* do nothing */
-        goto _exit; 
+        return;
     }
         
     fan_data->valid = 0;
@@ -292,7 +295,7 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
     if ( (fault < 0) || (r_fault < 0) || (ctrl_speed < 0) )
     {        
         DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);            
-        goto _exit; /* error */ 
+        return; /* error */
     }
 
     DEBUG_PRINT("[fan:] fault:%d, r_fault=%d, ctrl_speed=%d \n",fault, r_fault, ctrl_speed);    
@@ -323,7 +326,7 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
             if ( (speed < 0) || (r_speed < 0) )
             {
                 DEBUG_PRINT("[Error!!][%s][%d] \n", __FUNCTION__, __LINE__);
-                goto _exit; /* error */
+                return; /* error */
             }
             if ( (speed == 0) || (r_speed == 0) )
             {
@@ -342,9 +345,6 @@ static void accton_as6812_32x_fan_update_device(struct device *dev)
     /* finish to update */
     fan_data->last_updated = jiffies;
     fan_data->valid = 1;
-
-_exit:    
-    mutex_unlock(&fan_data->update_lock);
 }
 
 static int accton_as6812_32x_fan_probe(struct platform_device *pdev)

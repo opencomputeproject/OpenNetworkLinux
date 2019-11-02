@@ -79,9 +79,18 @@ static struct attribute *as7326_56x_psu_attributes[] = {
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
                            char *buf)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as7326_56x_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7326_56x_psu_data *data = as7326_56x_psu_update_device(dev);
     u8 status = 0;
+
+    mutex_lock(&data->update_lock);
+
+    data = as7326_56x_psu_update_device(dev);
+	if (!data->valid) {
+        mutex_unlock(&data->update_lock);
+		return sprintf(buf, "0\n");
+	}
 
     if (attr->index == PSU_PRESENT) {
         status = !(data->status >> (1-data->index) & 0x1);
@@ -90,14 +99,24 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
         status = (data->status >> (3-data->index) & 0x1);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
                                char *buf)
 {
-    struct as7326_56x_psu_data *data = as7326_56x_psu_update_device(dev);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as7326_56x_psu_data *data = i2c_get_clientdata(client);
+    mutex_lock(&data->update_lock);
 
+    data = as7326_56x_psu_update_device(dev);
+	if (!data->valid) {
+        mutex_unlock(&data->update_lock);
+		return 0;
+	}
+
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%s\n", data->model_name);
 }
 
@@ -225,8 +244,6 @@ static struct as7326_56x_psu_data *as7326_56x_psu_update_device(struct device *d
     struct i2c_client *client = to_i2c_client(dev);
     struct as7326_56x_psu_data *data = i2c_get_clientdata(client);
 
-    mutex_lock(&data->update_lock);
-
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
             || !data->valid) {
         int status;
@@ -264,8 +281,6 @@ static struct as7326_56x_psu_data *as7326_56x_psu_update_device(struct device *d
         data->last_updated = jiffies;
         data->valid = 1;
     }
-
-    mutex_unlock(&data->update_lock);
 
     return data;
 }
