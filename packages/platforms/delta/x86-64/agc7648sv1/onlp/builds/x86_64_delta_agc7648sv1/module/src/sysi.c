@@ -329,3 +329,46 @@ int onlp_sysi_platform_manage_leds(void)
 #endif
     return rv;
 }
+
+int
+onlp_sysi_ioctl(int code, va_list vargs)
+{
+    switch(code)
+    {
+        case I2C_ACCESS:
+        {
+            char rw;
+            dev_info_t dev_info;
+
+            rw = va_arg(vargs,int);
+
+            dev_info.bus = va_arg(vargs,int);
+            dev_info.addr = (uint8_t)va_arg(vargs,int);
+            dev_info.offset = (uint8_t)va_arg(vargs,int);
+            dev_info.flags = (uint32_t)va_arg(vargs,int);
+            dev_info.size = va_arg(vargs,int);
+
+            if(rw == 'r') //read
+            {
+                uint8_t* data = va_arg(vargs, int*);
+                *data = dni_i2c_lock_read(NULL, &dev_info);
+                return ONLP_STATUS_OK;
+            }
+            else if(rw == 'w') //write
+            {
+                if(dev_info.size == 1)
+                    dev_info.data_8 = (uint8_t)va_arg(vargs,int);
+                else
+                    dev_info.data_16 = (uint16_t)va_arg(vargs,int);
+
+                return dni_i2c_lock_write(NULL, &dev_info);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    return ONLP_STATUS_OK;
+}
+

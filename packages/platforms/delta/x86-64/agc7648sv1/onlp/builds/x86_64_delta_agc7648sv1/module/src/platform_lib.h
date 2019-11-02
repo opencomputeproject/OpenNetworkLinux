@@ -158,6 +158,8 @@ typedef unsigned int    UINT4;
 #define QSFP_LPMODE    0x62
 #define QSFP_RESET     0x3c
 
+#define I2C_ACCESS    7
+
 typedef struct mux_info_s
 {
         uint8_t offset;
@@ -225,6 +227,7 @@ int dni_bmc_psueeprom_info_get(char *r_data,char *device_name,int number);
 int dni_bmc_fanpresent_info_get(uint8_t *fan_present_bit);
 int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
+int dni_i2c_lock_write( mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_bmc_data_get(int bus, int addr, int reg, int *r_data);
 int dni_bmc_data_set(int bus, int addr, int reg, uint8_t w_data);
