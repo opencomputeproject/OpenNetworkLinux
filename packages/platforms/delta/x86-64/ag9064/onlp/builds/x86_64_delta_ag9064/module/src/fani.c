@@ -24,15 +24,8 @@
  *
  ***********************************************************/
 #include <onlp/platformi/fani.h>
-#include "x86_64_delta_ag9064_int.h"
-
-#include <sys/mman.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <onlplib/mmap.h>
-
 #include "platform_lib.h"
+
 
 #define VALIDATE(_id)                           \
     do                                          \
@@ -43,217 +36,181 @@
         }                                       \
     } while(0)
 
-/* Static values */
-static onlp_fan_info_t linfo[] = 
-{
-    { }, /* Not used */
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_1_ON_FAN_BOARD), "Chassis Fan 4 front", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_2_ON_FAN_BOARD), "Chassis Fan 3 front", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_3_ON_FAN_BOARD), "Chassis Fan 2 front", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_4_ON_FAN_BOARD), "Chassis Fan 1 front", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_6_ON_FAN_BOARD), "Chassis Fan 4 rear", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    {
-        { ONLP_FAN_ID_CREATE(FAN_7_ON_FAN_BOARD), "Chassis Fan 3 rear", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_8_ON_FAN_BOARD), "Chassis Fan 2 rear", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_9_ON_FAN_BOARD), "Chassis Fan 1 rear", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_ON_PSU1), "FAN ON PSU1", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
-    { 
-        { ONLP_FAN_ID_CREATE(FAN_ON_PSU2), "FAN ON PSU2", 0},
-        ONLP_FAN_STATUS_PRESENT,
-        ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE, 0, 0, ONLP_FAN_MODE_INVALID,
-    },
+#define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id) \
+    { \
+        { ONLP_FAN_ID_CREATE(FAN_##id##_ON_FAN_BOARD), "Chassis Fan "#id, 0 }, \
+        0x0, \
+        (ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        0, \
+        0, \
+        ONLP_FAN_MODE_INVALID \
+    }
+
+#define MAKE_FAN_INFO_NODE_ON_PSU(psu_id, fan_id) \
+    { \
+        { ONLP_FAN_ID_CREATE(FAN_##fan_id##_ON_PSU##psu_id), "Chassis PSU-"#psu_id " Fan "#fan_id, 0 }, \
+        0x0, \
+        (ONLP_FAN_CAPS_GET_RPM | ONLP_FAN_CAPS_GET_PERCENTAGE), \
+        0, \
+        0, \
+        ONLP_FAN_MODE_INVALID \
+    }
+
+/* Static fan information */
+onlp_fan_info_t fan_info[] = {
+    { }, // Not used
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(1),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(2),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(3),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(4),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(6),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(7),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(8),
+    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(9),
+    MAKE_FAN_INFO_NODE_ON_PSU(1,1),
+    MAKE_FAN_INFO_NODE_ON_PSU(2,1)
 };
 
 int onlp_fani_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
-static int ifnLinearDataToDecimal(uint16_t u16Value, uint16_t u16ManLen, uint16_t u16ExpLen)
-{
-    uint16_t ManMask = 1;
-    uint16_t ExpMask = 1;
-    uint16_t Mantissa, Exponent;
-    uint8_t  index;
-    
-    for(index = 1; index < u16ManLen; index++)
-    {
-        ManMask <<= 1;
-        ManMask |= 0x1;
-    }
-    
-    for(index = 1; index < u16ExpLen; index++)
-    {
-        ExpMask <<= 1;
-        ExpMask |= 0x1;
-    }
-    
-    /* Didn't check the negative bit */
-    Mantissa = u16Value & ManMask;
-    Exponent = u16Value >> u16ManLen;
-    
-    for(index = 0; index < Exponent; index++)
-    {
-        Mantissa *= 2;
-    }
-    
-    return Mantissa;
-}
-
-
-static int dni_fani_info_get_on_fanboard(int local_id, onlp_fan_info_t* info)
+static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t *info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-    uint32_t FanSpeed = 0;
-    
-    switch(local_id)
+    uint8_t bit_data = 0x00;
+    UINT4 u4Data = 0;
+    UINT4 multiplier = 1;
+    uint8_t present_bit = 0x00;
+
+    if (dni_bmc_sensor_read(dev_name,
+                            &u4Data,
+                            multiplier,
+                            fan_dev_list[local_id].dev_type) == ONLP_STATUS_OK)
     {
+        info->rpm = u4Data;
+        info->percentage = (info->rpm * 100) / MAX_FRONT_FAN_SPEED;
+    }
+
+    rv = dni_bmc_fanpresent_info_get(&bit_data);
+    if (rv == ONLP_STATUS_OK && bit_data != 0x00)
+        present_bit = bit_data;
+    else
+        rv = ONLP_STATUS_E_INVALID;
+
+    switch (local_id) {
         case FAN_1_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_1", &FanSpeed);
-            break;
-            
-        case FAN_2_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_2", &FanSpeed);
-            break;
-            
-        case FAN_3_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_3", &FanSpeed);
-            break;
-            
-        case FAN_4_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_4", &FanSpeed);
-            break;
-            
         case FAN_6_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_6", &FanSpeed);
+            if ((present_bit & (1 << 3)) == 0)
+                info->status |= ONLP_FAN_STATUS_PRESENT;
+            else
+                info->status |= ONLP_FAN_STATUS_FAILED;
             break;
-            
+        case FAN_2_ON_FAN_BOARD:
         case FAN_7_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_7", &FanSpeed);
+            if ((present_bit & (1 << 2)) == 0)
+                info->status |= ONLP_FAN_STATUS_PRESENT;
+            else
+                info->status |= ONLP_FAN_STATUS_FAILED;
             break;
-            
+        case FAN_3_ON_FAN_BOARD:
         case FAN_8_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_8", &FanSpeed);
+            if ((present_bit & (1 << 1)) == 0)
+                info->status |= ONLP_FAN_STATUS_PRESENT;
+            else
+                info->status |= ONLP_FAN_STATUS_FAILED;
             break;
-            
+        case FAN_4_ON_FAN_BOARD:
         case FAN_9_ON_FAN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Fan_9", &FanSpeed);
+            if ((present_bit & 1) == 0)
+                info->status |= ONLP_FAN_STATUS_PRESENT;
+            else
+                info->status |= ONLP_FAN_STATUS_FAILED;
             break;
-            
-        default:
-            AIM_LOG_ERROR("Invalid Fan ID!!\n");
-            rv = ONLP_STATUS_E_INVALID;
     }
-    
-    if(rv == ONLP_STATUS_OK)
-    {
-        info->rpm = FanSpeed;
-        info->percentage = (info->rpm * 100) / X86_64_DELTA_AG9064_CONFIG_FAN_RPM_MAX;
-    }
-    
-    return ONLP_STATUS_OK;
+    return rv;
 }
 
-
-static int dni_fani_info_get_on_psu(int local_id, onlp_fan_info_t* info)
+static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t *info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-    uint32_t FanSpeed = 0;
-    
-    switch(local_id)
+    UINT4 multiplier = 1;
+    UINT4 u4Data = 0;
+    uint8_t psu_present_bit = 0x00;
+    int rpm_data = 0;
+    int bit_data = 0;
+
+    if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_1_ADDR, PSU_STATUS_REGISTER, &bit_data) == ONLP_STATUS_OK)
+        psu_present_bit = bit_data;
+
+    if (dni_bmc_sensor_read(dev_name,
+                             &u4Data,
+                             multiplier,
+                             fan_dev_list[local_id].dev_type) == ONLP_STATUS_OK)
     {
-        case FAN_ON_PSU1:
-            rv = ifnOS_LINUX_BmcI2CGet(I2C_BMC_BUS_1, FAN_ON_PSU1_ADDR, FAN_SPEED_PMBUS, &FanSpeed, 2);
-            break;
-            
-        case FAN_ON_PSU2:
-            rv = ifnOS_LINUX_BmcI2CGet(I2C_BMC_BUS_1, FAN_ON_PSU2_ADDR, FAN_SPEED_PMBUS, &FanSpeed, 2);
-            break;
-                
-        default:
-            AIM_LOG_ERROR("Invalid Fan ID!!\n");
-            return ONLP_STATUS_E_INVALID;
+        rpm_data = (int)u4Data;
     }
-    
-    if(rv == ONLP_STATUS_OK)
-    {
-        FanSpeed = ((FanSpeed >> 8) | (FanSpeed << 8));
-        FanSpeed = ifnLinearDataToDecimal( FanSpeed, 11, 5 );
-        info->rpm = FanSpeed;
-        info->percentage = (info->rpm * 100) / X86_64_DELTA_AG9064_CONFIG_FAN_RPM_MAX;
+
+    switch (local_id) {
+        case FAN_1_ON_PSU1:
+            if ((psu_present_bit & 0x80) != 0x80)
+            {
+                info->rpm = rpm_data;
+                info->percentage = (info->rpm * 100) / MAX_FRONT_FAN_SPEED;
+                info->status |= ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F;
+            }
+            else
+            {
+                info->status |= ONLP_FAN_STATUS_FAILED;
+                rv = ONLP_STATUS_E_INVALID;
+            }
+            break;
+        case FAN_1_ON_PSU2:
+            if ((psu_present_bit & 0x08) != 0x08)
+            {
+                info->rpm = rpm_data;
+                info->percentage = (info->rpm * 100) / MAX_FRONT_FAN_SPEED;
+                info->status |= ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F;
+            }
+            else
+            {
+                info->status |= ONLP_FAN_STATUS_FAILED;
+                rv = ONLP_STATUS_E_INVALID;
+            }
+            break;
     }
-    
     return rv;
 }
 
 int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
-    int rv       = ONLP_STATUS_OK;
-    int local_id = 0;
-                
+    uint8_t local_id = 0;
+    int rv = ONLP_STATUS_OK;
+
     VALIDATE(id);
-    
     local_id = ONLP_OID_ID_GET(id);
-    *info = linfo[ONLP_OID_ID_GET(id)];
-    
-    switch(local_id)
+    *info = fan_info[local_id];
+
+    if (fan_dev_list[local_id].dev_name != NULL && local_id <= NUM_OF_FAN_ON_MAIN_BROAD)
     {
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_6_ON_FAN_BOARD:
-        case FAN_7_ON_FAN_BOARD:
-        case FAN_8_ON_FAN_BOARD:
-        case FAN_9_ON_FAN_BOARD:
-            rv = dni_fani_info_get_on_fanboard(local_id, info);
-            break;
-            
-        case FAN_ON_PSU1:
-        case FAN_ON_PSU2:
-            rv = dni_fani_info_get_on_psu(local_id, info);
-            break;
-                
-        default:
-            AIM_LOG_ERROR("Invalid Fan ID!!\n");
-            rv = ONLP_STATUS_E_INVALID;
+        rv = dni_fani_info_get_fan(local_id,
+                                   info,
+                                   fan_dev_list[local_id].dev_name);
     }
-    
+    else if (fan_dev_list[local_id].dev_name != NULL && local_id > NUM_OF_FAN_ON_MAIN_BROAD)
+    {
+        rv = dni_fani_info_get_fan_on_psu(local_id,
+                                          info,
+                                          fan_dev_list[local_id].dev_name);
+    }
+    else
+    {
+        AIM_LOG_ERROR("Invalid Fan ID!\n");
+        rv = ONLP_STATUS_E_PARAM;
+    }
+
     return rv;
 }
 

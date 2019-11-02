@@ -24,16 +24,8 @@
  *
  ***********************************************************/
 #include <onlp/platformi/thermali.h>
-#include "x86_64_delta_ag9064_log.h"
-
-#include <sys/mman.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <onlplib/mmap.h>
-#include <onlplib/i2c.h>
-
 #include "platform_lib.h"
+
 
 #define VALIDATE(_id)                           \
     do                                          \
@@ -44,94 +36,101 @@
         }                                       \
     } while(0)
 
+static char *thermal_path[] =  /* must map with onlp_thermal_id */
+{
+    "reserved",
+    "1-004d/hwmon/hwmon1/temp1_input"
+};
+
 /* Static values */
-static onlp_thermal_info_t linfo[] = {
+static onlp_thermal_info_t thermal_info[] = {
     { }, /* Not used */
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD), "CPU Core", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_ON_FAN_BROAD), "FAN Board", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD), "FAN Board", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BOARD), "Close to right case", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD_TEMP_1), "Close to right case", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BOARD), "Placed between QSFP cage and MAC", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD_TEMP_2), "Placed between QSFP cage and MAC", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BOARD), "Close to left case", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BOARD_TEMP_3), "Close to left case", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     { 
-        { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BOARD), "Board sensor near MAC", 0},
+        { ONLP_THERMAL_ID_CREATE(THERMAL_6_ON_MAIN_BOARD_TEMP_4), "Board sensor near MAC", 0},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
+    {
+        { ONLP_THERMAL_ID_CREATE(THERMAL_7_ON_PSU1), "PSU1 internal temp", ONLP_PSU_ID_CREATE(PSU1_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    },
+    {
+        { ONLP_THERMAL_ID_CREATE(THERMAL_8_ON_PSU2), "PSU2 internal temp", ONLP_PSU_ID_CREATE(PSU2_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+    }
 };
 
 int onlp_thermali_init(void)
 {
+    lockinit();
     return ONLP_STATUS_OK;
 }
 
 int onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
-    int rv             = ONLP_STATUS_OK;
-    int local_id       = 0;
-    int temp_base      = 1000;
-    uint32_t temp_data = 0;
-    
+    uint8_t local_id = 0;
+    int rv = ONLP_STATUS_OK;
+    UINT4 multiplier = 1000;
+    UINT4 u4Data = 0;
+    char fullpath[VENDOR_MAX_PATH_SIZE] = {0};
+    int r_data = 0;
+
     VALIDATE(id);
-    
     local_id = ONLP_OID_ID_GET(id);
-    *info = linfo[local_id];
-    
-    switch(local_id)
-    {
-        case THERMAL_CPU_CORE:
-            rv = onlp_i2c_read(I2C_BUS_2, THERMAL_CPU_ADDR, THERMAL_REGISTER, 1, (uint8_t*)&temp_data, 0);
-            break;
+    *info = thermal_info[local_id];
 
-        case THERMAL_1_ON_MAIN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Temp_1", &temp_data);
-            break;
-            
-        case THERMAL_2_ON_MAIN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Temp_2", &temp_data);
-            break;
-            
-        case THERMAL_3_ON_MAIN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Temp_3", &temp_data);
-            break;
-
-        case THERMAL_4_ON_MAIN_BOARD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Temp_4", &temp_data);
-            break; 
-            
-        case THERMAL_ON_FAN_BROAD:
-            rv = ifnOS_LINUX_BmcGetDataByName("Temp_5", &temp_data);
-            break;
-            
-        default:
-            AIM_LOG_ERROR("Invalid Thermal ID!!\n");
-            return ONLP_STATUS_E_PARAM;
-    }
-    
-    if(rv == ONLP_STATUS_OK)
+    if (strcmp(thermal_dev_list[local_id].dev_name, "") == 0 &&
+		thermal_dev_list[local_id].id != 0)
     {
-        info->mcelsius = temp_data * temp_base;
+        sprintf(fullpath, "%s%s", PREFIX_PATH, thermal_path[local_id]);
+        r_data = dni_i2c_lock_read_attribute(fullpath, ATTRIBUTE_BASE_DEC);
+        info->mcelsius = r_data;
     }
-    
+    else if (thermal_dev_list[local_id].dev_name != NULL &&
+             local_id <= NUM_OF_THERMAL_ON_MAIN_BROAD + NUM_OF_PSU_ON_MAIN_BROAD)
+    {
+        rv = dni_bmc_sensor_read(thermal_dev_list[local_id].dev_name,
+                                 &u4Data,
+                                 multiplier,
+                                 thermal_dev_list[local_id].dev_type);
+        if (u4Data == 0 || rv == ONLP_STATUS_E_GENERIC)
+            rv = ONLP_STATUS_E_INTERNAL;
+        else
+            info->mcelsius = u4Data;
+    }
+    else
+    {
+        AIM_LOG_ERROR("Invalid Thermal ID!\n");
+        rv = ONLP_STATUS_E_PARAM;
+    }
+
     return rv;
 }
 
