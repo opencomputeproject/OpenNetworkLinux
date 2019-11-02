@@ -456,6 +456,9 @@ class OnlPackage(object):
         for dep in self.pkg.get('depends', []):
             command = command + "-d %s " % dep
 
+        for dep in self.pkg.get('build-depends', []):
+            command = command + "--deb-build-depends %s " % dep
+
         for provides in onlu.sflatten(self.pkg.get('provides', [])):
             command = command + "--provides %s " % provides
 
@@ -481,6 +484,16 @@ class OnlPackage(object):
                 command = command + "--before-remove %s " % OnlPackageBeforeRemoveScript(self.pkg['init'], dir=workdir).name
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
+
+        fpm_file_commands = ['{}-{}'.format(o, a) for o in ['after', 'before'] for a in ['install', 'remove', 'upgrade']]
+
+        fpm_file_commands.append('deb-systemd')
+
+        for cmd in fpm_file_commands:
+            if cmd in self.pkg:
+                if not os.path.exists(self.pkg[cmd]):
+                    raise OnlPackageError("%s script '%s' does not exist." % (cmd, self.pkg[cmd]))
+                command = command + "--%s %s " % (cmd, self.pkg[cmd])
 
         if self.pkg.get('asr', False):
             with onlu.Profiler() as profiler:
