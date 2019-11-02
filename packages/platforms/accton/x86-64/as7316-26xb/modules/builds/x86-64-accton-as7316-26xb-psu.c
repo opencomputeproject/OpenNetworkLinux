@@ -312,8 +312,6 @@ static struct as7316_26xb_psu_data *as7316_26xb_psu_update_device(struct device_
         return data;
     }
 
-    mutex_lock(&data->update_lock);
-
     data->valid[pid] = 0;
 
     /* Get status from ipmi */
@@ -359,13 +357,13 @@ static struct as7316_26xb_psu_data *as7316_26xb_psu_update_device(struct device_
     data->valid[pid] = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
 #define VALIDATE_PRESENT_RETURN(id) \
 { \
     if (data->ipmi_resp[id].status[PSU_PRESENT] != 0) { \
+        mutex_unlock(&data->update_lock);   \
         return -ENXIO; \
     } \
 }
@@ -374,12 +372,15 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
-    struct as7316_26xb_psu_data *data = NULL;
     int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as7316_26xb_psu_update_device(da);
     if (!data->valid[pid]) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -429,22 +430,31 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
                      ((unsigned char)data->ipmi_resp[pid].status[PSU_FAN1]) << 8);
 			break; 
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
 	}
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
-    struct as7316_26xb_psu_data *data;
     char *str = NULL;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as7316_26xb_psu_update_device(da);
     if (!data->valid[pid]) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -459,10 +469,16 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
             str = data->ipmi_resp[pid].serial;
 			break;
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%s\n", str);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static int as7316_26xb_psu_probe(struct platform_device *pdev)
