@@ -25,7 +25,7 @@
 
 #include <x86_64_ingrasys_s9280_64x/x86_64_ingrasys_s9280_64x_config.h>
 
-#if ONLPSIM_CONFIG_INCLUDE_UCLI == 1
+#if X86_64_INGRASYS_S9280_64X_CONFIG_INCLUDE_UCLI == 1
 
 #include <uCli/ucli.h>
 #include <uCli/ucli_argparse.h>
