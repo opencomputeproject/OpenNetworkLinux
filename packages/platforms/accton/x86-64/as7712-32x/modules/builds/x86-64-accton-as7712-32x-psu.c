@@ -101,12 +101,17 @@ static struct attribute *as7712_32x_psu_attributes[] = {
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as7712_32x_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7712_32x_psu_data *data = as7712_32x_psu_update_device(dev);
     u8 status = 0;
 
+    mutex_lock(&data->update_lock);
+
+    data = as7712_32x_psu_update_device(dev);
     if (!data->valid) {
-        return -EIO;
+        mutex_unlock(&data->update_lock);
+        return sprintf(buf, "0\n");
     }
 
     if (attr->index == PSU_PRESENT) {
@@ -116,17 +121,23 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
         status = (data->status >> (3-data->index) & 0x1);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as7712_32x_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7712_32x_psu_data *data = as7712_32x_psu_update_device(dev);
     char *ptr = NULL;
 
+    mutex_lock(&data->update_lock);
+
+    data = as7712_32x_psu_update_device(dev);
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return -EIO;
     }
 
@@ -141,9 +152,11 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da,
 		ptr = data->fan_dir;
 		break;
 	default:
+	    mutex_unlock(&data->update_lock);
 		return -EINVAL;
 	}
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%s\n", ptr);
 }
 
@@ -359,8 +372,6 @@ static struct as7712_32x_psu_data *as7712_32x_psu_update_device(struct device *d
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as7712_32x_psu_data *data = i2c_get_clientdata(client);
-    
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
         || !data->valid) {
@@ -417,28 +428,10 @@ static struct as7712_32x_psu_data *as7712_32x_psu_update_device(struct device *d
     }
 
 exit:
-    mutex_unlock(&data->update_lock);
-
     return data;
 }
 
-static int __init as7712_32x_psu_init(void)
-{
-    extern int platform_accton_as7712_32x(void);
-    if (!platform_accton_as7712_32x()) {
-        return -ENODEV;
-    }
-
-    return i2c_add_driver(&as7712_32x_psu_driver);
-}
-
-static void __exit as7712_32x_psu_exit(void)
-{
-    i2c_del_driver(&as7712_32x_psu_driver);
-}
-
-module_init(as7712_32x_psu_init);
-module_exit(as7712_32x_psu_exit);
+module_i2c_driver(as7712_32x_psu_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as7712_32x_psu driver");

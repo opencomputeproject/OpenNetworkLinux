@@ -255,8 +255,6 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *da, char *
         data->valid = 1;
     }
 
-    mutex_unlock(&data->update_lock);
-
     /* Get temp fault status */
     index = attr->index * TEMP_DATA_COUNT + TEMP_FAULT;
     if (unlikely(data->ipmi_resp[index] == 0)) {
@@ -268,6 +266,7 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *da, char *
     index = attr->index * TEMP_DATA_COUNT + TEMP_INPUT;
     status = data->ipmi_resp[index] * 1000;
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 
 exit:

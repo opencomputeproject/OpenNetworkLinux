@@ -36,8 +36,6 @@ static struct as7716_32x_fan_data *as7716_32x_fan_update_device(struct device *d
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
             const char *buf, size_t count);
-extern int accton_i2c_cpld_read(unsigned short cpld_addr, u8 reg);
-extern int accton_i2c_cpld_write(unsigned short cpld_addr, u8 reg, u8 value);
 
 /* fan related data, the index should match sysfs_fan_attributes
  */
@@ -268,26 +266,47 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 {
     int error, value;
     struct i2c_client *client = to_i2c_client(dev);
+	struct as7716_32x_fan_data *data = i2c_get_clientdata(client);
     
     error = kstrtoint(buf, 10, &value);
-    if (error)
-        return error;
-        
-    if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
-        return -EINVAL;
+	if (error) {
+		return error;
+	}
+
+	if (value < 0 || value > FAN_MAX_DUTY_CYCLE) {
+		return -EINVAL;
+	}
 	
-    as7716_32x_fan_write_value(client, 0x33, 0); /* Disable fan speed watch dog */
-    as7716_32x_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
+    mutex_lock(&data->update_lock);
+
+	/* Disable the watchdog timer
+	 */
+	error = as7716_32x_fan_write_value(client, 0x33, 0);
+	
+	if (error != 0) {
+		dev_dbg(&client->dev, "Unable to disable the watchdog timer\n");
+		mutex_unlock(&data->update_lock);
+		return error;
+	}	
+
+	as7716_32x_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
+	data->valid = 0;
+
+    mutex_unlock(&data->update_lock);
     return count;
 }
 
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7716_32x_fan_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as7716_32x_fan_data *data = as7716_32x_fan_update_device(dev);
     ssize_t ret = 0;
     
+    mutex_lock(&data->update_lock);
+
+    data = as7716_32x_fan_update_device(dev);
     if (data->valid) {
         switch (attr->index) {
             case FAN_DUTY_CYCLE_PERCENTAGE:
@@ -342,6 +361,8 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                 break;
         }        
     }
+
+    mutex_unlock(&data->update_lock);
     
     return ret;
 }
@@ -354,8 +375,6 @@ static struct as7716_32x_fan_data *as7716_32x_fan_update_device(struct device *d
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as7716_32x_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2) || 
         !data->valid) {
@@ -383,8 +402,6 @@ static struct as7716_32x_fan_data *as7716_32x_fan_update_device(struct device *d
         data->last_updated = jiffies;
         data->valid = 1;
     }
-    
-    mutex_unlock(&data->update_lock);
 
     return data;
 }
@@ -468,18 +485,7 @@ static struct i2c_driver as7716_32x_fan_driver = {
     .address_list = normal_i2c,
 };
 
-static int __init as7716_32x_fan_init(void)
-{
-	return i2c_add_driver(&as7716_32x_fan_driver);
-}
-
-static void __exit as7716_32x_fan_exit(void)
-{
-    i2c_del_driver(&as7716_32x_fan_driver);
-}
-
-module_init(as7716_32x_fan_init);
-module_exit(as7716_32x_fan_exit);
+module_i2c_driver(as7716_32x_fan_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as7716_32x_fan driver");

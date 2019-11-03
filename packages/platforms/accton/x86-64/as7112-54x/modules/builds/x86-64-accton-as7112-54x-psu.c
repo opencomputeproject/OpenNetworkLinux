@@ -97,10 +97,14 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     struct i2c_client *client = to_i2c_client(dev);
     struct as7112_54x_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    unsigned int ret = as7112_54x_psu_update_device(dev, 0);
+    unsigned int ret = 0;
     u8 status = 0;
 
+    mutex_lock(&data->update_lock);
+
+    ret = as7112_54x_psu_update_device(dev, 0);
     if (ret == 0) {
+        mutex_unlock(&data->update_lock);
         return -ENXIO;
     }
 
@@ -111,6 +115,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		status = IS_POWER_GOOD(data->index, data->status);
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
@@ -134,17 +139,25 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da,
         update_eeprom = 2;
     }
 
-    ret = as7112_54x_psu_update_device(dev, update_eeprom);
+    mutex_lock(&data->update_lock);
 
+    ret = as7112_54x_psu_update_device(dev, update_eeprom);
     if (ret == 0) {
-		return -ENXIO;
+		ret = -ENXIO;
+        goto exit;
 	}
 
     if (!IS_PRESENT(data->index, data->status)) {
-	return 0;
+        ret = 0;
+        goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%s\n", ptr);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return ret;
 }
 
 static const struct attribute_group as7112_54x_psu_group = {
@@ -272,7 +285,6 @@ static unsigned int as7112_54x_psu_update_device(struct device *dev, u8 update_e
     struct as7112_54x_psu_data *data = i2c_get_clientdata(client);
     unsigned int ret = 1;
     
-    mutex_lock(&data->update_lock);
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)  || !data->valid) {
         int status;
         data->valid = 0;
@@ -342,7 +354,6 @@ static unsigned int as7112_54x_psu_update_device(struct device *dev, u8 update_e
 	ret = 1;
     }//time_after
 exit:
-	mutex_unlock(&data->update_lock);
      return ret;
 }
 

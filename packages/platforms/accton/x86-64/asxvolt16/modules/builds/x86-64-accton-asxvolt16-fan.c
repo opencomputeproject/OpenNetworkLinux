@@ -311,10 +311,14 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
              char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asxvolt16_fan_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct asxvolt16_fan_data *data = asxvolt16_fan_update_device(dev);
     ssize_t ret = 0;
-    
+
+    mutex_lock(&data->update_lock);
+
+    data = asxvolt16_fan_update_device(dev);
     if (data->valid) {
         switch (attr->index) {
             case FAN_DUTY_CYCLE_PERCENTAGE:
@@ -369,7 +373,8 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
                 break;
         }        
     }
-    
+
+    mutex_unlock(&data->update_lock);
     return ret;
 }
 
@@ -381,8 +386,6 @@ static struct asxvolt16_fan_data *asxvolt16_fan_update_device(struct device *dev
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct asxvolt16_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2) || 
         !data->valid) {
@@ -398,7 +401,6 @@ static struct asxvolt16_fan_data *asxvolt16_fan_update_device(struct device *dev
             
             if (status < 0) {
                 data->valid = 0;
-                mutex_unlock(&data->update_lock);
                 dev_dbg(&client->dev, "reg %d, err %d\n", fan_reg[i], status);
                 return data;
             }
@@ -411,8 +413,6 @@ static struct asxvolt16_fan_data *asxvolt16_fan_update_device(struct device *dev
         data->valid = 1;
     }
     
-    mutex_unlock(&data->update_lock);
-
     return data;
 }
 

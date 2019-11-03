@@ -536,3 +536,32 @@ int dni_fan_present(int id)
        rv = ONLP_STATUS_E_INVALID;
     return rv;
 }
+
+int dni_i2c_lock_read( mux_info_t * mux_info, dev_info_t * dev_info)
+{
+    int r_data=0;
+    DNI_LOCK();
+
+    if(dev_info->size == 1)
+        r_data = onlp_i2c_readb(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
+    else
+        r_data = onlp_i2c_readw(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->flags);
+
+    DNI_UNLOCK();
+    return r_data;
+}
+
+int dni_i2c_lock_write( mux_info_t * mux_info, dev_info_t * dev_info)
+{
+    DNI_LOCK();
+
+    /* Write size */
+    if(dev_info->size == 1)
+        onlp_i2c_write(dev_info->bus, dev_info->addr, dev_info->offset, 1, &dev_info->data_8, dev_info->flags);
+    else
+        onlp_i2c_writew(dev_info->bus, dev_info->addr, dev_info->offset, dev_info->data_16, dev_info->flags);
+
+    DNI_UNLOCK();
+    return 0;
+}
+

@@ -259,8 +259,6 @@ static struct as5916_26xb_led_data *as5916_26xb_led_update_device(void)
         return data;
     }
 
-    mutex_lock(&data->update_lock);
-
     data->valid = 0;
     status = ipmi_send_message(&data->ipmi, IPMI_LED_READ_CMD, NULL, 0,
                                 data->ipmi_resp, sizeof(data->ipmi_resp));
@@ -277,19 +275,21 @@ static struct as5916_26xb_led_data *as5916_26xb_led_update_device(void)
     data->valid = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
 static ssize_t show_led(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as5916_26xb_led_data *data = NULL;
-    int value;
+    int value = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_26xb_led_update_device();
     if (!data->valid) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
 	switch (attr->index) {
@@ -316,10 +316,16 @@ static ssize_t show_led(struct device *dev, struct device_attribute *da, char *b
             value = LED_MODE_AUTO;
             break;
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t set_led(struct device *dev, struct device_attribute *da,
@@ -334,9 +340,12 @@ static ssize_t set_led(struct device *dev, struct device_attribute *da,
 		return status;
 	}
 
+    mutex_lock(&data->update_lock);
+
     data = as5916_26xb_led_update_device();
     if (!data->valid) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     switch (attr->index) {
@@ -365,21 +374,27 @@ static ssize_t set_led(struct device *dev, struct device_attribute *da,
 			break;   
         }
 		default:
-			return -EINVAL;
+			status = -EINVAL;
+            goto exit;
     }
 
     /* Send IPMI write command */
     status = ipmi_send_message(&data->ipmi, IPMI_LED_WRITE_CMD,
                                 data->ipmi_resp, sizeof(data->ipmi_resp), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
-    return count;
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static int as5916_26xb_led_probe(struct platform_device *pdev)

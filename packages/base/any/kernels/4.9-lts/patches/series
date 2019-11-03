@@ -33,3 +33,6 @@ driver-add-the-support-max6620.patch
 0030-mlxsw-minimal-Provide-optimization-for-I2C-bus-acces.patch
 0031-mlxsw-core-Skip-port-split-entries-in-hwmon-subsyste.patch
 0032-mellanox-platform-Backporting-Melanox-drivers-from-v.patch
+0033-mlxsw-minimal-Provide-optimization-for-module-number.patch
+0034-mlxsw-minimal-Add-validation-for-FW-version.patch
+0035-mlxsw-core-Extend-QSFP-EEPROM-supported-size-for-eth.patch

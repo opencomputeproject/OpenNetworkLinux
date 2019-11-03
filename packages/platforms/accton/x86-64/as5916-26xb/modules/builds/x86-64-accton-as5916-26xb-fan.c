@@ -270,8 +270,6 @@ static struct as5916_26xb_fan_data *as5916_26xb_fan_update_device(void)
         return data;
     }
 
-    mutex_lock(&data->update_lock);
-
     data->valid = 0;
     status = ipmi_send_message(&data->ipmi, IPMI_FAN_READ_CMD, NULL, 0,
                                 data->ipmi_resp, sizeof(data->ipmi_resp));
@@ -288,7 +286,6 @@ static struct as5916_26xb_fan_data *as5916_26xb_fan_update_device(void)
     data->valid = 1;
 
 exit:
-    mutex_unlock(&data->update_lock);
     return data;
 }
 
@@ -296,14 +293,17 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da, char *b
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char fid = attr->index / NUM_OF_PER_FAN_ATTR;
-    struct as5916_26xb_fan_data *data = NULL;
     int value = 0;
     int index = 0;
     int present = 0;
+    int error = 0;
+
+    mutex_lock(&data->update_lock);
 
     data = as5916_26xb_fan_update_device();
     if (!data->valid) {
-        return -EIO;
+        error = -EIO;
+        goto exit;
     }
 
     index = fid * FAN_DATA_COUNT; /* base index */
@@ -333,10 +333,16 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da, char *b
                     (int)data->ipmi_resp[index + FAN_SPEED1] << 8;
             break;
 		default:
-			return -EINVAL;
+			error = -EINVAL;
+            goto exit;
     }
 
+    mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", present ? value : 0);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;    
 }
 
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
@@ -354,6 +360,8 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 
     pwm = (pwm * 100) / 625 - 1; /* Convert pwm to register value */
 
+    mutex_lock(&data->update_lock);
+
     /* Send IPMI write command */
     data->ipmi_tx_data[0] = fid + 1; /* FAN ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x02;
@@ -361,17 +369,21 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
     status = ipmi_send_message(&data->ipmi, IPMI_FAN_WRITE_CMD,
                                 data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
     if (unlikely(status != 0)) {
-        return status;
+        goto exit;
     }
 
     if (unlikely(data->ipmi.rx_result != 0)) {
-        return -EIO;
+        status = -EIO;
+        goto exit;
     }
 
     /* Update pwm to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp[fid * FAN_DATA_COUNT + FAN_PWM] = pwm;
+    status = count;
 
-    return count;
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static int as5916_26xb_fan_probe(struct platform_device *pdev)

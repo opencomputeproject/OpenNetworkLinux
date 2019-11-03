@@ -87,9 +87,13 @@ static struct attribute *as4630_54pe_psu_attributes[] = {
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
                            char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as4630_54pe_psu_data *data = i2c_get_clientdata(client);
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as4630_54pe_psu_data *data = as4630_54pe_psu_update_device(dev);
     u8 status = 0;
+
+    mutex_lock(&data->update_lock);
+    data = as4630_54pe_psu_update_device(dev);
 
     if (attr->index == PSU_PRESENT) {
         if(data->index==0)
@@ -104,17 +108,23 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
            status = ( (data->status >> 2) & 0x1); 
     }
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%d\n", status);
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da,
                                char *buf)
 {
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as4630_54pe_psu_data *data = i2c_get_clientdata(client);
    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    struct as4630_54pe_psu_data *data = as4630_54pe_psu_update_device(dev);
     char *ptr = NULL;
 
+    mutex_lock(&data->update_lock);
+
+    data = as4630_54pe_psu_update_device(dev);
     if (!data->valid) {
+        mutex_unlock(&data->update_lock);
         return -EIO;
     }
 
@@ -126,9 +136,11 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da,
 		ptr = data->serial_number;
 		break;
 	default:
+        mutex_unlock(&data->update_lock);
 		return -EINVAL;
 	}
 
+    mutex_unlock(&data->update_lock);
     return sprintf(buf, "%s\n", ptr);
 }
 
@@ -255,8 +267,6 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
     struct i2c_client *client = to_i2c_client(dev);
     struct as4630_54pe_psu_data *data = i2c_get_clientdata(client);
 
-    mutex_lock(&data->update_lock);
-
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
             || !data->valid) {
         int status;
@@ -302,8 +312,6 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
         data->last_updated = jiffies;
         data->valid = 1;
     }
-
-    mutex_unlock(&data->update_lock);
 
     return data;
 }
