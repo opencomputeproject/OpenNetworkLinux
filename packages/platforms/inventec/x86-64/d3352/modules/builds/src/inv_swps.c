@@ -32,7 +32,7 @@ static int reset_i2c_topology(void);
 
 static int
 __swp_match(struct device *dev,
-#if defined(SWPS_KERN_VER_AF_3_10) || defined(SWPS_KERN_VER_AF_4_4)
+#ifdef SWPS_KERN_VER_AF_3_10
 
             const void *data){
 #else

@@ -21,6 +21,7 @@
 #define INV_PSOC_PREFIX		"/sys/bus/i2c/devices/1-0066/"
 #define INV_EPRM_PREFIX		"/sys/bus/i2c/devices/0-0053/"
 #define INV_CTMP_PREFIX		"/sys/devices/platform/coretemp.0/hwmon/hwmon0/"
+#define LOCAL_ID_TO_INFO_IDX(id)  (id-1)
 
 #define CHASSIS_SFP_COUNT	(4)
 
@@ -53,17 +54,11 @@ enum onlp_fan_id {
     FAN_RESERVED = 0,
     FAN_1_ON_MAIN_BOARD,
     FAN_2_ON_MAIN_BOARD,
-    FAN_3_ON_MAIN_BOARD,
-    FAN_4_ON_MAIN_BOARD,
-    FAN_5_ON_MAIN_BOARD,
-    FAN_6_ON_MAIN_BOARD,
-    FAN_7_ON_MAIN_BOARD,
-    FAN_8_ON_MAIN_BOARD,
     FAN_1_ON_PSU1,
     FAN_1_ON_PSU2,
     FAN_MAX
 };
-#define CHASSIS_FAN_COUNT	(4)
+#define CHASSIS_FAN_COUNT	(2)
 
 enum onlp_led_id {
     LED_RESERVED = 0,

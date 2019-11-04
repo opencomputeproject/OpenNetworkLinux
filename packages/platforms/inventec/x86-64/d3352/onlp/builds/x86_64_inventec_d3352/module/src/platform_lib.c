@@ -33,10 +33,10 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     int ret;
 
     if (data_len >= buf_size) {
-	    return -1;
-	}
+        return -1;
+    }
 
-	ret = onlp_file_read_binary(filename, buffer, buf_size-1, data_len);
+    ret = onlp_file_read_binary(filename, buffer, buf_size-1, data_len);
 
     if (ret == 0) {
         buffer[buf_size-1] = '\0';
@@ -48,93 +48,6 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
 #define I2C_PSU_MODEL_NAME_LEN 32
 #define I2C_PSU_FAN_DIR_LEN    8
 #include <ctype.h>
-psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
-{
-    char *node = NULL;
-    char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
-    char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
-
-    /* Check AC model name */
-    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psoc_psu1_model) : PSU2_AC_HWMON_NODE(psoc_psu2_model);
-    if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
-        return PSU_TYPE_UNKNOWN;
-    }
-
-    if(isspace(model_name[strlen(model_name)-1])) {
-        model_name[strlen(model_name)] = 0;
-    }
-
-    if (strncmp(model_name, "YM-2651Y", 8) == 0) {
-	    if (modelname) {
-			strncpy(modelname, model_name, 8);
-	    }
-
-	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
-	        return PSU_TYPE_UNKNOWN;
-	    }
-
-	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_AC_F2B;
-	    }
-
-	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_AC_B2F;
-	    }
-    }
-
-    if (strncmp(model_name, "YM-2651V", 8) == 0) {
-	    if (modelname) {
-			strncpy(modelname, model_name, 8);
-	    }
-
-	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
-	        return PSU_TYPE_UNKNOWN;
-	    }
-
-	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_DC_48V_F2B;
-	    }
-
-	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_DC_48V_B2F;
-	    }
-    }
-
-	if (strncmp(model_name, "PSU-12V-750", 11) == 0) {
-	    if (modelname) {
-			strncpy(modelname, model_name, 11);
-	    }
-
-	    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
-	    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
-	        return PSU_TYPE_UNKNOWN;
-	    }
-
-	    if (strncmp(fan_dir, "F2B", 3) == 0) {
-	        return PSU_TYPE_DC_12V_F2B;
-	    }
-
-	    if (strncmp(fan_dir, "B2F", 3) == 0) {
-	        return PSU_TYPE_DC_12V_B2F;
-	    }
-
-	    if (strncmp(fan_dir, "NON", 3) == 0) {
-	        return PSU_TYPE_DC_12V_FANLESS;
-	    }
-	}
-
-	if (strncmp(model_name, "DPS-150AB-10", 12) == 0) {
-	    if (modelname) {
-			strncpy(modelname, model_name, 12);
-	    }
-
-	    return PSU_TYPE_DC_12V_F2B;
-        }
-
-    return PSU_TYPE_UNKNOWN;
-}
 
 int psu_pmbus_info_get(int id, char *node, int *value)
 {
@@ -143,12 +56,9 @@ int psu_pmbus_info_get(int id, char *node, int *value)
 
     if (PSU1_ID == id) {
         ret = onlp_file_read_int(value, "%s%s%d", PSU1_AC_PMBUS_PREFIX, node, PSU1_ID);
-    }
-    else
-    if (PSU2_ID == id) {
+    } else if (PSU2_ID == id) {
         ret = onlp_file_read_int(value, "%s%s%d", PSU2_AC_PMBUS_PREFIX, node, PSU2_ID);
-    }
-    else {
+    } else {
         return ONLP_STATUS_E_INTERNAL;
     }
 
@@ -163,16 +73,16 @@ int psu_pmbus_info_set(int id, char *node, int value)
 {
     char path[PSU_NODE_MAX_PATH_LEN] = {0};
 
-        switch (id) {
-        case PSU1_ID:
-                sprintf(path, "%s%s%d", PSU1_AC_PMBUS_PREFIX, node, PSU1_ID);
-                break;
-        case PSU2_ID:
-                sprintf(path, "%s%s%d", PSU2_AC_PMBUS_PREFIX, node, PSU2_ID);
-                break;
-        default:
-                return ONLP_STATUS_E_UNSUPPORTED;
-        };
+    switch (id) {
+    case PSU1_ID:
+        sprintf(path, "%s%s%d", PSU1_AC_PMBUS_PREFIX, node, PSU1_ID);
+        break;
+    case PSU2_ID:
+        sprintf(path, "%s%s%d", PSU2_AC_PMBUS_PREFIX, node, PSU2_ID);
+        break;
+    default:
+        return ONLP_STATUS_E_UNSUPPORTED;
+    };
 
     if (onlp_file_write_int(value, path, NULL) != 0) {
         AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
