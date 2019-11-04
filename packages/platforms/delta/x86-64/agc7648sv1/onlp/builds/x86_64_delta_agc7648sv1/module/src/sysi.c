@@ -93,9 +93,9 @@ int onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
     uint8_t* rdata = aim_zmalloc(256);
 
-    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK) 
+    if(onlp_file_read(rdata, 256, size, IDPROM_PATH) == ONLP_STATUS_OK)
     {
-        if(*size == 256) 
+        if(*size == 256)
         {
             *data = rdata;
             return ONLP_STATUS_OK;
@@ -113,7 +113,7 @@ int onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
     int cpld_version = 6;
     cpld_version = dni_i2c_lock_read_attribute(NULL, CPU_CPLD_VERSION);
     pi->cpld_versions = aim_fstrdup("%d", cpld_version);
-    
+
     return ONLP_STATUS_OK;
 }
 
@@ -350,7 +350,7 @@ onlp_sysi_ioctl(int code, va_list vargs)
 
             if(rw == 'r') //read
             {
-                uint8_t* data = va_arg(vargs, int*);
+                uint8_t* data = va_arg(vargs, uint8_t*);
                 *data = dni_i2c_lock_read(NULL, &dev_info);
                 return ONLP_STATUS_OK;
             }
@@ -371,4 +371,3 @@ onlp_sysi_ioctl(int code, va_list vargs)
 
     return ONLP_STATUS_OK;
 }
-
