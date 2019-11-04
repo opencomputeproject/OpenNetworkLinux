@@ -18,12 +18,19 @@ x86_64_inventec_d3352_debug_main(int argc, char* argv[])
     int rv = 0;
 
     while( (c = getopt(argc, argv, "ch")) != -1) {
-        switch(c)
-            {
-            case 'c': c = 1; break;
-            case 'h': help = 1; rv = 0; break;
-            default: help = 1; rv = 1; break;
-            }
+        switch(c) {
+        case 'c':
+            c = 1;
+            break;
+        case 'h':
+            help = 1;
+            rv = 0;
+            break;
+        default:
+            help = 1;
+            rv = 1;
+            break;
+        }
 
     }
 

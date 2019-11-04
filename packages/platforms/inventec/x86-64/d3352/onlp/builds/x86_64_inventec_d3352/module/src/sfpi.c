@@ -21,7 +21,7 @@ static char sfp_node_path[ONLP_NODE_MAX_PATH_LEN] = {0};
 
 #define NUM_OF_SFP_PORT	(CHASSIS_SFP_COUNT)
 static const int sfp_mux_index[NUM_OF_SFP_PORT] = {
- 2,  3,  4,  5
+    2,  3,  4,  5
 };
 
 #define FRONT_PORT_TO_MUX_INDEX(port) (sfp_mux_index[port])
@@ -95,13 +95,10 @@ onlp_sfpi_is_present(int port)
         return ONLP_STATUS_E_INTERNAL;
     }
     if (present == 0) {
-	present = 1;
-    }
-    else
-    if (present == 1) {
-	present = 0;
-    }
-    else {
+        present = 1;
+    } else if (present == 1) {
+        present = 0;
+    } else {
         AIM_LOG_ERROR("Unvalid present status %d from port(%d)\r\n",present,port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -115,30 +112,70 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     int port, ret, index;
 
     for (port = 0, index = 0; port < NUM_OF_SFP_PORT; port++) {
-	if (port == 32) {
-	    index = 1;
-	}
+        if (port == 32) {
+            index = 1;
+        }
 
-	ret = onlp_sfpi_is_present(port);
-	if (ret == 1) {
-	    presence_all[index] |= (1<<port);
-	}
-	else
-	if (ret == 0) {
-	    presence_all[index] &= ~(1<<port);
-	}
-	else {
+        ret = onlp_sfpi_is_present(port);
+        if (ret == 1) {
+            presence_all[index] |= (1<<port);
+        } else if (ret == 0) {
+            presence_all[index] &= ~(1<<port);
+        } else {
             AIM_LOG_ERROR("Unable to read present status of port(%d).", port);
-	}
+        }
     }
     /* Populate bitmap */
     for(port = 0, index = 0; port < NUM_OF_SFP_PORT; port++) {
-	if (port == 32) {
-	    index = 1;
-	}
+        if (port == 32) {
+            index = 1;
+        }
 
         AIM_BITMAP_MOD(dst, port, (presence_all[index] & 1));
         presence_all[index] >>= 1;
+    }
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_sfpi_is_rx_los(int port)
+{
+    int rxlos, rv;
+    //char buf[ONLP_CONFIG_INFO_STR_MAX];
+    if(port > NUM_OF_SFP_PORT) {
+        return ONLP_STATUS_E_INVALID;
+    }
+    if(onlp_sfpi_is_present(port) == 0) {
+        return ONLP_STATUS_E_INVALID;
+    }
+    char *path=sfp_get_port_path(port, "rxlos");
+    rv=onlp_file_read_int( &rxlos, path );
+    if( rv != ONLP_STATUS_OK) {
+        return rv;
+    }
+    if(rxlos==0) rv=0;
+    else if(rxlos==1) rv=1;
+    else return ONLP_STATUS_E_INTERNAL;
+    return rv;
+}
+
+int
+onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
+{
+    AIM_BITMAP_CLR_ALL(dst);
+    int port;
+    int isrxlos;
+    for(port = 0; port < NUM_OF_SFP_PORT; port++) {
+        if(onlp_sfpi_is_present(port) == 1) {
+            isrxlos = onlp_sfpi_is_rx_los(port);
+            if(isrxlos == 1) {
+                AIM_BITMAP_MOD(dst, port, 1);
+            } else if(isrxlos == 0) {
+                AIM_BITMAP_MOD(dst, port, 0);
+            } else {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+        }
     }
     return ONLP_STATUS_OK;
 }
@@ -151,8 +188,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
     memset(data, 0, 256);
     /* Read eeprom information into data[] */
-    if (onlp_i2c_read(bus, 0x50, 0x00, 256, data, 0) != 0)
-    {
+    if (onlp_i2c_block_read(bus, 0x50, 0x00, 256, data, 0) != 0) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -210,8 +246,33 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 }
 
 int
+onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
+{
+    int ret = ONLP_STATUS_E_UNSUPPORTED;
+    char *path;
+    if(port >= 0 && port < NUM_OF_SFP_PORT) {
+        switch (control) {
+        case ONLP_SFP_CONTROL_RX_LOS:
+            path=sfp_get_port_path(port,"rxlos");
+            ret = onlp_file_read_int(value, path);
+            break;
+        case ONLP_SFP_CONTROL_TX_DISABLE:
+            path=sfp_get_port_path(port,"tx_disable");
+            ret = onlp_file_read_int(value, path);
+            break;
+        case ONLP_SFP_CONTROL_TX_FAULT:
+            path=sfp_get_port_path(port,"tx_fault");
+            ret = onlp_file_read_int(value, path);
+            break;
+        default:
+            break;
+        }
+    }
+    return ret;
+}
+
+int
 onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-
