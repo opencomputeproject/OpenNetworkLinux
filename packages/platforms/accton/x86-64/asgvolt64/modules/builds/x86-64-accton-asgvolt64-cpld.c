@@ -1555,6 +1555,7 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
     /* Update tx_disable status */
     if (disable) {
         status |= mask;
+    }
     else {
         status &= ~mask;
     }
