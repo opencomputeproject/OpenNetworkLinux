@@ -1384,7 +1384,7 @@ struct inv_port_layout_s gulmohar_port_layout[] = {
  * ==========================================
  */
 #ifdef SWPS_GULMOHAR_2T_EVT1
-unsigned gulmohar_2t_evt1_gpio_rest_mux = MUX_RST_GPIO_505_PCA9548;
+unsigned gulmohar_2t_evt1_gpio_rest_mux = MUX_RST_GPIO_69_PCA9548;
 
 struct inv_ioexp_layout_s gulmohar_2t_evt1_ioexp_layout[] = {
     /* IOEXP_ID / IOEXP_TYPE / { Chan_ID, Chip_addr, Read_offset, Write_offset, config_offset, data_default, conf_default } */
