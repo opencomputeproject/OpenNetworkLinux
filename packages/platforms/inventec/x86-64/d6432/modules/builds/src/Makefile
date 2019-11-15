@@ -1,0 +1,12 @@
+obj-m := inv_sff.o
+inv_sff-objs := sff.o sff_io.o sff_eeprom.o
+
+obj-m += i2c-gpio.o
+obj-m += gpio-ich.o
+obj-m += inv_platform.o
+obj-m += inv-i2c-mux-pca9641.o
+obj-m += inv_cpld.o
+obj-m += inv_ucd90160.o
+obj-m += inv_psu.o
+obj-m += vpd.o
+vpd-objs := inv_vpd.o onie_tlvinfo.o
