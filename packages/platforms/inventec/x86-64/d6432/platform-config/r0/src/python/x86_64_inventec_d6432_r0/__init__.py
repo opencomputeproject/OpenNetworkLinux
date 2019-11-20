@@ -17,5 +17,8 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
         self.insmod('inv_platform')
         self.insmod('inv_sff')
         self.insmod('vpd')
-        
+        self.insmod('optoe')
+        for ch  in range(0,32):
+           self.new_i2c_device('optoe1', 0x50, 14 + ch )        
+
         return True
