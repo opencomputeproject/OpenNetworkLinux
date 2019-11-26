@@ -139,7 +139,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651Y", 8) == 0) {
 	    if (modelname) {
-			aim_strlcpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8+1);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -158,7 +158,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "YM-2651V", 8) == 0) {
 	    if (modelname) {
-			aim_strlcpy(modelname, model_name, 8);
+			aim_strlcpy(modelname, model_name, 8+1);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
@@ -177,7 +177,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
 	if (strncmp(model_name, "PSU-12V-750", 11) == 0) {
 	    if (modelname) {
-			aim_strlcpy(modelname, model_name, 11);
+			aim_strlcpy(modelname, model_name, 11+1);
 	    }
 
 	    node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
@@ -211,7 +211,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
             return PSU_TYPE_UNKNOWN;
         }
 
-        aim_strlcpy(fan_dir, string, len);
+        aim_strlcpy(fan_dir, string, (len+1));
         aim_free(string);
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
@@ -242,12 +242,11 @@ int psu_pmbus_serial_number_get(int id, char *serial, int serial_len)
 
 	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
     if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
-		return ONLP_STATUS_E_INTERNAL;
-
+        return ONLP_STATUS_E_INTERNAL;
     }
 
-	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
-	return ONLP_STATUS_OK;
+    serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+    return ONLP_STATUS_OK;
 }
 
 int psu_acbel_serial_number_get(int id, char *serial, int serial_len)
@@ -256,14 +255,13 @@ int psu_acbel_serial_number_get(int id, char *serial, int serial_len)
     char *prefix = (id == PSU1_ID) ? PSU1_AC_HWMON_PREFIX : PSU2_AC_HWMON_PREFIX;
     
     int len = onlp_file_read_str(&serial_number, "%s""psu_serial_number", prefix);
-    if (!serial || len <= 0) {
+    if (!serial_number || len <= 0) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    aim_strlcpy(serial, serial_number, len);
+    aim_strlcpy(serial, serial_number, (len+1));
     aim_free(serial_number);
 
-	serial[len] = '\0';
-	return ONLP_STATUS_OK;
+    return ONLP_STATUS_OK;
 }
 
