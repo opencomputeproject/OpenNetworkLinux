@@ -84,10 +84,8 @@ enum onlp_thermal_id {
     ONLP_THERMAL_1_ON_PSU2,
     ONLP_THERMAL_2_ON_PSU2,
     ONLP_THERMAL_3_ON_PSU2,
-    ONLP_THERMAL_MAX
+    ONLP_THERMAL_MAX  /*num limit include reserved*/
 };
-
-#define ONLP_THERMAL_COUNT 18 /*include "reserved"*/
 
 /* Fan definitions*/
 enum onlp_fan_id {
@@ -99,19 +97,15 @@ enum onlp_fan_id {
     ONLP_FAN_6,
     ONLP_FAN_PSU_1,
     ONLP_FAN_PSU_2,
-    ONLP_FAN_MAX
+    ONLP_FAN_MAX	/*num limit include reserved*/
 };
-
-#define ONLP_FAN_COUNT 9 /*include "reserved"*/
 
 /* PSU definitions*/
 enum onlp_psu_id {
     ONLP_PSU_1 = 1,
     ONLP_PSU_2,
-    ONLP_PSU_MAX
+    ONLP_PSU_MAX	/*num limit include reserved*/
 };
-
-#define ONLP_PSU_COUNT 2 /*include "reserved"*/
 
 /* LED definitions*/
 enum onlp_led_id {
@@ -122,11 +116,8 @@ enum onlp_led_id {
     ONLP_LED_FAN4,
     ONLP_LED_FAN5,
     ONLP_LED_FAN6,
-    ONLP_LED_MAX
+    ONLP_LED_MAX	/*num limit include reserved*/
 };
-
-#define ONLP_LED_COUNT 8 /*include "reserved"*/
-
 
 /* platform functions*/
 #define PLATFORM_HWMON_DIAG_LOCK

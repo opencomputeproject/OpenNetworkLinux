@@ -17,10 +17,11 @@
 #include "platform_lib.h"
 
 
+
 int platform_hwmon_diag_enable_read(int *enable)
 {
     int rv = ONLP_STATUS_OK;
-    rv = onlp_file_read_int((int*)enable, INV_CPLD_PREFIX"diag");
+    rv = onlp_file_read_int((int*)enable, INV_INFO_PREFIX"diag");
     return rv;
 }
 
@@ -28,6 +29,6 @@ int platform_hwmon_diag_enable_read(int *enable)
 int platform_hwmon_diag_enable_write(int enable)
 {
     int rv = ONLP_STATUS_OK;
-    rv = onlp_file_write_int(enable, INV_CPLD_PREFIX"diag");
+    rv = onlp_file_write_int(enable, INV_INFO_PREFIX"diag");
     return rv;
 }

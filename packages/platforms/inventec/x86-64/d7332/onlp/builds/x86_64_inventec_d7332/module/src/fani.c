@@ -29,10 +29,20 @@
 #define STEP_SIZE 100
 #define FAN_ID_TO_PSU_ID(id) (id-ONLP_FAN_PSU_1+1)
 
+#define TLV_AREA_OFFSETS_IDX_START      1
+#define TLV_PRODUCT_INFO_OFFSET_IDX     5
+#define TLV_PRODUCT_INFO_AREA_START     3
+#define TLV_ATTR_TYPE_SERIAL            5
+#define TLV_ATTR_TYPE_MODEL             2
+
+#define FAN_I2C_CHANNEL                 3
+#define FAN_I2C_ADDR_BASE               52
+
 #define FAN_CAPS ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
 
 static int _fani_status_failed_check(uint32_t* status, int fan_id);
 static int _fani_status_present_check(uint32_t* status, int fan_id);
+static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id);
 extern char* psu_i2c_addr[ONLP_PSU_MAX];
 
 #define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id)			\
@@ -54,7 +64,7 @@ extern char* psu_i2c_addr[ONLP_PSU_MAX];
 
 
 /* Static values */
-static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = {
+static onlp_fan_info_t __onlp_fan_info[] = {
     {},
     MAKE_FAN_INFO_NODE_ON_FAN_BOARD(1),
     MAKE_FAN_INFO_NODE_ON_FAN_BOARD(2),
@@ -74,6 +84,64 @@ int
 onlp_fani_init(void)
 {
     return ONLP_STATUS_OK;
+}
+
+static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
+{
+    int ret=ONLP_STATUS_OK;
+    uint8_t* rdata;
+    char file_path[ONLP_CONFIG_INFO_STR_MAX];
+    char s;
+    int rdata_size=0,target_offset=0,attr_idx=0,attr_length=0;
+    int i=0;
+
+    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%d/eeprom",INV_PSU_BASE,FAN_I2C_CHANNEL,FAN_I2C_ADDR_BASE+fan_id-1);
+    
+    FILE* fp  = fopen(file_path, "rb");
+    if(fp){
+        fseek(fp, 0L, SEEK_END);
+        rdata_size = ftell(fp);
+        rewind(fp);
+        rdata = aim_malloc(rdata_size);
+        fread(rdata, 1, rdata_size, fp);
+        fclose(fp);
+    }else{
+        ret=ONLP_STATUS_E_INTERNAL;
+    }
+
+    if(ret==ONLP_STATUS_OK) {
+        for(i=TLV_AREA_OFFSETS_IDX_START; i<TLV_PRODUCT_INFO_OFFSET_IDX; i++) {
+            target_offset+=rdata[i];
+        }
+        target_offset*=8; /*spec defined: offset are in multiples of 8 bytes*/
+        attr_idx=target_offset+TLV_PRODUCT_INFO_AREA_START;
+
+        for(i=1; i<attr_type; i++) {
+            if(attr_idx>rdata_size){
+                ret=ONLP_STATUS_E_INTERNAL;
+                break;
+            }
+            attr_length=rdata[attr_idx]&(0x3F);    /*spec defined: length are set in last 6 bits*/
+            attr_idx+=(attr_length+1);
+        }
+        if(ret==ONLP_STATUS_OK){
+            if(attr_length<rdata_size){
+                attr_length=rdata[attr_idx]&(0x3F); 
+            }else{
+                ret=ONLP_STATUS_E_INTERNAL;
+            }
+            if(attr_idx+attr_length<rdata_size){
+                for(i=0; i<attr_length; i++) {
+                    s=(char)rdata[attr_idx+i+1];
+                    ret_str[i]=s;
+                }
+            }else{
+                ret=ONLP_STATUS_E_INTERNAL;
+            }          
+        }
+
+    }
+    return ret;
 }
 
 int
@@ -131,6 +199,15 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                 } else {
                     info->rpm = (lrpm+rrpm)/2;
                 }
+                
+                rv=_inv_get_fan_fru(info->serial,TLV_ATTR_TYPE_SERIAL,fan_id);
+                if(rv!=ONLP_STATUS_OK){
+                    snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                }
+                rv=_inv_get_fan_fru(info->model,TLV_ATTR_TYPE_MODEL,fan_id);
+                if(rv!=ONLP_STATUS_OK){
+                    snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                }
 
                 break;
             case ONLP_FAN_PSU_1:
@@ -176,8 +253,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             info->percentage = 0;
             info->mode = ONLP_FAN_MODE_OFF;
         }
-        snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "NA");
-        snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "NA");
+
     }
     return rv;
 }

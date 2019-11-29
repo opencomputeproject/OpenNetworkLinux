@@ -24,54 +24,6 @@
 
 #include "platform_lib.h"
 
-#define SYSI_ONIE_TYPE_SUPPORT_NUM        17
-#define SYSI_PLATFORM_INFO_TYPE_STR_MAX   10
-#define SYSI_PLATFORM_INFO_NUM             2
-#define TLV_PREFIX_LENGTH 2 /*TLV prefix with one byte of 'Type' and one byte fpr 'Length' */
-#define PATH_LENGTH 50
-#define ITEM_NUM 17
-
-/**
- *  The TLV Types.
- */
-#define TLV_CODE_PRODUCT_NAME   0x21
-#define TLV_CODE_PART_NUMBER    0x22
-#define TLV_CODE_SERIAL_NUMBER  0x23
-#define TLV_CODE_MAC_BASE       0x24
-#define TLV_CODE_MANUF_DATE     0x25
-#define TLV_CODE_DEVICE_VERSION 0x26
-#define TLV_CODE_LABEL_REVISION 0x27
-#define TLV_CODE_PLATFORM_NAME  0x28
-#define TLV_CODE_ONIE_VERSION   0x29
-#define TLV_CODE_MAC_SIZE       0x2A
-#define TLV_CODE_MANUF_NAME     0x2B
-#define TLV_CODE_MANUF_COUNTRY  0x2C
-#define TLV_CODE_VENDOR_NAME    0x2D
-#define TLV_CODE_DIAG_VERSION   0x2E
-#define TLV_CODE_SERVICE_TAG    0x2F
-#define TLV_CODE_VENDOR_EXT     0xFD
-#define TLV_CODE_CRC_32         0xFE
-
-static uint8_t __tlv_code_list[SYSI_ONIE_TYPE_SUPPORT_NUM] = {
-    TLV_CODE_PRODUCT_NAME,
-    TLV_CODE_PART_NUMBER,
-    TLV_CODE_SERIAL_NUMBER,
-    TLV_CODE_MAC_BASE,
-    TLV_CODE_MANUF_DATE,
-    TLV_CODE_DEVICE_VERSION,
-    TLV_CODE_LABEL_REVISION,
-    TLV_CODE_PLATFORM_NAME,
-    TLV_CODE_ONIE_VERSION,
-    TLV_CODE_MAC_SIZE,
-    TLV_CODE_MANUF_NAME,
-    TLV_CODE_MANUF_COUNTRY,
-    TLV_CODE_VENDOR_NAME,
-    TLV_CODE_DIAG_VERSION,
-    TLV_CODE_SERVICE_TAG,
-    TLV_CODE_VENDOR_EXT,
-    TLV_CODE_CRC_32
-};
-
 static onlp_oid_t __oid_info[] = {
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_PHY),
     ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_CORE0),
@@ -98,126 +50,38 @@ static onlp_oid_t __oid_info[] = {
 };
 
 static int _sysi_version_parsing(char* file_str, char* str_buf, char* version);
-static void _case_tlv_code_string(onlp_onie_info_t* info, char** member, char* path);
-static int _parse_tlv(onlp_onie_info_t* info, uint8_t type);
 
 static int _sysi_version_parsing(char* file_str, char* str_buf, char* version)
 {
     int rv = ONLP_STATUS_OK;
     int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX*4];
+    char buf[ONLP_CONFIG_INFO_STR_MAX * 4];
     char *temp;
+    char cpld_v1[ONLP_CONFIG_INFO_STR_MAX];
+    char cpld_v2[ONLP_CONFIG_INFO_STR_MAX];
 
-    rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX*4, &len, file_str);
-    if( rv != ONLP_STATUS_OK ) {
+    rv = onlp_file_read((uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX * 4, &len, file_str);
+    if ( rv != ONLP_STATUS_OK ) {
         return rv;
     }
     temp = strstr(buf, str_buf);
-    temp += strlen(str_buf);
-    temp = strstr(temp, str_buf);
-    if(temp) {
+    if (temp) {
         temp += strlen(str_buf);
-        snprintf(version,ONLP_CONFIG_INFO_STR_MAX, temp);
-        /*remove '\n'*/
-        version[strlen(version)-1] = '\0';
+        sscanf(temp, "%s", cpld_v1);
     } else {
-        rv = ONLP_STATUS_E_MISSING;
+        return ONLP_STATUS_E_INVALID;
     }
+    temp = strstr(temp, str_buf);
+    if (temp) {
+        temp += strlen(str_buf);
+        sscanf(temp, "%s", cpld_v2);
+    } else {
+        return ONLP_STATUS_E_INVALID;
+    }
+    snprintf(version, ONLP_CONFIG_INFO_STR_MAX, "c1_%s c2_%s", cpld_v1, cpld_v2);
+
     return rv;
 }
-
-static void _case_tlv_code_string(onlp_onie_info_t* info, char** member, char* path)
-{
-    int rv = ONLP_STATUS_OK;
-    int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX];
-    rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
-    if( rv == ONLP_STATUS_OK ) {
-        info->_hdr_length += TLV_PREFIX_LENGTH;
-        buf[strlen(buf)-1] = '\0';
-        *member = aim_fstrdup("%s",buf);
-        info->_hdr_length += strlen(*member);
-    } else {
-        *member = aim_zmalloc(1);
-        rv = ONLP_STATUS_OK;
-    }
-    return;
-}
-
-
-static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
-{
-    int rv = ONLP_STATUS_OK;
-    int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX];
-
-    char** list[]= { &(info->product_name), &(info->part_number), &(info->serial_number), NULL, &(info->manufacture_date), NULL,
-                     &(info->label_revision), &(info->platform_name), &(info->onie_version), NULL, &(info->manufacturer) ,
-                     &(info->country_code), &(info->vendor), &(info->diag_version), &(info->service_tag), NULL ,NULL
-                   } ;
-    char *path_name[]= {"product_name","pn","sn","base_mac_addr","man_date","dev_ver", "label_rev","plat_name","ldr_ver",
-                        "mac_addr","manufacturer","country_code","vendor_name","diag_ver","service_tag","vendor_ext","crc32"
-                       };
-    char path[PATH_LENGTH];
-    int key=(type>TLV_CODE_SERVICE_TAG)? (ITEM_NUM+type-TLV_CODE_CRC_32-1):(type-TLV_CODE_PRODUCT_NAME);
-    snprintf(path,PATH_LENGTH,"%s%s",INV_SYS_PREFIX,path_name[key]);
-    if(type ==TLV_CODE_MAC_BASE) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len,path);
-        if( rv == ONLP_STATUS_OK ) {
-            if(sscanf( buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\n",
-                       &info->mac[0], &info->mac[1], &info->mac[2],
-                       &info->mac[3], &info->mac[4], &info->mac[5]) == 6) {
-                info->_hdr_length += (TLV_PREFIX_LENGTH+6);
-            } else {
-                /*parsing fail*/
-                memset(info->mac, 0, 6);
-            }
-        } else {
-            memset(info->mac, 0, 6);
-            rv = ONLP_STATUS_OK;
-        }
-    } else if(type==TLV_CODE_DEVICE_VERSION) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
-        if( rv == ONLP_STATUS_OK ) {
-            info->device_version= (uint8_t)strtoul(buf, NULL, 0);
-            info->_hdr_length += (TLV_PREFIX_LENGTH+1);
-        } else {
-            info->device_version = 0;
-            rv = ONLP_STATUS_OK;
-        }
-    } else if(type==TLV_CODE_MAC_SIZE) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
-        if( rv == ONLP_STATUS_OK ) {
-            info->mac_range = (uint16_t)strtoul(buf, NULL, 0);
-            info->_hdr_length += (TLV_PREFIX_LENGTH+2);
-        } else {
-            info->mac_range = 0;
-            rv = ONLP_STATUS_OK;
-        }
-    } else if(type==TLV_CODE_VENDOR_EXT) {
-        list_init(&info->vx_list);
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
-        if( rv == ONLP_STATUS_OK ) {
-            /*TODO*/
-        }
-        rv = ONLP_STATUS_OK;
-    } else if(type==TLV_CODE_CRC_32) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
-        if( rv == ONLP_STATUS_OK ) {
-            info->crc = (uint32_t)strtoul(buf, NULL, 0);
-            info->_hdr_length += (TLV_PREFIX_LENGTH+4);
-        } else {
-            info->crc = 0;
-            rv = ONLP_STATUS_OK;
-        }
-    } else if( (type>=TLV_CODE_PRODUCT_NAME) &&  (type<=TLV_CODE_VENDOR_NAME) ) {
-        _case_tlv_code_string(info, list[key], path);
-    } else {
-        return rv;
-    }
-    return rv;
-}
-
 
 const char*
 onlp_sysi_platform_get(void)
@@ -257,7 +121,32 @@ onlp_sysi_onie_data_phys_addr_get(void** pa)
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int ret=ONLP_STATUS_E_INVALID;
+    int eeprom_size;
+    int rv;
+    uint8_t* eeprom_data;
+
+    FILE* fp  = fopen(INV_EEPROM_PATH, "rb");
+
+    if(fp) {
+        fseek(fp, 0L, SEEK_END);
+        eeprom_size = ftell(fp);
+        rewind(fp);
+        eeprom_data = aim_malloc(eeprom_size);
+
+        rv = fread(eeprom_data, 1, eeprom_size, fp);
+        fclose(fp);
+
+        if(rv == eeprom_size) {
+            ret=ONLP_STATUS_OK;
+            *data=eeprom_data;
+            *size=eeprom_size;
+        }
+
+    }
+
+
+    return ret;
 }
 
 /*
@@ -275,7 +164,7 @@ onlp_sysi_onie_data_free(uint8_t* data)
      * We returned a static array in onlp_sysi_onie_data_get()
      * so no free operation is required.
      */
-    if(data) {
+    if (data) {
         aim_free(data);
     }
 }
@@ -285,15 +174,8 @@ int
 onlp_sysi_onie_info_get (onlp_onie_info_t *onie)
 {
     int rv = ONLP_STATUS_OK;
-    int i;
-    onie->_hdr_length = 0;
-    for(i = 0; i < SYSI_ONIE_TYPE_SUPPORT_NUM; i++) {
-        if( rv != ONLP_STATUS_OK ) {
-            return rv;
-        }
-        rv = _parse_tlv(onie, (__tlv_code_list[i]));
 
-    }
+    rv = onlp_onie_decode_file(onie, INV_EEPROM_PATH);
 
     onie->_hdr_id_string = aim_fstrdup("TlvInfo");
     onie->_hdr_version = 0x1;
@@ -305,41 +187,29 @@ int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
     int rv = ONLP_STATUS_OK;
-    char cpld_str[ONLP_CONFIG_INFO_STR_MAX]= {0};
-    //char other_str[ONLP_CONFIG_INFO_STR_MAX]= {0};
+    char cpld_str[ONLP_CONFIG_INFO_STR_MAX] = {0};
     char version[ONLP_CONFIG_INFO_STR_MAX];
     pi->cpld_versions = NULL;
-    //pi->other_versions = NULL;
 
-    rv = _sysi_version_parsing( INV_CPLD_PREFIX"info", "The CPLD version is ", version);
-    if( rv != ONLP_STATUS_OK ) {
+    rv = _sysi_version_parsing( INV_INFO_PREFIX"info", "The CPLD version is ", version);
+    if ( rv != ONLP_STATUS_OK ) {
         return rv;
     }
     snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s ", cpld_str, version);
-    /*rv = _sysi_version_parsing(INV_HWMON_PREFIX"version", "ver: ", version);
-    if( rv != ONLP_STATUS_OK ) {
-        return rv;
-    }*/
-    /*snprintf(other_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s.%s "
-             ,other_str, "psoc", version);*/
     /*cpld version*/
-    if(strlen(cpld_str) > 0) {
-        pi->cpld_versions = aim_fstrdup("%s",cpld_str);
+    if (strlen(cpld_str) > 0) {
+        pi->cpld_versions = aim_fstrdup("%s", cpld_str);
     }
-    /*other version*/
-    /*if(strlen(other_str) > 0) {
-        pi->other_versions = aim_fstrdup("%s",other_str);
-    }*/
     return rv;
 }
 
 void
 onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 {
-    if(pi->cpld_versions) {
+    if (pi->cpld_versions) {
         aim_free(pi->cpld_versions);
     }
-    if(pi->other_versions) {
+    if (pi->other_versions) {
         aim_free(pi->other_versions);
     }
     return;
@@ -351,10 +221,10 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
 {
     int i;
     onlp_oid_t* e = table;
-    memset(table, 0, max*sizeof(onlp_oid_t));
+    memset(table, 0, max * sizeof(onlp_oid_t));
 
-    for(i=0; i<max; i++) {
-        if(__oid_info[i]==0) {
+    for (i = 0; i < max; i++) {
+        if (__oid_info[i] == 0) {
             break;
         }
         *e++ = __oid_info[i];

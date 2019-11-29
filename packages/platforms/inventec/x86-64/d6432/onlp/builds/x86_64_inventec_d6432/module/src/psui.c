@@ -26,8 +26,13 @@ typedef enum hwmon_psu_state_e {
     HWMON_PSU_NOT_INSTALLED = 7    //111
 } hwmon_psu_state_t;
 
-#define PATH_LENGTH 50
 #define PSU_CAPS ONLP_PSU_CAPS_VIN|ONLP_PSU_CAPS_VOUT|ONLP_PSU_CAPS_IIN|ONLP_PSU_CAPS_IOUT|ONLP_PSU_CAPS_PIN| ONLP_PSU_CAPS_POUT
+
+char* psu_i2c_addr[ONLP_PSU_MAX]= {
+    "",
+    "58",
+    "59"
+};
 
 /*
  * Get all information about the given PSU oid.
@@ -39,6 +44,7 @@ typedef enum hwmon_psu_state_e {
             {								\
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_1_ON_PSU##id),	\
                 ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_2_ON_PSU##id),	\
+                ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_3_ON_PSU##id),  \
                 ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_##id)			\
             }				\
         },				\
@@ -64,7 +70,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int ret   = ONLP_STATUS_OK;
     int len;
     int psu_id = ONLP_OID_ID_GET(id);
-    uint8_t temp[ONLP_CONFIG_INFO_STR_MAX] = {0};
+    uint8_t buf[ONLP_CONFIG_INFO_STR_MAX] = {0};
+    char path[ONLP_CONFIG_INFO_STR_MAX];
 
     VALIDATE(id);
 
@@ -78,23 +85,48 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         return ret;
     }
 
-    char *list1[]= {info->model,info->serial};
-    int* list2[]= {0,0,&info->mvin,&info->mvout,&info->miin,&info->miout,&info->mpin,&info->mpout};
-    char* path_list[]= {"mfr_id","mfr_serial_number","in1_input","in2_input","curr1_input","curr2_input","power1_input","power2_input"};
+    if(info->status & ONLP_PSU_STATUS_PRESENT) {
+        snprintf(path,ONLP_CONFIG_INFO_STR_MAX, INV_DEVICE_BASE"%d-00%s/",PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
 
-    int i=0;
-    for (i=0; i<8; i++) {
-        char path[PATH_LENGTH];
-        snprintf(path,PATH_LENGTH,"%s%d/device/%s","/sys/class/hwmon/hwmon",PSUID_TO_HWMON_ADDR(psu_id),path_list[i]);
-        if(i<2) {
-            memset(temp, 0, ONLP_CONFIG_INFO_STR_MAX);
-            onlp_file_read( temp, ONLP_CONFIG_INFO_STR_MAX, &len, path );
-            temp[strlen((char*)temp)-1] = 0;
-            snprintf(list1[i], ONLP_CONFIG_INFO_STR_MAX, "%s", temp);
-        } else {
-            onlp_file_read_int( list2[i], path );
+        memset(buf, 0, ONLP_CONFIG_INFO_STR_MAX);
+        ret=onlp_file_read( buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%smfr_id", path );
+        if(ret==ONLP_STATUS_OK) {
+            buf[strlen((char*)buf)-1] = 0;
+            snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "%s", buf);
+        }
+
+        memset(buf, 0, ONLP_CONFIG_INFO_STR_MAX);
+        ret=onlp_file_read( buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%smfr_serial_number", path );
+        if(ret==ONLP_STATUS_OK) {
+            buf[strlen((char*)buf)-1] = 0;
+            snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "%s", buf);
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->mvin, "%sin1_input", path );
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->mvout, "%sin2_input", path );
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->miin, "%scurr1_input", path );
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->miout, "%scurr2_input", path );
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->mpin, "%spower1_input", path );
+        }
+
+        if(ret==ONLP_STATUS_OK) {
+            ret=onlp_file_read_int( &info->mpout, "%spower2_input", path );
         }
     }
+
     return ret;
 
 }
@@ -110,15 +142,18 @@ int onlp_psui_status_get(onlp_oid_t id, uint32_t* rv)
     int result = ONLP_STATUS_OK;
     hwmon_psu_state_t psu_state;
     int local_id;
-    VALIDATE(id);
     int len;
     char buf[ONLP_CONFIG_INFO_STR_MAX];
 
+    VALIDATE(id);
+
+
     local_id = ONLP_OID_ID_GET(id);
+
     if(local_id >= ONLP_PSU_MAX) {
         result = ONLP_STATUS_E_INVALID;
     } else {
-        result = onlp_file_read((uint8_t*)&buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%s""psu%d", INV_CPLD_PREFIX, local_id);
+        result = onlp_file_read((uint8_t*)&buf, ONLP_CONFIG_INFO_STR_MAX, &len, "%spsu%d", INV_INFO_PREFIX, local_id);
         if( result != ONLP_STATUS_OK ) {
             return result;
         }

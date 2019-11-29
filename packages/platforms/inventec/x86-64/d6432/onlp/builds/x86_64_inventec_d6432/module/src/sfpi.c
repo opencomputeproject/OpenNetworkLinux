@@ -21,8 +21,8 @@
 #define MAX_SFP_PATH 128
 #define MUX_START_INDEX 14
 #define QSFP_DEV_ADDR 0x50
-#define NUM_OF_QSFP_PORT 32
-#define NUM_OF_ALL_PORT (NUM_OF_QSFP_PORT)
+#define NUM_OF_QSFP_DD_PORT 32
+#define NUM_OF_ALL_PORT (NUM_OF_QSFP_DD_PORT)
 
 #define FRONT_PORT_TO_MUX_INDEX(port) (port+MUX_START_INDEX)
 #define VALIDATE_PORT(p) { if ((p < 0) || (p >= NUM_OF_ALL_PORT)) return ONLP_STATUS_E_PARAM; }
@@ -229,7 +229,7 @@ int
 onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
     *rv = 0;
-    if(port >= 0 && port < NUM_OF_QSFP_PORT) {
+    if(port >= 0 && port < NUM_OF_QSFP_DD_PORT) {
         switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
         case ONLP_SFP_CONTROL_LP_MODE:
@@ -246,7 +246,7 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int ret = ONLP_STATUS_E_UNSUPPORTED;
-    if(port >= 0 && port < NUM_OF_QSFP_PORT) {
+    if(port >= 0 && port < NUM_OF_QSFP_DD_PORT) {
         switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
             ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/reset", port);
@@ -265,10 +265,13 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int ret = ONLP_STATUS_E_UNSUPPORTED;
-    if(port >= 0 && port < NUM_OF_QSFP_PORT) {
+    if(port >= 0 && port < NUM_OF_QSFP_DD_PORT) {
         switch (control) {
+        /*the value of /port(id)/reset
+        0: in reset state; 1:not in reset state*/
         case ONLP_SFP_CONTROL_RESET_STATE:
             ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port);
+            *value=(!(*value));
             break;
         case ONLP_SFP_CONTROL_LP_MODE:
             ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/lpmode", port);

@@ -6,6 +6,9 @@ class OnlPlatform_x86_64_inventec_d7332_r0(OnlPlatformInventec,
     PLATFORM='x86-64-inventec-d7332-r0'
     MODEL="D7332"
     SYS_OBJECT_ID=".7332.1"
+    CHASSIS_FAN_NUM=6
+    FAN_VPD_CHANNEL=3
+    FAN_VPD_ADDR_BASE=0x52
 
     def baseconfig(self):
         os.system("insmod /lib/modules/`uname -r`/onl/inventec/x86-64-inventec-d7332/gpio-ich.ko gpiobase=0")
@@ -17,6 +20,10 @@ class OnlPlatform_x86_64_inventec_d7332_r0(OnlPlatformInventec,
         self.insmod('inv_platform')
         self.insmod('inv_eeprom')
         self.new_i2c_device('inv_eeprom', 0x55, 2)
+
+        for addr_offset in range(0,self.CHASSIS_FAN_NUM):
+            self.new_i2c_device('inv_eeprom',self.FAN_VPD_ADDR_BASE+addr_offset,self.FAN_VPD_CHANNEL)
+
         self.insmod('inv_sff')
         self.insmod('vpd')
         

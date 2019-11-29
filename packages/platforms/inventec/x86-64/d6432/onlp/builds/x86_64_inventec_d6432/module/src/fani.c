@@ -15,10 +15,9 @@
 #include <onlp/platformi/psui.h>
 #include "platform_lib.h"
 
-#define PATH_LENGTH 50
 #define VALIDATE(_id)                           \
     do {                                        \
-        if(!ONLP_OID_IS_FAN(_id)) { 	        \
+        if(!ONLP_OID_IS_FAN(_id)) {             \
             return ONLP_STATUS_E_INVALID;       \
         }                                       \
     } while(0)
@@ -28,34 +27,44 @@
 #define NORMAL_PWM 175
 #define MAX_PWM 255
 #define STEP_SIZE 100
-#define FAN_ON_MAIN_BOARD_COUNT 6
-#define LOCAL_ID_TO_PSU_ID(id) (id-FAN_ON_MAIN_BOARD_COUNT)
+#define FAN_ID_TO_PSU_ID(id) (id-ONLP_FAN_PSU_1+1)
+
+#define TLV_AREA_OFFSETS_IDX_START      1
+#define TLV_PRODUCT_INFO_OFFSET_IDX     5
+#define TLV_PRODUCT_INFO_AREA_START     3
+#define TLV_ATTR_TYPE_SERIAL            5
+#define TLV_ATTR_TYPE_MODEL             2
+
+#define FAN_I2C_CHANNEL                 3
+#define FAN_I2C_ADDR_BASE               52
 
 #define FAN_CAPS ONLP_FAN_CAPS_GET_RPM|ONLP_FAN_CAPS_GET_PERCENTAGE
 
-static int _fani_status_failed_check(uint32_t* status, int local_id);
-static int _fani_status_present_check(uint32_t* status, int local_id);
+static int _fani_status_failed_check(uint32_t* status, int fan_id);
+static int _fani_status_present_check(uint32_t* status, int fan_id);
+static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id);
+extern char* psu_i2c_addr[ONLP_PSU_MAX];
 
-#define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id) 			\
-    { 								\
-        { 							\
+#define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id)			\
+    {								\
+        {							\
             ONLP_FAN_ID_CREATE(ONLP_FAN_##id), "Fan "#id, 0,	\
-            { 							\
+            {							\
                 ONLP_LED_ID_CREATE(ONLP_LED_FAN##id),		\
-            } 							\
+            }							\
         },							\
         0, FAN_CAPS							\
     }
 
-#define MAKE_FAN_INFO_NODE_ON_PSU(psu_id) 		\
-    { 							\
+#define MAKE_FAN_INFO_NODE_ON_PSU(psu_id)		\
+    {							\
         { ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_##psu_id), "PSU-"#psu_id" Fan", ONLP_PSU_ID_CREATE(ONLP_PSU_##psu_id)}, \
         0, FAN_CAPS						\
     }
 
 
 /* Static values */
-static onlp_fan_info_t __onlp_fan_info[ONLP_FAN_COUNT] = {
+static onlp_fan_info_t __onlp_fan_info[] = {
     {},
     MAKE_FAN_INFO_NODE_ON_FAN_BOARD(1),
     MAKE_FAN_INFO_NODE_ON_FAN_BOARD(2),
@@ -77,14 +86,73 @@ onlp_fani_init(void)
     return ONLP_STATUS_OK;
 }
 
+static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
+{
+    int ret=ONLP_STATUS_OK;
+    uint8_t* rdata;
+    char file_path[ONLP_CONFIG_INFO_STR_MAX];
+    char s;
+    int rdata_size=0,target_offset=0,attr_idx=0,attr_length=0;
+    int i=0;
+
+    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%d/eeprom",INV_DEVICE_BASE,FAN_I2C_CHANNEL,FAN_I2C_ADDR_BASE+fan_id-1);
+    
+    FILE* fp  = fopen(file_path, "rb");
+    if(fp){
+        fseek(fp, 0L, SEEK_END);
+        rdata_size = ftell(fp);
+        rewind(fp);
+        rdata = aim_malloc(rdata_size);
+        fread(rdata, 1, rdata_size, fp);
+        fclose(fp);
+    }else{
+        ret=ONLP_STATUS_E_INTERNAL;
+    }
+
+    if(ret==ONLP_STATUS_OK) {
+        for(i=TLV_AREA_OFFSETS_IDX_START; i<TLV_PRODUCT_INFO_OFFSET_IDX; i++) {
+            target_offset+=rdata[i];
+        }
+        target_offset*=8; /*spec defined: offset are in multiples of 8 bytes*/
+        attr_idx=target_offset+TLV_PRODUCT_INFO_AREA_START;
+
+        for(i=1; i<attr_type; i++) {
+            if(attr_idx>rdata_size){
+                ret=ONLP_STATUS_E_INTERNAL;
+                break;
+            }
+            attr_length=rdata[attr_idx]&(0x3F);    /*spec defined: length are set in last 6 bits*/
+            attr_idx+=(attr_length+1);
+        }
+        if(ret==ONLP_STATUS_OK){
+            if(attr_length<rdata_size){
+                attr_length=rdata[attr_idx]&(0x3F); 
+            }else{
+                ret=ONLP_STATUS_E_INTERNAL;
+            }
+            if(attr_idx+attr_length<rdata_size){
+                for(i=0; i<attr_length; i++) {
+                    s=(char)rdata[attr_idx+i+1];
+                    ret_str[i]=s;
+                }
+            }else{
+                ret=ONLP_STATUS_E_INTERNAL;
+            }          
+        }
+    }
+    return ret;
+}
+
 int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
     int rv = ONLP_STATUS_OK;
     int lrpm=0, rrpm=0, pwm=0, psu_id;
+    char path[ONLP_CONFIG_INFO_STR_MAX];
+    int fan_id;
     VALIDATE(id);
 
-    int fan_id=ONLP_OID_ID_GET(id);
+    fan_id=ONLP_OID_ID_GET(id);
     if(fan_id>=ONLP_FAN_MAX) {
         rv=ONLP_STATUS_E_INVALID;
     }
@@ -108,15 +176,15 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                     info->caps = ADD_STATE(info->caps,ONLP_FAN_CAPS_B2F) ;
                 }
 
-                rv = onlp_file_read_int(&lrpm, INV_CPLD_PREFIX"fan%d_input", fan_id*2-1);
+                rv = onlp_file_read_int(&lrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2-1);
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
                 }
-                rv = onlp_file_read_int(&rrpm, INV_CPLD_PREFIX"fan%d_input", fan_id*2);
+                rv = onlp_file_read_int(&rrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2);
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
                 }
-                rv = onlp_file_read_int(&pwm,INV_CPLD_PREFIX"pwm%d", fan_id);
+                rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", fan_id);
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
                 }
@@ -130,19 +198,28 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                 } else {
                     info->rpm = (lrpm+rrpm)/2;
                 }
+                
+                rv=_inv_get_fan_fru(info->serial,TLV_ATTR_TYPE_SERIAL,fan_id);
+                if(rv!=ONLP_STATUS_OK){
+                    snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                }
+                rv=_inv_get_fan_fru(info->model,TLV_ATTR_TYPE_MODEL,fan_id);
+                if(rv!=ONLP_STATUS_OK){
+                    snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                }
 
                 break;
             case ONLP_FAN_PSU_1:
             case ONLP_FAN_PSU_2:
                 info->caps = FAN_CAPS|ONLP_FAN_CAPS_F2B;
-                psu_id = LOCAL_ID_TO_PSU_ID(fan_id);
-                char path[PATH_LENGTH];
-                snprintf(path,PATH_LENGTH,"%s%d/device/fan1_input","/sys/class/hwmon/hwmon",PSUID_TO_HWMON_ADDR(psu_id));
+                psu_id = FAN_ID_TO_PSU_ID(fan_id);
+
+                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/fan1_input",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
                 rv = onlp_file_read_int(&info->rpm, path);
                 if(rv != ONLP_STATUS_OK) {
                     return rv;
                 }
-                snprintf(path,PATH_LENGTH,"%s%d/device/pwm1","/sys/class/hwmon/hwmon",PSUID_TO_HWMON_ADDR(psu_id));
+                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/pwm1",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
                 rv = onlp_file_read_int(&pwm, path);
                 if(rv != ONLP_STATUS_OK) {
                     return rv;
@@ -175,31 +252,32 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             info->percentage = 0;
             info->mode = ONLP_FAN_MODE_OFF;
         }
-        snprintf(info->model, ONLP_CONFIG_INFO_STR_MAX, "NA");
-        snprintf(info->serial, ONLP_CONFIG_INFO_STR_MAX, "NA");
+
     }
     return rv;
 }
-static int _fani_status_failed_check(uint32_t* status, int local_id)
+static int _fani_status_failed_check(uint32_t* status, int fan_id)
 {
     int rv;
     int lrpm, rrpm, rpm, pwm, psu_id;
-    switch(local_id) {
+    char path[ONLP_CONFIG_INFO_STR_MAX];
+
+    switch(fan_id) {
     case ONLP_FAN_1:
     case ONLP_FAN_2:
     case ONLP_FAN_3:
     case ONLP_FAN_4:
     case ONLP_FAN_5:
     case ONLP_FAN_6:
-        rv = onlp_file_read_int(&lrpm, INV_CPLD_PREFIX"fan%d_input", local_id*2-1);
+        rv = onlp_file_read_int(&lrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2-1);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        rv = onlp_file_read_int(&rrpm, INV_CPLD_PREFIX"fan%d_input", local_id*2);
+        rv = onlp_file_read_int(&rrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        rv = onlp_file_read_int(&pwm,INV_CPLD_PREFIX"pwm%d", local_id);
+        rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", fan_id);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
@@ -214,14 +292,14 @@ static int _fani_status_failed_check(uint32_t* status, int local_id)
         break;
     case ONLP_FAN_PSU_1:
     case ONLP_FAN_PSU_2:
-        psu_id = LOCAL_ID_TO_PSU_ID(local_id);
-        char path[PATH_LENGTH];
-        snprintf(path,PATH_LENGTH,"%s%d/device/fan1_input","/sys/class/hwmon/hwmon",PSUID_TO_HWMON_ADDR(psu_id));
+        psu_id = FAN_ID_TO_PSU_ID(fan_id);
+
+        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/fan1_input",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
         rv = onlp_file_read_int(&rpm, path);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        snprintf(path,PATH_LENGTH,"%s%d/device/pwm1","/sys/class/hwmon/hwmon",PSUID_TO_HWMON_ADDR(psu_id));
+        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/pwm1",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
         rv = onlp_file_read_int(&pwm, path);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
@@ -242,15 +320,13 @@ static int _fani_status_failed_check(uint32_t* status, int local_id)
     return rv;
 }
 
-static int _fani_status_present_check(uint32_t* status, int local_id)
+static int _fani_status_present_check(uint32_t* status, int fan_id)
 {
     int rv;
-    //int gpi;
-    //int info_idx=local_id-1;
     int len;
     char buf[ONLP_CONFIG_INFO_STR_MAX];
-    if(local_id >= ONLP_FAN_1 && local_id <= ONLP_FAN_6) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, INV_CPLD_PREFIX"fanmodule%d_type",local_id);
+    if(fan_id >= ONLP_FAN_1 && fan_id <= ONLP_FAN_6) {
+        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, INV_FAN_PREFIX"fanmodule%d_type",fan_id);
     } else {
         rv = ONLP_STATUS_E_INVALID;
     }
@@ -288,8 +364,10 @@ int onlp_fani_status_get(onlp_oid_t id, uint32_t* rv)
     int result = ONLP_STATUS_OK;
     onlp_fan_info_t* info;
     int fan_id=ONLP_OID_ID_GET(id);
-    VALIDATE(id);
     uint32_t psu_status;
+
+    VALIDATE(id);
+
 
     if(fan_id >= ONLP_FAN_MAX) {
         result = ONLP_STATUS_E_INVALID;
@@ -341,14 +419,14 @@ int onlp_fani_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
 {
     int result = ONLP_STATUS_OK;
     onlp_fan_info_t* info;
-    int local_id;
+    int fan_id;
     VALIDATE(id);
 
-    local_id = ONLP_OID_ID_GET(id);
-    if(local_id >= ONLP_FAN_MAX) {
+    fan_id = ONLP_OID_ID_GET(id);
+    if(fan_id >= ONLP_FAN_MAX) {
         result = ONLP_STATUS_E_INVALID;
     } else {
-        info = &__onlp_fan_info[local_id];
+        info = &__onlp_fan_info[fan_id];
         *hdr = info->hdr;
     }
     return result;
