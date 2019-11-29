@@ -64,8 +64,7 @@ struct port_info_map_t maple_port_info_map[] = {
 
 };
 
-struct port_info_table_t maple_port_info_table =
-{
+struct port_info_table_t maple_port_info_table = {
     .map =  maple_port_info_map,
     .size = ARRAY_SIZE(maple_port_info_map),
 };

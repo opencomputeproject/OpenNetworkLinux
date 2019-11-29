@@ -1,4 +1,3 @@
-//port info
 #ifndef __INV_DEF_H
 #define __INV_DEF_H
 
@@ -22,6 +21,6 @@ typedef enum {
 } platform_name_t;
 
 #define PLATFORM_NAME (PLATFORM_BANYAN)
-#define SWPS_VERSION ("swps_1U_v1.0.2")
+#define SWPS_VERSION ("swps_1U_v1.0.3")
 
 #endif /*__INV_DEF_H*/

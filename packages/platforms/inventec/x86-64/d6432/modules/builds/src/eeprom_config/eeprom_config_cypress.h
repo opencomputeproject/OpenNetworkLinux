@@ -1,8 +1,7 @@
 
 #ifndef __I2C_EEPROM_CONFIG_CYPRESS
 #define __I2C_EEPROM_CONFIG_CYPRESS
-struct eeprom_config_t cypress_eeprom_config_map[] =
-{
+struct eeprom_config_t cypress_eeprom_config_map[] = {
     /*port , i2c_channel*/
     {0, 11},
     {1, 10},
@@ -60,9 +59,8 @@ struct eeprom_config_t cypress_eeprom_config_map[] =
     {53, 62},
 
 };
-struct eeprom_i2c_tbl_t cypress_eeprom_i2c_tbl = 
-{
-    .map = cypress_eeprom_config_map, 
+struct eeprom_i2c_tbl_t cypress_eeprom_i2c_tbl = {
+    .map = cypress_eeprom_config_map,
     .size = ARRAY_SIZE(cypress_eeprom_config_map)
 };
 #endif /*__I2C_EEPROM_CONFIG_MAPLE*/

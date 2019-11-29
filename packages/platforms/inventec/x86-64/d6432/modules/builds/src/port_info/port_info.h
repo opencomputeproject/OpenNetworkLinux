@@ -13,8 +13,7 @@ struct platform_port_info_t {
     struct port_info_table_t *tbl;
 };
 
-struct platform_port_info_t platform_port_info_tbl[] =
-{
+struct platform_port_info_t platform_port_info_tbl[] = {
 
     {.platform_name = PLATFORM_MAPLE, .tbl = &maple_port_info_table},
     {.platform_name = PLATFORM_BANYAN, .tbl = &banyan_port_info_table},

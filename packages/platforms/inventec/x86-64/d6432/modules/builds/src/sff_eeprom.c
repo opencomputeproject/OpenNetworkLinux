@@ -1,7 +1,7 @@
 /*
  sff_eeprom.c
  provide api for accesing sff eeprom
- 
+
  */
 #include <linux/kobject.h>
 #include <linux/string.h>
@@ -25,25 +25,24 @@
 
 /*
  * This module implement sff platform driver and provide sysfs attribute for access io control
- * and eeprom 
- * 
+ * and eeprom
+ *
  */
 
 #define I2C_BLOCK_READ_SUPPORT
 #define DEBUG_MODE (0)
 
 #if (DEBUG_MODE == 1)
-#define SFF_PLATFORM_DEBUG(fmt, args...) \
+#define SFF_EEPROM_DEBUG(fmt, args...) \
 printk (KERN_INFO "%s: " fmt "\r\n", __FUNCTION__,  ##args)
 #else
-#define SFF_PLATFORM_DEBUG(fmt, args...)
+#define SFF_EEPROM_DEBUG(fmt, args...)
 #endif
 
-#define SFF_PLATFORM_INFO(fmt, args...) printk (KERN_INFO " [SFF_PLATFORM]%s: " fmt "\r\n", __FUNCTION__,  ##args)
-#define SFF_PLATFORM_ERR(fmt, args...) printk (KERN_ERR " [SFF_PLATFORM]%s: " fmt "\r\n", __FUNCTION__,  ##args)
+#define SFF_EEPROM_INFO(fmt, args...) printk (KERN_INFO " [SFF_EEPROM]%s: " fmt "\r\n", __FUNCTION__,  ##args)
+#define SFF_EEPROM_ERR(fmt, args...) printk (KERN_ERR " [SFF_EEPROM]%s: " fmt "\r\n", __FUNCTION__,  ##args)
 
-struct sff_eeprom_t
-{
+struct sff_eeprom_t {
     int port;
     struct i2c_client *i2c_client;
     struct mutex lock;
@@ -51,17 +50,40 @@ struct sff_eeprom_t
 struct eeprom_i2c_tbl_t *Eeprom_I2c_Tbl = NULL;
 struct sff_eeprom_t *Sff_Eeprom = NULL;
 int sff_eeprom_read(int port,
-                            u8 slave_addr,
-                            u8 offset,
-                            u8 *buf,
-                            size_t len);
+                    u8 slave_addr,
+                    u8 offset,
+                    u8 *buf,
+                    size_t len);
 
 int sff_eeprom_write(int port,
-                                    u8 slave_addr,
-                                    u8 offset,
-                                    const u8 *buf,
-                                    size_t len);
+                     u8 slave_addr,
+                     u8 offset,
+                     const u8 *buf,
+                     size_t len);
 
+static int i2c_smbus_write_byte_data_retry(struct i2c_client *client, u8 offset, u8 data)
+{
+
+    int ret = 0;
+    int i = 0;
+
+    for (i = 0; i < RETRY_COUNT; i++) {
+
+        ret = i2c_smbus_write_byte_data(client, offset, data);
+        if (ret < 0) {
+            msleep(RETRY_DELAY_MS);
+            continue;
+        }
+        break;
+    }
+
+    if (i >= RETRY_COUNT) {
+        SFF_EEPROM_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
+    }
+
+    return ret;
+
+}
 static int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, int len, u8 *buf)
 {
     int ret = 0;
@@ -78,36 +100,66 @@ static int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 off
     }
 
     if (i >= RETRY_COUNT) {
-        SFF_PLATFORM_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
+        SFF_EEPROM_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
     }
 
     return ret;
 
 }
+#if defined V1
+static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offset, int len, u8 *buf)
+{
+    int ret = 0;
+    int i = 0;
+    int cnt = len;
+    while (cnt > I2C_SMBUS_BLOCK_MAX) {
+
+        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, I2C_SMBUS_BLOCK_MAX, buf+i);
+        if (ret < 0) {
+
+            break;
+        }
+        i += I2C_SMBUS_BLOCK_MAX;
+        cnt = len - i;
+    }
+    if (cnt <= I2C_SMBUS_BLOCK_MAX) {
+
+        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, cnt, buf+i);
+
+    }
+    return ret;
+
+}
+#else 
 
 static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offset, int len, u8 *buf)
 {
     int ret = 0;
     int i = 0;
     int cnt = len;
-    while (cnt >= I2C_SMBUS_BLOCK_MAX) {
+    int block_size = 0;
+    
+    while (i < len) {
 
-        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, I2C_SMBUS_BLOCK_MAX, buf+i);
+        block_size = ((cnt > I2C_SMBUS_BLOCK_MAX) ? I2C_SMBUS_BLOCK_MAX : cnt);
+        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, block_size, buf+i);
         if (ret < 0) {
-            
             break;
         }
-        cnt -= I2C_SMBUS_BLOCK_MAX;
-        i += ret;
+        i += block_size;
+        cnt = len - i;
     }
-    if (cnt < I2C_SMBUS_BLOCK_MAX) {
-        
-        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, cnt, buf+i);
-        
+    
+    if (ret < 0) {
+        return ret;
     }
-    return ret;
-
+    return 0;
 }
+
+
+
+#endif
+#if 0
 static int inv_i2c_smbus_write_block_data(struct i2c_client *client, u8 offset, int len, const u8 *buf)
 {
     int ret = 0;
@@ -124,344 +176,285 @@ static int inv_i2c_smbus_write_block_data(struct i2c_client *client, u8 offset, 
     }
 
     if (i >= RETRY_COUNT) {
-        SFF_PLATFORM_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
+        SFF_EEPROM_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
     }
 
     return ret;
 
 }
-#if defined (I2C_BLOCK_READ_SUPPORT) 
+#endif
+#if defined (I2C_BLOCK_READ_SUPPORT)
 
-static int _sff_eeprom_block_read(struct sff_eeprom_t *eeprom, 
-                                  u8 slave_addr, 
-                                  u8 offset, 
-                                  u8 *buf, 
+static int _sff_eeprom_block_read(struct sff_eeprom_t *eeprom,
+                                  u8 slave_addr,
+                                  u8 offset,
+                                  u8 *buf,
                                   size_t len)
 {
     struct i2c_client *client = NULL;
     struct mutex *lock = NULL;
     int ret = 0;
-    
-    if(IS_ERR_OR_NULL(eeprom))
-      return -1;
-    
+
+    if(!eeprom ||
+       !buf) {
+        return -EINVAL;
+    }
     lock = &(eeprom->lock);
     client = eeprom->i2c_client;
-    
-    if(IS_ERR_OR_NULL(buf) || 
-       IS_ERR_OR_NULL(client))
-       return -1;
-    
+
+    if(!client) {
+        return -EBADRQC;
+    }
+
     mutex_lock(lock);
     client->addr = slave_addr;
-    ret = inv_i2c_smbus_read_i2c_block_data(client, offset, len, buf); 
+    ret = inv_i2c_smbus_read_i2c_block_data(client, offset, len, buf);
     mutex_unlock(lock);
-    return 0;    
+    return 0;
 
-}    
-
-
-
+}
 
 #else
-static int _sff_eeprom_read(struct sff_eeprom_t *eeprom, 
-                                  u8 slave_addr, 
-                                  u8 offset, 
-                                  u8 *buf, 
-                                  size_t len)
+static int _sff_eeprom_read(struct sff_eeprom_t *eeprom,
+                            u8 slave_addr,
+                            u8 offset,
+                            u8 *buf,
+                            size_t len)
 {
     struct i2c_client *client = NULL;
     struct mutex *lock = NULL;
     int ret = 0;
     int count = 0;
-    u8 *ptr = buf;
-    
-    if(IS_ERR_OR_NULL(eeprom))
-      return -1;
-    
+    u8 *ptr = NULL;
+
+    if(!eeprom ||
+       !buf) {
+        return -EINVAL;
+    }
+    ptr = buf;
     lock = &(eeprom->lock);
     client = eeprom->i2c_client;
-    
-    if(IS_ERR_OR_NULL(ptr) || 
-       IS_ERR_OR_NULL(client))
-       return -1;
+
+    if(!client) {
+        return -EBADRQC;
+    }
     
     mutex_lock(lock);
     client->addr = slave_addr;
-    for(count = 0; count < len; count++)
-    {    
+    for(count = 0; count < len; count++) {
         ret = i2c_smbus_read_byte_data(client, offset+count);
-        if (ret < 0)
-        {
-            SFF_PLATFORM_INFO("i2c_read fail ret:%d\n", ret);
+        if (ret < 0) {
+            SFF_EEPROM_INFO("i2c_read fail ret:%d\n", ret);
             mutex_unlock(lock);
 
             return ret;
         }
         ptr[count] = (u8)ret;
     }
-    
+
     mutex_unlock(lock);
 #ifdef READBACK_CHECK
-    for(count = 0; count < len; count++)
-    {    
-        SFF_PLATFORM_DEBUG("i2c_read ok buf[%d]:0x%x\n", count, buf[count]);
+    for(count = 0; count < len; count++) {
+        SFF_EEPROM_DEBUG("i2c_read ok buf[%d]:0x%x\n", count, buf[count]);
     }
-#endif    
-    return 0;    
+#endif
+    return 0;
 
-}    
+}
 #endif
 
-static int _sff_eeprom_write(struct sff_eeprom_t *eeprom, 
-                                   u8 slave_addr, 
-                                   u8 offset, 
-                                   const u8 *buf, 
-                                   size_t len)
+static int _sff_eeprom_write(struct sff_eeprom_t *eeprom,
+                             u8 slave_addr,
+                             u8 offset,
+                             const u8 *buf,
+                             size_t len)
 {
-
     struct i2c_client *client = NULL;
     struct mutex *lock = NULL;
     int ret = 0;
     int count = 0;
     const u8 *ptr = buf;
-    
-    if(IS_ERR_OR_NULL(eeprom))
-      return -1;
+
+    if(!eeprom ||
+       !buf) {
+        return -EINVAL;
+    }
 
     lock = &(eeprom->lock);
     client = eeprom->i2c_client;
-    
-    if(IS_ERR_OR_NULL(ptr) || 
-       IS_ERR_OR_NULL(client))
-       return -1;
-    
+
+    if(!client) {
+        return -EBADRQC;
+    }
+
     mutex_lock(lock);
     client->addr = slave_addr;
-    for(count = 0; count < len; count++)
-    {    
-        ret = i2c_smbus_write_byte_data(client, offset+count, ptr[count]);
-        if (ret < 0)
-        {
-            SFF_PLATFORM_ERR("i2c_write fail ret:%d\n", ret);
+    for(count = 0; count < len; count++) {
+        ret = i2c_smbus_write_byte_data_retry(client, offset+count, ptr[count]);
+        if (ret < 0) {
+            SFF_EEPROM_ERR("i2c_write fail ret:%d\n", ret);
             mutex_unlock(lock);
-            return -1;
+            return ret;
         }
     }
 
     mutex_unlock(lock);
-    return 0;    
+    return 0;
 
 }
-int sff_eeprom_read(int port, 
-                            u8 slave_addr, 
-                            u8 offset, 
-                            u8 *buf, 
-                            size_t len)
+int sff_eeprom_read(int port,
+                    u8 slave_addr,
+                    u8 offset,
+                    u8 *buf,
+                    size_t len)
 {
 #if defined (I2C_BLOCK_READ_SUPPORT)
 
     return _sff_eeprom_block_read(&Sff_Eeprom[port], slave_addr, offset, buf, len);
-#else 
+#else
     return _sff_eeprom_read(&Sff_Eeprom[port], slave_addr, offset, buf, len);
 
 #endif
 
-    
+
 }
 EXPORT_SYMBOL(sff_eeprom_read);
 
-int sff_eeprom_write(int port, 
-                     u8 slave_addr, 
-                     u8 offset, 
-                     const u8 *buf, 
+int sff_eeprom_write(int port,
+                     u8 slave_addr,
+                     u8 offset,
+                     const u8 *buf,
                      size_t len)
 {
     return _sff_eeprom_write(&Sff_Eeprom[port], slave_addr, offset, buf, len);
 }
 EXPORT_SYMBOL(sff_eeprom_write);
 
-#if 0
-static int _sff_eeprom_obj_init(struct sff_eeprom_t *eeprom,  struct eeprom_config_t *config)
+static void sff_eeprom_clients_destroy(int size)
 {
+    int port = 0;
+    int port_num = size;
     struct i2c_client *client = NULL;
-    struct i2c_adapter *adap;
-    int use_smbus = 0;
-    
-    if (IS_ERR_OR_NULL(eeprom) ||
-        IS_ERR_OR_NULL(config)) {
-        goto exit_err;
-    }    
 
-    client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);  
-    
-    if (IS_ERR_OR_NULL(client)) {
-        goto exit_err;
-    }    
-    
-    //get i2c adapter    
-    eeprom->port = config->port;
-    adap = i2c_get_adapter(config->i2c_ch);
-    client->adapter = adap;
-    client->addr = 0x50;
-    if (!i2c_check_functionality(client->adapter,
-        I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA))
-    {    
-        SFF_PLATFORM_ERR("%s: i2c check fail\n", __FUNCTION__);
-        goto exit_kfree_sff_client;
-
+    for (port = 0; port < port_num; port++) {
+        client = Sff_Eeprom[port].i2c_client;
+        if (client) {
+            kfree(client);
+        }
     }
-    else
-    {
-        if(i2c_check_functionality(client->adapter,I2C_FUNC_SMBUS_BYTE_DATA))
-           use_smbus = I2C_FUNC_SMBUS_BYTE_DATA;
-        else
-           use_smbus = I2C_FUNC_SMBUS_WORD_DATA;      
-         
-    }    
-
-    eeprom->i2c_client = client;
-    SFF_PLATFORM_INFO("%s: i2c check ok ya: use_smbus:0x%x port:%d\n", __FUNCTION__, 
-                     use_smbus, eeprom->port);
-    mutex_init(&(eeprom->lock));
-    return 0;
-    
-    exit_kfree_sff_client:
-    i2c_put_adapter(client->adapter);
-    kfree(client);
-    exit_err:
-
-    return -1;
-}   
-#endif
-static int sff_eeprom_client_create(int size)
+}
+static int sff_eeprom_clients_create(int size)
 {
 
     struct i2c_client *client = NULL;
     int port_num = 0;
     int port = 0;
     int ret = 0;
-    
+
     port_num = size;
-    
+
     for (port = 0; port < port_num; port++) {
 
-        client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);  
-        
-        if (IS_ERR_OR_NULL(client)) {
+        client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
+
+        if (!client) {
             ret = -ENOMEM;
             break;
-        }    
-        
+        }
+
         Sff_Eeprom[port].i2c_client = client;
     }
-        
-    return ret;
+    if (ret < 0) {
+        sff_eeprom_clients_destroy(Eeprom_I2c_Tbl->size);
+    }
+    
+    return 0;
 }
 /*init i2c adapter*/
-static int _sff_eeprom_obj_init(struct sff_eeprom_t *eeprom,  struct eeprom_config_t *config)
+static int _sff_eeprom_clients_init(struct sff_eeprom_t *eeprom,  struct eeprom_config_t *config)
 {
     struct i2c_adapter *adap;
     struct i2c_client *client = NULL;
-    
-    if (IS_ERR_OR_NULL(eeprom) ||
-        IS_ERR_OR_NULL(config)) {
+
+    if (!eeprom ||
+        !config) {
         return -EBADRQC;
-    }    
-    client = eeprom->i2c_client; 
+    }
+    client = eeprom->i2c_client;
     adap = i2c_get_adapter(config->i2c_ch);
+    if (!adap) {
+        SFF_EEPROM_ERR("fail to get adapter ch:%d\n", config->i2c_ch);
+        return -EBADRQC;
+    }
     client->adapter = adap;
     client->addr = 0x50;
-    
-    if (!i2c_check_functionality(client->adapter,
-        I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA))
-    {    
-        SFF_PLATFORM_ERR("i2c check fail\n");
-        return -EBADRQC;
-
-    }
 
     eeprom->i2c_client = client;
-    SFF_PLATFORM_DEBUG("%s: i2c check ok port:%d\n", __FUNCTION__, 
-                      eeprom->port);
+    SFF_EEPROM_DEBUG("%s: i2c check ok port:%d\n", __FUNCTION__,
+                       eeprom->port);
     mutex_init(&(eeprom->lock));
     return 0;
-    
-}   
-static void sff_eeprom_obj_deinit(int size)
+
+}
+static void sff_eeprom_clients_deinit(int size)
 {
     int port = 0;
     int port_num = size;
     struct i2c_client *client = NULL;
-     
+
     if (!Sff_Eeprom) {
 
-        SFF_PLATFORM_ERR("NULL pointer\n");
+        SFF_EEPROM_ERR("NULL pointer\n");
         return;
     }
-    for (port = 0; port < port_num; port++)
-    {
+    for (port = 0; port < port_num; port++) {
         client = Sff_Eeprom[port].i2c_client;
         if (client) {
-            i2c_put_adapter(client->adapter);
-        }   
+            if (client->adapter) {
+                i2c_put_adapter(client->adapter);
+            }
+        }
 
     }
 }
 
-static void sff_eeprom_client_destroy(int size)
-{
 
-    int port = 0;
-    int port_num = size;
-    struct i2c_client *client = NULL;
-    
-    for (port = 0; port < port_num; port++)
-    {
-        client = Sff_Eeprom[port].i2c_client;
-        if (!IS_ERR_OR_NULL(client)) {
-            kfree(client);
-        }
-    }
-}    
-
-static int sff_eeprom_obj_init(struct eeprom_i2c_tbl_t *tbl)
+static int sff_eeprom_clients_init(struct eeprom_i2c_tbl_t *tbl)
 {
     int port = 0;
     int port_num = 0;
     struct eeprom_config_t *map = NULL;
-    int ret = 0; 
-    if(IS_ERR_OR_NULL(tbl)) {
+    int ret = 0;
+    if(!tbl) {
         return -EBADRQC;
     }
     port_num = tbl->size;
-    map = tbl->map; 
-    for (port = 0; port < port_num; port++)
-    {    
+    map = tbl->map;
+    for (port = 0; port < port_num; port++) {
 
-        if (_sff_eeprom_obj_init(&Sff_Eeprom[port], &map[port]) < 0)
-        {
+        if (_sff_eeprom_clients_init(&Sff_Eeprom[port], &map[port]) < 0) {
             ret =  -EBADRQC;
             break;
-        }    
+        }
     }
-    
+    if (ret < 0) {
+        sff_eeprom_clients_deinit(Eeprom_I2c_Tbl->size);
+    }
 
-    return ret;
-
-}    
-static int sff_eeprom_obj_create(int size)
-{
-            
-    Sff_Eeprom = kzalloc(sizeof(struct sff_eeprom_t) * size, GFP_KERNEL);
-        
-    if(IS_ERR_OR_NULL(Sff_Eeprom))
-    {
-        return -ENOMEM;
-    }    
-    
     return 0;
-}   
+
+}
+static int sff_eeprom_objs_create(int size)
+{
+
+    Sff_Eeprom = kzalloc(sizeof(struct sff_eeprom_t) * size, GFP_KERNEL);
+
+    if(!Sff_Eeprom) {
+        return -ENOMEM;
+    }
+
+    return 0;
+}
 
 static struct eeprom_i2c_tbl_t *_platform_eeprom_info_load(int platform_name)
 {
@@ -473,80 +466,73 @@ static struct eeprom_i2c_tbl_t *_platform_eeprom_info_load(int platform_name)
             tbl = platform_eeprom_info_tbl[i].tbl;
             return tbl;
         }
-    } 
+    }
 
     return NULL;
-}    
+}
 
 static int eeprom_i2c_table_load(void)
 {
     int platform_name = PLATFORM_NAME;
     struct eeprom_i2c_tbl_t *tbl = NULL;
+    
     tbl = _platform_eeprom_info_load(platform_name);
     if (!tbl) {
-
-        return -1;
+        return -EBADRQC;
     }
     Eeprom_I2c_Tbl = tbl;
     return 0;
-}    
-static void sff_eeprom_obj_destroy(void)
+}
+static void sff_eeprom_objs_destroy(void)
 {
-    if(!IS_ERR_OR_NULL(Sff_Eeprom)) {
-        kfree(Sff_Eeprom);    
+    if(Sff_Eeprom) {
+        kfree(Sff_Eeprom);
     }
 }
 static int _sff_eeprom_init(void)
 {
-    if (eeprom_i2c_table_load() < 0)
-    {
-        goto exit_err;
-    }    
-    if (sff_eeprom_obj_create(Eeprom_I2c_Tbl->size) < 0)
-    {
+    if (eeprom_i2c_table_load() < 0) {
         goto exit_err;
     }
-    
-    if (sff_eeprom_client_create(Eeprom_I2c_Tbl->size) < 0)
-    {
-        goto exit_kfree;
+    if (sff_eeprom_objs_create(Eeprom_I2c_Tbl->size) < 0) {
+        goto exit_err;
     }
 
-    if (sff_eeprom_obj_init(Eeprom_I2c_Tbl) < 0)
-    {
+    if (sff_eeprom_clients_create(Eeprom_I2c_Tbl->size) < 0) {
+        goto exit_kfree_obj;
+    }
 
-        goto exit_obj_deinit;
-    }    
+    if (sff_eeprom_clients_init(Eeprom_I2c_Tbl) < 0) {
+        goto exit_kfree_client;
+    }
 
-    SFF_PLATFORM_INFO("ok\n");
+    SFF_EEPROM_INFO("ok\n");
     return 0;
 
-    exit_obj_deinit:
-    sff_eeprom_obj_deinit(Eeprom_I2c_Tbl->size);
-    exit_kfree:
-    sff_eeprom_client_destroy(Eeprom_I2c_Tbl->size);
-    sff_eeprom_obj_destroy();
-
-    exit_err:
-    return -1;
-}    
+exit_kfree_client:
+    sff_eeprom_clients_destroy(Eeprom_I2c_Tbl->size);
+exit_kfree_obj:
+    sff_eeprom_objs_destroy();
+exit_err:
+    return -EBADRQC;
+}
 
 
 int sff_eeprom_init(void)
 {
-	int retval = 0;
-    retval = _sff_eeprom_init();    
+    int retval = 0;
+    retval = _sff_eeprom_init();
     return retval;
 }
 EXPORT_SYMBOL(sff_eeprom_init);
 
 void sff_eeprom_deinit(void)
 {
-    sff_eeprom_obj_deinit(Eeprom_I2c_Tbl->size);
-    sff_eeprom_client_destroy(Eeprom_I2c_Tbl->size);
-    sff_eeprom_obj_destroy();
+    sff_eeprom_clients_deinit(Eeprom_I2c_Tbl->size);
+    sff_eeprom_clients_destroy(Eeprom_I2c_Tbl->size);
+    sff_eeprom_objs_destroy();
 
-    SFF_PLATFORM_INFO("ok\n");
+    SFF_EEPROM_INFO("ok\n");
 }
 EXPORT_SYMBOL(sff_eeprom_deinit);
 

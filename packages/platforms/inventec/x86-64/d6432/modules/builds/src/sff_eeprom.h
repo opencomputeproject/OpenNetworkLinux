@@ -2,6 +2,16 @@
 #ifndef __SFF_EEPROM_H
 #define __SFF_EEPROM_H
 
+struct eeprom_config_t {
+    int port;
+    int i2c_ch;
+};
+struct eeprom_i2c_tbl_t {
+
+    struct eeprom_config_t *map;
+    int size;
+};
+
 int sff_eeprom_init(void);
 void sff_eeprom_deinit(void);
 

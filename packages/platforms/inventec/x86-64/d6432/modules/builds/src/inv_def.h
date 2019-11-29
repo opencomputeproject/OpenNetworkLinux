@@ -1,4 +1,3 @@
-//port info
 #ifndef __INV_DEF_H
 #define __INV_DEF_H
 
@@ -10,7 +9,7 @@
 /*use define temporary*/
 #define REC_SFF_IO_UNSUPPORTED (0x06)
 
-#include "inv_type.h"
+//#include "inv_type.h"
 typedef enum {
 
     PLATFORM_MAPLE,
@@ -19,9 +18,9 @@ typedef enum {
     PLATFORM_CYPRESS,
     PLATFORM_END,
 
-}platform_name_t;
+} platform_name_t;
 
 #define PLATFORM_NAME (PLATFORM_BANYAN)
-#define SWPS_VERSION ("swps_banyan_v1.0.2.0")
+#define SWPS_VERSION ("swps_1U_v1.0.3")
 
 #endif /*__INV_DEF_H*/

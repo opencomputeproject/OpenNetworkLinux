@@ -12,27 +12,25 @@
 #define IO_MODESEL_DEFAULT (0)
 #define IO_TXDISABLE_DEFAULT (1)
 
-typedef enum
-{
-   IO_PRESENT = 0,
-   IO_RX_LOS,
-   IO_TX_FAULT,
-   IO_INTL,
-   IO_RESET,
-   IO_LPMODE,
-   IO_MODE_SEL,
-   IO_TXDISABLE,
-   IO_IDX_NUM,
+typedef enum {
+    IO_PRESENT = 0,
+    IO_RX_LOS,
+    IO_TX_FAULT,
+    IO_INTL,
+    IO_RESET,
+    IO_LPMODE,
+    IO_MODE_SEL,
+    IO_TXDISABLE,
+    IO_IDX_NUM,
 
-}io_config_table_idx;
+} io_config_table_idx;
 
-typedef enum
-{
+typedef enum {
     PCA9555_TYPE,
     PCA9554_TYPE,
     PCA95XX_TYPE_NUM,
 
-}pca95xx_type_t;
+} pca95xx_type_t;
 
 struct ioexp_data_t {
     u8 ch;
@@ -68,12 +66,31 @@ struct ioexp_func_map_t {
     struct ioexp_func_t *func;
     //struct ioexp_port_2_port_t *io_p_2_p;
 };
+typedef enum {
+
+    CPLD_ID1,
+    CPLD_ID2,
+    CPLD_ID_NUM
+
+} cpld_id;
+
+struct cpld_config_t {
+    int io_ch_id;
+    u8 addr;
+};
+
+typedef enum {
+    IO_CH_ID1,
+    IO_CH_ID2,
+    IO_CH_ID_NUM,
+
+} io_ch_id_t;
 struct cpld_io_info_t {
-    int ch;
-    u8  addr;
     u8  io_int_status_reg;
     u8  io_int_enable_reg;
     int int_gpio;
+    int io_ch[IO_CH_ID_NUM];
+    struct cpld_config_t config[CPLD_ID_NUM];
 };
 /*exported functions*/
 int sff_io_prsL_get(int port, u8 *prsL);
@@ -93,7 +110,7 @@ int sff_io_tx_fault_get(int port, u8 *value);
 int sff_io_lpmode_set(int port, u8 lpmode);
 int sff_io_reset_set(int port, u8 reset);
 int sff_io_mux_reset_all(int value);
-int sff_io_init(void);
+int sff_io_init(int io_no_init);
 void sff_io_deinit(void);
 int ioexp_input_handler(void);
 bool ioexp_is_channel_ready(void);

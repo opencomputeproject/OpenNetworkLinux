@@ -4,8 +4,7 @@
 #ifndef __I2C_EEPROM_CONFIG_BANYAN
 #define __I2C_EEPROM_CONFIG_BANYAN
 
-struct eeprom_config_t banyan_eeprom_config_map[] =
-{
+struct eeprom_config_t banyan_eeprom_config_map[] = {
     /*port , i2c_channel*/
     {0, 14},
     {1, 15},
@@ -44,9 +43,8 @@ struct eeprom_config_t banyan_eeprom_config_map[] =
     {31, 45},
 
 };
-struct eeprom_i2c_tbl_t banyan_eeprom_i2c_tbl = 
-{
-    .map = banyan_eeprom_config_map, 
+struct eeprom_i2c_tbl_t banyan_eeprom_i2c_tbl = {
+    .map = banyan_eeprom_config_map,
     .size = ARRAY_SIZE(banyan_eeprom_config_map)
 };
 #endif /*__I2C_EEPROM_CONFIG_BANYAN*/

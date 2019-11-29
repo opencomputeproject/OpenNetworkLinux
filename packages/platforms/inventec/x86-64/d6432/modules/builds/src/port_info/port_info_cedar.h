@@ -43,8 +43,7 @@ struct port_info_map_t cedar_port_info_map[] = {
     {31, QSFP_TYPE, "31"},
 };
 
-struct port_info_table_t cedar_port_info_table =
-{
+struct port_info_table_t cedar_port_info_table = {
     .map =  cedar_port_info_map,
     .size = ARRAY_SIZE(cedar_port_info_map),
 };

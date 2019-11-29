@@ -1,10 +1,6 @@
-//port info
-
-//i2c_eeprom_config_cypress
 #ifndef __I2C_EEPROM_CONFIG_MAPLE
 #define __I2C_EEPROM_CONFIG_MAPLE
-struct eeprom_config_t maple_eeprom_config_map[] =
-{
+struct eeprom_config_t maple_eeprom_config_map[] = {
     /*port , i2c_channel*/
     {0, 23},
     {1, 22},
@@ -69,9 +65,8 @@ struct eeprom_config_t maple_eeprom_config_map[] =
     {54, 21},
     {55, 20},
 };
-struct eeprom_i2c_tbl_t maple_eeprom_i2c_tbl = 
-{
-    .map = maple_eeprom_config_map, 
+struct eeprom_i2c_tbl_t maple_eeprom_i2c_tbl = {
+    .map = maple_eeprom_config_map,
     .size = ARRAY_SIZE(maple_eeprom_config_map)
 };
 #endif /*__I2C_EEPROM_CONFIG_MAPLE*/

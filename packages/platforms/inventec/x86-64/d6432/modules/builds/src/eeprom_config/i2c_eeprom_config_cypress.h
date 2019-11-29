@@ -4,8 +4,7 @@
 #ifndef __I2C_EEPROM_CONFIG_CYPRESS
 #define __I2C_EEPROM_CONFIG_CYPRESS
 
-const struct eeprom_config_t Eeprom_Config_Map[PORT_NUM] =
-{
+const struct eeprom_config_t Eeprom_Config_Map[PORT_NUM] = {
     /*port , i2c_channel*/
     {0, 11},
     {1, 10},

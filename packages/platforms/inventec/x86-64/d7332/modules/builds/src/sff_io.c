@@ -609,10 +609,13 @@ int sff_io_mux_init(void)
         SFF_IO_ERR("invaid gpio:%d ret:%d\n", mux_reset_gpio, ret);
         return -1;
     }
+/*don't set direction since , it's decided at bios stage*/
+#if 0
     if(gpio_direction_output(mux_reset_gpio, 1) < 0) {
         SFF_IO_ERR("init NG\n");
         return -1;
     }
+#endif    
     mdelay(1); /*1ms*/
 
     SFF_IO_ERR("init Pass\n");
@@ -1594,11 +1597,14 @@ int cpld_io_int_gpio_init(int gpio_no)
         SFF_IO_ERR("valid gpio:%d ret:%d\n", gpio_no, result);
         return result;
     }
+/*don't set direction since , it's decided at bios stage*/
+#if 0
     value = gpio_direction_input(gpio_no);
     if (value < 0 ) {
         SFF_IO_ERR("gpio:%d dir set. err code:%d\n", gpio_no, value);
         return value;
     }
+#endif    
     value = gpio_get_value(gpio_no);
     SFF_IO_DEBUG("ok gpio:%d value:%d\n", gpio_no, value);
 

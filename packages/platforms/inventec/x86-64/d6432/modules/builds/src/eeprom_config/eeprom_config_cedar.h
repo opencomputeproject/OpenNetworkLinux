@@ -4,8 +4,7 @@
 #ifndef __I2C_EEPROM_CONFIG_CEDAR
 #define __I2C_EEPROM_CONFIG_CEDAR
 
-struct eeprom_config_t cedar_eeprom_config_map[] =
-{
+struct eeprom_config_t cedar_eeprom_config_map[] = {
     /*port , i2c_channel*/
     {0, 12},
     {1, 13},
@@ -44,9 +43,8 @@ struct eeprom_config_t cedar_eeprom_config_map[] =
     {31, 43},
 
 };
-struct eeprom_i2c_tbl_t cedar_eeprom_i2c_tbl = 
-{
-    .map = cedar_eeprom_config_map, 
+struct eeprom_i2c_tbl_t cedar_eeprom_i2c_tbl = {
+    .map = cedar_eeprom_config_map,
     .size = ARRAY_SIZE(cedar_eeprom_config_map)
 };
 #endif /*__I2C_EEPROM_CONFIG_CEDAR*/

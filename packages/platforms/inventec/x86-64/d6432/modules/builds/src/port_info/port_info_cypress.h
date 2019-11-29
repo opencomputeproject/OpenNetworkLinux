@@ -64,8 +64,7 @@ struct port_info_map_t cypress_port_info_map[] = {
     {53, QSFP_TYPE, "53"},
 };
 
-struct port_info_table_t cypress_port_info_table =
-{
+struct port_info_table_t cypress_port_info_table = {
     .map =  cypress_port_info_map,
     .size = ARRAY_SIZE(cypress_port_info_map),
 };
