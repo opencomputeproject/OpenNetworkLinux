@@ -41,6 +41,7 @@
 #define FAN_DUTY_CYCLE_REG_MASK         0x1F
 #define FAN_MAX_DUTY_CYCLE              100
 #define FAN_REG_VAL_TO_SPEED_RPM_STEP   114 // R.P.M value = read value x3.79*60/2
+#define PON_PORT_NUM 64
 
 static LIST_HEAD(cpld_client_list);
 static struct mutex     list_lock;
@@ -76,7 +77,8 @@ MODULE_DEVICE_TABLE(i2c, asgvolt64_cpld_id);
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index)   	MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index)   		MODULE_RXLOS_##index
 #define TRANSCEIVER_TXFAULT_ATTR_ID(index)   	MODULE_TXFAULT_##index
-
+#define PON_PORT_ACT_LED_ATTR_ID(index)         PON_PORT_ACT_LED_##index
+#define PON_PORT_LINK_LED_ATTR_ID(index)        PON_PORT_LINK_LED_##index
 
 enum asgvolt64_cpld_sysfs_attributes {
 	CPLD_VERSION,
@@ -311,10 +313,146 @@ enum asgvolt64_cpld_sysfs_attributes {
 	TRANSCEIVER_TXDISABLE_ATTR_ID(72),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(73),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(74),
+	PON_PORT_ACT_LED_ATTR_ID(1),
+	PON_PORT_ACT_LED_ATTR_ID(2),
+	PON_PORT_ACT_LED_ATTR_ID(3),
+	PON_PORT_ACT_LED_ATTR_ID(4),
+	PON_PORT_ACT_LED_ATTR_ID(5),
+	PON_PORT_ACT_LED_ATTR_ID(6),
+	PON_PORT_ACT_LED_ATTR_ID(7),
+	PON_PORT_ACT_LED_ATTR_ID(8),
+	PON_PORT_ACT_LED_ATTR_ID(9),
+	PON_PORT_ACT_LED_ATTR_ID(10),
+	PON_PORT_ACT_LED_ATTR_ID(11),
+	PON_PORT_ACT_LED_ATTR_ID(12),
+	PON_PORT_ACT_LED_ATTR_ID(13),
+	PON_PORT_ACT_LED_ATTR_ID(14),
+	PON_PORT_ACT_LED_ATTR_ID(15),
+	PON_PORT_ACT_LED_ATTR_ID(16),
+	PON_PORT_ACT_LED_ATTR_ID(17),
+	PON_PORT_ACT_LED_ATTR_ID(18),
+	PON_PORT_ACT_LED_ATTR_ID(19),
+	PON_PORT_ACT_LED_ATTR_ID(20),
+	PON_PORT_ACT_LED_ATTR_ID(21),
+	PON_PORT_ACT_LED_ATTR_ID(22),
+	PON_PORT_ACT_LED_ATTR_ID(23),
+	PON_PORT_ACT_LED_ATTR_ID(24),
+	PON_PORT_ACT_LED_ATTR_ID(25),
+	PON_PORT_ACT_LED_ATTR_ID(26),
+	PON_PORT_ACT_LED_ATTR_ID(27),
+	PON_PORT_ACT_LED_ATTR_ID(28),
+	PON_PORT_ACT_LED_ATTR_ID(29),
+	PON_PORT_ACT_LED_ATTR_ID(30),
+	PON_PORT_ACT_LED_ATTR_ID(31),
+	PON_PORT_ACT_LED_ATTR_ID(32),
+	PON_PORT_ACT_LED_ATTR_ID(33),
+	PON_PORT_ACT_LED_ATTR_ID(34),
+	PON_PORT_ACT_LED_ATTR_ID(35),
+	PON_PORT_ACT_LED_ATTR_ID(36),
+	PON_PORT_ACT_LED_ATTR_ID(37),
+	PON_PORT_ACT_LED_ATTR_ID(38),
+	PON_PORT_ACT_LED_ATTR_ID(39),
+	PON_PORT_ACT_LED_ATTR_ID(40),
+	PON_PORT_ACT_LED_ATTR_ID(41),
+	PON_PORT_ACT_LED_ATTR_ID(42),
+	PON_PORT_ACT_LED_ATTR_ID(43),
+	PON_PORT_ACT_LED_ATTR_ID(44),
+	PON_PORT_ACT_LED_ATTR_ID(45),
+	PON_PORT_ACT_LED_ATTR_ID(46),
+	PON_PORT_ACT_LED_ATTR_ID(47),
+	PON_PORT_ACT_LED_ATTR_ID(48),
+	PON_PORT_ACT_LED_ATTR_ID(49),
+	PON_PORT_ACT_LED_ATTR_ID(50),
+	PON_PORT_ACT_LED_ATTR_ID(51),
+	PON_PORT_ACT_LED_ATTR_ID(52),
+	PON_PORT_ACT_LED_ATTR_ID(53),
+	PON_PORT_ACT_LED_ATTR_ID(54),
+	PON_PORT_ACT_LED_ATTR_ID(55),
+	PON_PORT_ACT_LED_ATTR_ID(56),
+	PON_PORT_ACT_LED_ATTR_ID(57),
+	PON_PORT_ACT_LED_ATTR_ID(58),
+	PON_PORT_ACT_LED_ATTR_ID(59),
+	PON_PORT_ACT_LED_ATTR_ID(60),
+	PON_PORT_ACT_LED_ATTR_ID(61),
+	PON_PORT_ACT_LED_ATTR_ID(62),
+	PON_PORT_ACT_LED_ATTR_ID(63),
+	PON_PORT_ACT_LED_ATTR_ID(64),
+	PON_PORT_LINK_LED_ATTR_ID(1),
+	PON_PORT_LINK_LED_ATTR_ID(2),
+	PON_PORT_LINK_LED_ATTR_ID(3),
+	PON_PORT_LINK_LED_ATTR_ID(4),
+	PON_PORT_LINK_LED_ATTR_ID(5),
+	PON_PORT_LINK_LED_ATTR_ID(6),
+	PON_PORT_LINK_LED_ATTR_ID(7),
+	PON_PORT_LINK_LED_ATTR_ID(8),
+	PON_PORT_LINK_LED_ATTR_ID(9),
+	PON_PORT_LINK_LED_ATTR_ID(10),
+	PON_PORT_LINK_LED_ATTR_ID(11),
+	PON_PORT_LINK_LED_ATTR_ID(12),
+	PON_PORT_LINK_LED_ATTR_ID(13),
+	PON_PORT_LINK_LED_ATTR_ID(14),
+	PON_PORT_LINK_LED_ATTR_ID(15),
+	PON_PORT_LINK_LED_ATTR_ID(16),
+	PON_PORT_LINK_LED_ATTR_ID(17),
+	PON_PORT_LINK_LED_ATTR_ID(18),
+	PON_PORT_LINK_LED_ATTR_ID(19),
+	PON_PORT_LINK_LED_ATTR_ID(20),
+	PON_PORT_LINK_LED_ATTR_ID(21),
+	PON_PORT_LINK_LED_ATTR_ID(22),
+	PON_PORT_LINK_LED_ATTR_ID(23),
+	PON_PORT_LINK_LED_ATTR_ID(24),
+	PON_PORT_LINK_LED_ATTR_ID(25),
+	PON_PORT_LINK_LED_ATTR_ID(26),
+	PON_PORT_LINK_LED_ATTR_ID(27),
+	PON_PORT_LINK_LED_ATTR_ID(28),
+	PON_PORT_LINK_LED_ATTR_ID(29),
+	PON_PORT_LINK_LED_ATTR_ID(30),
+	PON_PORT_LINK_LED_ATTR_ID(31),
+	PON_PORT_LINK_LED_ATTR_ID(32),
+	PON_PORT_LINK_LED_ATTR_ID(33),
+	PON_PORT_LINK_LED_ATTR_ID(34),
+	PON_PORT_LINK_LED_ATTR_ID(35),
+	PON_PORT_LINK_LED_ATTR_ID(36),
+	PON_PORT_LINK_LED_ATTR_ID(37),
+	PON_PORT_LINK_LED_ATTR_ID(38),
+	PON_PORT_LINK_LED_ATTR_ID(39),
+	PON_PORT_LINK_LED_ATTR_ID(40),
+	PON_PORT_LINK_LED_ATTR_ID(41),
+	PON_PORT_LINK_LED_ATTR_ID(42),
+	PON_PORT_LINK_LED_ATTR_ID(43),
+	PON_PORT_LINK_LED_ATTR_ID(44),
+	PON_PORT_LINK_LED_ATTR_ID(45),
+	PON_PORT_LINK_LED_ATTR_ID(46),
+	PON_PORT_LINK_LED_ATTR_ID(47),
+	PON_PORT_LINK_LED_ATTR_ID(48),
+	PON_PORT_LINK_LED_ATTR_ID(49),
+	PON_PORT_LINK_LED_ATTR_ID(50),
+	PON_PORT_LINK_LED_ATTR_ID(51),
+	PON_PORT_LINK_LED_ATTR_ID(52),
+	PON_PORT_LINK_LED_ATTR_ID(53),
+	PON_PORT_LINK_LED_ATTR_ID(54),
+	PON_PORT_LINK_LED_ATTR_ID(55),
+	PON_PORT_LINK_LED_ATTR_ID(56),
+	PON_PORT_LINK_LED_ATTR_ID(57),
+	PON_PORT_LINK_LED_ATTR_ID(58),
+	PON_PORT_LINK_LED_ATTR_ID(59),
+	PON_PORT_LINK_LED_ATTR_ID(60),
+	PON_PORT_LINK_LED_ATTR_ID(61),
+	PON_PORT_LINK_LED_ATTR_ID(62),
+	PON_PORT_LINK_LED_ATTR_ID(63),
+	PON_PORT_LINK_LED_ATTR_ID(64),
 };
 
 /* sysfs attributes for hwmon 
  */
+static ssize_t show_pon_port_act_led(struct device *dev, struct device_attribute *da,
+             char *buf);
+static ssize_t set_pon_port_act_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_pon_port_link_led(struct device *dev, struct device_attribute *da,
+             char *buf);
+static ssize_t set_pon_port_link_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf);
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
@@ -356,6 +494,15 @@ static int asgvolt64_cpld_write_internal(struct i2c_client *client, u8 reg, u8 v
     &sensor_dev_attr_module_present_##index.dev_attr.attr, \
 	&sensor_dev_attr_module_tx_disable_##index.dev_attr.attr, \
 	&sensor_dev_attr_module_tx_fault_##index.dev_attr.attr
+
+#define DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(index) \
+    static SENSOR_DEVICE_ATTR(pon_port_act_led_##index, S_IRUGO | S_IWUSR, show_pon_port_act_led, set_pon_port_act_led, PON_PORT_ACT_LED_##index); \
+    static SENSOR_DEVICE_ATTR(pon_port_link_led_##index, S_IRUGO | S_IWUSR, show_pon_port_link_led, set_pon_port_link_led, PON_PORT_LINK_LED_##index);
+
+#define DECLARE_GPON_PORT_LED_ATTR(index)  \
+    &sensor_dev_attr_pon_port_act_led_##index.dev_attr.attr, \
+    &sensor_dev_attr_pon_port_link_led_##index.dev_attr.attr
+
 
 static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
@@ -440,6 +587,72 @@ DECLARE_SFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(74);
 DECLARE_QSFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(65);
 DECLARE_QSFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(66);
 
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(1);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(2);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(3);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(4);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(5);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(6);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(7);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(8);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(9);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(10);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(11);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(12);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(13);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(14);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(15);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(16);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(17);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(18);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(19);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(20);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(21);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(22);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(23);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(24);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(25);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(26);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(27);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(28);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(29);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(30);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(31);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(32);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(33);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(34);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(35);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(36);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(37);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(38);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(39);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(40);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(41);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(42);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(43);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(44);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(45);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(46);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(47);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(48);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(49);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(50);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(51);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(52);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(53);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(54);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(55);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(56);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(57);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(58);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(59);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(60);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(61);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(62);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(63);
+DECLARE_GPON_PORT_LED_SENSOR_DEVICE_ATTR(64);
+
+
 static struct attribute *asgvolt64_cpld1_attributes[] = {
     &sensor_dev_attr_version.dev_attr.attr,
     &sensor_dev_attr_access.dev_attr.attr,
@@ -469,6 +682,29 @@ static struct attribute *asgvolt64_cpld1_attributes[] = {
 	/*100g qsfp*/
 	DECLARE_QSFP_TRANSCEIVER_ATTR(65),
 	DECLARE_QSFP_TRANSCEIVER_ATTR(66),
+	/*pon port led*/
+	DECLARE_GPON_PORT_LED_ATTR(1),
+	DECLARE_GPON_PORT_LED_ATTR(2),
+	DECLARE_GPON_PORT_LED_ATTR(3),
+	DECLARE_GPON_PORT_LED_ATTR(4),
+	DECLARE_GPON_PORT_LED_ATTR(5),
+	DECLARE_GPON_PORT_LED_ATTR(6),
+	DECLARE_GPON_PORT_LED_ATTR(7),
+	DECLARE_GPON_PORT_LED_ATTR(8),
+	DECLARE_GPON_PORT_LED_ATTR(9),
+	DECLARE_GPON_PORT_LED_ATTR(10),	
+	DECLARE_GPON_PORT_LED_ATTR(11),
+	DECLARE_GPON_PORT_LED_ATTR(12),
+	DECLARE_GPON_PORT_LED_ATTR(13),
+	DECLARE_GPON_PORT_LED_ATTR(14),
+	DECLARE_GPON_PORT_LED_ATTR(15),
+	DECLARE_GPON_PORT_LED_ATTR(16),
+	DECLARE_GPON_PORT_LED_ATTR(17),
+	DECLARE_GPON_PORT_LED_ATTR(18),
+	DECLARE_GPON_PORT_LED_ATTR(21),
+	DECLARE_GPON_PORT_LED_ATTR(22),
+	DECLARE_GPON_PORT_LED_ATTR(25),
+	DECLARE_GPON_PORT_LED_ATTR(26),
 	NULL
 };
 
@@ -480,7 +716,6 @@ static struct attribute *asgvolt64_cpld2_attributes[] = {
 	DECLARE_GPON_TRANSCEIVER_ATTR(20),
 	DECLARE_GPON_TRANSCEIVER_ATTR(23),
 	DECLARE_GPON_TRANSCEIVER_ATTR(24),
-	DECLARE_GPON_TRANSCEIVER_ATTR(26),
 	DECLARE_GPON_TRANSCEIVER_ATTR(27),
 	DECLARE_GPON_TRANSCEIVER_ATTR(28),
 	DECLARE_GPON_TRANSCEIVER_ATTR(29),
@@ -507,7 +742,28 @@ static struct attribute *asgvolt64_cpld2_attributes[] = {
 	DECLARE_SFP_TRANSCEIVER_ATTR(72),
 	DECLARE_SFP_TRANSCEIVER_ATTR(73),
 	DECLARE_SFP_TRANSCEIVER_ATTR(74),
-	
+	/*pon port led*/
+	DECLARE_GPON_PORT_LED_ATTR(19),
+	DECLARE_GPON_PORT_LED_ATTR(20),
+	DECLARE_GPON_PORT_LED_ATTR(23),
+	DECLARE_GPON_PORT_LED_ATTR(24),
+	DECLARE_GPON_PORT_LED_ATTR(27),
+	DECLARE_GPON_PORT_LED_ATTR(28),
+	DECLARE_GPON_PORT_LED_ATTR(29),
+	DECLARE_GPON_PORT_LED_ATTR(30),
+	DECLARE_GPON_PORT_LED_ATTR(31),
+	DECLARE_GPON_PORT_LED_ATTR(32),
+	DECLARE_GPON_PORT_LED_ATTR(33),
+	DECLARE_GPON_PORT_LED_ATTR(34),
+	DECLARE_GPON_PORT_LED_ATTR(35),	
+	DECLARE_GPON_PORT_LED_ATTR(36),	
+	DECLARE_GPON_PORT_LED_ATTR(37),
+	DECLARE_GPON_PORT_LED_ATTR(38),
+	DECLARE_GPON_PORT_LED_ATTR(39),
+	DECLARE_GPON_PORT_LED_ATTR(41),
+	DECLARE_GPON_PORT_LED_ATTR(42),	
+	DECLARE_GPON_PORT_LED_ATTR(45),
+	DECLARE_GPON_PORT_LED_ATTR(46),	
 	NULL
 };
 
@@ -536,6 +792,28 @@ static struct attribute *asgvolt64_cpld3_attributes[] = {
 	DECLARE_GPON_TRANSCEIVER_ATTR(62),
 	DECLARE_GPON_TRANSCEIVER_ATTR(63),
 	DECLARE_GPON_TRANSCEIVER_ATTR(64),
+	/*pon port led*/
+	DECLARE_GPON_PORT_LED_ATTR(40),
+	DECLARE_GPON_PORT_LED_ATTR(43),
+	DECLARE_GPON_PORT_LED_ATTR(44),
+	DECLARE_GPON_PORT_LED_ATTR(47),
+	DECLARE_GPON_PORT_LED_ATTR(48),
+        DECLARE_GPON_PORT_LED_ATTR(49),
+	DECLARE_GPON_PORT_LED_ATTR(50),
+	DECLARE_GPON_PORT_LED_ATTR(51),
+	DECLARE_GPON_PORT_LED_ATTR(52),
+	DECLARE_GPON_PORT_LED_ATTR(53),
+	DECLARE_GPON_PORT_LED_ATTR(54),
+	DECLARE_GPON_PORT_LED_ATTR(55),
+	DECLARE_GPON_PORT_LED_ATTR(56),
+	DECLARE_GPON_PORT_LED_ATTR(57),
+	DECLARE_GPON_PORT_LED_ATTR(58),
+	DECLARE_GPON_PORT_LED_ATTR(59),
+	DECLARE_GPON_PORT_LED_ATTR(60),
+	DECLARE_GPON_PORT_LED_ATTR(61),
+	DECLARE_GPON_PORT_LED_ATTR(62),
+	DECLARE_GPON_PORT_LED_ATTR(63),
+	DECLARE_GPON_PORT_LED_ATTR(64),
 	NULL
 };
 
@@ -553,6 +831,244 @@ static const struct attribute_group asgvolt64_cpld3_group = {
 };
 
 
+typedef struct tx_dis_port_map_s
+{
+    int attr_id;
+    u8  reg;
+    int mask;
+}tx_dis_port_map_t;
+
+
+tx_dis_port_map_t tx_disable_map_table[PON_PORT_NUM]={
+    { MODULE_TXDISABLE_1, /*cpld1*/ 0x15, 0},
+    { MODULE_TXDISABLE_2, /*cpld1*/ 0x15, 1},
+    { MODULE_TXDISABLE_3, /*cpld1*/ 0x17, 7},
+    { MODULE_TXDISABLE_4, /*cpld1*/ 0x17, 6},
+    { MODULE_TXDISABLE_5, /*cpld1*/ 0x15, 2},
+    { MODULE_TXDISABLE_6, /*cpld1*/ 0x15, 3},
+    { MODULE_TXDISABLE_7, /*cpld1*/ 0x17, 5},
+    { MODULE_TXDISABLE_8, /*cpld1*/ 0x17, 4},
+    { MODULE_TXDISABLE_9, /*cpld1*/ 0x15, 4}, 
+    { MODULE_TXDISABLE_10,/*cpld1*/ 0x15, 5},
+    { MODULE_TXDISABLE_11,/*cpld1*/ 0x17, 3},
+    { MODULE_TXDISABLE_12,/*cpld1*/ 0x17, 2},
+    { MODULE_TXDISABLE_13,/*cpld1*/ 0x15, 6},
+    { MODULE_TXDISABLE_14,/*cpld1*/ 0x15, 7},
+    { MODULE_TXDISABLE_15,/*cpld1*/ 0x17, 1},
+    { MODULE_TXDISABLE_16,/*cpld1*/ 0x17, 0},         
+    { MODULE_TXDISABLE_17,/*cpld1*/ 0x19, 0},
+    { MODULE_TXDISABLE_18,/*cpld1*/ 0x19, 1},
+    { MODULE_TXDISABLE_19,/*cpld2*/ 0x21, 1},
+    { MODULE_TXDISABLE_20,/*cpld2*/ 0x21, 0},
+    { MODULE_TXDISABLE_21,/*cpld1*/ 0x19, 2},
+    { MODULE_TXDISABLE_22,/*cpld1*/ 0x19, 3},
+    { MODULE_TXDISABLE_23,/*cpld2*/ 0x19, 7},
+    { MODULE_TXDISABLE_24,/*cpld2*/ 0x19, 6},         
+    { MODULE_TXDISABLE_25,/*cpld1*/ 0x19, 4},
+    { MODULE_TXDISABLE_26,/*cpld1*/ 0x19, 5},
+    { MODULE_TXDISABLE_27,/*cpld2*/ 0x19, 5},
+    { MODULE_TXDISABLE_28,/*cpld2*/ 0x19, 4},
+    { MODULE_TXDISABLE_29,/*cpld2*/ 0x19, 0},
+    { MODULE_TXDISABLE_30,/*cpld2*/ 0x19, 1},
+    { MODULE_TXDISABLE_31,/*cpld2*/ 0x19, 3},
+    { MODULE_TXDISABLE_32,/*cpld2*/ 0x19, 2},         
+    { MODULE_TXDISABLE_33,/*cpld2*/ 0x21, 2},         
+    { MODULE_TXDISABLE_34,/*cpld2*/ 0x21, 3},
+    { MODULE_TXDISABLE_35,/*cpld3*/ 0x15, 4},
+    { MODULE_TXDISABLE_36,/*cpld3*/ 0x15, 3},
+    { MODULE_TXDISABLE_37,/*cpld2*/ 0x21, 4},
+    { MODULE_TXDISABLE_38,/*cpld2*/ 0x21, 5},
+    { MODULE_TXDISABLE_39,/*cpld3*/ 0x15, 2},
+    { MODULE_TXDISABLE_40,/*cpld3*/ 0x15, 1},         
+    { MODULE_TXDISABLE_41,/*cpld2*/ 0x21, 6},
+    { MODULE_TXDISABLE_42,/*cpld2*/ 0x21, 7},
+    { MODULE_TXDISABLE_43,/*cpld3*/ 0x15, 0},
+    { MODULE_TXDISABLE_44,/*cpld2*/ 0x23, 4},
+    { MODULE_TXDISABLE_45,/*cpld2*/ 0x23, 0},
+    { MODULE_TXDISABLE_46,/*cpld2*/ 0x23, 1},
+    { MODULE_TXDISABLE_47,/*cpld2*/ 0x23, 3},
+    { MODULE_TXDISABLE_48,/*cpld2*/ 0x23, 2},
+    { MODULE_TXDISABLE_49,/*cpld3*/ 0x15, 5},
+    { MODULE_TXDISABLE_50,/*cpld3*/ 0x15, 6},
+    { MODULE_TXDISABLE_51,/*cpld3*/ 0x19, 4},
+    { MODULE_TXDISABLE_52,/*cpld3*/ 0x19, 3},
+    { MODULE_TXDISABLE_53,/*cpld3*/ 0x15, 7},
+    { MODULE_TXDISABLE_54,/*cpld3*/ 0x17, 0},
+    { MODULE_TXDISABLE_55,/*cpld3*/ 0x19, 2},
+    { MODULE_TXDISABLE_56,/*cpld3*/ 0x19, 1},
+    { MODULE_TXDISABLE_57,/*cpld3*/ 0x17, 1},
+    { MODULE_TXDISABLE_58,/*cpld3*/ 0x17, 2},
+    { MODULE_TXDISABLE_59,/*cpld3*/ 0x19, 0},
+    { MODULE_TXDISABLE_60,/*cpld3*/ 0x17, 7},
+    { MODULE_TXDISABLE_61,/*cpld3*/ 0x17, 3},
+    { MODULE_TXDISABLE_62,/*cpld3*/ 0x17, 4},
+    { MODULE_TXDISABLE_63,/*cpld3*/ 0x17, 6},
+    { MODULE_TXDISABLE_64,/*cpld3*/ 0x17, 5},
+};
+
+
+typedef struct pon_link_led_port_map_s
+{
+    int attr_id;
+    u8  reg[3];
+    int mask;
+}pon_link_led_port_map_t;
+
+pon_link_led_port_map_t link_led_map_table[PON_PORT_NUM]={
+    { PON_PORT_LINK_LED_1,/*cpld1*/ {0x24, 0x27, 0x30},   0},
+    { PON_PORT_LINK_LED_2,/*cpld1*/ {0x24, 0x27, 0x30},   1},
+    { PON_PORT_LINK_LED_3,/*cpld1*/ {0x25, 0x28, 0x31},   0},
+    { PON_PORT_LINK_LED_4,/*cpld1*/ {0x25, 0x28, 0x31},   1},
+    { PON_PORT_LINK_LED_5,/*cpld1*/ {0x24, 0x27, 0x30},   2},
+    { PON_PORT_LINK_LED_6,/*cpld1*/ {0x24, 0x27, 0x30},   3},
+    { PON_PORT_LINK_LED_7,/*cpld1*/ {0x25, 0x28, 0x31},   2},
+    { PON_PORT_LINK_LED_8,/*cpld1*/ {0x25, 0x28, 0x31},   3},
+         
+    { PON_PORT_LINK_LED_9, /*cpld1*/ {0x24, 0x27, 0x30}, 4},
+    { PON_PORT_LINK_LED_10,/*cpld1*/ {0x24, 0x27, 0x30}, 5},
+    { PON_PORT_LINK_LED_11,/*cpld1*/ {0x25, 0x28, 0x31}, 4},
+    { PON_PORT_LINK_LED_12,/*cpld1*/ {0x25, 0x28, 0x31}, 5},
+    { PON_PORT_LINK_LED_13,/*cpld1*/ {0x24, 0x27, 0x30}, 6},
+    { PON_PORT_LINK_LED_14,/*cpld1*/ {0x24, 0x27, 0x30}, 7},
+    { PON_PORT_LINK_LED_15,/*cpld1*/ {0x25, 0x28, 0x31}, 6},
+    { PON_PORT_LINK_LED_16,/*cpld1*/ {0x25, 0x28, 0x31}, 7},
+         
+    { PON_PORT_LINK_LED_17,/*cpld1 */ {0x26,0x29,0x32},  0},
+    { PON_PORT_LINK_LED_18,/*cpld1 */ {0x26,0x29,0x32},  1},    
+    { PON_PORT_LINK_LED_19,/*cpld2 */ {0x30,0x33,0x36},  2},
+    { PON_PORT_LINK_LED_20,/*cpld2 */ {0x30,0x33,0x36},  3},
+    { PON_PORT_LINK_LED_21,/*cpld1 */ {0x26,0x29,0x32},  2},
+    { PON_PORT_LINK_LED_22,/*cpld1 */ {0x26,0x29,0x32},  3},
+    { PON_PORT_LINK_LED_23,/*cpld2 */ {0x30,0x33,0x36},  4},
+    { PON_PORT_LINK_LED_24,/*cpld2 */ {0x30,0x33,0x36},  5},
+         
+    { PON_PORT_LINK_LED_25,/*cpld1 */ {0x26,0x29,0x32},   4},         
+    { PON_PORT_LINK_LED_26,/*cpld1 */ {0x26,0x29,0x32},   5},
+    { PON_PORT_LINK_LED_27,/*cpld2 */ {0x30,0x33,0x36},   6},
+    { PON_PORT_LINK_LED_28,/*cpld2 */ {0x30,0x33,0x36},   7},
+    { PON_PORT_LINK_LED_29,/*cpld2 */ {0x30,0x33,0x36},   0},
+    { PON_PORT_LINK_LED_30,/*cpld2 */ {0x30,0x33,0x36},   1},
+    { PON_PORT_LINK_LED_31,/*cpld2*/  {0x31,0x34,0x37},   0},
+    { PON_PORT_LINK_LED_32,/*cpld2*/  {0x31,0x34,0x37},   1},
+         
+    { PON_PORT_LINK_LED_33,/*cpld2*/ {0x31,0x34,0x37},   2},         
+    { PON_PORT_LINK_LED_34,/*cpld2*/ {0x31,0x34,0x37},   3},
+    { PON_PORT_LINK_LED_35,/*cpld2*/ {0x32,0x35,0x38},   2},
+    { PON_PORT_LINK_LED_36,/*cpld2*/ {0x32,0x35,0x38},   3},
+    { PON_PORT_LINK_LED_37,/*cpld2*/ {0x31,0x34,0x37},   4},
+    { PON_PORT_LINK_LED_38,/*cpld2*/ {0x31,0x34,0x37},   5},
+    { PON_PORT_LINK_LED_39,/*cpld2*/ {0x32,0x35,0x38},   4},
+    { PON_PORT_LINK_LED_40,/*cpld3*/ {0x24,0x27,0x30},   0},
+         
+    { PON_PORT_LINK_LED_41,/*cpld2 */ {0x31,0x34,0x37},  6},         
+    { PON_PORT_LINK_LED_42,/*cpld2*/ {0x31,0x34,0x37},   7},         
+    { PON_PORT_LINK_LED_43,/*cpld3*/ {0x24,0x27,0x30},   1},
+    { PON_PORT_LINK_LED_44,/*cpld3*/ {0x24,0x27,0x30},   2},
+    { PON_PORT_LINK_LED_45,/*cpld2*/ {0x32,0x35,0x38},   0},
+    { PON_PORT_LINK_LED_46,/*cpld2*/ {0x32,0x35,0x38},   1},
+    { PON_PORT_LINK_LED_47,/*cpld3*/ {0x24,0x27,0x30},   3},
+    { PON_PORT_LINK_LED_48,/*cpld3*/ {0x24,0x27,0x30},   4},
+         
+    { PON_PORT_LINK_LED_49,/*cpld3*/ {0x24,0x27,0x30},   5},         
+    { PON_PORT_LINK_LED_50,/*cpld3*/ {0x24,0x27,0x30},   6},
+    { PON_PORT_LINK_LED_51,/*cpld3*/ {0x25,0x28,0x31},   5},
+    { PON_PORT_LINK_LED_52,/*cpld3*/ {0x25,0x28,0x31},   6},
+    { PON_PORT_LINK_LED_53,/*cpld3*/ {0x24,0x27,0x30},   7},
+    { PON_PORT_LINK_LED_54,/*cpld3*/ {0x25,0x28,0x31},   0},
+    { PON_PORT_LINK_LED_55,/*cpld3*/ {0x25,0x28,0x31},   7},
+    { PON_PORT_LINK_LED_56,/*cpld3*/ {0x26,0x29,0x32},   0},
+         
+    { PON_PORT_LINK_LED_57,/*cpld3*/ {0x25,0x28,0x31},   1},
+    { PON_PORT_LINK_LED_58,/*cpld3*/ {0x25,0x28,0x31},   2},
+    { PON_PORT_LINK_LED_59,/*cpld3*/ {0x26,0x29,0x32},   1},
+    { PON_PORT_LINK_LED_60,/*cpld3*/ {0x26,0x29,0x32},   2},
+    { PON_PORT_LINK_LED_61,/*cpld3*/ {0x25,0x28,0x31},   3},
+    { PON_PORT_LINK_LED_62,/*cpld3*/ {0x25,0x28,0x31},   4},
+    { PON_PORT_LINK_LED_63,/*cpld3*/ {0x26,0x29,0x32},   3},
+    { PON_PORT_LINK_LED_64,/*cpld3*/ {0x26,0x29,0x32},   4}
+};
+
+typedef struct pon_act_led_port_map_s
+{
+    int attr_id;
+    u8  reg;
+    int mask;
+}pon_act_led_port_map_t;
+
+pon_act_led_port_map_t act_led_map_table[PON_PORT_NUM]={
+    { PON_PORT_LINK_LED_1,/*cpld1*/  0x21,  0},
+    { PON_PORT_LINK_LED_2,/*cpld1*/  0x21,  1},
+    { PON_PORT_LINK_LED_3,/*cpld1*/  0x22,  0},
+    { PON_PORT_LINK_LED_4,/*cpld1*/  0x22,  1},
+    { PON_PORT_LINK_LED_5,/*cpld1*/  0x21,  2},
+    { PON_PORT_LINK_LED_6,/*cpld1*/  0x21,  3},
+    { PON_PORT_LINK_LED_7,/*cpld1*/  0x22,  2},
+    { PON_PORT_LINK_LED_8,/*cpld1*/  0x22,  3},
+         
+    { PON_PORT_LINK_LED_9, /*cpld1*/ 0x21,  4},
+    { PON_PORT_LINK_LED_10,/*cpld1*/ 0x21,  5},
+    { PON_PORT_LINK_LED_11,/*cpld1*/ 0x22,  4},
+    { PON_PORT_LINK_LED_12,/*cpld1*/ 0x22,  5},
+    { PON_PORT_LINK_LED_13,/*cpld1*/ 0x21,  6},
+    { PON_PORT_LINK_LED_14,/*cpld1*/ 0x21,  7},
+    { PON_PORT_LINK_LED_15,/*cpld1*/ 0x22,  6},
+    { PON_PORT_LINK_LED_16,/*cpld1*/ 0x22,  7},
+         
+    { PON_PORT_LINK_LED_17,/*cpld1 */0x23,  0},
+    { PON_PORT_LINK_LED_18,/*cpld1 */0x23,  1},
+    { PON_PORT_LINK_LED_19,/*cpld2 */0x27,  2},
+    { PON_PORT_LINK_LED_20,/*cpld2 */0x27,  3},
+    { PON_PORT_LINK_LED_21,/*cpld1 */0x23,  2},
+    { PON_PORT_LINK_LED_22,/*cpld1 */0x23,  3},
+    { PON_PORT_LINK_LED_23,/*cpld2 */0x27,  4},
+    { PON_PORT_LINK_LED_24,/*cpld2 */0x27,  5},
+         
+    { PON_PORT_LINK_LED_25,/*cpld1 */0x23,  4},         
+    { PON_PORT_LINK_LED_26,/*cpld1 */0x23,  5},
+    { PON_PORT_LINK_LED_27,/*cpld2 */0x27,  6},
+    { PON_PORT_LINK_LED_28,/*cpld2 */0x27,  7},
+    { PON_PORT_LINK_LED_29,/*cpld2 */0x27,  0},
+    { PON_PORT_LINK_LED_30,/*cpld2 */0x27,  1},
+    { PON_PORT_LINK_LED_31,/*cpld2*/ 0x28,  0},
+    { PON_PORT_LINK_LED_32,/*cpld2*/ 0x28,  1},
+         
+    { PON_PORT_LINK_LED_33,/*cpld2*/ 0x28,  2},         
+    { PON_PORT_LINK_LED_34,/*cpld2*/ 0x28,  3},
+    { PON_PORT_LINK_LED_35,/*cpld2*/ 0x29,  2},
+    { PON_PORT_LINK_LED_36,/*cpld2*/ 0x29,  3},
+    { PON_PORT_LINK_LED_37,/*cpld2*/ 0x28,  4},
+    { PON_PORT_LINK_LED_38,/*cpld2*/ 0x28,  5},
+    { PON_PORT_LINK_LED_39,/*cpld2*/ 0x29,  4},
+    { PON_PORT_LINK_LED_40,/*cpld3*/ 0x21,  0},
+         
+    { PON_PORT_LINK_LED_41,/*cpld2 */0x28,  6},         
+    { PON_PORT_LINK_LED_42,/*cpld2*/ 0x28,  7},         
+    { PON_PORT_LINK_LED_43,/*cpld3*/ 0x21,  1},
+    { PON_PORT_LINK_LED_44,/*cpld3*/ 0x21,  2},
+    { PON_PORT_LINK_LED_45,/*cpld2*/ 0x29,  0},
+    { PON_PORT_LINK_LED_46,/*cpld2*/ 0x29,  1},
+    { PON_PORT_LINK_LED_47,/*cpld3*/ 0x21,  3},
+    { PON_PORT_LINK_LED_48,/*cpld3*/ 0x21,  4},
+         
+    { PON_PORT_LINK_LED_49,/*cpld3*/ 0x21,  5},         
+    { PON_PORT_LINK_LED_50,/*cpld3*/ 0x21,  6},
+    { PON_PORT_LINK_LED_51,/*cpld3*/ 0x22,  5},
+    { PON_PORT_LINK_LED_52,/*cpld3*/ 0x22,  6},
+    { PON_PORT_LINK_LED_53,/*cpld3*/ 0x21,  7},
+    { PON_PORT_LINK_LED_54,/*cpld3*/ 0x22,  0},
+    { PON_PORT_LINK_LED_55,/*cpld3*/ 0x22,  7},
+    { PON_PORT_LINK_LED_56,/*cpld3*/ 0x23,  0},
+         
+    { PON_PORT_LINK_LED_57,/*cpld3*/ 0x22,  1},
+    { PON_PORT_LINK_LED_58,/*cpld3*/ 0x22,  2},
+    { PON_PORT_LINK_LED_59,/*cpld3*/ 0x23,  1},
+    { PON_PORT_LINK_LED_60,/*cpld3*/ 0x23,  2},
+    { PON_PORT_LINK_LED_61,/*cpld3*/ 0x22,  3},
+    { PON_PORT_LINK_LED_62,/*cpld3*/ 0x22,  4},
+    { PON_PORT_LINK_LED_63,/*cpld3*/ 0x23,  3},
+    { PON_PORT_LINK_LED_64,/*cpld3*/ 0x23,  4}
+};
+
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf)
 {
@@ -562,795 +1078,498 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     int status = 0;
     u8 reg = 0, mask = 0, revert = 0, addr=0x60;
     
-    switch (attr->index)
+    if (attr->index >= MODULE_TXDISABLE_1 && attr->index <= MODULE_TXDISABLE_64)
     {
-        /*100g QSFP*/
-        case MODULE_PRESENT_65 ... MODULE_PRESENT_66:
-            addr=0x60;
-            reg=0x34;
-            mask = 0x1 << (attr->index- MODULE_PRESENT_65);
-            break;
-        /*25g sfp*/
-        case MODULE_PRESENT_67 ... MODULE_PRESENT_74:
-            addr=0x61;
-            reg=0x9;
-            mask = 0x1 << (attr->index- MODULE_PRESENT_67);
-            break;
-        case MODULE_TXFAULT_67 ... MODULE_TXFAULT_74:
-            addr=0x61;
-            reg=0x17;
-            mask = 0x1 << (attr->index- MODULE_TXFAULT_67);
-            break;
-        case MODULE_TXDISABLE_67 ... MODULE_TXDISABLE_74:
-            reg=0x25;
-            addr=0x61;
-            mask = 0x1 << (attr->index- MODULE_TXFAULT_67);
-            break;
-        case MODULE_RXLOS_67 ... MODULE_RXLOS_74:
-            reg=0x43;
-            addr=0x61;
-            mask = 0x1 << (attr->index- MODULE_RXLOS_67);
-            break;
+        reg=tx_disable_map_table[attr->index - MODULE_TXDISABLE_1].reg;
+        mask=0x1 << tx_disable_map_table[attr->index - MODULE_TXDISABLE_1].mask;       
+    }    
+    else
+    {
+        switch (attr->index)
+    {
+            /*100g QSFP*/
+            case MODULE_PRESENT_65 ... MODULE_PRESENT_66:
+                addr=0x60;
+                reg=0x34;
+                mask = 0x1 << (attr->index- MODULE_PRESENT_65);
+                break;
+            /*25g sfp*/
+            case MODULE_PRESENT_67 ... MODULE_PRESENT_74:
+                addr=0x61;
+                reg=0x9;
+                mask = 0x1 << (attr->index- MODULE_PRESENT_67);
+                break;
+            case MODULE_TXFAULT_67 ... MODULE_TXFAULT_74:
+                addr=0x61;
+                reg=0x17;
+                mask = 0x1 << (attr->index- MODULE_TXFAULT_67);
+                break;
+            case MODULE_TXDISABLE_67 ... MODULE_TXDISABLE_74:
+                reg=0x25;
+                addr=0x61;
+                mask = 0x1 << (attr->index- MODULE_TXDISABLE_67);
+                break;
+            case MODULE_RXLOS_67 ... MODULE_RXLOS_74:
+                reg=0x43;
+                addr=0x61;
+                mask = 0x1 << (attr->index- MODULE_RXLOS_67);
+                break;
                         
-        /*gpon*/
-        /*cpld1:present_1, 0x3*/
-        case MODULE_PRESENT_1 ... MODULE_PRESENT_2:
-            addr=0x60;
-            reg=0x3;
-            mask=0x1 << (attr->index-MODULE_PRESENT_1);
-            break;
-        case MODULE_PRESENT_5 ... MODULE_PRESENT_6:
-            addr=0x60;
-            reg=0x3;
-            mask=0x1 << (attr->index-MODULE_PRESENT_5 + 2);
-            break;
-        case MODULE_PRESENT_9 ... MODULE_PRESENT_10:
-            addr=0x60;
-            reg=0x3;
-            mask=0x1 << (attr->index-MODULE_PRESENT_9 + 4);
-            break;
-        case MODULE_PRESENT_13 ... MODULE_PRESENT_14:
-            addr=0x60;
-            reg=0x3;
-            mask=0x1 << (attr->index-MODULE_PRESENT_13 + 6);
-            break;
-        /*cpld1:present_2, 0x5, */    
-        case MODULE_PRESENT_15 ... MODULE_PRESENT_16:
-            addr=0x60;
-            reg=0x5;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_15)?1:0);
-            break;
-        case MODULE_PRESENT_11 ... MODULE_PRESENT_12:
-            addr=0x60;
-            reg=0x5;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_11)?3:2);
-            break;
-        case MODULE_PRESENT_7 ... MODULE_PRESENT_8:
-            addr=0x60;
-            reg=0x5;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_7)?5:4);
-            break;
-        case MODULE_PRESENT_3 ... MODULE_PRESENT_4:
-            addr=0x60;
-            reg=0x5;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_3)?7:6);
-            break; 
-        /*cpld1:present_3, 0x7*/    
-        case MODULE_PRESENT_17 ... MODULE_PRESENT_18:
-            addr=0x60;
-            reg=0x7;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_17)?0:1);
-            break;
-        case MODULE_PRESENT_21 ... MODULE_PRESENT_22:
-            addr=0x60;
-            reg=0x7;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_21)?2:3);
-            break;
-        case MODULE_PRESENT_25 ... MODULE_PRESENT_26:
-            addr=0x60;
-            reg=0x7;
-            mask=0x1 << ((attr->index==MODULE_PRESENT_25)?4:5);
-            break; 
-        
-        /*cpld1:tx_fault_1,0x9*/ 
-        case MODULE_TXFAULT_1 ... MODULE_TXFAULT_2:
-            addr=0x60;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_1?0:1);
-            break;
-        case MODULE_TXFAULT_5 ... MODULE_TXFAULT_6:
-            addr=0x60;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_5?2:3);
-            break;        
-        case MODULE_TXFAULT_9 ... MODULE_TXFAULT_10:
-            addr=0x60;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_PRESENT_9?4:5);
-            break;
-        case MODULE_TXFAULT_13 ... MODULE_TXFAULT_14:
-            addr=0x60;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_13?6:7);
-            break;
-        /*cpld1:tx_fault_2, 0x11*/
-         case MODULE_TXFAULT_15 ... MODULE_TXFAULT_16:
-            addr=0x60;
-            reg=0x11;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_15)?1:0);
-            break;
-        case MODULE_TXFAULT_11 ... MODULE_TXFAULT_12:
-            addr=0x60;
-            reg=0x11;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_11)?3:2);
-            break;
-        case MODULE_TXFAULT_7 ... MODULE_TXFAULT_8:
-            addr=0x60;
-            reg=0x11;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_7)?5:4);
-            break;
-        case MODULE_TXFAULT_3 ... MODULE_TXFAULT_4:
-            addr=0x60;
-            reg=0x11;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_3)?7:6);
-            break;
-        /*cpld1:tx_fault_3, 0x13*/
-        case MODULE_TXFAULT_17 ... MODULE_TXFAULT_18:
-            addr=0x60;
-            reg=0x13;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_17)?0:1);
-            break;
-        case MODULE_TXFAULT_21 ... MODULE_TXFAULT_22:
-            addr=0x60;
-            reg=0x13;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_21)?2:3);
-            break;
-        case MODULE_TXFAULT_25 ... MODULE_TXFAULT_26:
-            addr=0x60;
-            reg=0x13;
-            mask=0x1 << ((attr->index==MODULE_TXFAULT_25)?4:5);
-            break;
+            /*gpon*/
+            /*cpld1:present_1, 0x3*/
+            case MODULE_PRESENT_1 ... MODULE_PRESENT_2:
+                addr=0x60;
+                reg=0x3;
+                mask=0x1 << (attr->index-MODULE_PRESENT_1);
+                break;
+            case MODULE_PRESENT_5 ... MODULE_PRESENT_6:
+                addr=0x60;
+                reg=0x3;
+                mask=0x1 << (attr->index-MODULE_PRESENT_5 + 2);
+                break;
+            case MODULE_PRESENT_9 ... MODULE_PRESENT_10:
+                addr=0x60;
+                reg=0x3;
+                mask=0x1 << (attr->index-MODULE_PRESENT_9 + 4);
+                break;
+            case MODULE_PRESENT_13 ... MODULE_PRESENT_14:
+                addr=0x60;
+                reg=0x3;
+                mask=0x1 << (attr->index-MODULE_PRESENT_13 + 6);
+                break;
+            /*cpld1:present_2, 0x5, */    
+            case MODULE_PRESENT_15 ... MODULE_PRESENT_16:
+                addr=0x60;
+                reg=0x5;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_15)?1:0);
+                break;
+            case MODULE_PRESENT_11 ... MODULE_PRESENT_12:
+                addr=0x60;
+                reg=0x5;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_11)?3:2);
+                break;
+            case MODULE_PRESENT_7 ... MODULE_PRESENT_8:
+                addr=0x60;
+                reg=0x5;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_7)?5:4);
+                break;
+            case MODULE_PRESENT_3 ... MODULE_PRESENT_4:
+                addr=0x60;
+                reg=0x5;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_3)?7:6);
+                break; 
+            /*cpld1:present_3, 0x7*/    
+            case MODULE_PRESENT_17 ... MODULE_PRESENT_18:
+                addr=0x60;
+                reg=0x7;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_17)?0:1);
+                break;
+            case MODULE_PRESENT_21 ... MODULE_PRESENT_22:
+                addr=0x60;
+                reg=0x7;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_21)?2:3);
+                break;
+            case MODULE_PRESENT_25 ... MODULE_PRESENT_26:
+                addr=0x60;
+                reg=0x7;
+                mask=0x1 << ((attr->index==MODULE_PRESENT_25)?4:5);
+                break;
+            /*cpld1:tx_fault_1,0x9*/ 
+            case MODULE_TXFAULT_1 ... MODULE_TXFAULT_2:
+                addr=0x60;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_1?0:1);
+                break;
+            case MODULE_TXFAULT_5 ... MODULE_TXFAULT_6:
+                addr=0x60;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_5?2:3);
+                break;        
+            case MODULE_TXFAULT_9 ... MODULE_TXFAULT_10:
+                addr=0x60;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_9?4:5);
+                break;
+            case MODULE_TXFAULT_13 ... MODULE_TXFAULT_14:
+                addr=0x60;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_13?6:7);
+                break;
+            /*cpld1:tx_fault_2, 0x11*/
+            case MODULE_TXFAULT_15 ... MODULE_TXFAULT_16:
+                addr=0x60;
+                reg=0x11;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_15)?1:0);
+                break;
+            case MODULE_TXFAULT_11 ... MODULE_TXFAULT_12:
+                addr=0x60;
+                reg=0x11;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_11)?3:2);
+                break;
+            case MODULE_TXFAULT_7 ... MODULE_TXFAULT_8:
+                addr=0x60;
+                reg=0x11;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_7)?5:4);
+                break;
+            case MODULE_TXFAULT_3 ... MODULE_TXFAULT_4:
+                addr=0x60;
+                reg=0x11;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_3)?7:6);
+                break;
+            /*cpld1:tx_fault_3, 0x13*/
+            case MODULE_TXFAULT_17 ... MODULE_TXFAULT_18:
+                addr=0x60;
+                reg=0x13;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_17)?0:1);
+                break;
+            case MODULE_TXFAULT_21 ... MODULE_TXFAULT_22:
+                addr=0x60;
+                reg=0x13;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_21)?2:3);
+                break;
+            case MODULE_TXFAULT_25 ... MODULE_TXFAULT_26:
+                addr=0x60;
+                reg=0x13;
+                mask=0x1 << ((attr->index==MODULE_TXFAULT_25)?4:5);
+                break;
+            /*cpld2:present_1, 0x3*/
+            case MODULE_PRESENT_29 ... MODULE_PRESENT_30:
+                addr=0x61;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_29?0:1);
+                break;
+            case MODULE_PRESENT_31 ... MODULE_PRESENT_32:
+                addr=0x61;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_31?3:2);
+                break;
+            case MODULE_PRESENT_27 ... MODULE_PRESENT_28:
+                addr=0x61;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_27?5:4);
+                break;
+            case MODULE_PRESENT_23 ... MODULE_PRESENT_24:
+                addr=0x61;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_23?7:6);
+                break;
+            /*cpld2:present_2, 0x5*/
+            case MODULE_PRESENT_19 ... MODULE_PRESENT_20:
+                addr=0x61;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_19?1:0);
+                break;
+            case MODULE_PRESENT_33 ... MODULE_PRESENT_34:
+                addr=0x61;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_33?2:3);
+                break;
+            case MODULE_PRESENT_37 ... MODULE_PRESENT_38:
+                addr=0x61;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_37?4:5);
+                break;
+            case MODULE_PRESENT_41 ... MODULE_PRESENT_42:
+                addr=0x61;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_41?6:7);
+                break;
+            /*cpld2:present_3, 0x7*/
+            case MODULE_PRESENT_45 ... MODULE_PRESENT_46:
+                addr=0x61;
+                reg=0x7;
+                mask=0x1 << (attr->index==MODULE_PRESENT_45?0:1);
+                break;
+            case MODULE_PRESENT_47 ... MODULE_PRESENT_48:
+                addr=0x61;
+                reg=0x7;
+                mask=0x1 << (attr->index==MODULE_PRESENT_47?3:2);
+                break;
+            case MODULE_PRESENT_44:
+                addr=0x61;
+                reg=0x7;
+                mask=0x1 << 4;
+                break;
+            /*cpld2:tx_fault_1, 0x11*/
+            case MODULE_TXFAULT_29 ... MODULE_TXFAULT_30:
+                addr=0x61;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_29?0:1);
+                break;
+            case MODULE_TXFAULT_31 ... MODULE_TXFAULT_32:
+                addr=0x61;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_31?3:2);
+                break;
+            case MODULE_TXFAULT_27 ... MODULE_TXFAULT_28:
+                addr=0x61;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_27?5:4);
+                break;
+            case MODULE_TXFAULT_23 ... MODULE_TXFAULT_24:
+                addr=0x61;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_23?7:6);
+                break;
+            /*cpld2:tx_fault_2, 0x13*/
+            case MODULE_TXFAULT_19 ... MODULE_TXFAULT_20:
+                addr=0x61;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_19?1:0);
+                break;
+            case MODULE_TXFAULT_33 ... MODULE_TXFAULT_34:
+                addr=0x61;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_33?2:3);
+                break;
+            case MODULE_TXFAULT_37 ... MODULE_TXFAULT_38:
+                addr=0x61;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_37?4:5);
+                break;
+            case MODULE_TXFAULT_41 ... MODULE_TXFAULT_42:
+                addr=0x61;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_41?6:7);
+                break;
+            /*cpld2:tx_fault_3, 0x15*/
+            case MODULE_TXFAULT_45 ... MODULE_TXFAULT_46:
+                addr=0x61;
+                reg=0x15;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_45?0:1);
+                break;
+            case MODULE_TXFAULT_47 ... MODULE_TXFAULT_48:
+                addr=0x61;
+                reg=0x15;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_47?3:2);
+                break;
+            case MODULE_TXFAULT_44:
+                addr=0x61;
+                reg=0x15;
+                mask=0x1 << 4;
+                break;
+            /*cpld3:present_1, 0x3*/
+            case MODULE_PRESENT_43:
+                addr=0x62;
+                reg=0x3;
+                mask=0x1;
+                break;
+            case MODULE_PRESENT_39 ... MODULE_PRESENT_40:
+                addr=0x62;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_39?2:1);
+                break;
+            case MODULE_PRESENT_35 ... MODULE_PRESENT_36:
+                addr=0x62;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_35?4:3);
+                break;
+            case MODULE_PRESENT_49 ... MODULE_PRESENT_50:
+                addr=0x62;
+                reg=0x3;
+                mask=0x1 << (attr->index==MODULE_PRESENT_49?5:6);
+                break;
+            case MODULE_PRESENT_53:
+                addr=0x62;
+                reg=0x3;
+                mask=0x1 <<7;
+                break;
+            /*cpld3:present_2, 0x5*/
+            case MODULE_PRESENT_54:
+                addr=0x62;
+                reg=0x5;
+                mask=0x1;
+                break;
+            case MODULE_PRESENT_57 ... MODULE_PRESENT_58:
+                addr=0x62;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_57?1:2);
+                break;
+            case MODULE_PRESENT_61 ... MODULE_PRESENT_62:
+                addr=0x62;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_61?3:4);
+                break;
+            case MODULE_PRESENT_63 ... MODULE_PRESENT_64:
+                addr=0x62;
+                reg=0x5;
+                mask=0x1 << (attr->index==MODULE_PRESENT_63?6:5);
+                break;
+            case MODULE_PRESENT_60:
+                addr=0x62;
+                reg=0x5;
+                mask=0x1 <<7;
+                break;
+            /*cpld3:present_3, 0x7*/
+            case MODULE_PRESENT_59:
+                addr=0x62;
+                reg=0x7;
+                mask=0x1;
+                break;
+            case MODULE_PRESENT_55 ... MODULE_PRESENT_56:
+                addr=0x62;
+                reg=0x7;
+                mask=0x1 << (attr->index==MODULE_PRESENT_55?2:1);
+                break;
+            case MODULE_PRESENT_51 ... MODULE_PRESENT_52:
+                addr=0x62;
+                reg=0x7;
+                mask=0x1 << (attr->index==MODULE_PRESENT_51?4:3);
+                break;
             
-        /*cpld1:tx_disable_1,0x15*/ 
-        case MODULE_TXDISABLE_1 ... MODULE_TXDISABLE_2:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_1?0:1);
-            break;
-        case MODULE_TXDISABLE_5 ... MODULE_TXDISABLE_6:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_5?2:3);
-            break;        
-        case MODULE_TXDISABLE_9 ... MODULE_TXDISABLE_10:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_9?4:5);
-            break;
-        case MODULE_TXDISABLE_13 ... MODULE_TXDISABLE_14:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_13?6:7);
-            break;
-        /*cpld1:tx_disable_2, 0x17*/
-         case MODULE_TXDISABLE_15 ... MODULE_TXDISABLE_16:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_15)?1:0);
-            break;
-        case MODULE_TXDISABLE_11 ... MODULE_TXDISABLE_12:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_11)?3:2);
-            break;
-        case MODULE_TXDISABLE_7 ... MODULE_TXDISABLE_8:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_7)?5:4);
-            break;
-        case MODULE_TXDISABLE_3 ... MODULE_TXDISABLE_4:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_3)?7:6);
-            break;
-        /*cpld1:tx_disable_3, 0x19*/
-        case MODULE_TXDISABLE_17 ... MODULE_TXDISABLE_18:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_17)?0:1);
-            break;
-        case MODULE_TXDISABLE_21 ... MODULE_TXDISABLE_22:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_21)?2:3);
-            break;
-        case MODULE_TXDISABLE_25 ... MODULE_TXDISABLE_26:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_25)?4:5);
-            break;
-        
-        /*cpld2:present_1, 0x3*/
-        case MODULE_PRESENT_29 ... MODULE_PRESENT_30:
-            addr=0x61;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_29?0:1);
-            break;
-        case MODULE_PRESENT_31 ... MODULE_PRESENT_32:
-            addr=0x61;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_31?3:2);
-            break;
-        case MODULE_PRESENT_27 ... MODULE_PRESENT_28:
-            addr=0x61;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_27?5:4);
-            break;
-        case MODULE_PRESENT_23 ... MODULE_PRESENT_24:
-            addr=0x61;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_23?7:6);
-            break;
-        /*cpld2:present_2, 0x5*/
-        case MODULE_PRESENT_19 ... MODULE_PRESENT_20:
-            addr=0x61;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_19?1:0);
-            break;
-        case MODULE_PRESENT_33 ... MODULE_PRESENT_34:
-            addr=0x61;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_33?2:3);
-            break;
-        case MODULE_PRESENT_37 ... MODULE_PRESENT_38:
-            addr=0x61;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_37?4:5);
-            break;
-        case MODULE_PRESENT_41 ... MODULE_PRESENT_42:
-            addr=0x61;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_41?6:7);
-            break;
-        /*cpld2:present_3, 0x7*/
-        case MODULE_PRESENT_45 ... MODULE_PRESENT_46:
-            addr=0x61;
-            reg=0x7;
-            mask=0x1 << (attr->index==MODULE_PRESENT_45?0:1);
-            break;
-        case MODULE_PRESENT_47 ... MODULE_PRESENT_48:
-            addr=0x61;
-            reg=0x7;
-            mask=0x1 << (attr->index==MODULE_PRESENT_47?3:2);
-            break;
-        case MODULE_PRESENT_44:
-            addr=0x61;
-            reg=0x7;
-            mask=0x1 << 4;
-            break;
-        
-        /*cpld2:tx_fault_1, 0x11*/
-        case MODULE_TXFAULT_29 ... MODULE_TXFAULT_30:
-            addr=0x61;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_29?0:1);
-            break;
-        case MODULE_TXFAULT_31 ... MODULE_TXFAULT_32:
-            addr=0x61;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_31?3:2);
-            break;
-        case MODULE_TXFAULT_27 ... MODULE_TXFAULT_28:
-            addr=0x61;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_27?5:4);
-            break;
-        case MODULE_TXFAULT_23 ... MODULE_TXFAULT_24:
-            addr=0x61;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_23?7:6);
-            break;
-         /*cpld2:tx_fault_2, 0x13*/
-        case MODULE_TXFAULT_19 ... MODULE_TXFAULT_20:
-            addr=0x61;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_19?1:0);
-            break;
-        case MODULE_TXFAULT_33 ... MODULE_TXFAULT_34:
-            addr=0x61;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_33?2:3);
-            break;
-        case MODULE_TXFAULT_37 ... MODULE_TXFAULT_38:
-            addr=0x61;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_37?4:5);
-            break;
-        case MODULE_TXFAULT_41 ... MODULE_TXFAULT_42:
-            addr=0x61;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_41?6:7);
-            break;
-        /*cpld2:tx_fault_3, 0x15*/
-        case MODULE_TXFAULT_45 ... MODULE_TXFAULT_46:
-            addr=0x61;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_45?0:1);
-            break;
-        case MODULE_TXFAULT_47 ... MODULE_TXFAULT_48:
-            addr=0x61;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_47?3:2);
-            break;
-        case MODULE_TXFAULT_44:
-            addr=0x61;
-            reg=0x15;
-            mask=0x1 << 4;
-            break;
-        
-        /*cpld2:tx_disable_1, 0x19*/
-         case MODULE_TXDISABLE_29 ... MODULE_TXDISABLE_30:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_29?0:1);
-            break;
-        case MODULE_TXDISABLE_31 ... MODULE_TXDISABLE_32:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_31?3:2);
-            break;
-        case MODULE_TXDISABLE_27 ... MODULE_TXDISABLE_28:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_27?5:4);
-            break;
-        case MODULE_TXDISABLE_23 ... MODULE_TXDISABLE_24:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_23?7:6);
-            break;
-        /*cpld2:tx_disable_2, 0x21*/
-        case MODULE_TXDISABLE_19 ... MODULE_TXDISABLE_20:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_19?1:0);
-            break;
-        case MODULE_TXDISABLE_33 ... MODULE_TXDISABLE_34:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_33?2:3);
-            break;
-        case MODULE_TXDISABLE_37 ... MODULE_TXDISABLE_38:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_37?4:5);
-            break;
-        case MODULE_TXDISABLE_41 ... MODULE_TXDISABLE_42:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_41?6:7);
-            break;
-        /*cpld2:tx_disable_3, 0x23*/
-        case MODULE_TXDISABLE_45 ... MODULE_TXDISABLE_46:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_45?0:1);
-            break;
-        case MODULE_TXDISABLE_47 ... MODULE_TXDISABLE_48:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_47?3:2);
-            break;
-        case MODULE_TXDISABLE_44:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << 4;
-            break;
-          
-        /*cpld3:present_1, 0x3*/
-        case MODULE_PRESENT_43:
-            addr=0x62;
-            reg=0x3;
-            mask=0x1;
-            break;
-        case MODULE_PRESENT_39 ... MODULE_PRESENT_40:
-            addr=0x62;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_39?2:1);
-            break;
-        case MODULE_PRESENT_35 ... MODULE_PRESENT_36:
-            addr=0x62;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_35?4:3);
-            break;
-        case MODULE_PRESENT_49 ... MODULE_PRESENT_50:
-            addr=0x62;
-            reg=0x3;
-            mask=0x1 << (attr->index==MODULE_PRESENT_49?5:6);
-            break;
-        case MODULE_PRESENT_53:
-            addr=0x62;
-            reg=0x3;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:present_2, 0x5*/
-        case MODULE_PRESENT_54:
-            addr=0x62;
-            reg=0x5;
-            mask=0x1;
-            break;
-        case MODULE_PRESENT_57 ... MODULE_PRESENT_58:
-            addr=0x62;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_57?1:2);
-            break;
-        case MODULE_PRESENT_61 ... MODULE_PRESENT_62:
-            addr=0x62;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_61?3:4);
-            break;
-        case MODULE_PRESENT_63 ... MODULE_PRESENT_64:
-            addr=0x62;
-            reg=0x5;
-            mask=0x1 << (attr->index==MODULE_PRESENT_63?6:5);
-            break;
-        case MODULE_PRESENT_60:
-            addr=0x62;
-            reg=0x5;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:present_3, 0x7*/
-        case MODULE_PRESENT_59:
-            addr=0x62;
-            reg=0x7;
-            mask=0x1;
-            break;
-        case MODULE_PRESENT_55 ... MODULE_PRESENT_56:
-            addr=0x62;
-            reg=0x7;
-            mask=0x1 << (attr->index==MODULE_PRESENT_55?2:1);
-            break;
-        case MODULE_PRESENT_51 ... MODULE_PRESENT_52:
-            addr=0x62;
-            reg=0x7;
-            mask=0x1 << (attr->index==MODULE_PRESENT_51?4:3);
-            break;
-            
-        /*cpld3:tx_fault_1, 0x9*/
-        case MODULE_TXFAULT_43:
-            addr=0x62;
-            reg=0x9;
-            mask=0x1;
-            break;
-        case MODULE_TXFAULT_39 ... MODULE_TXFAULT_40:
-            addr=0x62;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_39?2:1);
-            break;
-        case MODULE_TXFAULT_35 ... MODULE_TXFAULT_36:
-            addr=0x62;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_35?4:3);
-            break;
-        case MODULE_TXFAULT_49 ... MODULE_TXFAULT_50:
-            addr=0x62;
-            reg=0x9;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_49?5:6);
-            break;
-        case MODULE_TXFAULT_53:
-            addr=0x62;
-            reg=0x9;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:tx_fault_2, 0x11*/
-        case MODULE_TXFAULT_54:
-            addr=0x62;
-            reg=0x11;
-            mask=0x1;
-            break;
-        case MODULE_TXFAULT_57 ... MODULE_TXFAULT_58:
-            addr=0x62;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_57?1:2);
-            break;
-        case MODULE_TXFAULT_61 ... MODULE_TXFAULT_62:
-            addr=0x62;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_61?3:4);
-            break;
-        case MODULE_TXFAULT_63 ... MODULE_TXFAULT_64:
-            addr=0x62;
-            reg=0x11;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_63?6:5);
-            break;
-        case MODULE_TXFAULT_60:
-            addr=0x62;
-            reg=0x11;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:tx_fault_3, 0x13*/
-        case MODULE_TXFAULT_59:
-            addr=0x62;
-            reg=0x13;
-            mask=0x1;
-            break;
-        case MODULE_TXFAULT_55 ... MODULE_TXFAULT_56:
-            addr=0x62;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_55?2:1);
-            break;
-        case MODULE_TXFAULT_51 ... MODULE_TXFAULT_52:
-            addr=0x62;
-            reg=0x13;
-            mask=0x1 << (attr->index==MODULE_TXFAULT_51?4:3);
-            break;
-                      
-        /*cpld3:tx_disable_1, 0x15*/
-        case MODULE_TXDISABLE_43:
-            addr=0x62;
-            reg=0x15;
-            mask=0x1;
-            break;
-        case MODULE_TXDISABLE_39 ... MODULE_TXDISABLE_40:
-            addr=0x62;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_39?2:1);
-            break;
-        case MODULE_TXDISABLE_35 ... MODULE_TXDISABLE_36:
-            addr=0x62;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_35?4:3);
-            break;
-        case MODULE_TXDISABLE_49 ... MODULE_TXDISABLE_50:
-            addr=0x62;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_49?5:6);
-            break;
-        case MODULE_TXDISABLE_53:
-            addr=0x62;
-            reg=0x15;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:tx_disable_2, 0x17*/
-        case MODULE_TXDISABLE_54:
-            addr=0x62;
-            reg=0x17;
-            mask=0x1;
-            break;
-        case MODULE_TXDISABLE_57 ... MODULE_TXDISABLE_58:
-            addr=0x62;
-            reg=0x17;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_57?1:2);
-            break;
-        case MODULE_TXDISABLE_61 ... MODULE_TXDISABLE_62:
-            addr=0x62;
-            reg=0x17;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_61?3:4);
-            break;
-        case MODULE_TXDISABLE_63 ... MODULE_TXDISABLE_64:
-            addr=0x62;
-            reg=0x17;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_63?6:5);
-            break;
-        case MODULE_TXDISABLE_60:
-            addr=0x62;
-            reg=0x17;
-            mask=0x1 <<7;
-            break;
-        /*cpld3:tx_disable_3, 0x19*/ 
-        case MODULE_TXDISABLE_59:
-            addr=0x62;
-            reg=0x19;
-            mask=0x1;
-            break;
-        case MODULE_TXDISABLE_55 ... MODULE_TXDISABLE_56:
-            addr=0x62;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_55?2:1);
-            break;
-        case MODULE_TXDISABLE_51 ... MODULE_TXDISABLE_52:
-            addr=0x62;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_51?4:3);
-            break;
-	    default:
-		    return 0;
-    }
+            /*cpld3:tx_fault_1, 0x9*/
+            case MODULE_TXFAULT_43:
+                addr=0x62;
+                reg=0x9;
+                mask=0x1;
+                break;
+            case MODULE_TXFAULT_39 ... MODULE_TXFAULT_40:
+                addr=0x62;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_39?2:1);
+                break;
+            case MODULE_TXFAULT_35 ... MODULE_TXFAULT_36:
+                addr=0x62;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_35?4:3);
+                break;
+            case MODULE_TXFAULT_49 ... MODULE_TXFAULT_50:
+                addr=0x62;
+                reg=0x9;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_49?5:6);
+                break;
+            case MODULE_TXFAULT_53:
+                addr=0x62;
+                reg=0x9;
+                mask=0x1 <<7;
+                break;
+            /*cpld3:tx_fault_2, 0x11*/
+            case MODULE_TXFAULT_54:
+                addr=0x62;
+                reg=0x11;
+                mask=0x1;
+                break;
+            case MODULE_TXFAULT_57 ... MODULE_TXFAULT_58:
+                addr=0x62;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_57?1:2);
+                break;
+            case MODULE_TXFAULT_61 ... MODULE_TXFAULT_62:
+                addr=0x62;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_61?3:4);
+                break;
+            case MODULE_TXFAULT_63 ... MODULE_TXFAULT_64:
+                addr=0x62;
+                reg=0x11;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_63?6:5);
+                break;
+             case MODULE_TXFAULT_60:
+                addr=0x62;
+                reg=0x11;
+                mask=0x1 <<7;
+                break;
+            /*cpld3:tx_fault_3, 0x13*/
+            case MODULE_TXFAULT_59:
+                addr=0x62;
+                reg=0x13;
+                mask=0x1;
+                break;
+            case MODULE_TXFAULT_55 ... MODULE_TXFAULT_56:
+                addr=0x62;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_55?2:1);
+                break;
+            case MODULE_TXFAULT_51 ... MODULE_TXFAULT_52:
+                addr=0x62;
+                reg=0x13;
+                mask=0x1 << (attr->index==MODULE_TXFAULT_51?4:3);
+                break;
+            default:
+                return -ENXIO;
+        } /*End of switch (attr->index)*/
+    }/*End of  if (attr->index >= MODULE_TXDISABLE_1 && attr->index <= MODULE_TXDISABLE_64)*/
 
     if( attr->index >= MODULE_PRESENT_1 && attr->index <= MODULE_PRESENT_74 )        
     {
         revert = 1;
     }
-
     mutex_lock(&data->update_lock);
-	status = asgvolt64_cpld_read_internal(client, reg);
-	if (unlikely(status < 0)) {
-		goto exit;
-	}
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }
 	    
-	mutex_unlock(&data->update_lock);
+    mutex_unlock(&data->update_lock);
 	    
-	return sprintf(buf, "%d\n", revert ? !(status & mask) : !!(status & mask));
+    return sprintf(buf, "%d\n", revert ? !(status & mask) : !!(status & mask));
 
 exit:
-	mutex_unlock(&data->update_lock);
-	return status;
+    mutex_unlock(&data->update_lock);
+    return status;
+        
 }
 
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	struct i2c_client *client = to_i2c_client(dev);
-	struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
-	long disable;
-	int status;
-    u8 reg = 0, mask = 0, addr=0x60;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    long disable;
+    int status;
+    u8 reg = 0, mask = 0;
      
-	status = kstrtol(buf, 10, &disable);
-	if (status) {
-		//return status;
-		status=1;
-	}
-	else
-	    status=0;
-    
-    switch (attr->index)
+    status = kstrtol(buf, 10, &disable);
+    if (status) {
+        return status;
+    }
+	
+    if (disable) {
+        disable=1;
+    }
+    else
+        disable=0;
+
+    if (attr->index >=MODULE_TXDISABLE_67 && attr->index <=MODULE_TXDISABLE_74)
     {
-         /*25g sfp*/
-         case MODULE_TXDISABLE_67 ... MODULE_TXDISABLE_74:
-            addr=0x61;
-            reg=0x25;
-            mask=0x1 << (attr->index - MODULE_TXDISABLE_67);
-            break;
-        
-        /*gpon*/
-        /*cpld1:tx_disable_1,0x15*/
-        case MODULE_TXDISABLE_1 ... MODULE_TXDISABLE_2:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_1?0:1);
-            break;
-        case MODULE_TXDISABLE_5 ... MODULE_TXDISABLE_6:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_5?2:3);
-            break;        
-        case MODULE_TXDISABLE_9 ... MODULE_TXDISABLE_10:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_9?4:5);
-            break;
-        case MODULE_TXDISABLE_13 ... MODULE_TXDISABLE_14:
-            addr=0x60;
-            reg=0x15;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_13?6:7);
-            break;
-         /*cpld1:tx_disable_2, 0x17*/
-        case MODULE_TXDISABLE_15 ... MODULE_TXDISABLE_16:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_15)?1:0);
-            break;
-        case MODULE_TXDISABLE_11 ... MODULE_TXDISABLE_12:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_11)?3:2);
-            break;
-        case MODULE_TXDISABLE_7 ... MODULE_TXDISABLE_8:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_7)?5:4);
-            break;
-        case MODULE_TXDISABLE_3 ... MODULE_TXDISABLE_4:
-            addr=0x60;
-            reg=0x17;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_3)?7:6);
-            break;
-        /*cpld1:tx_disable_3, 0x19*/
-        case MODULE_TXDISABLE_17 ... MODULE_TXDISABLE_18:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_17)?0:1);
-            break;
-        case MODULE_TXDISABLE_21 ... MODULE_TXDISABLE_22:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_21)?2:3);
-            break;
-        case MODULE_TXDISABLE_25 ... MODULE_TXDISABLE_26:
-            addr=0x60;
-            reg=0x19;
-            mask=0x1 << ((attr->index==MODULE_TXDISABLE_25)?4:5);
-            break;
-            
-         /*cpld2:tx_disable_1, 0x19*/
-         case MODULE_TXDISABLE_29 ... MODULE_TXDISABLE_30:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_29?0:1);
-            break;
-        case MODULE_TXDISABLE_31 ... MODULE_TXDISABLE_32:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_31?3:2);
-            break;
-        case MODULE_TXDISABLE_27 ... MODULE_TXDISABLE_28:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_27?5:4);
-            break;
-        case MODULE_TXDISABLE_23 ... MODULE_TXDISABLE_24:
-            addr=0x61;
-            reg=0x19;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_23?7:6);
-            break;
-        /*cpld2:tx_disable_2, 0x21*/
-        case MODULE_TXDISABLE_19 ... MODULE_TXDISABLE_20:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_19?1:0);
-            break;
-        case MODULE_TXDISABLE_33 ... MODULE_TXDISABLE_34:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_33?2:3);
-            break;
-        case MODULE_TXDISABLE_37 ... MODULE_TXDISABLE_38:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_37?4:5);
-            break;
-        case MODULE_TXDISABLE_41 ... MODULE_TXDISABLE_42:
-            addr=0x61;
-            reg=0x21;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_41?6:7);
-            break;
-        /*cpld2:tx_disable_3, 0x23*/
-        case MODULE_TXDISABLE_45 ... MODULE_TXDISABLE_46:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_45?0:1);
-            break;
-        case MODULE_TXDISABLE_47 ... MODULE_TXDISABLE_48:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << (attr->index==MODULE_TXDISABLE_47?3:2);
-            break;
-        case MODULE_TXDISABLE_44:
-            addr=0x61;
-            reg=0x23;
-            mask=0x1 << 4;
-            break;
-	    default:
-		    return 0;
+        reg=0x25;
+        mask=0x1 << (attr->index - MODULE_TXDISABLE_67);
+    }
+    else if (attr->index >=MODULE_TXDISABLE_1 && attr->index <=MODULE_TXDISABLE_64)
+    {
+        reg=tx_disable_map_table[attr->index- MODULE_TXDISABLE_1].reg;
+        mask=0x1 << tx_disable_map_table[attr->index- MODULE_TXDISABLE_1].mask;
+    }
+    else
+    {
+        return -ENXIO;;
     }
 
     /* Read current status */
     mutex_lock(&data->update_lock);
-	status = asgvolt64_cpld_read_internal(client, reg);
-	if (unlikely(status < 0)) {
-		goto exit;
-	}
-	/* Update tx_disable status */
-	if (disable) {
-		status |= mask;
-	}
-	else {
-	    
-	    status &= ~mask;
-	}
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }
+    /* Update tx_disable status */
+    if (disable) {
+        status |= mask;
+    }
+    else {
+        status &= ~mask;
+    }
     status = asgvolt64_cpld_write_internal(client, reg, status);
-	if (unlikely(status < 0)) {
-		goto exit;
-	}
+    if (unlikely(status < 0)) {
+        goto exit;
+    }
     
     mutex_unlock(&data->update_lock);
     return count;
 
 exit:
-	mutex_unlock(&data->update_lock);
-	return status;
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t access(struct device *dev, struct device_attribute *da,
@@ -1381,6 +1600,277 @@ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
+
+static ssize_t show_pon_port_act_led(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    int status = 0;
+    u8 reg = 0, mask = 0, revert = 1;
+    
+    if (attr->index >=PON_PORT_ACT_LED_1 && attr->index <=PON_PORT_ACT_LED_64)
+    {
+        mask=0x1 << act_led_map_table[attr->index-PON_PORT_ACT_LED_1].mask;
+        reg=act_led_map_table[attr->index-PON_PORT_ACT_LED_1].reg;
+    }
+    else
+       return -ENXIO;
+       
+    mutex_lock(&data->update_lock);
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }	    
+    mutex_unlock(&data->update_lock);
+	    
+    return sprintf(buf, "%d\n", revert ? !(status & mask) : !!(status & mask));
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+    
+}
+
+static ssize_t set_pon_port_act_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    long set_led;
+    int status, val;
+    u8 reg = 0, mask = 0;
+     
+    status = kstrtol(buf, 10, &set_led);
+    if (status) {
+        return status;
+    }
+    if(set_led)
+        val=1;
+    else
+        val=0;
+	    
+    if (attr->index >=PON_PORT_ACT_LED_1 && attr->index <=PON_PORT_ACT_LED_64)
+    {
+        mask=0x1 << act_led_map_table[attr->index-PON_PORT_ACT_LED_1].mask;
+        reg=act_led_map_table[attr->index-PON_PORT_ACT_LED_1].reg;
+    }
+    else
+       return -ENXIO;
+  
+    /* Read current status */
+    mutex_lock(&data->update_lock);
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }
+    /* Update led status */
+    if (val) {
+        status &= ~mask;
+    }
+    else {
+        status |= mask;
+    }
+    status = asgvolt64_cpld_write_internal(client, reg, status);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }
+    
+    mutex_unlock(&data->update_lock);
+    return count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+	
+}
+
+typedef struct port_led_s
+{
+    u8 addr;
+    u8 reg[3]; /*green, blue, red  reg*/
+    u8 val[3]; /*green, blue, red reg's val*/
+}port_led_t;
+
+static ssize_t show_pon_port_link_led(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    int status = 0, ouput=0, i=0;
+    u8 mask = 0;
+    port_led_t led_table;
+    
+    memset(&led_table, 0x0, sizeof(led_table));
+    if (attr->index >=PON_PORT_LINK_LED_1 && attr->index <=PON_PORT_LINK_LED_64)
+    {
+        mask=0x1 << link_led_map_table[attr->index-PON_PORT_LINK_LED_1].mask;
+        for(i=0;i<3;i++)
+        {
+            led_table.reg[i]=link_led_map_table[attr->index-PON_PORT_LINK_LED_1].reg[i];
+	}
+    }
+    else
+       return -ENXIO;
+	    
+    /*Because green, blue, red are belong to different reg.
+     *So set one led color to on, set other two to off.
+     *Or set three to off.
+     *
+     */
+    for(i=0;i<3;i++)
+    {
+        /* Read current status */
+        mutex_lock(&data->update_lock);
+        status = asgvolt64_cpld_read_internal(client, led_table.reg[i]);
+        if (unlikely(status < 0)) {
+            goto exit;
+        }
+        led_table.val[0]= !(status & mask);
+        mutex_unlock(&data->update_lock);
+        if(led_table.val[i])
+        {
+            ouput=i+1;
+	    break;
+        }
+    }
+
+    return sprintf(buf, "%d\n", ouput);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+
+/* color : 0: off
+ * 1: green, 2: blue, 3: red 
+ */
+static ssize_t set_pon_port_link_led(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    long set_led;
+    int status,i;
+    port_led_t led_table;
+    u8 mask=0;
+    
+    status = kstrtol(buf, 10, &set_led);
+    if (status) {
+        return status;
+    }
+    memset(&led_table, 0x0, sizeof(led_table));
+	
+    if (attr->index >=PON_PORT_LINK_LED_1 && attr->index <=PON_PORT_LINK_LED_64)
+    {
+        mask=0x1 << link_led_map_table[attr->index-PON_PORT_LINK_LED_1].mask;
+        for(i=0;i<3;i++)
+        {
+            led_table.reg[i]=link_led_map_table[attr->index-PON_PORT_LINK_LED_1].reg[i];
+        }
+        if (set_led==1)            
+            led_table.val[0]=1;
+        else if (set_led==2)
+            led_table.val[1]=1;
+        else if (set_led==3)
+            led_table.val[2]=1;
+        else
+            led_table.val[2]=led_table.val[1]=led_table.val[0]=0;
+    }
+    else
+       return -ENXIO;
+
+    /*Because green, blue, red are belong to different reg.
+     *So set one led color to on, set other two to off.
+     *Or set three to off.
+     *
+     */
+    for(i=0;i<3;i++)
+    {
+        /* Read current status */
+        mutex_lock(&data->update_lock);
+        status = asgvolt64_cpld_read_internal(client, led_table.reg[i]);
+        if (unlikely(status < 0)) {
+            goto exit;
+        }
+        if (led_table.val[i]==1)
+            status &= ~mask;
+        else
+            status |= mask;
+        status = asgvolt64_cpld_write_internal(client, led_table.reg[i], status);
+        if (unlikely(status < 0)) {
+            goto exit;
+        }
+        mutex_unlock(&data->update_lock);
+    }
+    
+    return count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+	
+	
+}
+
+static ssize_t init_pon_port_link_led(struct i2c_client *client, enum cpld_type  type)
+{
+    
+    switch (type)
+    {
+        case asgvolt64_cpld1:
+            asgvolt64_cpld_write_internal(client, 0x21, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x22, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x23, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x24, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x25, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x26, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x27, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x28, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x29, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x30, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x31, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x32, 0xff);
+            break;
+        case asgvolt64_cpld2:
+            asgvolt64_cpld_write_internal(client, 0x27, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x28, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x29, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x30, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x31, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x32, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x33, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x34, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x35, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x36, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x37, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x38, 0xff);
+            break;
+        case asgvolt64_cpld3:
+            asgvolt64_cpld_write_internal(client, 0x21, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x22, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x23, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x24, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x25, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x26, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x27, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x28, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x29, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x30, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x31, 0xff);
+            asgvolt64_cpld_write_internal(client, 0x32, 0xff);
+            break;
+        default:
+            break;
+    }
+    return 0; 
+}
+
 
 static void asgvolt64_cpld_add_client(struct i2c_client *client)
 {
@@ -1469,12 +1959,15 @@ static int asgvolt64_cpld_probe(struct i2c_client *client,
     {    
         case asgvolt64_cpld1:
             group = &asgvolt64_cpld1_group;
+            init_pon_port_link_led(client, asgvolt64_cpld1);
             break;            
         case asgvolt64_cpld2:
             group = &asgvolt64_cpld2_group;
+            init_pon_port_link_led(client, asgvolt64_cpld2);
             break;
         case asgvolt64_cpld3:
             group = &asgvolt64_cpld3_group;
+            init_pon_port_link_led(client, asgvolt64_cpld3);
             break;
             
         default:

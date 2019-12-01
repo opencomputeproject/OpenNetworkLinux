@@ -57,7 +57,7 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
     def baseconfig(self):
         #self.insmod('ym2651y')
         self.insmod('optoe')
-        for m in [ 'cpld', 'fan', 'psu', 'leds', 'thermal' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'thermal', 'sys' ]:
             self.insmod("x86-64-accton-asgvolt64-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
