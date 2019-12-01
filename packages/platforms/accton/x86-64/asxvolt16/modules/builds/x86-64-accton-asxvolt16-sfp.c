@@ -130,6 +130,8 @@ static ssize_t show_present(struct device *dev, struct device_attribute *da, cha
 static ssize_t sfp_show_tx_rx_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t qsfp_show_tx_rx_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t sfp_set_tx_disable(struct device *dev, struct device_attribute *da, const char *buf, size_t count);
+static ssize_t show_tx_disable(struct device *dev, struct device_attribute *da,
+             char *buf);
 static ssize_t qsfp_set_tx_disable(struct device *dev, struct device_attribute *da, const char *buf, size_t count);;
 static ssize_t sfp_eeprom_read(struct i2c_client *, u8, u8 *,int);
 static ssize_t sfp_eeprom_write(struct i2c_client *, u8 , const char *,int);
@@ -164,7 +166,7 @@ enum sfp_sysfs_attributes {
 static SENSOR_DEVICE_ATTR(sfp_port_number, S_IRUGO, show_port_number, NULL, PORT_NUMBER);
 static SENSOR_DEVICE_ATTR(sfp_is_present,  S_IRUGO, show_present, NULL, PRESENT);
 static SENSOR_DEVICE_ATTR(sfp_is_present_all,  S_IRUGO, show_present, NULL, PRESENT_ALL);
-static SENSOR_DEVICE_ATTR(sfp_tx_disable,  S_IWUSR | S_IRUGO, sfp_show_tx_rx_status, sfp_set_tx_disable, TX_DISABLE);
+static SENSOR_DEVICE_ATTR(sfp_tx_disable,  S_IWUSR | S_IRUGO, show_tx_disable, sfp_set_tx_disable, TX_DISABLE);
 static SENSOR_DEVICE_ATTR(sfp_tx_fault,	 S_IRUGO, sfp_show_tx_rx_status, NULL, TX_FAULT);
 
 /* QSFP attributes for sysfs */
@@ -323,6 +325,32 @@ struct sfp_port_data {
 #endif
 };
 
+typedef struct tx_dis_port_map_s
+{    
+    u8  reg;
+    int mask;
+}tx_dis_port_map_t;
+
+#define PON_PORT_NUM 16
+tx_dis_port_map_t tx_disable_map_table[PON_PORT_NUM]={
+    {0x17, 0x40}, /*pon port-1*/
+    {0x17, 0x80},
+    {0x15, 0x10},
+    {0x15, 0x20},
+    {0x15, 0x4},
+    {0x15, 0x8},
+    {0x15, 0x1},
+    {0x15, 0x2},
+    {0x15, 0x40},
+    {0x15, 0x80},
+    {0x17, 0x1},
+    {0x17, 0x2},
+    {0x17, 0x4},
+    {0x17, 0x8},
+    {0x17, 0x10},
+    {0x17, 0x20}/*pon port-16*/
+};
+
 #if (MULTIPAGE_SUPPORT == 1)
 static ssize_t sfp_port_read_write(struct sfp_port_data *port_data,
 		char *buf, loff_t off, size_t len, qsfp_opcode_e opcode);
@@ -432,41 +460,79 @@ static ssize_t sfp_set_tx_disable(struct device *dev, struct device_attribute *d
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct sfp_port_data *data = i2c_get_clientdata(client);
-	u8 cpld_reg = 0, cpld_val = 0, cpld_bit = 0;
-	long disable;
-	int error;
+	int status;
+	u8 cpld_reg = 0, /*cpld_bit = 0,*/ mask;
+	long disable;	
 
 	if (data->driver_type == DRIVER_TYPE_QSFP) {
 		return qsfp_set_tx_disable(dev, da, buf, count);
 	}
-
-	error = kstrtol(buf, 10, &disable);
-	if (error) {
-		return error;
+	status = kstrtol(buf, 10, &disable);
+	if (status) {
+		return status;
 	}
-
-	mutex_lock(&data->update_lock);
-
-	cpld_reg = (data->port <= asxvolt16_sfp8) ? 0x15 : 0x17;
-	cpld_bit = 1 << (data->port % 8);
-
-	/* Read current status */
-	cpld_val = asxvolt16_cpld_read(0x62, cpld_reg);
-
-	/* Update tx_disable status */
-	if (disable) {
-		data->xfp->status[1] |= BIT_INDEX(data->port);
-		cpld_val |= cpld_bit;
-	}
-	else {
-		data->xfp->status[1] &= ~BIT_INDEX(data->port);
-		cpld_val &= ~cpld_bit;
-	}
-
-	asxvolt16_cpld_write(0x62, cpld_reg, cpld_val);
-	mutex_unlock(&data->update_lock);
-	return count;
+    
+    if(data->port >=asxvolt16_sfp1 && data->port<=asxvolt16_sfp16)
+    {
+        cpld_reg=tx_disable_map_table[data->port].reg;
+        mask=tx_disable_map_table[data->port].mask;
+    }
+    else
+        return -ENXIO;
+    
+    mutex_lock(&data->update_lock);
+	
+    /* Read current status */
+    status = asxvolt16_cpld_read(0x62, cpld_reg);
+    if(status<0)
+    {
+        mutex_unlock(&data->update_lock);
+        return status;
+    }
+    
+    /* Update tx_disable status */
+    if (disable) {
+        status |= mask;
+    }
+    else {
+        status &= ~mask;
+    }
+    asxvolt16_cpld_write(0x62, cpld_reg, status);
+    mutex_unlock(&data->update_lock);
+    return count;
 }
+
+static ssize_t show_tx_disable(struct device *dev, struct device_attribute *da,
+             char *buf)
+{   
+    struct i2c_client *client = to_i2c_client(dev);
+    struct sfp_port_data *data = i2c_get_clientdata(client);
+    int status = 0;
+    u8 reg =0, mask=0;
+
+    if(data->port >=asxvolt16_sfp1 && data->port<=asxvolt16_sfp16)
+    {
+        reg=tx_disable_map_table[data->port].reg;
+        mask=tx_disable_map_table[data->port].mask;
+    }
+    else
+        return -ENXIO;
+
+    mutex_lock(&data->update_lock);
+    status = asxvolt16_cpld_read(0x62, reg);
+    if (unlikely(status < 0)) {
+        goto exit;
+    }	    
+    mutex_unlock(&data->update_lock);
+	    
+    return sprintf(buf, "%d\n", !!(status & mask));
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+        
+}
+
 /* Platform dependent --- */
 
 static int sfp_is_port_present(struct i2c_client *client, int port)
