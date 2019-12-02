@@ -194,7 +194,7 @@ static ssize_t get_port_cpld0_reg(struct device *dev, struct device_attribute *d
         default:
             return sprintf(buf, "%d not found", attr->index);
     }
-    
+
     switch (mask) {
         case 0xFF:
             return sprintf(buf, "0x%02x%s", value, note);
@@ -233,7 +233,7 @@ static ssize_t set_port_cpld0_reg(struct device *dev, struct device_attribute *d
     cmd_data[3] = 0x01;
 
     dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
-   
+
     err = kstrtoul(buf, 0, &set_data_ul);
     if (err){
         return err;
@@ -268,7 +268,7 @@ static ssize_t set_port_cpld0_reg(struct device *dev, struct device_attribute *d
         default :
             return sprintf((char *)buf, "%d not found", attr->index);
     }
-   
+
     switch (mask) {
         case 0xFF:
         case 0x0F:
@@ -589,7 +589,7 @@ static int __init delta_agc7008s_swpld_init(void)
 error_port_cpld0_device:
     platform_driver_unregister(&port_cpld0_driver);
 error_port_cpld0_driver:
-    platform_driver_unregister(&system_cpld_device);
+    platform_device_unregister(&system_cpld_device);
 error_system_cpld_device:
     platform_driver_unregister(&system_cpld_driver);
 error_system_cpld_driver:
