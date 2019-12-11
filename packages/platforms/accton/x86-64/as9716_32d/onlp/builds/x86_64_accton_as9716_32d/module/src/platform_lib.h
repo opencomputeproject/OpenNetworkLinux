@@ -61,7 +61,9 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/17-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-0/0-0056/eeprom"
+/*Old board's eeprom i2c-addr is 0x56, new board eeprom i2c-addr is 0x57*/
+#define IDPROM_PATH_1 "/sys/class/i2c-adapter/i2c-0/0-0057/eeprom"
+#define IDPROM_PATH_2 "/sys/class/i2c-adapter/i2c-0/0-0056/eeprom"
 
 int onlp_file_write_integer(char *filename, int value);
 int onlp_file_read_binary(char *filename, char *buffer, int buf_size, int data_len);

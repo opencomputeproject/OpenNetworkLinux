@@ -3,6 +3,12 @@ from onl.platform.accton import *
 
 import commands
 
+
+def eeprom_check():
+    cmd = "i2cget -y 0 0x57"
+    status, output = commands.getstatusoutput(cmd)
+    return status
+
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
 #It happen when read 16th-byte offset that value is 0x8. So disable chip 
 def disable_i2c_ir3570a(addr):
@@ -104,6 +110,12 @@ class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
             
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+24), shell=True)
        
-        ir3570_check()
+        #Dut to new board eeprom i2c-addr is 0x57, old board eeprom i2c-addr is 0x56. So need to check and set correct i2c-addr sysfs
+        ret=eeprom_check()
+        if ret==0:
+            self.new_i2c_device('24c02', 0x57, 0)
+        else:
+            ir3570_check()
+            self.new_i2c_device('24c02', 0x56, 0)
       
         return True
