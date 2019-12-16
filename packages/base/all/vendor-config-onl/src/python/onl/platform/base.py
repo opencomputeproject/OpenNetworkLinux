@@ -225,6 +225,7 @@ class OnlPlatformBase(object):
                        kdir,
                        ]
 
+        trypaths = []
         for d in searchdirs:
             for e in [ ".ko", "" ]:
                 path = os.path.join(d, "%s%s" % (module, e))
@@ -232,9 +233,11 @@ class OnlPlatformBase(object):
                     cmd = "insmod %s %s" % (path, " ".join([ "%s=%s" % (k,v) for (k,v) in params.iteritems() ]))
                     subprocess.check_call(cmd, shell=True);
                     return True
+                else:
+                    trypaths.append(path)
 
         if required:
-            raise RuntimeError("kernel module %s could not be found." % (module))
+            raise RuntimeError("kernel module %s could not be found.\n The following paths were searched: \n    %s\n" % (module, "\n   ".join(trypaths)))
         else:
             return False
 
