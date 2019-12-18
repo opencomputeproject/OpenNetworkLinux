@@ -396,7 +396,7 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
         aim_free(pi->cpld_versions);
     }
 
-    if (pi->cpld_versions) {
+    if (pi->other_versions) {
         aim_free(pi->other_versions);
     }
 }

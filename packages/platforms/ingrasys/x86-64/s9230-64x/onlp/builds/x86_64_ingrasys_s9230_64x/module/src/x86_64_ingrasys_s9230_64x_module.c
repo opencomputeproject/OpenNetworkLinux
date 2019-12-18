@@ -30,7 +30,7 @@
 static int
 datatypes_init__(void)
 {
-#define INGRAYSYS_S9230_64X_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
+#define INGRASYS_S9230_64X_ENUMERATION_ENTRY(_enum_name, _desc)     AIM_DATATYPE_MAP_REGISTER(_enum_name, _enum_name##_map, _desc,                               AIM_LOG_INTERNAL);
 #include <x86_64_ingrasys_s9230_64x/x86_64_ingrasys_s9230_64x.x>
     return 0;
 }
