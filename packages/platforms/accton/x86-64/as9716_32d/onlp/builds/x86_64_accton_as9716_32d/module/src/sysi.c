@@ -59,28 +59,36 @@ onlp_sysi_platform_get(void)
 
 int
 onlp_sysi_onie_data_get(uint8_t** data, int* size)
-{
-    int ret = ONLP_STATUS_OK;
-    int i = 0;
+{    
     uint8_t* rdata = aim_zmalloc(256);
-  
-    for (i = 0; i < 128; i++) {
-        ret = onlp_i2c_readw(0, 0x56, i*2, ONLP_I2C_F_FORCE);
-        if (ret < 0) {
-            aim_free(rdata);
-            *size = 0;
-            return ret;
+		
+    /*New board eeprom i2c-addr is 0x57. Old board's eeprom i2c-addr is 0x56*/		
+    if(onlp_file_read(rdata, 256, size, IDPROM_PATH_1) == ONLP_STATUS_OK) /*0x57*/
+    {
+        if(*size == 256)
+        {
+            *data = rdata;
+            return ONLP_STATUS_OK;
         }
-
-        rdata[i*2]   = ret & 0xff;
-        rdata[i*2+1] = (ret >> 8) & 0xff;
     }
+    else
+    {
+        if(onlp_file_read(rdata, 256, size, IDPROM_PATH_2) == ONLP_STATUS_OK) /*0x56*/
+        {
+            if(*size == 256)
+            {
+                *data = rdata;
+                return ONLP_STATUS_OK;
+            }
+        }
+    }
+    aim_free(rdata);
+    *size = 0;
 
-    *size = 256;
-    *data = rdata;
-
-    return ONLP_STATUS_OK;
+    return ONLP_STATUS_E_INTERNAL;
 }
+
+
 
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
