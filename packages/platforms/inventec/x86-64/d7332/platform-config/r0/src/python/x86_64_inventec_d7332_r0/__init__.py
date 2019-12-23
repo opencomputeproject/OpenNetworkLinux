@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.inventec import *
 
 class OnlPlatform_x86_64_inventec_d7332_r0(OnlPlatformInventec,
-                                              OnlPlatformPortConfig_48x25_6x100):
+                                              OnlPlatformPortConfig_32x400):
     PLATFORM='x86-64-inventec-d7332-r0'
     MODEL="D7332"
     SYS_OBJECT_ID=".7332.1"
