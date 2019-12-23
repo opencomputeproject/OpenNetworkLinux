@@ -11,7 +11,7 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
     FAN_VPD_ADDR_BASE=0x52
 
     def baseconfig(self):
-        os.system("insmod /lib/modules/`uname -r`/onl/inventec/x86-64-inventec-d6432/gpio-ich.ko gpiobase=0")
+        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko gpiobase=0")
         self.insmod('i2c-gpio')
         self.insmod('inv_ucd90160')
         self.insmod('inv-i2c-mux-pca9641')
