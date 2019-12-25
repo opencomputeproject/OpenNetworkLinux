@@ -95,6 +95,12 @@ enum onlp_fan_id {
     ONLP_FAN_4,
     ONLP_FAN_5,
     ONLP_FAN_6,
+    ONLP_FAN_7,
+    ONLP_FAN_8,
+    ONLP_FAN_9,
+    ONLP_FAN_10,
+    ONLP_FAN_11,
+    ONLP_FAN_12,
     ONLP_FAN_PSU_1,
     ONLP_FAN_PSU_2,
     ONLP_FAN_MAX	/*num limit include reserved*/

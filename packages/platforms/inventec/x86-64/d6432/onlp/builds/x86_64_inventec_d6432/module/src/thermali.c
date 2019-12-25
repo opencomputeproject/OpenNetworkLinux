@@ -14,8 +14,6 @@
 #include <fcntl.h>
 #include <onlp/platformi/psui.h>
 #include "platform_lib.h"
-#include <sys/types.h>
-#include <dirent.h>
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -29,26 +27,32 @@ typedef struct thermali_path_s {
     char file[ONLP_CONFIG_INFO_STR_MAX];
 } thermali_path_t;
 
-#define PSU1_ADDR "58"
-#define PSU2_ADDR "59"
+#define MAKE_THERMAL_PATH_ON_CPU(id)                        { "/var/coretemp/temp"#id"_input"}
+#define MAKE_THERMAL_PATH_ON_MAIN_BROAD(id)                 { "/var/thermal_"#id"/temp1_input"}
+#define MAKE_THERMAL_PATH_ON_PSU(psu_id,thermal_id)       { "/var/psu"#psu_id"/device/temp"#thermal_id"_input"}
+#define MAKE_THERMAL_PATH(thermal_id)                       { "/var/thermals/temp"#thermal_id"_input"}
 
-static char* thermal_i2c_addr[]= {
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "3-0018",
-    "3-0018",
-    "3-0048",
-    "3-0049",
-    "3-004a",
-    "3-004d",
-    "3-004e"
+static thermali_path_t __path_list[ ] = {
+    {},
+    MAKE_THERMAL_PATH_ON_CPU(1),
+    MAKE_THERMAL_PATH_ON_CPU(2),
+    MAKE_THERMAL_PATH_ON_CPU(3),
+    MAKE_THERMAL_PATH_ON_CPU(4),
+    MAKE_THERMAL_PATH_ON_CPU(5),
+    MAKE_THERMAL_PATH(1),
+    MAKE_THERMAL_PATH(2),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(8),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(9),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(10),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(11),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(12),
+    MAKE_THERMAL_PATH_ON_PSU(1,1),
+    MAKE_THERMAL_PATH_ON_PSU(1,2),
+    MAKE_THERMAL_PATH_ON_PSU(1,3),
+    MAKE_THERMAL_PATH_ON_PSU(2,1),
+    MAKE_THERMAL_PATH_ON_PSU(2,2),
+    MAKE_THERMAL_PATH_ON_PSU(2,3)
 };
-
-static thermali_path_t __path_list[ONLP_THERMAL_MAX] ;
 
 #define MAKE_THERMAL_INFO_NODE_ON_CPU_PHY \
     {   { ONLP_THERMAL_ID_CREATE(ONLP_THERMAL_CPU_PHY), "CPU Physical", 0}, \
@@ -98,85 +102,12 @@ static onlp_thermal_info_t __onlp_thermal_info[ ] = {
     MAKE_THERMAL_INFO_NODE_ON_PSU(3,2),
 };
 
-
-static int _get_hwmon_path( char* parent_dir, char* target_path)
-{
-
-    DIR * dir;
-    struct dirent * ptr;
-    dir = opendir(parent_dir);
-    char* buf=NULL;
-    int ret=ONLP_STATUS_E_INVALID;
-
-    while( (ptr = readdir(dir))!=NULL ) {
-        buf=ptr->d_name;
-        if( strncmp(buf,"hwmon",5)==0 ) {
-            ret=ONLP_STATUS_OK;
-            break;
-        }
-    }
-    closedir(dir);
-    if(ret==ONLP_STATUS_OK) {
-        snprintf(target_path, ONLP_CONFIG_INFO_STR_MAX, "%s%s/", parent_dir , buf);
-    } else {
-        printf("[ERROR] Can't find valid path\n");
-    }
-
-    return ret;
-
-}
-
 /*
  * This will be called to intiialize the thermali subsystem.
  */
 int
 onlp_thermali_init(void)
 {
-    char base[ONLP_CONFIG_INFO_STR_MAX];
-    int thermal_id=ONLP_THERMAL_CPU_PHY;
-    int ret=ONLP_STATUS_OK;
-
-    for(thermal_id=ONLP_THERMAL_CPU_PHY; thermal_id<ONLP_THERMAL_MAX; thermal_id++) {
-        switch(thermal_id) {
-        case ONLP_THERMAL_CPU_PHY:
-        case ONLP_THERMAL_CPU_CORE0:
-        case ONLP_THERMAL_CPU_CORE1:
-        case ONLP_THERMAL_CPU_CORE2:
-        case ONLP_THERMAL_CPU_CORE3:
-            ret=_get_hwmon_path(INV_CTMP_BASE,base);
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,"%stemp%d_input",base,thermal_id-ONLP_THERMAL_CPU_PHY+1);
-            break;
-        case ONLP_THERMAL_1_ON_MAIN_BROAD:
-        case ONLP_THERMAL_2_ON_MAIN_BROAD:
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,INV_DEVICE_BASE"%s/hwmon/",thermal_i2c_addr[thermal_id]);
-            ret=_get_hwmon_path(__path_list[thermal_id].file,base);
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,"%stemp%d_input",base,thermal_id-ONLP_THERMAL_1_ON_MAIN_BROAD+1);
-            break;
-        case ONLP_THERMAL_3_ON_MAIN_BROAD:
-        case ONLP_THERMAL_4_ON_MAIN_BROAD:
-        case ONLP_THERMAL_5_ON_MAIN_BROAD:
-        case ONLP_THERMAL_6_ON_MAIN_BROAD:
-        case ONLP_THERMAL_7_ON_MAIN_BROAD:
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,INV_DEVICE_BASE"%s/hwmon/",thermal_i2c_addr[thermal_id]);
-            ret=_get_hwmon_path(__path_list[thermal_id].file,base);
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,"%stemp1_input",base);
-            break;
-        case ONLP_THERMAL_1_ON_PSU1:
-        case ONLP_THERMAL_2_ON_PSU1:
-        case ONLP_THERMAL_3_ON_PSU1:
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,INV_DEVICE_BASE"%d-00"PSU1_ADDR"/temp%d_input",PSU_I2C_CHAN,thermal_id-ONLP_THERMAL_1_ON_PSU1+1);
-            break;
-        case ONLP_THERMAL_1_ON_PSU2:
-        case ONLP_THERMAL_2_ON_PSU2:
-        case ONLP_THERMAL_3_ON_PSU2:
-            snprintf(__path_list[thermal_id].file,ONLP_CONFIG_INFO_STR_MAX,INV_DEVICE_BASE"%d-00"PSU2_ADDR"/temp%d_input",PSU_I2C_CHAN,thermal_id-ONLP_THERMAL_1_ON_PSU2+1);
-            break;
-        }
-        if(ret!=ONLP_STATUS_OK) {
-            break;
-        }
-    }
-
     return ONLP_STATUS_OK;
 }
 

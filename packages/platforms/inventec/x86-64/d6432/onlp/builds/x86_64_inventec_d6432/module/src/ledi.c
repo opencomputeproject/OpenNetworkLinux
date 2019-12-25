@@ -32,6 +32,7 @@
 #define FAN_LED_CAPS ONLP_LED_CAPS_RED|ONLP_LED_CAPS_GREEN
 
 #define LED_ID_TO_FAN_ID(id) (id-ONLP_LED_MGMT)
+#define FAN_TO_BLADE_ID(fan_id) fan_id*2
 
 typedef enum sys_led_mode_e {
     SYS_LED_MODE_OFF = 0,
@@ -61,8 +62,7 @@ static int _sys_onlp_ledi_mode_set(onlp_led_mode_t onlp_mode);
 #define MAKE_LED_INFO_NODE_ON_FAN(fan_id)	\
     {						\
         { ONLP_LED_ID_CREATE(ONLP_LED_FAN##fan_id), \
-          "FAN LED "#fan_id,			\
-          ONLP_FAN_ID_CREATE(ONLP_FAN_##fan_id) \
+          "FAN LED "#fan_id, 0,			\
         },					\
         0,	FAN_LED_CAPS,					\
     }
@@ -172,7 +172,6 @@ static int _fan_onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
     }
 
     if( info->status & ONLP_LED_STATUS_PRESENT) {
-        info->caps = FAN_LED_CAPS;
         rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, INV_LED_PREFIX"fanmodule%d_led", fan_id);
         if(rv == ONLP_STATUS_OK ) {
             switch(buf[0]) {
@@ -305,14 +304,13 @@ int onlp_ledi_status_get(onlp_oid_t id, uint32_t* rv)
         case ONLP_LED_FAN4:
         case ONLP_LED_FAN5:
         case ONLP_LED_FAN6:
-            result = onlp_fani_status_get((&info->hdr)->poid, &fan_status);
+            result = onlp_fani_status_get(ONLP_FAN_ID_CREATE(FAN_TO_BLADE_ID(fan_id)), &fan_status);
             if(result != ONLP_STATUS_OK) {
                 return result;
             }
 
             if(fan_status & ONLP_FAN_STATUS_PRESENT) {
                 info->status = ADD_STATE(info->status,ONLP_LED_STATUS_PRESENT);
-
                 result = onlp_file_read_int((int*)&mode, INV_LED_PREFIX"fanmodule%d_led", fan_id);
                 if(result != ONLP_STATUS_OK) {
                     return result;
