@@ -12,18 +12,9 @@ struct eeprom_i2c_tbl_t {
     int size;
 };
 
-int sff_eeprom_init(void);
+int sff_eeprom_init(int platform_id);
 void sff_eeprom_deinit(void);
-
-int sff_eeprom_read(int port,
-                    u8 slave_addr,
-                    u8 offset,
-                    u8 *buf,
-                    size_t len);
-
-int sff_eeprom_write(int port,
-                     u8 slave_addr,
-                     u8 offset,
-                     const u8 *buf,
-                     size_t len);
+void sff_eeprom_port_num_set(int port_num);
+void sff_eeprom_read_no_retry(int lc_id, int port);
+struct sff_eeprom_driver_t *sff_eeprom_drv_get(void);
 #endif /*__SFF_EEPROM_H*/

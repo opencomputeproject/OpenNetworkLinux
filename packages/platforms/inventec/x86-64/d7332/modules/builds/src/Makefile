@@ -1,5 +1,5 @@
 obj-m := inv_sff.o
-inv_sff-objs := sff.o sff_io.o sff_eeprom.o sfp.o qsfp.o qsfp_dd.o
+inv_sff-objs := sff.o io_dev.o sff_eeprom.o sfp.o qsfp.o qsfp_dd.o
 
 obj-m += i2c-gpio.o
 obj-m += inv_platform.o
