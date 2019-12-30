@@ -6,13 +6,15 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
-#include <linux/i2c/pca954x.h>
+#include <linux/platform_data/pca954x.h>
 //#include <linux/i2c/pca953x.h>
 //#include <linux/i2c/at24.h>
 
 //#include <asm/gpio.h>
 //#define IO_EXPAND_BASE    64
 //#define IO_EXPAND_NGPIO   16
+
+#define GPIO_BASE     0 /* in kernel 4.x GPIO_BASE=0*/
 
 struct inv_i2c_board_info {
     int ch;
@@ -155,8 +157,8 @@ static struct inv_i2c_board_info i2cdev_list[] = {
 
 /////////////////////////////////////////////////////////////////////////////////////////
 static struct 	i2c_gpio_platform_data 	i2c_gpio_platdata0 = {
-	.scl_pin = 494, //494,//58,
-	.sda_pin = 511, //511,//75,
+	.scl_pin = GPIO_BASE+58, //494,//58,
+	.sda_pin = GPIO_BASE+75, //511,//75,
     
 	.udelay  = 5, //5:100kHz
 	.sda_is_open_drain = 0,
