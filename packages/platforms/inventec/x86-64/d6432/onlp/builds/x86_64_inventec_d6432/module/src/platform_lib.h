@@ -54,7 +54,7 @@
 #define INV_FAN_PREFIX                  "/sys/bus/i2c/devices/2-0077/"
 #define INV_THERMAL_PREFIX              "/sys/bus/i2c/devices/2-0077/"
 #define INV_LED_PREFIX                  "/sys/bus/i2c/devices/2-0077/"
-#define INV_SFP_PREFIX		            "/sys/swps/sff/"
+#define INV_SFP_PREFIX		            "/sys/swps/card1/sff/"
 #define INV_SYS_PREFIX		            "/sys/class/eeprom/vpd/"
 #define INV_DEVICE_BASE                    "/sys/bus/i2c/devices/"
 #define INV_CTMP_BASE                   "/sys/devices/platform/coretemp.0/hwmon/"
