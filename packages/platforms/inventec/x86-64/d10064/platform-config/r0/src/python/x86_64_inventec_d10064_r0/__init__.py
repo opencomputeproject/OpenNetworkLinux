@@ -32,9 +32,9 @@ class OnlPlatform_x86_64_inventec_d10064_r0(OnlPlatformInventec,
         os.system("echo inv_cpld 0x77 > /sys/bus/i2c/devices/i2c-0/new_device")
         self.insmod('inv_cpld')
         self.insmod('swps')
-        self.insmod('onie_tlvinfo')
-        self.insmod('inv_vpd')
+        self.insmod('inv_eeprom')
+        self.new_i2c_device('inv_eeprom', 0x53, 0)
 
-        os.system("/lib/platform-config/x86-64-inventec-d5264q28b-r0/onl/healthstatus.sh &")
+	os.system("/lib/platform-config/x86-64-inventec-d10064-r0/onl/healthstatus.sh &")
 
         return True
