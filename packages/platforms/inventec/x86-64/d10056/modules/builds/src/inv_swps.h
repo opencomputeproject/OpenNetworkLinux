@@ -207,7 +207,7 @@ struct inv_ioexp_layout_s magnolia_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s magnolia_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  10,  0,  0, TRANSVR_TYPE_SFP,  CHIP_TYPE_MAGNOLIA, { 16} },
     { 1,  11,  0,  1, TRANSVR_TYPE_SFP,  CHIP_TYPE_MAGNOLIA, { 15} },
     { 2,  12,  0,  2, TRANSVR_TYPE_SFP,  CHIP_TYPE_MAGNOLIA, { 14} },
@@ -294,7 +294,7 @@ struct inv_ioexp_layout_s redwood_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s redwood_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  22,  0,  0, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  1,  2,  3,  4} },
     { 1,  23,  0,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  5,  6,  7,  8} },
     { 2,  24,  0,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  9, 10, 11, 12} },
@@ -359,7 +359,7 @@ struct inv_ioexp_layout_s hudson32iga_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s hudson32iga_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,   6,  0,  0, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, {  1,  2,  3,  4} },
     { 1,   7,  0,  1, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, {  5,  6,  7,  8} },
     { 2,   8,  0,  2, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, {  9, 10, 11, 12} },
@@ -411,7 +411,7 @@ struct inv_ioexp_layout_s spruce_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s spruce_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,   6,  0,  0, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, { 81, 82, 83, 84} },
     { 1,   7,  0,  1, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, { 77, 78, 79, 80} },
     { 2,   8,  0,  2, TRANSVR_TYPE_QSFP_PLUS, CHIP_TYPE_MAGNOLIA, { 97, 98, 99,100} },
@@ -462,7 +462,7 @@ struct inv_ioexp_layout_s cypress_ga1_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s cypress_ga1_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  10,  0,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  1} },
     { 1,  11,  0,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  2} },
     { 2,  12,  0,  2, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  3} },
@@ -561,7 +561,7 @@ struct inv_ioexp_layout_s cypress_ga2_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s cypress_ga2_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  11,  0,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  2} },
     { 1,  10,  0,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  1} },
     { 2,  13,  0,  3, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  4} },
@@ -660,7 +660,7 @@ struct inv_ioexp_layout_s cypress_b_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s cypress_b_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 1,  11,  0,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  2} },
     { 2,  10,  0,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  1} },
     { 3,  13,  0,  3, TRANSVR_TYPE_SFP,     CHIP_TYPE_REDWOOD, {  4} },
@@ -748,7 +748,7 @@ struct inv_ioexp_layout_s redwood_fsl_ioexp_layout[] = {
 
 
 struct inv_port_layout_s redwood_fsl_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  22,  0,  0, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  1,  2,  3,  4} },
     { 1,  23,  0,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  5,  6,  7,  8} },
     { 2,  24,  0,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  9, 10, 11, 12} },
@@ -804,7 +804,7 @@ struct inv_ioexp_layout_s tahoe_ioexp_layout[] = {
 
 
 struct inv_port_layout_s tahoe_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  12,  1,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, { 65,  66,  67,  68} },
     { 1,  11,  1,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, { 53,  54,  55,  56} },
     { 2,  22,  0,  5, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, { 69,  70,  71,  72} },
@@ -864,7 +864,7 @@ struct inv_ioexp_layout_s sequoia_ioexp_layout[] = {
 
 
 struct inv_port_layout_s sequoia_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,   9,  0,  0, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  9,  10,  11,  12} },
     { 1,  10,  0,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, {  1,   2,   3,   4} },
     { 2,  11,  0,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_REDWOOD, { 25,  26,  27,  28} },
@@ -984,7 +984,7 @@ struct inv_ioexp_layout_s lavender_ioexp_layout[] = {
 
 
 struct inv_port_layout_s lavender_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  17,  0,  0, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_LAVENDER, {188, 189, 190, 191} },
     { 1,  18,  0,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_LAVENDER, {184, 185, 186, 187} },
     { 2,  19,  0,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_LAVENDER, {180, 181, 182, 183} },
@@ -1069,7 +1069,7 @@ struct inv_ioexp_layout_s cottonwood_rangeley_ioexp_layout[] = {
 
 
 struct inv_port_layout_s cottonwood_rangeley_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHI_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHI_TYPE / LANE_ID */
     { 0,  2,  0,  0, TRANSVR_TYPE_SFP, CHIP_TYPE_REDWOOD, { 75} },
     { 1,  3,  0,  1, TRANSVR_TYPE_SFP, CHIP_TYPE_REDWOOD, { 77} },
     { 2,  4,  0,  2, TRANSVR_TYPE_SFP, CHIP_TYPE_REDWOOD, { 79} },
@@ -1117,7 +1117,7 @@ struct inv_ioexp_layout_s maple_ga_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s maple_ga_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  18,  1,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  1} },
     { 1,  19,  1,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  2} },
     { 2,  20,  1,  2, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  3} },
@@ -1217,7 +1217,7 @@ struct inv_ioexp_layout_s maple_b_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s maple_b_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 1,  23,  1,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  2} },
     { 2,  22,  1,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  1} },
     { 3,  25,  1,  3, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  4} },
@@ -1320,7 +1320,7 @@ struct inv_ioexp_layout_s gulmohar_ioexp_layout[] = {
 
 
 struct inv_port_layout_s gulmohar_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  10,  0,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {  1} },
     { 1,  11,  0,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {  2} },
     { 2,  12,  0,  2, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {  3} },
@@ -1384,7 +1384,7 @@ struct inv_port_layout_s gulmohar_port_layout[] = {
  * ==========================================
  */
 #ifdef SWPS_GULMOHAR_2T_EVT1
-unsigned gulmohar_2t_evt1_gpio_rest_mux = MUX_RST_GPIO_505_PCA9548;
+unsigned gulmohar_2t_evt1_gpio_rest_mux = MUX_RST_GPIO_69_PCA9548;
 
 struct inv_ioexp_layout_s gulmohar_2t_evt1_ioexp_layout[] = {
     /* IOEXP_ID / IOEXP_TYPE / { Chan_ID, Chip_addr, Read_offset, Write_offset, config_offset, data_default, conf_default } */
@@ -1421,7 +1421,7 @@ struct inv_ioexp_layout_s gulmohar_2t_evt1_ioexp_layout[] = {
 
 
 struct inv_port_layout_s gulmohar_2t_evt1_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  10,  0,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {-99} },
     { 1,  11,  0,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {-99} },
     { 2,  12,  0,  2, TRANSVR_TYPE_SFP,     CHIP_TYPE_LAVENDER, {-99} },
@@ -1522,7 +1522,7 @@ struct inv_ioexp_layout_s peony_sfp_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s peony_sfp_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     { 0,  20,  1,  0, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  1} },
     { 1,  21,  1,  1, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  2} },
     { 2,  22,  1,  2, TRANSVR_TYPE_SFP,     CHIP_TYPE_MAPLE, {  3} },
@@ -1597,7 +1597,7 @@ struct inv_ioexp_layout_s peony_copper_ioexp_layout[] = {
 };
 
 struct inv_port_layout_s peony_copper_port_layout[] = {
-    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / BCM_CHIP_TYPE / LANE_ID */
+    /* Port_ID / Chan_ID / IOEXP_ID / IOEXP_VIRT_OFFSET / TRANSCEIVER_TYPE / CHIP_TYPE / LANE_ID */
     {48,  4,  0,  0, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_MAPLE, { 49, 50, 51, 52} },
     {49,  5,  0,  1, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_MAPLE, { 57, 58, 59, 60} },
     {50,  6,  0,  2, TRANSVR_TYPE_QSFP_28, CHIP_TYPE_MAPLE, { 61, 62, 63, 64} },

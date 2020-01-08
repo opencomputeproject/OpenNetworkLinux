@@ -20,12 +20,7 @@ static DEFINE_MUTEX(vpd_mutex);
 
 static int
 __swp_match(struct device *dev,
-#ifdef VPD_KERN_VER_AF_3_10
-
             const void *data){
-#else
-            void *data){
-#endif
 
     char *name = (char *)data;
     if (strcmp(dev_name(dev), name) == 0)

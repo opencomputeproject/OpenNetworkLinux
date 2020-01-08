@@ -203,7 +203,7 @@
 #define VAL_OPTICAL_WAVELENGTH_LR       (1310)
 #define VAL_OPTICAL_WAVELENGTH_ER       (1550)
 
-/* BCM chip type define */
+/* chip type define */
 #define CHIP_TYPE_MAGNOLIA              (31001)  /* Magnolia, Hudson32i, Spruce */
 #define CHIP_TYPE_REDWOOD               (31002)  /* Redwood, Cypress, Sequoia */
 #define CHIP_TYPE_MAPLE                 (31003)  /* Maple */
