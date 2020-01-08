@@ -148,31 +148,16 @@ onlp_sfpi_is_rx_los(int port)
 {
     int rxlos;
     int rv;
-    int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX];
-
     int p_type = onlp_sfpi_port_type(port);
 
-    if(p_type == ONLP_PORT_TYPE_SFP) {
+    if(p_type == ONLP_PORT_TYPE_SFP) {   /* don't support to parse QSFP rxlos value */
         if(onlp_file_read_int(&rxlos, INV_SFP_PREFIX"port%d/rxlos", port) != ONLP_STATUS_OK) {
             return ONLP_STATUS_E_INTERNAL;
         }
-        rv = (rxlos==0)? true:false;
-    } else if(p_type == ONLP_PORT_TYPE_QSFP) {
-        if(onlp_file_read((uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"port%d/soft_rx_los", port) != ONLP_STATUS_OK) {
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        if(sscanf( buf, "0x%x\n", &rxlos) != 1) {
-            AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        if(rxlos < 0 || rxlos > 0x0f) {
-            AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
-        } else if(rxlos == 0) {
-            rv = true;
-        } else {
-            rv = false;
+        if(rxlos==0){
+            rv=false;
+        }else if(rxlos==1){
+            rv=true;
         }
     } else {
         return ONLP_STATUS_E_INVALID;
@@ -187,7 +172,7 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     AIM_BITMAP_CLR_ALL(dst);
     int port;
     int isrxlos;
-    for(port = 0; port < NUM_OF_ALL_PORT; port++) {
+    for(port = 0; port < NUM_OF_SFP_PORT; port++) {  /* don't support to parse QSFP rxlos value */
         if(onlp_sfpi_is_present(port) == true) {
             isrxlos = onlp_sfpi_is_rx_los(port);
             if(isrxlos == true) {
@@ -302,6 +287,11 @@ onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
         return ONLP_STATUS_E_INVALID;
     }
     switch (control) {
+    case ONLP_SFP_CONTROL_RX_LOS:
+        if(p_type == ONLP_PORT_TYPE_SFP) {
+            *rv = 1;
+        }
+        break;    
     case ONLP_SFP_CONTROL_RESET_STATE:
         if(p_type == ONLP_PORT_TYPE_QSFP) {
             *rv = 1;
@@ -366,7 +356,12 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     switch (control) {
     case ONLP_SFP_CONTROL_RESET_STATE:
         if(p_type == ONLP_PORT_TYPE_QSFP) {
+            /*the value of /port(id)/reset
+            0: in reset state; 1:not in reset state*/
             ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port);
+            if(ret==ONLP_STATUS_OK){
+                *value=(!(*value));
+            }            
         }
         break;
     case ONLP_SFP_CONTROL_RX_LOS:
