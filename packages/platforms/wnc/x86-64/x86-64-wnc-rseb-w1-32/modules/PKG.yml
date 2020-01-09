@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-modules.yml VENDOR=wnc BASENAME=x86-64-wnc-rseb-w1-32 ARCH=amd64 KERNELS="onl-kernel-4.14-lts-x86-64-all:amd64"
