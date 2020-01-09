@@ -125,53 +125,15 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_is_rx_los(int port)
 {
-    int rxlos;
-    int rv;
-    int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX];
-    if(port > NUM_OF_ALL_PORT){
-        return ONLP_STATUS_E_INVALID;
-    }
-    if(onlp_sfpi_is_present(port) == 0){
-        return ONLP_STATUS_E_INVALID;
-    }
-    if(onlp_file_read((uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"port%d/soft_rx_los", port) != ONLP_STATUS_OK){
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    if(sscanf( buf, "0x%x\n", &rxlos) != 1){
-        AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL; 
-    }
-    if(rxlos < 0 || rxlos > 0x0f){
-        AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }else if(rxlos == 0){
-        rv = 1;
-    }else{
-        rv = 0;
-    }
-    return rv;
+    /*rx los attribute of QSFP are not supported*/
+    return ONLP_STATUS_E_UNSUPPORTED; 
 }
 
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {   
-    AIM_BITMAP_CLR_ALL(dst);
-    int port;
-    int isrxlos;
-    for(port = 0; port < NUM_OF_ALL_PORT; port++){
-        if(onlp_sfpi_is_present(port) == 1){
-            isrxlos = onlp_sfpi_is_rx_los(port); 
-            if(isrxlos == 1){
-                AIM_BITMAP_MOD(dst, port, 1);
-            }else if(isrxlos == 0){    
-                AIM_BITMAP_MOD(dst, port, 0); 
-            }else{
-                return ONLP_STATUS_E_INTERNAL; 
-            }
-        }
-    }
-    return ONLP_STATUS_OK;
+    /*rx los attribute of QSFP are not supported*/
+    return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int
@@ -200,7 +162,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     VALIDATE_PORT(port);
     int sts;
     int bus = FRONT_PORT_TO_MUX_INDEX(port);
-    sts = onlp_i2c_read(bus, QSFP_DEV_ADDR, 0, 256, data, ONLP_I2C_F_FORCE);
+    sts = onlp_i2c_block_read(bus, QSFP_DEV_ADDR, 0, 256, data, ONLP_I2C_F_FORCE);
     if(sts < 0){
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_MISSING;
@@ -283,7 +245,12 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     if(port >= 0 && port < NUM_OF_QSFP_PORT){    
         switch (control) {
             case ONLP_SFP_CONTROL_RESET_STATE:
+                /*the value of /port(id)/reset
+                0: in reset state; 1:not in reset state*/            
                 ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port); 
+                if(ret==ONLP_STATUS_OK){
+                    *value=!(*value);
+                }
                 break;
             case ONLP_SFP_CONTROL_LP_MODE:
                 ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/lpmod", port); 

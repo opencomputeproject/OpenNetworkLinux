@@ -65,6 +65,7 @@
 #define INV_CTMP_PREFIX		"/sys/class/hwmon/hwmon0/"
 #define INV_SFP_PREFIX		"/sys/class/swps/"
 #define INV_SYS_PREFIX		"/sys/class/eeprom/vpd/"
+#define INV_EEPROM_PATH     "/sys/bus/i2c/devices/0-0053/eeprom"
 
 #define OID_MAP_TO_INFO_IDX(oid)  ONLP_OID_ID_GET(oid)-1
 #define LOCAL_ID_TO_INFO_IDX(id)  (id-1)

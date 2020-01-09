@@ -1,4 +1,3 @@
-#include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/kobject.h>
@@ -6,7 +5,12 @@
 #include "io_expander.h"
 #include "transceiver.h"
 
+/* For build single module using (Ex: ONL platform) */
+#include <linux/module.h>
+//#include <linux/inventec/d5254/io_expander.h>
+//#include <linux/inventec/d5254/transceiver.h>
 
+extern int io_no_init;
 /* ========== Register EEPROM address mapping ==========
  */
 struct eeprom_map_s eeprom_map_sfp = {
@@ -147,7 +151,6 @@ alarm_msg_2_user(struct transvr_obj_s *self,
     SWPS_ERR("%s on %s.\n", emsg, self->swp_name);
 }
 EXPORT_SYMBOL(alarm_msg_2_user);
-
 
 /* ========== Private functions ==========
  */
@@ -307,7 +310,7 @@ upper_common_setup_page:
                                   page) < 0) {
         emsg   = "I2C R/W failure";
         retval = -2;
-        //goto err_common_setup_page;   //workaround for molex dac 3m cable
+        goto err_common_setup_page;
     }
     self->curr_page = page;
     mdelay(VAL_TRANSVR_PAGE_SELECT_DELAY);
@@ -2185,7 +2188,7 @@ sfp_get_transvr_rx_power(struct transvr_obj_s *self,
     }
     /* Return Unit: 1 mW */
     return _common_count_rx_power(self->curr_rx_power[0],
-                                  self->curr_rx_power[0],
+                                  self->curr_rx_power[1],
                                   buf_p);
 }
 
@@ -2376,6 +2379,56 @@ sfp_get_wavelength(struct transvr_obj_s *self,
             _common_count_wavelength(self,
                                      self->wavelength[0],
                                      self->wavelength[1]));
+}
+
+
+int
+sfp_get_1g_rj45_extphy_offset(struct transvr_obj_s *self, char *buf) {
+
+    if (self->state != STATE_TRANSVR_CONNECTED) {
+        return ERR_TRANSVR_UNPLUGGED;
+    }
+    if ((self->info != TRANSVR_CLASS_BASE_T_1000) &&
+        (self->info != TRANSVR_CLASS_BASE_T_1000_up) ){
+        return ERR_TRANSVR_NOTSUPPORT;
+    }
+    return snprintf(buf, LEN_TRANSVR_S_STR, "0x%02x\n", self->extphy_offset);
+}
+
+
+int
+sfp_get_1g_rj45_extphy_reg(struct transvr_obj_s *self, char *buf) {
+
+    int i      = 0;
+    int ret    = 0;
+    int retry  = 3;
+    int delay  = 200;
+
+    if (self->state != STATE_TRANSVR_CONNECTED) {
+        return ERR_TRANSVR_UNPLUGGED;
+    }
+    if ((self->info != TRANSVR_CLASS_BASE_T_1000) &&
+        (self->info != TRANSVR_CLASS_BASE_T_1000_up) ){
+        return ERR_TRANSVR_NOTSUPPORT;
+    }
+    if (_common_setup_page(self, VAL_TRANSVR_EXTPHY_ADDR_56,
+                           -1, self->extphy_offset, 1, 0) < 0) {
+        return -EIO;
+    }
+    for (i=0; i<retry; i++) {
+        ret = i2c_smbus_read_word_data(self->i2c_client_p, self->extphy_offset);
+        if (ret >=0) {
+            goto ok_sfp_get_1g_rj45_extphy_reg;
+        }
+        msleep(delay);
+    }
+    SWPS_INFO("%s: retry:%d fail <port>:%s <offset>:0x%02x\n",
+              __func__, retry, self->swp_name, self->extphy_offset);
+    return -EIO;
+
+ok_sfp_get_1g_rj45_extphy_reg:
+    ret = ((ret & 0x00ff) << 8) | ((ret & 0xff00) >> 8);
+    return snprintf(buf, LEN_TRANSVR_S_STR, "0x%04x\n", ret);
 }
 
 
@@ -3338,6 +3391,63 @@ sfp_set_rx_em(struct transvr_obj_s *self,
 }
 
 
+int
+sfp_set_1g_rj45_extphy_offset(struct transvr_obj_s *self,
+                              int input) {
+
+    if (self->state != STATE_TRANSVR_CONNECTED) {
+        return ERR_TRANSVR_UNPLUGGED;
+    }
+    if ((self->info != TRANSVR_CLASS_BASE_T_1000) &&
+        (self->info != TRANSVR_CLASS_BASE_T_1000_up) ){
+        return ERR_TRANSVR_NOTSUPPORT;
+    }
+    if ((input < 0) || (input > 0xff)) {
+        return ERR_TRANSVR_BADINPUT;
+    }
+    self->extphy_offset = (uint8_t)input;
+    return 0;
+}
+
+
+int
+sfp_set_1g_rj45_extphy_reg(struct transvr_obj_s *self,
+                           int input) {
+
+    int i      = 0;
+    int retry  = 3;
+    int delay  = 200;
+    uint16_t tmp = 0;
+
+    if (self->state != STATE_TRANSVR_CONNECTED) {
+        return ERR_TRANSVR_UNPLUGGED;
+    }
+    if ((self->info != TRANSVR_CLASS_BASE_T_1000) &&
+        (self->info != TRANSVR_CLASS_BASE_T_1000_up) ){
+        return ERR_TRANSVR_NOTSUPPORT;
+    }
+    if ((input < 0) || (input > 0xffff)) {
+        return ERR_TRANSVR_BADINPUT;
+    }
+    tmp = ((input & 0x00ff) << 8) | ((input & 0xff00) >> 8);
+    if (_common_setup_page(self, VAL_TRANSVR_EXTPHY_ADDR_56,
+                           -1, self->extphy_offset, 1, 0) < 0) {
+        return -EIO;
+    }
+    for (i=0; i<=retry; i++) {
+        if (i2c_smbus_write_word_data(self->i2c_client_p,
+                                      self->extphy_offset,
+                                      tmp) >= 0) {
+            return 0;
+        }
+        msleep(delay);
+    }
+    SWPS_INFO("%s: retry:%d fail <port>:%s <offset>:0x%02x\n",
+              __func__, retry, self->swp_name, self->extphy_offset);
+    return -EIO;
+}
+
+
 static int
 __qsfp_set_cdr(struct transvr_obj_s *self,
                int input_val,
@@ -4153,6 +4263,16 @@ transvr_task_free_all(struct transvr_obj_s *self) {
 }
 
 
+static void
+transvr_cache_free_all(struct transvr_obj_s *self) {
+
+    memset(self->vendor_name, 0, (LEN_TRANSVR_M_STR * sizeof(char)) );
+    memset(self->vendor_rev,  0, (LEN_TRANSVR_M_STR * sizeof(char)) );
+    memset(self->vendor_pn,   0, (LEN_TRANSVR_M_STR * sizeof(char)) );
+    memset(self->vendor_sn,   0, (LEN_TRANSVR_M_STR * sizeof(char)) );
+    self->extphy_offset = 0;
+}
+
 static int
 _transvr_task_run_main(struct transvr_worker_s *task_p) {
 
@@ -4693,7 +4813,7 @@ err_taskfunc_sfp_handle_1g_rj45_2:
          * => In this case, SWPS will stop external Link state monitor features
          *    and keeps transvr_p->info on TRANSVR_CLASS_BASE_T_1000_up.
          *    Upper layer will see it always Linkup that because of these type of
-         *    transceiver has external phy, chip see it as Loopback transceiver.
+         *    transceiver has external phy, switch chip see it as Loopback transceiver.
          */
         SWPS_WARN("%s can not access external PHY of Base-T SFP transceiver\n",
                 task_p->transvr_p->swp_name);
@@ -4713,6 +4833,11 @@ _taskfunc_qsfp_setup_power_mod(struct transvr_obj_s *self,
     int curr_val   = DEBUG_TRANSVR_INT_VAL;
     int err_val    = DEBUG_TRANSVR_INT_VAL;
     char *err_msg  = DEBUG_TRANSVR_STR_VAL;
+    if (io_no_init) {
+
+        SWPS_INFO("%s no_io_init\n",__func__);
+        return EVENT_TRANSVR_TASK_DONE;
+    }
 
     curr_val = self->ioexp_obj_p->get_lpmod(self->ioexp_obj_p,
                                             self->ioexp_virt_offset);
@@ -5768,6 +5893,19 @@ err_sfp_set_redwood_if_type_1:
 
 
 int
+_sfp_set_lavender_if_type(struct transvr_obj_s* self,
+                           int transvr_cls,
+                           char *result) {
+    /* (TBD)
+     *  Due to 'LAV' looks like doesn't have interface type.
+     *  We bypass it currently.
+     */
+    int lmax = 8;    
+    return snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
+}
+
+
+int
 _sfp_detect_if_type(struct transvr_obj_s* self,
                     char *result){
 
@@ -5778,10 +5916,14 @@ _sfp_detect_if_type(struct transvr_obj_s* self,
     switch (self->chipset_type) {
         case CHIP_TYPE_MAGNOLIA:
             return _sfp_set_magnolia_if_type(self, detect_cls, result);
-
+        
+        case CHIP_TYPE_MAPLE:
         case CHIP_TYPE_REDWOOD:
             return _sfp_set_redwood_if_type(self, detect_cls, result);
 
+        case CHIP_TYPE_LAVENDER:
+            return _sfp_set_lavender_if_type(self, detect_cls, result);
+            
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",
                       __func__, self->chipset_type, self->swp_name);
@@ -6381,6 +6523,19 @@ err_qsfp_set_magnolia_if_type_1:
 
 
 int
+_qsfp_set_lavender_if_type(struct transvr_obj_s* self,
+                            int transvr_cls,
+                            char *result) {
+    /* (TBD)
+     *  Due to 'LAV' looks like doesn't have interface type.
+     *  We bypass it currently.
+     */
+    int lmax = 8;    
+    return snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
+}
+
+
+int
 _qsfp_detect_if_type(struct transvr_obj_s* self,
                      char *result){
 
@@ -6391,10 +6546,14 @@ _qsfp_detect_if_type(struct transvr_obj_s* self,
     switch (self->chipset_type) {
         case CHIP_TYPE_MAGNOLIA:
             return _qsfp_set_magnolia_if_type(self, detect_cls, result);
-
+        
+        case CHIP_TYPE_MAPLE:
         case CHIP_TYPE_REDWOOD:
             return _qsfp_set_redwood_if_type(self, detect_cls, result);
 
+        case CHIP_TYPE_LAVENDER:
+            return _qsfp_set_lavender_if_type(self, detect_cls, result);
+            
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",
                       __func__, self->chipset_type, self->swp_name);
@@ -7340,6 +7499,7 @@ _is_transvr_hw_ready(struct transvr_obj_s *self,
         emsg = "detect current value fail";
         goto err_is_transvr_hw_ready;
     }
+
     if ((err & (1<<bit)) == ready) {
         return EVENT_TRANSVR_TASK_DONE;
     }
@@ -7562,6 +7722,7 @@ int
 common_transvr_clean(struct transvr_obj_s *self){
 
     transvr_task_free_all(self);
+    transvr_cache_free_all(self);
     return EVENT_TRANSVR_TASK_DONE;
 }
 
@@ -7668,6 +7829,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->get_rx_am           = unsupported_get_func2;
             self->get_rx_em           = sfp_get_transvr_rx_em;
             self->get_wavelength      = sfp_get_wavelength;
+            self->get_extphy_offset   = sfp_get_1g_rj45_extphy_offset;
+            self->get_extphy_reg      = sfp_get_1g_rj45_extphy_reg;
             self->set_cdr             = unsupported_set_func;
             self->set_soft_rs0        = sfp_set_soft_rs0;
             self->set_soft_rs1        = sfp_set_soft_rs1;
@@ -7676,6 +7839,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->set_tx_eq           = sfp_set_tx_eq;
             self->set_rx_am           = unsupported_set_func;
             self->set_rx_em           = sfp_set_rx_em;
+            self->set_extphy_offset   = sfp_set_1g_rj45_extphy_offset;
+            self->set_extphy_reg      = sfp_set_1g_rj45_extphy_reg;
             return 0;
 
         case TRANSVR_TYPE_QSFP:
@@ -7721,6 +7886,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->get_rx_am           = unsupported_get_func2;
             self->get_rx_em           = unsupported_get_func2;
             self->get_wavelength      = qsfp_get_wavelength;
+            self->get_extphy_offset   = unsupported_get_func2;
+            self->get_extphy_reg      = unsupported_get_func2;
             self->set_cdr             = unsupported_set_func;
             self->set_soft_rs0        = unsupported_set_func; /* TBD */
             self->set_soft_rs1        = unsupported_set_func; /* TBD */
@@ -7729,6 +7896,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->set_tx_eq           = unsupported_set_func;
             self->set_rx_am           = unsupported_set_func;
             self->set_rx_em           = unsupported_set_func;
+            self->set_extphy_offset   = unsupported_set_func;
+            self->set_extphy_reg      = unsupported_set_func;
             return 0;
 
         case TRANSVR_TYPE_QSFP_28:
@@ -7773,6 +7942,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->get_rx_am           = qsfp_get_transvr_rx_am;
             self->get_rx_em           = qsfp_get_transvr_rx_em;
             self->get_wavelength      = qsfp_get_wavelength;
+            self->get_extphy_offset   = unsupported_get_func2;
+            self->get_extphy_reg      = unsupported_get_func2;
             self->set_cdr             = qsfp_set_cdr;
             self->set_soft_rs0        = unsupported_set_func; /* TBD */
             self->set_soft_rs1        = unsupported_set_func; /* TBD */
@@ -7781,6 +7952,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->set_tx_eq           = qsfp_set_tx_eq;
             self->set_rx_am           = qsfp_set_rx_am;
             self->set_rx_em           = qsfp_set_rx_em;
+            self->set_extphy_offset   = unsupported_set_func;
+            self->set_extphy_reg      = unsupported_set_func;
             return 0;
 
         case TRANSVR_TYPE_FAKE:
@@ -7825,6 +7998,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->get_rx_am           = fake_get_str;
             self->get_rx_em           = fake_get_str;
             self->get_wavelength      = fake_get_str;
+            self->get_extphy_offset   = fake_get_str;
+            self->get_extphy_reg      = fake_get_str;
             self->set_cdr             = fake_set_hex;
             self->set_soft_rs0        = fake_set_int;
             self->set_soft_rs1        = fake_set_int;
@@ -7833,6 +8008,8 @@ setup_transvr_public_cb(struct transvr_obj_s *self,
             self->set_tx_eq           = fake_set_int;
             self->set_rx_am           = fake_set_int;
             self->set_rx_em           = fake_set_int;
+            self->set_extphy_offset   = fake_set_hex;
+            self->set_extphy_reg      = fake_set_hex;
             return 0;
 
         default:
@@ -8120,11 +8297,17 @@ _reload_transvr_obj(struct transvr_obj_s *self,
     if (setup_transvr_private_cb(self, new_type) < 0){
         goto err_private_reload_func_3;
     }
+    if(old_i2c_p){
+        i2c_put_adapter(old_i2c_p->adapter);
+    }
     kfree(old_i2c_p);
     return 0;
 
 err_private_reload_func_3:
     SWPS_INFO("%s: init() fail!\n", __func__);
+    if(old_i2c_p){
+        i2c_put_adapter(old_i2c_p->adapter);
+    }
     kfree(old_i2c_p);
     self->state = STATE_TRANSVR_UNEXCEPTED;
     self->type  = TRANSVR_TYPE_ERROR;
@@ -8192,6 +8375,9 @@ resync_channel_tier_2(struct transvr_obj_s *self) {
 }
 EXPORT_SYMBOL(resync_channel_tier_2);
 
+/* For build single module using (Ex: ONL platform) */
+MODULE_LICENSE("GPL");
+
 
 /* -----------------------------------------
  *   ToDo List
@@ -8216,5 +8402,8 @@ EXPORT_SYMBOL(resync_channel_tier_2);
 
 
 
-MODULE_LICENSE("GPL");
+
+
+
+
 

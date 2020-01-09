@@ -1,3 +1,4 @@
+#include <linux/version.h>
 #include <linux/i2c.h>
 //#include <linux/i2c-algo-bit.h>
 #include <linux/i2c-gpio.h>
@@ -6,7 +7,11 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+#include <linux/platform_data/pca954x.h>
+#else
 #include <linux/i2c/pca954x.h>
+#endif
 #include <linux/platform_data/pca953x.h>
 #include <linux/platform_data/at24.h>
 

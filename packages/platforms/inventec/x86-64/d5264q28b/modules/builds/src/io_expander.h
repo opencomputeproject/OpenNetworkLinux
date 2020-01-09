@@ -5,20 +5,35 @@
 
 
 /* IOEXP type define (SFP series) */
-#define IOEXP_TYPE_MAGINOLIA_NAB      (10101)
-#define IOEXP_TYPE_CYPRESS_NABC       (10102)
+#define IOEXP_TYPE_MAGINOLIA_NAB         (10101)
+#define IOEXP_TYPE_MAGINOLIA_4AB         (10102)
+#define IOEXP_TYPE_MAPLE_NABC            (10104)
+#define IOEXP_TYPE_GULMOHAR_NABC         (10105)
+#define IOEXP_TYPE_GULMOHAR_2T_EVT1_NABC (10106)
+#define IOEXP_TYPE_SFP_8P_LAYOUT_1       (10107)
+#define IOEXP_TYPE_GULMOHAR_2T_EVT1_1ABC (10108)
+#define IOEXP_TYPE_GULMOHAR_2T_EVT1_3ABC (10109)
 
 /* IOEXP type define (QSFP series) */
-#define IOEXP_TYPE_MAGINOLIA_7AB      (10201)
-#define IOEXP_TYPE_REDWOOD_P01P08     (10202)
-#define IOEXP_TYPE_REDWOOD_P09P16     (10203)
-#define IOEXP_TYPE_HUDSON32IGA_P01P08 (10204)
-#define IOEXP_TYPE_HUDSON32IGA_P09P16 (10205)
-#define IOEXP_TYPE_SPRUCE_7AB         (10206)
-#define IOEXP_TYPE_CYPRESS_7ABC       (10207)
-#define IOEXP_TYPE_LAVENDER_P01P08    (10208)
-#define IOEXP_TYPE_LAVENDER_P09P16    (10209)
-#define IOEXP_TYPE_LAVENDER_P65       (10210)
+#define IOEXP_TYPE_MAGINOLIA_7AB         (10201)
+#define IOEXP_TYPE_REDWOOD_P01P08        (10202)
+#define IOEXP_TYPE_REDWOOD_P09P16        (10203)
+#define IOEXP_TYPE_HUDSON32IGA_P01P08    (10204)
+#define IOEXP_TYPE_HUDSON32IGA_P09P16    (10205)
+#define IOEXP_TYPE_SPRUCE_7AB            (10206)
+#define IOEXP_TYPE_CYPRESS_7ABC          (10207)
+#define IOEXP_TYPE_TAHOE_5A              (10208)
+#define IOEXP_TYPE_TAHOE_6ABC            (10209)
+#define IOEXP_TYPE_SEQUOIA_NABC          (10210)
+#define IOEXP_TYPE_LAVENDER_P65          (10211)
+#define IOEXP_TYPE_MAPLE_0ABC            (10212)
+#define IOEXP_TYPE_GULMOHAR_7ABC         (10213)
+#define IOEXP_TYPE_GULMOHAR_2T_EVT1_7ABC (10214)
+#define IOEXP_TYPE_QSFP_6P_LAYOUT_1      (10215)
+#define IOEXP_TYPE_CEDAR_0ABC            (10216)
+
+/* CPLD type define */
+#define CPLD_TYPE_COTTONWOOD          (10301)
 
 /* IOEXP mode define */
 #define IOEXP_MODE_POLLING            (19000)
@@ -38,7 +53,6 @@
 #define ERR_IOEXP_BADINPUT             (-105)
 #define ERR_IOEXP_UNEXCPT              (-199)
 
-
 #define SWPS_INFO(fmt, args...) printk( KERN_INFO "[SWPS] " fmt, ##args)
 #define SWPS_WARN(fmt, args...) printk( KERN_WARNING "[SWPS] " fmt, ##args)
 #define SWPS_ERR(fmt, args...)  printk( KERN_ERR  "[SWPS] " fmt, ##args)
@@ -48,7 +62,6 @@
 #else
 #    define SWPS_DEBUG(fmt, args...)
 #endif
-
 
 struct ioexp_addr_s {
     int chan_id;
@@ -74,18 +87,18 @@ struct ioexp_bitmap_s {
 };
 
 struct ioexp_map_s {
-    int chip_amount;    /* Number of chips that IOEXP object content    */
-    int data_width;     /* Number of (Read/Write/Config) bytes          */
-    struct ioexp_addr_s   *map_addr;          /* Chip address info      */
-    struct ioexp_bitmap_s  map_present[8];    /* IOEXP for SFP / QSFP   */
-    struct ioexp_bitmap_s  map_tx_disable[8]; /* IOEXP for SFP          */
-    struct ioexp_bitmap_s  map_tx_fault[8];   /* IOEXP for SFP          */
-    struct ioexp_bitmap_s  map_rxlos[8];      /* IOEXP for SFP          */
-    struct ioexp_bitmap_s  map_reset[8];      /* IOEXP for QSFP         */
-    struct ioexp_bitmap_s  map_lpmod[8];      /* IOEXP for QSFP         */
-    struct ioexp_bitmap_s  map_modsel[8];     /* IOEXP for QSFP         */
-    struct ioexp_bitmap_s  map_hard_rs0[8];   /* IOEXP for QSFP         */
-    struct ioexp_bitmap_s  map_hard_rs1[8];   /* IOEXP for QSFP         */
+    int chip_amount;     /* Number of chips that IOEXP object content    */
+    int data_width;      /* Number of (Read/Write/Config) bytes          */
+    struct ioexp_addr_s   *map_addr;           /* Chip address info      */
+    struct ioexp_bitmap_s  map_present[10];    /* IOEXP for SFP / QSFP   */
+    struct ioexp_bitmap_s  map_tx_disable[10]; /* IOEXP for SFP          */
+    struct ioexp_bitmap_s  map_tx_fault[10];   /* IOEXP for SFP          */
+    struct ioexp_bitmap_s  map_rxlos[10];      /* IOEXP for SFP          */
+    struct ioexp_bitmap_s  map_reset[10];      /* IOEXP for QSFP         */
+    struct ioexp_bitmap_s  map_lpmod[10];      /* IOEXP for QSFP         */
+    struct ioexp_bitmap_s  map_modsel[10];     /* IOEXP for QSFP         */
+    struct ioexp_bitmap_s  map_hard_rs0[10];   /* IOEXP for QSFP         */
+    struct ioexp_bitmap_s  map_hard_rs1[10];   /* IOEXP for QSFP         */
 };
 
 struct ioexp_data_s {
@@ -166,6 +179,10 @@ int  resync_channel_tier_1(void);
 
 
 #endif /* IO_EXPANDER_H */
+
+
+
+
 
 
 
