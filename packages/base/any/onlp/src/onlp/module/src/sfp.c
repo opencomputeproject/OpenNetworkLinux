@@ -436,7 +436,7 @@ sfp_control_str__(uint32_t controls)
     if(controls & ONLP_SFP_CONTROL_FLAG_LP_MODE) {
         *cp++ = 'L';
     }
-    if(controls & ONLP_SFP_CONTROL_RESET_STATE) {
+    if(controls & ONLP_SFP_CONTROL_FLAG_RESET_STATE) {
         *cp++ = '~';
     }
     return aim_strdup(tmp);
