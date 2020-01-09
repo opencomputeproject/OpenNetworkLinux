@@ -4810,7 +4810,7 @@ err_taskfunc_sfp_handle_1g_rj45_2:
          * => In this case, SWPS will stop external Link state monitor features
          *    and keeps transvr_p->info on TRANSVR_CLASS_BASE_T_1000_up.
          *    Upper layer will see it always Linkup that because of these type of
-         *    transceiver has external phy, BCM chip see it as Loopback transceiver.
+         *    transceiver has external phy, chip see it as Loopback transceiver.
          */
         SWPS_WARN("%s can not access external PHY of Base-T SFP transceiver\n",
                 task_p->transvr_p->swp_name);
@@ -5755,7 +5755,7 @@ err_sft_detect_transceiver_class_1:
 
 
 int
-_sfp_set_trident2_if_type(struct transvr_obj_s* self,
+_sfp_set_magnolia_if_type(struct transvr_obj_s* self,
                           int transvr_cls,
                           char *result){
 
@@ -5806,13 +5806,13 @@ _sfp_set_trident2_if_type(struct transvr_obj_s* self,
             snprintf(err_msg, sizeof(err_msg),
                      "Detect undefined value:%d",
                      transvr_cls);
-            goto err_sfp_set_trident2_if_type_1;
+            goto err_sfp_set_magnolia_if_type_1;
     }
     /* Exception case: Can't verify */
     snprintf(err_msg, sizeof(err_msg), "Can not identify!");
-    goto err_sfp_set_trident2_if_type_1;
+    goto err_sfp_set_magnolia_if_type_1;
 
-err_sfp_set_trident2_if_type_1:
+err_sfp_set_magnolia_if_type_1:
     snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
     SWPS_INFO("%s: %s <port>:%s\n", __func__, err_msg, self->swp_name);
     return ERR_TRANSVR_ABNORMAL;
@@ -5820,7 +5820,7 @@ err_sfp_set_trident2_if_type_1:
 
 
 int
-_sfp_set_tomahawk_if_type(struct transvr_obj_s* self,
+_sfp_set_redwood_if_type(struct transvr_obj_s* self,
                           int transvr_cls,
                           char *result) {
 
@@ -5871,13 +5871,13 @@ _sfp_set_tomahawk_if_type(struct transvr_obj_s* self,
             snprintf(err_msg, sizeof(err_msg),
                      "Detect undefined value:%d",
                      transvr_cls);
-            goto err_sfp_set_tomahawk_if_type_1;
+            goto err_sfp_set_redwood_if_type_1;
     }
     /* Exception case: Can't verify */
     snprintf(err_msg, sizeof(err_msg), "Can not identify!");
-    goto err_sfp_set_tomahawk_if_type_1;
+    goto err_sfp_set_redwood_if_type_1;
 
-err_sfp_set_tomahawk_if_type_1:
+err_sfp_set_redwood_if_type_1:
     snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
     SWPS_INFO("%s: %s\n <port>:%s", __func__, err_msg, self->swp_name);
     return ERR_TRANSVR_ABNORMAL;
@@ -5885,11 +5885,11 @@ err_sfp_set_tomahawk_if_type_1:
 
 
 int
-_sfp_set_d5254_if_type(struct transvr_obj_s* self,
+_sfp_set_lavender_if_type(struct transvr_obj_s* self,
                            int transvr_cls,
                            char *result) {
     /* (TBD)
-     *  Due to d5254 looks like doesn't have interface type.
+     *  Due to chip vendor looks like doesn't have interface type.
      *  We bypass it currently.
      */
     int lmax = 8;    
@@ -5906,15 +5906,15 @@ _sfp_detect_if_type(struct transvr_obj_s* self,
 
     detect_cls = sft_detect_transvr_class(self);
     switch (self->chipset_type) {
-        case BCM_CHIP_TYPE_TRIDENT_2:
-            return _sfp_set_trident2_if_type(self, detect_cls, result);
+        case CHIP_TYPE_MAGNOLIA:
+            return _sfp_set_magnolia_if_type(self, detect_cls, result);
         
-        case BCM_CHIP_TYPE_TRIDENT_3:
-        case BCM_CHIP_TYPE_TOMAHAWK:
-            return _sfp_set_tomahawk_if_type(self, detect_cls, result);
+        case CHIP_TYPE_MAPLE:
+        case CHIP_TYPE_REDWOOD:
+            return _sfp_set_redwood_if_type(self, detect_cls, result);
 
-        case CHIP_TYPE_D5254:
-            return _sfp_set_d5254_if_type(self, detect_cls, result);
+        case CHIP_TYPE_LAVENDER:
+            return _sfp_set_lavender_if_type(self, detect_cls, result);
             
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",
@@ -6389,7 +6389,7 @@ err_qsft_detect_transvr_class_1:
 
 
 int
-_qsfp_set_trident2_if_type(struct transvr_obj_s* self,
+_qsfp_set_magnolia_if_type(struct transvr_obj_s* self,
                            int transvr_cls,
                            char *result){
 
@@ -6438,13 +6438,13 @@ _qsfp_set_trident2_if_type(struct transvr_obj_s* self,
             snprintf(err_msg, sizeof(err_msg),
                      "Detect undefined value:%d",
                      transvr_cls);
-            goto err_qsfp_set_trident2_if_type_1;
+            goto err_qsfp_set_magnolia_if_type_1;
     }
     /* Exception case: Can't verify */
     snprintf(err_msg, sizeof(err_msg), "Can not identify!");
-    goto err_qsfp_set_trident2_if_type_1;
+    goto err_qsfp_set_magnolia_if_type_1;
 
-err_qsfp_set_trident2_if_type_1:
+err_qsfp_set_magnolia_if_type_1:
     snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
     SWPS_INFO("%s: %s\n <port>:%s", __func__, err_msg, self->swp_name);
     return ERR_TRANSVR_ABNORMAL;
@@ -6452,7 +6452,7 @@ err_qsfp_set_trident2_if_type_1:
 
 
 int
-_qsfp_set_tomahawk_if_type(struct transvr_obj_s* self,
+_qsfp_set_redwood_if_type(struct transvr_obj_s* self,
                            int transvr_cls,
                            char *result){
 
@@ -6501,13 +6501,13 @@ _qsfp_set_tomahawk_if_type(struct transvr_obj_s* self,
             snprintf(err_msg, sizeof(err_msg),
                      "Detect undefined value:%d",
                      transvr_cls);
-            goto err_qsfp_set_trident2_if_type_1;
+            goto err_qsfp_set_magnolia_if_type_1;
     }
     /* Exception case: Can't verify */
     snprintf(err_msg, sizeof(err_msg), "Can not identify!");
-    goto err_qsfp_set_trident2_if_type_1;
+    goto err_qsfp_set_magnolia_if_type_1;
 
-err_qsfp_set_trident2_if_type_1:
+err_qsfp_set_magnolia_if_type_1:
     snprintf(result, lmax, TRANSVR_UEVENT_UNKNOW);
     SWPS_INFO("%s: %s\n <port>:%s", __func__, err_msg, self->swp_name);
     return ERR_TRANSVR_ABNORMAL;
@@ -6515,11 +6515,11 @@ err_qsfp_set_trident2_if_type_1:
 
 
 int
-_qsfp_set_d5254_if_type(struct transvr_obj_s* self,
+_qsfp_set_lavender_if_type(struct transvr_obj_s* self,
                             int transvr_cls,
                             char *result) {
     /* (TBD)
-     *  Due to d5254 looks like doesn't have interface type.
+     *  Due to chip vendor looks like doesn't have interface type.
      *  We bypass it currently.
      */
     int lmax = 8;    
@@ -6536,15 +6536,15 @@ _qsfp_detect_if_type(struct transvr_obj_s* self,
 
     detect_cls = qsft_detect_transvr_class(self);
     switch (self->chipset_type) {
-        case BCM_CHIP_TYPE_TRIDENT_2:
-            return _qsfp_set_trident2_if_type(self, detect_cls, result);
+        case CHIP_TYPE_MAGNOLIA:
+            return _qsfp_set_magnolia_if_type(self, detect_cls, result);
         
-        case BCM_CHIP_TYPE_TRIDENT_3:
-        case BCM_CHIP_TYPE_TOMAHAWK:
-            return _qsfp_set_tomahawk_if_type(self, detect_cls, result);
+        case CHIP_TYPE_MAPLE:
+        case CHIP_TYPE_REDWOOD:
+            return _qsfp_set_redwood_if_type(self, detect_cls, result);
 
-        case CHIP_TYPE_D5254:
-            return _qsfp_set_d5254_if_type(self, detect_cls, result);
+        case CHIP_TYPE_LAVENDER:
+            return _qsfp_set_lavender_if_type(self, detect_cls, result);
             
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",

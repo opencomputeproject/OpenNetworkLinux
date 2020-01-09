@@ -203,12 +203,12 @@
 #define VAL_OPTICAL_WAVELENGTH_LR       (1310)
 #define VAL_OPTICAL_WAVELENGTH_ER       (1550)
 
-/* BCM chip type define */
-#define BCM_CHIP_TYPE_TRIDENT_2         (31001)  /* Magnolia, Hudson32i, Spruce */
-#define BCM_CHIP_TYPE_TOMAHAWK          (31002)  /* Redwood, Cypress, Sequoia */
-#define BCM_CHIP_TYPE_TRIDENT_3         (31003)  /* Maple */
+/*chip type define */
+#define CHIP_TYPE_MAGNOLIA         (31001)  /* Magnolia, Hudson32i, Spruce */
+#define CHIP_TYPE_REDWOOD          (31002)  /* Redwood, Cypress, Sequoia */
+#define CHIP_TYPE_MAPLE            (31003)  /* Maple */
 
-#define CHIP_TYPE_D5254             (31011)  /* Lavender */
+#define CHIP_TYPE_LAVENDER             (31011)  /* Lavender */
 
 /* Info from transceiver EEPROM */
 struct eeprom_map_s {

@@ -1750,6 +1750,7 @@ get_platform_type(void){
         case PLATFORM_TYPE_SPRUCE:
         case PLATFORM_TYPE_CYPRESS_GA1:
         case PLATFORM_TYPE_CYPRESS_GA2:
+        case PLATFORM_TYPE_CYPRESS_BAI:
         case PLATFORM_TYPE_TAHOE:
         case PLATFORM_TYPE_SEQUOIA_GA:
         case PLATFORM_TYPE_LAVENDER_GA:
@@ -1849,6 +1850,15 @@ get_layout_info(void){
             port_layout   = cypress_ga2_port_layout;
             ioexp_total   = ARRAY_SIZE(cypress_ga2_ioexp_layout);
             port_total    = ARRAY_SIZE(cypress_ga2_port_layout);
+            break;
+#endif
+#ifdef SWPS_CYPRESS_BAI
+        case PLATFORM_TYPE_CYPRESS_BAI:
+            gpio_rest_mux = cypress_b_gpio_rest_mux;
+            ioexp_layout  = cypress_b_ioexp_layout;
+            port_layout   = cypress_b_port_layout;
+            ioexp_total   = ARRAY_SIZE(cypress_b_ioexp_layout);
+            port_total    = ARRAY_SIZE(cypress_b_port_layout);
             break;
 #endif
 #ifdef SWPS_REDWOOD_FSL
