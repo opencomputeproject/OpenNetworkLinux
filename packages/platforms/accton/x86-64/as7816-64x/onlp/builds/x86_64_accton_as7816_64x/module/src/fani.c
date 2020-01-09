@@ -36,7 +36,7 @@ enum fan_id {
 	FAN_1_ON_PSU_2
 };
 
-#define MAX_FAN_SPEED		25500
+#define MAX_FAN_SPEED		18200
 #define MAX_PSU_FAN_SPEED 	18000
 
 #define CHASSIS_FAN_INFO(fid)		\
