@@ -913,7 +913,8 @@ static void check_switch_temp(void)
         if(IS_ERR(f)) {
                 return;
         }
-        else {
+// It is not used in Gulmohar and Lavender platform.
+/*        else {
                 char temp_str[]={0,0,0,0,0,0,0};
                 loff_t pos = 0;
                 u16 temp2 = 0;
@@ -922,7 +923,7 @@ static void check_switch_temp(void)
                 vfs_read(f, temp_str,6,&pos);
                 temp2 = ((simple_strtoul(temp_str,NULL,10)/1000) <<8 ) & 0xFF00 ;
                 psoc_ipmi_write((u8*)&temp2, SWITCH_TMP_OFFSET, 2);
-        }
+        }*/
         filp_close(f,NULL);
         set_fs(old_fs);
 }

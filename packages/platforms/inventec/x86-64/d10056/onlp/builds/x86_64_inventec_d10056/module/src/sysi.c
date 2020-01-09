@@ -112,7 +112,7 @@ static onlp_oid_t __oid_info[] = {
 
 static int _sysi_version_parsing(char* file_str, char* str_buf, char* version);
 static void _case_tlv_code_string(onlp_onie_info_t* info, char** member, char* path);
-static int _parse_tlv(onlp_onie_info_t* info, uint8_t type);
+static int _parse_tlv(onlp_onie_info_t* info, uint8_t type, int index);
 
 static int _sysi_version_parsing(char* file_str, char* str_buf, char* version)
 {
@@ -157,7 +157,7 @@ static void _case_tlv_code_string(onlp_onie_info_t* info, char** member, char* p
 }
 
 
-static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
+static int _parse_tlv(onlp_onie_info_t* info, uint8_t type, int index)
 {
     int rv = ONLP_STATUS_OK;
     int len;
@@ -171,8 +171,7 @@ static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
                         "mac_addr","manufacturer","country_code","vendor_name","diag_ver","service_tag","vendor_ext","crc32"
                        };
     char path[PATH_LENGTH];
-    int key=(type>TLV_CODE_SERVICE_TAG)? (ITEM_NUM+type-TLV_CODE_CRC_32-1):(type-TLV_CODE_PRODUCT_NAME);
-    snprintf(path,PATH_LENGTH,"%s%s",INV_SYS_PREFIX,path_name[key]);
+    snprintf(path,PATH_LENGTH,"%s%s",INV_SYS_PREFIX,path_name[index]);
     if(type ==TLV_CODE_MAC_BASE) {
         rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len,path);
         if( rv == ONLP_STATUS_OK ) {
@@ -208,10 +207,10 @@ static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
         }
     } else if(type==TLV_CODE_VENDOR_EXT) {
         list_init(&info->vx_list);
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
+        /*rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
         if( rv == ONLP_STATUS_OK ) {
-            /*TODO*/
-        }
+            //TODO
+        }*/
         rv = ONLP_STATUS_OK;
     } else if(type==TLV_CODE_CRC_32) {
         rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, path);
@@ -223,7 +222,12 @@ static int _parse_tlv(onlp_onie_info_t* info, uint8_t type)
             rv = ONLP_STATUS_OK;
         }
     } else if( (type>=TLV_CODE_PRODUCT_NAME) &&  (type<=TLV_CODE_VENDOR_NAME) ) {
-        _case_tlv_code_string(info, list[key], path);
+        if( type==TLV_CODE_LABEL_REVISION   || type==TLV_CODE_MANUF_COUNTRY) {
+            *(list[index])=malloc(sizeof(char)*ONLP_CONFIG_INFO_STR_MAX);
+            snprintf(*(list[index]), ONLP_CONFIG_INFO_STR_MAX, "N/A");
+        } else {
+            _case_tlv_code_string(info, list[index], path);
+        }
     } else {
         return rv;
     }
@@ -303,7 +307,7 @@ onlp_sysi_onie_info_get (onlp_onie_info_t *onie)
         if( rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        rv = _parse_tlv(onie, (__tlv_code_list[i]));
+        rv = _parse_tlv(onie, (__tlv_code_list[i]), i);
 
     }
 

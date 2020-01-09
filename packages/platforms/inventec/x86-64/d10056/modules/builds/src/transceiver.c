@@ -5918,7 +5918,7 @@ _sfp_detect_if_type(struct transvr_obj_s* self,
 
         case CHIP_TYPE_LAVENDER:
             return _sfp_set_lavender_if_type(self, detect_cls, result);
-            
+
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",
                       __func__, self->chipset_type, self->swp_name);
