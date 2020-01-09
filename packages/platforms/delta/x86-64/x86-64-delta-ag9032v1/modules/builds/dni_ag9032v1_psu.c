@@ -430,7 +430,7 @@ static SENSOR_DEVICE_ATTR(psu_temp1_input,	\
 		S_IRUGO, for_linear_data,	NULL, PSU_TEMP1_INPUT);
 static SENSOR_DEVICE_ATTR(psu_fan1_fault,	\
 		S_IRUGO, for_fan_fault, 	NULL, PSU_FAN1_FAULT);
-static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUGO | S_IRUGO, \
+static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUSR | S_IRUGO, \
 		for_linear_data, set_fan_duty_cycle, PSU_FAN1_DUTY_CYCLE);
 static SENSOR_DEVICE_ATTR(psu_fan1_speed_rpm, 	\
 		S_IRUGO, for_linear_data,	NULL, PSU_FAN1_SPEED);
@@ -438,7 +438,7 @@ static SENSOR_DEVICE_ATTR(psu_mfr_model, 	\
 		S_IRUGO, for_ascii, NULL, PSU_MFR_MODEL);
 static SENSOR_DEVICE_ATTR(psu_mfr_serial,	\
 		S_IRUGO, for_ascii, NULL, PSU_MFR_SERIAL);
-static SENSOR_DEVICE_ATTR(psu_select_member, S_IWUGO | S_IRUGO, \
+static SENSOR_DEVICE_ATTR(psu_select_member, S_IWUSR | S_IRUGO, \
 		for_r_member_data, set_w_member_data, PSU_SELECT_MEMBER);
 
 static struct attribute *dps_800ab_16_d_attributes[] = {

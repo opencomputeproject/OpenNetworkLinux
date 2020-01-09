@@ -69,37 +69,93 @@ static char* cpu_coretemp_files[] =
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
 	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core",   0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+	{ 
+          .hdr = { 
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE),
+              .description = "CPU Core",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD), "CPU below side thermal sensor (U57, Below of CPU)", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(45000,55000,60000)
+	{ 
+          .hdr = { 
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_CPU_BOARD),
+              .description = "CPU below side thermal sensor (U57, Below of CPU)",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = dni_onlp_thermal_threshold(45000,55000,60000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD), "Wind thermal sensor (U334, Near FAN)", 0},
-	    ONLP_THERMAL_STATUS_PRESENT,
-	    ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(50000,60000,65000)
+	{
+          .hdr = { 
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_FAN_BOARD),
+              .description = "Wind thermal sensor (U334, Near FAN)",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+	  .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = dni_onlp_thermal_threshold(50000,60000,65000)
 	},
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_SW_BOARD), "MAC up side thermal sersor (U38, up side of MAC)", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(65000,75000,80000)
+	{ 
+          .hdr = { 
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_SW_BOARD),
+              .description = "MAC up side thermal sersor (U38, up side of MAC)",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = dni_onlp_thermal_threshold(65000,75000,80000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_SW_BOARD), "MAC down side thermal sensor (U40, down side of MAC)", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(60000,70000,75000)
+	{ 
+          .hdr = {
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_SW_BOARD),
+              .description = "MAC down side thermal sensor (U40, down side of MAC)",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = dni_onlp_thermal_threshold(60000,70000,75000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_SW_BOARD), "Surroundings thermal sensor (U240, Near front panel)", 0},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, dni_onlp_thermal_threshold(50000,60000,65000)
+	{
+          .hdr = { 
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_SW_BOARD),
+              .description = "Surroundings thermal sensor (U240, Near front panel)",
+              .poid = ONLP_OID_CHASSIS,
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = dni_onlp_thermal_threshold(50000,60000,65000)
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+	{
+          .hdr = {
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1),
+              .description = "PSU-1 Thermal Sensor 1",
+              .poid = ONLP_PSU_ID_CREATE(PSU1_ID),
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+	{
+          .hdr = {
+              .id = ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2),
+              .description = "PSU-2 Thermal Sensor 1",
+              .poid = ONLP_PSU_ID_CREATE(PSU2_ID),
+              .status = ONLP_OID_STATUS_FLAG_PRESENT
+          },
+          .caps = ONLP_THERMAL_CAPS_ALL,
+          .mcelsius = 0,
+          .thresholds = ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         }
 };
 
@@ -107,7 +163,14 @@ static onlp_thermal_info_t linfo[] = {
  * This will be called to intiialize the thermali subsystem.
  */
 int
-onlp_thermali_init(void)
+onlp_thermali_sw_init(void)
+{
+    lockinit();
+    return ONLP_STATUS_OK;
+}
+
+int
+onlp_thermali_sw_denit(void)
 {
     return ONLP_STATUS_OK;
 }
@@ -131,7 +194,7 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     char  fullpath[50] = {0};
     char channel_data[2] = {'\0'};
     uint8_t channel;
-    VALIDATE(id);
+    //VALIDATE(id);
     local_id = ONLP_OID_ID_GET(id);
 
     /* Set the onlp_oid_hdr_t and capabilities */
@@ -177,3 +240,9 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+int
+onlp_thermali_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
+{
+    *hdr = linfo[id].hdr;
+    return ONLP_STATUS_OK;
+}

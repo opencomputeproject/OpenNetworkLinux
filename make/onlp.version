@@ -1,0 +1,7 @@
+LIBONLP_2.0 {
+    local: cjson*;
+           cJSON*;
+           aim*;
+           sff*;
+           biglist*;
+};

@@ -27,16 +27,55 @@
 #define __PLATFORM_LIB_H__
 
 #include "x86_64_delta_ag9032v1_log.h"
+#include <onlp/onlp.h>
+#include <onlplib/shlocks.h>
+
+/* This is definitions for x86-64-inventec-d5254*/
+/* OID map*/
+/*
+ *  SYS---------THERMAL_CPU_CORE
+ *         |----THERMAL_1_ON_CPU_BOARD
+ *         |----THERMAL_2_ON_CPU_BOARD
+ *         |----THERMAL_3_ON_CPU_BOARD
+ *         |----THERMAL_4_ON_CPU_BOARD
+ *         |----THERMAL_5_ON_CPU_BOARD
+ *         |----LED_FRONT_FAN
+ *         |----LED_FRONT_SYS
+ *         |----LED_FRONT_PWR1
+ *         |----LED_FRONT_PWR2
+ *         |----FAN_1_ON_FAN_BOARD--------FAN_6_ON_FAN_BOARD
+ *         |                           |--LED_REAR_FAN_TRAY_1
+ *         |
+ *         |----FAN_2_ON_FAN_BOARD--------FAN_7_ON_FAN_BOARD
+ *         |                           |--LED_REAR_FAN_TRAY_2
+ *         |
+ *         |----FAN_3_ON_FAN_BOARD--------FAN_8_ON_FAN_BOARD
+ *         |                           |--LED_REAR_FAN_TRAY_3
+ *         |
+ *         |----FAN_4_ON_FAN_BOARD--------FAN_9_ON_FAN_BOARD
+ *         |                           |--LED_REAR_FAN_TRAY_4
+ *         |
+ *         |----FAN_5_ON_FAN_BOARD--------FAN_10_ON_FAN_BOARD
+ *         |                           |--LED_REAR_FAN_TRAY_5
+ *         |
+ *         |----PSU1_ID--------THERMAL_1_ON_PSU1
+ *         |                |--FAN_1_ON_PSU1
+ *         |
+ *         |----PSU2_ID--------THERMAL_1_ON_PSU2
+ *         |                |--FAN_1_ON_PSU2
+ *         |
+ *         |----SFP 1-32
+ */
 
 /* CPLD numbrt & peripherals */
 #define NUM_OF_THERMAL_ON_BOARDS  6
-#define NUM_OF_FAN_ON_FAN_BOARD   10
+#define NUM_OF_FAN_ON_FAN_BOARD   5
 #define NUM_OF_PSU_ON_PSU_BOARD   2
-#define NUM_OF_LED_ON_BOARDS      9
+#define NUM_OF_LED_ON_BOARDS      4
+#define NUM_OF_QSFP               32
 #define NUM_OF_CPLD               2
 #define CHASSIS_FAN_COUNT         10
 #define CHASSIS_THERMAL_COUNT     6
-
 
 #define PREFIX_PATH   "/sys/bus/i2c/devices/"
 #define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/4-0058/"
@@ -85,9 +124,10 @@
 #define PSU_STATUS_PRESENT    (1)
 #define PSU_NODE_MAX_PATH_LEN (64)
 #define FAN_SPEED_NORMALLY (5)
-#define SPEED_25_PERCENTAGE (25)
-#define SPEED_50_PERCENTAGE (50)
-#define SPEED_75_PERCENTAGE (75)
+#define SPEED_30_PERCENTAGE (30)
+#define SPEED_40_PERCENTAGE (40)
+#define SPEED_60_PERCENTAGE (60)
+#define SPEED_80_PERCENTAGE (80)
 #define SPEED_100_PERCENTAGE (100)
 #define FAN_ZERO_TACH (960)
 
@@ -136,6 +176,8 @@
 #define SFP_RESET_3     (0x3E)
 #define SFP_RESET_4     (0x3F)
 
+#define BUS_LOCK    1
+#define BUS_LOCKED    0
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len);
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
 
@@ -160,26 +202,24 @@ typedef struct mux_info_s
 
 }mux_info_t;
 
-pthread_mutex_t mutex;
-pthread_mutex_t mutex1;
 int dni_i2c_lock_read(mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_write(mux_info_t * mux_info, dev_info_t * dev_info);
 int dni_i2c_lock_read_attribute(mux_info_t * mux_info, char * fullpath);
 int dni_i2c_lock_write_attribute(mux_info_t * mux_info, char * data,char * fullpath);
 int dni_lock_swpld_read_attribute(int addr);
-int dni_lock_swpld_write_attribute(int addr, int addr1);
+int dni_swpld_write_attribute(int addr, int data,int bus_lock);
 int dni_fan_speed_good();
-
+void lockinit();
 
 typedef enum
 {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
-    THERMAL_1_ON_CPU_BOARD,
-    THERMAL_2_ON_FAN_BOARD,
-    THERMAL_3_ON_SW_BOARD,
-    THERMAL_4_ON_SW_BOARD,
-    THERMAL_5_ON_SW_BOARD,
+    THERMAL_1_ON_CPU_BOARD,  //U57
+    THERMAL_2_ON_FAN_BOARD,  //U334
+    THERMAL_3_ON_SW_BOARD,   //U38
+    THERMAL_4_ON_SW_BOARD,   //U40
+    THERMAL_5_ON_SW_BOARD,   //U240
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
 } onlp_thermal_id;
@@ -214,6 +254,24 @@ typedef enum
     LED_REAR_FAN_TRAY_4,
     LED_REAR_FAN_TRAY_5
 }onlp_led_id;
+
+typedef enum
+{
+    LEVEL_1=0,    //worse zone
+    LEVEL_2,
+    LEVEL_3,
+    LEVEL_4,
+    LEVEL_5,
+    LEVEL_6     // good and save zone
+}thermal_level_t;
+
+typedef struct thermal_fan_s
+{
+        int temp_H[6]; //high tmp LV1_LV6
+        int temp_L[6]; //low tmp LV1_LV6
+        int current_lv;
+}thermal_fan_t;
+
 
 #endif  /* __PLATFORM_LIB_H__ */
 

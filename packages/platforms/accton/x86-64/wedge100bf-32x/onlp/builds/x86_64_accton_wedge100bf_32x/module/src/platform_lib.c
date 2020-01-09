@@ -123,10 +123,7 @@ static int tty_login(void)
 int bmc_tty_init(void)
 {
     int i;
-    if (tty_fd >= 0){
-        return 0;
-    }
-
+    
     for (i = 1; i <= TTY_RETRY; i++) {
         if (tty_open() != 0) {
             AIM_LOG_ERROR("ERROR: Cannot open TTY device\n");
@@ -159,6 +156,10 @@ int bmc_tty_deinit(void)
 int bmc_send_command(char *cmd)
 {
     int i, ret = 0;
+    
+    if( tty_fd == -1 ){
+        bmc_tty_init();
+    }
     
     for (i = 1; i <= TTY_RETRY; i++) {
         snprintf(tty_buf, MAXIMUM_TTY_BUFFER_LENGTH, "%s", cmd);
