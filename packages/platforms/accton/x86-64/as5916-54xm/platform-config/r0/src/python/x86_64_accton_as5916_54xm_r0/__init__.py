@@ -133,7 +133,6 @@ class OnlPlatform_x86_64_accton_as5916_54xm_r0(OnlPlatformAccton,
         if ret==0:
             self.new_i2c_device('24c02', 0x56, 0)
         else:
-            ir3570_check()
             self.new_i2c_device('24c02', 0x57, 0)
 
         return True
