@@ -82,6 +82,9 @@ enum onlp_thermal_id
 
 #define DEBUG_MODE 0
 
+/*Old board's eeprom i2c-addr is 0x56, new board eeprom i2c-addr is 0x57*/
+#define IDPROM_PATH_1 "/sys/class/i2c-adapter/i2c-0/0-0056/eeprom"
+#define IDPROM_PATH_2 "/sys/class/i2c-adapter/i2c-0/0-0057/eeprom"
 #if (DEBUG_MODE == 1)
 	#define DEBUG_PRINT(fmt, args...)                                        \
 		printf("%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)
