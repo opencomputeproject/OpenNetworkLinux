@@ -78,9 +78,6 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
-    model_name[PSU_MODEL_NAME_LEN + 1]='\0';
-    printf("model_name=%s\n",model_name);
-	
     if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) == 0)
     {
         if (modelname)
