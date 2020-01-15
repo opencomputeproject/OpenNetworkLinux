@@ -121,14 +121,11 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         else if (strncmp(fan_str, "F2B", PSU_FAN_DIR_LEN) == 0)
         {
             ptype = PSU_TYPE_DC_48V_F2B;
-            printf("PSU_TYPE_DC_48V_F2B\n");
         }
         else
         {
             ptype = PSU_TYPE_DC_48V_B2F;
-            printf("PSU_TYPE_DC_48V_B2F\n");
         }
-
         aim_free(fan_str);
     }
 
