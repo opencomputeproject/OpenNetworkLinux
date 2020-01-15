@@ -62,14 +62,15 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define I2C_PSU_MODEL_NAME_LEN 9
-#define I2C_PSU_FAN_DIR_LEN    3
+#define PSU_MODEL_NAME_LEN 9
+#define PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 {
+    int   ret = 0;
     char *node = NULL;
-    char  model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
-    char  fan_dir[I2C_PSU_FAN_DIR_LEN + 1] = {0};
+    char  model_name[PSU_MODEL_NAME_LEN + 1] = {0};
+    psu_type_t ptype = PSU_TYPE_UNKNOWN;
     
     /* Check AC model name */
     node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_model_name) : PSU2_AC_HWMON_NODE(psu_model_name);
@@ -77,30 +78,64 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
         return PSU_TYPE_UNKNOWN;
     }
+    model_name[PSU_MODEL_NAME_LEN + 1]='\0';
+    printf("model_name=%s\n",model_name);
 	
-    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) != 0) {
-        return PSU_TYPE_UNKNOWN;
+    if (strncmp(model_name, "YM-2651Y", strlen("YM-2651Y")) == 0)
+    {
+        if (modelname)
+        {
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
+        }
+        char *fan_str = aim_zmalloc(PSU_FAN_DIR_LEN + 1);
+
+        node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
+        ret = onlp_file_read_str(&fan_str, node);
+        if (ret <= 0 || ret > PSU_FAN_DIR_LEN)
+        {
+            ptype = PSU_TYPE_UNKNOWN;
+        }
+        else if (strncmp(fan_str, "F2B", PSU_FAN_DIR_LEN) == 0)
+        {
+            ptype = PSU_TYPE_AC_F2B;
+        }
+        else
+        {
+            ptype = PSU_TYPE_AC_B2F;
+        }
+
+        aim_free(fan_str);
+    }
+    if (strncmp(model_name, "YM-2651V", 8) == 0)
+    {
+        if (modelname)
+        {
+            aim_strlcpy(modelname, model_name, sizeof(model_name));
+        }
+
+        char *fan_str = aim_zmalloc(PSU_FAN_DIR_LEN + 1);
+        
+        node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
+        ret = onlp_file_read_str(&fan_str, node);
+        if (ret <= 0 || ret > PSU_FAN_DIR_LEN)
+        {
+            ptype = PSU_TYPE_UNKNOWN;
+        }
+        else if (strncmp(fan_str, "F2B", PSU_FAN_DIR_LEN) == 0)
+        {
+            ptype = PSU_TYPE_DC_48V_F2B;
+            printf("PSU_TYPE_DC_48V_F2B\n");
+        }
+        else
+        {
+            ptype = PSU_TYPE_DC_48V_B2F;
+            printf("PSU_TYPE_DC_48V_B2F\n");
+        }
+
+        aim_free(fan_str);
     }
 
-    if (modelname) {
-        aim_strlcpy(modelname, model_name, modelname_len-1);
-    }
-
-    node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU2_AC_PMBUS_NODE(psu_fan_dir);
-
-    if (onlp_file_read_string(node, fan_dir, sizeof(fan_dir), 0) != 0) {
-        return PSU_TYPE_UNKNOWN;
-    }
-
-    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-        return PSU_TYPE_AC_F2B;
-    }
-
-    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-        return PSU_TYPE_AC_B2F;
-    }
-
-    return PSU_TYPE_UNKNOWN;
+    return ptype;
 }
 
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
@@ -148,3 +183,25 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
     return ONLP_STATUS_OK;
 }
 
+#define PSU_SERIAL_NUMBER_LEN	19
+
+int psu_serial_number_get(int id, char *serial, int serial_len)
+{
+    int   size = 0;
+    int   ret  = ONLP_STATUS_OK; 
+    char *prefix = NULL;
+
+    if (serial == NULL || serial_len < PSU_SERIAL_NUMBER_LEN)
+    {
+        return ONLP_STATUS_E_PARAM;
+    }
+    prefix = (id == PSU1_ID) ? PSU1_AC_PMBUS_PREFIX : PSU2_AC_PMBUS_PREFIX;
+    ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
+    if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
+		return ONLP_STATUS_E_INTERNAL;
+
+    }
+    serial[PSU_SERIAL_NUMBER_LEN-1] = '\0';
+
+    return ONLP_STATUS_OK;
+}

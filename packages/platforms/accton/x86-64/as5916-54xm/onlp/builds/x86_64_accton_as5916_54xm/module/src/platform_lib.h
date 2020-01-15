@@ -63,10 +63,13 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
+    PSU_TYPE_AC_B2F,
+    PSU_TYPE_DC_48V_F2B,
+    PSU_TYPE_DC_48V_B2F
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+int psu_serial_number_get(int id, char *serial, int serial_len);
 
 enum onlp_thermal_id
 {
