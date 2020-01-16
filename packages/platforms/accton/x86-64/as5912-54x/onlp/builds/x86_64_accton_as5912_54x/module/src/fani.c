@@ -171,19 +171,26 @@ _onlp_get_fan_direction_on_psu(void)
      */
     int i = 0;
 
-    for (i = PSU1_ID; i <= PSU2_ID; i++) {
+    for (i = PSU1_ID; i <= PSU2_ID; i++)
+    {
         psu_type_t psu_type;
         psu_type = get_psu_type(i, NULL, 0);
 
-        if (psu_type == PSU_TYPE_UNKNOWN) {
+        if (psu_type == PSU_TYPE_UNKNOWN)
+        {
             continue;
         }
 
-        if (PSU_TYPE_AC_F2B == psu_type) {
+         switch (psu_type)
+         {
+            case PSU_TYPE_AC_F2B:
+            case PSU_TYPE_DC_48V_F2B:
             return ONLP_FAN_STATUS_F2B;
-        }
-        else {
+            case PSU_TYPE_AC_B2F:
+            case PSU_TYPE_DC_48V_B2F:
             return ONLP_FAN_STATUS_B2F;
+            default:
+                break;
         }
     }
 
