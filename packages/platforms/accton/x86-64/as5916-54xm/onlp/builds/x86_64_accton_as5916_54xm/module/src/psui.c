@@ -75,13 +75,9 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
     
-    /* Set capability
-     */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
-	if (info->status & ONLP_PSU_STATUS_FAILED) {
-	    return ONLP_STATUS_OK;
-	}
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
@@ -102,6 +98,7 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
     } 
+    psu_serial_number_get(index, info->serial, sizeof(info->serial));
 
     return ONLP_STATUS_OK;
 }
@@ -162,6 +159,12 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
+           info->caps = ONLP_PSU_CAPS_AC;
+            ret = psu_ym2651y_info_get(info);
+            break;
+        case PSU_TYPE_DC_48V_F2B:
+        case PSU_TYPE_DC_48V_B2F:
+            info->caps = ONLP_PSU_CAPS_DC48;
             ret = psu_ym2651y_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
