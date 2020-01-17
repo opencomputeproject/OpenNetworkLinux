@@ -3,7 +3,6 @@
 
 /*customized definition*/
 
-#define BUF_SIZE (PAGE_SIZE)
 #define DEFAULT_CLTE (4)
 /* <TBD> use enum to define reply code*/
 /*use define temporary*/
@@ -15,12 +14,12 @@ typedef enum {
     PLATFORM_MAPLE,
     PLATFORM_BANYAN,
     PLATFORM_CEDAR,
-    PLATFORM_CYPRESS,
+    PLATFORM_4U,
     PLATFORM_END,
 
-} platform_name_t;
+} platform_id_t;
 
-#define PLATFORM_NAME (PLATFORM_BANYAN)
-#define SWPS_VERSION ("swps_1U_v1.0.3")
+#define PLATFORM_ID (PLATFORM_BANYAN)
+#define SWPS_VERSION ("SWPS_GA_v0.0.8")
 
 #endif /*__INV_DEF_H*/

@@ -1,40 +1,130 @@
 #ifndef __SFF_H
 #define __SFF_H
 
+#include <linux/i2c.h>
 #include "sff_spec.h"
 
 #define READBACK_CHECK
-#define DEBUG_LOG (0)
+#define DEBUG_LOG (1)
 
-#define SFF_KSET ("swps")
+#define SWPS_KSET ("swps")
 #define TRY_NUM (5)
 #define SFF_EEPROM_I2C_ADDR (0xA0 >> 1)
 #define SFF_DDM_I2C_ADDR (0xA2 >> 1)
-#define I2C_RETRY_DELAY (10)
 #define WORD_SIZE (2)
 #define SFP_LANE_NUM (1)
 #define QSFP_LANE_NUM (4)
 #define QSFP_DD_LANE_NUM (8)
 #define VENDOR_INFO_BUF_SIZE (32)
+#define BUF_SIZE (PAGE_SIZE)
+#define MUX_CH_NUM  (8)
 
+#define SWPS_POLLING_PERIOD    (msecs_to_jiffies(100))  /* msec */
 
-#define SFF_POLLING_PERIOD    (msecs_to_jiffies(100))  /* msec */
-
-#define DYNAMIC_KOBJ_SUPPORT (1)
+#define DYNAMIC_SFF_KOBJ
 
 #define PAGE_NUM  (256)
 #define EEPROM_SIZE (256)
+//#define QSFP_INT_FLAG_SUPPORT
 #define EEPROM_HALF_SIZE (128)
 #define QSFP_INT_FLAG_SUPPORT
 
+#define bit_mask(bit) (1 << (bit))
+/*bit:start bit from rightmost , num: the num of bits what to be extracted*/
+#define bits_get(reg, bit, num) ((reg >> bit) & ((1 << num)-1))
+#define sff_to_lc(x) container_of(x, struct lc_obj_t, sff)
+#if 0
 #if (DEBUG_LOG == 1)
-#define SFF_MGR_DEBUG(fmt, args...) \
-    printk (KERN_INFO "[SFF_MGR]%s: " fmt "\r\n",__FUNCTION__,  ##args)
+#define SWPS_LOG_DEBUG(fmt, args...) \
+    printk (KERN_INFO "[SWPS]%s " fmt "\r\n",__FUNCTION__,  ##args)
 #else
-#define SFF_MGR_DEBUG(fmt, args...)
+#define SWPS_LOG_DEBUG(fmt, args...)
 #endif
-#define SFF_MGR_INFO(fmt, args...) printk (KERN_INFO "[SFF_MGR]%s:"fmt,__FUNCTION__,  ##args)
-#define SFF_MGR_ERR(fmt, args...)  printk (KERN_ERR "{SFF_MGR]%s: " fmt "\r\n",__FUNCTION__,  ##args)
+#define SWPS_LOG_INFO(fmt, args...) printk (KERN_INFO "[SWPS]%s:"fmt,__FUNCTION__,  ##args)
+#define SWPS_LOG_ERR(fmt, args...)  printk (KERN_ERR "[SWPS]%s: " fmt "\r\n",__FUNCTION__,  ##args)
+#endif
+#define check_pfunc(p) \
+    do { \
+        if (p == NULL) { \
+        printk( KERN_ERR "%s, %s = NULL.\n", __FUNCTION__, #p); \
+        return -ENOSYS; \
+        } \
+    }while(0)
+enum LOG_LEVEL {
+
+    SWPS_ERR_LEV = 0x1,
+    MODULE_ERR_LEV = 0x2,
+    DEV_ERR_LEV = 0x04,
+    EEPROM_ERR_LEV = 0x08,
+    ERR_ALL_LEV = 0xff,
+
+    SWPS_INFO_LEV = 0x100,
+    MODULE_INFO_LEV = 0x200,
+    DEV_INFO_LEV = 0x400,
+    EEPROM_INFO_LEV = 0x800,
+    INFO_ALL_LEV = 0xff00,
+
+    SWPS_DBG_LEV = 0x10000,
+    MODULE_DBG_LEV = 0x20000,
+    DEV_DBG_LEV = 0x40000,
+    EEPROM_DBG_LEV = 0x80000,
+    DBG_ALL_LEV = 0xff0000,
+
+};
+
+#define SWPS_LOG_ERR(fmt, args...) \
+    do { \
+        if (logLevel & SWPS_ERR_LEV) \
+        { \
+            printk (KERN_ERR "[SWPS]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+#define SWPS_LOG_INFO(fmt, args...) \
+    do { \
+        if (logLevel & SWPS_INFO_LEV) \
+        { \
+            printk (KERN_INFO "[SWPS]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+#define SWPS_LOG_DBG(fmt, args...) \
+    do { \
+        if (logLevel & SWPS_DBG_LEV) \
+        { \
+            printk (KERN_INFO "[SWPS]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+#define MODULE_LOG_ERR(fmt, args...) \
+    do { \
+        if (logLevel & MODULE_ERR_LEV) \
+        { \
+            printk (KERN_ERR "[MODULE]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+#define MODULE_LOG_INFO(fmt, args...) \
+    do { \
+        if (logLevel & MODULE_INFO_LEV) \
+        { \
+            printk (KERN_INFO "[MODULE]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+#define MODULE_LOG_DBG(fmt, args...) \
+    do { \
+        if (logLevel & MODULE_DBG_LEV) \
+        { \
+            printk (KERN_INFO "[MODULE]%s: "fmt,__FUNCTION__,  ##args); \
+        } \
+    } while (0)
+
+
+/*public function*/
+#define I2C_RETRY_NUM    (3)
+#define I2C_RETRY_DELAY_MS (10)
+
 
 typedef enum {
     SFP_TYPE = 0,
@@ -63,29 +153,25 @@ typedef enum {
 typedef enum {
     SOFT_RX_RATE_RS0 = 1 << 0,
     SOFT_TX_RATE_RS1 = 1 << 1,
-
 } rate_control_t;
 
 typedef enum {
     TX_EQ_TYPE,
     RX_EM_TYPE,
     RX_AM_TYPE,
-
 } sysfs_attrbute_index_ln_control_t;
-
 
 typedef enum {
     LN_MONITOR_RX_PWR_TYPE,
     LN_MONITOR_TX_PWR_TYPE,
     LN_MONITOR_TX_BIAS_TYPE,
-
 } sysfs_attrbute_index_ln_monitor_t;
+
 typedef enum {
     LN_STATUS_RX_LOS_TYPE,
     LN_STATUS_TX_LOS_TYPE,
     LN_STATUS_TX_FAULT_TYPE,
     LN_STATUS_NUM,
-
 } sysfs_attrbute_index_ln_status_t;
 
 typedef enum {
@@ -93,32 +179,32 @@ typedef enum {
     VENDOR_PN_TYPE,
     VENDOR_SN_TYPE,
     VENDOR_REV_TYPE,
-
 } sysfs_attrbute_index_vendor_info_t;
 
 typedef enum {
-
     SFF_FSM_ST_REMOVED = 0,
     SFF_FSM_ST_INSERTED,
     SFF_FSM_ST_DETECTING,
     SFF_FSM_ST_INIT,
-    SFF_FSM_ST_DETECTED,
+    SFF_FSM_ST_READY,
     SFF_FSM_ST_IDLE,
     SFF_FSM_ST_FAULT,
-    SFF_FSM_ST_RESET_ASSERTED,
-    SFF_FSM_ST_RESET_DEASSERTED,
+    SFF_FSM_ST_SUSPEND,
+    SFF_FSM_ST_RESTART,
     SFF_FSM_ST_ISOLATED,
     SFF_FSM_ST_IDENTIFY,
     SFF_FSM_ST_MONITOR,
     /*qsfp-dd only {*/
     SFF_FSM_ST_MGMT_INIT,
+    SFF_FSM_ST_MODULE_UNRESET,
     SFF_FSM_ST_MODULE_HW_INIT,
     SFF_FSM_ST_MODULE_LOOPBACK_INIT,
     SFF_FSM_ST_MODULE_READY,
     SFF_FSM_ST_MODULE_PWR_DOWN,
     SFF_FSM_ST_MODULE_CMIS_VER_CHECK,
     SFF_FSM_ST_MODULE_ADVERT_CHECK,
-    SFF_FSM_ST_MODULE_SW_CONFIG,
+    SFF_FSM_ST_MODULE_SW_CONFIG_1,
+    SFF_FSM_ST_MODULE_SW_CONFIG_2,
     SFF_FSM_ST_MODULE_SW_CONFIG_CHECK,
     SFF_FSM_ST_MODULE_SW_CONTROL,
     SFF_FSM_ST_MODULE_READY_CHECK,
@@ -126,27 +212,30 @@ typedef enum {
     SFF_FSM_ST_UNKNOWN_TYPE,
     SFF_FSM_ST_END,
     SFF_FSM_ST_NUM,
-
 } sff_fsm_state_t;
-struct qsfp_dd_priv_data {
 
+struct qsfp_dd_priv_data {
     int lane_num;
     u8 module_type;
     union qsfp_dd_app_advert_fields fields[APSEL_NUM];
-};
-struct qsfp_priv_data {
-    u8 lane_st[LN_STATUS_NUM];
+    bool paging_supported;
+    bool rev4_full_en;
     u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
 };
 
-union priv_data_t {
+struct qsfp_priv_data {
+    u8 lane_st[LN_STATUS_NUM];
+    u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
+    bool paging_supported;
+};
 
+union priv_data_t {
     struct qsfp_dd_priv_data qsfp_dd;
     struct qsfp_priv_data qsfp;
 };
-struct sff_kobj_t {
+
+struct swps_kobj_t {
     struct kobject kobj;
-    int port;
     struct sff_obj_t *sff_obj;
 };
 
@@ -161,41 +250,159 @@ struct sff_fsm_t {
 };
 
 struct qsfp_dd_fsm_func_t {
-
     int (*advert_check)(struct sff_obj_t *sff_obj, bool *pass);
-    int (*sw_config)(struct sff_obj_t *sff_obj);
+    int (*sw_config_1)(struct sff_obj_t *sff_obj);
+    int (*sw_config_2)(struct sff_obj_t *sff_obj, bool *pass);
     int (*sw_config_check)(struct sff_obj_t *sff_obj, bool *pass);
     int (*sw_control)(struct sff_obj_t *sff_obj);
     int (*module_ready_check)(struct sff_obj_t *sff_obj, bool *ready);
-
 };
 struct sff_obj_t {
-    int port;
+    int port;  /*real port(ga) corresponding to hw connection , eeprom, cpld reg mapping..*/
+    int front_port; /*the front port you see from front panel, index from 0 , refer to port_info_map*/
+    char *name; /*front port name index from 1 , port1...., refer to port_info_map*/
     sff_type type;
     int transvr_type;
-    char *name;
-    struct sff_kobj_t *kobj;
+    struct swps_kobj_t *kobj;
     union priv_data_t priv_data;
     struct sff_fsm_t fsm;
     struct sff_mgr_t *mgr;
     struct func_tbl_t *func_tbl;
-    struct qsfp_dd_fsm_func_t *dd_fsm_func;   
+    struct qsfp_dd_fsm_func_t *qsfp_dd_fsm_func;
+    bool page_sel_lock;
 };
 
 struct sff_mgr_t {
-    int port_num;
-    unsigned long prsL;
+    int valid_port_num;
+    unsigned long prs;
     struct sff_obj_t *obj;
-    struct sff_kobj_t *mgr_kobj;
-    struct sff_kobj_t *common_kobj;
-    int (*prsL_scan)(struct sff_mgr_t *sff);
+    int *frontPort_to_port;
+    struct swps_kobj_t *mgr_kobj;
+    struct swps_kobj_t *common_kobj;
+    int (*prs_scan)(struct sff_mgr_t *sff);
+    unsigned long io_no_init_port_done;
 };
-/*the driver structure contains the api doing hw dependent functions (IO + eeprom)*/ 
+
+typedef enum {
+    LC_LED_CTRL_OFF = 0,
+    LC_LED_CTRL_GREEN_ON,
+    LC_LED_CTRL_RED_ON,
+    LC_LED_CTRL_AMBER_ON,
+    LC_LED_CTRL_GREEN_BLINK,
+    LC_LED_CTRL_RED_BLINK,
+    LC_LED_CTRL_AMBER_BLINK,
+    LC_LED_CTRL_NUM,
+} lc_led_ctrl_t;
+
+typedef enum {
+    LC_UNKNOWN_TYPE = 0,
+    LC_100G_TYPE,
+    LC_400G_TYPE,
+    LC_TYPE_NUM,
+} lc_type_t;
+
+typedef enum {
+
+    LC_FSM_ST_INSERT,
+    LC_FSM_ST_POWER_ON,
+    LC_FSM_ST_POWER_CHECK,
+    LC_FSM_ST_PHY_CHECK,
+    LC_FSM_ST_INIT,
+    LC_FSM_ST_READY,
+    LC_FSM_ST_REMOVE,
+    LC_FSM_ST_IDLE,
+    LC_FSM_ST_THERMAL_TRIP,
+    LC_FSM_ST_UNSUPPORTED,
+    LC_FSM_ST_FAULT,
+    LC_FSM_ST_NUM,
+
+} lc_fsm_st_t;
+typedef struct lc_t lc_mgr_type;
+struct lc_obj_t {
+    struct sff_mgr_t sff;
+    struct swps_kobj_t *card_kobj;
+    char *name;
+    int lc_id;
+    unsigned long prs;
+    lc_fsm_st_t st;
+    lc_mgr_type *mgr;
+    bool power_ready;
+    bool is_phy_ready;
+    unsigned long phy_ready_bitmap;
+    int temp;
+    lc_type_t type;
+};
+
+struct sff_io_driver_t {
+    int (*prs_all_get)(int lc_id, unsigned long *bitmap);
+    int (*intr_all_get)(int lc_id, unsigned long *bitmap);
+    int (*rx_los_all_get)(int lc_id, unsigned long *bitmap);
+    int (*tx_fault_all_get)(int lc_id, unsigned long *bitmap);
+    int (*reset_set)(int lc_id, int port, u8 reset);
+    int (*reset_get)(int lc_id, int port, u8 *reset);
+    int (*power_set)(int lc_id, int port, u8 reset);
+    int (*power_get)(int lc_id, int port, u8 *reset);
+    int (*lpmode_set)(int lc_id, int port, u8 value);
+    int (*lpmode_get)(int lc_id, int port, u8 *value);
+    int (*tx_disable_set)(int lc_id, int port, u8 value);
+    int (*tx_disable_get)(int lc_id, int port, u8 *value);
+    int (*mode_sel_set)(int lc_id, int port, u8 value);
+    int (*mode_sel_get)(int lc_id, int port, u8 *value);
+    int (*oc_all_get)(int lc_id, unsigned long *bitmap);
+};
+
+struct sff_eeprom_driver_t {
+    int (*eeprom_read)(int lc_id, int port,
+                       u8 slave_addr,
+                       u8 offset,
+                       u8 *buf,
+                       size_t len);
+    int (*eeprom_write)(int lc_id, int port,
+                        u8 slave_addr,
+                        u8 offset,
+                        const u8 *buf,
+                        size_t len);
+
+};
+struct lc_func_t {
+    int (*dev_init)(int platform_id, int io_no_init);
+    void (*dev_deinit)(void);
+    void (*polling_task)(void);
+    int (*dev_handler)(void);
+    int (*mux_reset)(int lc_id, int rst);
+    bool (*i2c_is_alive)(int lc_id);
+    int (*cpld_init)(int lc_id);
+    int (*power_set)(int lc_id, bool on);
+    int (*power_ready)(int lc_id, bool *ready);
+    void (*phy_ready)(unsigned long bitmap, bool *ready);
+    int (*prs_get)(unsigned long *bitmap);
+    int (*reset_set)(int lc_id, u8 lv);
+    int (*reset_get)(int lc_id, u8 *lv);
+    int (*type_get)(int lc_id, lc_type_t *type);
+    int (*type_get_text)(int lc_id, char *buf, int size);
+    int (*over_temp_asserted)(int lc_id, bool *asserted);
+    int (*over_temp_deasserted)(int lc_id, bool *deasserted);
+    int (*temp_get)(int lc_id, char *buf, int size);
+    int (*temp_th_get)(int lc_id, char *buf, int size);
+    int (*led_set)(int lc_id, lc_led_ctrl_t ctrl);
+
+};
+struct lc_t {
+    struct lc_obj_t *obj;
+    struct swps_kobj_t *common_kobj;
+    int lc_num;
+    unsigned long lc_prs;
+    unsigned long io_no_init_all_done;
+    struct sff_io_driver_t *sff_io_drv;
+    struct lc_func_t *lc_func;
+};
+#if 0
+/*the driver structure contains the api doing hw dependent functions (IO + eeprom)*/
 struct sff_driver_t {
-    int (*prsL_all_get)(unsigned long *bitmap);
-    int (*intr_all_get)(unsigned long *bitmap);
-    int (*oc_all_get)(unsigned long *bitmap);
-    int (*prsL_get)(int port, u8 *prsL);
+    int (*prs_all_get)(int lc_id, unsigned long *bitmap);
+    int (*intr_all_get)(int lc_id, unsigned long *bitmap);
+    int (*oc_all_get)(int lc_id, unsigned long *bitmap);
+    int (*prs_get)(int port, u8 *prs);
     int (*intL_get)(int port, u8 *value);
     int (*rx_los_get)(int port, u8 *value);
     int (*tx_fault_get)(int port, u8 *value);
@@ -217,31 +424,29 @@ struct sff_driver_t {
                         u8 offset,
                         const u8 *buf,
                         size_t len);
-    int (*io_mux_reset_all)(int value);
+    int (*io_mux_reset_all)(int value); /*<TBD> move to other structure*/
 
 };
-
+#endif
 /* func table for each sff object*/
 struct func_tbl_t {
-
     /* private function , for driver internal use {*/
-    int (*eeprom_read)(struct sff_obj_t *sff_obj, u8 page_addr, u8 offset, u8 *buf, int len);
-    int (*eeprom_write)(struct sff_obj_t *sff_obj, u8 page_addr, u8 offset, u8 *buf, int len);
-    /* }*/ 
+    int (*eeprom_read)(struct sff_obj_t *sff_obj, u8 addr, u8 offset, u8 *buf, int len);
+    int (*eeprom_write)(struct sff_obj_t *sff_obj, u8 addr, u8 offset, const u8 *buf, int len);
+    /* }*/
     /*sff low speed signals for both driver internal use and export to sysfs interface*/
-    int (*prsL_get)(struct sff_obj_t *sff_obj, u8 *value);
+    int (*prs_get)(struct sff_obj_t *sff_obj, u8 *value);
     int (*lpmode_set)(struct sff_obj_t *sff_obj, u8 value);
     int (*lpmode_get)(struct sff_obj_t *sff_obj, u8 *value);
     int (*reset_set)(struct sff_obj_t *sff_obj, u8 value);
     int (*reset_get)(struct sff_obj_t *sff_obj, u8 *value);
+    int (*power_set)(struct sff_obj_t *sff_obj, u8 value);
+    int (*power_get)(struct sff_obj_t *sff_obj, u8 *value);
     int (*mode_sel_set)(struct sff_obj_t *sff_obj, u8 value);
     int (*mode_sel_get)(struct sff_obj_t *sff_obj, u8 *value);
     int (*intL_get)(struct sff_obj_t *sff_obj, u8 *value);
     int (*tx_disable_set)(struct sff_obj_t *sff_obj, u8 value);
     int (*tx_disable_get)(struct sff_obj_t *sff_obj, u8 *value);
-    int (*rx_los_get)(struct sff_obj_t *sff_obj, u8 *value);
-    int (*tx_fault_get)(struct sff_obj_t *sff_obj, u8 *value);
-    /*following function is only for export to sysfs interface*/
     int (*temperature_get)(struct sff_obj_t *sff_obj, u8 *buf, int buf_size);
     int (*voltage_get)(struct sff_obj_t *sff_obj, u8 *buf, int buf_size);
     int (*lane_control_set)(struct sff_obj_t *sff_obj, int type, u32 value);
@@ -251,19 +456,23 @@ struct func_tbl_t {
     int (*lane_status_get)(struct sff_obj_t *sff_obj, int type, u8 *value);
     int (*module_st_get)(struct sff_obj_t *sff_obj, u8 *st);
     int (*id_get)(struct sff_obj_t *sff_obj, u8 *id);
+    bool (*is_id_matched)(struct sff_obj_t *sff_obj);
     int (*eeprom_dump)(struct sff_obj_t *sff_obj, u8 *buf);
     int (*page_sel)(struct sff_obj_t *sff_obj, int page);
     int (*page_get)(struct sff_obj_t *sff_obj, u8 *page);
 };
+
 struct port_info_map_t {
-    int port;
+    int front_port; /*the front port you see from front panel*/
     sff_type type;
-    char *name;
+    char *name;  /*front port name index from 1 , port1....*/
 };
+
 struct port_info_table_t {
     struct port_info_map_t *map;
     int size;
 };
+
 /*it is for compose monitor data into u16 format from u8*/
 union monitor_data_t {
     u8 byte[2];
@@ -314,24 +523,57 @@ typedef enum {
     TRANSVR_CLASS_COPPER_L4_100G    =(28101),
 
 } transvr_type_t;
+
+
+
+
 typedef enum {
     I2C_CRUSH_INIT_ST,
     I2C_CRUSH_IO_I2C_CHECK_ST,
     I2C_CRUSH_BAD_TRANSVR_DETECT_ST,
     I2C_CRUSH_I2C_RECHECK_ST,
     I2C_CRUSH_END_ST,
-
 } i2c_crush_hande_st;
 
 void transvr_type_set(struct sff_obj_t *sff_obj, int type);
 int transvr_type_get(struct sff_obj_t *sff_obj);
-u8 masked_bits_get(u8 val, int bit_s, int bit_e);
+//u8 masked_bits_get(u8 val, int bit_s, int bit_e);
 sff_fsm_state_t sff_fsm_st_get(struct sff_obj_t *sff_obj);
 void sff_fsm_st_set(struct sff_obj_t *sff_obj, sff_fsm_state_t st);
 void sff_fsm_state_change_process(struct sff_obj_t *sff_obj, sff_fsm_state_t cur_st, sff_fsm_state_t next_st);
-
 struct monitor_para_t *monitor_para_find(int type);
 int sff_fsm_kobj_change_event(struct sff_obj_t *sff_obj);
+
+int i2c_smbus_write_byte_data_retry(struct i2c_client *client, u8 offset, u8 data);
+int i2c_smbus_read_byte_data_retry(struct i2c_client *client, u8 offset);
+int i2c_smbus_write_word_data_retry(struct i2c_client *client, u8 offset, u16 buf);
+int i2c_smbus_read_word_data_retry(struct i2c_client *client, u8 offset);
+int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, int len, u8 *buf);
+bool p_valid(const void *ptr);
+int sff_eeprom_read(struct sff_obj_t *sff_obj, u8 addr, u8 offset, u8 *buf, int len);
+int sff_eeprom_write(struct sff_obj_t *sff_obj,u8 addr, u8 offset, const u8 *buf, int len);
+int sff_prs_get(struct sff_obj_t *sff_obj, u8 *prs);
+int sff_power_set(struct sff_obj_t *sff_obj, u8 value);
+int sff_power_get(struct sff_obj_t *sff_obj, u8 *value);
+int dummy_reset_set(struct sff_obj_t *sff_obj, u8 value);
+int dummy_reset_get(struct sff_obj_t *sff_obj, u8 *value);
+int dummy_lpmode_set(struct sff_obj_t *sff_obj, u8 value);
+int dummy_lpmode_get(struct sff_obj_t *sff_obj, u8 *value);
+int dummy_mode_sel_set(struct sff_obj_t *sff_obj, u8 value);
+int dummy_mode_sel_get(struct sff_obj_t *sff_obj, u8 *value);
+int dummy_intL_get(struct sff_obj_t *sff_obj, u8 *value);
+int dummy_module_st_get(struct sff_obj_t *sff_obj, u8 *st);
+int dummy_eeprom_dump(struct sff_obj_t *sff_obj, u8 *buf);
+int dummy_page_sel(struct sff_obj_t *sff_obj, int page);
+int dummy_page_sel(struct sff_obj_t *sff_obj, int page);
+int dummy_page_get(struct sff_obj_t *sff_obj, u8 *page);
+int dummy_lane_control_set(struct sff_obj_t *sff_obj, int type, u32 value);
+int dummy_lane_control_get(struct sff_obj_t *sff_obj, int type, u32 *value);
+int dummy_lane_status_get(struct sff_obj_t *sff_obj, int type, u8 *st);
+char *port_name_get(int lc_id, int port);
+bool page_sel_is_locked(struct sff_obj_t *sff_obj);
+void page_sel_lock(struct sff_obj_t *sff_obj);
+void page_sel_unlock(struct sff_obj_t *sff_obj);
 #endif /* __SFF_H */
 
 

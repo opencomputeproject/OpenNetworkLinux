@@ -37,8 +37,7 @@ struct pin_config_t {
     u8 bitmask;
     int in_use;
 };
-struct pin_map_t
-{
+struct pin_map_t {
     int port;
     int i2c_ch;
     u8 slave_addr;
@@ -48,8 +47,7 @@ struct pin_map_t
 };
 
 #endif
-struct sff_driver_t
-{
+struct sff_driver_t {
     int (*prsL_get)(int port, u8 *prsL);
     int (*prsL_all_get)(unsigned long *bitmap);
     int (*intL_get)(int port, u8 *value);
@@ -64,10 +62,10 @@ struct sff_driver_t
     int (*mode_sel_set)(int port, u8 value);
     int (*mode_sel_get)(int port, u8 *value);
     int (*eeprom_read)(int port,
-                        u8 slave_addr,
-                        u8 offset,
-                        u8 *buf,
-                        size_t len);
+                       u8 slave_addr,
+                       u8 offset,
+                       u8 *buf,
+                       size_t len);
     int (*eeprom_write)(int port,
                         u8 slave_addr,
                         u8 offset,

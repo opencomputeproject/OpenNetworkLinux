@@ -54,7 +54,7 @@
 #define INV_FAN_PREFIX                  "/sys/bus/i2c/devices/2-0077/"
 #define INV_THERMAL_PREFIX              "/sys/bus/i2c/devices/2-0077/"
 #define INV_LED_PREFIX                  "/sys/bus/i2c/devices/2-0077/"
-#define INV_SFP_PREFIX		            "/sys/swps/sff/"
+#define INV_SFP_PREFIX		            "/sys/swps/card1/sff/"
 #define INV_SYS_PREFIX		            "/sys/class/eeprom/vpd/"
 #define INV_DEVICE_BASE                    "/sys/bus/i2c/devices/"
 #define INV_CTMP_BASE                   "/sys/devices/platform/coretemp.0/hwmon/"
@@ -95,6 +95,12 @@ enum onlp_fan_id {
     ONLP_FAN_4,
     ONLP_FAN_5,
     ONLP_FAN_6,
+    ONLP_FAN_7,
+    ONLP_FAN_8,
+    ONLP_FAN_9,
+    ONLP_FAN_10,
+    ONLP_FAN_11,
+    ONLP_FAN_12,
     ONLP_FAN_PSU_1,
     ONLP_FAN_PSU_2,
     ONLP_FAN_MAX	/*num limit include reserved*/
