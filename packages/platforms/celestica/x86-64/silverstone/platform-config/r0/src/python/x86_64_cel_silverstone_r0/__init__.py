@@ -2,7 +2,7 @@ from onl.platform.base import *
 from onl.platform.celestica import *
 
 class OnlPlatform_x86_64_cel_silverstone_r0(OnlPlatformCelestica,
-                                            OnlPlatformPortConfig_32x100):
+                                            OnlPlatformPortConfig_32x400_2x10):
     PLATFORM='x86-64-cel-silverstone-r0'
     MODEL="silverstone"
     SYS_OBJECT_ID=".2060.1"
