@@ -36,3 +36,12 @@ driver-add-the-support-max6620.patch
 0033-mlxsw-minimal-Provide-optimization-for-module-number.patch
 0034-mlxsw-minimal-Add-validation-for-FW-version.patch
 0035-mlxsw-core-Extend-QSFP-EEPROM-supported-size-for-eth.patch
+0036-mlxsw-core-Skip-thermal-zone-operations-initializati.patch
+0037-thermal-Fix-use-after-free-when-unregistering-therma.patch
+0038-mlxsw-core-Drop-creation-of-thermal-to-hwmon-sysfs-i.patch
+0039-mlxsw-core-Skip-thermal-zones-threshold-setting-duri.patch
+0040-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
+0041-firmware-dmi-Add-access-to-the-SKU-ID-string-backpor.patch
+0042-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
+0043-platform-x86-mlx-platform-Add-support-for-next-gener.patch
+0043-mfd-lpc-ich-extend-with-additional-chipsets-support.patch

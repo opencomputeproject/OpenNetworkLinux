@@ -6,3 +6,10 @@ driver-hwmon-max6620.patch
 0001-mlx-amendments-fixes-new-kernel-alignmnet.patch
 0002-watchdog-mlx-wdt-introduce-watchdog-driver-for-Mella.patch
 0003-mlxsw-new-features-amendments-new-kernel-alignment.patch
+0004-mlxsw-minimal-Provide-optimization-for-module-number.patch
+0006-mlxsw-core-Extend-QSFP-EEPROM-size-and-add-support-f.patch
+0007-mlxsw-minimal-Fix-wrong-order-in-probe-error-flow.patch
+0008-mellanox-platform-Amendments-for-performance-improve.patch
+0010-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
+0011-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
+0012-mlx-platform-Add-support-for-next-gener.patch
