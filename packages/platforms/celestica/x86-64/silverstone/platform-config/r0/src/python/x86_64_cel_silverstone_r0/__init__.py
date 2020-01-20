@@ -27,11 +27,6 @@ class OnlPlatform_x86_64_cel_silverstone_r0(OnlPlatformCelestica,
         self.insmod("optoe.ko")
         self.insmod("xcvr-cls.ko")
 
-        ###### new configuration for SDK support ########
-        os.system("insmod /lib/modules/`uname -r`/kernel/net/core/pktgen.ko")
-        os.system("insmod /lib/modules/`uname -r`/kernel/net/core/drop_monitor.ko")
-        os.system("insmod /lib/modules/`uname -r`/kernel/net/ipv4/tcp_probe.ko")
-
         #tlv eeprom device
         self.new_i2c_device('24lc64t', 0x56, 0)
 
