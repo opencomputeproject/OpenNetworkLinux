@@ -133,20 +133,16 @@ iterate_oids_callback__(onlp_oid_t oid, void* cookie)
     int type = ONLP_OID_TYPE_GET(oid);
     int id   = ONLP_OID_ID_GET(oid);
 
-    static int thermal = 1;
-    static int fan = 1;
-    static int psu = 1;
-
     switch(type)
         {
         case ONLP_OID_TYPE_THERMAL:
-            printf("thermal,Thermal %d,%d\n", id, thermal++);
+            printf("thermal,Thermal %d,%d\n", id, id);
             break;
         case ONLP_OID_TYPE_FAN:
-            printf("fan,Fan %d,%d\n", id, fan++);
+            printf("fan,Fan %d,%d\n", id, id);
             break;
         case ONLP_OID_TYPE_PSU:
-            printf("psu,PSU %d,%d\n", id, psu++);
+            printf("psu,PSU %d,%d\n", id, id);
             break;
         }
     return 0;
