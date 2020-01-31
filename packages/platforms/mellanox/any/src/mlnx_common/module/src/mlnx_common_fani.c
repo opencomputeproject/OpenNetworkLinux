@@ -307,7 +307,7 @@ onlp_fani_rpm_set(onlp_oid_t id, int rpm)
        Value 153 is minimum rpm.
        Value 255 is maximum rpm.
     */
-    if (local_id > sizeof(mlnx_platform_info->min_fan_speed)/sizeof(mlnx_platform_info->min_fan_speed[0])) {
+    if (local_id > mlnx_platform->fan_num) {
         return ONLP_STATUS_E_INTERNAL;
     }
     if (mlnx_platform_info->max_fan_speed[local_id] - mlnx_platform_info->min_fan_speed[local_id] < 0) {
