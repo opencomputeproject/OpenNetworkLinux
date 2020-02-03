@@ -30,9 +30,6 @@
 #include <onlp/onlp.h>
 #include <onlplib/shlocks.h>
 
-#define BMC
-//#define I2C
-
 typedef unsigned int    UINT4;
 
 /* CPLD numbrt & peripherals */
@@ -68,36 +65,7 @@ typedef unsigned int    UINT4;
 
 #define CPU_CPLD_VERSION "/sys/devices/platform/delta-agc7648sv1-cpld.0/cpuld_ver"
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0053/eeprom"
-#define SWPLD1_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0"
-#define SWPLD2_PATH "/sys/devices/platform/delta-agc7648sv1-swpld2.0"
-#define FAN1_FRONT "/sys/bus/i2c/devices/i2c-25/25-002c/fan4_input"
-#define FAN1_REAR "/sys/bus/i2c/devices/i2c-25/25-002d/fan4_input"
-#define FAN2_FRONT "/sys/bus/i2c/devices/i2c-25/25-002c/fan3_input"
-#define FAN2_REAR "/sys/bus/i2c/devices/i2c-25/25-002d/fan3_input"
-#define FAN3_FRONT "/sys/bus/i2c/devices/i2c-25/25-002c/fan2_input"
-#define FAN3_REAR "/sys/bus/i2c/devices/i2c-25/25-002d/fan2_input"
-#define FAN4_FRONT "/sys/bus/i2c/devices/i2c-25/25-002c/fan1_input"
-#define FAN4_REAR "/sys/bus/i2c/devices/i2c-25/25-002d/fan1_input"
 #define PORT_EEPROM_FORMAT      "/sys/bus/i2c/devices/%d-0050/eeprom"
-#define SFP_SELECT_PORT_PATH    "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_select_port"
-#define SFP_IS_PRESENT_PATH     "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_is_present"
-#define SFP_IS_PRESENT_ALL_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_is_present_all"
-#define SFP_RX_LOS_PATH         "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_rx_los"
-#define SFP_RX_LOS_ALL_PATH     "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_rx_los_all"
-#define SFP_TX_DISABLE_PATH     "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_tx_disable"
-#define SFP_TX_FAULT_PATH       "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_tx_fault"
-#define QSFP_RESET_PATH         "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_reset"
-#define QSFP_LP_MODE_PATH       "/sys/devices/platform/delta-agc7648sv1-swpld1.0/sfp_lp_mode"
-#define PREFIX_PATH   "/sys/bus/i2c/devices/"
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/31-0058/"
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/32-0058/"
-#define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
-#define FAN1_PRESENT_PATH "/sys/class/gpio/gpio499/value"
-#define FAN2_PRESENT_PATH "/sys/class/gpio/gpio498/value"
-#define FAN3_PRESENT_PATH "/sys/class/gpio/gpio497/value"
-#define FAN4_PRESENT_PATH "/sys/class/gpio/gpio496/value"
-#define PSU1_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu1_present"
-#define PSU2_PRESENT_PATH "/sys/devices/platform/delta-agc7648sv1-swpld1.0/psu2_present"
 #define CHECK_TIME_FILE "/tmp/check_time_file"
 #define BMC_INFO_TABLE "/tmp/bmc_info"
 
@@ -220,7 +188,6 @@ int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, in
 int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data);
 int dni_lock_cpld_read_attribute(char *cpld_path, int addr);
 int dni_fan_present(int id);
-int dni_fan_speed_good();
 int dni_i2c_read_attribute_string(char *filename, char *buffer, int buf_size, int data_len);
 int dni_bmc_sensor_read(char *device_name, UINT4 *num, UINT4 multiplier, int sensor_type);
 int dni_bmc_psueeprom_info_get(char *r_data,char *device_name,int number);

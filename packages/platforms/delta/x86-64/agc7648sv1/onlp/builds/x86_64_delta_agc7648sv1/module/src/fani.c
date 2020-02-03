@@ -34,23 +34,6 @@ typedef struct fan_path_S
     char *ctrl_speed;
 }fan_path_T;
 
-#ifdef I2C
-static fan_path_T fan_path[] =  /* must map with onlp_fan_id */
-{
-    { NULL, NULL, NULL },
-    { "25-002c/fan4_fault", "25-002c/fan4_input", "25-002c/fan4_input_percentage" },
-    { "25-002c/fan3_fault", "25-002c/fan3_input", "25-002c/fan3_input_percentage" },
-    { "25-002c/fan2_fault", "25-002c/fan2_input", "25-002c/fan2_input_percentage" },
-    { "25-002c/fan1_fault", "25-002c/fan1_input", "25-002c/fan1_input_percentage" },
-    { "25-002d/fan4_fault", "25-002d/fan4_input", "25-002d/fan4_input_percentage" },
-    { "25-002d/fan3_fault", "25-002d/fan3_input", "25-002d/fan3_input_percentage" },
-    { "25-002d/fan2_fault", "25-002d/fan2_input", "25-002d/fan2_input_percentage" },
-    { "25-002d/fan1_fault", "25-002d/fan1_input", "25-002d/fan1_input_percentage" },
-    { "31-0058/psu_fan1_fault", "31-0058/psu_fan1_speed_rpm", "31-0058/psu_fan1_duty_cycle_percentage" },
-    { "32-0058/psu_fan1_fault", "32-0058/psu_fan1_speed_rpm", "32-0058/psu_fan1_duty_cycle_percentage" }
-};
-#endif
-
 #define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id) \
     { \
         { ONLP_FAN_ID_CREATE(FAN_##id##_ON_FAN_BOARD), "Chassis Fan "#id, 0 }, \
@@ -96,7 +79,6 @@ onlp_fan_info_t linfo[] = {
 static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-#ifdef BMC
     uint8_t bit_data = 0x00;
     UINT4 u4Data = 0;
     UINT4 multiplier = 1;
@@ -144,64 +126,13 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
                 info->status |= ONLP_FAN_STATUS_FAILED;
             break;
     }
-#elif defined I2C
-    int rpm = 0;
-    int fantray_present = -1;
-    char fullpath[100] = {0};
-
-    sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
-    rpm = dni_i2c_lock_read_attribute(NULL, fullpath);
-    info->rpm = rpm;
-
-    /* If rpm is FAN_ZERO_TACH, then the rpm value is zero. */
-    if(info->rpm == 960)
-        info->rpm = 0;
-
-    /* get speed percentage from rpm */
-    info->percentage = (info->rpm * 100)/MAX_FRONT_FAN_SPEED;
-
-    switch(local_id) {
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_8_ON_FAN_BOARD:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
-            if(fantray_present == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_7_ON_FAN_BOARD:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
-            if(fantray_present == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_6_ON_FAN_BOARD:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
-            if(fantray_present == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_5_ON_FAN_BOARD:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
-            if(fantray_present == 0)
-                info->status |= ONLP_FAN_STATUS_PRESENT;
-            else
-                info->status |= ONLP_FAN_STATUS_FAILED;
-            break;
-    }
-#endif    
+  
     return rv;
 }
 
 static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, char *dev_name)
 {
     int rv = ONLP_STATUS_OK;
-#ifdef BMC
     UINT4 multiplier = 1;
     UINT4 u4Data = 0;
     uint8_t psu_present_bit = 0x00;
@@ -242,34 +173,7 @@ static int dni_fani_info_get_fan_on_psu(int local_id, onlp_fan_info_t* info, cha
             }
             break;
     }
-#elif defined I2C
-    int psu_present = 0;
-    int r_data = 0;
-    char fullpath[100] = {0};
 
-    switch(local_id) {
-        case FAN_1_ON_PSU1:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
-            break;
-        case FAN_1_ON_PSU2:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
-            break;
-        default:
-            break;
-    }
-    if(psu_present == 0)
-        info->status |= ONLP_FAN_STATUS_PRESENT | ONLP_FAN_STATUS_B2F;
-    else if(psu_present == 1)
-        info->status |= ONLP_FAN_STATUS_FAILED;
-
-    /* Read PSU FAN speed from psu_fan1_speed_rpm */
-    sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
-    r_data = dni_i2c_lock_read_attribute(NULL, fullpath);
-    info->rpm = r_data;
-
-    /* Calculate psu fan duty cycle based on rpm */
-    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
-#endif
     return rv;
 }
 
@@ -340,35 +244,7 @@ int onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
  */
 int onlp_fani_rpm_set(onlp_oid_t id, int rpm)
 {
-    int rv = ONLP_STATUS_OK;
-
-#ifdef I2C
-    int local_id;
-    char data[10] = {0};
-    char fullpath[70] = {0};
-
-    VALIDATE(id);
-    local_id = ONLP_OID_ID_GET(id);
-
-    /* get fullpath */
-    switch (local_id) {
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_5_ON_FAN_BOARD:
-        case FAN_6_ON_FAN_BOARD:
-        case FAN_7_ON_FAN_BOARD:
-        case FAN_8_ON_FAN_BOARD:
-            sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].speed);
-            break;
-        default:
-            return ONLP_STATUS_E_INVALID;
-    }
-    sprintf(data, "%d", rpm);
-    dni_i2c_lock_write_attribute(NULL, data, fullpath);
-#endif
-    return rv;
+    return ONLP_STATUS_OK;
 }
 
 /*
@@ -381,37 +257,7 @@ int onlp_fani_rpm_set(onlp_oid_t id, int rpm)
  */
 int onlp_fani_percentage_set(onlp_oid_t id, int p)
 {
-    int rv = ONLP_STATUS_OK;
-#ifdef I2C
-    int local_id;
-    char data[10] = {0};
-    char fullpath[70] = {0};
-
-    VALIDATE(id);
-    local_id = ONLP_OID_ID_GET(id);
-
-    /* Select PSU member */
-    switch (local_id) {
-        case FAN_1_ON_FAN_BOARD:
-        case FAN_2_ON_FAN_BOARD:
-        case FAN_3_ON_FAN_BOARD:
-        case FAN_4_ON_FAN_BOARD:
-        case FAN_5_ON_FAN_BOARD:
-        case FAN_6_ON_FAN_BOARD:
-        case FAN_7_ON_FAN_BOARD:
-        case FAN_8_ON_FAN_BOARD:
-        case FAN_1_ON_PSU1:
-        case FAN_1_ON_PSU2:
-            break;
-        default:
-            return ONLP_STATUS_E_INVALID;
-    }
-    sprintf(fullpath, "%s%s", PREFIX_PATH, fan_path[local_id].ctrl_speed);
-    /* Write percentage to psu_fan1_duty_cycle_percentage */
-    sprintf(data, "%d", p);
-    dni_i2c_lock_write_attribute(NULL, data, fullpath);
-#endif
-    return rv;
+    return ONLP_STATUS_OK;
 }
 
 /*
