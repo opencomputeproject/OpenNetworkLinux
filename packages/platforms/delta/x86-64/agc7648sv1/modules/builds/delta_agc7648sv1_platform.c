@@ -134,7 +134,6 @@ struct mutex dni_lock;
 extern int dni_bmc_cmd(char set_cmd, char *cmd_data, int cmd_data_len);
 extern int dni_create_user(void);
 extern unsigned char dni_log2(unsigned char num);
-extern int dni_bmc_exist_check(void);
 extern void device_release(struct device *dev);
 extern void msg_handler(struct ipmi_recv_msg *recv_msg,void* handler_data);
 extern void dummy_smi_free(struct ipmi_smi_msg *msg);
@@ -180,21 +179,6 @@ void dummy_recv_free(struct ipmi_recv_msg *msg)
     atomic_dec(&dummy_count);
 }
 EXPORT_SYMBOL(dummy_recv_free);
-
-int dni_bmc_exist_check(void)
-{
-    uint8_t set_cmd;
-    uint8_t cmd_data[1] = {0};
-    int cmd_data_len, rv = 0;
-
-    set_cmd = CMD_DIAGMODE;
-    cmd_data[0] = BMC_DIAG_STATE;
-    cmd_data_len = sizeof(cmd_data);
-    rv = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
-
-    return rv;
-}
-EXPORT_SYMBOL(dni_bmc_exist_check);
 
 unsigned char dni_log2 (unsigned char num){
     unsigned char num_log2 = 0;
@@ -587,8 +571,6 @@ struct i2c_device_platform_data {
     struct i2c_client *client;
 };
 
-struct i2c_client * i2c_client_9547;
-
 static struct cpld_platform_data agc7648sv1_cpld_platform_data[] = {
     [system_cpld] = {
         .reg_addr = CPUPLD_ADDR,
@@ -610,57 +592,6 @@ static struct cpld_platform_data agc7648sv1_swpld2_platform_data[] = {
 static struct cpld_platform_data agc7648sv1_swpld3_platform_data[] = {
     [swpld3] = {
         .reg_addr = SWPLD3_ADDR,
-    },
-};
-
-// pca9548 - add 8 bus 
-static struct pca954x_platform_mode pca954x_mode[] = 
-{
-    { 
-        .adap_id = 4,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 5,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 6,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 7,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 8,
-        .deselect_on_exit = 1,
-    },
-    {   
-        .adap_id = 9,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 10,
-        .deselect_on_exit = 1,
-    },
-    { 
-        .adap_id = 11,
-        .deselect_on_exit = 1,
-    },
-};
-
-static struct pca954x_platform_data pca954x_data = 
-{
-    .modes = pca954x_mode, 
-    .num_modes = ARRAY_SIZE(pca954x_mode),
-};
-
-static struct i2c_board_info __initdata i2c_info_pca9547[] =
-{
-    {
-        I2C_BOARD_INFO("pca9547", 0x71),
-        .platform_data = &pca954x_data,
     },
 };
 
@@ -746,84 +677,6 @@ static struct i2c_device_platform_data agc7648sv1_i2c_device_platform_data[] = {
         // id eeprom
         .parent = 1,
         .info = { I2C_BOARD_INFO("24c02", 0x53) },
-        .client = NULL,
-    },
-    {
-        // tmp75
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp75", 0x4b) },
-        .client = NULL,
-    },
-    {
-        // tmp431
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp431", 0x4c) },
-        .client = NULL,
-    },
-    {
-        // tmp432
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp432", 0x4d) },
-        .client = NULL,
-    },
-    {
-        // tmp75
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp75", 0x4e) },
-        .client = NULL,
-    },
-    {
-        // tmp75 cpu
-        .parent = 8,
-        .info = { I2C_BOARD_INFO("tmp75", 0x4f) },
-        .client = NULL,
-    },
-    {
-        // fan control 1
-        .parent = 25,
-        .info = { I2C_BOARD_INFO("emc2305", 0x2c) },
-        .client = NULL,
-    },
-    {
-        // fan control 2
-        .parent = 25,
-        .info = { I2C_BOARD_INFO("emc2305", 0x2d) },
-        .client = NULL,
-    },
-    {
-        // tmp75 fan
-        .parent = 26,
-        .info = { I2C_BOARD_INFO("tmp75", 0x4f) },
-        .client = NULL,
-    },
-    {
-        // fan IO CTRL
-        .parent = 27,
-        .info = { I2C_BOARD_INFO("pca9555", 0x27) },
-        .client = NULL,
-    },
-    {
-        // PSU 1 eeprom
-        .parent = 31,
-        .info = { I2C_BOARD_INFO("24c02", 0x50) },
-        .client = NULL,
-    },
-    {
-        // PSU 2 eeprom
-        .parent = 32,
-        .info = { I2C_BOARD_INFO("24c02", 0x50) },
-        .client = NULL,
-    },
-    {
-        // PSU 1 control
-        .parent = 31,
-        .info = { I2C_BOARD_INFO("dni_agc7648sv1_psu", 0x58) },
-        .client = NULL,
-    },
-    {
-        // PSU 2 control
-        .parent = 32,
-        .info = { I2C_BOARD_INFO("dni_agc7648sv1_psu", 0x58) },
         .client = NULL,
     },
     {
@@ -1208,19 +1061,6 @@ static struct platform_device agc7648sv1_i2c_device[] = {
     agc7648sv1_i2c_device_num(52),
     agc7648sv1_i2c_device_num(53),
     agc7648sv1_i2c_device_num(54),
-    agc7648sv1_i2c_device_num(55),
-    agc7648sv1_i2c_device_num(56),
-    agc7648sv1_i2c_device_num(57),
-    agc7648sv1_i2c_device_num(58),
-    agc7648sv1_i2c_device_num(59),
-    agc7648sv1_i2c_device_num(60),
-    agc7648sv1_i2c_device_num(61),
-    agc7648sv1_i2c_device_num(62),
-    agc7648sv1_i2c_device_num(63),
-    agc7648sv1_i2c_device_num(64),
-    agc7648sv1_i2c_device_num(65),
-    agc7648sv1_i2c_device_num(66),
-    agc7648sv1_i2c_device_num(67),
 };
 /* ---------------- I2C device - end ------------- */
 
@@ -2246,26 +2086,7 @@ error:
 
 static int __init swpld1_probe(struct platform_device *pdev)
 {
-    struct cpld_platform_data *pdata;
-    struct i2c_adapter *parent;
     int ret;
-
-    pdata = pdev->dev.platform_data;
-    if (!pdata) {
-        dev_err(&pdev->dev, "SWPLD1 platform data not found\n");
-        return -ENODEV;
-    }
-    parent = i2c_get_adapter(BUS7);
-    if (!parent) {
-        printk(KERN_WARNING "Parent adapter (%d) not found\n", BUS7);
-        return -ENODEV;
-    }
-
-    pdata[swpld1].client = i2c_new_dummy(parent, pdata[swpld1].reg_addr);
-    if (!pdata[swpld1].client) {
-        printk(KERN_WARNING "Fail to create dummy i2c client for addr %d\n", pdata[swpld1].reg_addr);
-        goto error;
-    }
 
     kobj_swpld1 = &pdev->dev.kobj;
     ret = sysfs_create_group(&pdev->dev.kobj, &swpld1_attr_grp);
@@ -2276,35 +2097,13 @@ static int __init swpld1_probe(struct platform_device *pdev)
     return 0;
 
 error:
-    kobject_put(kobj_swpld1); 
-    i2c_unregister_device(pdata[swpld1].client);
-    i2c_put_adapter(parent);
+    kobject_put(kobj_swpld1);
     return -ENODEV;
 }
 
 static int __init swpld2_probe(struct platform_device *pdev)
 {
-    struct cpld_platform_data *pdata;
-    struct i2c_adapter *parent;
     int ret;
-
-    pdata = pdev->dev.platform_data;
-    if (!pdata) {
-        dev_err(&pdev->dev, "SWPLD2 platform data not found\n");
-        return -ENODEV;
-    }
-
-    parent = i2c_get_adapter(BUS7);
-    if (!parent) {
-        printk(KERN_WARNING "Parent adapter (%d) not found\n", BUS7);
-        return -ENODEV;
-    }
-
-    pdata[swpld2].client = i2c_new_dummy(parent, pdata[swpld2].reg_addr);
-    if (!pdata[swpld2].client) {
-        printk(KERN_WARNING "Fail to create dummy i2c client for addr %d\n", pdata[swpld2].reg_addr);
-        goto error;
-    }
 
     kobj_swpld2 = &pdev->dev.kobj;
     ret = sysfs_create_group(&pdev->dev.kobj, &swpld2_attr_grp);
@@ -2316,36 +2115,13 @@ static int __init swpld2_probe(struct platform_device *pdev)
     return 0;
 
 error:
-    kobject_put(kobj_swpld2); 
-    i2c_unregister_device(pdata[swpld2].client);
-    i2c_put_adapter(parent);
-
+    kobject_put(kobj_swpld2);
     return -ENODEV;
 }
 
 static int __init swpld3_probe(struct platform_device *pdev)
 {
-    struct cpld_platform_data *pdata;
-    struct i2c_adapter *parent;
     int ret;
-
-    pdata = pdev->dev.platform_data;
-    if (!pdata) {
-        dev_err(&pdev->dev, "SWPLD3 platform data not found\n");
-        return -ENODEV;
-    }
-
-    parent = i2c_get_adapter(BUS7);
-    if (!parent) {
-        printk(KERN_WARNING "Parent adapter (%d) not found\n", BUS7);
-        return -ENODEV;
-    }
-
-    pdata[swpld3].client = i2c_new_dummy(parent, pdata[swpld3].reg_addr);
-    if (!pdata[swpld3].client) {
-        printk(KERN_WARNING "Fail to create dummy i2c client for addr %d\n", pdata[swpld3].reg_addr);
-        goto error;
-    }
 
     kobj_swpld3 = &pdev->dev.kobj;
     ret = sysfs_create_group(&pdev->dev.kobj, &swpld3_attr_grp);
@@ -2357,10 +2133,7 @@ static int __init swpld3_probe(struct platform_device *pdev)
     return 0;
 
 error:
-    kobject_put(kobj_swpld3); 
-    i2c_unregister_device(pdata[swpld3].client);
-    i2c_put_adapter(parent);
-
+    kobject_put(kobj_swpld3);
     return -ENODEV;
 }
 
@@ -2509,21 +2282,6 @@ static struct cpld_mux_platform_data agc7648sv1_cpld_mux_platform_data[] = {
     },
 };
 
-static struct cpld_mux_platform_data agc7648sv1_swpld1_mux_platform_data[] = {
-    {
-        .parent         = BUS5,
-        .base_nr        = BUS5_BASE_NUM,
-        .cpld           = NULL,
-        .reg_addr       = BUS5_MUX_REG,
-    },
-    {
-        .parent         = BUS6,
-        .base_nr        = BUS6_BASE_NUM,
-        .cpld           = NULL,
-        .reg_addr       = BUS6_MUX_REG,
-    },
-};
-
 static struct cpld_mux_platform_data agc7648sv1_swpld3_mux_platform_data[] = {
     {
         .parent         = BUS2,
@@ -2547,26 +2305,6 @@ static struct platform_device cpld_mux_device[] =
         .dev            = {
                 .platform_data   = &agc7648sv1_cpld_mux_platform_data[0],
                 .release         = device_release,
-        },
-    },
-};
-
-static struct platform_device swpld1_mux_device[] = 
-{
-    {
-        .name = "delta-agc7648sv1-swpld1-mux",
-        .id   = 0,
-        .dev  = {
-            .platform_data = &agc7648sv1_swpld1_mux_platform_data[0],
-            .release       = device_release,
-        },
-    },
-    {
-        .name = "delta-agc7648sv1-swpld1-mux",
-        .id   = 1,
-        .dev  = {
-            .platform_data = &agc7648sv1_swpld1_mux_platform_data[1],
-            .release       = device_release,
         },
     },
 };
@@ -2629,138 +2367,10 @@ static int cpld_mux_select(struct i2c_mux_core *muxc, u32 chan)
     return cpld_reg_write_byte(mux->data.cpld, mux->data.reg_addr, (u8)(cpld_mux_val & 0xff));
 }
 
-static int swpld1_mux_select(struct i2c_mux_core *muxc, u32 chan)
-{
-    struct cpld_mux  *mux = i2c_mux_priv(muxc);
-    u8 swpld1_mux_val = 0;
-    u8 bmc_swpld1_mux_val = 0;
-    int ret;
-    uint8_t cmd_data[4] = {0};
-    uint8_t set_cmd;
-    int cmd_data_len;
-
-    ret = dni_bmc_exist_check();
-    if(ret == 0) //BMC monitor on
-    {
-        if ( mux->data.base_nr == BUS5_BASE_NUM ){
-            switch (chan) {
-                case 0:
-                    bmc_swpld1_mux_val = MUX_VAL_FAN_TMP75;
-                    break;
-                case 1:
-                    bmc_swpld1_mux_val = MUX_VAL_FAN_IO_CTL;
-                    break;
-                case 2:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN1_EEPROM + 0x08);
-                    break;
-                case 3:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN2_EEPROM + 0x09);
-                    break;
-                case 4:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN3_EEPROM + 0x09);
-                    break;
-                case 5:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN4_EEPROM + 0x09);
-                    break;
-                case 6:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN_CTL + 0x08);
-                    break;
-                default:
-                    bmc_swpld1_mux_val = (MUX_VAL_FAN_CTL + 0x08);
-                    break;
-            }
-
-            set_cmd = CMD_SETDATA;
-            cmd_data[0] = BMC_SWPLD_BUS;
-            cmd_data[1] = SWPLD1_ADDR;
-            cmd_data[2] = BUS5_MUX_REG;
-            cmd_data[3] = bmc_swpld1_mux_val;
-            cmd_data_len = sizeof(cmd_data);
-        }
-        else if ( mux->data.base_nr == BUS6_BASE_NUM ){
-            switch (chan) {
-                case 0:
-                    bmc_swpld1_mux_val = MUX_VAL_PSU1;
-                    break;
-                case 1:
-                    bmc_swpld1_mux_val = MUX_VAL_PSU2;
-                    break;
-                default:
-                    bmc_swpld1_mux_val = MUX_VAL_PSU1;
-                    break;
-            }
-
-            set_cmd = CMD_SETDATA;
-            cmd_data[0] = BMC_SWPLD_BUS;
-            cmd_data[1] = SWPLD1_ADDR;
-            cmd_data[2] = BUS6_MUX_REG;
-            cmd_data[3] = bmc_swpld1_mux_val;
-            cmd_data_len = sizeof(cmd_data);
-        }
-        else
-        {
-            printk(KERN_ERR "SWPLD1 mux select error\n");
-            return 0;
-        }
-        return dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
-    }
-    else //BMC monitor off or BMC is not exist
-    {
-        if ( mux->data.base_nr == BUS5_BASE_NUM ){
-            switch (chan) {
-                case 0:
-                    swpld1_mux_val = MUX_VAL_FAN1_EEPROM;
-                    break;
-                case 1:
-                    swpld1_mux_val = MUX_VAL_FAN2_EEPROM;
-                    break;
-                case 2:
-                    swpld1_mux_val = MUX_VAL_FAN3_EEPROM;
-                    break;
-                case 3:
-                    swpld1_mux_val = MUX_VAL_FAN4_EEPROM;
-                    break;
-                case 4:
-                    swpld1_mux_val = MUX_VAL_FAN_CTL;
-                    break;
-                case 5:
-                    swpld1_mux_val = MUX_VAL_FAN_TMP75;
-                    break;
-                case 6:
-                    swpld1_mux_val = MUX_VAL_FAN_IO_CTL;
-                    break;
-                default:
-                    swpld1_mux_val = MUX_VAL_FAN_CTL;
-                    break;
-            }
-        }
-        else if ( mux->data.base_nr == BUS6_BASE_NUM ){
-            switch (chan) {
-                case 0:
-                    swpld1_mux_val = MUX_VAL_PSU1;
-                    break;
-                case 1:
-                    swpld1_mux_val = MUX_VAL_PSU2;
-                    break;
-                default:
-                    swpld1_mux_val = MUX_VAL_PSU1;
-                    break;
-            }
-        }
-        else
-        {
-            printk(KERN_ERR "SWPLD1 mux select error\n");
-            return 0;
-        }
-        return cpld_reg_write_byte(mux->data.cpld, mux->data.reg_addr, (u8)(swpld1_mux_val & 0xff));
-    }
-}
-
 static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
 {
     struct cpld_mux  *mux = i2c_mux_priv(muxc);
-    struct device *i2cdev = kobj_to_dev(kobj_swpld1);
-    struct cpld_platform_data *pdata = i2cdev->platform_data;
+
     u8 swpld3_mux_val = 0;
     u8 swpld3_qsfp_ch_en = 0;
     u8 swpld1_qsfp_modsel_val = 0;
@@ -2769,52 +2379,67 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
     uint8_t set_cmd;
     int cmd_data_len;
 
-    ret = dni_bmc_exist_check();
-
     if ( mux->data.base_nr == BUS2_QSFP_BASE_NUM ){
         /* Set QSFP module respond */
         swpld1_qsfp_modsel_val = SWPLD1_QSFP_MODSEL_VAL & (~(1 << chan));
-        if (ret == 0) //BMC monitor on
-        {
-            set_cmd = CMD_SETDATA;
-            cmd_data[0] = BMC_SWPLD_BUS;
-            cmd_data[1] = SWPLD1_ADDR;
-            cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
-            cmd_data[3] = swpld1_qsfp_modsel_val;
-            cmd_data_len = sizeof(cmd_data);
-			dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
-        }
-        else //BMC monitor off or BMC is not exist
-        {
-            if (cpld_reg_write_byte(pdata[swpld1].client, SWPLD1_QSFP_MODSEL_REG, swpld1_qsfp_modsel_val) < 0)
-                return -EIO;
+        set_cmd = CMD_SETDATA;
+        cmd_data[0] = BMC_SWPLD_BUS;
+        cmd_data[1] = SWPLD1_ADDR;
+        cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
+        cmd_data[3] = swpld1_qsfp_modsel_val;
+        cmd_data_len = sizeof(cmd_data);
+        ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        if (ret != 0) {
+            printk("SWPLD3 mux select error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                    cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+            return -EIO;
         }
 
         /* QSFP channel enable */
         swpld3_qsfp_ch_en |= SWPLD3_QSFP_CH_EN << 4;
-        if (cpld_reg_write_byte(mux->data.cpld, BUS2_SFP_MUX_REG, swpld3_qsfp_ch_en) < 0)
+        set_cmd = CMD_SETDATA;
+        cmd_data[0] = BMC_SWPLD_BUS;
+        cmd_data[1] = SWPLD3_ADDR;
+        cmd_data[2] = BUS2_SFP_MUX_REG;
+        cmd_data[3] = swpld3_qsfp_ch_en;
+        cmd_data_len = sizeof(cmd_data);
+        ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        if (ret != 0) {
+            printk("SWPLD3 mux select error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                    cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
             return -EIO;
+        }
 
         /* QSFP channel selection */
         swpld3_mux_val = chan;
+        set_cmd = CMD_SETDATA;
+        cmd_data[0] = BMC_SWPLD_BUS;
+        cmd_data[1] = SWPLD3_ADDR;
+        cmd_data[2] = BUS2_QSFP_MUX_REG;
+        cmd_data[3] = swpld3_mux_val;
+        cmd_data_len = sizeof(cmd_data);
+        ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        if (ret != 0) {
+            printk("SWPLD3 mux select error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                    cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+            return -EIO;
+        }
     }
     else if ( mux->data.base_nr == BUS2_SFP_BASE_NUM ){
         /* Disable all QSFP modules respond */
         swpld1_qsfp_modsel_val |= SWPLD1_QSFP_MODSEL_VAL;
-        if (ret == 0) //BMC monitor on
-        {
-            set_cmd = CMD_SETDATA;
-            cmd_data[0] = BMC_SWPLD_BUS;
-            cmd_data[1] = SWPLD1_ADDR;
-            cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
-            cmd_data[3] = swpld1_qsfp_modsel_val;
-            cmd_data_len = sizeof(cmd_data);
-			dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
-        }
-        else //BMC monitor off or BMC is not exist
-        {
-            if (cpld_reg_write_byte(pdata[swpld1].client, SWPLD1_QSFP_MODSEL_REG, swpld1_qsfp_modsel_val) < 0)
-                return -EIO;
+
+        set_cmd = CMD_SETDATA;
+        cmd_data[0] = BMC_SWPLD_BUS;
+        cmd_data[1] = SWPLD1_ADDR;
+        cmd_data[2] = SWPLD1_QSFP_MODSEL_REG;
+        cmd_data[3] = swpld1_qsfp_modsel_val;
+        cmd_data_len = sizeof(cmd_data);
+        ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        if (ret != 0) {
+            printk("SWPLD3 mux select error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                    cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+            return -EIO;
         }
 
         /* SFP port 51-59, 9 ports, chan 0-8 */
@@ -2846,12 +2471,23 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH_DISABLE << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en;
         }
+        set_cmd = CMD_SETDATA;
+        cmd_data[0] = BMC_SWPLD_BUS;
+        cmd_data[1] = SWPLD3_ADDR;
+        cmd_data[2] = BUS2_SFP_MUX_REG;
+        cmd_data[3] = swpld3_mux_val;
+        cmd_data_len = sizeof(cmd_data);
+        ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+        if (ret != 0) {
+            printk("SWPLD3 mux select error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                    cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+            return -EIO;
+        }
     }
     else {
         printk(KERN_ERR "SWPLD3 mux select error\n");
         return 0;
     }
-    return cpld_reg_write_byte(mux->data.cpld, mux->data.reg_addr, (u8)(swpld3_mux_val & 0xff));
 }
 
 static int __init cpld_mux_probe(struct platform_device *pdev)
@@ -2914,73 +2550,6 @@ add_adapter_failed:
 alloc_failed:
     kfree(mux);
     i2c_put_adapter(parent);
-    return ret;
-}
-
-static int __init swpld1_mux_probe(struct platform_device *pdev)
-{
-    struct i2c_mux_core *muxc;
-    struct cpld_mux *mux;
-    struct cpld_mux_platform_data *pdata;
-    struct i2c_adapter *parent;
-    int i, ret, dev_num;
-
-    pdata = pdev->dev.platform_data;
-    if (!pdata) {
-        dev_err(&pdev->dev, "SWPLD1 platform data not found\n");
-        return -ENODEV;
-    }
-    mux = kzalloc(sizeof(*mux), GFP_KERNEL);
-    if (!mux) {
-        printk(KERN_ERR "Failed to allocate memory for mux\n");
-        return -ENOMEM;
-    }
-    mux->data = *pdata;
-    parent = i2c_get_adapter(pdata->parent);
-    if (!parent) {
-        kfree(mux);
-        dev_err(&pdev->dev, "Parent adapter (%d) not found\n", pdata->parent);
-        return -ENODEV;
-    }
-    /* Judge bus number to decide how many devices*/
-    switch (pdata->parent) {
-        case BUS5:
-            dev_num = BUS5_DEV_NUM;
-            break;
-        case BUS6:
-            dev_num = BUS6_DEV_NUM;
-            break;
-        default :
-            dev_num = DEF_DEV_NUM;
-            break;
-    }
-
-    muxc = i2c_mux_alloc(parent, &pdev->dev, dev_num, 0, 0, swpld1_mux_select, NULL);
-    if (!muxc) {
-        ret = -ENOMEM;
-        goto alloc_failed;
-    }
-    muxc->priv = mux;
-    platform_set_drvdata(pdev, muxc);
-    for (i = 0; i < dev_num; i++)
-    {
-        int nr = pdata->base_nr + i;
-        unsigned int class = 0;
-        ret = i2c_mux_add_adapter(muxc, nr, i, class);
-        if (ret) {
-            dev_err(&pdev->dev, "Failed to add adapter %d\n", i);
-            goto add_adapter_failed;
-        }
-    }
-    dev_info(&pdev->dev, "%d port mux on %s adapter\n", dev_num, parent->name);
-    return 0;
-
-add_adapter_failed:
-    i2c_mux_del_adapters(muxc);
-alloc_failed:
-    kfree(mux);
-    i2c_put_adapter(parent);
-
     return ret;
 }
 
@@ -3062,17 +2631,6 @@ static int __exit cpld_mux_remove(struct platform_device *pdev)
     return 0;
 }
 
-static int __exit swpld1_mux_remove(struct platform_device *pdev)
-{
-    struct i2c_mux_core *muxc  = platform_get_drvdata(pdev);
-    struct i2c_adapter *parent = muxc->parent;
-
-    i2c_mux_del_adapters(muxc);
-    i2c_put_adapter(parent);
-
-    return 0;
-}
-
 static int __exit swpld3_mux_remove(struct platform_device *pdev)
 {
     struct i2c_mux_core *muxc  = platform_get_drvdata(pdev);
@@ -3093,15 +2651,6 @@ static struct platform_driver cpld_mux_driver = {
     },
 };
 
-static struct platform_driver swpld1_mux_driver = {
-    .probe  = swpld1_mux_probe,
-    .remove = __exit_p(swpld1_mux_remove), /* TODO */
-    .driver = {
-        .owner = THIS_MODULE,
-        .name  = "delta-agc7648sv1-swpld1-mux",
-    },
-};
-
 static struct platform_driver swpld3_mux_driver = {
     .probe  = swpld3_mux_probe,
     .remove = __exit_p(swpld3_mux_remove), /* TODO */
@@ -3115,12 +2664,8 @@ static struct platform_driver swpld3_mux_driver = {
 /* ---------------- module initialization ------------- */
 static int __init delta_agc7648sv1_platform_init(void)
 {
-//    struct i2c_client *client;
-    struct i2c_adapter *adapter;
     struct cpld_mux_platform_data *cpld_mux_pdata;
     struct cpld_platform_data     *cpld_pdata;
-    struct cpld_mux_platform_data *swpld1_mux_pdata;
-    struct cpld_platform_data     *swpld1_pdata;
     struct cpld_mux_platform_data *swpld3_mux_pdata;
     struct cpld_platform_data     *swpld3_pdata;
     int ret,i = 0;
@@ -3167,13 +2712,6 @@ static int __init delta_agc7648sv1_platform_init(void)
         goto error_cpld_mux_driver;
     }
 
-    // register the mux prob which call the SWPLD
-    ret = platform_driver_register(&swpld1_mux_driver);
-    if (ret) {
-        printk(KERN_WARNING "Fail to register swpld1 mux driver\n");
-        goto error_swpld1_mux_driver;
-    }
-
     // register the mux prob which call the SWPLD3
     ret = platform_driver_register(&swpld3_mux_driver);
     if (ret) {
@@ -3208,10 +2746,6 @@ static int __init delta_agc7648sv1_platform_init(void)
         }
     }
 
-    adapter = i2c_get_adapter(BUS3);
-    i2c_client_9547 = i2c_new_device(adapter, &i2c_info_pca9547[0]);
-    i2c_put_adapter(adapter);
-
     // register the SWPLD1
     ret = platform_device_register(&swpld1_device);
     if (ret) {
@@ -3231,19 +2765,6 @@ static int __init delta_agc7648sv1_platform_init(void)
     if (ret) {
         printk(KERN_WARNING "Fail to create swpld3 device\n");
         goto error_swpld3_device;
-    }
-
-    // link the SWPLD1 and the Mux
-    swpld1_pdata = agc7648sv1_swpld1_platform_data;
-    for (i = 0; i < ARRAY_SIZE(swpld1_mux_device); i++)
-    {
-        swpld1_mux_pdata = swpld1_mux_device[i].dev.platform_data;
-        swpld1_mux_pdata->cpld = swpld1_pdata[swpld1].client;
-        ret = platform_device_register(&swpld1_mux_device[i]);
-        if (ret) {
-            printk(KERN_WARNING "Fail to create swpld1 mux %d\n", i);
-            goto error_agc7648sv1_swpld1_mux;
-        }
     }
 
     // link the SWPLD3 and the Mux
@@ -3283,19 +2804,11 @@ error_agc7648sv1_swpld3_mux:
     for (; i >= 0; i--) {
         platform_device_unregister(&swpld3_mux_device[i]);
     }
-    i = ARRAY_SIZE(swpld1_mux_device);
-error_agc7648sv1_swpld1_mux:
-    i--;
-    for (; i >= 0; i--) {
-        platform_device_unregister(&swpld1_mux_device[i]);
-    }
-    platform_device_unregister(&swpld3_device);
 error_swpld3_device:
     platform_device_unregister(&swpld2_device);
 error_swpld2_device:
     platform_device_unregister(&swpld1_device);
 error_swpld1_device:
-    i2c_unregister_device(i2c_client_9547);
     i = ARRAY_SIZE(cpld_mux_device);
 error_cpld_mux:
     i--;
@@ -3308,8 +2821,6 @@ error_cpld_device:
 error_i2c_device_driver:
     platform_driver_unregister(&swpld3_mux_driver);
 error_swpld3_mux_driver:
-    platform_driver_unregister(&swpld1_mux_driver);
-error_swpld1_mux_driver:
     platform_driver_unregister(&cpld_mux_driver);
 error_cpld_mux_driver:
     platform_driver_unregister(&swpld3_driver);
@@ -3335,10 +2846,6 @@ static void __exit delta_agc7648sv1_platform_exit(void)
         platform_device_unregister(&swpld3_mux_device[i]);
     }
 
-    for (i = 0; i < ARRAY_SIZE(swpld1_mux_device); i++) {
-        platform_device_unregister(&swpld1_mux_device[i]);
-    }
-
     platform_device_unregister(&swpld1_device);
     platform_driver_unregister(&swpld1_driver);
 
@@ -3348,15 +2855,12 @@ static void __exit delta_agc7648sv1_platform_exit(void)
     platform_device_unregister(&swpld3_device);
     platform_driver_unregister(&swpld3_driver);
 
-    i2c_unregister_device(i2c_client_9547);
-
     for (i = 0; i < ARRAY_SIZE(cpld_mux_device); i++) {
         platform_device_unregister(&cpld_mux_device[i]);
     }
 
     platform_driver_unregister(&i2c_device_driver);
     platform_driver_unregister(&swpld3_mux_driver);
-    platform_driver_unregister(&swpld1_mux_driver);
     platform_driver_unregister(&cpld_mux_driver);
     platform_device_unregister(&cpld_device);
     platform_driver_unregister(&cpld_driver);    
