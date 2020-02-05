@@ -36,32 +36,24 @@ typedef unsigned int    UINT4;
 #define NUM_OF_SFP (48)
 #define NUM_OF_QSFP (6)
 #define NUM_OF_PORT NUM_OF_SFP + NUM_OF_QSFP
-#define NUM_OF_THERMAL_ON_MAIN_BROAD (9)
+#define NUM_OF_THERMAL_ON_MAIN_BROAD (8)
 #define NUM_OF_LED_ON_MAIN_BROAD     (7)
 #define NUM_OF_FAN_ON_MAIN_BROAD     (8)
 #define NUM_OF_PSU_ON_MAIN_BROAD     (2)
-#define NUM_OF_SENSORS               (47)
 #define CHASSIS_FAN_COUNT            (8)
-#define CHASSIS_THERMAL_COUNT        (9)
-#define NUM_OF_THERMAL               (11)
+#define CHASSIS_THERMAL_COUNT        (8)
+#define NUM_OF_THERMAL               (10)
 #define PSU1_ID                      (1)
 #define PSU2_ID                      (2)
 #define PSU_NUM_LENGTH               (15)
 #define MAX_FRONT_FAN_SPEED          (23000)
-#define MAX_PSU_FAN_SPEED            (18380)
-#define MAX_REAR_FAN_SPEED           (20500)
-#define FAN_ZERO_RPM                 (960)
-#define FAN_SPEED_NORMALLY           (4)
-#define ALL_FAN_TRAY_EXIST           (4)
-#define BMC_OFF                      (1)
-#define BMC_ON                       (0)
-#define PSU_NODE_MAX_PATH_LEN        (64)
+
 #define FAN_TIME_THRESHOLD           (5)
 #define PSU_TIME_THRESHOLD           (5)
 #define THERMAL_TIME_THRESHOLD       (10)
 #define PSU_EEPROM_TIME_THRESHOLD    (10)
 #define SWPLD_DATA_TIME_THRESHOLD    (5)
-#define DEV_NUM                      (33)
+#define DEV_NUM                      (32)
 
 #define CPU_CPLD_VERSION "/sys/devices/platform/delta-agc7648sv1-cpld.0/cpuld_ver"
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0053/eeprom"
@@ -73,27 +65,13 @@ typedef unsigned int    UINT4;
 #define SWPLD_1_ADDR (0x6A)
 #define SWPLD_2_ADDR (0x75)
 #define SWPLD_3_ADDR (0x73)
-#define PSU_EEPROM   (0x50)
-#define FAN_TRAY_1   (0x52)
-#define FAN_TRAY_2   (0x53)
-#define FAN_TRAY_3   (0x54)
-#define FAN_TRAY_4   (0x55)
-#define FAN_IO_CTL   (0x27)
+
 #define SYS_LED_REGISTER (0x1C)
 #define FAN_LED_REGISTER (0x65)
-#define POWER_STATUS_REGISTER (0x0B)
-#define POWER_INT_REGISTER    (0x0E)
-#define DEFAULT_FLAG         (0x00)
 #define PSU_REGISTER (0x0D)
 
 /* BMC BUS define */
 #define BMC_SWPLD_BUS (2)
-
-/* SFP REG define */
-#define SFP_RESPOND_1 (0x0A)
-#define SFP_RESPOND_2 (0x0B)
-#define SFP_RESPOND_3 (0x0C)
-#define SFP_RESPOND_4 (0x0D)
 
 /* on SWPLD2 */
 #define SFP_PRESENCE_1 0x30
@@ -214,9 +192,8 @@ enum onlp_thermal_id
     THERMAL_6_ON_MAIN_BOARD_TEMP_2,
     THERMAL_7_ON_MAIN_BOARD_TEMP_3,
     THERMAL_8_ON_MAIN_BOARD,
-    THERMAL_9_ON_MAIN_BOARD,
-    THERMAL_10_ON_PSU1,
-    THERMAL_11_ON_PSU2
+    THERMAL_9_ON_PSU1,
+    THERMAL_10_ON_PSU2
 };
 
 typedef enum

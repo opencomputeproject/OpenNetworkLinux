@@ -78,15 +78,11 @@ static onlp_thermal_info_t linfo[] = {
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_9_ON_MAIN_BOARD), "Board sensor near MAC", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_9_ON_PSU1), "PSU-1 internal sensor", ONLP_PSU_ID_CREATE(PSU1_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_10_ON_PSU1), "PSU-1 internal sensor", ONLP_PSU_ID_CREATE(PSU1_ID)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_11_ON_PSU2), "PSU-2 internal Sensor", ONLP_PSU_ID_CREATE(PSU2_ID)},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_10_ON_PSU2), "PSU-2 internal Sensor", ONLP_PSU_ID_CREATE(PSU2_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     }
@@ -138,16 +134,15 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         case THERMAL_6_ON_MAIN_BOARD_TEMP_2:
         case THERMAL_7_ON_MAIN_BOARD_TEMP_3:
         case THERMAL_8_ON_MAIN_BOARD:
-        case THERMAL_9_ON_MAIN_BOARD:
             local_id--;
             sprintf(device_buf, "Temp_Sensor_%d", local_id);
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;
-        case THERMAL_10_ON_PSU1:
+        case THERMAL_9_ON_PSU1:
             sprintf(device_buf, "PSU1_Temp_1");
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;
-        case THERMAL_11_ON_PSU2:
+        case THERMAL_10_ON_PSU2:
             sprintf(device_buf, "PSU2_Temp_1");
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;

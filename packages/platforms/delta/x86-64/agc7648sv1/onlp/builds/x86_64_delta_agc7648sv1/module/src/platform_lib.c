@@ -150,7 +150,6 @@ bmc_info_t dev[] =
     {"Temp_Sensor_5", 0},
     {"Temp_Sensor_6", 0},
     {"Temp_Sensor_7", 0},
-    {"Temp_Sensor_8", 0},
     {"PSU1_Temp_1", 0},
     {"PSU2_Temp_1", 0}
 };
