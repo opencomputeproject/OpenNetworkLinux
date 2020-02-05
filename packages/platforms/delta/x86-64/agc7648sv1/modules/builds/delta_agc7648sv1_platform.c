@@ -24,17 +24,6 @@
 #define MUX_VAL_IDEEPROM      0xFC
 #define MUX_VAL_PCA9547       0xFD
 
-#define MUX_VAL_FAN1_EEPROM 0x00
-#define MUX_VAL_FAN2_EEPROM 0x01
-#define MUX_VAL_FAN3_EEPROM 0x02
-#define MUX_VAL_FAN4_EEPROM 0x03
-#define MUX_VAL_FAN_CTL     0x05
-#define MUX_VAL_FAN_TMP75   0x06
-#define MUX_VAL_FAN_IO_CTL  0x07
-
-#define MUX_VAL_PSU1  0x00
-#define MUX_VAL_PSU2  0x02
-
 #define DEF_DEV_NUM      1
 #define BUS0_DEV_NUM     3
 #define BUS0_BASE_NUM    1
@@ -46,13 +35,6 @@
 #define BUS2_SFP_DEV_NUM    48
 #define BUS2_SFP_BASE_NUM   51
 #define BUS2_SFP_MUX_REG  0x21
-#define BUS5_DEV_NUM     7
-#define BUS5_BASE_NUM   21
-#define BUS5_MUX_REG  0x67
-
-#define BUS6_DEV_NUM     2
-#define BUS6_BASE_NUM   31
-#define BUS6_MUX_REG  0x1f
 
 /* on SWPLD3 */
 #define SWPLD3_SFP_CH1_EN     0x00
@@ -72,37 +54,6 @@
 
 #define SWPLD3_QSFP_MUX_DISABLE    (0x01 << 4)
 #define SWPLD3_QSFP_SFP_CH_DISABLE  0xFF
-
-/* on SWPLD2 */
-#define SFP_PRESENCE_1 0x30
-#define SFP_PRESENCE_2 0x31
-#define SFP_PRESENCE_3 0x32
-#define SFP_PRESENCE_4 0x33
-#define SFP_PRESENCE_5 0x34
-#define SFP_PRESENCE_6 0x35
-#define SFP_RXLOS_1 0x36
-#define SFP_RXLOS_2 0x37
-#define SFP_RXLOS_3 0x38
-#define SFP_RXLOS_4 0x39
-#define SFP_RXLOS_5 0x3A
-#define SFP_RXLOS_6 0x3B
-#define SFP_TXDIS_1 0x3C
-#define SFP_TXDIS_2 0x3D
-#define SFP_TXDIS_3 0x3E
-#define SFP_TXDIS_4 0x3F
-#define SFP_TXDIS_5 0x40
-#define SFP_TXDIS_6 0x41
-#define SFP_TXFAULT_1 0x42
-#define SFP_TXFAULT_2 0x43
-#define SFP_TXFAULT_3 0x44
-#define SFP_TXFAULT_4 0x45
-#define SFP_TXFAULT_5 0x46
-#define SFP_TXFAULT_6 0x47
-
-/* on SWPLD1 */
-#define QSFP_PRESENCE  0x63
-#define QSFP_LPMODE    0x62
-#define QSFP_RESET     0x3c
 
 #define SWPLD1_QSFP_MODSEL_REG 0x64
 #define SWPLD1_QSFP_MODSEL_VAL 0x3f
@@ -220,7 +171,7 @@ enum{
     },                                     \
 }
 
-static struct cpld_attribute_data {
+struct cpld_attribute_data {
     uint8_t bus;
     uint8_t addr;
     uint8_t reg;
@@ -230,14 +181,6 @@ static struct cpld_attribute_data {
 
 enum cpld_type {
     system_cpld,
-};
-
-enum swpld1_type {
-    swpld1,
-};
-
-enum swpld2_type {
-    swpld2,
 };
 
 enum swpld3_type {
@@ -253,12 +196,6 @@ enum cpld_attributes {
 //CPLDs address and value
     CPLD_REG_ADDR,
     CPLD_REG_VALUE,
-    SWPLD1_REG_ADDR,
-    SWPLD1_REG_VALUE,
-    SWPLD2_REG_ADDR,
-    SWPLD2_REG_VALUE,
-    SWPLD3_REG_ADDR,
-    SWPLD3_REG_VALUE,
 //CPLD
     CPU_BOARD_ID1,
     CPU_BOARD_ID2,
@@ -280,46 +217,6 @@ enum cpld_attributes {
     PSU_FAN_EVENT,
     CPU_I2C_MUX_EN,
     CPU_I2C_MUX_SEL,
-//SWPLD1
-    BOARD_ID,
-    BCM88375_RST,
-    B54616S_RST,
-    PSU1_EN,
-    PSU2_EN,
-    PSU1_PWR_FAN_OK,
-    PSU2_PWR_FAN_OK,
-    PSU2_PRESENT,
-    PSU1_PRESENT,
-    PSU2_PWR_INT,
-    PSU1_PWR_INT,
-    BCM88375_INT,
-    BCM54616S_IRQ,
-    LED_SYS,
-    LED_PWR,
-    LED_FAN,
-    PSU_I2C_SEL,
-    FAN1_LED,
-    FAN2_LED,
-    FAN3_LED,
-    FAN4_LED,
-    FAN_I2C_SEL,
-//SWPLD3
-    QSFP_I2C_SEL,
-    SFP_CHAN_EN,
-    SFP_SEL,
-};
-
-enum agc7648sv1_sfp_sysfs_attributes 
-{
-    SFP_SELECT_PORT,
-    SFP_IS_PRESENT,
-    SFP_IS_PRESENT_ALL,
-    SFP_LP_MODE,
-    SFP_RESET,
-    SFP_RX_LOS,
-    SFP_RX_LOS_ALL,
-    SFP_TX_DISABLE,
-    SFP_TX_FAULT
 };
 
 static struct cpld_attribute_data attribute_data[] = {
@@ -327,16 +224,6 @@ static struct cpld_attribute_data attribute_data[] = {
     [CPLD_REG_ADDR] = {
     },
     [CPLD_REG_VALUE] = {
-    },
-    [SWPLD1_REG_ADDR] = {
-    },
-    [SWPLD1_REG_VALUE] = {
-    },
-    [SWPLD2_REG_ADDR] = {
-    },
-    [SWPLD2_REG_VALUE] = {
-    },
-    [SWPLD3_REG_ADDR] = {
     },
 //CPLD
     [CPU_BOARD_ID1] = {
@@ -439,133 +326,6 @@ static struct cpld_attribute_data attribute_data[] = {
         .reg  = 0x14,       .mask = 0x03,
         .note = "CPU I2C MUX Selection\n\"0x00\" = CPUBD devices\n\"0x01\" = SWBD devices\n\"0x02\" = SWPLDs\n\"0x03\" = QSFP-DD module devices"
     },
-//SWPLD1
-    [BOARD_ID] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x00,       .mask = 0xf0,
-        .note = "SW Board ID\n\"0000\": AGC7648."
-    },
-    [BCM88375_RST] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x04,       .mask = 1 << 6,
-        .note = "software Reset for MAC\n\"0\" = Reset.\n\"1\" = Normal Operation."
-    },
-    [B54616S_RST] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x04,       .mask = 1 << 5,
-        .note = "Software Reset for PHY\n\"0\" = Reset.\n\"1\" = Normal Operation."
-    },
-    [PSU1_EN] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x08,       .mask = 1 << 7,
-        .note = "Enable/Disable the Power Supply 1\n\"0\" = Enabled.\n\"1\" = Disabled."
-    },
-    [PSU2_EN] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x08,       .mask = 1 << 6,
-        .note = "Enable/Disable the Power Supply 2\n\"0\" = Enabled.\n\"1\" = Disabled."
-    },
-    [PSU1_PWR_FAN_OK] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0b,       .mask = 1 << 7,
-        .note = "Indicate the Power Supply 1 power good\n\"1\" = Power rail is good\n\"0\" = Power rail is failed"
-    },
-    [PSU2_PWR_FAN_OK] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0b,       .mask = 1 << 6,
-        .note = "Indicate the Power Supply 2 power good\n\"1\" = Power rail is good\n\"0\" = Power rail is failed"
-    },
-    [PSU2_PRESENT] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0d,       .mask = 1 << 1,
-        .note = "Indicate PSU2 present or not.\n\"0\" = YES.\n\"1\" = NO."
-    },
-    [PSU1_PRESENT] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0d,       .mask = 1 << 0,
-        .note = "Indicate PSU1 present or not.\n\"0\" = YES.\n\"1\" = NO."
-    },
-    [PSU2_PWR_INT] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0e,       .mask = 1 << 5,
-        .note = "Indicate the PSU2 interrupt occurs or not.\n\"0\" = Interrupt occurs\n\"1\" = Interrupt doesn't occur"
-    },
-    [PSU1_PWR_INT] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0e,       .mask = 1 << 4,
-        .note = "Indicate the PSU1 interrupt occurs or not.\n\"0\" = Interrupt occurs\n\"1\" = Interrupt doesn't occur"
-    },
-    [BCM88375_INT] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x0e,       .mask = 1 << 3,
-        .note = "Indicate BCM88375 Interrupt occurs or not.\n\"0\" = Interrupt occurs\n\"1\" = Interrupt doesn't occur"
-    },
-    [BCM54616S_IRQ] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x16,       .mask = 1 << 7,
-        .note = "Indicate the BCM54616S interrupt occurs or not.\n\"0\" = Interrupt occurs\n\"1\" = Interrupt doesn't occur"
-    },
-    [LED_SYS] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x1c,       .mask = 0xf0,
-        .note = "\"0x00\"= Off (No Power)\n\"0x01\"= Solid Amber(System Fault)\n\"0x02\"= Solid Green(System Normal Operation)\n\"0x05\"= Blinking Green(1/4S)(System Booting)\n\"0x06\"= Blinking Amber(1/4S)\n\"0x09\"= Blinking Green(1/2S)\n\"0x0A\"= Blinking Amber(1/2S)\n\"0x0D\"= Blinking Green(1S)\n\"0x0E\"= Blinking Amber(1S)"
-    },
-    [LED_PWR] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x1c,       .mask = 0x0c,
-        .note = "\"0x00\"= Off (No Power)\n\"0x01\"= Solid Green(PSU Normal Operation)\n\"0x02\"= Solid Amber(POST in progress)\n\"0x03\"= (Not define)"
-    },
-    [LED_FAN] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x1c,       .mask = 0x03,
-        .note = "\"0x00\"= Off (No Power)\n\"0x01\"= Solid Green(Fan Normal Operation)\n\"0x02\"= Solid Amber(Fan not present)\n\"0x03\"= Blinking Amber(Fan failed)"
-    },
-    [PSU_I2C_SEL] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x1f,       .mask = 0x03,
-        .note = "FAN I2C channel selection\n\"0x00\" = PS1 EEPROM\n\"0x01\" = PS1 HOT SWAP IC\n\"0x02\" = PS2 EEPROM\n\"0x03\" = PS2 HOT SWAP IC\n"
-    },
-    [FAN1_LED] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x65,       .mask = 0xc0,
-        .note = "Indicate the FAN Tray 1 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
-    },
-    [FAN2_LED] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x65,       .mask = 0x30,
-        .note = "Indicate the FAN Tray 2 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
-    },
-    [FAN3_LED] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x65,       .mask = 0x0c,
-        .note = "Indicate the FAN Tray 3 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
-    },
-    [FAN4_LED] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x65,       .mask = 0x03,
-        .note = "Indicate the FAN Tray 4 LED status\n\"0x00\" = Off\n\"0x01\" = Solid Green.\n\"0x02\" = Solid Red.\n\"0x03\" = Off\n"
-    },
-    [FAN_I2C_SEL] = {
-        .bus  = BUS7,       .addr = SWPLD1_ADDR,
-        .reg  = 0x67,       .mask = 0x07,
-        .note = "FAN I2C channel selection\n\"0x00\" = FAN TRAY 1 EEPROM\n\"0x01\" = FAN TRAY 2 EEPROM\n\"0x02\" = FAN TRAY 3 EEPROM\n\"0x03\" = FAN TRAY 4 EEPROM\n\"0x04\" = Reserved;(Do not use)\n\"0x05\" = FAN Control IC (EMC2305)\n\"0x06\" = FAN Thermal Sensor (TMP75A)\n\"0x07\" = FAN IO Control (PCA9555DB)"
-    },
-//SWPLD3
-    [QSFP_I2C_SEL] = {
-        .bus  = BUS7,       .addr = SWPLD3_ADDR,
-        .reg  = 0x20,       .mask = 0x07,
-        .note = "QSFP28 I2C channel selection.\n\"0x00\" : QSFP28 Port 0\n\"0x01\" : QSFP28 Port 1\n\"0x02\" : QSFP28 Port 2\n\"0x03\" : QSFP28 Port 3\n\"0x04\" : QSFP28 Port 4\n\"0x05\" : QSFP28 Port 5"
-    },
-    [SFP_CHAN_EN] = {
-        .bus  = BUS7,       .addr = SWPLD3_ADDR,
-        .reg  = 0x21,       .mask = 0x70,
-        .note = "SFP+ I2C Nth channel and QSFP channel enable index\n\"0x00\": means SFP+ N=0 and 1th channel enable.\n\"0x01\": means SFP+ N=1 and 2th channel enable.\n ...\n\"0x05\": means SFP+ N=5 and 6th channel enable.\n\"0x06\": means QSFP channel enable.\n\"0x07\": Disable all channels."
-    },
-    [SFP_SEL] = {
-        .bus  = BUS7,       .addr = SWPLD3_ADDR,
-        .reg  = 0x21,       .mask = 0x07,
-        .note = "SFP+ I2C Mth selection. (From PORT1 ~ PORT48)\n\"0x00\": means M=0.\n\"0x01\": means M=1.\n...\n\"0x07\": means M=7\nSFP I2C Channel Number = 8 * N + M +1"
-    },
 };
 
 struct i2c_device_platform_data {
@@ -577,18 +337,6 @@ struct i2c_device_platform_data {
 static struct cpld_platform_data agc7648sv1_cpld_platform_data[] = {
     [system_cpld] = {
         .reg_addr = CPUPLD_ADDR,
-    },
-};
-
-static struct cpld_platform_data agc7648sv1_swpld1_platform_data[] = {
-    [swpld1] = {
-        .reg_addr = SWPLD1_ADDR,
-    },
-};
-
-static struct cpld_platform_data agc7648sv1_swpld2_platform_data[] = {
-    [swpld2] = {
-        .reg_addr = SWPLD2_ADDR,
     },
 };
 
@@ -1125,525 +873,9 @@ static struct platform_driver i2c_device_driver = {
 };
 /* ---------------- I2C driver - end ------------- */
 
-/* ---------------- SFP attribute read/write - start -------- */
-long sfp_port_data = 0;
-static struct kobject *kobj_cpld;
-static struct kobject *kobj_swpld1;
-static struct kobject *kobj_swpld2;
-static struct kobject *kobj_swpld3;
-
-static ssize_t for_status(struct device *dev, struct device_attribute *dev_attr, char *buf){
-    struct sensor_device_attribute *attr = to_sensor_dev_attr(dev_attr);
-    struct device *i2cdev_1 = kobj_to_dev(kobj_swpld1);
-    struct device *i2cdev_2 = kobj_to_dev(kobj_swpld2);
-    struct cpld_platform_data *pdata1 = i2cdev_1->platform_data;
-    struct cpld_platform_data *pdata2 = i2cdev_2->platform_data;
-    long port_t = 0;
-    u8 reg_t = 0x00;
-    int values[7] = {'\0'};
-    int bit_t = 0x00;
-    mutex_lock(&dni_lock);
-
-    switch (attr->index) {
-        case SFP_IS_PRESENT:
-            port_t = sfp_port_data;
-            if (port_t > 0 && port_t < 9) {          /* SFP Port 1-8 */
-                reg_t = SFP_PRESENCE_1;
-            } else if (port_t > 8 && port_t < 17) {  /* SFP Port 9-16 */
-                reg_t = SFP_PRESENCE_2;
-            } else if (port_t > 16 && port_t < 25) { /* SFP Port 17-24 */
-                reg_t = SFP_PRESENCE_3;
-            } else if (port_t > 24 && port_t < 33) { /* SFP Port 25-32 */
-                reg_t = SFP_PRESENCE_4;
-            } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
-                reg_t = SFP_PRESENCE_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
-                reg_t = SFP_PRESENCE_6;
-            } else if (port_t > 48 && port_t < 55) { /* QSFP Port 1-6 */
-                reg_t = QSFP_PRESENCE;
-            } else {
-                values[0] = 1; /* return 1, module NOT present */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 48 && port_t < 55) { /* QSFP */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
-                mutex_unlock(&dni_lock);
-                port_t = port_t - 1;
-                bit_t = 1 << (port_t % 8);
-                values[0] = values[0] & bit_t;
-                values[0] = values[0] / bit_t;
-            }
-            else { /* SFP */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
-                mutex_unlock(&dni_lock);
-                port_t = port_t - 1;
-                bit_t = 1 << (port_t % 8);
-                values[0] = values[0] & bit_t;
-                values[0] = values[0] / bit_t;
-            }
-
-            /* sfp_is_present value
-             * return 0 is module present
-             * return 1 is module NOT present */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-        case SFP_IS_PRESENT_ALL:
-            /* Report the SFP/QSFP ALL PRESENCE status
-             * This data information form SWPLD2(SFP) and SWPLD1(QSFP). */
-
-            /* SFP_PRESENT Ports 1-8 */
-            VALIDATED_READ(buf, values[0],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_1), 0);
-            /* SFP_PRESENT Ports 9-16 */
-            VALIDATED_READ(buf, values[1],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_2), 0);
-            /* SFP_PRESENT Ports 17-24 */
-            VALIDATED_READ(buf, values[2],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_3), 0);
-            /* SFP_PRESENT Ports 25-32 */
-            VALIDATED_READ(buf, values[3],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_4), 0);
-            /* SFP_PRESENT Ports 33-40 */
-            VALIDATED_READ(buf, values[4],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_5), 0);
-            /* SFP_PRESENT Ports 41-48 */
-            VALIDATED_READ(buf, values[5],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_PRESENCE_6), 0);
-            /* QSFP_PRESENT Ports 49-54 */
-            VALIDATED_READ(buf, values[6],
-                i2c_smbus_read_byte_data(pdata1[swpld1].client, QSFP_PRESENCE), 0);
-
-            values[6] = values[6] & 0x3F;
-
-            /* sfp_is_present_all value
-             * return 0 is module present
-             * return 1 is module NOT present */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%02X %02X %02X %02X %02X %02X %02X\n", values[6], values[5], values[4],values[3], values[2], values[1], values[0]);
-
-        case SFP_LP_MODE:
-            port_t = sfp_port_data;
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-                reg_t = QSFP_LPMODE;
-            } else {
-                values[0] = 0; /* return 0, module is NOT in LP mode */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
-            } else { /* In agc7648sv1 only QSFP support control LP MODE */
-                values[0] = 0;
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
-            values[0] = values[0] & bit_t;
-            values[0] = values[0] / bit_t;
-
-            /* sfp_lp_mode value
-             * return 0 is module NOT in LP mode
-             * return 1 is module in LP mode */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-         case SFP_RESET:
-            port_t = sfp_port_data;
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-                reg_t = QSFP_RESET;
-            } else {
-                values[0] = 1; /* return 1, module NOT in reset mode */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata1[swpld1].client, reg_t), 0);
-            } else { /* In agc7648sv1 only QSFP support control RESET MODE */
-                values[0] = 1;
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
-            values[0] = values[0] & bit_t;
-            values[0] = values[0] / bit_t;
-
-            /* sfp_reset value
-             * return 0 is module Reset
-             * return 1 is module Normal */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-        case SFP_RX_LOS:
-            port_t = sfp_port_data;
-            if (port_t > 0 && port_t < 9) {          /* SFP Port 1-8 */
-                reg_t = SFP_RXLOS_1;
-            } else if (port_t > 8 && port_t < 17) {  /* SFP Port 9-16 */
-                reg_t = SFP_RXLOS_2;
-            } else if (port_t > 16 && port_t < 25) { /* SFP Port 17-24 */
-                reg_t = SFP_RXLOS_3;
-            } else if (port_t > 24 && port_t < 33) { /* SFP Port 25-32 */
-                reg_t = SFP_RXLOS_4;
-            } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
-                reg_t = SFP_RXLOS_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
-                reg_t = SFP_RXLOS_6;
-            } else {
-                values[0] = 1; /* return 1, module Error */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 0 && port_t < 49) { /* SFP */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
-            } else { /* In agc7648sv1 only SFP support control RX_LOS MODE */
-                values[0] = 1;
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
-            values[0] = values[0] & bit_t;
-            values[0] = values[0] / bit_t;
-
-            /* sfp_rx_los value
-             * return 0 is module Normal Operation
-             * return 1 is module Error */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-        case SFP_RX_LOS_ALL:
-            /* Report the SFP ALL RXLOS status
-             * This data information form SWPLD2. */
-
-            /* SFP_RXLOS Ports 1-8 */
-            VALIDATED_READ(buf, values[0],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_1), 0);
-            /* SFP_RXLOS Ports 9-16 */
-            VALIDATED_READ(buf, values[1],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_2), 0);
-            /* SFP_RXLOS Ports 17-24 */
-            VALIDATED_READ(buf, values[2],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_3), 0);
-            /* SFP_RXLOS Ports 25-32 */
-            VALIDATED_READ(buf, values[3],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_4), 0);
-            /* SFP_RXLOS Ports 33-40 */
-            VALIDATED_READ(buf, values[4],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_5), 0);
-            /* SFP_RXLOS Ports 41-48 */
-            VALIDATED_READ(buf, values[5],
-                i2c_smbus_read_byte_data(pdata2[swpld2].client, SFP_RXLOS_6), 0);
-
-            /* sfp_rx_los_all value
-             * return 0 is module Normal Operation
-             * return 1 is module Error */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%02X %02X %02X %02X %02X %02X\n", values[5], values[4],values[3], values[2], values[1], values[0]);
-
-        case SFP_TX_DISABLE:
-            port_t = sfp_port_data;
-            if (port_t > 0 && port_t < 9) {          /* SFP Port 1-8 */
-                reg_t = SFP_TXDIS_1;
-            } else if (port_t > 8 && port_t < 17) {  /* SFP Port 9-16 */
-                reg_t = SFP_TXDIS_2;
-            } else if (port_t > 16 && port_t < 25) { /* SFP Port 17-24 */
-                reg_t = SFP_TXDIS_3;
-            } else if (port_t > 24 && port_t < 33) { /* SFP Port 25-32 */
-                reg_t = SFP_TXDIS_4;
-            } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
-                reg_t = SFP_TXDIS_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
-                reg_t = SFP_TXDIS_6;
-            } else {
-                values[0] = 1; /* return 1, module Transmitter Disabled */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 0 && port_t < 49) { /* SFP */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
-            } else { /* In agc7648sv1 only SFP support control TX_DISABLE MODE */
-                values[0] = 1;
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
-            values[0] = values[0] & bit_t;
-            values[0] = values[0] / bit_t;
-
-            /* sfp_tx_disable value
-             * return 0 is module Enable Transmitter on
-             * return 1 is module Transmitter Disabled */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-        case SFP_TX_FAULT:
-            port_t = sfp_port_data;
-            if (port_t > 0 && port_t < 9) {          /* SFP Port 1-8 */
-                reg_t = SFP_TXFAULT_1;
-            } else if (port_t > 8 && port_t < 17) {  /* SFP Port 9-16 */
-                reg_t = SFP_TXFAULT_2;
-            } else if (port_t > 16 && port_t < 25) { /* SFP Port 17-24 */
-                reg_t = SFP_TXFAULT_3;
-            } else if (port_t > 24 && port_t < 33) { /* SFP Port 25-32 */
-                reg_t = SFP_TXFAULT_4;
-            } else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
-                reg_t = SFP_TXFAULT_5;
-            } else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
-                reg_t = SFP_TXFAULT_6;
-            } else {
-                values[0] = 1; /* return 1, module is Fault */
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-
-            if (port_t > 0 && port_t < 49) { /* SFP */
-                VALIDATED_READ(buf, values[0], i2c_smbus_read_byte_data(pdata2[swpld2].client, reg_t), 0);
-            } else { /* In agc7648sv1 only SFP support control TX_FAULT MODE */
-                values[0] = 1;
-                mutex_unlock(&dni_lock);
-                return sprintf(buf, "%d\n", values[0]);
-            }
-            port_t = port_t - 1;
-            bit_t = 1 << (port_t % 8);
-            values[0] = values[0] & bit_t;
-            values[0] = values[0] / bit_t;
-
-            /* sfp_tx_fault value
-             * return 0 is module Normal
-             * return 1 is module Fault */
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d\n", values[0]);
-
-        default:
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d not found", attr->index);
-    }
-}
-
-static ssize_t get_port_data(struct device *dev, struct device_attribute *dev_attr, char *buf)
-{
-    return sprintf(buf, "%ld\n", sfp_port_data);
-}
-
-static ssize_t set_port_data(struct device *dev, struct device_attribute *dev_attr, const char *buf, size_t count)
-{
-    long data;
-    int error;
-    
-    error = kstrtol(buf, 10, &data);
-    if(error)
-        return error;
-
-    if(data < 1 || data > 54) /* valid port is 1-54 */
-    {
-        printk(KERN_ALERT "select port out of range (1-54)\n");
-        return count;
-    }
-    else
-        sfp_port_data = data;
-
-    return count;
-}
-
-static ssize_t set_lpmode_data(struct device *dev, struct device_attribute *dev_attr, const char *buf, size_t count)
-{
-    struct device *i2cdev = kobj_to_dev(kobj_swpld1);
-    struct cpld_platform_data *pdata = i2cdev->platform_data;
-    long data;
-    int error;
-    long port_t = 0;
-    int bit_t = 0x00;
-    int values = 0x00;
-    u8 reg_t = 0x00;
-
-    error = kstrtol(buf, 10, &data);
-    if (error)
-        return error;
-    mutex_lock(&dni_lock);
-    port_t = sfp_port_data;
-    if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-        reg_t = QSFP_LPMODE;
-    } else {
-        values = 0; /* return 0, module NOT in LP mode */
-        mutex_unlock(&dni_lock);
-        return sprintf(buf, "%d\n", values);
-    }
-
-    values = i2c_smbus_read_byte_data(pdata[swpld1].client, reg_t);
-    if (values < 0){
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    /* Indicate the module is in LP mode or not
-     * 0 = Disable
-     * 1 = Enable */
-    port_t = port_t - 1;
-    if (data == 0)
-    {
-        bit_t = ~(1 << (port_t % 8));
-        values = values & bit_t;
-    }
-    else if (data == 1){
-        bit_t = (1 << (port_t % 8));
-        values = values | bit_t;
-    }
-    else
-    {
-        mutex_unlock(&dni_lock);
-        return -EINVAL;
-    }
-    if (i2c_smbus_write_byte_data(pdata[swpld1].client, reg_t, (u8)values) < 0)
-    {
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    mutex_unlock(&dni_lock);
-    return count;
-}
-
-static ssize_t set_reset_data(struct device *dev, struct device_attribute *dev_attr, const char *buf, size_t count)
-{
-    struct device *i2cdev = kobj_to_dev(kobj_swpld1);
-    struct cpld_platform_data *pdata = i2cdev->platform_data;
-    long data;
-    int error;
-    long port_t = 0;
-    int bit_t = 0x00;
-    int values = 0x00;
-    u8 reg_t = 0x00;
-
-    error = kstrtol(buf, 10, &data);
-    if (error)
-        return error;
-
-    mutex_lock(&dni_lock);
-    port_t = sfp_port_data;
-
-    if (port_t > 48 && port_t < 55) { /* QSFP Port 49-54 */
-        reg_t = QSFP_RESET;
-    } else {
-        values = 1; /* return 1, module NOT in reset mode */
-        mutex_unlock(&dni_lock);
-        return sprintf(buf, "%d\n", values);
-    }
-
-    values = i2c_smbus_read_byte_data(pdata[swpld1].client, reg_t);
-    if (values < 0){
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    /* Indicate the module is in reset mode or not
-     * 0 = Reset
-     * 1 = Normal */
-    port_t = port_t - 1;
-    if (data == 0)
-    {
-        bit_t = ~(1 << (port_t % 8));
-        values = values & bit_t;
-    }
-    else if (data == 1)
-    {
-        bit_t = (1 << (port_t % 8));
-        values = values | bit_t;
-    }
-    else
-    {
-        mutex_unlock(&dni_lock);
-        return -EINVAL;
-    }
-    if (i2c_smbus_write_byte_data(pdata[swpld1].client, reg_t, (u8)values) < 0)
-    {
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    mutex_unlock(&dni_lock);
-    return count;
-}
-
-static ssize_t set_tx_disable(struct device *dev, struct device_attribute *dev_attr, const char *buf, size_t count)
-{
-    struct device *i2cdev = kobj_to_dev(kobj_swpld2);
-    struct cpld_platform_data *pdata = i2cdev->platform_data;
-    long data;
-    int error;
-    long port_t = 0;
-    int bit_t = 0x00;
-    int values = 0x00;
-    u8 reg_t = 0x00;
-
-    error = kstrtol(buf, 10, &data);
-    if (error)
-        return error;
-
-    mutex_lock(&dni_lock);
-    port_t = sfp_port_data;
-
-	if (port_t > 0 && port_t < 9) {          /* SFP Port 1-8 */
-		reg_t = SFP_TXDIS_1;
-	} else if (port_t > 8 && port_t < 17) {  /* SFP Port 9-16 */
-		reg_t = SFP_TXDIS_2;
-	} else if (port_t > 16 && port_t < 25) { /* SFP Port 17-24 */
-		reg_t = SFP_TXDIS_3;
-	} else if (port_t > 24 && port_t < 33) { /* SFP Port 25-32 */
-		reg_t = SFP_TXDIS_4;
-	} else if (port_t > 32 && port_t < 41) { /* SFP Port 33-40 */
-		reg_t = SFP_TXDIS_5;
-	} else if (port_t > 40 && port_t < 49) { /* SFP Port 41-48 */
-		reg_t = SFP_TXDIS_6;
-    } else {
-        values = 1; /* return 1, module NOT in reset mode */
-        mutex_unlock(&dni_lock);
-        return sprintf(buf, "%d\n", values);
-    }
-
-    values = i2c_smbus_read_byte_data(pdata[swpld2].client, reg_t);
-    if (values < 0){
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    /* Indicate the module is Enable Transmitter on or not
-     * 0 = Enable
-     * 1 = Disable */
-    port_t = port_t - 1;
-    if (data == 0)
-    {
-        bit_t = ~(1 << (port_t % 8));
-        values = values & bit_t;
-    }
-    else if (data == 1)
-    {
-        bit_t = (1 << (port_t % 8));
-        values = values | bit_t;
-    }
-    else
-    {
-        mutex_unlock(&dni_lock);
-        return -EINVAL;
-    }
-    if (i2c_smbus_write_byte_data(pdata[swpld2].client, reg_t, (u8)values) < 0)
-    {
-        mutex_unlock(&dni_lock);
-        return -EIO;
-    }
-    mutex_unlock(&dni_lock);
-    return count;
-}
-/* ---------------- SFP attribute read/write - end -------- */
-
 /* ---------------- CPLD - start ------------- */
+static struct kobject *kobj_cpld;
 unsigned char cpupld_reg_addr;
-unsigned char swpld1_reg_addr;
-unsigned char swpld2_reg_addr;
-unsigned char swpld3_reg_addr;
 
 /*    CPLD  -- device   */
 static struct platform_device cpld_device = {
@@ -1652,33 +884,6 @@ static struct platform_device cpld_device = {
     .dev = {
         .platform_data  = agc7648sv1_cpld_platform_data,
         .release        = device_release
-    },
-};
-
-static struct platform_device swpld1_device = {
-    .name = "delta-agc7648sv1-swpld1",
-    .id   = 0,
-    .dev  = {
-        .platform_data = agc7648sv1_swpld1_platform_data,
-        .release       = device_release
-    },
-};
-
-static struct platform_device swpld2_device = {
-    .name = "delta-agc7648sv1-swpld2",
-    .id   = 0,
-    .dev  = {
-        .platform_data  = agc7648sv1_swpld2_platform_data,
-        .release        = device_release
-    },
-};
-
-static struct platform_device swpld3_device = {
-    .name               = "delta-agc7648sv1-swpld3",
-    .id                 = 0,
-    .dev                = {
-                .platform_data   = agc7648sv1_swpld3_platform_data,
-                .release         = device_release
     },
 };
 
@@ -1697,32 +902,11 @@ static ssize_t get_cpld_reg(struct device *dev, struct device_attribute *dev_att
         case CPLD_REG_ADDR:
             mutex_unlock(&dni_lock);
             return sprintf(buf, "0x%02x\n", cpupld_reg_addr);
-        case SWPLD1_REG_ADDR:
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", swpld1_reg_addr);
-        case SWPLD2_REG_ADDR:
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", swpld2_reg_addr);
-        case SWPLD3_REG_ADDR:
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", swpld3_reg_addr);
         case CPLD_REG_VALUE:
             ret = i2c_smbus_read_byte_data(pdata[system_cpld].client, cpupld_reg_addr);
             mutex_unlock(&dni_lock);
             return sprintf(buf, "0x%02x\n", ret);
-        case SWPLD1_REG_VALUE:
-            ret = i2c_smbus_read_byte_data(pdata[swpld1].client, swpld1_reg_addr);
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", ret);
-        case SWPLD2_REG_VALUE:
-            ret = i2c_smbus_read_byte_data(pdata[swpld2].client, swpld2_reg_addr);
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", ret);
-        case SWPLD3_REG_VALUE:
-            ret = i2c_smbus_read_byte_data(pdata[swpld3].client, swpld3_reg_addr);
-            mutex_unlock(&dni_lock);
-            return sprintf(buf, "0x%02x\n", ret);
-        case CPU_BOARD_ID1 ... SFP_SEL:
+        case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
             reg   = attribute_data[attr->index].reg;
             mask  = attribute_data[attr->index].mask;
             value = i2c_smbus_read_byte_data(pdata[DEFAULT_CPLD].client, reg);
@@ -1797,35 +981,11 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
             cpupld_reg_addr = set_data;
             mutex_unlock(&dni_lock);
             return count;
-        case SWPLD1_REG_ADDR:
-            swpld1_reg_addr = set_data;
-            mutex_unlock(&dni_lock);
-            return count;
-        case SWPLD2_REG_ADDR:
-            swpld2_reg_addr = set_data;
-            mutex_unlock(&dni_lock);
-            return count;
-        case SWPLD3_REG_ADDR:
-            swpld3_reg_addr = set_data;
-            mutex_unlock(&dni_lock);
-            return count;
         case CPLD_REG_VALUE:
             i2c_smbus_write_byte_data(pdata[system_cpld].client, cpupld_reg_addr, set_data);
             mutex_unlock(&dni_lock);
             return count;
-        case SWPLD1_REG_VALUE:
-            i2c_smbus_write_byte_data(pdata[swpld1].client, swpld1_reg_addr, set_data);
-            mutex_unlock(&dni_lock);
-            return count;
-        case SWPLD2_REG_VALUE:
-            i2c_smbus_write_byte_data(pdata[swpld2].client, swpld2_reg_addr, set_data);
-            mutex_unlock(&dni_lock);
-            return count;
-        case SWPLD3_REG_VALUE:
-            i2c_smbus_write_byte_data(pdata[swpld3].client, swpld3_reg_addr, set_data);
-            mutex_unlock(&dni_lock);
-            return count;
-         case CPU_BOARD_ID1 ... SFP_SEL:
+         case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
             reg   = attribute_data[attr->index].reg;
             mask  = attribute_data[attr->index].mask;
             value = i2c_smbus_read_byte_data(pdata[DEFAULT_CPLD].client, reg);
@@ -1833,7 +993,7 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
             break;
         default:
             mutex_unlock(&dni_lock);
-            return sprintf(buf, "%d not found", attr->index);
+            return sprintf((char *)buf, "%d not found", attr->index);
     }
 
     switch (mask) {
@@ -1866,13 +1026,13 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
     }   
 
     switch (attr->index) {
-        case CPU_BOARD_ID1 ... SFP_SEL:
+        case CPU_BOARD_ID1 ... CPU_I2C_MUX_SEL:
             i2c_smbus_write_byte_data(pdata[DEFAULT_CPLD].client, reg, set_data);
             mutex_unlock(&dni_lock);
             break;
         default:
             mutex_unlock(&dni_lock);
-            return sprintf(buf, "cpld not found"); 
+            return sprintf((char *)buf, "cpld not found");
     }
 
     return count;
@@ -1881,12 +1041,6 @@ static ssize_t set_cpld_reg(struct device *dev, struct device_attribute *dev_att
 //address and value
 static SENSOR_DEVICE_ATTR(cpld_reg_addr,    S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, CPLD_REG_ADDR);
 static SENSOR_DEVICE_ATTR(cpld_reg_value,   S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, CPLD_REG_VALUE);
-static SENSOR_DEVICE_ATTR(swpld1_reg_addr,  S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD1_REG_ADDR);
-static SENSOR_DEVICE_ATTR(swpld1_reg_value, S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD1_REG_VALUE);
-static SENSOR_DEVICE_ATTR(swpld2_reg_addr,  S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD2_REG_ADDR);
-static SENSOR_DEVICE_ATTR(swpld2_reg_value, S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD2_REG_VALUE);
-static SENSOR_DEVICE_ATTR(swpld3_reg_addr,  S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD3_REG_ADDR);
-static SENSOR_DEVICE_ATTR(swpld3_reg_value, S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SWPLD3_REG_VALUE);
 
 //CPLD
 static SENSOR_DEVICE_ATTR(cpu_board_id1,       S_IRUGO,           get_cpld_reg, NULL,         CPU_BOARD_ID1);
@@ -1909,46 +1063,6 @@ static SENSOR_DEVICE_ATTR(eeprom_wp,           S_IRUGO,           get_cpld_reg, 
 static SENSOR_DEVICE_ATTR(psu_fan_event,       S_IRUGO,           get_cpld_reg, NULL,         PSU_FAN_EVENT);
 static SENSOR_DEVICE_ATTR(cpu_i2c_mux_en,      S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, CPU_I2C_MUX_EN);
 static SENSOR_DEVICE_ATTR(cpu_i2c_mux_sel,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, CPU_I2C_MUX_SEL);
-
-//SWPLD1
-static SENSOR_DEVICE_ATTR(board_id,        S_IRUGO,           get_cpld_reg, NULL,         BOARD_ID);
-static SENSOR_DEVICE_ATTR(bcm88375_rst,    S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, BCM88375_RST);
-static SENSOR_DEVICE_ATTR(b54616s_rst,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, B54616S_RST);
-static SENSOR_DEVICE_ATTR(psu1_en,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, PSU1_EN);
-static SENSOR_DEVICE_ATTR(psu2_en,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, PSU2_EN);
-static SENSOR_DEVICE_ATTR(psu1_pwr_fan_ok, S_IRUGO,           get_cpld_reg, NULL,         PSU1_PWR_FAN_OK);
-static SENSOR_DEVICE_ATTR(psu2_pwr_fan_ok, S_IRUGO,           get_cpld_reg, NULL,         PSU2_PWR_FAN_OK);
-static SENSOR_DEVICE_ATTR(psu2_present,    S_IRUGO,           get_cpld_reg, NULL,         PSU2_PRESENT);
-static SENSOR_DEVICE_ATTR(psu1_present,    S_IRUGO,           get_cpld_reg, NULL,         PSU1_PRESENT);
-static SENSOR_DEVICE_ATTR(psu2_pwr_int,    S_IRUGO,           get_cpld_reg, NULL,         PSU2_PWR_INT);
-static SENSOR_DEVICE_ATTR(psu1_pwr_int,    S_IRUGO,           get_cpld_reg, NULL,         PSU1_PWR_INT);
-static SENSOR_DEVICE_ATTR(bcm88375_int,    S_IRUGO,           get_cpld_reg, NULL,         BCM88375_INT);
-static SENSOR_DEVICE_ATTR(bcm54616s_irq,   S_IRUGO,           get_cpld_reg, NULL,         BCM54616S_IRQ);
-static SENSOR_DEVICE_ATTR(led_sys,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, LED_SYS);
-static SENSOR_DEVICE_ATTR(led_pwr,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, LED_PWR);
-static SENSOR_DEVICE_ATTR(led_fan,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, LED_FAN);
-static SENSOR_DEVICE_ATTR(psu_i2c_sel,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, PSU_I2C_SEL);
-static SENSOR_DEVICE_ATTR(fan1_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN1_LED);
-static SENSOR_DEVICE_ATTR(fan2_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN2_LED);
-static SENSOR_DEVICE_ATTR(fan3_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN3_LED);
-static SENSOR_DEVICE_ATTR(fan4_led,        S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN4_LED);
-static SENSOR_DEVICE_ATTR(fan_i2c_sel,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, FAN_I2C_SEL);
-
-//SWPLD3
-static SENSOR_DEVICE_ATTR(qsfp_i2c_sel,    S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, QSFP_I2C_SEL);
-static SENSOR_DEVICE_ATTR(sfp_chan_en,     S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SFP_CHAN_EN);
-static SENSOR_DEVICE_ATTR(sfp_sel,         S_IRUGO | S_IWUSR, get_cpld_reg, set_cpld_reg, SFP_SEL);
-
-//SFP, QSFP
-static SENSOR_DEVICE_ATTR(sfp_select_port,     S_IRUGO | S_IWUSR, get_port_data,   set_port_data,     SFP_SELECT_PORT);
-static SENSOR_DEVICE_ATTR(sfp_is_present,      S_IRUGO,           for_status,      NULL,              SFP_IS_PRESENT);
-static SENSOR_DEVICE_ATTR(sfp_is_present_all,  S_IRUGO,           for_status,      NULL,              SFP_IS_PRESENT_ALL);
-static SENSOR_DEVICE_ATTR(sfp_lp_mode,         S_IWUSR | S_IRUGO, for_status,      set_lpmode_data,   SFP_LP_MODE);
-static SENSOR_DEVICE_ATTR(sfp_reset,           S_IWUSR | S_IRUGO, for_status,      set_reset_data,    SFP_RESET);
-static SENSOR_DEVICE_ATTR(sfp_rx_los,          S_IRUGO,           for_status,      NULL,              SFP_RX_LOS);
-static SENSOR_DEVICE_ATTR(sfp_rx_los_all,      S_IRUGO,           for_status,      NULL,              SFP_RX_LOS_ALL);
-static SENSOR_DEVICE_ATTR(sfp_tx_disable,      S_IWUSR | S_IRUGO, for_status,      set_tx_disable,    SFP_TX_DISABLE);
-static SENSOR_DEVICE_ATTR(sfp_tx_fault,        S_IRUGO,           for_status,      NULL,              SFP_TX_FAULT);
 
 static struct attribute *cpld_attrs[] = {
     &sensor_dev_attr_cpld_reg_value.dev_attr.attr,
@@ -1976,74 +1090,8 @@ static struct attribute *cpld_attrs[] = {
     NULL,
 };
 
-static struct attribute *swpld1_attrs[] = {
-    //SWPLD1
-    &sensor_dev_attr_swpld1_reg_value.dev_attr.attr,
-    &sensor_dev_attr_swpld1_reg_addr.dev_attr.attr, 
-    &sensor_dev_attr_board_id.dev_attr.attr,
-    &sensor_dev_attr_bcm88375_rst.dev_attr.attr,
-    &sensor_dev_attr_b54616s_rst.dev_attr.attr,
-    &sensor_dev_attr_psu1_en.dev_attr.attr,
-    &sensor_dev_attr_psu2_en.dev_attr.attr,
-    &sensor_dev_attr_psu1_pwr_fan_ok.dev_attr.attr,
-    &sensor_dev_attr_psu2_pwr_fan_ok.dev_attr.attr,
-    &sensor_dev_attr_psu2_present.dev_attr.attr,
-    &sensor_dev_attr_psu1_present.dev_attr.attr,
-    &sensor_dev_attr_psu2_pwr_int.dev_attr.attr,
-    &sensor_dev_attr_psu1_pwr_int.dev_attr.attr,
-    &sensor_dev_attr_bcm88375_int.dev_attr.attr,
-    &sensor_dev_attr_bcm54616s_irq.dev_attr.attr,
-    &sensor_dev_attr_led_sys.dev_attr.attr,
-    &sensor_dev_attr_led_pwr.dev_attr.attr,
-    &sensor_dev_attr_led_fan.dev_attr.attr,
-    &sensor_dev_attr_psu_i2c_sel.dev_attr.attr,
-    &sensor_dev_attr_fan1_led.dev_attr.attr,
-    &sensor_dev_attr_fan2_led.dev_attr.attr,
-    &sensor_dev_attr_fan3_led.dev_attr.attr,
-    &sensor_dev_attr_fan4_led.dev_attr.attr,
-    &sensor_dev_attr_fan_i2c_sel.dev_attr.attr,
-    //SFP, QSFP
-    &sensor_dev_attr_sfp_select_port.dev_attr.attr,
-    &sensor_dev_attr_sfp_is_present.dev_attr.attr,
-    &sensor_dev_attr_sfp_is_present_all.dev_attr.attr,
-    &sensor_dev_attr_sfp_lp_mode.dev_attr.attr,
-    &sensor_dev_attr_sfp_reset.dev_attr.attr,
-    &sensor_dev_attr_sfp_rx_los.dev_attr.attr,
-    &sensor_dev_attr_sfp_rx_los_all.dev_attr.attr,
-    &sensor_dev_attr_sfp_tx_disable.dev_attr.attr,
-    &sensor_dev_attr_sfp_tx_fault.dev_attr.attr,
-    NULL,
-};
-
-static struct attribute *swpld2_attrs[] = {
-    &sensor_dev_attr_swpld2_reg_value.dev_attr.attr,
-    &sensor_dev_attr_swpld2_reg_addr.dev_attr.attr,
-    NULL,
-};
-
-static struct attribute *swpld3_attrs[] = {
-    &sensor_dev_attr_swpld3_reg_value.dev_attr.attr,
-    &sensor_dev_attr_swpld3_reg_addr.dev_attr.attr, 
-    &sensor_dev_attr_qsfp_i2c_sel.dev_attr.attr,
-    &sensor_dev_attr_sfp_chan_en.dev_attr.attr,
-    &sensor_dev_attr_sfp_sel.dev_attr.attr,
-    NULL,
-};
-
 static struct attribute_group cpld_attr_grp = {
     .attrs = cpld_attrs,
-};
-
-static struct attribute_group swpld1_attr_grp = {
-    .attrs = swpld1_attrs,
-};
-
-static struct attribute_group swpld2_attr_grp = {
-    .attrs = swpld2_attrs,
-};
-
-static struct attribute_group swpld3_attr_grp = {
-    .attrs = swpld3_attrs,
 };
 
 static int __init cpld_probe(struct platform_device *pdev)
@@ -2087,59 +1135,6 @@ error:
     return -ENODEV;
 }
 
-static int __init swpld1_probe(struct platform_device *pdev)
-{
-    int ret;
-
-    kobj_swpld1 = &pdev->dev.kobj;
-    ret = sysfs_create_group(&pdev->dev.kobj, &swpld1_attr_grp);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld attribute group");
-        goto error;
-    }
-    return 0;
-
-error:
-    kobject_put(kobj_swpld1);
-    return -ENODEV;
-}
-
-static int __init swpld2_probe(struct platform_device *pdev)
-{
-    int ret;
-
-    kobj_swpld2 = &pdev->dev.kobj;
-    ret = sysfs_create_group(&pdev->dev.kobj, &swpld2_attr_grp);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld attribute group");
-        goto error;
-    }
-
-    return 0;
-
-error:
-    kobject_put(kobj_swpld2);
-    return -ENODEV;
-}
-
-static int __init swpld3_probe(struct platform_device *pdev)
-{
-    int ret;
-
-    kobj_swpld3 = &pdev->dev.kobj;
-    ret = sysfs_create_group(&pdev->dev.kobj, &swpld3_attr_grp);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld attribute group");
-        goto error;
-    }
-
-    return 0;
-
-error:
-    kobject_put(kobj_swpld3);
-    return -ENODEV;
-}
-
 static int __exit cpld_remove(struct platform_device *pdev)
 {
     struct i2c_adapter *parent = NULL;
@@ -2162,102 +1157,12 @@ static int __exit cpld_remove(struct platform_device *pdev)
     return 0;
 }
 
-static int __exit swpld1_remove(struct platform_device *pdev)
-{
-    struct i2c_adapter *parent = NULL;
-    struct cpld_platform_data *pdata = pdev->dev.platform_data;
-    sysfs_remove_group(&pdev->dev.kobj, &swpld1_attr_grp);
-
-    if (!pdata) {
-        dev_err(&pdev->dev, "Missing platform data\n");
-    }
-    else {
-        if (pdata[swpld1].client) {
-            if (!parent) {
-                parent = (pdata[swpld1].client)->adapter;
-            }
-        i2c_unregister_device(pdata[swpld1].client);
-        }
-    }
-    i2c_put_adapter(parent);
-    return 0;
-}
-
-static int __exit swpld2_remove(struct platform_device *pdev)
-{
-    struct i2c_adapter *parent = NULL;
-    struct cpld_platform_data *pdata = pdev->dev.platform_data;
-    sysfs_remove_group(&pdev->dev.kobj, &swpld2_attr_grp);
-
-    if (!pdata) {
-        dev_err(&pdev->dev, "Missing platform data\n");
-    }
-    else {
-        if (pdata[swpld2].client) {
-            if (!parent) {
-                parent = (pdata[swpld2].client)->adapter;
-            }
-        i2c_unregister_device(pdata[swpld2].client);
-        }
-    }
-    i2c_put_adapter(parent);
-    return 0;
-}
-
-static int __exit swpld3_remove(struct platform_device *pdev)
-{
-    struct i2c_adapter *parent = NULL;
-    struct cpld_platform_data *pdata = pdev->dev.platform_data;
-    sysfs_remove_group(&pdev->dev.kobj, &swpld3_attr_grp);
-
-    if (!pdata) {
-        dev_err(&pdev->dev, "Missing platform data\n");
-    }
-    else {
-        if (pdata[swpld3].client) {
-            if (!parent) {
-                parent = (pdata[swpld3].client)->adapter;
-            }
-        i2c_unregister_device(pdata[swpld3].client);
-        }
-    }
-    i2c_put_adapter(parent);
-    return 0;
-}
-
 static struct platform_driver cpld_driver = {
     .probe  = cpld_probe,
     .remove = __exit_p(cpld_remove),
     .driver = {
         .owner = THIS_MODULE,
         .name  = "delta-agc7648sv1-cpld",
-    },
-};
-
-static struct platform_driver swpld1_driver = {
-    .probe  = swpld1_probe,
-    .remove = __exit_p(swpld1_remove),
-    .driver = {
-        .owner = THIS_MODULE,
-        .name  = "delta-agc7648sv1-swpld1",
-    },
-};
-
-static struct platform_driver swpld2_driver = {
-    .probe  = swpld2_probe,
-    .remove = __exit_p(swpld2_remove),
-    .driver = {
-        .owner = THIS_MODULE,
-        .name  = "delta-agc7648sv1-swpld2",
-    },
-};
-
-static struct platform_driver swpld3_driver = {
-    .probe  = swpld3_probe,
-    .remove = __exit_p(swpld3_remove),
-    .driver = {
-        .owner = THIS_MODULE,
-        .name  = "delta-agc7648sv1-swpld3",
     },
 };
 /* ---------------- CPLD - end ------------- */
@@ -2725,27 +1630,6 @@ static int __init delta_agc7648sv1_platform_init(void)
         goto error_cpld_driver;
     }
 
-    // set the SWPLD prob and remove
-    ret = platform_driver_register(&swpld1_driver);
-    if (ret) {
-        printk(KERN_WARNING "Fail to register swpld driver\n");
-        goto error_swpld1_driver;
-    }
-
-    // set the SWPLD prob and remove
-    ret = platform_driver_register(&swpld2_driver);
-    if (ret) {
-        printk(KERN_WARNING "Fail to register swpld driver\n");
-        goto error_swpld2_driver;
-    }
-
-    // set the SWPLD prob and remove
-    ret = platform_driver_register(&swpld3_driver);
-    if (ret) {
-        printk(KERN_WARNING "Fail to register swpld driver\n");
-        goto error_swpld3_driver;
-    }
-
     // register the mux prob which call the SWPLD
     ret = platform_driver_register(&cpld_mux_driver);
     if (ret) {
@@ -2787,27 +1671,6 @@ static int __init delta_agc7648sv1_platform_init(void)
         }
     }
 
-    // register the SWPLD1
-    ret = platform_device_register(&swpld1_device);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld1 device\n");
-        goto error_swpld1_device;
-    }
-
-    // register the SWPLD2
-    ret = platform_device_register(&swpld2_device);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld2 device\n");
-        goto error_swpld2_device;
-    }
-
-    // register the SWPLD3
-    ret = platform_device_register(&swpld3_device);
-    if (ret) {
-        printk(KERN_WARNING "Fail to create swpld3 device\n");
-        goto error_swpld3_device;
-    }
-
     // link the SWPLD3 and the Mux
     swpld3_pdata = agc7648sv1_swpld3_platform_data;
     for (i = 0; i < ARRAY_SIZE(swpld3_mux_device); i++)
@@ -2845,11 +1708,6 @@ error_agc7648sv1_swpld3_mux:
     for (; i >= 0; i--) {
         platform_device_unregister(&swpld3_mux_device[i]);
     }
-error_swpld3_device:
-    platform_device_unregister(&swpld2_device);
-error_swpld2_device:
-    platform_device_unregister(&swpld1_device);
-error_swpld1_device:
     i = ARRAY_SIZE(cpld_mux_device);
 error_cpld_mux:
     i--;
@@ -2864,12 +1722,6 @@ error_i2c_device_driver:
 error_swpld3_mux_driver:
     platform_driver_unregister(&cpld_mux_driver);
 error_cpld_mux_driver:
-    platform_driver_unregister(&swpld3_driver);
-error_swpld3_driver:
-    platform_driver_unregister(&swpld2_driver);
-error_swpld2_driver:
-    platform_driver_unregister(&swpld1_driver);
-error_swpld1_driver:
     platform_driver_unregister(&cpld_driver);
 error_cpld_driver:
     return ret;
@@ -2887,15 +1739,6 @@ static void __exit delta_agc7648sv1_platform_exit(void)
         platform_device_unregister(&swpld3_mux_device[i]);
     }
 
-    platform_device_unregister(&swpld1_device);
-    platform_driver_unregister(&swpld1_driver);
-
-    platform_device_unregister(&swpld2_device);
-    platform_driver_unregister(&swpld2_driver);
-
-    platform_device_unregister(&swpld3_device);
-    platform_driver_unregister(&swpld3_driver);
-
     for (i = 0; i < ARRAY_SIZE(cpld_mux_device); i++) {
         platform_device_unregister(&cpld_mux_device[i]);
     }
@@ -2911,5 +1754,5 @@ module_init(delta_agc7648sv1_platform_init);
 module_exit(delta_agc7648sv1_platform_exit);
 
 MODULE_DESCRIPTION("DELTA agc7648sv1 Platform Support");
-MODULE_AUTHOR("Stanley Chi <stanley.chi@deltaww.com>");
+MODULE_AUTHOR("Jeff Chen <jeff.sj.chen@deltaww.com>");
 MODULE_LICENSE("GPL");
