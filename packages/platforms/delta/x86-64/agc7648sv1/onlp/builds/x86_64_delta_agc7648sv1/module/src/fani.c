@@ -91,7 +91,7 @@ static int dni_fani_info_get_fan(int local_id, onlp_fan_info_t* info, char *dev_
     }
    
     rv = dni_bmc_fanpresent_info_get(&bit_data); 
-    if(rv == ONLP_STATUS_OK && bit_data != 0x00)
+    if(rv == ONLP_STATUS_OK)
         present_bit = bit_data;
     else
         rv = ONLP_STATUS_E_INVALID;
