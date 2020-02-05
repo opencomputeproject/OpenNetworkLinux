@@ -17,17 +17,8 @@ class OnlPlatform_x86_64_delta_agc7648sv1_r0(OnlPlatformDelta,
         os.system("echo 1 > /sys/bus/i2c/devices/i2c-0/firmware_node/physical_node/remove")
         os.system("echo 1 > /sys/bus/pci/rescan")
 
-        #Insert tmp401(tmp431/tmp432) module
-        os.system('modprobe tmp401')
-
         #Insert platform module
         self.insmod('delta_agc7648sv1_platform')
-
-        #Insert psu module
-        self.insmod('dni_agc7648sv1_psu')
-
-        #Insert fan module
-        self.insmod('dni_emc2305')
 
         #Insert qsfp mosule
         self.insmod('optoe')
