@@ -70,6 +70,9 @@
 #define SWPLD3_SFP_PORT_39 39
 #define SWPLD3_SFP_PORT_48 48
 
+#define SWPLD3_QSFP_MUX_DISABLE    (0x01 << 4)
+#define SWPLD3_QSFP_SFP_CH_DISABLE  0xFF
+
 /* on SWPLD2 */
 #define SFP_PRESENCE_1 0x30
 #define SFP_PRESENCE_2 0x31
@@ -2370,7 +2373,6 @@ static int cpld_mux_select(struct i2c_mux_core *muxc, u32 chan)
 static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
 {
     struct cpld_mux  *mux = i2c_mux_priv(muxc);
-
     u8 swpld3_mux_val = 0;
     u8 swpld3_qsfp_ch_en = 0;
     u8 swpld1_qsfp_modsel_val = 0;
@@ -2379,7 +2381,7 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
     uint8_t set_cmd;
     int cmd_data_len;
 
-    if ( mux->data.base_nr == BUS2_QSFP_BASE_NUM ){
+    if ( mux->data.base_nr == BUS2_QSFP_BASE_NUM ) {
         /* Set QSFP module respond */
         swpld1_qsfp_modsel_val = SWPLD1_QSFP_MODSEL_VAL & (~(1 << chan));
         set_cmd = CMD_SETDATA;
@@ -2425,10 +2427,9 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
             return -EIO;
         }
     }
-    else if ( mux->data.base_nr == BUS2_SFP_BASE_NUM ){
+    else if ( mux->data.base_nr == BUS2_SFP_BASE_NUM ) {
         /* Disable all QSFP modules respond */
         swpld1_qsfp_modsel_val |= SWPLD1_QSFP_MODSEL_VAL;
-
         set_cmd = CMD_SETDATA;
         cmd_data[0] = BMC_SWPLD_BUS;
         cmd_data[1] = SWPLD1_ADDR;
@@ -2448,22 +2449,22 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan + 1);
         }
         /* SFP port 60-69, 10 ports, chan 9-18 */
-        else if ( chan >= SWPLD3_SFP_PORT_9 && chan < SWPLD3_SFP_PORT_19 ){
+        else if ( chan >= SWPLD3_SFP_PORT_9 && chan < SWPLD3_SFP_PORT_19 ) {
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH2_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_9);
         }
         /* SFP port 70-79, 10 ports, chan 19-28 */
-        else if ( chan >= SWPLD3_SFP_PORT_19 && chan < SWPLD3_SFP_PORT_29 ){
+        else if ( chan >= SWPLD3_SFP_PORT_19 && chan < SWPLD3_SFP_PORT_29 ) {
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH3_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_19);
         }
         /* SFP port 80-89, 10 ports, chan 29-38 */
-        else if ( chan >= SWPLD3_SFP_PORT_29 && chan < SWPLD3_SFP_PORT_39 ){
+        else if ( chan >= SWPLD3_SFP_PORT_29 && chan < SWPLD3_SFP_PORT_39 ) {
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH4_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_29);
         }
         /* SFP port 90-98, 9 ports, chan 39-47 */
-        else if ( chan >= SWPLD3_SFP_PORT_39 && chan < SWPLD3_SFP_PORT_48 ){
+        else if ( chan >= SWPLD3_SFP_PORT_39 && chan < SWPLD3_SFP_PORT_48 ) {
             swpld3_qsfp_ch_en |= SWPLD3_SFP_CH5_EN << 4;
             swpld3_mux_val = swpld3_qsfp_ch_en | (chan - SWPLD3_SFP_PORT_39);
         }
@@ -2487,6 +2488,46 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
     else {
         printk(KERN_ERR "SWPLD3 mux select error\n");
         return 0;
+    }
+}
+
+static int swpld3_mux_deselect(struct i2c_mux_core *muxc, u32 chan)
+{
+    u8 swpld3_qsfp_mux_disable = 0;
+    u8 swpld3_qsfp_sfp_ch_disable = 0;
+    int ret;
+    uint8_t cmd_data[4] = {0};
+    uint8_t set_cmd;
+    int cmd_data_len;
+
+    /* Disable QSFP mux */
+    swpld3_qsfp_mux_disable |= SWPLD3_QSFP_MUX_DISABLE;
+    set_cmd = CMD_SETDATA;
+    cmd_data[0] = BMC_SWPLD_BUS;
+    cmd_data[1] = SWPLD3_ADDR;
+    cmd_data[2] = BUS2_QSFP_MUX_REG;
+    cmd_data[3] = swpld3_qsfp_mux_disable;
+    cmd_data_len = sizeof(cmd_data);
+    ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+    if (ret != 0) {
+        printk("SWPLD3 mux deselect error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+        return -EIO;
+    }
+
+    /* SFP/QSFP channel disable */
+    swpld3_qsfp_sfp_ch_disable |= SWPLD3_QSFP_SFP_CH_DISABLE;
+    set_cmd = CMD_SETDATA;
+    cmd_data[0] = BMC_SWPLD_BUS;
+    cmd_data[1] = SWPLD3_ADDR;
+    cmd_data[2] = BUS2_SFP_MUX_REG;
+    cmd_data[3] = swpld3_qsfp_sfp_ch_disable;
+    cmd_data_len = sizeof(cmd_data);
+    ret = dni_bmc_cmd(set_cmd, cmd_data, cmd_data_len);
+    if (ret != 0) {
+        printk("SWPLD3 mux deselect error! bmc_bus = %d, swpld_addr = 0x%x, reg = 0x%x, cmd_val = 0x%x\n",
+                cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
+        return -EIO;
     }
 }
 
@@ -2591,7 +2632,7 @@ static int __init swpld3_mux_probe(struct platform_device *pdev)
             break;
     }
 
-    muxc = i2c_mux_alloc(parent, &pdev->dev, dev_num, 0, 0, swpld3_mux_select, NULL);
+    muxc = i2c_mux_alloc(parent, &pdev->dev, dev_num, 0, 0, swpld3_mux_select, swpld3_mux_deselect);
     if (!muxc) {
         ret = -ENOMEM;
         goto alloc_failed;
