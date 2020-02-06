@@ -144,22 +144,11 @@ unsigned char dni_log2 (unsigned char num){
 }
 EXPORT_SYMBOL(dni_log2);
 
-enum{
+enum {
     BUS0 = 0,
     BUS1,
     BUS2,
     BUS3,
-    BUS4,
-    BUS5,
-    BUS6,
-    BUS7,
-    BUS8,
-    BUS9,
-    BUS10,
-    BUS11,
-    BUS12,
-    BUS13,
-    BUS14,
 };
 
 #define agc7648sv1_i2c_device_num(NUM){    \
@@ -355,11 +344,10 @@ int dni_create_user(void)
     {
         rv = ipmi_create_user(i, &ipmi_hndlrs, NULL, &ipmi_mh_user);
     }
-    if(rv == 0)
-    {
+    if (rv == 0)
         printk("Enable IPMI protocol.\n");
-        return rv;
-    }
+
+    return rv;
 }
 EXPORT_SYMBOL(dni_create_user);
 
@@ -1394,6 +1382,7 @@ static int swpld3_mux_select(struct i2c_mux_core *muxc, u32 chan)
         printk(KERN_ERR "SWPLD3 mux select error\n");
         return 0;
     }
+    return ret;
 }
 
 static int swpld3_mux_deselect(struct i2c_mux_core *muxc, u32 chan)
@@ -1434,6 +1423,7 @@ static int swpld3_mux_deselect(struct i2c_mux_core *muxc, u32 chan)
                 cmd_data[0], cmd_data[1], cmd_data[2], cmd_data[3]);
         return -EIO;
     }
+    return ret;
 }
 
 static int __init cpld_mux_probe(struct platform_device *pdev)
