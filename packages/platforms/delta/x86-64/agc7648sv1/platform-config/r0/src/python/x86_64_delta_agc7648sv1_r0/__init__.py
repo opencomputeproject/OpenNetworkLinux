@@ -3,8 +3,7 @@ from onl.platform.delta import *
 import os.path
 import subprocess
 
-class OnlPlatform_x86_64_delta_agc7648sv1_r0(OnlPlatformDelta,
-                                              OnlPlatformPortConfig_32x100):
+class OnlPlatform_x86_64_delta_agc7648sv1_r0(OnlPlatformDelta, OnlPlatformPortConfig_48x10_6x100):
     PLATFORM='x86-64-delta-agc7648sv1-r0'
     MODEL="AGC7648SV1"
     SYS_OBJECT_ID=".7648.1"
