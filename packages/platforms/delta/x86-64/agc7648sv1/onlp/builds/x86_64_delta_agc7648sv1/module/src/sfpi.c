@@ -58,7 +58,7 @@ int onlp_sfpi_init(void)
 
 int onlp_sfpi_map_bus_index(int port)
 {
-    if(port < 0 || port > 54)
+    if (port < 0 || port > 54)
         return ONLP_STATUS_E_INTERNAL;
     return sfp_map_bus[port-1];
 }
@@ -106,7 +106,7 @@ int onlp_sfpi_is_present(int port)
         bit_t = 1 << (port % 8);
         present_bit = present_bit & bit_t;
         present_bit = present_bit / bit_t;
-        }
+    }
     else { /* SFP */
         if (dni_bmc_data_get(BMC_SWPLD_BUS, SWPLD_2_ADDR, reg_t, &present_bit) != ONLP_STATUS_OK)
             return ONLP_STATUS_E_INTERNAL;
@@ -119,11 +119,10 @@ int onlp_sfpi_is_present(int port)
     /* From sfp_is_present value,
      * return 0 = The module is preset
      * return 1 = The module is NOT present */
-    if(present_bit == 0) {
+    if (present_bit == 0) {
         present = 1;
     } else if (present_bit == 1) {
         present = 0;
-        AIM_LOG_ERROR("Unble to present status from port(%d)\r\n", port);
     } else {
         /* Port range over 1-54, return -1 */
         AIM_LOG_ERROR("Error to present status from port(%d)\r\n", port);
@@ -171,14 +170,13 @@ int onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     int i = 0;
     uint64_t presence_all = 0;
 
-
-    for(i = 0; i < AIM_ARRAYSIZE(bytes); i++) {
+    for (i = 0; i < AIM_ARRAYSIZE(bytes); i++) {
         presence_all <<= 8;
         presence_all |= bytes[i];
     }
 
     /* Populate bitmap & remap */
-    for(i = 0; presence_all; i++)
+    for (i = 0; presence_all; i++)
     {
         AIM_BITMAP_MOD(dst, i+1, (presence_all & 1));
         presence_all >>= 1;
@@ -192,7 +190,7 @@ int onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 
     memset(data, 0, 256);
 
-    if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port)) != ONLP_STATUS_OK) {
+    if (onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, onlp_sfpi_map_bus_index(port)) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -365,7 +363,6 @@ int onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             value_t = ONLP_STATUS_E_UNSUPPORTED;
             break;
     }
-
     return value_t;
 }
 
@@ -475,7 +472,6 @@ int onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             value_t = ONLP_STATUS_E_UNSUPPORTED;
             break;
     }
-
     return value_t;
 }
 
@@ -516,31 +512,31 @@ int onlp_sfpi_control_supported(int port, onlp_sfp_control_t control, int* rv)
 {
     switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
-            if(port > 48 && port < 55) /* QSFP */
+            if (port > 48 && port < 55) /* QSFP */
                 *rv = 1;
             else
                 *rv = 0;
             break;
         case ONLP_SFP_CONTROL_RX_LOS:
-            if(port > 0 && port < 49)  /* SFP */
+            if (port > 0 && port < 49)  /* SFP */
                 *rv = 1;
             else
                 *rv = 0;
             break;
         case ONLP_SFP_CONTROL_TX_DISABLE:
-            if(port > 0 && port < 49)  /* SFP */
+            if (port > 0 && port < 49)  /* SFP */
                 *rv = 1;
             else
                 *rv = 0;
             break;
         case ONLP_SFP_CONTROL_TX_FAULT:
-            if(port > 0 && port < 49)  /* SFP */
+            if (port > 0 && port < 49)  /* SFP */
                 *rv = 1;
             else
                 *rv = 0;
             break;
         case ONLP_SFP_CONTROL_LP_MODE:
-            if(port > 48 && port < 55) /* QSFP */
+            if (port > 48 && port < 55) /* QSFP */
                 *rv = 1;
             else
                 *rv = 0;
@@ -584,7 +580,7 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     int i = 0;
     uint64_t rxlos_all = 0;
 
-    for(i = 0; i < AIM_ARRAYSIZE(bytes); i++) {
+    for (i = 0; i < AIM_ARRAYSIZE(bytes); i++) {
         rxlos_all <<= 8;
         rxlos_all |= bytes[i];
     }
@@ -596,7 +592,7 @@ int onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     }
 
     /* Mask out non-existant QSFP ports */
-    for(i = 48; i < 54; i++)
+    for (i = 48; i < 54; i++)
         AIM_BITMAP_MOD(dst, i+1, 0);
 
     return ONLP_STATUS_OK;
