@@ -12,7 +12,7 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "qsfp_dd.h"
 
 /*page 0x00 register*/
@@ -38,6 +38,7 @@
 #define QSFP_DD_STAGE_CTRL_SET_ZERO_DATA_PATH_INIT_OFFSET (143)    
 /*page 0x11*/
 #define QSFP_DD_DATA_PATH_ST_OFFSET (128)
+#define QSFP_DD_DATA_PATH_ST_NUM (4)
 #define QSFP_DD_CONFIG_ERR_CODE_OFFSET (202)
 #define QSFP_DD_ACTIVE_CTRL_SET_OFFSET (206)
 #define QSFP_DD_LN_MONITOR_TX_PWR_OFFSET (154)
@@ -55,7 +56,9 @@
 
 #define QSFP_DD_MODULE_ST_INT_OFFSET (0x03)
 #define QSFP_DD_MODULE_ST_BIT_MIN (1)
-#define QSFP_DD_MODULE_ST_BIT_NUM (3)    
+#define QSFP_DD_MODULE_ST_BIT_NUM (3)
+#define QSFP_DD_INTR_LN_FLAG_DATA_PATH_CHG_OFFSET (134)
+#define QSFP_DD_INTR_LN_FLAG_START_OFFSET (QSFP_DD_INTR_LN_FLAG_DATA_PATH_CHG_OFFSET)
 
 extern u32 logLevel;
 extern bool int_flag_monitor_en;
@@ -72,16 +75,40 @@ u8 app_advert_fields_page[APP_ADVERT_FIELD_NUM] = {
     QSFP_PAGE_01h,
 };
 
-static char *module_flag_str[] = {
-
+const char *intr_module_flag_str[QSFP_DD_INT_MODULE_FLAG_NUM] = {
     "FW_FAULT",
     "L_VCC_TEMP_WARN",
     "L_AUX_ALARM_WARN",
     "VENDOR_DEFINED_ERR",
+    "RESERVERD",
+    "CUSTOM",
 };
 
-static char *lane_tx_flag_str[] = {
+enum {
+    DATA_PATH_CHG_ID,
+    L_TX_FAULT_ID,
+    L_TX_LOS_ID,
+    L_TX_CDR_LOL_ID,
+    L_TX_APAP_EQ_INPUT_FAULT_ID,
+    L_TX_POWER_HIGH_ALARM_ID,
+    L_TX_POWER_LOW_ALARM_ID,
+    L_TX_POWER_HIGH_WARN_ID,
+    L_TX_POWER_LOW_WARN_ID,
+    L_TX_BIAS_HIGH_ALARM_ID,
+    L_TX_BIAS_LOW_ALARM_ID,
+    L_TX_BIAS_HIGH_WARN_ID,
+    L_TX_BIAS_LOW_WARN_ID,
+    L_RX_LOS_ID,
+    L_RX_CDR_LOL_ID,
+    L_RX_POWER_HIGH_ALARM_ID,
+    L_RX_POWER_LOW_ALARM_ID,
+    L_RX_POWER_HIGH_WARN_ID,
+    L_RX_POWER_LOW_WARN_ID,
+};
 
+const char *intr_ln_flag_str[QSFP_DD_INT_LN_FLAG_NUM] = {
+
+    "DATA_PATH_CHG",
     "L_TX_FAULT",
     "L_TX_LOS",
     "L_TX_CDR_LOL",
@@ -94,10 +121,6 @@ static char *lane_tx_flag_str[] = {
     "L_TX_BIAS_LOW_ALARM",
     "L_TX_BIAS_HIGH_WARN",
     "L_TX_BIAS_LOW_WARN",
-
-};
-static char *lane_rx_flag_str[] = {
-
     "L_RX_LOS",
     "L_RX_CDR_LOL",
     "L_RX_POWER_HIGH_ALARM",
@@ -113,7 +136,7 @@ static int qsfp_dd_data_path_deinit(struct sff_obj_t *sff_obj, u8 val);
 static int data_path_power_up(struct sff_obj_t *sff_obj, bool up);
 static int qsfp_dd_is_data_path_activated(struct sff_obj_t *sff_obj, bool *activated);
 static int qsfp_dd_lowPwr_set(struct sff_obj_t *sff_obj);
-static int stage_control_set0(struct sff_obj_t *sff_obj, u32 apsel);
+static int stage_control_set0(struct sff_obj_t *sff_obj);
 static int config_error_code_check(struct sff_obj_t *sff_obj, bool *is_pass);
 static int advert_check(struct sff_obj_t *sff_obj, bool *pass);
 static int module_ready_check_rev3(struct sff_obj_t *sff_obj, bool *ready);
@@ -134,6 +157,10 @@ static int sw_config_2_rev4_full(struct sff_obj_t *sff_obj, bool *pass);
 static int sw_config_check_rev4_full(struct sff_obj_t *sff_obj, bool *pass);
 static int sw_control_rev4_full(struct sff_obj_t *sff_obj);
 
+inline static struct qsfp_dd_priv_data *qsfp_dd_priv_get(struct sff_obj_t *sff_obj)
+{
+    return &(sff_obj->priv_data.qsfp_dd);
+}    
 struct qsfp_dd_fsm_func_t qsfp_dd_FsmFuncRev3 = {
 
     .advert_check = advert_check,
@@ -186,6 +213,9 @@ int qsfp_dd_voltage_get(struct sff_obj_t *sff_obj, u8 *buf, int buf_size);
 int qsfp_dd_page_sel(struct sff_obj_t *sff_obj, int page);
 int qsfp_dd_page_get(struct sff_obj_t *sff_obj, u8 *page);
 int qsfp_dd_eeprom_dump(struct sff_obj_t *sff_obj, u8 *buf);
+int qsfp_dd_ln_st_get(struct sff_obj_t *sff_obj, int type, u8 *st);
+static void qsfp_dd_intr_flag_clear(struct sff_obj_t *sff_obj);
+static int qsfp_dd_intr_flag_show(struct sff_obj_t *sff_obj, char *buf, int size);
 
 struct func_tbl_t qsfp_dd_func_tbl = {
     .eeprom_read = sff_eeprom_read,
@@ -208,13 +238,15 @@ struct func_tbl_t qsfp_dd_func_tbl = {
     .lane_control_get = dummy_lane_control_get,
     .lane_monitor_get = qsfp_dd_lane_monitor_get,
     .vendor_info_get = qsfp_dd_vendor_info_get,
-    .lane_status_get =  dummy_lane_status_get,
+    .lane_status_get =  qsfp_dd_ln_st_get,
     .module_st_get = qsfp_dd_module_st_get,
     .id_get = qsfp_dd_id_get,
     .is_id_matched = qsfp_dd_is_id_matched,
     .eeprom_dump = qsfp_dd_eeprom_dump,
     .page_sel = qsfp_dd_page_sel,
     .page_get = qsfp_dd_page_get,
+    .intr_flag_show = qsfp_dd_intr_flag_show,
+    .intr_flag_clear = qsfp_dd_intr_flag_clear,
 };
 struct func_tbl_t *qsfp_dd_func_load(void)
 {
@@ -223,9 +255,8 @@ struct func_tbl_t *qsfp_dd_func_load(void)
 static int qsfp_dd_lpmode_set(struct sff_obj_t *sff_obj, u8 value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->lpmode_set(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->lpmode_set(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -233,9 +264,8 @@ static int qsfp_dd_lpmode_set(struct sff_obj_t *sff_obj, u8 value)
 static int qsfp_dd_lpmode_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->lpmode_get(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->lpmode_get(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -243,9 +273,8 @@ static int qsfp_dd_lpmode_get(struct sff_obj_t *sff_obj, u8 *value)
 static int qsfp_dd_mode_sel_set(struct sff_obj_t *sff_obj, u8 value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->mode_sel_set(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->mode_sel_set(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -254,9 +283,8 @@ static int qsfp_dd_mode_sel_set(struct sff_obj_t *sff_obj, u8 value)
 static int qsfp_dd_mode_sel_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->mode_sel_get(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->mode_sel_get(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -264,9 +292,8 @@ static int qsfp_dd_mode_sel_get(struct sff_obj_t *sff_obj, u8 *value)
 static int qsfp_dd_reset_set(struct sff_obj_t *sff_obj, u8 value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->reset_set(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->reset_set(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -274,9 +301,8 @@ static int qsfp_dd_reset_set(struct sff_obj_t *sff_obj, u8 value)
 static int qsfp_dd_reset_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
-    if ((ret = lc->mgr->sff_io_drv->reset_get(lc->lc_id, sff_obj->port, value)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->reset_get(sff_obj->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
     return 0;
@@ -284,14 +310,13 @@ static int qsfp_dd_reset_get(struct sff_obj_t *sff_obj, u8 *value)
 static int qsfp_dd_intL_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
     unsigned long bitmap = 0;
 
     if (!p_valid(value)) {
         return -EINVAL;
     }
 
-    if ((ret = lc->mgr->sff_io_drv->intr_all_get(lc->lc_id, &bitmap)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->intr_all_get(sff_obj->lc_id, &bitmap)) < 0) {
         return ret;
     }
 
@@ -320,6 +345,8 @@ static int qsfp_dd_eeprom_read(struct sff_obj_t *sff_obj,
     if (offset > QSFP_DD_PAGE_SEL_OFFSET) {
         ret = _page_switch(sff_obj, page);
         if (ret < 0) {
+            MODULE_LOG_ERR("%s switch page fail\n", sff_obj->name);
+            page_sel_unlock(sff_obj);
             return ret;
         }
     }
@@ -344,6 +371,8 @@ static int qsfp_dd_eeprom_write(struct sff_obj_t *sff_obj,
     if (offset > QSFP_DD_PAGE_SEL_OFFSET) {
         ret = _page_switch(sff_obj, page);
         if (ret < 0) {
+            MODULE_LOG_ERR("%s switch page fail\n", sff_obj->name);
+            page_sel_unlock(sff_obj);
             return ret;
         }
     }
@@ -526,7 +555,7 @@ static int sw_config_1_rev3(struct sff_obj_t *sff_obj)
     int ret = 0;
     /* host select application*/
     /*stage control set 0*/
-    if ((ret = stage_control_set0(sff_obj, 1)) < 0) {
+    if ((ret = stage_control_set0(sff_obj)) < 0) {
         /*print error code*/
         return ret;
     }
@@ -669,7 +698,7 @@ static int sw_config_2_rev4_full(struct sff_obj_t *sff_obj, bool *pass)
 
     /* host select application*/
     /*stage control set 0*/
-    if ((ret = stage_control_set0(sff_obj, 1)) < 0) {
+    if ((ret = stage_control_set0(sff_obj)) < 0) {
         return ret;
     }
 
@@ -717,28 +746,24 @@ static int fsm_func_get(struct sff_obj_t *sff_obj, struct qsfp_dd_fsm_func_t **p
     int ret = 0;
     u8 ver = 0;
     struct qsfp_dd_fsm_func_t *func = &qsfp_dd_FsmFuncRev3;
-    bool rev4_full = qsfp_dd_rev4_full_get(sff_obj);
+    bool rev4_quick = qsfp_dd_rev4_quick_get(sff_obj);
     if ((ret = cmis_ver_get(sff_obj, &ver)) < 0) {
         return ret;
     }
 
     if (ver == QSFP_DD_CMIS_REV3_VAL) {
-
         func = &qsfp_dd_FsmFuncRev3;
-
     } else if (ver == QSFP_DD_CMIS_REV4_VAL) {
-
-        if (rev4_full) {
-            func = &qsfp_dd_FsmFuncRev4_full;
-            MODULE_LOG_DBG("%s rev4 full is loaded", sff_obj->name);
-        } else {   
-            //func = &qsfp_dd_FsmFuncRev4_full;
+        if (rev4_quick) {
             func = &qsfp_dd_FsmFuncRev4;
-            MODULE_LOG_DBG("%s rev4 quick is loaded", sff_obj->name);
+            MODULE_LOG_DBG("%s rev4 quick is loaded\n", sff_obj->name);
+        } else {   
+            func = &qsfp_dd_FsmFuncRev4_full;
+            MODULE_LOG_DBG("%s rev4 full is loaded\n", sff_obj->name);
         }
     } else {
 
-        MODULE_LOG_ERR("%s rev:%x not supported, using rev 3.0 as default", sff_obj->name, ver);
+        MODULE_LOG_ERR("%s rev:%x not supported, using rev 3.0 as default\n", sff_obj->name, ver);
     }
     *ppfunc = func;
     return 0;
@@ -1106,42 +1131,46 @@ int qsfp_dd_module_st_get(struct sff_obj_t *sff_obj, u8 *st)
 }
 /*value : the status of 8 lane, one lane: 4 bits*/
 /*table 65 page 11h offset 128~131*/
-static int qsfp_dd_data_path_st_get(struct sff_obj_t *sff_obj, u32 *st)
+static int qsfp_dd_data_path_st_get(struct sff_obj_t *sff_obj, u8 st[], int size)
 {
     int ret = 0;
-    u32 data = 0;
+    u8 reg[QSFP_DD_DATA_PATH_ST_NUM];
+    int i = 0;
+    int ln = 0;
 
     if (!st) {
         return -EINVAL;
     }
-    if((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE_11h, QSFP_DD_DATA_PATH_ST_OFFSET, (u8*)&data, sizeof(data))) < 0) {
+    if((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE_11h, QSFP_DD_DATA_PATH_ST_OFFSET, reg, sizeof(reg))) < 0) {
         *st = 0;
         return ret;
     }
-    *st = data;
-
+    if ((QSFP_DD_DATA_PATH_ST_NUM * 2) != size) {
+        return -EINVAL;
+    }
+    for (i = 0; i < QSFP_DD_DATA_PATH_ST_NUM; i++) {
+        st[ln++] = reg[i] & 0x0f;
+        st[ln++] = reg[i] >> 4;
+    }
     return 0;
 }
 
 static int qsfp_dd_is_data_path_activated(struct sff_obj_t *sff_obj, bool *activated)
 {
-    u32 data_path_st = 0;
-    u32 st_lane = 0;
+    u8 data_path_st[QSFP_DD_LANE_NUM];
     int ln = 0;
     int ret = 0;
     bool tmp_active = false;
-    int lane_num = valid_lane_num_get(sff_obj);
+    int lane_num = QSFP_DD_LANE_NUM;
 
-    if ((ret = qsfp_dd_data_path_st_get(sff_obj, &data_path_st)) < 0) {
+    if ((ret = qsfp_dd_data_path_st_get(sff_obj, data_path_st, sizeof(data_path_st))) < 0) {
         return ret;
     }
-    /*TBD check 8 lane as default*/
+    
     for (ln = 0; ln < lane_num; ln++) {
-        st_lane = data_path_st & 0x0f;
-        if (DATA_PATH_ACTIVATED_ST_ENCODE != st_lane) {
+        if (DATA_PATH_ACTIVATED_ST_ENCODE != data_path_st[ln]) {
             break;
         }
-        st_lane = st_lane >> 4;
     }
     if (ln >= lane_num) {
         MODULE_LOG_DBG("%s ok", sff_obj->name);
@@ -1365,20 +1394,29 @@ int qsfp_dd_active_ctrl_set_get(struct sff_obj_t *sff_obj, char *buf, int size)
     }
     return 0;
 }    
+int qsfp_dd_apsel_get(struct sff_obj_t *sff_obj)
+{
+    //return stage_control_set0(sff_obj, apsel);
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+    return qsfp_dd_priv->apsel;
+}        
 /*note: so far only page >= 0x10 , need to check bank number*/
-static int stage_control_set0(struct sff_obj_t *sff_obj, u32 apsel)
+static int stage_control_set0(struct sff_obj_t *sff_obj)
 {
     int ret = 0;
+    int apsel = 0;
     u8 apply_stage_control_set = 0;
+    u8 offset = QSFP_DD_STAGE_CTRL_SET_ZERO_APPL_SEL_CTRL_OFFSET;
     //u8 stage_set_offset_begin = QSFP_DD_STAGE_CTRL_SET_ZERO_APPL_SEL_CTRL_OFFSET;
     //u8 stage_set_offset_end = stage_set_offset_begin + QSFP_DD_LANE_NUM - 1;
-    u8 offset = QSFP_DD_STAGE_CTRL_SET_ZERO_APPL_SEL_CTRL_OFFSET;
     int ln = 0;
     int datapath_code = 0;
     struct stage_set_t stage_set[QSFP_DD_LANE_NUM];
+    
     if (!is_bank_num_valid(sff_obj)) {
         return -EBADRQC;
     }
+    apsel = qsfp_dd_apsel_get(sff_obj);
     /*table 56 stage control set 0, application select controls (Page 10h, active modules only) */
     /*case1: normal case 400G lane = 8*/
     if (1 == apsel) {
@@ -1412,8 +1450,17 @@ static int stage_control_set0(struct sff_obj_t *sff_obj, u32 apsel)
                                    &apply_stage_control_set, sizeof(apply_stage_control_set))) < 0) {
         return ret;
     }
+    
     return 0;
 }
+
+int qsfp_dd_apsel_apply(struct sff_obj_t *sff_obj, int apsel)
+{
+    //return stage_control_set0(sff_obj, apsel);
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+    qsfp_dd_priv->apsel = apsel;
+    return 0;
+}        
 /*qsfp-dd used only*/
 
 /*page 11
@@ -1450,7 +1497,7 @@ static int config_error_code_check(struct sff_obj_t *sff_obj, bool *is_pass)
 
     for (lane = 0; lane < lane_num; lane++) {
 
-        MODULE_LOG_DBG("%s lane:%d err_code:0x%x", sff_obj->name, lane, config_err_code[lane]);
+        MODULE_LOG_DBG("%s lane:%d err_code:0x%x\n", sff_obj->name, lane, config_err_code[lane]);
         if (CONFIG_ACCEPTED == config_err_code[lane]) {
         } else {
             break;
@@ -1583,80 +1630,208 @@ static int qsfp_dd_interrupt_flags_read(struct sff_obj_t *sff_obj)
     return 0;
 }
 #endif
-
+static void cnt_increment_limit(u32 *data)
+{
+    if (*data < U32_MAX) {
+        (*data)++;
+    }
+}
 /*table 15*/
-static int qsfp_dd_module_flag_monitor(struct sff_obj_t *sff_obj)
+static int qsfp_dd_intr_module_flag_update(struct sff_obj_t *sff_obj)
 {
     int ret = 0;
     int i = 0;
-    u8 module_flag[4];
-    if ((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE0, 8, module_flag, 4)) < 0) {
+    u8 module_flag[QSFP_DD_INT_MODULE_FLAG_NUM];
+    u32 *cnt = NULL;
+    u32 old_cnt = 0;
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+
+    if ((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE0, 8, module_flag, sizeof(module_flag))) < 0) {
         return ret;
     }
-    for (i = 0; i < 4; i++) {
-
-        if (module_flag[i] != 0x00) {
+    for (i = 0; i < QSFP_DD_INT_MODULE_FLAG_NUM; i++) {
+        cnt = &(qsfp_dd_priv->intr_module_flag[i].cnt);
+        old_cnt = qsfp_dd_priv->intr_module_flag[i].cnt;
+        qsfp_dd_priv->intr_module_flag[i].reg = module_flag[i]; 
         
-            if (int_flag_monitor_en) {
-            MODULE_LOG_ERR("%s error %s[%d]:0x%x", sff_obj->name, module_flag_str[i], i+8, module_flag[i]);
-            }
+        if (module_flag[i] != 0x00) {
+                cnt_increment_limit(cnt);
+                if (int_flag_monitor_en) {
+                    MODULE_LOG_ERR("%s error %s:0x%x", sff_obj->name, intr_module_flag_str[i], module_flag[i]);
+                }
+        }
+        
+        if (old_cnt != *cnt) {
+            qsfp_dd_priv->intr_module_flag[i].chg = true;
+        } else {
+            qsfp_dd_priv->intr_module_flag[i].chg = false;
         }
     }
+
+    return 0;
+}
+
+static int qsfp_dd_lane_status_update(struct sff_obj_t *sff_obj, int type, u8 value)
+{
+    if (type > LN_STATUS_NUM ||
+            type < LN_STATUS_RX_LOS_TYPE) {
+        return -EINVAL;
+    }
+
+    sff_obj->priv_data.qsfp_dd.lane_st[type] = value;
 
     return 0;
 }
 /*Table 68 TX Flags , 69- RX Flags (Page 11h, active modules only)*/
-static int qsfp_dd_lane_flag_monitor(struct sff_obj_t *sff_obj)
+static int qsfp_dd_intr_ln_flag_update(struct sff_obj_t *sff_obj)
 {
     int ret = 0;
     int i = 0;
-    u8 rx_flag[6];
-    u8 tx_flag[12];
-    u8 data_path_st_change = 0;
-    if ((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE_11h, 134, &data_path_st_change, 1)) < 0) {
+    u8 ln_flag[QSFP_DD_INT_LN_FLAG_NUM];
+    u32 *cnt = NULL;
+    u32 old_cnt = 0;
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+    
+    if ((ret = qsfp_dd_eeprom_read(sff_obj, 
+                                   QSFP_PAGE_11h, 
+                                   QSFP_DD_INTR_LN_FLAG_START_OFFSET, 
+                                   ln_flag,
+                                   sizeof(ln_flag))) < 0) {
         return ret;
     }
-    if ((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE_11h, 135, tx_flag, 12)) < 0) {
-        return ret;
-    }
-
-    if ((ret = qsfp_dd_eeprom_read(sff_obj, QSFP_PAGE_11h, 147, rx_flag, 6)) < 0) {
-        return ret;
-    }
-
-    if (int_flag_monitor_en) {
-        MODULE_LOG_DBG("%s  data path st change:0x%x\n", sff_obj->name, data_path_st_change);
-        for (i = 0; i < 12; i++) {
-            if (tx_flag[i] != 0x00) {
-                MODULE_LOG_ERR("%s error %s[%d]:0x%x", sff_obj->name, lane_tx_flag_str[i], i+135, tx_flag[i]);
-
+    qsfp_dd_lane_status_update(sff_obj, LN_STATUS_RX_LOS_TYPE, ln_flag[L_RX_LOS_ID]);
+    
+        for (i = 0; i < QSFP_DD_INT_LN_FLAG_NUM; i++) {
+            cnt = (&qsfp_dd_priv->intr_ln_flag[i].cnt);
+            old_cnt = qsfp_dd_priv->intr_ln_flag[i].cnt;
+            qsfp_dd_priv->intr_ln_flag[i].reg = ln_flag[i]; 
+            
+            if (ln_flag[i] != 0x00) {
+                cnt_increment_limit(cnt);
+                if (int_flag_monitor_en) {
+                    MODULE_LOG_ERR("%s chg %s:0x%x", sff_obj->name, intr_ln_flag_str[i], ln_flag[i]);
+                }
+            }
+            if (old_cnt != *cnt) {
+                qsfp_dd_priv->intr_ln_flag[i].chg = true;
+            } else {
+                qsfp_dd_priv->intr_ln_flag[i].chg = false;
             }
         }
-        for (i = 0; i < 6; i++) {
 
-            if (rx_flag[i] != 0x00) {
-                MODULE_LOG_ERR("%s error %s[%d]:0x%x", sff_obj->name, lane_rx_flag_str[i], i+147, rx_flag[i]);
-            }
-        }
-    }
     return 0;
 }
 
+static void qsfp_dd_intr_flag_clear(struct sff_obj_t *sff_obj)
+{
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+    memset(qsfp_dd_priv->intr_module_flag, 0, sizeof(qsfp_dd_priv->intr_module_flag));
+    memset(qsfp_dd_priv->intr_ln_flag, 0, sizeof(qsfp_dd_priv->intr_ln_flag));
+}    
+
+static int qsfp_dd_intr_flag_show(struct sff_obj_t *sff_obj, char *buf, int size)
+{
+    int count = 0;
+    int i = 0;
+    u32 cnt = 0;
+    char chg = ' ';
+    u8 intL = 0;
+    int ret = 0;
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+
+    /*handle transition back to normal state from intL state  {*/
+    if ((ret = qsfp_dd_intL_get(sff_obj, &intL)) < 0) {
+        return ret;
+    }
+    if (intL) {
+        if ((ret = qsfp_dd_intr_module_flag_update(sff_obj)) < 0) {
+            return ret;
+        }
+        if ((ret = qsfp_dd_intr_ln_flag_update(sff_obj)) < 0 ) {
+            return ret;
+        }
+    }
+    /*handle transition back to normal state from intL state  }*/
+    
+    count += scnprintf(buf+count, size-count,
+                       "intr module flag show:\n");
+    for (i = 0; i < QSFP_DD_INT_MODULE_FLAG_NUM; i++) {
+        
+        cnt = qsfp_dd_priv->intr_module_flag[i].cnt;
+        if (0 != cnt) {
+            if (qsfp_dd_priv->intr_module_flag[i].chg) {
+                chg = '*';
+            } else {
+                chg = ' ';
+            }
+            count += scnprintf(buf+count, size-count,
+                               "%s reg:0x%x cnt:%d%c\n",
+                               intr_module_flag_str[i], 
+                               qsfp_dd_priv->intr_module_flag[i].reg,
+                               cnt,
+                               chg);
+        }
+    }
+    count += scnprintf(buf+count, size-count,
+                       "intr lane flag show:\n");
+    for (i = 0; i < QSFP_DD_INT_LN_FLAG_NUM; i++) {
+        cnt = qsfp_dd_priv->intr_ln_flag[i].cnt;
+        if (0 != cnt) {
+            if (qsfp_dd_priv->intr_ln_flag[i].chg) {
+                chg = '*';
+            } else {
+                chg = ' ';
+            }
+            count += scnprintf(buf+count, size-count,
+                               "%s reg:0x%x cnt:%d%c\n",
+                               intr_ln_flag_str[i], 
+                               qsfp_dd_priv->intr_ln_flag[i].reg,
+                               cnt,
+                               chg);
+        } 
+    }
+    return 0;
+}
+int qsfp_dd_ln_st_get(struct sff_obj_t *sff_obj, int type, u8 *st)
+{
+    u8 intL = 0;
+    int ret = 0;
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
+
+    if ((ret = qsfp_dd_intL_get(sff_obj, &intL)) < 0) {
+        return ret;
+    }
+    if (intL) {
+        if ((ret = qsfp_dd_intr_module_flag_update(sff_obj)) < 0) {
+            return ret;
+        }
+        if ((ret = qsfp_dd_intr_ln_flag_update(sff_obj)) < 0 ) {
+            return ret;
+        }
+    }
+
+    *st = qsfp_dd_priv->lane_st[type];
+    return 0;
+}
 static void cache_clear(struct sff_obj_t *sff_obj)
 {
     memset(&(sff_obj->priv_data.qsfp_dd), 0, sizeof(struct qsfp_dd_priv_data));
 }
 
-void qsfp_dd_rev4_full_set(struct sff_obj_t *sff_obj, bool en)
+void qsfp_dd_rev4_quick_set(struct sff_obj_t *sff_obj, bool en)
 {
-     sff_obj->priv_data.qsfp_dd.rev4_full_en = en;
+     sff_obj->priv_data.qsfp_dd.rev4_quick_en = en;
 }    
 
-bool qsfp_dd_rev4_full_get(struct sff_obj_t *sff_obj)
+bool qsfp_dd_rev4_quick_get(struct sff_obj_t *sff_obj)
 {
-     return sff_obj->priv_data.qsfp_dd.rev4_full_en;
+     return sff_obj->priv_data.qsfp_dd.rev4_quick_en;
 }    
-
+static void qsfp_dd_def_set(struct sff_obj_t *sff_obj)
+{
+        /*default loading*/
+    qsfp_dd_apsel_apply(sff_obj, 1);
+} 
 int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
 {
     sff_fsm_state_t st = sff_fsm_st_get(sff_obj);
@@ -1670,6 +1845,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
     bool ready = false;
     bool passive_module = false;
     bool supported = false;
+    struct qsfp_dd_priv_data *qsfp_dd_priv = qsfp_dd_priv_get(sff_obj);
 
     switch (st) {
     case SFF_FSM_ST_IDLE:
@@ -1679,7 +1855,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_IDLE);
         break;
     case SFF_FSM_ST_INSERTED:
-
+        qsfp_dd_def_set(sff_obj);
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_DETECTING);
         break;
     case SFF_FSM_ST_DETECTING:
@@ -1751,7 +1927,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_CMIS_VER_CHECK:
 
-        if ((ret = fsm_func_get(sff_obj, &(sff_obj->qsfp_dd_fsm_func))) < 0) {
+        if ((ret = fsm_func_get(sff_obj, &(qsfp_dd_priv->fsm_func))) < 0) {
             break;
         }
 
@@ -1759,7 +1935,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_ADVERT_CHECK:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->advert_check(sff_obj, &pass)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->advert_check(sff_obj, &pass)) < 0) {
             break;
         }
         if (pass) {
@@ -1768,14 +1944,14 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_SW_CONFIG_1:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->sw_config_1(sff_obj)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->sw_config_1(sff_obj)) < 0) {
             break;
         }
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_MODULE_SW_CONFIG_2);
         break;
     case SFF_FSM_ST_MODULE_SW_CONFIG_2:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->sw_config_2(sff_obj, &pass)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->sw_config_2(sff_obj, &pass)) < 0) {
             break;
         }
         if (pass) {
@@ -1784,7 +1960,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_SW_CONFIG_CHECK:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->sw_config_check(sff_obj, &pass)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->sw_config_check(sff_obj, &pass)) < 0) {
             break;
         }
 
@@ -1795,7 +1971,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_SW_CONTROL:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->sw_control(sff_obj)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->sw_control(sff_obj)) < 0) {
             break;
         }
 
@@ -1803,7 +1979,7 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         break;
     case SFF_FSM_ST_MODULE_READY_CHECK:
 
-        if ((ret = sff_obj->qsfp_dd_fsm_func->module_ready_check(sff_obj, &ready)) < 0) {
+        if ((ret = qsfp_dd_priv->fsm_func->module_ready_check(sff_obj, &ready)) < 0) {
             break;
         }
         if (ready) {
@@ -1827,7 +2003,6 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
         }
         break;
     case SFF_FSM_ST_READY:
-
             if ((ret = is_passive_module(sff_obj, &passive_module)) < 0) {
                 break;
             }
@@ -1836,10 +2011,10 @@ int sff_fsm_qsfp_dd_task(struct sff_obj_t *sff_obj)
                     break;
                 }
                 if (!lv) {
-                    if ((ret = qsfp_dd_module_flag_monitor(sff_obj)) < 0) {
+                    if ((ret = qsfp_dd_intr_module_flag_update(sff_obj)) < 0) {
                         break;
                     }
-                    if ((ret = qsfp_dd_lane_flag_monitor(sff_obj)) < 0 ) {
+                    if ((ret = qsfp_dd_intr_ln_flag_update(sff_obj)) < 0 ) {
                         break;
                     }
                 }

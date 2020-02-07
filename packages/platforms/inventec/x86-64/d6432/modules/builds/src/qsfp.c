@@ -12,7 +12,7 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "qsfp.h"
 
 #define QSFP_ID_OFFSET (0)
@@ -1118,10 +1118,12 @@ int sff_fsm_qsfp_task(struct sff_obj_t *sff_obj)
             return ret;
         }
         memcpy(&(sff_obj->priv_data.qsfp.paging_supported), &supported, sizeof(supported));
+#if 0
         if ((ret = qsfp_tx_disable_set(sff_obj, 0xf)) < 0) {
 
             break;
         }
+#endif        
         if((ret = qsfp_type_identify(sff_obj, &found)) < 0) {
             break;
         }
@@ -1163,10 +1165,12 @@ int sff_fsm_qsfp_task(struct sff_obj_t *sff_obj)
             break;
 
         }
+#if 0
         /*tx_disable control*/
         if((ret = qsfp_tx_disable_set(sff_obj, 0x0)) < 0) {
             break;
         }
+#endif        
         sff_fsm_kobj_change_event(sff_obj);
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_READY);
         break;

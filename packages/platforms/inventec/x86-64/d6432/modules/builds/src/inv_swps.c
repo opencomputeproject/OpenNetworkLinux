@@ -12,31 +12,28 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
+/*ufile use*/
+#include <linux/fs.h>
+#include <linux/unistd.h>
+#include <linux/uaccess.h>
 
 #include "inv_def.h"
 //#include "sff_spec.h"
-#include "sff.h"
+#include "inv_swps.h"
 #include "pltfm_info.h"
-#include "io_dev.h"
 #include "sff_eeprom.h"
 #include "sfp.h"
 #include "qsfp.h"
 #include "qsfp_dd.h"
-#include "lc_dev.h"
 
 int io_no_init = 0;
 module_param(io_no_init, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-//u32 logLevel = ERR_ALL_LEV | SWPS_INFO_LEV | SWPS_DBG_LEV | DEV_INFO_LEV;
-u32 logLevel = ERR_ALL_LEV | INFO_ALL_LEV | DBG_ALL_LEV;
-static int scan_100ms = 0;
+u32 logLevel = ERR_ALL_LEV | INFO_ALL_LEV;
+//u32 logLevel = ERR_ALL_LEV | INFO_ALL_LEV | DBG_ALL_LEV;
 bool int_flag_monitor_en = false;
-#define HEALTH_SCAN_TIME (10)
-static char work_buf[BUF_SIZE];
-
+char workBuf[PAGE_SIZE];
 struct platform_info_t *pltfmInfo = NULL;
-//struct sff_io_driver_t *lc->mgr->sff_io_drv = NULL;
-struct sff_eeprom_driver_t *sffEepromDrv = NULL;
-
+struct sff_eeprom_driver_t *sffEepromDrv = NULL; 
 static void swps_polling_task(struct work_struct *work);
 static void polling_task_1U(void);
 static void polling_task_4U(void);
@@ -44,26 +41,12 @@ static DECLARE_DELAYED_WORK(swps_polling, swps_polling_task);
 static u8 swps_polling_enabled = 1;
 static int swps_polling_task_start(void);
 static int swps_polling_task_stop(void);
+static void i2c_bus_recovery_v2(struct lc_obj_t *card);
 static struct swps_kobj_t *swps_kobj_add(char *name,
         struct kobject *mgr,
         struct attribute_group *attr_group);
 /*dummy function only for testing*/
 
-static unsigned long lc_dummy_prs = 0;
-static int dummy_cpld_init(int lc_id)
-{
-    
-    return 0;
-}    
-static int lc_dummy_power_set(int lc_id, bool on)
-{
-    return 0;
-}    
-static int dummy_power_ready(int lc_id, bool *ready)
-{
-    *ready = true;
-    return 0;
-}   
 static void dummy_phy_ready(unsigned long bitmap, bool *ready)
 {
     if (0xff == bitmap) {
@@ -72,13 +55,9 @@ static void dummy_phy_ready(unsigned long bitmap, bool *ready)
         *ready = false;
     }
 }
-static int dummy_prs_get(unsigned long *bitmap)
+static int lc_dummy_get(int lc_id, int *lv)
 {
-    *bitmap = lc_dummy_prs;   
-    return 0;
-}    
-static int lc_dummy_reset_set(int lc_id, u8 lv)
-{
+    *lv = 1; 
     return 0;
 }    
 /*typedef enum {
@@ -92,82 +71,45 @@ static int lc_dummy_reset_set(int lc_id, u8 lv)
     LC_LED_CTRL_NUM,
 } lc_led_ctrl_t;
 */
-static const char *lc_led_str[LC_LED_CTRL_NUM] = {
-
-    [LC_LED_CTRL_GREEN_ON] = "LC_LED_GREEN_ON",
-    [LC_LED_CTRL_RED_ON] = "LC_LED_RED_ON",
+enum {
+    LC_EJ_SKIP_FLAG = 0,
+    LC_EJ_IS_LOCKED_FLAG = 1,
+    LC_EJ_IS_UNLOCKED_FLAG = 2,
 };
-static int dummy_led_set(int lc_id, lc_led_ctrl_t ctrl)
-{
-    if (p_valid(lc_led_str[ctrl])) {
-       SWPS_LOG_DBG("lc_id:%d %s\n", lc_id, lc_led_str[ctrl]); 
-    }
-    return 0;
-}    
-static int dummy_over_temp_asserted(int lc_id, bool *asserted)
-{
-    *asserted = false;
-    return 0;
-}    
-static int dummy_over_temp_deasserted(int lc_id, bool *deasserted)
-{
-    *deasserted = false;
-    return 0;
-}
 
-static int dummy_type_get(int lc_id, lc_type_t *type)
-{
-    if (0 == lc_id) {
-        *type = LC_100G_TYPE;
-    } else {
-        *type = LC_400G_TYPE;
-    }
-    return 0;
-}   
-
-static int dummy_temp_get_text(int lc_id, char *buf, int size)
-{
-    int ret = 0;
-    long temp[2];
-    int tmp_id = 0;
-    int count = 0;
-
-    for (tmp_id = 0; tmp_id < 2; tmp_id++) { 
-        
-        temp[tmp_id] = 30;
-        count += scnprintf(buf+count, size-count,
-                           "tmp%d: %ld c\n",
-                           tmp_id, temp[tmp_id]);
-    }
-    if (ret < 0) {
-        return ret;
-    } 
-    return 0;
-}    
 struct lc_func_t lc_func_4U = {
-    .dev_init = io_dev_init,
-    .dev_deinit = io_dev_deinit,
+    .dev_init = lc_dev_init,
+    .dev_deinit = lc_dev_deinit,
+    .dev_hdlr = lc_dev_hdlr,
     .polling_task = polling_task_4U,
-    .mux_reset = io_dev_mux_reset,
-    .i2c_is_alive = ioexp_is_channel_ready,
-    .cpld_init = dummy_cpld_init,
-    .power_set = lc_dummy_power_set,
-    .power_ready = dummy_power_ready,
+    .mux_reset_set = lc_dev_mux_reset_set,
+    .mux_reset_get = lc_dummy_get,
+    .i2c_is_alive = lc_dev_mux_l1_is_alive,
+    .cpld_init = lc_dev_lc_cpld_init,
+    .power_set = lc_dev_power_set,
+    .power_ready = lc_dev_power_ready,
+    //.phy_ready = lc_dev_phy_ready,
     .phy_ready = dummy_phy_ready,
-    .prs_get = dummy_prs_get,
-    .reset_set = lc_dummy_reset_set,
-    .type_get = dummy_type_get,
-    .led_set = dummy_led_set,
-    .over_temp_asserted = dummy_over_temp_asserted,
-    .over_temp_deasserted = dummy_over_temp_deasserted,
-    .temp_get = dummy_temp_get_text,
+    .prs_get = lc_dev_prs_get,
+    //.prs_get = dummy_prs_get,
+    .reset_set = lc_dev_reset_set,
+    .type_get = lc_dev_type_get,
+    .type_get_text = lc_dev_type_get_text,
+    .led_set = lc_dev_led_set,
+    .led_set = lc_dev_led_set,
+    .over_temp_asserted = lc_dev_over_temp_asserted,
+    .over_temp_deasserted = lc_dev_over_temp_deasserted,
+    .temp_get = lc_dev_temp_get_text,
+    .phy_reset_set = lc_dev_phy_reset_set,
 };
 
 struct lc_func_t lc_func_1U = {
     .dev_init = io_dev_init,
     .dev_deinit = io_dev_deinit,
+    .dev_hdlr = io_dev_hdlr,
     .polling_task = polling_task_1U,
-    .mux_reset = io_dev_mux_reset,
+    .mux_reset_set = io_dev_mux_reset_set,
+    .mux_reset_get = io_dev_mux_reset_get,
     .i2c_is_alive = ioexp_is_channel_ready,
 };
 
@@ -177,6 +119,7 @@ bool inline p_valid(const void *ptr)
 {
     return ((NULL != ptr) ? true:false);
 }
+#if 0
 static int string_to_long(const char *buf, long *val)
 {
     long ldata = 0;
@@ -194,7 +137,7 @@ static int string_to_long(const char *buf, long *val)
     *val = ldata;
     return 0;
 }
-
+#endif
 static inline void swps_polling_set(u8 enable)
 {
     swps_polling_enabled = enable;
@@ -204,7 +147,6 @@ static inline u8 swps_polling_is_enabled(void)
 {
     return swps_polling_enabled;
 }
-static int transvr_port = 0;
 
 struct fsm_period_t {
     sff_fsm_state_t st;
@@ -280,6 +222,7 @@ struct kset *swpsKset = NULL;
 
 char *lc_fsm_st_str[LC_FSM_ST_NUM] = {
     [LC_FSM_ST_INSERT] = "LC_FSM_ST_INSERT",
+    [LC_FSM_ST_WAIT_STABLE] = "LC_FSM_ST_STABLE",
     [LC_FSM_ST_POWER_ON] = "LC_FSM_ST_POWER_ON",
     [LC_FSM_ST_POWER_CHECK] = "LC_FSM_ST_POWER_CHECK",
     [LC_FSM_ST_PHY_CHECK] = "LC_FSM_ST_PHY_CHECK",
@@ -313,6 +256,7 @@ char *card_name_str[LINE_CARD_NUM] = {
 static int sff_kobj_add(struct sff_obj_t *sff_obj);
 static void sff_fsm_init(struct sff_obj_t *obj, int type);
 static void sff_data_init(struct sff_mgr_t *sff, int port_num);
+inline static void sff_data_reset(struct sff_mgr_t *sff);
 static void sff_func_init(struct sff_mgr_t *sff);
 static void func_tbl_init(struct sff_obj_t *obj, int type);
 static void io_no_init_port_done_set(struct sff_obj_t *sff_obj);
@@ -346,7 +290,9 @@ static void mux_reset_ch_resel_byLC(struct lc_obj_t *card)
     lc_id = card->lc_id;
     try_num = (card->sff.valid_port_num/MUX_CH_NUM) * 2;
 
+    SWPS_LOG_DBG("mux_ch_resel_start: try:%d try_num:%d\n", try, try_num);
     while (!reset_done && (try++ < try_num)) {
+        SWPS_LOG_DBG("mux_ch_resel_done: try:%d try_num:%d\n", try, try_num);
         for (port = 0; port < port_num; port += MUX_CH_NUM) {
             
             ch_1st = INVALID_CH;
@@ -435,7 +381,7 @@ static struct port_info_table_t *lc_port_info_get(struct lc_obj_t *card, lc_type
         return port_info;
 }
 
-static void lc_fsm_st_change_process(struct lc_obj_t *card,
+static void lc_fsm_st_chg_process(struct lc_obj_t *card,
                                      lc_fsm_st_t cur_st,
                                      lc_fsm_st_t next_st)
 {
@@ -448,38 +394,15 @@ static void lc_fsm_st_change_process(struct lc_obj_t *card,
 static void lc_fsm_st_set(struct lc_obj_t *card, lc_fsm_st_t st)
 {
     lc_fsm_st_t cur_st = card->st;
-    lc_fsm_st_change_process(card, cur_st, st);
+    lc_fsm_st_chg_process(card, cur_st, st);
     card->st = st;
 }
 static lc_fsm_st_t lc_fsm_st_get(struct lc_obj_t *card)
 {
     return card->st;
 }
-/*it's for testing only*/
-static int lc_temp_set(struct lc_obj_t *card, int temp)
-{
-    card->temp = temp;
-
-    return 0;
-}
-
-static int lc_temp_get(struct lc_obj_t *card, int *temp)
-{
-
-    *temp = card->temp;
-    return 0;
-}
-
-static void lc_prs_set(unsigned long prs)
-{
-    lc_dummy_prs = prs;
-}
 /* <TBD> if it's 4U platform , get the info from lc_dev_prs_get()
  * if it's 1u return 1*/
-static unsigned long lc_prs_get(void)
-{
-    return  lc_dummy_prs;
-}
 static void lc_insert(struct lc_obj_t *obj)
 {
     SWPS_LOG_INFO("%s insert\n", obj->name);
@@ -490,12 +413,19 @@ static void lc_remove(struct lc_obj_t *obj)
     SWPS_LOG_INFO("%s remove\n", obj->name);
     lc_fsm_st_set(obj, LC_FSM_ST_REMOVE);
 }
-
+#if 0
 static int lc_prs_scan(struct lc_t *self)
 {
     unsigned long prs = 0;
+    unsigned long ej_r = 0;
+    unsigned long ej_l = 0;
     int lc_num = self->lc_num;
     unsigned long prs_change = 0;
+    unsigned long ej_r_chg = 0;
+    unsigned long ej_l_chg = 0;
+    bool is_prs_chg = false;
+    bool is_ej_r_chg = false;
+    bool is_ej_l_chg = false;
     int i= 0;
     int ret = 0;
     struct lc_func_t *lc_func = NULL;
@@ -510,11 +440,21 @@ static int lc_prs_scan(struct lc_t *self)
     if ((ret = lc_func->prs_get(&prs)) < 0) {
         return ret;
     }
+    if ((ret = lc_dev_ej_r_get(&ej_r)) < 0) {
+        return ret;
+    }     
+    if ((ret = lc_dev_ej_l_get(&ej_l)) < 0) {
+        return ret;
+    }     
+    
     prs_change = prs ^ (self->lc_prs);
+    ej_r_chg = ej_r ^ (self->ej_r);
+    ej_l_chg = ej_l ^ (self->ej_l);
 
     for (i = 0; i < lc_num; i++) {
 
         if (test_bit(i, &prs_change)) {
+            is_prs_chg = true;
 
             if (test_bit(i, &prs)) {
                 lc_insert(&self->obj[i]);
@@ -528,24 +468,153 @@ static int lc_prs_scan(struct lc_t *self)
 
     return 0;
 }
-
-static int lc_st_scan(struct lc_t *card)
+#else 
+static int lc_ej_lock_st_get(int lc_id, unsigned long prs, unsigned long ej_r, unsigned long ej_l)
 {
-    int ret = 0;
+    int ej_st = LC_EJ_SKIP_FLAG;
 
-    if ((ret = lc_prs_scan(card)) < 0) {
-        return ret;
+    if(test_bit(lc_id, &prs) &&
+       test_bit(lc_id, &ej_r) && 
+       test_bit(lc_id, &ej_l)) {
+        
+        ej_st = LC_EJ_IS_LOCKED_FLAG;
+    } else {
+        //if (!test_bit(lc_id, &ej_r) && !test_bit(lc_id, &ej_l)) {
+            ej_st = LC_EJ_IS_UNLOCKED_FLAG;
+       // }
     }
 
+    return ej_st;
+}    
+static int lc_prs_scan(struct lc_t *self)
+{
+    unsigned long prs = 0;
+    unsigned long ej_r = 0;
+    unsigned long ej_l = 0;
+    int lc_num = self->lc_num;
+    unsigned long prs_chg = 0;
+    unsigned long ej_r_chg = 0;
+    unsigned long ej_l_chg = 0;
+    bool is_prs_chg = false;
+    bool is_ej_r_chg = false;
+    bool is_ej_l_chg = false;
+    int lc_id = 0;
+    int ret = 0;
+    int ej_st = LC_EJ_SKIP_FLAG;
+    struct lc_func_t *lc_func = NULL;
+    struct lc_obj_t *lc_obj = NULL;
+    if (!p_valid(self)) {
+        SWPS_LOG_ERR("NULL ptr\n");
+        return -EINVAL;
+    }
+    lc_func = self->lc_func;
+   
+    check_pfunc(lc_func->prs_get);
+    if ((ret = lc_func->prs_get(&prs)) < 0) {
+        return ret;
+    }
+    if ((ret = lc_dev_ej_r_get(&ej_r)) < 0) {
+        return ret;
+    }     
+    if ((ret = lc_dev_ej_l_get(&ej_l)) < 0) {
+        return ret;
+    }     
+    
+    prs_chg = prs ^ (self->lc_prs);
+    ej_r_chg = ej_r ^ (self->ej_r);
+    ej_l_chg = ej_l ^ (self->ej_l);
+
+    if (test_bit(lc_id, &prs_chg)) {
+        is_prs_chg = true;
+    }
+    if (test_bit(lc_id, &ej_l_chg)) {
+        is_ej_r_chg = true;
+    }
+    
+    if (test_bit(lc_id, &ej_r_chg)) {
+        is_ej_r_chg = true;
+    }
+    for (lc_id = 0; lc_id < lc_num; lc_id++) {
+      
+        ej_st = lc_ej_lock_st_get(lc_id, prs, ej_r, ej_l); 
+        lc_obj = &(self->obj[lc_id]);
+        switch (lc_obj->posi_st) {
+        case LC_POSI_INIT_ST:
+            if (LC_EJ_IS_LOCKED_FLAG == ej_st) {
+                 lc_obj->posi_st = LC_POSI_LOCK_CHECK_ST;
+                 lc_obj->prs_locked_cnt = 0;
+            } else {
+
+                lc_obj->posi_st = LC_POSI_MON_ST;                    
+            }            
+            break;
+        
+        case LC_POSI_MON_ST:
+            
+            if (is_prs_chg || is_ej_r_chg || is_ej_l_chg)  {
+            
+                if (LC_EJ_IS_LOCKED_FLAG == ej_st) {
+                     lc_obj->posi_st = LC_POSI_LOCK_CHECK_ST;
+                     lc_obj->prs_locked_cnt = 0;
+                } else {
+
+                    lc_obj->posi_st = LC_POSI_RELEASED_ST;                    
+                }
+            } 
+           break; 
+        
+        case LC_POSI_RELEASED_ST:
+                
+            if (LC_EJ_IS_LOCKED_FLAG == ej_st) {
+                lc_obj->posi_st = LC_POSI_LOCK_CHECK_ST;                    
+                lc_obj->prs_locked_cnt = 0;
+            }
+                 
+            break;
+        case LC_POSI_LOCK_CHECK_ST:
+                
+            if (LC_EJ_IS_LOCKED_FLAG == ej_st) {
+                lc_obj->prs_locked_cnt++;
+            } else if (LC_EJ_IS_UNLOCKED_FLAG == ej_st) {
+                lc_obj->posi_st = LC_POSI_RELEASED_ST;                    
+                lc_remove(lc_obj);
+            }
+            
+            if (lc_obj->prs_locked_cnt >= LC_PRS_LOCKED_NUM) {
+                lc_obj->prs_locked_cnt = 0;
+                lc_insert(lc_obj);
+                lc_obj->posi_st = LC_POSI_LOCKED_ST;                    
+            }
+                 
+            break;
+        case LC_POSI_LOCKED_ST:
+            
+            if (LC_EJ_IS_UNLOCKED_FLAG == ej_st) {
+                lc_obj->posi_st = LC_POSI_RELEASED_ST;                    
+                lc_remove(lc_obj);
+            }
+            
+            break;
+        default:
+            break;
+        }
+    }
+    self->lc_prs = prs;
+    self->ej_r = ej_r;
+    self->ej_l = ej_l;
     return 0;
 }
+
+
+
+#endif
 static int lc_fsm_run_4U(struct lc_t *card);
 static int lc_fsm_run_1U(struct lc_t *card);
 /*struct sff_mgr_t Sff;*/
 
 #define to_swps_kobj(x) container_of(x, struct swps_kobj_t, kobj)
 
-void sff_fsm_state_change_process(struct sff_obj_t *sff_obj, sff_fsm_state_t cur_st, sff_fsm_state_t next_st);
+void sff_fsm_st_chg_process(struct sff_obj_t *sff_obj, sff_fsm_state_t cur_st, sff_fsm_state_t next_st);
 
 static inline bool transvr_is_detected(struct sff_obj_t *sff_obj)
 {
@@ -695,7 +764,7 @@ static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offse
     }
     return 0;
 }
-
+#if 1
 int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, int len, u8 *buf)
 {
     int ret = 0;
@@ -715,34 +784,28 @@ int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, in
     }
     return ret;
 }
+#else 
 
-/*debug*/
-static char *str_head[BUF_SIZE];
-static u8 debug_read_buf[BUF_SIZE];
-struct debug_eeprom_func_t {
-    int type;
-    int (*read)(struct sff_obj_t *, u8, u8,u8 *, int);
-    int (*write)(struct sff_obj_t * , u8, u8,u8 *, int);
-};
-#if 0
-static struct debug_eeprom_func_t debug_eeprom_func_tbl[] = {
-    {SFP_TYPE, sfp_eeprom_read, sfp_eeprom_write},
-    {QSFP_TYPE, qsfp_eeprom_read, qsfp_eeprom_write},
-    {QSFP_DD_TYPE, qsfp_eeprom_read, qsfp_eeprom_write},
-};
-struct debug_eeprom_func_t *find_debug_eeprom_func(int type)
+int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, int len, u8 *buf)
 {
-    int count = 0;
-    int size = sizeof(debug_eeprom_func_tbl) / sizeof(debug_eeprom_func_tbl[0]);
-    for (count = 0; count < size; count++) {
+    int ret = 0;
+    int i = 0;
 
-        if (type == debug_eeprom_func_tbl[count].type) {
-
-            return &debug_eeprom_func_tbl[count];
+    for (i = 0; i < len; i++) {
+        ret = i2c_smbus_read_byte_data_retry(client, offset + i);
+        
+        if (ret < 0) {
+            break;
         }
+        buf[i] = ret;
     }
-    return NULL;
+    if (ret < 0) {
+        return ret;
+    }
+    return 0;
 }
+
+
 #endif
 /*fsm functions declaration*/
 
@@ -750,15 +813,6 @@ static void sff_fsm_delay_cnt_reset(struct sff_obj_t *sff_obj, sff_fsm_state_t s
 static void sff_fsm_cnt_run(struct sff_obj_t *sff_obj);
 static bool sff_fsm_delay_cnt_is_hit(struct sff_obj_t *sff_obj);
 static int sff_fsm_run(struct sff_mgr_t *sff);
-
-static int valid_lane_num_get(struct sff_obj_t *sff_obj);
-//static int debug_eeprom_access(struct sff_obj_t *sff_obj, int type, const char *str, int len);
-#if 0
-static inline bool transvr_is_isolated(struct sff_obj_t *sff_obj)
-{
-    return (SFF_FSM_ST_FAULT == sff_fsm_st_get(sff_obj) ? (true) : (false));
-}
-#endif
 
 bool page_sel_is_locked(struct sff_obj_t *sff_obj)
 {
@@ -827,98 +881,328 @@ int inv_sff_prs_get(int lc_id, unsigned long *prs)
     return sff_prs_bitmap_get_external(&(lcMgr.obj[lc_id].sff), prs);
 }
 EXPORT_SYMBOL(inv_sff_prs_get);
+
+static bool sff_reset_is_supported(struct sff_obj_t *sff_obj)
+{
+   return ((SFP_TYPE != sff_obj->type) ? true : false); 
+}    
+
+static bool sff_lpmode_is_supported(struct sff_obj_t *sff_obj)
+{
+   return ((SFP_TYPE != sff_obj->type) ? true : false); 
+}
+/*<TBD> find better way  to check if sff_power is supported*/
+static bool sff_power_is_supported(struct sff_obj_t *sff_obj)
+{
+   return ((PLATFORM_4U == pltfmInfo->id) ? true : false); 
+}    
 /*reset set operation comfines sff io reset set and sff fsm transition event*/
 int sff_reset_set_oper(struct sff_obj_t *sff_obj, u8 rst)
 {
     int ret = 0;
-
-    if((ret = sff_obj->func_tbl->reset_set(sff_obj, rst)) < 0) {
-        return ret;
-    }
-
+    int cnt = 0;
+    u8 lock = 0;    
     transvr_type_set(sff_obj, TRANSVR_CLASS_UNKNOWN);
 
     if (!rst) {
+        
+        lock = (page_sel_is_locked(sff_obj) ? 1 : 0);
+        
+        while(cnt <= PAGE_SEL_LOCK_NUM && lock) {       
+            lock = (page_sel_is_locked(sff_obj) ? 1 : 0);
+            cnt++;
+            msleep(50);    
+        }
+        
+        if (cnt > PAGE_SEL_LOCK_NUM) {
+            SWPS_LOG_ERR("lock time out\n");
+            return -ETIMEDOUT;
+        }
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_SUSPEND);
+        if (cnt > 0) {
+            SWPS_LOG_INFO("page_sel_lock occured\n");
+        }
     } else {
         sff_fsm_st_set(sff_obj, SFF_FSM_ST_RESTART);
     }
-    return 0;
-}
-/*bitmap , is in front port order*/
-int inv_sff_reset_set(int lc_id, unsigned long bitmap)
-{
-    int port = 0;
-    int front_port_num = 0;
-    int front_port = 0;
-    struct sff_obj_t *sff_obj = NULL;
-    struct sff_mgr_t *sff = NULL;
-    int ret = 0;
-    u8 rst = 0;
-
-    sff = &lcMgr.obj[lc_id].sff;
-    front_port_num = sff->valid_port_num;
-
-    for (front_port = 0; front_port < front_port_num; front_port++) {
-        if (test_bit(front_port, &bitmap)) {
-            rst = 1;
-        } else {
-            rst = 0;
-        }
-        port = sff->frontPort_to_port[front_port];
-        sff_obj = &sff->obj[port];
-
-        if (SFP_TYPE == sff_obj->type) {
-            continue;
-        }
-        if ((ret = sff_reset_set_oper(sff_obj, rst)) < 0) {
-            break;
-        }
-    }
-    if (ret < 0) {
+    if((ret = sff_obj->func_tbl->reset_set(sff_obj, rst)) < 0) {
         return ret;
     }
     return 0;
 }
-EXPORT_SYMBOL(inv_sff_reset_set);
-/*bitmap , is in front port order*/
-int inv_sff_reset_get(int lc_id, unsigned long *bitmap)
+static unsigned long frontPort_to_phyPort(struct sff_mgr_t *sff, 
+                                          unsigned long front_bitmap)
+{
+    int port = 0;
+    int front_port = 0;
+    int front_port_num = 0;
+    unsigned long phy_bitmap = 0;
+    
+    front_port_num = sff->valid_port_num;
+    for (front_port = 0; front_port < front_port_num; front_port++) {
+        port = sff->frontPort_to_port[front_port];
+        
+        if (test_bit(front_port, &front_bitmap)) {
+            set_bit(port, &phy_bitmap);
+        } else {
+            clear_bit(port, &phy_bitmap);
+        }
+    }
+    return phy_bitmap;
+}
+static unsigned long phyPort_to_frontPort(struct sff_mgr_t *sff, 
+                                unsigned long phy_bitmap)
 {
     int port = 0;
     int port_num = 0;
-    unsigned long front_port_rst = 0;
+    unsigned long front_bitmap = 0;
     struct sff_obj_t *sff_obj = NULL;
-    struct sff_mgr_t *sff = NULL;
-    int ret = 0;
-    u8 reset = 0;
-
-    sff = &lcMgr.obj[lc_id].sff;
+    
     port_num = sff->valid_port_num;
-
     for (port = 0; port < port_num; port++) {
 
         sff_obj = &sff->obj[port];
-        if (SFP_TYPE == sff_obj->type) {
-            set_bit(sff_obj->front_port, &front_port_rst);
+
+        if (test_bit(port, &phy_bitmap)) {
+            set_bit(sff_obj->front_port, &front_bitmap);
+        } else {
+            clear_bit(sff_obj->front_port, &front_bitmap);
+        }
+    }
+
+    return front_bitmap;
+}
+
+static void sff_fsm_op_process(struct sff_mgr_t *sff, 
+                                bool (*is_supported)(struct sff_obj_t *sff_obj), 
+                                unsigned long phy_bitmap)
+{
+    int port = 0;
+    int port_num = sff->valid_port_num;
+    struct sff_obj_t *sff_obj = NULL;
+    if (!p_valid(sff) && !p_valid(is_supported)) {
+        SWPS_LOG_ERR("null input\n");
+        return;
+    }
+    port_num = sff->valid_port_num; 
+    for (port = 0; port < port_num; port++) {
+                   
+        sff_obj = &sff->obj[port];
+        if (!is_supported(sff_obj)) {
             continue;
         }
+        transvr_type_set(sff_obj, TRANSVR_CLASS_UNKNOWN);
 
-        if((ret = sff_obj->func_tbl->reset_get(sff_obj, &reset)) < 0) {
-            break;
-        }
-        if (reset) {
-            set_bit(sff_obj->front_port, &front_port_rst);
+        if (!test_bit(port, &phy_bitmap)) {
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_SUSPEND);
         } else {
-            clear_bit(sff_obj->front_port, &front_port_rst);
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_RESTART);
         }
+    } 
+}    
+
+/*(in) bitmap , is in front port order*/
+int inv_sff_output_set(sff_io_output_type_t type, int lc_id, unsigned long bitmap)
+{
+    unsigned long phy_bitmap = 0;
+    struct sff_mgr_t *sff = NULL;
+    int ret = 0;
+    int (*set_func)(int lc_id, unsigned long bitmap) = NULL;
+    
+    sff = &lcMgr.obj[lc_id].sff;
+    phy_bitmap = frontPort_to_phyPort(sff, bitmap);
+    
+    switch (type) {
+
+    case SFF_IO_RST_TYPE:
+        set_func = lcMgr.sff_io_drv->reset_all_set;
+        sff_fsm_op_process(sff, sff_reset_is_supported, phy_bitmap); 
+        break;
+    case SFF_IO_PWR_TYPE:
+        set_func = lcMgr.sff_io_drv->power_all_set;
+        sff_fsm_op_process(sff, sff_power_is_supported, phy_bitmap); 
+        break;
+    case SFF_IO_LPMODE_TYPE:
+        set_func = lcMgr.sff_io_drv->lpmode_all_set;
+        break;
+    default:
+        break;
     }
-    if (ret < 0) {
+    check_pfunc(set_func); 
+    if ((ret = set_func(lc_id, phy_bitmap)) < 0) {
         return ret;
     }
-    *bitmap = front_port_rst;
     return 0;
+}    
+/*output bitmap , is in front port order*/
+int inv_sff_output_get(sff_io_output_type_t type, int lc_id, unsigned long *bitmap)
+{
+    unsigned long phy_bitmap = 0;
+    struct sff_mgr_t *sff = NULL;
+    int ret = 0;
+    int (*get_func)(int lc_id, unsigned long *bitmap) = NULL;
+    
+    sff = &lcMgr.obj[lc_id].sff;
+    
+    switch (type) {
+
+    case SFF_IO_RST_TYPE:
+        get_func = lcMgr.sff_io_drv->reset_all_get;
+        break;
+    case SFF_IO_PWR_TYPE:
+        get_func = lcMgr.sff_io_drv->power_all_get;
+        break;
+    case SFF_IO_LPMODE_TYPE:
+        get_func = lcMgr.sff_io_drv->lpmode_all_get;
+        break;
+    default:
+        break;
+    }
+    check_pfunc(get_func); 
+    if ((ret = get_func(lc_id, &phy_bitmap)) < 0) {
+        return ret;
+    }
+    *bitmap = phyPort_to_frontPort(sff, phy_bitmap); 
+    return 0;
+}    
+int inv_sff_reset_set(int lc_id, unsigned long bitmap)
+{
+    return inv_sff_output_set(SFF_IO_RST_TYPE, lc_id, bitmap);
+#if 0    
+    int port = 0;
+    int port_num = 0;
+    unsigned long phy_bitmap = 0;
+    struct sff_obj_t *sff_obj = NULL;
+    struct sff_mgr_t *sff = NULL;
+    int ret = 0;
+
+    sff = &lcMgr.obj[lc_id].sff;
+    port_num = sff->valid_port_num;
+    phy_bitmap = frontPort_to_phyPort(sff, bitmap);
+
+    check_pfunc(lcMgr.sff_io_drv->reset_all_set); 
+    if ((ret = lcMgr.sff_io_drv->reset_all_set(lc_id, phy_bitmap)) < 0) {
+        return ret;
+    }
+
+    for (port = 0; port < port_num; port++) {
+                   
+        sff_obj = &sff->obj[port];
+        if (!sff_reset_is_supported(sff_obj)) {
+            continue;
+        }
+        transvr_type_set(sff_obj, TRANSVR_CLASS_UNKNOWN);
+
+        if (!test_bit(port, &phy_bitmap)) {
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_SUSPEND);
+        } else {
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_RESTART);
+        }
+    } 
+    return 0;
+#endif
+}
+EXPORT_SYMBOL(inv_sff_reset_set);
+
+/*bitmap , is in front port order*/
+int inv_sff_reset_get(int lc_id, unsigned long *bitmap)
+{
+    return inv_sff_output_get(SFF_IO_RST_TYPE, lc_id, bitmap);
+    #if 0
+    int ret = 0;
+    struct sff_mgr_t *sff = NULL;
+    unsigned long phy_bitmap = 0;
+
+    check_pfunc(lcMgr.sff_io_drv->reset_all_get); 
+    if ((ret = lcMgr.sff_io_drv->reset_all_get(lc_id, &phy_bitmap)) < 0) {
+        return ret;
+    }
+   
+    sff = &lcMgr.obj[lc_id].sff;
+    unsigned long phy_bitmap = 0;
+    *bitmap = phyPort_to_frontPort(sff, phy_bitmap); 
+    
+    return 0;
+#endif
 }
 EXPORT_SYMBOL(inv_sff_reset_get);
+
+int sff_lpmode_set_oper(struct sff_obj_t *sff_obj, u8 val)
+{
+    int ret = 0;
+
+    if((ret = sff_obj->func_tbl->lpmode_set(sff_obj, val)) < 0) {
+        return ret;
+    }
+    
+    return 0;
+}
+int inv_sff_lpmode_set(int lc_id, unsigned long bitmap)
+{
+    unsigned long phy_bitmap = 0;
+    struct sff_mgr_t *sff = NULL;
+    int ret = 0;
+
+    sff = &lcMgr.obj[lc_id].sff;
+    phy_bitmap = frontPort_to_phyPort(sff, bitmap);
+
+    check_pfunc(lcMgr.sff_io_drv->lpmode_all_set); 
+    if ((ret = lcMgr.sff_io_drv->lpmode_all_set(lc_id, phy_bitmap)) < 0) {
+        return ret;
+    }
+    return 0;
+}
+EXPORT_SYMBOL(inv_sff_lpmode_set);
+
+/*bitmap , is in front port order*/
+int inv_sff_lpmode_get(int lc_id, unsigned long *bitmap)
+{
+#if 0
+    int ret = 0;
+    struct sff_mgr_t *sff = NULL;
+    unsigned long phy_bitmap = 0;
+
+    check_pfunc(lcMgr.sff_io_drv->lpmode_all_get); 
+    if ((ret = lcMgr.sff_io_drv->lpmode_all_get(lc_id, &phy_bitmap)) < 0) {
+        return ret;
+    }
+   
+    sff = &lcMgr.obj[lc_id].sff;
+    *bitmap = phyPort_to_frontPort(sff, phy_bitmap); 
+    
+    return 0;
+#endif    
+    return inv_sff_output_get(SFF_IO_LPMODE_TYPE, lc_id, bitmap);
+}
+EXPORT_SYMBOL(inv_sff_lpmode_get);
+
+int inv_sff_power_set(int lc_id, unsigned long bitmap)
+{
+    return inv_sff_output_set(SFF_IO_PWR_TYPE, lc_id, bitmap);
+}
+EXPORT_SYMBOL(inv_sff_power_set);
+
+int inv_sff_power_get(int lc_id, unsigned long *bitmap)
+{
+
+    return inv_sff_output_get(SFF_IO_PWR_TYPE, lc_id, bitmap);
+#if 0
+    int ret = 0;
+    struct sff_mgr_t *sff = NULL;
+    unsigned long phy_bitmap = 0;
+
+    check_pfunc(lcMgr.sff_io_drv->power_all_get); 
+    if ((ret = lcMgr.sff_io_drv->power_all_get(lc_id, &phy_bitmap)) < 0) {
+        return ret;
+    }
+   
+    sff = &lcMgr.obj[lc_id].sff;
+    *bitmap = phyPort_to_frontPort(sff, phy_bitmap); 
+    
+    return 0;
+#endif    
+}
+EXPORT_SYMBOL(inv_sff_power_get);
 
 int dummy_page_get(struct sff_obj_t *sff_obj, u8 *page)
 {
@@ -939,7 +1223,6 @@ int sff_eeprom_read(struct sff_obj_t *sff_obj,
                            u8 *buf,
                            int len)
 {
-    int ret = 0;
     struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
     check_pfunc(sffEepromDrv->eeprom_read); 
     return sffEepromDrv->eeprom_read(lc->lc_id, sff_obj->port, addr, offset, buf, len);
@@ -953,27 +1236,25 @@ int inv_sff_eeprom_read(const unsigned int lc_id,
                            const unsigned int count,
                            u8 *buf)
 {
-
-    int real_port = 0;
+    int phy_port = 0;
     int front_port = 0;
     struct sff_obj_t *sff_obj = NULL;
     struct sff_mgr_t *sff = NULL;
-    int ret = 0;
 
     sff = &lcMgr.obj[lc_id].sff;
     front_port = port;
-    real_port = sff->frontPort_to_port[front_port];
-    sff_obj = &sff->obj[real_port]; 
+    phy_port = sff->frontPort_to_port[front_port];
+    sff_obj = &sff->obj[phy_port]; 
     return sff_eeprom_read(sff_obj, addr, offset, buf, count);
 }
 EXPORT_SYMBOL(inv_sff_eeprom_read);
+
 int sff_eeprom_write(struct sff_obj_t *sff_obj,
                             u8 addr,
                             u8 offset,
                             const u8 *buf,
                             int len)
 {
-    int ret = 0;
     struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
     check_pfunc(sffEepromDrv->eeprom_write); 
@@ -986,21 +1267,47 @@ int inv_sff_eeprom_write(const unsigned int lc_id,
                            const unsigned int count,
                            const u8 *buf)
 {
-
-    int real_port = 0;
+    int phy_port = 0;
     int front_port = 0;
     struct sff_obj_t *sff_obj = NULL;
     struct sff_mgr_t *sff = NULL;
-    int ret = 0;
 
     sff = &lcMgr.obj[lc_id].sff;
     front_port = port;
-    real_port = sff->frontPort_to_port[front_port];
-    sff_obj = &sff->obj[real_port]; 
+    phy_port = sff->frontPort_to_port[front_port];
+    sff_obj = &sff->obj[phy_port]; 
     return sff_eeprom_write(sff_obj, addr, offset, buf, count);
 }
 EXPORT_SYMBOL(inv_sff_eeprom_write);
-static bool match(const char *str1, const char *str2)
+
+static long
+sscanf_to_long(const char *buf, long *value)
+{
+    long result  = 0;
+    char hex_tag[] = "0x";
+    char *ptr = NULL;
+    ptr = strstr(buf, hex_tag);
+    if (ptr) {
+        if (strcspn(buf, hex_tag) == 0) { /*first index*/
+            if (sscanf(buf,"%lx",&result) < 0) {
+                goto exit_err;
+            }
+        } else {
+            goto exit_err;
+        }
+    } else {
+        if (sscanf(buf,"%ld",&result) < 0) {
+            goto exit_err;
+        }
+    }
+    *value = result;
+    return 0;
+
+exit_err:
+    return -EBADRQC;
+}
+
+bool match(const char *str1, const char *str2)
 {
     bool is_match = false;
     if(strcmp(str1, str2) == 0) {
@@ -1008,114 +1315,7 @@ static bool match(const char *str1, const char *str2)
     }
     return is_match;
 }
-#if 0
-/*the function is for debugging , access eeprom through command format ex:
- * for sfp
- * set 0x51 offset data
- * get 0x51 offset data_len
- * for qsfp
- * set page offset data
- * get page offset data_len
- */
-static int debug_eeprom_access(struct sff_obj_t *sff_obj, int type, const char *str, int len)
-{
-    char *ptr = NULL;
-    int count = 0;
-    int i = 0;
-    int ret = 0;
-    u8 addr_or_page = 0;
-    u8 offset = 0;
-    u8 data = 0;
-    long tmp = 0;
-    int data_len = 0;
-    int str_len = 0;
-    struct debug_eeprom_func_t *pfunc = NULL;
-    memset(debug_read_buf, 0, sizeof(debug_read_buf));
-    if (len >= BUF_SIZE) {
 
-        SWPS_LOG_ERR("input out of range:%d\n", len);
-        goto ERR_EXIT;
-    }
-
-    str_len = strlen(str);
-    memset(work_buf, '\0', sizeof(work_buf));
-    memcpy(work_buf, str, str_len);
-
-    SWPS_LOG_DBG("work_buf:%s\n", work_buf);
-    ptr = work_buf;
-    str_head[count++] = ptr;
-
-    while (*ptr != '\0') {
-        if (' ' == *ptr) {
-            *ptr = '\0';
-            str_head[count++] = ptr+1;
-        }
-        ptr++;
-    }
-
-
-    for (i = 0; i < count; i++) {
-        SWPS_LOG_DBG("str_head:%s\n", str_head[i]);
-    }
-
-    pfunc = find_debug_eeprom_func(type);
-    if (NULL == pfunc) {
-        SWPS_LOG_ERR("cant find func\n");
-        goto ERR_EXIT;
-    }
-    if (!match(str_head[0], "set") &&
-            !match(str_head[0], "get")) {
-
-        SWPS_LOG_ERR("invalid cmd:%s\n", str_head[0]);
-        goto ERR_EXIT;
-    }
-    ptr = str_head[0];
-    ret = kstrtol(str_head[1], 0, &tmp);
-    if (ret < 0) {
-        return ret;
-    }
-    addr_or_page = tmp;
-    ret = kstrtol(str_head[2], 0, &tmp);
-    if (ret < 0) {
-        return ret;
-    }
-    offset = tmp;
-
-    if (match(ptr, "set")) {
-        ret = kstrtol(str_head[3], 0, &tmp);
-        if (ret < 0) {
-            return ret;
-        }
-        data = tmp;
-        SWPS_LOG_DBG("addr:%d offset:%d tmp:%d\n", addr_or_page, offset, (int)tmp);
-        if(pfunc->write(sff_obj, addr_or_page, offset, &data, 1) < 0) {
-
-            SWPS_LOG_ERR("write fail\n");
-            goto ERR_EXIT;
-        }
-    } else if (match(ptr, "get")) {
-        ret = kstrtol(str_head[3], 0, &tmp);
-        if (ret < 0) {
-            return ret;
-        }
-        data_len = tmp;
-        if(pfunc->read(sff_obj, addr_or_page, offset, debug_read_buf, data_len) < 0) {
-
-            SWPS_LOG_ERR("read fail\n");
-            goto ERR_EXIT;
-        }
-
-        for (count = 0; count < data_len; count++) {
-            SWPS_LOG_DBG("read_data[%d]:0x%x \n", count+offset, debug_read_buf[count]);
-        }
-    }
-
-    return 0;
-
-ERR_EXIT: /*in order to show error log return 0, otherwise will get permission denied*/
-    return 0;
-}
-#endif
 static int sff_type_get(struct sff_obj_t *sff_obj)
 {
     int type = SFP_TYPE;
@@ -1229,25 +1429,13 @@ static ssize_t sff_page_sel_lock_store(struct swps_kobj_t *swps_kobj, struct swp
 static ssize_t lc_prs_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                            char *buf)
 {
-    unsigned long prs = 0;
-
-    prs = lc_prs_get();
-    return scnprintf(buf, BUF_SIZE, "%lx\n", prs);
-}
-static ssize_t lc_prs_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
-                            const char *buf, size_t count)
-{
-    unsigned long prs = 0;
     int ret = 0;
-    ret = string_to_long(buf, &prs);
-    if(ret < 0) {
-        return ret;
-    }
-
-    lc_prs_set(prs);
-
-    return count;
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    unsigned long sys_ready = card->mgr->lc_sys_ready; 
+    return scnprintf(buf, BUF_SIZE, "0x%lx\n", sys_ready);
 }
+
 static ssize_t lc_phy_ready_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                  char *buf)
 {
@@ -1262,17 +1450,17 @@ static ssize_t lc_phy_ready_show(struct swps_kobj_t *swps_kobj, struct swps_attr
 static ssize_t lc_phy_ready_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                   const char *buf, size_t count)
 {
-    unsigned int phy_ready = 0;
+    unsigned long phy_ready = 0;
     int ret = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *lc = sff_to_lc(sff);
 
-    ret = sscanf_to_int(buf, &phy_ready);
+    ret = sscanf_to_long(buf, &phy_ready);
     //ret = string_to_long(buf, &phy_ready);
     if(ret < 0) {
         return ret;
     }
-    if ((unsigned long)phy_ready != lc->phy_ready_bitmap) {
+    if (phy_ready != lc->phy_ready_bitmap) {
         SWPS_LOG_DBG("%s phy_ready:0x%lx -> 0x%lx\n", lc->name, lc->phy_ready_bitmap, phy_ready);
     }
  
@@ -1282,7 +1470,6 @@ static ssize_t lc_phy_ready_store(struct swps_kobj_t *swps_kobj, struct swps_att
 static ssize_t lc_temp_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                             char *buf)
 {
-    int temp = 0;
     int ret = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
@@ -1293,9 +1480,7 @@ static ssize_t lc_temp_show(struct swps_kobj_t *swps_kobj, struct swps_attribute
     if ((ret = lc_func->temp_get(card->lc_id, buf, BUF_SIZE)) < 0) {
         return ret;
     }
-    if (ret < 0) {
-        return ret;
-    }
+    
     return scnprintf(buf, BUF_SIZE, "%s", buf);
 }
 /*it's for testing*/
@@ -1312,7 +1497,7 @@ static ssize_t lc_temp_store(struct swps_kobj_t *swps_kobj, struct swps_attribut
         return ret;
     }
 
-    ret = lc_temp_set(card, temp);
+    ret = lc_dev_temp_th_set(card->lc_id, temp);
     if (ret < 0) {
         return ret;
     }
@@ -1326,11 +1511,13 @@ static ssize_t lc_type_show(struct swps_kobj_t *swps_kobj, struct swps_attribute
     int ret = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
-#if 0
-    if((ret = lc_dev_type_get_text(card->lc_id, buf, BUF_SIZE)) < 0) {
+    struct lc_func_t *lc_func = card->mgr->lc_func;
+    
+    check_pfunc(lc_func->power_ready);
+    if((ret = lc_func->type_get_text(card->lc_id, buf, BUF_SIZE)) < 0) {
         return ret;
     }
-#endif
+    
     return scnprintf(buf, BUF_SIZE, "%s", buf);
 }
 
@@ -1340,12 +1527,14 @@ static ssize_t lc_power_ready_show(struct swps_kobj_t *swps_kobj, struct swps_at
     int ret = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
+    struct lc_func_t *lc_func = card->mgr->lc_func;
     bool ready = false;
-#if 0
-    if((ret = lc_dev_power_ready(card->lc_id, &ready)) < 0) {
+
+    check_pfunc(lc_func->power_ready);
+    if ((ret = lc_func->power_ready(card->lc_id, &ready)) < 0) {
         return ret;
     }
-#endif
+    
     return scnprintf(buf, BUF_SIZE, "%d", ready);
 }
 
@@ -1381,13 +1570,25 @@ static ssize_t id_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *att
 /*qsfp_dd only*/
 
 static ssize_t active_ctrl_set_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
-                            char *buf)
+                                    char *buf)
 {
-    int temp = 0;
     int ret = 0;
     struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
 
     if ((ret = qsfp_dd_active_ctrl_set_get(sff_obj, buf, BUF_SIZE)) < 0) {
+        return ret;
+    }
+    return scnprintf(buf, BUF_SIZE, "%s", buf);
+}
+
+static ssize_t sff_intr_flag_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                      char *buf)
+{
+    int ret = 0;
+    struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
+    
+    check_pfunc(sff_obj->func_tbl->intr_flag_show);
+    if ((ret = sff_obj->func_tbl->intr_flag_show(sff_obj, buf, BUF_SIZE)) < 0) {
         return ret;
     }
     return scnprintf(buf, BUF_SIZE, "%s", buf);
@@ -1427,10 +1628,8 @@ static ssize_t type_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *a
 static ssize_t sff_port_num_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                  char *buf)
 {
-    int type = 0;
     struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
     return scnprintf(buf, BUF_SIZE, "%d\n", sff_obj->mgr->valid_port_num);
-
 }
 
 static ssize_t swps_version_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
@@ -1708,6 +1907,13 @@ static ssize_t fsm_st_show(struct swps_kobj_t *swps_kobj, struct swps_attribute 
     st = sff_fsm_st_get(sff_obj);
     return scnprintf(buf, BUF_SIZE, "%s\n", sff_fsm_st_str[st]);
 }
+static ssize_t lc_fsm_st_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                           char *buf)
+{
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    return scnprintf(buf, BUF_SIZE, "%s\n", lc_fsm_st_str[card->st]);
+}
 static ssize_t sff_reset_all_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                    const char *buf, size_t count)
 {
@@ -1723,6 +1929,7 @@ static ssize_t sff_reset_all_store(struct swps_kobj_t *swps_kobj, struct swps_at
                 SWPS_LOG_ERR("%d:set val = %c is not support.\n", i, buf[i]);
                 return -EINVAL;
             }
+            
             if ('1' == buf[i]) {
                 set_bit(i, &rst);
             } else {
@@ -1730,6 +1937,7 @@ static ssize_t sff_reset_all_store(struct swps_kobj_t *swps_kobj, struct swps_at
             }
         }
     }
+    SWPS_LOG_DBG("set val = 0x%lx\n", rst);
     if ((ret = inv_sff_reset_set(card->lc_id, rst)) < 0) {
         return ret;
     }
@@ -1740,6 +1948,7 @@ static ssize_t sff_reset_all_show(struct swps_kobj_t *swps_kobj, struct swps_att
 {
     int ret = 0;
     unsigned long front_port_rst = 0;
+    int port = 0;
     int front_port = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
@@ -1750,8 +1959,123 @@ static ssize_t sff_reset_all_show(struct swps_kobj_t *swps_kobj, struct swps_att
     }
 
     for (front_port = 0; front_port < front_port_num; front_port++) {
+        port = sff->frontPort_to_port[front_port];
+        
+        if (sff_reset_is_supported(&sff->obj[port])) {
+            buf[front_port] = (test_bit(front_port, &front_port_rst) ? '1' : '0');
+        } else {
+            buf[front_port] = 'X';
+        }
+    }
 
-        buf[front_port] = (test_bit(front_port, &front_port_rst) ? '1' : '0');
+    buf[front_port] = '\n';
+    return (ssize_t)strlen(buf);
+}
+static ssize_t sff_lpmode_all_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                   const char *buf, size_t count)
+{
+    int ret = 0;
+    unsigned long lpmode = 0;
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    int i = 0;
+
+    for (i = 0; i < count; i++) {
+        if (i < sff->valid_port_num) {
+            if (buf[i] != '0' && buf[i] != '1') {
+                SWPS_LOG_ERR("%d:set val = %c is not support.\n", i, buf[i]);
+                return -EINVAL;
+            }
+            if ('1' == buf[i]) {
+                set_bit(i, &lpmode);
+            } else {
+                clear_bit(i, &lpmode);
+            }
+        }
+    }
+    if ((ret = inv_sff_lpmode_set(card->lc_id, lpmode)) < 0) {
+        return ret;
+    }
+    return count;
+}
+static ssize_t sff_lpmode_all_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                  char *buf)
+{
+    int ret = 0;
+    unsigned long front_port_lpmode = 0;
+    int port = 0;
+    int front_port = 0;
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    int front_port_num = sff->valid_port_num;
+
+    if ((ret = inv_sff_lpmode_get(card->lc_id, &front_port_lpmode)) < 0) {
+        return ret;
+    }
+
+    for (front_port = 0; front_port < front_port_num; front_port++) {
+        port = sff->frontPort_to_port[front_port];
+
+        if (sff_lpmode_is_supported(&sff->obj[port])) {
+            buf[front_port] = (test_bit(front_port, &front_port_lpmode) ? '1' : '0');
+        } else {
+            buf[front_port] = 'X';
+        }
+    }
+
+    buf[front_port] = '\n';
+    return (ssize_t)strlen(buf);
+}
+static ssize_t sff_power_all_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                   const char *buf, size_t count)
+{
+    int ret = 0;
+    unsigned long power = 0;
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    int i = 0;
+
+    for (i = 0; i < count; i++) {
+        if (i < sff->valid_port_num) {
+            if (buf[i] != '0' && buf[i] != '1') {
+                SWPS_LOG_ERR("%d:set val = %c is not support.\n", i, buf[i]);
+                return -EINVAL;
+            }
+            if ('1' == buf[i]) {
+                set_bit(i, &power);
+            } else {
+                clear_bit(i, &power);
+            }
+        }
+    }
+    if ((ret = inv_sff_power_set(card->lc_id, power)) < 0) {
+        return ret;
+    }
+    return count;
+}
+static ssize_t sff_power_all_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                  char *buf)
+{
+    int ret = 0;
+    unsigned long front_port_power = 0;
+    int port = 0;
+    int front_port = 0;
+    struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    int front_port_num = sff->valid_port_num;
+
+    if ((ret = inv_sff_power_get(card->lc_id, &front_port_power)) < 0) {
+        return ret;
+    }
+
+    for (front_port = 0; front_port < front_port_num; front_port++) {
+        port = sff->frontPort_to_port[front_port];
+
+        if (sff_power_is_supported(&sff->obj[port])) {
+            buf[front_port] = (test_bit(front_port, &front_port_power) ? '1' : '0');
+        } else {
+            buf[front_port] = 'X';
+        }
     }
 
     buf[front_port] = '\n';
@@ -1836,7 +2160,7 @@ static ssize_t sff_power_show(struct swps_kobj_t *swps_kobj, struct swps_attribu
 }
 
 
-static ssize_t rev4_full_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+static ssize_t rev4_quick_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                const char *buf, size_t count)
 {
     int ret = 0;
@@ -1849,55 +2173,31 @@ static ssize_t rev4_full_store(struct swps_kobj_t *swps_kobj, struct swps_attrib
         return ret;
     }
     en = ((val) ? true : false);
-    qsfp_dd_rev4_full_set(sff_obj, en);
+    qsfp_dd_rev4_quick_set(sff_obj, en);
     return count;
 }
-static ssize_t rev4_full_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+static ssize_t rev4_quick_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                               char *buf)
 {
     bool en = false;
     struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
 
-    en = qsfp_dd_rev4_full_get(sff_obj);
+    en = qsfp_dd_rev4_quick_get(sff_obj);
     return scnprintf(buf, BUF_SIZE, "%d\n", en);
 }
-#if 0  /*<TBD>*/
-static ssize_t sff_debug_store(struct swps_kobj_t *sff_kobj, struct swps_attribute *attr,
-                               const char *buf, size_t count)
-{
-    int err_code = -1;
-    struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
-    int type = sff_type_get(sff_obj);
-    err_code = debug_eeprom_access(sff_obj, type, buf, count);
-
-    if(err_code < 0) {
-        return err_code;
-    }
-    return count;
-}
-
-static ssize_t sff_debug_show(struct swps_kobj_t *sff_kobj, struct swps_attribute *attr,
-                              char *buf)
-{
-    int cnt = 0;
-    char eeprom_access_str[] = "/*eeprom access*/";
-    char sfp_set_str[] = "set 0x50 offset data";
-    char sfp_get_str[] = "get 0x50 offset data_len";
-    char qsfp_set_str[] = "set page offset data";
-    char qsfp_get_str[] = "get page offset data_len";
-
-    cnt += snprintf(buf, BUF_SIZE - cnt, "%s\n%s\n%s\n%s\n%s\n",
-                    eeprom_access_str, sfp_set_str, sfp_get_str, qsfp_set_str, qsfp_get_str);
-    return cnt;
-}
-#endif
 static ssize_t gpio_mux_reset_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                    char *buf)
 {
     int val = 0;
+    int ret = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
-    val = io_dev_mux_reset_get(card->lc_id);
+    struct lc_func_t *lc_func = card->mgr->lc_func;
+
+    check_pfunc(lc_func->mux_reset_get);
+    if ((ret = lc_func->mux_reset_get(card->lc_id, &val)) < 0) {
+        return ret;
+    }
 
     return scnprintf(buf, BUF_SIZE, "%d\n", val);
 }
@@ -1908,12 +2208,15 @@ static ssize_t gpio_mux_reset_store(struct swps_kobj_t *swps_kobj, struct swps_a
     int val = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     struct lc_obj_t *card = sff_to_lc(sff);
+    struct lc_func_t *lc_func = card->mgr->lc_func;
 
     ret = sscanf_to_int(buf, &val);
     if(ret < 0) {
         return ret;
     }
-    if((ret = io_dev_mux_reset(card->lc_id, val)) < 0) {
+    
+    check_pfunc(lc_func->mux_reset_set);
+    if((ret = lc_func->mux_reset_set(card->lc_id, val)) < 0) {
         return ret;
     }
     if (val) {
@@ -2060,7 +2363,7 @@ static ssize_t sff_prs_all_show(struct swps_kobj_t *swps_kobj, struct swps_attri
     int port = 0;
     struct sff_mgr_t *sff = swps_kobj->sff_obj->mgr;
     int port_num = sff->valid_port_num;
-
+    
     if ((ret = sff_prs_bitmap_get_external(sff, &front_port_prs)) < 0) {
         return ret;
     }
@@ -2095,6 +2398,49 @@ static ssize_t swps_polling_store(struct swps_kobj_t *swps_kobj, struct swps_att
 
     return count;
 }
+
+static ssize_t sff_apsel_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                  const char *buf, size_t count)
+{
+    int ret = 0;
+    int apsel = 0;
+    struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
+    ret = sscanf_to_int(buf, &apsel);
+    
+    if(ret < 0) {
+        return ret;
+    }
+    if ((ret = qsfp_dd_apsel_apply(sff_obj, apsel)) < 0) {
+        return ret;
+    }
+
+    return count;
+}
+static ssize_t sff_apsel_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                   char *buf)
+{
+    int apsel = 0;
+    struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
+
+    apsel = qsfp_dd_apsel_get(sff_obj);
+
+    return scnprintf(buf, BUF_SIZE, "%d\n", apsel);
+}
+
+static ssize_t sff_intr_flag_store(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
+                                  const char *buf, size_t count)
+{
+    struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
+    
+    if (!match(buf, CLEAR_CMD)) {
+        return -EINVAL; 
+    } 
+    check_pfunc(sff_obj->func_tbl->intr_flag_clear);
+    sff_obj->func_tbl->intr_flag_clear(sff_obj);
+
+    return count;
+}
+
 static ssize_t swps_polling_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                                  char *buf)
 {
@@ -2140,13 +2486,15 @@ static ssize_t sff_page_show(struct swps_kobj_t *swps_kobj, struct swps_attribut
 static ssize_t sff_page_sel_lock_show(struct swps_kobj_t *swps_kobj, struct swps_attribute *attr,
                              char *buf)
 {
-    int ret = 0;
     u8 lock = 0;
     struct sff_obj_t *sff_obj = swps_kobj->sff_obj;
     
     lock = (page_sel_is_locked(sff_obj) ? 1 : 0);
     return scnprintf(buf, BUF_SIZE, "%d\n", lock);
 }
+
+static struct swps_attribute lc_fsm_st_attr =
+    __ATTR(fsm_st, S_IRUGO, lc_fsm_st_show, NULL);
 
 static struct swps_attribute sff_port_num_attr =
     __ATTR(port_num, S_IRUGO, sff_port_num_show, NULL);
@@ -2176,6 +2524,12 @@ static struct swps_attribute sff_reset_attr =
     __ATTR(reset, S_IWUSR|S_IRUGO, sff_reset_show, sff_reset_store);
 static struct swps_attribute sff_reset_all_attr =
     __ATTR(reset, S_IWUSR|S_IRUGO, sff_reset_all_show, sff_reset_all_store);
+
+static struct swps_attribute sff_lpmode_all_attr =
+    __ATTR(lpmode, S_IWUSR|S_IRUGO, sff_lpmode_all_show, sff_lpmode_all_store);
+
+static struct swps_attribute sff_power_all_attr =
+    __ATTR(power, S_IWUSR|S_IRUGO, sff_power_all_show, sff_power_all_store);
 
 static struct swps_attribute sff_power_attr =
     __ATTR(power, S_IWUSR|S_IRUGO, sff_power_show, sff_power_store);
@@ -2236,10 +2590,7 @@ static struct swps_attribute sff_temperature_attr =
 
 static struct swps_attribute sff_voltage_attr =
     __ATTR(voltage, S_IRUGO, voltage_show, NULL);
-#if 0
-static struct swps_attribute sff_debug_attr =
-    __ATTR(debug, S_IWUSR|S_IRUGO, sff_debug_show, sff_debug_store);
-#endif
+
 static struct swps_attribute sff_eeprom_dump_attr =
     __ATTR(eeprom_dump, S_IRUGO, sff_eeprom_dump_show, NULL);
 static struct swps_attribute sff_page_attr =
@@ -2251,12 +2602,18 @@ static struct swps_attribute sff_module_st_attr =
 static struct swps_attribute sff_active_ctrl_set_attr =
     __ATTR(active_ctrl_set, S_IRUGO, active_ctrl_set_show, NULL);
 
+static struct swps_attribute sff_apsel_attr =
+    __ATTR(apsel, S_IWUSR|S_IRUGO, sff_apsel_show, sff_apsel_store);
+
+static struct swps_attribute sff_intr_flag_attr =
+    __ATTR(intr_flag, S_IWUSR|S_IRUGO, sff_intr_flag_show, sff_intr_flag_store);
+
 static struct swps_attribute mux_reset_attr =
     __ATTR(mux_reset, S_IWUSR|S_IRUGO, gpio_mux_reset_show, gpio_mux_reset_store);
 static struct swps_attribute swps_version_attr =
     __ATTR(swps_version, S_IRUGO, swps_version_show, NULL);
 static struct swps_attribute lc_prs_attr =
-    __ATTR(card_prs, S_IWUSR|S_IRUGO, lc_prs_show, lc_prs_store);
+    __ATTR(card_prs, S_IRUGO, lc_prs_show, NULL);
 static struct swps_attribute lc_temp_attr =
     __ATTR(temp, S_IWUSR|S_IRUGO, lc_temp_show, lc_temp_store);
 static struct swps_attribute lc_power_ready_attr =
@@ -2265,8 +2622,8 @@ static struct swps_attribute lc_phy_ready_attr =
     __ATTR(phy_ready, S_IWUSR|S_IRUGO, lc_phy_ready_show, lc_phy_ready_store);
 static struct swps_attribute lc_type_attr =
     __ATTR(type, S_IRUGO, lc_type_show, NULL);
-static struct swps_attribute rev4_full_attr =
-    __ATTR(rev4_full, S_IWUSR|S_IRUGO, rev4_full_show, rev4_full_store);
+static struct swps_attribute rev4_quick_attr =
+    __ATTR(rev4_quick, S_IWUSR|S_IRUGO, rev4_quick_show, rev4_quick_store);
 static struct swps_attribute log_level_attr =
     __ATTR(log_level, S_IWUSR|S_IRUGO, log_level_show, log_level_store);
 static struct swps_attribute pltfm_name_attr =
@@ -2299,7 +2656,6 @@ static struct attribute *sfp_attributes[] = {
     /*transceiver identified info attribute*/
     &sff_transvr_type_attr.attr,
     &sff_fsm_st_attr.attr,
-    //&sff_debug_attr.attr,
     //&sff_eeprom_dump_attr.attr,
     NULL
 
@@ -2338,7 +2694,6 @@ static struct attribute *qsfp_attributes[] = {
     /*transceiver identified info attribute*/
     &sff_transvr_type_attr.attr,
     &sff_fsm_st_attr.attr,
-    //&sff_debug_attr.attr,
     &sff_eeprom_dump_attr.attr,
     &sff_page_attr.attr,
     NULL
@@ -2372,14 +2727,14 @@ static struct attribute *qsfp_dd_attributes[] = {
     /*transceiver identified info attribute*/
     //&sff_transvr_type_attr.attr,
     &sff_fsm_st_attr.attr,
-    //&sff_debug_attr.attr,
     &sff_eeprom_dump_attr.attr,
     &sff_page_attr.attr,
     &sff_page_sel_lock_attr.attr,
-    //&sff_app_advert_field_dump_attr.attr,
     &sff_module_st_attr.attr,
-    &rev4_full_attr.attr,
+    &rev4_quick_attr.attr,
     &sff_active_ctrl_set_attr.attr,
+    &sff_apsel_attr.attr,
+    &sff_intr_flag_attr.attr,
     NULL
 };
 static struct attribute_group qsfp_dd_group = {
@@ -2392,6 +2747,8 @@ static struct attribute *sff_common_attributes[] = {
     &sff_int_flag_monitor_attr.attr,
     &sff_port_num_attr.attr,
     &sff_reset_all_attr.attr,
+    &sff_lpmode_all_attr.attr,
+    &sff_power_all_attr.attr,
     NULL
 };
 static struct attribute_group sff_common_group = {
@@ -2415,6 +2772,7 @@ static struct attribute *lc_attributes[] = {
     &lc_power_ready_attr.attr,
     &lc_phy_ready_attr.attr,
     &lc_type_attr.attr,
+    &lc_fsm_st_attr.attr,
     NULL
 };
 static struct attribute_group lc_group = {
@@ -2518,13 +2876,18 @@ static int sff_objs_create(struct sff_mgr_t *sff, int size)
 
     struct sff_obj_t *sff_obj = NULL;
     int port = 0;
+    struct lc_obj_t *card = sff_to_lc(sff);
+    
     sff_obj = kzalloc(sizeof(struct sff_obj_t) * size, GFP_KERNEL);
     if(!p_valid(sff_obj)) {
         return -ENOMEM;
     }
-    /*link sff objs to their container sff*/
     for (port = 0; port < size; port++) {
+    /*link sff objs to their container sff*/
         sff_obj[port].mgr = sff;
+    /*assign lc_id to corresponding sff_obj for fast access*/    
+        sff_obj[port].lc_id = card->lc_id; 
+        sff_obj[port].lc_name = card->name; 
     }
     sff->obj = sff_obj;
     
@@ -2610,15 +2973,23 @@ static void lc_objs_init(struct lc_t *card)
         obj->lc_id = i;
         obj->name = card_name_str[i];
         obj->prs = 0;
+        obj->wait_stable_cnt = 0;
+        obj->over_temp_cnt = 0;
         obj->st = LC_FSM_ST_IDLE;
         obj->power_ready = false;
         obj->is_phy_ready = true;
-        obj->phy_ready_bitmap = 0;
+        obj->phy_ready_bitmap = 0xff;
+        obj->ej_released = false;
+        obj->prs_locked = false;
+        obj->prs_locked_cnt = 0;
+        obj->posi_st = LC_POSI_INIT_ST;
     }
 }
 static int lc_kobj_common_create(struct lc_t *card)
 {
-    card->common_kobj = swps_kobj_add("common", &swpsKset->kobj, &lc_common_group);
+    if (!p_valid(card->common_kobj)) {
+        card->common_kobj = swps_kobj_add("common", &swpsKset->kobj, &lc_common_group);
+    }
     if(!p_valid(card->common_kobj)) {
         return -EBADRQC;
     }
@@ -2629,13 +3000,13 @@ static int lc_kobj_common_create(struct lc_t *card)
 }
 static void polling_task_1U(void)
 {
-    io_dev_hdlr();
+    lcMgr.lc_func->dev_hdlr();
     lc_fsm_run_1U(&lcMgr);
-
+#if 0
     if (!i2c_bus_is_alive(&lcMgr.obj[0])) {
         i2c_bus_recovery(&lcMgr.obj[0]);
     }
-    
+#endif    
     io_no_init_handler(&lcMgr);
 }
 static void polling_task_4U(void)
@@ -2645,8 +3016,8 @@ static void polling_task_4U(void)
      *lc_prs_scan(self);
      * lc_fsm_run_4U(&lcMgr);
      *  io_no_init_handler(&lcMgr);*/
-
-    io_dev_hdlr();
+    lcMgr.lc_func->dev_hdlr();
+   // io_dev_hdlr();
     lc_prs_scan(&lcMgr);
     lc_fsm_run_4U(&lcMgr);
     io_no_init_handler(&lcMgr);
@@ -2693,7 +3064,12 @@ static int lc_func_load(struct lc_t *obj)
 }
 static int lc_init(struct lc_t *card, int lc_num, int card_max_port_num)
 {
+    /*init priv parameter*/
     card->lc_num = lc_num;
+    card->lc_prs = 0;
+    card->ej_r = 0;
+    card->ej_l = 0;
+    card->lc_sys_ready = 0;
     if (lc_objs_create(card) < 0) {
         goto exit_err;
     }
@@ -2797,8 +3173,9 @@ static int sff_kobj_add(struct sff_obj_t *sff_obj)
     }
     card = sff_to_lc(sff_obj->mgr);
     mgr_kobj = sff_obj->mgr->mgr_kobj;
-    sff_obj->kobj = swps_kobj_add(sff_obj->name, &(mgr_kobj->kobj), attr_group);
-
+    if (!p_valid(sff_obj->kobj)) {
+        sff_obj->kobj = swps_kobj_add(sff_obj->name, &(mgr_kobj->kobj), attr_group);
+    }
     if(!p_valid(sff_obj->kobj)) {
         return -EBADRQC;
     }
@@ -2842,8 +3219,9 @@ static int lc_kobj_init_create(struct lc_obj_t *card)
     if (TYPE_4U == lc_num) {
         attr_group = &lc_group;
     }
-
-    card->card_kobj = swps_kobj_add(card->name, &swpsKset->kobj, attr_group);
+    if (!p_valid(card->card_kobj)) {
+        card->card_kobj = swps_kobj_add(card->name, &swpsKset->kobj, attr_group);
+    }
     if(!p_valid(card->card_kobj)) {
         return -EBADRQC;
     }
@@ -2854,15 +3232,19 @@ static int lc_kobj_init_create(struct lc_obj_t *card)
 }
 static int lc_sff_mgr_kobj_create(struct lc_obj_t *card)
 {
-    int ret = 0;
+#if !defined (DYNAMIC_SFF_KOBJ)
     struct sff_obj_t *sff_obj = NULL;
     int port = 0;
     int port_num = card->sff.valid_port_num;
+    int ret = 0;
+#endif    
     if(!p_valid(card->card_kobj)) {
         return -EBADRQC;
     }
-
-    card->sff.mgr_kobj = swps_kobj_add("sff", &(card->card_kobj->kobj), &sff_common_group);
+    
+    if(!p_valid(card->sff.mgr_kobj)) {
+        card->sff.mgr_kobj = swps_kobj_add("sff", &(card->card_kobj->kobj), &sff_common_group);
+    }
     if(!p_valid(card->sff.mgr_kobj)) {
         return -EBADRQC;
     }
@@ -2903,20 +3285,15 @@ static void lc_sff_kobjs_destroy(struct lc_t *card)
 }
 static void _lc_kobj_destroy(struct lc_obj_t *obj)
 {
-    int i = 0;
-
     if (p_valid(obj->card_kobj)) {
         swps_kobj_del(&(obj->card_kobj));
     }
 }
 static void _lc_sff_mgr_kobj_destroy(struct lc_obj_t *obj)
 {
-    int i = 0;
-
     if(p_valid(obj->sff.mgr_kobj)) {
         swps_kobj_del(&(obj->sff.mgr_kobj));
     }
-
 }
 static void lc_kobj_destroy(struct lc_t *card)
 {
@@ -2929,7 +3306,6 @@ static void lc_kobj_destroy(struct lc_t *card)
         _lc_sff_mgr_kobj_destroy(obj);
         _lc_kobj_destroy(obj);
     }
-
 }
 static void lc_common_kobj_destroy(struct lc_t *card)
 {
@@ -2939,7 +3315,7 @@ static void lc_common_kobj_destroy(struct lc_t *card)
 }
 static void transvr_insert(struct sff_obj_t *sff_obj)
 {
-    SWPS_LOG_DBG("into %s\n", sff_obj->name);
+    SWPS_LOG_INFO("into %s\n", sff_obj->name);
     sff_fsm_st_set(sff_obj, SFF_FSM_ST_INSERTED);
     transvr_type_set(sff_obj, TRANSVR_CLASS_UNKNOWN);
 #if defined (DYNAMIC_SFF_KOBJ)
@@ -2948,7 +3324,7 @@ static void transvr_insert(struct sff_obj_t *sff_obj)
 }
 static void transvr_remove(struct sff_obj_t *sff_obj)
 {
-    SWPS_LOG_DBG("from %s\n", sff_obj->name);
+    SWPS_LOG_INFO("from %s\n", sff_obj->name);
     sff_fsm_st_set(sff_obj, SFF_FSM_ST_REMOVED);
     transvr_type_set(sff_obj, TRANSVR_CLASS_UNKNOWN);
 #if defined (DYNAMIC_SFF_KOBJ)
@@ -3028,7 +3404,7 @@ inline sff_fsm_state_t sff_fsm_st_get(struct sff_obj_t *sff_obj)
 inline void sff_fsm_st_set(struct sff_obj_t *sff_obj, sff_fsm_state_t st)
 {
     sff_fsm_state_t old_st = sff_obj->fsm.st;
-    sff_fsm_state_change_process(sff_obj, old_st, st);
+    sff_fsm_st_chg_process(sff_obj, old_st, st);
     sff_obj->fsm.st = st;
 }
 /*set target count to new fsm state*/
@@ -3106,7 +3482,8 @@ int sff_power_set(struct sff_obj_t *sff_obj, u8 value)
 {
     int ret = 0;
     struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
-
+    
+    check_pfunc(lc->mgr->sff_io_drv->power_set);
     if ((ret = lc->mgr->sff_io_drv->power_set(lc->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
@@ -3118,6 +3495,7 @@ int sff_power_get(struct sff_obj_t *sff_obj, u8 *value)
     int ret = 0;
     struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
+    check_pfunc(lc->mgr->sff_io_drv->power_get);
     if ((ret = lc->mgr->sff_io_drv->power_get(lc->lc_id, sff_obj->port, value)) < 0) {
         return ret;
     }
@@ -3161,7 +3539,7 @@ int dummy_mode_sel_get(struct sff_obj_t *sff_obj, u8 *value)
     return -ENOSYS;
 
 }
-void sff_fsm_state_change_process(struct sff_obj_t *sff_obj,
+void sff_fsm_st_chg_process(struct sff_obj_t *sff_obj,
                                   sff_fsm_state_t cur_st,
                                   sff_fsm_state_t next_st)
 {
@@ -3170,9 +3548,11 @@ void sff_fsm_state_change_process(struct sff_obj_t *sff_obj,
         sff_fsm_delay_cnt_reset(sff_obj, next_st);
         //SWPS_LOG_DBG("port:%d st change:%d -> %d\n",
         //            port, st,sff_fsm_st_get(sff_obj));
-        SWPS_LOG_INFO("%s st change:%s -> %s\n",
-                      sff_obj->name, sff_fsm_st_str[cur_st],
-                      sff_fsm_st_str[next_st]);
+        if (p_valid(sff_obj->lc_name) && p_valid(sff_obj->name)) {
+            SWPS_LOG_DBG("%s %s st change:%s -> %s\n",
+                        sff_obj->lc_name, sff_obj->name, sff_fsm_st_str[cur_st],
+                        sff_fsm_st_str[next_st]);
+        }
     }
 }
 /*io_no_init is special functions when remove and re insert modules don't do sff io control to avoid cause port flap*/
@@ -3278,11 +3658,6 @@ static int sff_fsm_run(struct sff_mgr_t *sff)
     return 0;
 }
 
-static int lc_is_power_ready(struct lc_obj_t *card, bool *is_ready)
-{
-    *is_ready = card->power_ready;
-    return 0;
-}
 static int lc_phy_ready(struct lc_obj_t *card, bool *is_ready)
 {
     unsigned long bitmap = 0;
@@ -3293,69 +3668,6 @@ static int lc_phy_ready(struct lc_obj_t *card, bool *is_ready)
     check_pfunc(card->mgr->lc_func->phy_ready);
     card->mgr->lc_func->phy_ready(bitmap, is_ready);
 
-    return 0;
-}
-#if 0
-static int lc_is_over_temp(struct lc_obj_t *card, bool *over_temp)
-{
-    bool val = false;
-    int temp = 0;
-    int ret = 0;
-
-    ret = lc_temp_get(card, &temp);
-    if (ret < 0) {
-        return ret;
-    }
-    if (temp >= LINE_CARD_TEMP_HIGH) {
-
-        if (card->temp_check_cnt++ >= TEMP_CHECK_MAX) {
-            card->temp_check_cnt = TEMP_CHECK_MAX;
-            val = true;
-            SWPS_LOG_DBG("card:%d cnt:%d\n", card->lc_id, card->temp_check_cnt);
-        }
-    } else {
-
-        card->temp_check_cnt = 0;
-    }
-    if (card->temp_check_cnt < TEMP_CHECK_MAX) {
-        ret = TEMP_IS_IN_CHECK;
-    }
-    *over_temp = val;
-
-    return ret;
-}
-static int lc_is_normal_temp(struct lc_obj_t *card, bool *is_normal)
-{
-    bool val = false;
-    int temp = 0;
-    int ret = 0;
-
-    ret = lc_temp_get(card, &temp);
-    if (ret < 0) {
-        return ret;
-    }
-    if (temp <= LINE_CARD_TEMP_LOW) {
-
-        if (card->temp_check_cnt++ >= TEMP_CHECK_MAX) {
-            card->temp_check_cnt = TEMP_CHECK_MAX;
-            val = true;
-            SWPS_LOG_DBG("card:%d cnt:%d\n", card->lc_id, card->temp_check_cnt);
-        }
-    } else {
-
-        card->temp_check_cnt = 0;
-    }
-    if (card->temp_check_cnt < TEMP_CHECK_MAX) {
-        ret = TEMP_IS_IN_CHECK;
-    }
-    *is_normal = val;
-
-    return ret;
-}
-#endif
-static int lc_power_set(struct lc_obj_t *card, bool on)
-{
-    card->power_ready = on;
     return 0;
 }
 
@@ -3427,6 +3739,16 @@ static bool is_skip_io_ctrl(void)
 {
     return (io_no_init ? true : false);
 }
+
+static void lc_sys_ready_set(struct lc_obj_t *card, bool ready)
+{
+    unsigned long *sys_ready = &(card->mgr->lc_sys_ready);
+    if (ready) {
+        set_bit(card->lc_id, sys_ready);
+    } else {
+        clear_bit(card->lc_id, sys_ready);
+    }
+}    
 static int _lc_fsm_run_4U(struct lc_obj_t *card)
 {
     lc_fsm_st_t st = LC_FSM_ST_IDLE;
@@ -3450,22 +3772,42 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
     case LC_FSM_ST_IDLE:
         break;
     case LC_FSM_ST_REMOVE:
+        
         sff_kobjs_destroy(&card->sff);
         _lc_sff_mgr_kobj_destroy(card);
         _lc_kobj_destroy(card);
-        lc_fsm_st_set(card, LC_FSM_ST_IDLE);
-        /*reset assert lc here
-         */
-
+        #if 0
         check_pfunc(lc_func->reset_set);
         if ((ret = lc_func->reset_set(card->lc_id, 0)) < 0) {
             break;
+            check_pfunc(lc_func->led_set);
+            if ((ret = lc_func->led_set(card->lc_id, LC_LED_CTRL_OFF)) < 0) {
+                break;
+            }
         }
-
+        #endif
+        check_pfunc(lc_func->power_set);
+        if ((ret = lc_func->power_set(card->lc_id, false)) < 0) {
+            SWPS_LOG_ERR("%s turn off power fail\n", card->name);
+            /*<TBD> turn off power will fail at this momonent*/ 
+            //break;
+        }
+        lc_sys_ready_set(card, false); 
+        lc_fsm_st_set(card, LC_FSM_ST_IDLE);
         break;
 
     case LC_FSM_ST_INSERT:
-        
+
+        lc_fsm_st_set(card, LC_FSM_ST_WAIT_STABLE);
+        card->wait_stable_cnt = 0;
+        break;
+    case LC_FSM_ST_WAIT_STABLE:    
+        card->wait_stable_cnt++;
+        if (card->wait_stable_cnt >= LC_INSERT_WAIT_STABLE_NUM) {
+            card->wait_stable_cnt = 0;
+        } else {
+            break;
+        }
         check_pfunc(lc_func->type_get);
         if ((ret = lc_func->type_get(card->lc_id, &type)) < 0) {
             card->type = LC_UNKNOWN_TYPE; 
@@ -3484,8 +3826,26 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
         if (ret < 0) {
             break;
         }
+        /*init sw structure*/
+        port_info = lc_port_info_get(card, card->type);
+        if (!p_valid(port_info)) {
+            ret = -EBADRQC;
+            lc_fsm_st_set(card, LC_FSM_ST_FAULT);
+            break;
+        }
+        sff_data_init(&card->sff, port_info->size);
+        sff_func_init(&card->sff);
+        if(sff_objs_init(&(card->sff), port_info) < 0) {
+            SWPS_LOG_ERR("sff_objs_init fail\n");
+            break;;
+        }
+       
         if (is_skip_io_ctrl()) {
             lc_fsm_st_set(card, LC_FSM_ST_INIT);
+            break;
+        }
+        check_pfunc(lc_func->reset_set);
+        if ((ret = lc_func->reset_set(card->lc_id, 1)) < 0) {
             break;
         }
 
@@ -3513,39 +3873,32 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
         if (is_power_ready) {
             /*reset deassert lc here
             */
+#if 0
             check_pfunc(lc_func->reset_set);
             if ((ret = lc_func->reset_set(card->lc_id, 1)) < 0) {
                 break;
             }
-
+            msleep(EXTERNAL_RST_DELAY);
+                        /*de aasert phy reset*/
+#endif     
+            check_pfunc(lc_func->phy_reset_set);
+            if ((ret = lc_func->phy_reset_set(card->lc_id, 1)) < 0) {
+                break;
+            }
             lc_fsm_st_set(card, LC_FSM_ST_INIT);
         }
         break;
     
     case LC_FSM_ST_INIT:
+        /*the follow status is used to notify phy driver the lc sys(power and phy reset) is ready*/
+        lc_sys_ready_set(card, true); 
         /* fsm init*/
-        SWPS_LOG_INFO("st:%d\n", st);
         
         check_pfunc(lc_func->cpld_init);
         if ((ret = lc_func->cpld_init(card->lc_id)) < 0) {
             break;
         }
-        #if 0
-        mux_reset_ch_resel_byLC(card);
-        #endif
-        
-        port_info = lc_port_info_get(card, card->type);
-        if (!p_valid(port_info)) {
-            ret = -EBADRQC;
-            lc_fsm_st_set(card, LC_FSM_ST_FAULT);
-            break;
-        }
-        sff_data_init(&card->sff, port_info->size);
-        sff_func_init(&card->sff);
-        if(sff_objs_init(&(card->sff), port_info) < 0) {
-            SWPS_LOG_ERR("sff_objs_init fail\n");
-            break;;
-        }
+        //mux_reset_ch_resel_byLC(card);
         ret = lc_sff_mgr_kobj_create(card);
         if (ret < 0) {
             break;
@@ -3563,10 +3916,18 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
         if (is_phy_ready) {
             check_pfunc(lc_func->led_set);
             if ((ret = lc_func->led_set(card->lc_id, LC_LED_CTRL_GREEN_ON)) < 0) {
+                
+                SWPS_LOG_INFO("%s phy ready\n", card->name);
                 break;
             }
+#if 1
+            if ((ret = lc_dev_led_boot_amber_set(card->lc_id, false)) < 0) {
+                break;
+            }
+#endif            
         }
         lc_fsm_st_set(card, LC_FSM_ST_READY);
+        SWPS_LOG_INFO("%s becomes ready\n", card->name);
         break;
    
     case LC_FSM_ST_READY:
@@ -3575,6 +3936,7 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
         if (ret < 0) {
             break;
         }
+        
         if (!is_phy_ready) {
             
             check_pfunc(lc_func->led_set);
@@ -3583,63 +3945,80 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
             }
             //lc_fsm_st_set(card, LC_FSM_ST_FAULT);
         } else {
+            
             check_pfunc(lc_func->led_set);
             if ((ret = lc_func->led_set(card->lc_id, LC_LED_CTRL_GREEN_ON)) < 0) {
                 break;
             }
 
         }
-
-        check_pfunc(lc_func->over_temp_asserted);
-        if ((ret = lc_func->over_temp_asserted(card->lc_id, &asserted)) < 0) {
+        
+        if ((ret = lc_sff_intr_hdlr_byCard(card->lc_id)) < 0) {
             break;
         }
-        if (asserted) {
-            check_pfunc(lc_func->power_set);
-            if ((ret = lc_func->power_set(card->lc_id, false)) < 0) {
-                break;
-            }
-
-            /*hold lc reset low here : lc_dev_reset_set(lc_id, 0)*/
-            check_pfunc(lc_func->reset_set);
-            if ((ret = lc_func->reset_set(card->lc_id, 0)) < 0) {
-                break;
-            }
-            
-            sff_kobjs_destroy(&card->sff);
-            _lc_sff_mgr_kobj_destroy(card);
-            lc_fsm_st_set(card, LC_FSM_ST_THERMAL_TRIP);
-            break;
-        }
-
+        
         if ((ret = card->sff.prs_scan(&card->sff)) < 0) {
             break;
         }
+        
         if ((ret = sff_fsm_run(&card->sff)) < 0) {
             break;
         }
+#if 0 
         if (!i2c_bus_is_alive(card)) {
-            i2c_bus_recovery(card);
+            i2c_bus_recovery_v2(card);
         }
+#endif        
+        if (card->over_temp_cnt++ >= LC_OVER_TEMP_NUM) {
+            card->over_temp_cnt = 0;
+
+            check_pfunc(lc_func->over_temp_asserted);
+            if ((ret = lc_func->over_temp_asserted(card->lc_id, &asserted)) < 0) {
+                break;
+            }
+            if (asserted) {
+                SWPS_LOG_ERR("%s thermal trip!\n", card->name);
+                check_pfunc(lc_func->power_set);
+                if ((ret = lc_func->power_set(card->lc_id, false)) < 0) {
+                    break;
+                }
+
+                sff_kobjs_destroy(&card->sff);
+                sff_data_reset(&card->sff);
+                _lc_sff_mgr_kobj_destroy(card);
+                lc_fsm_st_set(card, LC_FSM_ST_THERMAL_TRIP);
+                break;
+            }
+        } 
+        if ((ret = lc_sff_intr_hdlr_byCard(card->lc_id)) < 0) {
+            break;
+        }
+        
+        if ((ret = card->sff.prs_scan(&card->sff)) < 0) {
+            break;
+        }
+        
         io_no_init_handler_by_card(card);
 
         break;
     case LC_FSM_ST_THERMAL_TRIP:
         /*if over-temp warning is lifted, restart power on sequence*/
         /*temp check*/
-        check_pfunc(lc_func->over_temp_deasserted);
-        if ((ret = lc_func->over_temp_deasserted(card->lc_id, &deasserted)) < 0) {
-            break;
+        if (card->over_temp_cnt++ >= 10) {
+            card->over_temp_cnt = 0;
+            check_pfunc(lc_func->over_temp_deasserted);
+            if ((ret = lc_func->over_temp_deasserted(card->lc_id, &deasserted)) < 0) {
+                break;
+            }
+            if (deasserted) {
+                lc_fsm_st_set(card, LC_FSM_ST_POWER_ON);
+            }
         }
-        if (deasserted) {
-            lc_fsm_st_set(card, LC_FSM_ST_POWER_ON);
-        }
-
         break;
     case LC_FSM_ST_UNSUPPORTED:
         break;
     case LC_FSM_ST_FAULT:
-        lc_fsm_st_set(card, LC_FSM_ST_PHY_CHECK);
+        //lc_fsm_st_set(card, LC_FSM_ST_PHY_CHECK);
         break;
     default:
         break;
@@ -3653,19 +4032,10 @@ static int _lc_fsm_run_4U(struct lc_obj_t *card)
 static int lc_fsm_run_1U(struct lc_t *card)
 {
     int ret = 0;
-    int lc_num = card->lc_num;
     ret = _lc_fsm_run_1U(&card->obj[0]);
     if (ret < 0) {
         return ret;
     }
-    return 0;
-}
-static int mux_reset_1U(struct lc_obj_t *obj)
-{
-    return 0;
-}
-static int mux_reset_4U(struct lc_obj_t *obj)
-{
     return 0;
 }
 /*i2c bus check and recovery functons*/
@@ -3681,20 +4051,18 @@ static bool i2c_bus_is_alive(struct lc_obj_t *card)
 static void mux_reset_seq(struct lc_obj_t *card)
 {
     struct lc_func_t *lc_func = card->mgr->lc_func;
-    if (NULL == lc_func->mux_reset) {
+    if (NULL == lc_func->mux_reset_set) {
         SWPS_LOG_ERR("no function\n");
         return;
     }
 
-    lc_func->mux_reset(card->lc_id, 0);
+    lc_func->mux_reset_set(card->lc_id, 0);
     msleep(1);
-    lc_func->mux_reset(card->lc_id, 1);
+    lc_func->mux_reset_set(card->lc_id, 1);
 }
 static void bad_transvr_detect(struct lc_obj_t *card)
 {
-    int ret = 0;
     int port = 0;
-    u8 addr = SFF_EEPROM_I2C_ADDR;
     struct sff_obj_t *sff_obj = NULL;
     int port_num = card->sff.valid_port_num;
 
@@ -3746,6 +4114,234 @@ static void i2c_bus_recovery(struct lc_obj_t *card)
         SWPS_LOG_ERR("i2c bus recovery fail\n");
     }
 }
+#define MUX_NUM (4)
+#define MAX_ACC_SIZE (1023)
+struct mux_ch_t {
+    int i2c_ch;
+    int mux_ch;
+    bool is_fail;
+};
+#if 0
+int read_ufile(const char *path_t,
+                       char *buf,
+                                      size_t len)
+{
+    int err = 0;
+    struct file *fp;
+    mm_segment_t fs;
+    loff_t pos;
+
+    if (len >= MAX_ACC_SIZE) {
+    len = MAX_ACC_SIZE - 1;
+    }
+    fp = filp_open(path_t, O_RDONLY, S_IRUGO);
+    if (IS_ERR(fp)) {
+    SWPS_LOG_ERR("open path%s fail\n", path_t);
+    return -ENODEV;
+    }
+    fs = get_fs();
+    set_fs(KERNEL_DS);
+    pos = 0;
+    err = vfs_read(fp, buf, len, &pos);
+    if (err < 0) {
+    SWPS_LOG_ERR("%s: vfs_read failed.\n", __func__);
+    }
+    filp_close(fp, NULL);
+    set_fs(fs);
+    return err;
+}
+
+static int write_ufile(const char *path_t,
+                               char *buf,
+                                                      size_t len)
+{
+    int err = 0;
+    struct file *fp;
+    mm_segment_t fs;
+    loff_t pos;
+
+    if (len >= MAX_ACC_SIZE) {
+    len = MAX_ACC_SIZE - 1;
+    }
+    fp = filp_open(path_t, O_WRONLY, S_IWUSR | S_IRUGO);
+
+    if (IS_ERR(fp)) {
+    SWPS_LOG_ERR("open path%s fail\n", path_t);
+    return -ENODEV;
+    }
+    fs = get_fs();
+    set_fs(KERNEL_DS);
+    pos = 0;
+    err = vfs_write(fp, buf, len, &pos);
+    if (err < 0) {
+    SWPS_LOG_ERR("%s: vfs_write failed.\n", __func__);
+    }
+    filp_close(fp, NULL);
+    set_fs(fs);
+    return err;
+}
+
+int mux_is_fail(int i2c_ch, bool *is_fail)
+{
+    char path_t[100];
+    int ret = 0;
+    char reg[5];
+    int st = 0;
+
+    memset(path_t, 0, sizeof(path_t));
+    memset(reg, 0, sizeof(reg));
+
+    //snprintf(path_t, sizeof(path_t), "/sys/bus/i2c/devices/i2c-%d/device/%d-0072/current_master",
+    //i2c_ch, i2c_ch);
+    snprintf(path_t, sizeof(path_t), "/sys/bus/i2c/devices/i2c-%d/%d-0072/mux_fail",
+    i2c_ch, i2c_ch);
+
+    if ((ret = read_ufile(path_t, reg, sizeof(reg))) < 0) {
+        
+        return ret;
+    }
+
+    ret = sscanf_to_int(reg, &st);
+    if(ret < 0) {
+        return ret;
+    }
+    *is_fail = (st ? true:false);
+    return 0;
+}
+
+const int mux_i2c_ch_tbl[MUX_NUM] = {
+        85,
+        86,
+        87,
+        88
+};
+int mux_last_ch_get(int i2c_ch, int *mux_ch)
+{
+    char path_t[100];
+    int ret = 0;
+    char reg[5];
+    int st = 0;
+
+    memset(path_t, 0, sizeof(path_t));
+    memset(reg, 0, sizeof(reg));
+
+    //snprintf(path_t, sizeof(path_t), "/sys/bus/i2c/devices/i2c-%d/device/%d-0072/current_master",
+    //i2c_ch, i2c_ch);
+    snprintf(path_t, sizeof(path_t), "/sys/bus/i2c/devices/i2c-%d/%d-0072/current_channel",
+    i2c_ch, i2c_ch);
+
+    if ((ret = read_ufile(path_t, reg, sizeof(reg))) < 0) {
+        return ret;
+    }
+
+    ret = sscanf_to_int(reg, &st);
+    if(ret < 0) {
+        return ret;
+    }
+    *mux_ch = st;
+    return 0;
+
+}
+static int mux_ch_block(int i2c_ch, int mux_ch)
+{
+    char path_t[100];
+    int ret = 0;
+    char block[5];
+
+    memset(path_t, 0, sizeof(path_t));
+    memset(block, 0, sizeof(block));
+
+    snprintf(path_t, sizeof(path_t), "/sys/bus/i2c/devices/i2c-%d/%d-0072/block_channel",
+    i2c_ch, i2c_ch);
+
+    snprintf(block, sizeof(block), "%d",
+    mux_ch);
+
+    ret = write_ufile(path_t, block, sizeof(block));
+    if (ret < 0) {
+        SWPS_LOG_ERR("mux_ch_block fail i2c_ch:%d mux_ch:%d\n", i2c_ch, mux_ch);
+    }
+    return ret;
+}
+static int num_to_power_two(u8 num)
+{
+    int i = 0;
+    for (i = 0; i < 8; i++) {
+        
+        if (test_bit(i, (unsigned long *)&num)) {
+            break;
+        }
+    }
+    return i;
+}    
+static void failed_mux_detect(struct lc_obj_t *card)
+{
+    struct mux_ch_t mux[MUX_NUM];
+    int mux_ch = 0;
+    int mux_id = 0;
+    int ch = 0;
+    int port = 0;
+    bool is_fail = false;
+    struct sff_obj_t *sff_obj = NULL;
+    /*get last mux_ch of all the muxs*/
+    for (mux_id = 0; mux_id < MUX_NUM; mux_id++) {
+        mux[mux_id].i2c_ch = mux_i2c_ch_tbl[mux_id];
+    }
+
+    for (mux_id = 0; mux_id < MUX_NUM; mux_id++) {
+        
+        if (mux_is_fail(mux[mux_id].i2c_ch, &is_fail) < 0) {
+            
+            SWPS_LOG_ERR("mux_ch check:%d fail\n", mux_ch);
+            return;
+        }
+        if (is_fail) {
+            mux[mux_id].is_fail = true;
+            if (mux_last_ch_get(mux[mux_id].i2c_ch, &mux_ch) < 0) {
+                return;
+            } 
+            mux[mux_id].mux_ch = mux_ch;
+            /*print out info */
+            SWPS_LOG_ERR("mux_ch:%d fail\n", mux_ch);
+        }
+    }
+    /*set blocked ch to mux driver*/
+    for (mux_id = 0; mux_id < MUX_NUM; mux_id++) {
+#if 1
+        if (mux[mux_id].is_fail && mux[mux_id].mux_ch != 0) {
+            if (mux_ch_block(mux[mux_id].i2c_ch, mux[mux_id].mux_ch) < 0) {
+                return;
+            }
+            ch = num_to_power_two(mux[mux_id].mux_ch);
+            port = mux_id * 8 + ch;
+            if (port < 0 && port > card->sff.valid_port_num) {
+                SWPS_LOG_ERR("port out of range: %d\n", port);
+                return;
+            }
+            sff_obj = &(card->sff.obj[port]);
+            if (!p_valid(sff_obj)) {
+                SWPS_LOG_ERR("NULL ptr mux_id:%d ch:%d\n", mux_id, ch);
+                return;
+            }
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_ISOLATED);
+        }
+#endif        
+    }
+
+}
+static void i2c_bus_recovery_v2(struct lc_obj_t *card)
+{
+    mux_reset_seq(card);
+    failed_mux_detect(card);
+    SWPS_LOG_ERR("mux reset done\n");
+    if (i2c_bus_is_alive(card)) {
+        SWPS_LOG_ERR("i2c bus recovery done\n");
+    } else {
+        SWPS_LOG_ERR("i2c bus recovery fail\n");
+    }
+
+}
+#endif
 static int lc_fsm_run_4U(struct lc_t *card)
 {
     int i = 0;
@@ -3866,10 +4462,14 @@ static int port_info_table_load(void)
     }
     return 0;
 }
+inline static void sff_data_reset(struct sff_mgr_t *sff)
+{
+    sff->prs = 0;   
+}
 static void sff_data_init(struct sff_mgr_t *sff, int port_num)
 {
-    sff->prs = 0;
     sff->valid_port_num = port_num;
+    sff_data_reset(sff);
 }
 static void sff_func_init(struct sff_mgr_t *sff)
 {
@@ -3887,7 +4487,7 @@ static int drv_load(void)
         lcMgr.sff_io_drv = sff_io_drv_get_iodev();
     } else if (TYPE_4U == lc_num) {
         /*use sff_io_drv_get_lcdev after bring up*/
-        lcMgr.sff_io_drv = sff_io_drv_get_iodev();
+        lcMgr.sff_io_drv = sff_io_drv_get_lcdev();
     } else {
         /*print error*/
     }
@@ -3920,29 +4520,27 @@ static int __init swps_init(void)
     }
 
     if (lc_init(&lcMgr, pltfmInfo->lc_num, maxPortNum) < 0) {
-        goto exit_sff_kset_deinit;
+        goto exit_err;
     }
 
     if (lc_func_load(&lcMgr) < 0) {
-        goto exit_sff_kset_deinit;
+        goto exit_err;
     }
 
     if (lcMgr.lc_func->dev_init(pltfmInfo->id, io_no_init) < 0) {
-        goto exit_sff_kset_deinit;
+        goto exit_err;
         SWPS_LOG_ERR("dev_init fail\n");
     }
     if (drv_load() < 0) {
-        goto exit_sff_kset_deinit;
+        goto exit_err;
         SWPS_LOG_ERR("drv load fail\n");
     }
-
+    
     if(swps_polling_is_enabled()) {
         swps_polling_task_start();
     }
     SWPS_LOG_INFO("swps:%s  init ok\n", pltfmInfo->name);
     return 0;
-exit_sff_kset_deinit:
-    sff_kset_deinit();
 
 exit_err:
     return -EBADRQC;

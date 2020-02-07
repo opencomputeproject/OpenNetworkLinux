@@ -19,7 +19,7 @@
 #include <linux/delay.h>
 #include "sff_eeprom.h"
 #include "inv_def.h"
-#include "sff.h"
+#include "inv_swps.h"
 #include "eeprom_config/eeprom_config.h"
 
 /*
@@ -319,7 +319,7 @@ void sff_eeprom_port_num_set(int port_num)
 static int port_to_new_port(int lc_id, int port)
 {
     int new_port = 0;
-#if 0 /*enable it while bring up*/
+#if 1 /*enable it while bring up*/
     new_port = (lcMaxPortNum * lc_id) + port;
 #else 
     new_port = port;
@@ -481,8 +481,7 @@ static int _sff_eeprom_clients_init(struct sff_eeprom_t *eeprom,  struct eeprom_
     client->addr = SFF_EEPROM_I2C_ADDR;
 
     eeprom->i2c_client = client;
-    EEPROM_LOG_DBG("%s: i2c check ok port:%d\n", __FUNCTION__,
-                       eeprom->port);
+    EEPROM_LOG_DBG("ok i2c_ch:%d\n", config->i2c_ch);
     mutex_init(&(eeprom->lock));
     return 0;
 
@@ -500,12 +499,12 @@ static void sff_eeprom_clients_deinit(int size)
     }
     for (port = 0; port < port_num; port++) {
         client = sffEEprom[port].i2c_client;
-        if (client) {
-            if (client->adapter) {
+        if (p_valid(client)) {
+            if (p_valid(client->adapter)) {
                 i2c_put_adapter(client->adapter);
             }
         }
-
+        kfree(client);
     }
 }
 
@@ -591,11 +590,11 @@ int sff_eeprom_init(int platform_id)
     if (sff_eeprom_clients_create(eepromI2cTbl->size) < 0) {
         goto exit_kfree_obj;
     }
-
+#if 1
     if (sff_eeprom_clients_init(eepromI2cTbl) < 0) {
         goto exit_kfree_client;
     }
-
+#endif
     EEPROM_LOG_INFO("ok\n");
     return 0;
 

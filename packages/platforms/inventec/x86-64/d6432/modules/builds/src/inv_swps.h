@@ -1,8 +1,10 @@
-#ifndef __SFF_H
-#define __SFF_H
+#ifndef __SWPS_H
+#define __SWPS_H
 
 #include <linux/i2c.h>
 #include "sff_spec.h"
+#include "lc_dev.h"
+#include "io_dev.h"
 
 #define READBACK_CHECK
 #define DEBUG_LOG (1)
@@ -28,11 +30,14 @@
 //#define QSFP_INT_FLAG_SUPPORT
 #define EEPROM_HALF_SIZE (128)
 #define QSFP_INT_FLAG_SUPPORT
+#define PAGE_SEL_LOCK_NUM (20)
+#define CLEAR_CMD ("clear\n")
 
 #define bit_mask(bit) (1 << (bit))
 /*bit:start bit from rightmost , num: the num of bits what to be extracted*/
 #define bits_get(reg, bit, num) ((reg >> bit) & ((1 << num)-1))
 #define sff_to_lc(x) container_of(x, struct lc_obj_t, sff)
+
 #if 0
 #if (DEBUG_LOG == 1)
 #define SWPS_LOG_DEBUG(fmt, args...) \
@@ -125,6 +130,9 @@ enum LOG_LEVEL {
 #define I2C_RETRY_NUM    (3)
 #define I2C_RETRY_DELAY_MS (10)
 
+#define LC_INSERT_WAIT_STABLE_NUM (10)
+#define LC_OVER_TEMP_NUM (10)
+#define LC_PRS_LOCKED_NUM (5)
 
 typedef enum {
     SFP_TYPE = 0,
@@ -154,7 +162,12 @@ typedef enum {
     SOFT_RX_RATE_RS0 = 1 << 0,
     SOFT_TX_RATE_RS1 = 1 << 1,
 } rate_control_t;
-
+typedef enum {
+    SFF_IO_RST_TYPE,
+    SFF_IO_PWR_TYPE,
+    SFF_IO_LPMODE_TYPE,
+    SFF_IO_OUTPUT_TYPE_NUM    
+} sff_io_output_type_t;
 typedef enum {
     TX_EQ_TYPE,
     RX_EM_TYPE,
@@ -213,25 +226,13 @@ typedef enum {
     SFF_FSM_ST_END,
     SFF_FSM_ST_NUM,
 } sff_fsm_state_t;
+#define QSFP_DD_INT_LN_FLAG_NUM (19)
+#define QSFP_DD_INT_MODULE_FLAG_NUM (6)
 
-struct qsfp_dd_priv_data {
-    int lane_num;
-    u8 module_type;
-    union qsfp_dd_app_advert_fields fields[APSEL_NUM];
-    bool paging_supported;
-    bool rev4_full_en;
-    u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
-};
-
-struct qsfp_priv_data {
-    u8 lane_st[LN_STATUS_NUM];
-    u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
-    bool paging_supported;
-};
-
-union priv_data_t {
-    struct qsfp_dd_priv_data qsfp_dd;
-    struct qsfp_priv_data qsfp;
+struct intr_flag_t {
+    u8 reg;
+    u32 cnt;
+    bool chg;
 };
 
 struct swps_kobj_t {
@@ -257,8 +258,36 @@ struct qsfp_dd_fsm_func_t {
     int (*sw_control)(struct sff_obj_t *sff_obj);
     int (*module_ready_check)(struct sff_obj_t *sff_obj, bool *ready);
 };
+
+struct qsfp_dd_priv_data {
+    int lane_num;
+    u8 module_type;
+    union qsfp_dd_app_advert_fields fields[APSEL_NUM];
+    bool paging_supported;
+    bool rev4_quick_en;
+    u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
+    struct intr_flag_t intr_module_flag[QSFP_DD_INT_MODULE_FLAG_NUM];
+    struct intr_flag_t intr_ln_flag[QSFP_DD_INT_LN_FLAG_NUM];
+    u8 lane_st[LN_STATUS_NUM];
+    struct qsfp_dd_fsm_func_t *fsm_func;
+    int apsel;
+};
+
+struct qsfp_priv_data {
+    u8 lane_st[LN_STATUS_NUM];
+    u8 eeprom_cache[PAGE_NUM][EEPROM_SIZE];
+    bool paging_supported;
+};
+
+union priv_data_t {
+    struct qsfp_dd_priv_data qsfp_dd;
+    struct qsfp_priv_data qsfp;
+};
+
 struct sff_obj_t {
-    int port;  /*real port(ga) corresponding to hw connection , eeprom, cpld reg mapping..*/
+    int lc_id; /*duplicate lc_id from lc_obj_t lc_id for fast access*/
+    char *lc_name; /*duplicate lc_id from lc_obj_t lc_id for fast access*/
+    int port;  /*phy port(ga) corresponding to hw connection , eeprom, cpld reg mapping..*/
     int front_port; /*the front port you see from front panel, index from 0 , refer to port_info_map*/
     char *name; /*front port name index from 1 , port1...., refer to port_info_map*/
     sff_type type;
@@ -268,7 +297,6 @@ struct sff_obj_t {
     struct sff_fsm_t fsm;
     struct sff_mgr_t *mgr;
     struct func_tbl_t *func_tbl;
-    struct qsfp_dd_fsm_func_t *qsfp_dd_fsm_func;
     bool page_sel_lock;
 };
 
@@ -282,7 +310,7 @@ struct sff_mgr_t {
     int (*prs_scan)(struct sff_mgr_t *sff);
     unsigned long io_no_init_port_done;
 };
-
+#if 0
 typedef enum {
     LC_LED_CTRL_OFF = 0,
     LC_LED_CTRL_GREEN_ON,
@@ -300,10 +328,12 @@ typedef enum {
     LC_400G_TYPE,
     LC_TYPE_NUM,
 } lc_type_t;
+#endif
 
 typedef enum {
 
     LC_FSM_ST_INSERT,
+    LC_FSM_ST_WAIT_STABLE,
     LC_FSM_ST_POWER_ON,
     LC_FSM_ST_POWER_CHECK,
     LC_FSM_ST_PHY_CHECK,
@@ -318,6 +348,15 @@ typedef enum {
 
 } lc_fsm_st_t;
 typedef struct lc_t lc_mgr_type;
+
+typedef enum {
+    LC_POSI_INIT_ST,
+    LC_POSI_MON_ST,
+    LC_POSI_RELEASED_ST,
+    LC_POSI_LOCK_CHECK_ST,
+    LC_POSI_LOCKED_ST,
+}lc_posi_st_t; 
+
 struct lc_obj_t {
     struct sff_mgr_t sff;
     struct swps_kobj_t *card_kobj;
@@ -331,6 +370,12 @@ struct lc_obj_t {
     unsigned long phy_ready_bitmap;
     int temp;
     lc_type_t type;
+    u32 wait_stable_cnt;
+    u32 over_temp_cnt;
+    bool ej_released;
+    bool prs_locked;
+    u32 prs_locked_cnt;
+    lc_posi_st_t posi_st;    
 };
 
 struct sff_io_driver_t {
@@ -340,10 +385,16 @@ struct sff_io_driver_t {
     int (*tx_fault_all_get)(int lc_id, unsigned long *bitmap);
     int (*reset_set)(int lc_id, int port, u8 reset);
     int (*reset_get)(int lc_id, int port, u8 *reset);
+    int (*reset_all_set)(int lc_id, unsigned long bitmap);
+    int (*reset_all_get)(int lc_id, unsigned long *bitmap);
     int (*power_set)(int lc_id, int port, u8 reset);
     int (*power_get)(int lc_id, int port, u8 *reset);
+    int (*power_all_set)(int lc_id, unsigned long bitmap);
+    int (*power_all_get)(int lc_id, unsigned long *bitmap);
     int (*lpmode_set)(int lc_id, int port, u8 value);
     int (*lpmode_get)(int lc_id, int port, u8 *value);
+    int (*lpmode_all_set)(int lc_id, unsigned long bitmap);
+    int (*lpmode_all_get)(int lc_id, unsigned long *bitmap);
     int (*tx_disable_set)(int lc_id, int port, u8 value);
     int (*tx_disable_get)(int lc_id, int port, u8 *value);
     int (*mode_sel_set)(int lc_id, int port, u8 value);
@@ -368,8 +419,7 @@ struct lc_func_t {
     int (*dev_init)(int platform_id, int io_no_init);
     void (*dev_deinit)(void);
     void (*polling_task)(void);
-    int (*dev_handler)(void);
-    int (*mux_reset)(int lc_id, int rst);
+    int (*dev_hdlr)(void);
     bool (*i2c_is_alive)(int lc_id);
     int (*cpld_init)(int lc_id);
     int (*power_set)(int lc_id, bool on);
@@ -385,49 +435,23 @@ struct lc_func_t {
     int (*temp_get)(int lc_id, char *buf, int size);
     int (*temp_th_get)(int lc_id, char *buf, int size);
     int (*led_set)(int lc_id, lc_led_ctrl_t ctrl);
+    int (*mux_reset_set)(int lc_id, int rst);
+    int (*mux_reset_get)(int lc_id, int *rst);
+    int (*phy_reset_set)(int lc_id, u8 val);
 
 };
 struct lc_t {
     struct lc_obj_t *obj;
     struct swps_kobj_t *common_kobj;
     int lc_num;
+    unsigned long lc_sys_ready;
     unsigned long lc_prs;
+    unsigned long ej_r;
+    unsigned long ej_l;
     unsigned long io_no_init_all_done;
     struct sff_io_driver_t *sff_io_drv;
     struct lc_func_t *lc_func;
 };
-#if 0
-/*the driver structure contains the api doing hw dependent functions (IO + eeprom)*/
-struct sff_driver_t {
-    int (*prs_all_get)(int lc_id, unsigned long *bitmap);
-    int (*intr_all_get)(int lc_id, unsigned long *bitmap);
-    int (*oc_all_get)(int lc_id, unsigned long *bitmap);
-    int (*prs_get)(int port, u8 *prs);
-    int (*intL_get)(int port, u8 *value);
-    int (*rx_los_get)(int port, u8 *value);
-    int (*tx_fault_get)(int port, u8 *value);
-    int (*reset_set)(int port, u8 reset);
-    int (*reset_get)(int port, u8 *reset);
-    int (*lpmode_set)(int port, u8 value);
-    int (*lpmode_get)(int port, u8 *value);
-    int (*tx_disable_set)(int port, u8 value);
-    int (*tx_disable_get)(int port, u8 *value);
-    int (*mode_sel_set)(int port, u8 value);
-    int (*mode_sel_get)(int port, u8 *value);
-    int (*eeprom_read)(int port,
-                       u8 slave_addr,
-                       u8 offset,
-                       u8 *buf,
-                       size_t len);
-    int (*eeprom_write)(int port,
-                        u8 slave_addr,
-                        u8 offset,
-                        const u8 *buf,
-                        size_t len);
-    int (*io_mux_reset_all)(int value); /*<TBD> move to other structure*/
-
-};
-#endif
 /* func table for each sff object*/
 struct func_tbl_t {
     /* private function , for driver internal use {*/
@@ -460,6 +484,8 @@ struct func_tbl_t {
     int (*eeprom_dump)(struct sff_obj_t *sff_obj, u8 *buf);
     int (*page_sel)(struct sff_obj_t *sff_obj, int page);
     int (*page_get)(struct sff_obj_t *sff_obj, u8 *page);
+    int (*intr_flag_show)(struct sff_obj_t *sff_obj, char *buf, int size);
+    void (*intr_flag_clear)(struct sff_obj_t *sff_obj);
 };
 
 struct port_info_map_t {
@@ -524,9 +550,6 @@ typedef enum {
 
 } transvr_type_t;
 
-
-
-
 typedef enum {
     I2C_CRUSH_INIT_ST,
     I2C_CRUSH_IO_I2C_CHECK_ST,
@@ -574,6 +597,7 @@ char *port_name_get(int lc_id, int port);
 bool page_sel_is_locked(struct sff_obj_t *sff_obj);
 void page_sel_lock(struct sff_obj_t *sff_obj);
 void page_sel_unlock(struct sff_obj_t *sff_obj);
-#endif /* __SFF_H */
+
+#endif /* __SWPS_H */
 
 

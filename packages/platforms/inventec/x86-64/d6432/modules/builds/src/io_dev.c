@@ -18,7 +18,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/err.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "io_dev.h"
 #include "inv_def.h"
 #include "io_config/io_config.h"
@@ -137,6 +137,10 @@ int ioexp_modesel_set(int lc_id, int port, u8 value);
 int ioexp_modesel_get(int lc_id, int port, u8 *value);
 static int ioexp_power_set(int lc_id, int port, u8 val);
 static int ioexp_power_get(int lc_id, int port, u8 *val);
+static int ioexp_reset_all_set(int lc_id, unsigned long bitmap);
+static int ioexp_reset_all_get(int lc_id, unsigned long *bitmap);
+static int ioexp_lpmode_all_set(int lc_id, unsigned long bitmap);
+static int ioexp_lpmode_all_get(int lc_id, unsigned long *bitmap);
 
 struct sff_io_driver_t ioDevSffIoDrv = {
     .prs_all_get = ioexp_prsL_all_get,
@@ -146,10 +150,14 @@ struct sff_io_driver_t ioDevSffIoDrv = {
     .tx_fault_all_get = ioexp_tx_fault_all_get,
     .reset_set = ioexp_reset_set,
     .reset_get = ioexp_reset_get,
+    .reset_all_set = ioexp_reset_all_set,
+    .reset_all_get = ioexp_reset_all_get,
     .power_set = ioexp_power_set,
     .power_get = ioexp_power_get,
     .lpmode_set = ioexp_lpmode_set,
     .lpmode_get = ioexp_lpmode_get,
+    .lpmode_all_set = ioexp_lpmode_all_set,
+    .lpmode_all_get = ioexp_lpmode_all_get,
     .tx_disable_set = ioexp_tx_disable_set,
     .tx_disable_get = ioexp_tx_disable_get,
     .mode_sel_set = ioexp_modesel_set,
@@ -197,14 +205,14 @@ static int valid_num_get(unsigned long bitmap)
     int num = 0;
     int i = 0;
     int size = sizeof(bitmap) * 8;
-    
+
     for (i = 0; i < size; i++) {
         if (test_bit(i, &bitmap)) {
             num++;
-        }  
+        }
     }
     return num;
-}    
+}
 /*[note] when sff module is prsL , corrensponding bit be set*/
 int ioexp_prsL_all_get(int lc_id, unsigned long *bitmap)
 {
@@ -228,7 +236,7 @@ int ioexp_intr_all_get(int lc_id, unsigned long *bitmap)
     struct ldata_format_t *ldata = &(ioDev.ioexp_dev.input_st[IOEXP_INT_TYPE]);
     int intr_num = ioDev.ioexp_dev.input_port_num[IOEXP_INT_TYPE];
     unsigned valid_num = valid_num_get(ldata->valid);
-    
+
     if (0 == intr_num) {
         return REC_SFF_IO_UNSUPPORTED;
     }
@@ -260,7 +268,7 @@ int ioexp_tx_fault_all_get(int lc_id, unsigned long *bitmap)
     struct ldata_format_t *ldata = &(ioDev.ioexp_dev.input_st[IOEXP_TXFAULT_TYPE]);
     int txfault_num = ioDev.ioexp_dev.input_port_num[IOEXP_TXFAULT_TYPE];
     unsigned valid_num = valid_num_get(ldata->valid);
-    
+
     if (0 == txfault_num) {
         return REC_SFF_IO_UNSUPPORTED;
     }
@@ -473,15 +481,16 @@ int io_dev_mux_rst_gpio_init(int mux_rst_gpio)
     return 0;
 }
 
-int io_dev_mux_reset_get(int lc_id)
+int io_dev_mux_reset_get(int lc_id, int *val)
 {
-    int val = 0;
-    val = gpio_get_value(ioDev.mux_rst_gpio);
-    return val;
+    int lv = 0;
+    lv = gpio_get_value(ioDev.mux_rst_gpio);
+    *val = lv;
+    return 0;
 }
 
 /*io mux control*/
-int io_dev_mux_reset(int lc_id, int value)
+int io_dev_mux_reset_set(int lc_id, int value)
 {
     gpio_set_value(ioDev.mux_rst_gpio, value);
     return 0;
@@ -772,8 +781,116 @@ int ioexp_output_set(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port
     if ((ret = func->write(ioexp_client, func->offset[PCA95XX_OUTPUT], reg)) < 0) {
         return ret;
     }
-    SFF_IO_LOG_INFO("%s set ok ch_id:%d addr:%d reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
+    SFF_IO_LOG_INFO("%s set ok ch_id:%d addr:0x%x reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
     return 0;
+}
+static void set_reg_update(struct ioexp_output_t *ioexp, unsigned long bitmap, u16 *reg)
+{
+    u16 new_reg = 0;
+    int port_min = 0;
+    int port_max = 0;
+    u16 set_bits = 0;
+    int bit = 0;
+    int port = 0;
+    
+    port_min = ioexp->port_min;
+    port_max = ioexp->port_min + (ioexp->bit_max - ioexp->bit_min);
+    
+    for (port = port_min, bit = ioexp->bit_min; port <= port_max; port++, bit++) {
+        if (test_bit(port, &bitmap)) {
+            set_bit(bit, (unsigned long *)&set_bits);
+        }
+    }
+    
+    SFF_IO_LOG_DBG("bitmap:0x%lx set_bits:0x%x\n", bitmap, set_bits);
+    for (bit = ioexp->bit_min; bit <= ioexp->bit_max; bit++) {
+        if (test_bit(bit, (unsigned long *)&set_bits)) {
+            set_bit(bit, (unsigned long *)&new_reg);
+        } else {
+            clear_bit(bit, (unsigned long *)&new_reg);
+        }
+    }
+    *reg = new_reg;
+}
+
+static void recv_reg_update(struct ioexp_output_t *ioexp, u16 reg, unsigned long *bitmap)
+{
+    int port = 0;
+    int bit = 0;
+    unsigned long recv_bitmap = 0;
+
+    recv_bitmap = *bitmap;
+    
+    for (port = ioexp->port_min, bit = ioexp->bit_min; bit <= ioexp->bit_max; bit++, port++) {
+        if (test_bit(bit, (unsigned long *)&reg)) {
+            set_bit(port, &recv_bitmap);
+        } else {
+            clear_bit(port, &recv_bitmap);
+        }
+    }
+    //SFF_IO_LOG_DBG("bitmap:0x%lx, recv_bit:0x%x\n", recv_bitmap, reg);
+    
+    *bitmap = recv_bitmap;
+}
+int ioexp_output_all_set(struct ioexp_dev_t *dev, ioexp_output_type_t type, unsigned long bitmap)
+{
+    int ret = 0;
+    u16 reg = 0;
+    struct io_dev_client_t *ioexp_client = NULL;
+    struct pca95xx_func_t *func = NULL;
+    struct ioexp_output_t *tbl = NULL;
+    struct ioexp_output_t *ioexp = NULL;
+    int count = 0;
+
+    if (!p_valid(dev->output[type])) {
+        if (p_valid(ioexp_output_name[type])) {
+            SFF_IO_LOG_INFO("%s not supported\n", ioexp_output_name[type]);
+        }
+        return REC_SFF_IO_UNSUPPORTED;
+    }
+    tbl = dev->output[type];
+
+    for (count = 0; tbl[count].end_of_tbl != true; count++) {
+        ioexp = &tbl[count];
+        if (!p_valid(ioexp_client = ioexp_client_find(dev, ioexp->ch_id, ioexp->addr))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if (!p_valid(func = pca95xx_func_find(dev->config_map, ioexp->ioexp_id))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if ((ret = func->read(ioexp_client, func->offset[PCA95XX_OUTPUT])) < 0) {
+            SFF_IO_LOG_ERR("read fail! ioexp_id:%d ch_id:%d addr:0x%x\n",
+                           ioexp->ioexp_id, ioexp->ch_id, ioexp->addr);
+            break;
+        }
+        reg = ret;
+        set_reg_update(ioexp, bitmap, &reg);
+
+        if ((ret = func->write(ioexp_client, func->offset[PCA95XX_OUTPUT], reg)) < 0) {
+            break;
+        }
+
+        SFF_IO_LOG_INFO("%s set ok ch_id:%d addr:0x%x reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
+    }
+    if (ret < 0) {
+        return ret;
+    }
+
+    return 0;
+}
+
+static int ioexp_reset_all_set(int lc_id, unsigned long bitmap)
+{
+    return ioexp_output_all_set(&(ioDev.ioexp_dev), IOEXP_RESET_TYPE, bitmap);
+}
+
+static int ioexp_lpmode_all_set(int lc_id, unsigned long bitmap)
+{
+    return ioexp_output_all_set(&(ioDev.ioexp_dev), IOEXP_LPMODE_TYPE, bitmap);
 }
 
 int ioexp_output_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port, u8 *val)
@@ -817,6 +934,63 @@ int ioexp_output_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port
     }
 
     return 0;
+}
+
+int ioexp_output_all_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, unsigned long *bitmap)
+{
+    int ret = 0;
+    u16 reg = 0;
+    struct io_dev_client_t *ioexp_client = NULL;
+    struct pca95xx_func_t *func = NULL;
+    struct ioexp_output_t *tbl = NULL;
+    struct ioexp_output_t *ioexp = NULL;
+    int count = 0;
+    unsigned long new_bitmap = 0;
+    
+    if (!p_valid(dev->output[type])) {
+        if (p_valid(ioexp_output_name[type])) {
+            SFF_IO_LOG_INFO("%s not supported\n", ioexp_output_name[type]);
+        }
+        return REC_SFF_IO_UNSUPPORTED;
+    }
+    tbl = dev->output[type];
+
+    for (count = 0; tbl[count].end_of_tbl != true; count++) {
+        ioexp = &tbl[count];
+        if (!p_valid(ioexp_client = ioexp_client_find(dev, ioexp->ch_id, ioexp->addr))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if (!p_valid(func = pca95xx_func_find(dev->config_map, ioexp->ioexp_id))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if ((ret = func->read(ioexp_client, func->offset[PCA95XX_OUTPUT])) < 0) {
+            SFF_IO_LOG_ERR("read fail! ioexp_id:%d ch_id:%d addr:0x%x\n",
+                           ioexp->ioexp_id, ioexp->ch_id, ioexp->addr);
+            break;
+        }
+        reg = ret;
+        recv_reg_update(ioexp, reg, &new_bitmap);
+    }
+    if (ret < 0) {
+        return ret;
+    }
+    *bitmap = new_bitmap;
+    
+    return 0;
+}
+
+static int ioexp_reset_all_get(int lc_id, unsigned long *bitmap)
+{
+    return ioexp_output_all_get(&(ioDev.ioexp_dev), IOEXP_RESET_TYPE, bitmap);
+}
+
+static int ioexp_lpmode_all_get(int lc_id, unsigned long *bitmap)
+{
+    return ioexp_output_all_get(&(ioDev.ioexp_dev), IOEXP_LPMODE_TYPE, bitmap);
 }
 
 int ioexp_lpmode_set(int lc_id, int port, u8 val)
@@ -1240,7 +1414,7 @@ static int cpld_io_intr_st_get_type2(struct cpld_io_t *cpld_io, u32 *reg)
     *reg = (~qsfp) & 0xf;
     return 0;
 }
-
+#if 0
 /*cedar platform, <TBD> check with new cedar HW spec*/
 static int cpld_io_intr_st_get_type3(struct cpld_io_t *cpld_io, u32 *reg)
 {
@@ -1274,7 +1448,7 @@ static int cpld_io_intr_st_get_type3(struct cpld_io_t *cpld_io, u32 *reg)
     *reg = qsfp;
     return 0;
 }
-
+#endif
 static int cpld_io_func_init(struct cpld_io_t *cpld_io)
 {
     struct io_dev_t *io_dev = cpld_to_io(cpld_io);

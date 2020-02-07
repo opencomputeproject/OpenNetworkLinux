@@ -12,7 +12,7 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "sfp.h"
 #include "inv_def.h"
 
@@ -140,30 +140,27 @@ static int get_sfp_field_addr(Sff_field field,
 
 static int sfp_tx_disable_set(struct sff_obj_t *sff_obj, u8 value)
 {
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
-    return lc->mgr->sff_io_drv->tx_disable_set(lc->lc_id, sff_obj->port, value);
+    return sff_obj->mgr->io_drv->tx_disable_set(sff_obj->lc_id, sff_obj->port, value);
 }
 
 static int sfp_tx_disable_get(struct sff_obj_t *sff_obj, u8 *value)
 {
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
 
     if (!p_valid(value)) {
         return -EINVAL;
     }
-    return lc->mgr->sff_io_drv->tx_disable_get(lc->lc_id, sff_obj->port, value);
+    return sff_obj->mgr->io_drv->tx_disable_get(sff_obj->lc_id, sff_obj->port, value);
 }
 static int sfp_rx_los_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
     unsigned long bitmap = 0;
 
     if (!p_valid(value)) {
         return -EINVAL;
     }
 
-    if ((ret = lc->mgr->sff_io_drv->rx_los_all_get(lc->lc_id, &bitmap)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->rx_los_all_get(sff_obj->lc_id, &bitmap)) < 0) {
         return ret;
     }
 
@@ -177,14 +174,13 @@ static int sfp_rx_los_get(struct sff_obj_t *sff_obj, u8 *value)
 static int sfp_tx_fault_get(struct sff_obj_t *sff_obj, u8 *value)
 {
     int ret = 0;
-    struct lc_obj_t *lc = sff_to_lc(sff_obj->mgr);
     unsigned long bitmap = 0;
 
     if (!p_valid(value)) {
         return -EINVAL;
     }
 
-    if ((ret = lc->mgr->sff_io_drv->tx_fault_all_get(lc->lc_id, &bitmap)) < 0) {
+    if ((ret = sff_obj->mgr->io_drv->tx_fault_all_get(sff_obj->lc_id, &bitmap)) < 0) {
         return ret;
     }
 

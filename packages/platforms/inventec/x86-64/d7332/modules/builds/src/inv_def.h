@@ -20,6 +20,6 @@ typedef enum {
 } platform_id_t;
 
 #define PLATFORM_ID (PLATFORM_BANYAN)
-#define SWPS_VERSION ("SWPS_GA_v0.0.8")
+#define SWPS_VERSION ("SWPS_GA_v0.0.23")
 
 #endif /*__INV_DEF_H*/

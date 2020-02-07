@@ -12,7 +12,7 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "sfp.h"
 #include "inv_def.h"
 
