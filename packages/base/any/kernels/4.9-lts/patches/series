@@ -47,3 +47,4 @@ driver-add-the-support-max6620.patch
 0043-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
 0044-mlxsw-core-Add-support-for-new-hardware-device-types.patch
 0044-i2c-busses-i2c-mlxcpld-Increase-transaction-pooling-.patch
+0045-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch

@@ -1,0 +1,32 @@
+From d4689cb7a12bd37ac0ace709b87dd91dd316bfd9 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 10 Feb 2020 06:44:16 +0000
+Subject: [net] mlxsw: minimal: Fix validation for FW minor version
+
+Fix validation for FW minor version in order to prevent driver initialization
+in case FW minor version is older than expected.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 504db124ee2f..8cc969758f2f 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -127,8 +127,9 @@ static int mlxsw_m_fw_rev_validate(struct mlxsw_m *mlxsw_m)
+ 	dev_info(mlxsw_m->bus_info->dev, "The firmware version %d.%d.%d\n",
+ 		 rev->major, rev->minor, rev->subminor);
+ 	/* Validate driver & FW are compatible */
+-	if (rev->minor >= MLXSW_M_FWREV_MINOR &&
+-	    rev->subminor >= MLXSW_M_FWREV_SUBMINOR)
++	if ((rev->minor > MLXSW_M_FWREV_MINOR) ||
++	    (rev->minor == MLXSW_M_FWREV_MINOR &&
++	     rev->subminor >= MLXSW_M_FWREV_SUBMINOR))
+ 		return 0;
+ 
+ 	dev_info(mlxsw_m->bus_info->dev, "The firmware version %d.%d.%d is incompatible with the driver (required >= %d.%d.%d)\n",
+-- 
+2.11.0
+
