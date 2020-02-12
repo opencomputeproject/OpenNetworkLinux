@@ -18,22 +18,16 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
- *
- *
- *
- ***********************************************************/
+ ************************************************************/
 #ifndef __VENDOR_DRIVER_POOL_H__
 #define __VENDOR_DRIVER_POOL_H__
 
 #include <onlp/onlp.h>
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
-#include <onlp/platformi/sfpi.h>
 #include <onlp/platformi/ledi.h>
 #include <onlp/platformi/fani.h>
 #include <onlp/platformi/psui.h>
-#include <onlp/platformi/sysi.h>
 #include <onlp/platformi/thermali.h>
 #include <sys/mman.h>
 #include <errno.h>
@@ -41,141 +35,243 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
+#include <linux/types.h>
+#include <linux/i2c-dev.h>
 #include <AIM/aim.h>
 #include "x86_64_delta_agc032_log.h"
 
-
-#define VENDOR_MAX_NAME_SIZE    20
+#define VENDOR_MAX_NAME_SIZE 30
 #define CPLD_DEV 1
 #define BMC_DEV 2
 
+#define FAN_INFO_ENTRY_INIT(_id, _desc, _caps) \
+    {                                          \
+        {                                      \
+            .id = ONLP_FAN_ID_CREATE(_id),     \
+            .description = _desc,              \
+            .poid = 0,                         \
+        },                                     \
+            .caps = _caps,                     \
+    }
 
-typedef struct
+#define PSU_INFO_ENTRY_INIT(_id, _desc)                                                                                                                              \
+    {                                                                                                                                                                \
+        {                                                                                                                                                            \
+            .id = ONLP_PSU_ID_CREATE(_id),                                                                                                                           \
+            .description = _desc,                                                                                                                                    \
+            .poid = 0,                                                                                                                                               \
+        },                                                                                                                                                           \
+            .caps = (ONLP_PSU_CAPS_DC12 | ONLP_PSU_CAPS_VIN | ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IIN | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_PIN | ONLP_PSU_CAPS_POUT), \
+    }
+
+#define LED_INFO_ENTRY_INIT(_id, _desc, _caps, _defaultm) \
+    {                                                     \
+        {                                                 \
+            .id = ONLP_LED_ID_CREATE(_id),                \
+            .description = _desc,                         \
+            .poid = 0,                                    \
+        },                                                \
+            .caps = _caps,                                \
+            .mode = _defaultm,                            \
+            .status = ONLP_LED_STATUS_PRESENT,            \
+    }
+
+#define THERMAL_INFO_ENTRY_INIT(_id, _desc)                                                                                                   \
+    {                                                                                                                                         \
+        {                                                                                                                                     \
+            .id = ONLP_THERMAL_ID_CREATE(_id),                                                                                                \
+            .description = _desc,                                                                                                             \
+            .poid = 0,                                                                                                                        \
+        },                                                                                                                                    \
+            .status = ONLP_THERMAL_STATUS_PRESENT,                                                                                            \
+            .caps = (ONLP_THERMAL_CAPS_GET_TEMPERATURE | ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD | ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD), \
+            .mcelsius = 0,                                                                                                                    \
+    }
+
+typedef struct fan_data_s
 {
-	char *dev_name;
+    uint16_t fan_def_speed;
+    uint16_t fan_max_speed;
+    uint16_t fan_tolerance;
+} fan_data_t;
+
+typedef struct thrml_data_s
+{
+    uint16_t low_threshold;
+    uint16_t high_threshold;
+} thermal_data_t;
+
+typedef struct eeprom_data_s
+{
+    uint8_t alen;
+    uint16_t len;
+    uint16_t offset;
+} eeprom_data_t;
+
+typedef struct vendor_dev_s
+{
+    char *dev_name;
     char *bus_drv_name;
     char *dev_drv_name;
-	int bus;
-	uint8_t addr;
+    int bus;
+    uint8_t dev;
     int id;
-}vendor_dev_t;
+} vendor_dev_t;
 
-typedef struct
+typedef struct vendor_dev_oc_s
 {
     int type; /* 2 -> CPLD; 1 -> MUX; 0 -> invalid */
+    char *bus_drv_name;
     int bus;
-	uint8_t addr;
-    uint8_t offset; /* FOR CPLD & MUX */
-    uint8_t value;  /* FOR CPLD & MUX */
-    uint8_t mask;   /* FOR CPLD */
-    uint8_t match;  /* FOR CPLD */
-}vendor_dev_oc_t;
+    uint8_t dev;
+    uint8_t addr;  /* FOR CPLD & MUX */
+    uint8_t value; /* FOR CPLD & MUX */
+    uint8_t mask;  /* FOR CPLD */
+    uint8_t match; /* FOR CPLD */
+} vendor_dev_oc_t;
 
-typedef struct
+typedef struct vendor_dev_io_pin_s
 {
     int type; /* 2 -> BMC; 1 -> CPLD; 0 -> invalid */
+    char name[VENDOR_MAX_NAME_SIZE];
+    char *bus_drv_name;
     int bus;
-	uint8_t addr; /* DEVICE_TYPE + UNIT */
-    uint8_t offset;
+    uint8_t dev; /* DEVICE_TYPE + UNIT */
+    uint8_t addr;
     uint8_t mask;
     uint8_t match;
-}vendor_dev_io_pin_t;
+} vendor_dev_io_pin_t;
 
-typedef struct
+typedef struct vendor_dev_led_pin_s
 {
+    char name[VENDOR_MAX_NAME_SIZE];
+    char *bus_drv_name;
     int bus;
-	uint8_t addr;
-    uint8_t offset;
+    uint8_t dev;
+    uint8_t addr;
     uint8_t mask;
     uint8_t match;
     onlp_led_mode_t mode;
-}vendor_dev_led_pin_t;
+} vendor_dev_led_pin_t;
 
-typedef enum
+typedef enum vendor_bmc_device_type_e
 {
     VENDOR_TEMPERATURE = 0,
     VENDOR_FAN = 1,
     VENDOR_PSU = 3,
     VENDOR_FAN_PRESENT = VENDOR_FAN,
     VENDOR_PSU_PRESENT = VENDOR_PSU,
-}vendor_bmc_device_type_t;
-typedef struct
+} vendor_bmc_device_type_t;
+
+typedef struct vendor_driver_s
 {
     char name[VENDOR_MAX_NAME_SIZE];
     void *dev_driver;
-}vendor_driver_t;
+} vendor_driver_t;
 
-typedef struct
+typedef struct vendor_driver_node_s
 {
     void *node;
     vendor_driver_t *driver_hdl;
-}vendor_driver_node_t;
+} vendor_driver_node_t;
 
-typedef struct
+typedef struct i2c_bus_driver_s
 {
-    int (*readb)        (int bus, uint8_t addr, uint16_t offset);
-    int (*writeb)       (int bus, uint8_t addr, uint16_t offset, uint8_t byte);
-    int (*readw)        (int bus, uint8_t addr, uint16_t offset);
-    int (*writew)       (int bus, uint8_t addr, uint16_t offset, uint16_t word);
-    int (*block_read)   (int bus, uint8_t addr, uint16_t offset, int size, uint8_t* rdata);
-}i2c_bus_driver_t;
+    int (*get)(int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t *data, uint8_t dlen);
+    int (*set)(int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t data, uint8_t dlen);
+    int (*get_byte)(int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t *data, uint8_t dlen);
+    int (*set_byte)(int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t data, uint8_t dlen);
+    int (*block_read)(int bus, uint8_t dev, uint16_t daddr, uint8_t *ReplyBuf, uint16_t BufSize);
+    int (*block_write)(int bus, uint8_t dev, uint16_t daddr, uint8_t *value, uint16_t BufSize);
+    int (*i2c_block_read)(int bus, uint8_t dev, uint16_t daddr, uint8_t *ReplyBuf, uint16_t BufSize);
+    int (*i2c_block_write)(int bus, uint8_t dev, uint16_t daddr, uint8_t *value, uint16_t BufSize);
+    int (*probe)(uint8_t bus, uint8_t dev);
+} i2c_bus_driver_t;
 
-typedef struct
+typedef struct ipmi_bus_driver_s
 {
     int (*get)(int bus, char *cmd, char *filter, char *data, uint32_t dlen);
     int (*set)(int bus, char *cmd, char *filter);
-}ipmi_bus_driver_t;
+} ipmi_bus_driver_t;
 
-
-typedef struct
+typedef struct status_get_driver_s
 {
-    int (*present_get)(void *busDrvPtr, int bus, uint8_t addr, uint8_t offset, uint8_t *present);
-}present_get_driver_t;
+    int (*status_get)(void *busDrvPtr, int bus, uint8_t dev, uint8_t addr, uint8_t *active);
+} status_get_driver_t;
 
 /* ONLY I2C */
-typedef struct
+typedef struct eeprom_dev_driver_s
 {
-    int (*readb)    (void *busDrvPtr, int bus, uint8_t addr, uint16_t offset, uint16_t len, uint8_t *buf);
-    int (*writeb)   (void *busDrvPtr, int bus, uint8_t addr, uint16_t offset, uint16_t len, uint8_t *buf);
-    int (*load)     (void *busDrvPtr, int bus, uint8_t addr, uint8_t *buf);
-}eeprom_dev_driver_t;
+    int (*readb)(void *busDrvPtr, int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint8_t *buf, uint16_t len);
+    int (*writeb)(void *busDrvPtr, int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint8_t *buf, uint16_t len);
+    int (*readw)(void *busDrvPtr, int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t *buf, uint16_t len);
+    int (*writew)(void *busDrvPtr, int bus, uint8_t dev, uint16_t addr, uint8_t alen, uint16_t *buf, uint16_t len);
+    int (*load)(void *busDrvPtr, int bus, uint8_t dev, uint16_t start_addr, uint8_t alen, uint8_t *buf);
+} eeprom_dev_driver_t;
 
 /* ONLY I2C */
-typedef struct
+typedef struct cpld_dev_driver_s
 {
-    int (*readb)    (void *busDrvPtr, int bus, uint8_t addr, uint8_t offset, uint8_t *value);
-    int (*writeb)   (void *busDrvPtr, int bus, uint8_t addr, uint8_t offset, uint8_t value);
-}cpld_dev_driver_t;
+    int (*readb)(void *busDrvPtr, int bus, uint8_t dev, uint8_t addr, uint8_t *value);
+    int (*writeb)(void *busDrvPtr, int bus, uint8_t dev, uint8_t addr, uint8_t value);
+} cpld_dev_driver_t;
 
-typedef struct
+typedef struct fan_dev_driver_s
 {
-    int (*rpm_get)  (void *busDrvPtr, int bus, uint8_t addr, int id, int *rpm);
-    int (*rpm_set)  (void *busDrvPtr, int bus, uint8_t addr, int id, int rpm);
-}fan_dev_driver_t;
+    int (*rpm_get)(void *busDrvPtr, int bus, uint8_t dev, int id, int *rpm);
+    int (*rpm_set)(void *busDrvPtr, int bus, uint8_t dev, int id, int rpm);
+} fan_dev_driver_t;
 
-typedef enum
+typedef enum vendor_thermal_threshold_e
 {
     VENDOR_THERMAL_LOW_THRESHOLD,
     VENDOR_THERMAL_HIGH_THRESHOLD,
-}vendor_thermal_threshold_e;
+} vendor_thermal_threshold_t;
 
-typedef struct
+typedef struct thermal_dev_driver_s
 {
-    int (*temp_get)  (void *busDrvPtr, int bus, uint8_t addr, int id, int *temperature);
-    int (*limit_get) (void *busDrvPtr, int bus, uint8_t addr, int id, int type, int *temperature);
-    int (*limit_set) (void *busDrvPtr, int bus, uint8_t addr, int id, int type, int temperature);
-}thermal_dev_driver_t;
+    int (*temp_get)(void *busDrvPtr, int bus, uint8_t dev, int id, int *temperature);
+    int (*limit_get)(void *busDrvPtr, int bus, uint8_t dev, int id, int type, int *temperature);
+    int (*limit_set)(void *busDrvPtr, int bus, uint8_t dev, int id, int type, int temperature);
+} thermal_dev_driver_t;
 
-typedef struct
+typedef enum vendor_psu_parm_type_e
 {
-    int (*model_get)   (void *busDrvPtr, int bus, uint8_t addr, char *model);
-    int (*serial_get)  (void *busDrvPtr, int bus, uint8_t addr, char *serial);
-    int (*volt_get)    (void *busDrvPtr, int bus, uint8_t addr, int *volt);
-    int (*amp_get)     (void *busDrvPtr, int bus, uint8_t addr, int *amp);
-    int (*watt_get)    (void *busDrvPtr, int bus, uint8_t addr, int *watt);
-}psu_dev_driver_t;
+    PSU_PARM_MIN,
+    PSU_PARM_VIN = PSU_PARM_MIN,
+    PSU_PARM_IIN,
+    PSU_PARM_VOUT,
+    PSU_PARM_IOUT,
+    PSU_PARM_POUT,
+    PSU_PARM_PIN,
+    PSU_PARM_MAX = PSU_PARM_PIN,
+    PSU_PARM_UNKNOW
+} vendor_psu_parm_type_t;
 
-typedef enum
+typedef struct vendor_psu_runtime_info_s
+{
+    int vin;
+    int iin;
+    int vout;
+    int iout;
+    int pout;
+    int pin;
+} vendor_psu_runtime_info_t;
+
+typedef struct psu_dev_driver_s
+{
+    int (*model_get)(void *busDrvPtr, int bus, uint8_t dev, char *model);
+    int (*serial_get)(void *busDrvPtr, int bus, uint8_t dev, char *serial);
+    int (*volt_get)(void *busDrvPtr, int bus, uint8_t dev, int *volt);
+    int (*amp_get)(void *busDrvPtr, int bus, uint8_t dev, int *amp);
+    int (*watt_get)(void *busDrvPtr, int bus, uint8_t dev, int *watt);
+    int (*runtime_info_get)(void *busDrvPtr, int bus, uint8_t dev, vendor_psu_runtime_info_t *runtimeInfo);
+} psu_dev_driver_t;
+
+typedef enum vendor_sfp_control_s
 {
     SFP_CONTROL_RESET,
     SFP_CONTROL_RESET_STATE,
@@ -193,26 +289,30 @@ typedef enum
     SFP_CONTROL_LAST = SFP_CONTROL_TX_POWER,
     SFP_CONTROL_COUNT,
     SFP_CONTROL_INVALID = -1,
-}vendor_sfp_control_t;
+} vendor_sfp_control_t;
 
 /* ONLY I2C */
-typedef struct
+typedef struct sfp_dev_driver_s
 {
-    int (*eeprom_load)          (void *busDrvPtr, int bus, uint8_t addr, uint8_t *data);
-    int (*eeprom_readb)         (void *busDrvPtr, int bus, uint8_t addr, uint16_t offset, uint8_t *data);
-    int (*eeprom_writeb)        (void *busDrvPtr, int bus, uint8_t addr, uint16_t offset, uint8_t data);
-    int (*control_is_support)   (int control, uint8_t *is_support);
-    int (*control_get)          (void *busDrvPtr, int bus, uint8_t addr, int control, int *status);
-    int (*control_set)          (void *busDrvPtr, int bus, uint8_t addr, int control, int status);
-}sfp_dev_driver_t;
+    int (*eeprom_load)(void *busDrvPtr, int bus, uint8_t dev, uint8_t *data);
+    int (*eeprom_dom_load)(void *busDrvPtr, int bus, uint8_t dev, uint8_t *data);
+    int (*eeprom_read)(void *busDrvPtr, int bus, uint8_t dev, uint8_t offset, uint16_t len, uint8_t *data);
+    int (*eeprom_write)(void *busDrvPtr, int bus, uint8_t dev, uint8_t offset, uint16_t len, uint8_t *data);
+    int (*eeprom_readb)(void *busDrvPtr, int bus, uint8_t dev, uint16_t offset, uint8_t *data);
+    int (*eeprom_writeb)(void *busDrvPtr, int bus, uint8_t dev, uint16_t offset, uint8_t data);
+    int (*eeprom_readw)(void *busDrvPtr, int bus, uint8_t dev, uint16_t offset, uint16_t *data);
+    int (*eeprom_writew)(void *busDrvPtr, int bus, uint8_t dev, uint16_t offset, uint16_t data);
+    int (*control_is_support)(int control, uint8_t *is_support);
+    int (*control_get)(void *busDrvPtr, int bus, uint8_t dev, int control, int *status);
+    int (*control_set)(void *busDrvPtr, int bus, uint8_t dev, int control, int status);
+} sfp_dev_driver_t;
 
-int vendor_find_cpld_idx(uint8_t addr);
+int vendor_find_cpld_idx_by_name(char *name);
 int vendor_system_call_get(char *cmd, char *data);
 int vendor_system_call_set(char *cmd);
 int vendor_driver_init();
 void *vendor_find_driver_by_name(const char *driver_name);
 int vendor_dev_do_oc(vendor_dev_oc_t *dev_oc);
-int vendor_get_present_status(vendor_dev_io_pin_t *present_info, int *present);
-int vendor_find_copper_by_name(const char *dev_name);
+int vendor_get_status(vendor_dev_io_pin_t *present_info, int *present);
 
 #endif /* __VENDOR_DRIVER_POOL_H__ */
