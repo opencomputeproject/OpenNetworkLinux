@@ -35,6 +35,5 @@ class OnlPlatform_x86_64_inventec_d10064_r0(OnlPlatformInventec,
         self.insmod('vpd')
 
         os.system("/lib/platform-config/x86-64-inventec-d10064-r0/onl/healthstatus.sh &")
-        os.system("/lib/platform-config/x86-64-inventec-d10064-r0/onl/install_sde.sh")
 
         return True
