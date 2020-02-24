@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef MLNX_COMMON_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define MLNX_COMMON_STRNCPY GLOBAL_STRNCPY
-    #elif MLNX_COMMON_CONFIG_PORTING_STDLIB == 1
-        #define MLNX_COMMON_STRNCPY strncpy
-    #else
-        #error The macro MLNX_COMMON_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef MLNX_COMMON_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define MLNX_COMMON_VSNPRINTF GLOBAL_VSNPRINTF

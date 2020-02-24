@@ -130,7 +130,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
             strncmp(model_name, "YM-1151D", strlen("YM-1151D")) == 0 ||
             strncmp(model_name, "YM-1601A", strlen("YM-1601A")) == 0) {
             if (modelname) {
-                strncpy(modelname, model_name, modelname_len-1);
+                aim_strlcpy(modelname, model_name, modelname_len-1);
             }
             return PSU_TYPE_AC_F2B;
         }

@@ -5,3 +5,6 @@ drivers-i2c-busses-xgs_iproc_smbus-clk-freq.patch
 0002-driver-support-intel-igb-bcm5461S-phy.patch
 0003-drivers-net-ethernet-broadcom-tg3.patch
 driver-ixgbe-external-phy.patch
+driver-hwmon-max6620.patch
+driver-hwmon-max6620-fix-rpm-calc.patch
+driver-hwmon-max6620-update.patch

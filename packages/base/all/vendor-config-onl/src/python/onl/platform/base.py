@@ -225,6 +225,7 @@ class OnlPlatformBase(object):
                        kdir,
                        ]
 
+        trypaths = []
         for d in searchdirs:
             for e in [ ".ko", "" ]:
                 path = os.path.join(d, "%s%s" % (module, e))
@@ -232,9 +233,11 @@ class OnlPlatformBase(object):
                     cmd = "insmod %s %s" % (path, " ".join([ "%s=%s" % (k,v) for (k,v) in params.iteritems() ]))
                     subprocess.check_call(cmd, shell=True);
                     return True
+                else:
+                    trypaths.append(path)
 
         if required:
-            raise RuntimeError("kernel module %s could not be found." % (module))
+            raise RuntimeError("kernel module %s could not be found.\n The following paths were searched: \n    %s\n" % (module, "\n   ".join(trypaths)))
         else:
             return False
 
@@ -257,7 +260,7 @@ class OnlPlatformBase(object):
         mc = self.basedir_onl("etc/onie/machine.json")
         if not os.path.exists(mc):
             data = {}
-            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine.conf; set | egrep ^onie_.*=" """, shell=True)
+            mcconf = subprocess.check_output("""onie-shell -c "IFS=; . /etc/machine*.conf; set | egrep ^onie_.*=" """, shell=True)
             for entry in mcconf.split():
                 (k,e,v) = entry.partition('=')
                 if v and (v.startswith("'") or v.startswith('"')):
@@ -514,6 +517,10 @@ class OnlPlatformPortConfig_32x40(object):
     PORT_COUNT=32
     PORT_CONFIG="32x40"
 
+class OnlPlatformPortConfig_32x400(object):
+    PORT_COUNT=32
+    PORT_CONFIG="32x400"
+
 class OnlPlatformPortConfig_64x40(object):
     PORT_COUNT=64
     PORT_CONFIG="64x40"
@@ -522,14 +529,18 @@ class OnlPlatformPortConfig_32x100(object):
     PORT_COUNT=32
     PORT_CONFIG="32x100"
 
+class OnlPlatformPortConfig_60x100(object):
+    PORT_COUNT=60
+    PORT_CONFIG="60x100"
+
 class OnlPlatformPortConfig_64x100(object):
     PORT_COUNT=64
     PORT_CONFIG="64x100"
-    
+
 class OnlPlatformPortConfig_80x100(object):
     PORT_COUNT=80
     PORT_CONFIG="80x100"
-    
+
 class OnlPlatformPortConfig_128x100(object):
     PORT_COUNT=128
     PORT_CONFIG="128x100"
@@ -550,9 +561,17 @@ class OnlPlatformPortConfig_12x10_3x100(object):
     PORT_COUNT=15
     PORT_CONFIG="12x10 + 3x100"
 
+class OnlPlatformPortConfig_12x25_3x100(object):
+    PORT_COUNT=15
+    PORT_CONFIG="12x25 + 3x100"
+
 class OnlPlatformPortConfig_24x10_2x100(object):
     PORT_COUNT=26
     PORT_CONFIG="24x10 + 2x100"
+
+class OnlPlatformPortConfig_24x25_4x100(object):
+    PORT_COUNT=28
+    PORT_CONFIG="24x25 + 4x100"
 
 class OnlPlatformPortConfig_20x100(object):
     PORT_COUNT=20
@@ -561,3 +580,19 @@ class OnlPlatformPortConfig_20x100(object):
 class OnlPlatformPortConfig_16x10_8x25_2x100(object):
     PORT_COUNT=26
     PORT_CONFIG="16x10 + 8x25 + 2x100"
+
+class OnlPlatformPortConfig_46x10_6x100(object):
+    PORT_COUNT=52
+    PORT_CONFIG="46x10 + 6x100"
+
+class OnlPlatformPortConfig_20x10_4x25_3x100(object):
+    PORT_COUNT=27
+    PORT_CONFIG="20x10 + 4x25 + 3x100"
+
+class OnlPlatformPortConfig_24x400_2x10(object):
+    PORT_COUNT=26
+    PORT_CONFIG="24x400 + 2x10"
+
+class OnlPlatformPortConfig_4x1_8x10(object):
+    PORT_COUNT=12
+    PORT_CONFIG="4x1 + 8x10"

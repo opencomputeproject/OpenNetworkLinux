@@ -97,6 +97,13 @@
  * In anticipation of future applications and devices, this driver
  * supports access to the full architected range, 256 pages.
  *
+ * The CMIS (Common Management Interface Specification) defines use of
+ * considerably more pages (at least to page 0xAF), which this driver
+ * supports.
+ *
+ * NOTE: This version of the driver ONLY SUPPORTS BANK 0 PAGES on CMIS
+ * devices.
+ *
  **/
 
 /* #define DEBUG 1 */
@@ -163,7 +170,8 @@ struct optoe_platform_data {
 /* a few constants to find our way around the EEPROM */
 #define OPTOE_PAGE_SELECT_REG   0x7F
 #define ONE_ADDR_PAGEABLE_REG 0x02
-#define ONE_ADDR_NOT_PAGEABLE (1<<2)
+#define QSFP_NOT_PAGEABLE (1<<2)
+#define CMIS_NOT_PAGEABLE (1<<7)
 #define TWO_ADDR_PAGEABLE_REG 0x40
 #define TWO_ADDR_PAGEABLE (1<<4)
 #define TWO_ADDR_0X51_REG 92
@@ -225,10 +233,12 @@ static unsigned int write_timeout = 25;
  */
 #define ONE_ADDR 1
 #define TWO_ADDR 2
+#define CMIS_ADDR 3
 
 static const struct i2c_device_id optoe_ids[] = {
 	{ "optoe1", ONE_ADDR },
 	{ "optoe2", TWO_ADDR },
+	{ "optoe3", CMIS_ADDR },
 	{ "sff8436", ONE_ADDR },
 	{ "24c04", TWO_ADDR },
 	{ /* END OF LIST */ }
@@ -575,6 +585,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 {
 	struct i2c_client *client = optoe->client[0];
 	u8 regval;
+	int not_pageable;
 	int status;
 	size_t maxlen;
 
@@ -622,7 +633,7 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 			"page_legal, SFP, off %lld len %ld\n",
 			off, (long int) len);
 	} else {
-		/* QSFP case */
+		/* QSFP case, CMIS case */
 		/* if no pages needed, we're good */
 		if ((off + len) <= ONE_ADDR_EEPROM_UNPAGED_SIZE)
 			return len;
@@ -634,7 +645,17 @@ static ssize_t optoe_page_legal(struct optoe_data *optoe,
 				ONE_ADDR_PAGEABLE_REG, 1);
 		if (status < 0)
 			return status;  /* error out (no module?) */
-		if (regval & ONE_ADDR_NOT_PAGEABLE) {
+
+		if (optoe->dev_class == ONE_ADDR) {
+			not_pageable = QSFP_NOT_PAGEABLE;
+		} else {
+			not_pageable = CMIS_NOT_PAGEABLE;
+		}
+		dev_dbg(&client->dev,
+			"Paging Register: 0x%x; not_pageable mask: 0x%x\n",
+			regval, not_pageable);
+
+		if (regval & not_pageable) {
 			/* pages not supported, trim len to unpaged size */
 			if (off >= ONE_ADDR_EEPROM_UNPAGED_SIZE)
 				return OPTOE_EOF;
@@ -826,13 +847,37 @@ static ssize_t set_dev_class(struct device *dev,
 	/*
 	 * dev_class is actually the number of i2c addresses used, thus
 	 * legal values are "1" (QSFP class) and "2" (SFP class)
+	 * And...  CMIS spec is 1 i2c address, but puts the pageable
+	 * bit in a different location, so CMIS devices are "3"
 	 */
 
 	if (kstrtoint(buf, 0, &dev_class) != 0 ||
-		dev_class < 1 || dev_class > 2)
+		dev_class < 1 || dev_class > 3)
 		return -EINVAL;
 
 	mutex_lock(&optoe->lock);
+	if (dev_class == TWO_ADDR) {
+		/* SFP family */
+		/* if it doesn't exist, create 0x51 i2c address */
+		if (!optoe->client[1]) {
+			optoe->client[1] = i2c_new_dummy(client->adapter, 0x51);
+			if (!optoe->client[1]) {
+				dev_err(&client->dev,
+					"address 0x51 unavailable\n");
+				mutex_unlock(&optoe->lock);
+				return -EADDRINUSE;
+			}
+		}
+		optoe->bin.size = TWO_ADDR_EEPROM_SIZE;
+		optoe->num_addresses = 2;
+	} else {
+		/* one-address (eg QSFP) and CMIS family */
+		/* if it exists, remove 0x51 i2c address */
+		if (optoe->client[1])
+			i2c_unregister_device(optoe->client[1]);
+		optoe->bin.size = ONE_ADDR_EEPROM_SIZE;
+		optoe->num_addresses = 1;
+	}
 	optoe->dev_class = dev_class;
 	mutex_unlock(&optoe->lock);
 
@@ -983,7 +1028,13 @@ static int optoe_probe(struct i2c_client *client,
 		/* SFP family */
 		optoe->dev_class = TWO_ADDR;
 		chip.byte_len = TWO_ADDR_EEPROM_SIZE;
-	} else {     /* those were the only two choices */
+		num_addresses = 2;
+	} else if (strcmp(client->name, "optoe3") == 0) {
+		/* CMIS spec */
+		optoe->dev_class = CMIS_ADDR;
+		chip.byte_len = ONE_ADDR_EEPROM_SIZE;
+		num_addresses = 1;
+	} else {     /* those were the only choices */
 		err = -EINVAL;
 		goto exit;
 	}

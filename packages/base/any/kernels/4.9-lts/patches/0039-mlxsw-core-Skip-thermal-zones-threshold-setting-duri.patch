@@ -1,0 +1,34 @@
+From 031b57148672ff229d42fe4401e552c05e14f87a Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Sun, 1 Dec 2019 17:29:02 +0200
+Subject: [PATCH mlxsw: thermal] mlxsw: core: Skip thermal zones threshold
+ setting during initialization
+
+Skip modules' thermal zones threshold setting during initialization in
+order to reduce driver's probing time.
+This setting will be performed at the first operation with the thermal
+zones.
+
+Signed-off-by: Vadim Pasternak vadimp@mellanox.com
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 7fbb7a24eb63..f234416305fd 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -813,8 +813,8 @@ mlxsw_thermal_module_init(struct device *dev, struct mlxsw_core *core,
+ 	       sizeof(thermal->trips));
+ 	/* Initialize all trip point. */
+ 	mlxsw_thermal_module_trips_reset(module_tz);
+-	/* Update trip point according to the module data. */
+-	return mlxsw_thermal_module_trips_update(dev, core, module_tz);
++
++	return 0;
+ }
+ 
+ static void mlxsw_thermal_module_fini(struct mlxsw_thermal_module *module_tz)
+-- 
+2.20.1
+

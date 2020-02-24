@@ -456,6 +456,9 @@ class OnlPackage(object):
         for dep in self.pkg.get('depends', []):
             command = command + "-d %s " % dep
 
+        for dep in self.pkg.get('build-depends', []):
+            command = command + "--deb-build-depends %s " % dep
+
         for provides in onlu.sflatten(self.pkg.get('provides', [])):
             command = command + "--provides %s " % provides
 
@@ -481,6 +484,16 @@ class OnlPackage(object):
                 command = command + "--before-remove %s " % OnlPackageBeforeRemoveScript(self.pkg['init'], dir=workdir).name
             if self.pkg.get('init-after-remove', True):
                 command = command + "--after-remove %s " % OnlPackageAfterRemoveScript(self.pkg['init'], dir=workdir).name
+
+        fpm_file_commands = ['{}-{}'.format(o, a) for o in ['after', 'before'] for a in ['install', 'remove', 'upgrade']]
+
+        fpm_file_commands.append('deb-systemd')
+
+        for cmd in fpm_file_commands:
+            if cmd in self.pkg:
+                if not os.path.exists(self.pkg[cmd]):
+                    raise OnlPackageError("%s script '%s' does not exist." % (cmd, self.pkg[cmd]))
+                command = command + "--%s %s " % (cmd, self.pkg[cmd])
 
         if self.pkg.get('asr', False):
             with onlu.Profiler() as profiler:
@@ -544,6 +557,12 @@ class OnlPackageGroup(object):
             if p.pkg.get("dists", None):
                 if g_dist_codename not in p.pkg['dists'].split(','):
                     return False
+        return True
+
+    def buildercheck(self, builder_arches):
+        for p in self.packages:
+            if p.arch() not in builder_arches:
+                return False
         return True
 
     def prerequisite_packages(self):
@@ -978,8 +997,16 @@ class OnlPackageManager(object):
 
         return False
 
+
+    def __builder_arches(self):
+        arches = [ 'all', 'amd64' ]
+        arches = arches + subprocess.check_output(['dpkg', '--print-foreign-architectures']).split()
+        return arches
+
     def __build_cache(self, basedir):
         pkgspec = [ 'PKG.yml', 'pkg.yml' ]
+
+        builder_arches = self.__builder_arches()
 
         for root, dirs, files in os.walk(basedir):
             for f in files:
@@ -992,7 +1019,7 @@ class OnlPackageManager(object):
                             logger.debug('Loading package file %s...' % os.path.join(root, f))
                             pg.load(os.path.join(root, f))
                             logger.debug('  Loaded package file %s' % os.path.join(root, f))
-                            if pg.distcheck():
+                            if pg.distcheck() and pg.buildercheck(builder_arches):
                                 self.package_groups.append(pg)
                         except OnlPackageError, e:
                             logger.error("%s: " % e)

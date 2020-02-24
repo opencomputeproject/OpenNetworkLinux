@@ -310,10 +310,10 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
             else {
                 iof_iprintf(&iof, "Status: Running");
                 if(fi.model[0]) {
-                    iof_iprintf(&iof, "Model: %s", fi.model);
+                    iof_iprintf(&iof, "Model: %{pstr}", fi.model, '?');
                 }
                 if(fi.serial[0]) {
-                    iof_iprintf(&iof, "SN: %s", fi.serial);
+                    iof_iprintf(&iof, "SN: %{pstr}", fi.serial, '?');
                 }
                 if(fi.caps & ONLP_FAN_CAPS_GET_RPM) {
                     iof_iprintf(&iof, "RPM: %d", fi.rpm);
@@ -336,4 +336,3 @@ onlp_fan_show(onlp_oid_t oid, aim_pvs_t* pvs, uint32_t flags)
     }
     iof_pop(&iof);
 }
-

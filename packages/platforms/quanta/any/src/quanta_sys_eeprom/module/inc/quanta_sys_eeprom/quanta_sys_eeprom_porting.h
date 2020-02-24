@@ -60,16 +60,6 @@
     #endif
 #endif
 
-#ifndef QUANTA_SYS_EEPROM_STRNCPY
-    #if defined(GLOBAL_STRNCPY)
-        #define QUANTA_SYS_EEPROM_STRNCPY GLOBAL_STRNCPY
-    #elif QUANTA_SYS_EEPROM_CONFIG_PORTING_STDLIB == 1
-        #define QUANTA_SYS_EEPROM_STRNCPY strncpy
-    #else
-        #error The macro QUANTA_SYS_EEPROM_STRNCPY is required but cannot be defined.
-    #endif
-#endif
-
 #ifndef QUANTA_SYS_EEPROM_VSNPRINTF
     #if defined(GLOBAL_VSNPRINTF)
         #define QUANTA_SYS_EEPROM_VSNPRINTF GLOBAL_VSNPRINTF

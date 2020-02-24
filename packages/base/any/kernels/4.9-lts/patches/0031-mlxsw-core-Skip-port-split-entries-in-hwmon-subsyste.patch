@@ -1,0 +1,86 @@
+From 3d4e440640d63c5bc599a4ad6802ad84dcd0c329 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 10 Jul 2019 17:47:56 +0000
+Subject: [PATCH v1 backport] mlxsw: core: Skip port split entries in hwmon
+ subsystem
+
+Skip split entries in hwmon.
+Run loop for port creation over maximum port counter, otherwise
+in some split configuration with holes, some last modules can be
+missed.
+
+Signed-of-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   | 7 ++++++-
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 2 +-
+ drivers/net/ethernet/mellanox/mlxsw/minimal.c      | 5 +++--
+ 3 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index a414a09efb5d..95b890298952 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -512,9 +512,9 @@ static int mlxsw_hwmon_fans_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ {
+ 	unsigned int module_count = mlxsw_core_max_ports(mlxsw_hwmon->core);
++	u8 width, module, last_module = module_count;
+ 	char pmlp_pl[MLXSW_REG_PMLP_LEN] = {0};
+ 	int i, index;
+-	u8 width;
+ 	int err;
+ 
+ 	if (!mlxsw_core_res_query_enabled(mlxsw_hwmon->core))
+@@ -538,6 +538,11 @@ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+ 		if (!width)
+ 			continue;
++		module = mlxsw_reg_pmlp_module_get(pmlp_pl, 0);
++		/* Skip, if port belongs to the cluster */
++		if (module == last_module)
++			continue;
++		last_module = module;
+ 		mlxsw_hwmon_attr_add(mlxsw_hwmon,
+ 				     MLXSW_HWMON_ATTR_TYPE_TEMP_MODULE, index,
+ 				     index);
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 499c82cea1cb..e9451e447bf0 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -906,7 +906,7 @@ mlxsw_thermal_gearboxes_fini(struct mlxsw_thermal *thermal)
+ 	int i;
+ 
+ 	for (i = thermal->tz_gearbox_num - 1; i >= 0; i--)
+-		mlxsw_thermal_gearbox_tz_fini(&thermal->tz_gearbox_arr[i]); /*Remove*/
++		mlxsw_thermal_gearbox_tz_fini(&thermal->tz_gearbox_arr[i]);
+ 	kfree(thermal->tz_gearbox_arr);
+ }
+ 
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/minimal.c b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+index 5290993ff93f..0aa3abc974ff 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/minimal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/minimal.c
+@@ -264,7 +264,7 @@ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ 	}
+ 
+ 	/* Create port objects for each valid entry */
+-	for (i = 0; i < mlxsw_m->max_ports; i++) {
++	for (i = 0; i < max_ports; i++) {
+ 		if (mlxsw_m->module_to_port[i] > 0) {
+ 			err = mlxsw_m_port_create(mlxsw_m,
+ 						  mlxsw_m->module_to_port[i],
+@@ -294,9 +294,10 @@ static int mlxsw_m_ports_create(struct mlxsw_m *mlxsw_m)
+ 
+ static void mlxsw_m_ports_remove(struct mlxsw_m *mlxsw_m)
+ {
++	unsigned int max_ports = mlxsw_core_max_ports(mlxsw_m->core);
+ 	int i;
+ 
+-	for (i = 0; i < mlxsw_m->max_ports; i++) {
++	for (i = 0; i < max_ports; i++) {
+ 		if (mlxsw_m->module_to_port[i] > 0) {
+ 			mlxsw_m_port_remove(mlxsw_m,
+ 					    mlxsw_m->module_to_port[i]);
+-- 
+2.11.0
+
