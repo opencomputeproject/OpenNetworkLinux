@@ -13,3 +13,5 @@ driver-hwmon-max6620.patch
 0010-platform-x86-mlx-platform-Add-more-detention-for-sys.patch
 0011-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
 0012-mlx-platform-Add-support-for-next-gener.patch
+0013-mlxsw-core-Add-support-for-new-hardware-device-types.patch
+0014-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
