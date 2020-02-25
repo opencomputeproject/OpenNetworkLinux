@@ -47,10 +47,23 @@
 #define NUM_OF_QSFP             6
 #define NUM_OF_PORT             (NUM_OF_SFP + NUM_OF_QSFP)
 
+#define PHY_FORMAT "module_phy_%d"
+#define NUM_OF_PHY_REGISTERS    32
+#define SFP_PHY_DATA_COUNT      (NUM_OF_PHY_REGISTERS*2)
+#define IPMI_PHY_READ_CMD       IPMI_SFP_READ_CMD
+#define IPMI_PHY_WRITE_CMD      IPMI_SFP_WRITE_CMD
+#define SFP_PHY_I2C_SLAVE_ADDR  0x56
+#define IPMI_PHY_DATA_MAX_LEN   (NUM_OF_PHY_REGISTERS * 3)
+#define IPMI_PHY_HEADER_LEN         3 /* <Port> <Slave Address> <Data Count> */
+#define IPMI_PHY_PER_REG_DATA_LEN   3 /* <Register N> <Data N High> <Data N Low> */
+#define IPMI_PHY_DATA_LEN(reg_count)  (IPMI_PHY_HEADER_LEN + (reg_count * IPMI_PHY_PER_REG_DATA_LEN))
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t set_phy(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
 static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
@@ -100,12 +113,16 @@ enum module_status {
     NUM_OF_QSFP_STATUS,
 
     PRESENT_ALL = 0,
-    RXLOS_ALL
+    RXLOS_ALL,
+    SFP_PHY_SET
 };
 
 struct ipmi_sfp_resp_data {
     unsigned char eeprom[IPMI_DATA_MAX_LEN];
     char          eeprom_valid;
+
+    unsigned char phy_reg[SFP_PHY_DATA_COUNT];
+    char          phy_reg_valid;
 
     char          sfp_valid[NUM_OF_SFP_STATUS];        /* != 0 if registers are valid */
     unsigned long sfp_last_updated[NUM_OF_SFP_STATUS]; /* In jiffies */
@@ -124,11 +141,17 @@ struct as5916_54xl_sfp_data {
     struct ipmi_sfp_resp_data ipmi_resp;
     unsigned char ipmi_tx_data[3];
     struct bin_attribute eeprom[NUM_OF_PORT]; /* eeprom data */
+    struct bin_attribute phy_reg[NUM_OF_SFP]; /* phy register data */
 };
 
 struct sfp_eeprom_write_data {
     unsigned char ipmi_tx_data[4]; /* 0:port index  1:page number 2:offset 3:Data len */
     unsigned char write_buf[IPMI_DATA_MAX_LEN];
+};
+
+struct sfp_phy_write_data {
+    unsigned char ipmi_tx_data[3]; /* 0:port index  1:slave addr 3:Data len */
+    unsigned char write_buf[IPMI_PHY_DATA_MAX_LEN];
 };
 
 struct as5916_54xl_sfp_data *data = NULL;
@@ -146,12 +169,14 @@ static struct platform_driver as5916_54xl_sfp_driver = {
 #define SFP_TXDISABLE_ATTR_ID(port)	    SFP##port##_TXDISABLE
 #define SFP_TXFAULT_ATTR_ID(port)		SFP##port##_TXFAULT
 #define SFP_RXLOS_ATTR_ID(port)		    SFP##port##_RXLOS
+#define SFP_PHY_ATTR_ID(port)           SFP##port##_PHY
 
 #define SFP_ATTR(port) \
     SFP_PRESENT_ATTR_ID(port),    \
     SFP_TXDISABLE_ATTR_ID(port),  \
     SFP_TXFAULT_ATTR_ID(port),    \
-    SFP_RXLOS_ATTR_ID(port)
+    SFP_RXLOS_ATTR_ID(port),      \
+    SFP_PHY_ATTR_ID(port)
 
 #define QSFP_PRESENT_ATTR_ID(port)		QSFP##port##_PRESENT
 #define QSFP_TXDISABLE_ATTR_ID(port)	QSFP##port##_TXDISABLE
@@ -252,8 +277,9 @@ enum as5916_54xl_qsfp_sysfs_attrs {
     &sensor_dev_attr_module_reset_##port.dev_attr.attr, \
     &sensor_dev_attr_module_lpmode_##port.dev_attr.attr
 
-static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_all, NULL, PRESENT_ALL); \
-static SENSOR_DEVICE_ATTR(module_rxlos_all, S_IRUGO, show_all, NULL, RXLOS_ALL); \
+static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_all, NULL, PRESENT_ALL);
+static SENSOR_DEVICE_ATTR(module_rxlos_all, S_IRUGO, show_all, NULL, RXLOS_ALL);
+static SENSOR_DEVICE_ATTR(module_phy_set, S_IWUSR, NULL, set_phy, SFP_PHY_SET);
 
 DECLARE_SFP_SENSOR_DEVICE_ATTR(1);
 DECLARE_SFP_SENSOR_DEVICE_ATTR(2);
@@ -368,6 +394,7 @@ static struct attribute *as5916_54xl_sfp_attributes[] = {
     DECLARE_QSFP_ATTR(54),
     &sensor_dev_attr_module_present_all.dev_attr.attr,
     &sensor_dev_attr_module_rxlos_all.dev_attr.attr,
+    &sensor_dev_attr_module_phy_set.dev_attr.attr,
     NULL
 };
 
@@ -1342,6 +1369,124 @@ exit:
     return status;
 }
 
+static char *
+__strtok_r(char *s, const char *delim, char **last)
+{
+	char *spanp, *tok;
+	int c, sc;
+
+	if (s == NULL && (s = *last) == NULL)
+		return (NULL);
+
+	/*
+	 * Skip (span) leading delimiters (s += strspn(s, delim), sort of).
+	 */
+cont:
+	c = *s++;
+	for (spanp = (char *)delim; (sc = *spanp++) != 0;) {
+		if (c == sc)
+			goto cont;
+	}
+
+	if (c == 0) {		/* no non-delimiter characters */
+		*last = NULL;
+		return (NULL);
+	}
+	tok = s - 1;
+
+	/*
+	 * Scan token (scan for delimiters: s += strcspn(s, delim), sort of).
+	 * Note that delim must have one NUL; we stop if we see that, too.
+	 */
+	for (;;) {
+		c = *s++;
+		spanp = (char *)delim;
+		do {
+			if ((sc = *spanp++) == c) {
+				if (c == 0)
+					s = NULL;
+				else
+					s[-1] = '\0';
+				*last = s;
+				return (tok);
+			}
+		} while (sc != 0);
+	}
+	/* NOTREACHED */
+}
+
+/* Command Format:
+   <Port> <Slave Address> <Data Count> <Register 1> <Data 1 High> <Data 1 Low> <Register 2> <Data 2 High> <Data 2 Low> ...
+ */
+static ssize_t set_phy(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    int i = 0;
+	int status;
+    char *token = NULL, *last = NULL, *delim = " ";
+    struct sfp_phy_write_data wdata;
+    char *command = NULL;
+    char *ipmi_phy_tx_data = (char *)&wdata;
+
+    command = kzalloc(count+1, GFP_KERNEL);
+    if (!command) {
+        return -ENOMEM;
+    }
+
+    memset(&wdata, 0, sizeof(wdata));
+    memcpy(command, buf, count);
+
+    /* Parsing command into tokens */
+    token = __strtok_r(command, delim, &last);
+    while (token != NULL) {
+        unsigned long param = 0;
+
+        status = kstrtoul(token, 0, &param);
+        if (status) {
+            goto exit_free;
+        }
+
+        /* Validate each param length */
+        if (param > 0xFF) {
+            status = -EINVAL;
+            goto exit_free;
+        }
+
+        ipmi_phy_tx_data[i++] = param;
+        token = __strtok_r(NULL, delim, &last);
+    }
+
+    /* Validate command */
+    if (i <= IPMI_PHY_HEADER_LEN || (i != IPMI_PHY_DATA_LEN(wdata.ipmi_tx_data[2]))) {
+        status = -EINVAL;
+        goto exit_free;
+    }
+
+    mutex_lock(&data->update_lock);
+
+    /* Send IPMI write command */
+    status = ipmi_send_message(&data->ipmi, IPMI_PHY_WRITE_CMD,
+                               (unsigned char *)&wdata, 
+                               IPMI_PHY_DATA_LEN(wdata.ipmi_tx_data[2]), NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit_lock;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit_lock;
+    }
+
+    status = count;
+
+exit_lock:
+    mutex_unlock(&data->update_lock);
+exit_free:
+    kfree(command);
+
+    return status;
+}
+
 /*************************************************************************************
 SFP:  PS: Index of SFP is 1~48
 Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 0"
@@ -1564,42 +1709,262 @@ alloc_err:
     return ret;
 }
 
-static int sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eeprom)
+static int sysfs_bin_attr_cleanup(struct kobject *kobj, struct bin_attribute *bin_attr)
 {
-	sysfs_remove_bin_file(kobj, eeprom);
+	sysfs_remove_bin_file(kobj, bin_attr);
 	return 0;
+}
+
+/* Read command example:
+ * The first byte is the HIGH byte, and the second one is the LOW byte.
+ * # ipmitool raw 0x34 0x1c 0x01 0x56
+ * 00 35 00 01 6e 66 6f 00 01 00 a3 25 13 30 39 2f
+ * 32 39 2f 32 30 31 37 20 31 39 3a 31 33 3a 31 34
+ * 00 10 52 30 42 41 28 1c 78 38 36 5f 36 34 2d 61
+ * 63 63 74 6f 6e 5f 61 73 35 39 31 36 5f 35 34 78
+ */
+static ssize_t sfp_phy_read(loff_t off, char *buf, size_t count, int port)
+{
+    int status = 0;
+    unsigned char length = SFP_PHY_DATA_COUNT - off;
+
+    data->ipmi_resp.phy_reg_valid = 0;
+    data->ipmi_tx_data[0] = port;
+    data->ipmi_tx_data[1] = SFP_PHY_I2C_SLAVE_ADDR; 
+    status = ipmi_send_message(&data->ipmi, IPMI_PHY_READ_CMD, data->ipmi_tx_data, 2,
+                                data->ipmi_resp.phy_reg, SFP_PHY_DATA_COUNT);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    /* Calculate return length */
+    if (count < length) {
+        length = count;
+    }
+
+    memcpy(buf, data->ipmi_resp.phy_reg + off, length);
+
+    data->ipmi_resp.phy_reg_valid = 1;
+    return length;
+
+exit:
+    return status;
+}
+
+static ssize_t sfp_phy_bin_read(struct file *filp, struct kobject *kobj,
+		struct bin_attribute *attr,
+		char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+    u64 port = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+    /* count and off is 2-based (Low+High) */
+    if (unlikely(count % 2) || unlikely(off % 2) || 
+        unlikely((off+count) > (NUM_OF_PHY_REGISTERS*2))) {
+        return -EINVAL;
+    }
+
+    port = (u64)(attr->private);
+
+	/*
+	 * Read data from chip, protecting against concurrent updates
+	 * from this host
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sfp_phy_read(off, buf, count, port);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+}
+
+/* Command Format:
+ * <Port> <Slave Address> <Data Count> <Register 1> <Data 1 High> <Data 1 Low> <Register 2> <Data 2 High> <Data 2 Low> ...
+ * # ipmitool raw 0x34 0x1d 0x01 0x56 0x03 0x1 0x46 0x79 0x10 0x01 0x04 0x12 0x01 0x20
+ */
+static ssize_t sfp_phy_write(loff_t off, char *buf, size_t count, int port)
+{
+    int i = 0;
+    int status = 0;
+    unsigned char reg_count = (count/2);
+    struct sfp_phy_write_data wdata;
+
+    memset(&wdata, 0, sizeof(wdata));
+    wdata.ipmi_tx_data[0] = port;
+    wdata.ipmi_tx_data[1] = SFP_PHY_I2C_SLAVE_ADDR;
+    wdata.ipmi_tx_data[2] = reg_count; /* Register count */
+
+    /* Fill in the write_buf */
+    for (i = 0; i < reg_count; i++) {
+        /* Each register takes 3 bytes for IPMI */
+        wdata.write_buf[i*3]     = off + i;  /* The register to be written */
+        wdata.write_buf[i*3 + 1] = buf[i*2]; /* The data to be written into the register */ 
+        wdata.write_buf[i*3 + 2] = buf[i*2 + 1];
+    }
+
+    status = ipmi_send_message(&data->ipmi, IPMI_PHY_WRITE_CMD, (unsigned char *)&wdata, 
+                                IPMI_PHY_DATA_LEN(wdata.ipmi_tx_data[2]), NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    return count;
+
+exit:
+    return status;
+}
+
+static ssize_t sfp_phy_bin_write(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+	u64 port = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+    /* count and off is 2-based (Low+High) */
+    if (unlikely(count % 2) || unlikely(off % 2) ||
+        unlikely((off+count) > (NUM_OF_PHY_REGISTERS*2))) {
+        return -EINVAL;
+    }
+
+	port = (u64)(attr->private);
+
+	/*
+	 * Write data to chip, protecting against concurrent updates
+	 * from this host, but not from other I2C masters.
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sfp_phy_write(off, buf, count, port);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+}
+
+static int sysfs_phy_init(struct kobject *kobj, struct bin_attribute *phy_attr, u64 port)
+{
+    int ret = 0;
+    char *phy_name = NULL;
+
+    phy_name = kzalloc(32, GFP_KERNEL);
+    if (!phy_name) {
+        ret = -ENOMEM;
+        goto alloc_err;
+    }
+
+    sprintf(phy_name, PHY_FORMAT, (int)port);
+    sysfs_bin_attr_init(phy_attr);
+	phy_attr->attr.name = phy_name;
+	phy_attr->attr.mode = S_IRUGO | S_IWUSR;
+	phy_attr->read	    = sfp_phy_bin_read;
+	phy_attr->write	    = sfp_phy_bin_write;
+	phy_attr->size	    = NUM_OF_PHY_REGISTERS * 2; /* Two bytes for each register */
+    phy_attr->private   = (void*)port;
+
+	/* Create bin file */
+	ret = sysfs_create_bin_file(kobj, phy_attr);
+    if (unlikely(ret != 0)) {
+        goto bin_err;
+    }
+
+    return ret;
+
+bin_err:
+    kfree(phy_name);
+alloc_err:
+    return ret;
 }
 
 static int as5916_54xl_sfp_probe(struct platform_device *pdev)
 {
     int status = -1;
-    int i = 0;
+    int i = 0, j = 0;
 
     for (i = 0; i < NUM_OF_PORT; i++) {
         /* Register sysfs hooks */
     	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom[i],
     	                           i+1/* port name start from 1*/);
     	if (status) {
-    		goto exit;
-    	}
+            goto exit_eeprom;
+        }
+    }
+
+    for (j = 0; j < NUM_OF_SFP; j++) {
+        /* Register sysfs hooks */
+        status = sysfs_phy_init(&pdev->dev.kobj, &data->phy_reg[j],
+                                   j+1/* port name start from 1*/);
+        if (status) {
+            goto exit_phy;
+        }
     }
 
 	/* Register sysfs hooks */
 	status = sysfs_create_group(&pdev->dev.kobj, &as5916_54xl_sfp_group);
 	if (status) {
-		goto exit;
+		goto exit_phy;
 	}
-
-
 
     dev_info(&pdev->dev, "device created\n");
 
     return 0;
 
-exit:
+exit_phy:
+    /* Remove the phy attributes which were created successfully */
+    for (--j; j >= 0; j--) {
+        sysfs_bin_attr_cleanup(&pdev->dev.kobj, &data->phy_reg[j]);
+    }
+exit_eeprom:
     /* Remove the eeprom attributes which were created successfully */
     for (--i; i >= 0; i--) {
-        sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom[i]);
+        sysfs_bin_attr_cleanup(&pdev->dev.kobj, &data->eeprom[i]);
     }
     
     return status;
@@ -1610,7 +1975,7 @@ static int as5916_54xl_sfp_remove(struct platform_device *pdev)
     int i = 0;
 
     for (i = 0; i < NUM_OF_PORT; i++) {
-        sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom[i]);
+        sysfs_bin_attr_cleanup(&pdev->dev.kobj, &data->eeprom[i]);
     }
 
     sysfs_remove_group(&pdev->dev.kobj, &as5916_54xl_sfp_group);
