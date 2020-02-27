@@ -24,6 +24,7 @@
  *
  ***********************************************************/
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -32,6 +33,8 @@
 #include <AIM/aim.h>
 #include <onlp/platformi/sfpi.h>
 #include "platform_lib.h"
+
+#include <onlplib/i2c.h>
 
 #define DEBUG_FLAG 0
 
@@ -42,20 +45,20 @@ int deviceNodeWrite(char *filename, char *buffer, int buf_size, int data_len)
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
-
-    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {    
-        return -1;  
     }
 
-    if ((len = write(fd, buffer, buf_size)) < 0) {    
-        close(fd);    
+    if ((fd = open(filename, O_WRONLY, S_IWUSR)) == -1) {
+        return -1;
+    }
+
+    if ((len = write(fd, buffer, buf_size)) < 0) {
+        close(fd);
         return -1;
     }
 
     if ((close(fd) == -1)) {
         return -1;
-    }  
+    }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
         return -1;
@@ -73,25 +76,25 @@ int deviceNodeWriteInt(char *filename, int value, int data_len)
 }
 
 int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_len)
-    {    
+    {
     int fd;
     int len;
 
     if ((buffer == NULL) || (buf_size < 0)) {
         return -1;
-    }  
+    }
 
     if ((fd = open(filename, O_RDONLY)) == -1) {
-        return -1;  
+        return -1;
     }
 
     if ((len = read(fd, buffer, buf_size)) < 0) {
-        close(fd);    
+        close(fd);
         return -1;
-    }  
-    
-    if ((close(fd) == -1)) {    
-        return -1;  
+    }
+
+    if ((close(fd) == -1)) {
+        return -1;
     }
 
     if ((len > buf_size) || (data_len != 0 && len != data_len)) {
@@ -108,7 +111,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
     if (data_len >= buf_size || data_len < 0) {
         return -1;
     }
-    
+
     ret = deviceNodeReadBinary(filename, buffer, buf_size-1, data_len);
 
     if (ret == 0) {
@@ -119,7 +122,7 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
             buffer[buf_size-1] = '\0';
         }
     }
-    
+
     return ret;
 }
 
@@ -134,12 +137,12 @@ int psu_two_complement_to_int(uint16_t data, uint8_t valid_bit, int mask)
 
 
 /*
-i2c APIs: access i2c device by ioctl 
-static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)  
-static int i2c_read_byte(int i2cbus, int addr, int offset, char* data) 
+i2c APIs: access i2c device by ioctl
+static int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
+static int i2c_read_byte(int i2cbus, int addr, int offset, char* data)
 static int i2c_read_word(int i2cbus, int addr, int command)
-static int i2c_write_byte(int i2cbus, int addr, int offset, char val) 
-static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val) 
+static int i2c_write_byte(int i2cbus, int addr, int offset, char val)
+static int i2c_write_bit(int i2cbus, int addr, int offset, int bit, char val)
 */
 int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
 {
@@ -172,9 +175,9 @@ int i2c_read(int i2cbus, int addr, int offset, int length, char* data)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    //if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -247,14 +250,14 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
         return -errno;
     }
-    /* 
+    /*
       Sequential Read for at24c128
         use i2c_smbus_write_byte_data to write 24c128 address counter(two 8-bit data word addresses)
         24c128:
@@ -266,8 +269,8 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
                     +----------------------------------------------------+
                     | S | Device  | Wr | A | Command | A | Data      | A |...
                     |   | Address |    |   |         |   |           |   |
-                    +----------------------------------------------------+        
-     
+                    +----------------------------------------------------+
+
       */
     res = i2c_smbus_write_byte_data(file, (uint8_t)offset>>8,(uint8_t)offset);
 
@@ -279,7 +282,7 @@ int i2c_sequential_read(int i2cbus, int addr, int offset, int length, char* data
     for (i = 0; i<length; i++)
     {
         res = i2c_smbus_read_byte(file);
-  
+
         if (res < 0 && DEBUG_FLAG)
         {
             AIM_LOG_INFO("Error: i2c_smbus_read_byte_data offset:%d\r\n", offset+i);
@@ -324,9 +327,9 @@ int i2c_read_rps_status(int i2cbus, int addr, int offset)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -377,9 +380,9 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", offset, strerror(errno));
         close(file);
@@ -388,7 +391,7 @@ int _i2c_read_word_data(int i2cbus, int addr, int offset)
 
     #if 1
     int res = 0;
-    
+
     res = i2c_smbus_read_word_data(file, offset);
     if (res < 0 && DEBUG_FLAG)
     {
@@ -487,9 +490,9 @@ int bmc_command_read(char *cmd, char *data)
     char result_buf[80];
     int result_buf_size;
 
-    memset(result_buf, 0, sizeof(result_buf));    
+    memset(result_buf, 0, sizeof(result_buf));
     result_buf_size = sizeof(result_buf);
-    
+
     fp = popen(cmd, "r");
     if(NULL == fp)
     {
@@ -502,7 +505,7 @@ int bmc_command_read(char *cmd, char *data)
     {
         printf("buffer too small\n");
         return -1/*FALSE*/;
-    }    
+    }
 
    rc = pclose(fp);
    if(-1 == rc)
@@ -524,7 +527,7 @@ int bmc_command_read(char *cmd, char *data)
     *data = result_dec;
 
     return 1/*TRUE*/;
-     
+
 }
 
 int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data)
@@ -537,7 +540,7 @@ int bmc_i2c_read_byte(int bus, int devaddr, int offset, char* data)
     raw_bus_id = bmc_get_raw_bus_id(bus);
 
     if (raw_bus_id)
-        snprintf(cmd, sizeof(cmd), "ipmitool raw 0x06 0x52 0x%02x 0x%x 1 0x%02x", raw_bus_id, devaddr, offset);        
+        snprintf(cmd, sizeof(cmd), "ipmitool raw 0x06 0x52 0x%02x 0x%x 1 0x%02x", raw_bus_id, devaddr, offset);
     else
         return ret;
 
@@ -558,7 +561,7 @@ int bmc_read_raw_fan_speed(int sensor_num, char* data)
     int ret = 0;
     char cmd[128] = {0};
 
-    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x04 0x2d 0x%02x", sensor_num);        
+    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x04 0x2d 0x%02x", sensor_num);
 
 //debug
 //printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
@@ -578,7 +581,7 @@ int bmc_read_raw_fan_pwm(int pwm_num, char* data)
     int ret = 0;
     char cmd[128] = {0};
 
-    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x34 0x03 0x%02x", pwm_num);        
+    snprintf(cmd, sizeof(cmd), "ipmitool raw 0x34 0x03 0x%02x", pwm_num);
 
 //debug
 //printf("[%s(%d)] cmd:%s \n", __func__, __LINE__, cmd);
@@ -637,7 +640,7 @@ int _i2c_read_block_data(int i2cbus, int addr, uint8_t offset, uint8_t *data, in
     #endif
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
     //if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
@@ -790,9 +793,9 @@ int i2c_write_byte(int i2cbus, int addr, int offset, char val)
     }
 
     /*set slave address set_slave_addr(file, address, force))*/
-    
+
     //if (ioctl(file, I2C_SLAVE_FORCE, addr) < 0)
-    if (ioctl(file, I2C_SLAVE, addr) < 0) 
+    if (ioctl(file, I2C_SLAVE, addr) < 0)
     {
         AIM_LOG_INFO("Error: Could not set address to 0x%02x, %s \r\n", addr, strerror(errno));
         close(file);
@@ -829,10 +832,10 @@ int bmc_command_write(char *cmd)
         return -1/*FALSE*/;
     }
 
-    return 1/*TRUE*/;     
+    return 1/*TRUE*/;
 }
 
-int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value)    
+int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value)
 {
     int ret = 0;
     char cmd[128] = {0};
@@ -857,7 +860,7 @@ int bmc_i2c_write_byte(int bus, int devaddr, int offset, char value)
 }
 
 /* Set PWM : ipmitool raw 0x34 0x04 <PWM number 0x01 ~ 0x04> <Duty Cycle 0x00 ~ 0x64> */
-int bmc_write_raw_fan_pwm(int pwm_num, char value)    
+int bmc_write_raw_fan_pwm(int pwm_num, char value)
 {
     int ret = 0;
     char cmd[128] = {0};
@@ -1043,4 +1046,3 @@ int eeprom_tlv_read(uint8_t *rdata, char type, char *data)
     }
     return 0;
 }
- 
