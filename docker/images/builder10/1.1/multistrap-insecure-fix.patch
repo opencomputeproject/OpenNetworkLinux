@@ -1,0 +1,11 @@
+--- /usr/sbin/multistrap	2018-11-21 14:00:46.000000000 +0000
++++ multistrap-insecure-fix	2020-02-26 15:19:27.358167452 +0000
+@@ -319,6 +319,8 @@ $config_str .= " -o Dir::Etc::TrustedPar
+ $config_str .= " -o Dir::Etc::Trusted=" . shellescape("${dir}${etcdir}trusted.gpg");
+ $config_str .= " -o Apt::Get::AllowUnauthenticated=true"
+ 	if (defined $noauth);
++$config_str .= " -o Acquire::AllowInsecureRepositories=true"
++        if (defined $noauth);
+ $config_str .= " -o Apt::Get::Download-Only=true";
+ $config_str .= " -o Apt::Install-Recommends=false"
+ 	if (not defined $allow_recommends);
