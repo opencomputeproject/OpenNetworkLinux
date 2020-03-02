@@ -90,7 +90,7 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define PSU_MODEL_NAME_LEN 9
+#define PSU_MODEL_NAME_LEN 8
 #define PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
