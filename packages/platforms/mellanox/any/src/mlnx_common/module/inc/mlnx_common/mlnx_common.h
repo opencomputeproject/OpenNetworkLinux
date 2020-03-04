@@ -139,7 +139,7 @@ typedef struct mlnx_platform_info_s {
 #define PSU1_ID 1
 #define PSU2_ID 2
 #define HW_MANAGEMENT_PATH "/var/run/hw-management"
-#define QSFP_PATH HW_MANAGEMENT_PATH"/qsfp"
+#define SFP_PATH HW_MANAGEMENT_PATH"/sfp"
 #define THERMAL_PATH "/var/run/hw-management/thermal"
 #define PSU_MODULE_PREFIX THERMAL_PATH"/psu%d_%s"
 #define PSU_POWER_PREFIX HW_MANAGEMENT_PATH"/power/psu%d_%s"
