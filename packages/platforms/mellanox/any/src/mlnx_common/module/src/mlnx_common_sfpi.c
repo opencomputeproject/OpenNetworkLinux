@@ -74,17 +74,31 @@ static char*
 mc_sfp_get_port_path(int port, char *node_name)
 {
     if (node_name)
-        sprintf(sfp_node_path, "%s/qsfp%d%s", QSFP_PATH, port, node_name);
+        sprintf(sfp_node_path, "%s/sfp%d%s", SFP_PATH, port, node_name);
     else
-        sprintf(sfp_node_path, "%s/qsfp%d", QSFP_PATH, port);
+        sprintf(sfp_node_path, "%s/sfp%d", SFP_PATH, port);
     return sfp_node_path;
 }
 
 static char*
 mc_sfp_convert_i2c_path(int port, int devaddr)
 {
-    sprintf(sfp_node_path, "%s/qsfp%d", QSFP_PATH, port);
+    sprintf(sfp_node_path, "%s/sfp%d", SFP_PATH, port);
     return sfp_node_path;
+}
+
+static int
+mc_sfp_prepare_eeprom_dump(int port, const char* path)
+{
+    char* cmd = aim_fstrdup("ethtool -m sfp%d raw on length 256 > %s", port, path);
+
+    if(system(cmd) != 0) {
+        aim_free(cmd);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    aim_free(cmd);
+
+	return ONLP_STATUS_OK;
 }
 
 /************************************************************
@@ -153,6 +167,10 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
     char* path = mc_sfp_get_port_path(port, NULL);
 
+	if (mc_sfp_prepare_eeprom_dump(port, path) != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("Unable to prepare sfp%d eeprom dump\r\n", port);
+        return ONLP_STATUS_E_INTERNAL;
+	}
     /*
      * Read the SFP eeprom into data[]
      *
