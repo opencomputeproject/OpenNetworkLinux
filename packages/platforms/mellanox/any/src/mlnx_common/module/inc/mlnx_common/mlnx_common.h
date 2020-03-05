@@ -144,6 +144,7 @@ typedef struct mlnx_platform_info_s {
 #define PSU_MODULE_PREFIX THERMAL_PATH"/psu%d_%s"
 #define PSU_POWER_PREFIX HW_MANAGEMENT_PATH"/power/psu%d_%s"
 #define IDPROM_PATH HW_MANAGEMENT_PATH"/eeprom/%s%d_info"
+#define PSU_VPD_PATH HW_MANAGEMENT_PATH"/eeprom/%s%d_vpd"
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
@@ -183,8 +184,9 @@ int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform);
 
 int onlp_fani_get_min_rpm(int id);
 
-int psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info,
-                    onlp_fan_info_t* fan_info);
+int psu_fan_read_eeprom(int psu_index, onlp_fan_info_t* fan_info);
+
+int psu_read_eeprom(int psu_index, onlp_psu_info_t* psu_info);
 
 mlnx_platform_info_t* get_platform_info();
 
