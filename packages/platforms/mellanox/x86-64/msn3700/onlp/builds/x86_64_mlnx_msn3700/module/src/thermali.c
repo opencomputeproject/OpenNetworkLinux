@@ -57,8 +57,8 @@ static char* thermal_fnames[] =  /* must map with onlp_thermal_id */
     "asic",
     "fan_amb",
     "port_amb",
-    "psu1",
-    "psu2"
+    "psu1_temp",
+    "psu2_temp"
 };
 
 /* Static values */
