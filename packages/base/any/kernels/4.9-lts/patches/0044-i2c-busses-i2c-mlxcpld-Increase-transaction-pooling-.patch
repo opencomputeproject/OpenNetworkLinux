@@ -1,0 +1,39 @@
+From a4c14935030a79d4516b85cf0302afeb3fb6eb46 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 22 Jan 2020 16:04:50 +0000
+Subject: [PATCH i2c] i2c: busses: i2c-mlxcpld: Increase transaction pooling
+ time
+
+i2c-mlxcpld polling time from 200 to 600 usec due to some
+problematic power supply units.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 41b57027e348..addec60fb52b 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -51,7 +51,7 @@
+ #define MLXCPLD_I2C_MAX_ADDR_LEN	4
+ #define MLXCPLD_I2C_RETR_NUM		2
+ #define MLXCPLD_I2C_XFER_TO		500000 /* usec */
+-#define MLXCPLD_I2C_POLL_TIME		200   /* usec */
++#define MLXCPLD_I2C_POLL_TIME		600   /* usec */
+ 
+ /* LPC I2C registers */
+ #define MLXCPLD_LPCI2C_CPBLTY_REG	0x0
+@@ -525,6 +525,8 @@ static int mlxcpld_i2c_probe(struct platform_device *pdev)
+ 	if (err)
+ 		mutex_destroy(&priv->lock);
+ 
++	dev_info(priv->dev, "Set with %d polling\n", MLXCPLD_I2C_POLL_TIME);
++
+ 	return err;
+ }
+ 
+-- 
+2.11.0
+

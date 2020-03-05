@@ -1,0 +1,35 @@
+From 427b0675e3694f623875c81e3a1d0ffe88f79724 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 4 Dec 2019 07:30:58 +0200
+Subject: [PATCH platform] platform/x86: mlx-platform: Add more detention for
+ system attributes
+
+Add new attribute for "next-generation" type systems:
+"reset_sw_pwr_off" for indication of reset caused by
+software power off command.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/platform/x86/mlx-platform.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 62c880b56f58..4a445ff72ed9 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -1336,6 +1336,12 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.mask = GENMASK(7, 0) & ~BIT(1),
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "reset_sw_pwr_off",
++		.reg = MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET,
++		.mask = GENMASK(7, 0) & ~BIT(2),
++		.mode = 0444,
++	},
+ 	{
+ 		.label = "reset_comex_thermal",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET,
+-- 
+2.20.1
+

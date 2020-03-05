@@ -1,0 +1,232 @@
+From 600e9ff33b645e64b94eae4dd3fcb4973714dcca Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 25 Sep 2019 20:13:29 +0300
+Subject: [PATCH mlxsw backport to 4.19] mlxsw: core: Extend QSFP EEPROM size
+ and add support for 400G transceivers for ethtool
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The patch extends the size of QSFP EEPROM for the cable type SSF8436,
+SFF8636 from 256 to 612.
+SFF-8436 spec defines for pages 0, 1, 2, 3. Page 0 contains lower page
+offsets (from 0x00 to 0x7f) and upper page offsets (from 0x80 to 0xfe).
+Pages 1, 2 and 3 are optional and could be not filled.
+Page 1 is provided if upper page 0 byte 0xc3 bit 6 is set one.
+Page 2 is provided if upper page 0 byte 0xc3 bit 7 is set one.
+Page 3 is provided if lower page 0 byte 0x02 bit 2 is set zero.
+Offset 0xc3 for the upper page is provided as 0x43 = 0xc3 - 0x80.
+
+As a result of exposing 256 bytes only, ethtool shows wrong info for
+pages 1, 2, 3.
+In the below hex dump from ethtool for cable complained to spec SFF-8636
+can be seen that EEPROM of this device contains optical diagnostic page
+(lower page 0 byte 0x02 bit 2 is set zero), but it is not exposed,
+since the length defined for this type is 256.
+
+After changing the length returned by callback for "get_module_info"
+from 256 to 640 the upper pages 1, 2, 3 are exposed by ethtool.
+In the below hex dump from same cable, can be seen that page (from
+offset 0x0200) for optical diagnostic has non-zero data.
+In the below hex dump from same cable, can be seen that page (from
+offset 0x0200) for optical diagnostic has non-zero data.
+
+Add support of SFP-DD and QSFP+ with CMIS transceivers for ethtool
+
+The SFP-DD Double Density 2X Pluggable Transceiver defines a new
+pluggable form factor that supports 2 high speed electrical interfaces
+connecting to the host. This will include a mechanical module, a 1×1
+Cage with connector, thermal, pinout and management specifications.
+The SFP-DD supports both optical and copper interfaces.
+
+The Quad Small Form Factor Pluggable Double Density (QSFP-DD) hardware
+specification defines a form factor that supports up to 400 Gbps in
+aggregate over an 8x50-Gbps electrical interface. The Common Management
+Interface Specification (CMIS) supports multiple interface settings and
+speed negotiation controls.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ .../net/ethernet/mellanox/mlxsw/core_env.c    | 43 +++++++++++++------
+ drivers/net/ethernet/mellanox/mlxsw/reg.h     | 17 +++++---
+ include/uapi/linux/ethtool.h                  |  3 ++
+ 3 files changed, 45 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index d2c7ce67c300..03eae1ed27fe 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -32,7 +32,9 @@ static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP: /* fall-through */
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS: /* fall-through */
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28: /* fall-through */
+-	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD:
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP_DD: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS_CMIS:
+ 		*qsfp = true;
+ 		break;
+ 	default:
+@@ -44,12 +46,13 @@ static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
+ 
+ static int
+ mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
+-			      u16 offset, u16 size, void *data,
++			      u16 offset, u16 size, bool qsfp, void *data,
+ 			      unsigned int *p_read_size)
+ {
+ 	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN];
+ 	u16 i2c_addr;
++	u8 page = 0;
+ 	int status;
+ 	int err;
+ 
+@@ -62,11 +65,19 @@ mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
+ 
+ 	i2c_addr = MLXSW_REG_MCIA_I2C_ADDR_LOW;
+ 	if (offset >= MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH) {
+-		i2c_addr = MLXSW_REG_MCIA_I2C_ADDR_HIGH;
+-		offset -= MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH;
++		if (qsfp) {
++			page = MLXSW_REG_MCIA_PAGE_GET(offset);
++			offset -= MLXSW_REG_MCIA_EEPROM_UP_PAGE_LENGTH * page;
++			if (offset + size > MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH)
++				size = MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH -
++				       offset;
++		} else {
++			i2c_addr = MLXSW_REG_MCIA_I2C_ADDR_HIGH;
++			offset -= MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH;
++		}
+ 	}
+ 
+-	mlxsw_reg_mcia_pack(mcia_pl, module, 0, 0, offset, size, i2c_addr);
++	mlxsw_reg_mcia_pack(mcia_pl, module, 0, page, offset, size, i2c_addr);
+ 
+ 	err = mlxsw_reg_query(mlxsw_core, MLXSW_REG(mcia), mcia_pl);
+ 	if (err)
+@@ -155,7 +166,7 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 	int err;
+ 
+ 	err = mlxsw_env_query_module_eeprom(mlxsw_core, module, 0, offset,
+-					    module_info, &read_size);
++					    false, module_info, &read_size);
+ 	if (err)
+ 		return err;
+ 
+@@ -168,7 +179,7 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 	switch (module_id) {
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP:
+ 		modinfo->type       = ETH_MODULE_SFF_8436;
+-		modinfo->eeprom_len = ETH_MODULE_SFF_8436_LEN;
++		modinfo->eeprom_len = ETH_MODULE_SFF_8436_MAX_LEN;
+ 		break;
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS: /* fall-through */
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28:
+@@ -176,17 +187,17 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 		    module_rev_id >=
+ 		    MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID_8636) {
+ 			modinfo->type       = ETH_MODULE_SFF_8636;
+-			modinfo->eeprom_len = ETH_MODULE_SFF_8636_LEN;
++			modinfo->eeprom_len = ETH_MODULE_SFF_8636_MAX_LEN;
+ 		} else {
+ 			modinfo->type       = ETH_MODULE_SFF_8436;
+-			modinfo->eeprom_len = ETH_MODULE_SFF_8436_LEN;
++			modinfo->eeprom_len = ETH_MODULE_SFF_8436_MAX_LEN;
+ 		}
+ 		break;
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
+ 		/* Verify if transceiver provides diagnostic monitoring page */
+ 		err = mlxsw_env_query_module_eeprom(mlxsw_core, module,
+-						    SFP_DIAGMON, 1, &diag_mon,
+-						    &read_size);
++						    SFP_DIAGMON, 1, false,
++						    &diag_mon, &read_size);
+ 		if (err)
+ 			return err;
+ 
+@@ -213,6 +224,7 @@ int mlxsw_env_get_module_eeprom(struct net_device *netdev,
+ {
+ 	int offset = ee->offset;
+ 	unsigned int read_size;
++	bool qsfp;
+ 	int i = 0;
+ 	int err;
+ 
+@@ -221,10 +233,15 @@ int mlxsw_env_get_module_eeprom(struct net_device *netdev,
+ 
+ 	memset(data, 0, ee->len);
+ 
++	/* Validate module identifier type. */
++	err = mlxsw_env_validate_cable_ident(mlxsw_core, module, &qsfp);
++	if (err)
++		return err;
++
+ 	while (i < ee->len) {
+ 		err = mlxsw_env_query_module_eeprom(mlxsw_core, module, offset,
+-						    ee->len - i, data + i,
+-						    &read_size);
++						    ee->len - i, qsfp,
++						    data + i, &read_size);
+ 		if (err) {
+ 			netdev_err(netdev, "Eeprom query failed\n");
+ 			return err;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index f2512ea9cba1..0832ec5d3f71 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -8163,6 +8163,7 @@ MLXSW_ITEM32(reg, mcia, device_address, 0x04, 0, 16);
+ MLXSW_ITEM32(reg, mcia, size, 0x08, 0, 16);
+ 
+ #define MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH	256
++#define MLXSW_REG_MCIA_EEPROM_UP_PAGE_LENGTH	128
+ #define MLXSW_REG_MCIA_EEPROM_SIZE		48
+ #define MLXSW_REG_MCIA_I2C_ADDR_LOW		0x50
+ #define MLXSW_REG_MCIA_I2C_ADDR_HIGH		0x51
+@@ -8179,11 +8180,13 @@ enum mlxsw_reg_mcia_eeprom_module_info_rev_id {
+ };
+ 
+ enum mlxsw_reg_mcia_eeprom_module_info_id {
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP	= 0x03,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP	= 0x0C,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS	= 0x0D,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28	= 0x11,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD	= 0x18,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP		= 0x03,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP		= 0x0C,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS		= 0x0D,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28		= 0x11,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD		= 0x18,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP_DD		= 0x1A,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS_CMIS	= 0x1E,
+ };
+ 
+ enum mlxsw_reg_mcia_eeprom_module_info {
+@@ -8198,6 +8201,10 @@ enum mlxsw_reg_mcia_eeprom_module_info {
+  */
+ MLXSW_ITEM_BUF(reg, mcia, eeprom, 0x10, MLXSW_REG_MCIA_EEPROM_SIZE);
+ 
++#define MLXSW_REG_MCIA_PAGE_GET(off) (((off) - \
++				MLXSW_REG_MCIA_EEPROM_PAGE_LENGTH) / \
++				MLXSW_REG_MCIA_EEPROM_UP_PAGE_LENGTH + 1)
++
+ static inline void mlxsw_reg_mcia_pack(char *payload, u8 module, u8 lock,
+ 				       u8 page_number, u16 device_addr,
+ 				       u8 size, u8 i2c_device_addr)
+diff --git a/include/uapi/linux/ethtool.h b/include/uapi/linux/ethtool.h
+index dc69391d2bba..08bb1554093d 100644
+--- a/include/uapi/linux/ethtool.h
++++ b/include/uapi/linux/ethtool.h
+@@ -1691,6 +1691,9 @@ static inline int ethtool_validate_duplex(__u8 duplex)
+ #define ETH_MODULE_SFF_8436		0x4
+ #define ETH_MODULE_SFF_8436_LEN		256
+ 
++#define ETH_MODULE_SFF_8636_MAX_LEN     640
++#define ETH_MODULE_SFF_8436_MAX_LEN     640
++
+ /* Reset flags */
+ /* The reset() operation must clear the flags for the components which
+  * were actually reset.  On successful return, the flags indicate the
+-- 
+2.20.1
+

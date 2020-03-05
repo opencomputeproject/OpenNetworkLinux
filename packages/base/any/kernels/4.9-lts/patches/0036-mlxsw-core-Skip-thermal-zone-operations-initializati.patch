@@ -1,0 +1,101 @@
+From 2a2cd8876916ffaf530053a5e1f05940258eab86 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Tue, 5 Nov 2019 15:25:22 +0200
+Subject: [PATCH v1] mlxsw: core: Skip thermal zone operations initialization
+
+Skip thermal zones setting for modules to reduce probing time.
+It is to be read anyway during thermal zone operations.
+Skip thermal zone setting and reading during initialization.
+
+Decrease i2c controller polling time from 2000usec to 200usec
+for the performance improvement.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c                   |  2 +-
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 2fd717d8dd30..41b57027e348 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -51,7 +51,7 @@
+ #define MLXCPLD_I2C_MAX_ADDR_LEN	4
+ #define MLXCPLD_I2C_RETR_NUM		2
+ #define MLXCPLD_I2C_XFER_TO		500000 /* usec */
+-#define MLXCPLD_I2C_POLL_TIME		2000   /* usec */
++#define MLXCPLD_I2C_POLL_TIME		200   /* usec */
+ 
+ /* LPC I2C registers */
+ #define MLXCPLD_LPCI2C_CPBLTY_REG	0x0
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index dfaad30ae960..08458e30e171 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -116,6 +116,7 @@ struct mlxsw_thermal {
+ 	u8 tz_gearbox_num;
+ 	unsigned int tz_highest_score;
+ 	struct thermal_zone_device *tz_highest_dev;
++	bool initializing; /* Driver is in initialization stage */
+ };
+ 
+ static inline u8 mlxsw_state_to_duty(int state)
+@@ -287,6 +288,12 @@ static int mlxsw_thermal_get_temp(struct thermal_zone_device *tzdev,
+ 	int temp;
+ 	int err;
+ 
++	/* Do not read temperature in initialization stage. */
++	if (thermal->initializing) {
++		*p_temp = 0;
++		return 0;
++	}
++
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, 0, false, false);
+ 
+ 	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mtmp), mtmp_pl);
+@@ -458,6 +465,12 @@ static int mlxsw_thermal_module_temp_get(struct thermal_zone_device *tzdev,
+ 	int temp;
+ 	int err;
+ 
++	/* Do not read temperature in initialization stage. */
++	if (thermal->initializing) {
++		*p_temp = 0;
++		return 0;
++	}
++
+ 	/* Read module temperature. */
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN +
+ 			    tz->module, false, false);
+@@ -565,6 +578,12 @@ static int mlxsw_thermal_gearbox_temp_get(struct thermal_zone_device *tzdev,
+ 	int temp;
+ 	int err;
+ 
++	/* Do not read temperature in initialization stage. */
++	if (thermal->initializing) {
++		*p_temp = 0;
++		return 0;
++	}
++
+ 	index = MLXSW_REG_MTMP_GBOX_INDEX_MIN + tz->module;
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, index, false, false);
+ 
+@@ -919,6 +938,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 	thermal->core = core;
+ 	thermal->bus_info = bus_info;
+ 	memcpy(thermal->trips, default_thermal_trips, sizeof(thermal->trips));
++	thermal->initializing = true;
+ 
+ 	err = mlxsw_reg_query(thermal->core, MLXSW_REG(mfcr), mfcr_pl);
+ 	if (err) {
+@@ -994,6 +1014,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 		goto err_unreg_modules_tzdev;
+ 
+ 	thermal->mode = THERMAL_DEVICE_DISABLED;
++	thermal->initializing = false;
+ 	*p_thermal = thermal;
+ 	return 0;
+ 
+-- 
+2.11.0
+
