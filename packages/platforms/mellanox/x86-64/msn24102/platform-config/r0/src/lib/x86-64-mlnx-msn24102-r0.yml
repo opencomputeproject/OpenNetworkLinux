@@ -25,12 +25,10 @@ x86-64-mlnx-msn24102-r0:
       console=ttyS0,115200n8
       rd_NO_MD
       rd_NO_LUKS
-      acpi_enforce_resources=lax
-      acpi=noirq
       i2c-ismt.enable=0
 
-  ##network
-  ##  interfaces:
-  ##    ma1:
-  ##      name: ~
+    network:
+      interfaces:
+        ma1:
+          name: eth1
   ##      syspath: pci0000:00/0000:00:14.0

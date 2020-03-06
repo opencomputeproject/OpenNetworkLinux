@@ -5,7 +5,7 @@ class OnlPlatform_x86_64_mlnx_msn27002_r0(OnlPlatformMellanox,
                                            OnlPlatformPortConfig_32x100):
     PLATFORM='x86-64-mlnx-msn27002-r0'
     MODEL="MSN27002"
-    SYS_OBJECT_ID=".2700.3"
+    SYS_OBJECT_ID=".27002.1"
 
     def baseconfig(self):
         # load modules
