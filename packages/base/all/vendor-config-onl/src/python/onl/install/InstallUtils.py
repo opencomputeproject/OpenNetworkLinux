@@ -355,6 +355,10 @@ class BlkidEntry:
         dev, part = self.device, ""
         while dev[-1:] in string.digits:
             dev, part = dev[:-1], dev[-1] + part
+        if ("mmc" in dev):
+            # eMMC device
+            dev = dev[:-1]
+            part = "p"+part
         return dev, part
 
     def isOnieReserved(self):
@@ -830,8 +834,12 @@ class GdiskParser(SubprocessMixin):
             if not line[0] in string.digits: continue
 
             partno = int(line.split()[0])
+            if self.device.find("mmcblk") >= 0:
+                # eMMC block device
+                partDevice = "%sp%d" % (self.device, pidx,)
+            else:
+                partDevice = "%s%d" % (self.device, pidx,)
 
-            partDevice = "%s%d" % (self.device, pidx,)
             pidx += 1
             # linux partitions may be numbered differently,
             # if there are holes in the GPT partition table
