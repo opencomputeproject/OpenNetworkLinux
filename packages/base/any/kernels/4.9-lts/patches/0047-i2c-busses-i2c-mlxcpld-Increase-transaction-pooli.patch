@@ -1,0 +1,31 @@
+From 10301ce5d3375b4a088710e3ce8ecc6f4acc6ed7 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 5 Mar 2020 13:09:06 +0200
+Subject: [hwmon v1] i2c: busses: i2c-mlxcpld: Increase transaction pooling
+ time
+
+i2c-mlxcpld polling time from 200 to 600 usec due to some
+problematic power supply units, which cannot work with
+such frequency.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/i2c/busses/i2c-mlxcpld.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/i2c/busses/i2c-mlxcpld.c b/drivers/i2c/busses/i2c-mlxcpld.c
+index 41b57027e348..6da4b58eee4f 100644
+--- a/drivers/i2c/busses/i2c-mlxcpld.c
++++ b/drivers/i2c/busses/i2c-mlxcpld.c
+@@ -51,7 +51,7 @@
+ #define MLXCPLD_I2C_MAX_ADDR_LEN	4
+ #define MLXCPLD_I2C_RETR_NUM		2
+ #define MLXCPLD_I2C_XFER_TO		500000 /* usec */
+-#define MLXCPLD_I2C_POLL_TIME		200   /* usec */
++#define MLXCPLD_I2C_POLL_TIME		400   /* usec */
+ 
+ /* LPC I2C registers */
+ #define MLXCPLD_LPCI2C_CPBLTY_REG	0x0
+-- 
+2.11.0
+
