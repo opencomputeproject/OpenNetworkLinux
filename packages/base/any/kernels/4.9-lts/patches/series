@@ -48,3 +48,4 @@ driver-add-the-support-max6620.patch
 0044-mlxsw-core-Add-support-for-new-hardware-device-types.patch
 0044-i2c-busses-i2c-mlxcpld-Increase-transaction-pooling-.patch
 0045-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
+0046-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
