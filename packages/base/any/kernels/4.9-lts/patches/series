@@ -49,5 +49,4 @@ driver-add-the-support-max6620.patch
 0045-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
 0046-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
 0047-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
-0048-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
 0049-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
