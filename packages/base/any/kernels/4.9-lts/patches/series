@@ -44,7 +44,6 @@ driver-add-the-support-max6620.patch
 0041-firmware-dmi-Add-access-to-the-SKU-ID-string-backpor.patch
 0042-platform-x86-mlx-platform-Modify-setting-for-new-sys.patch
 0043-platform-x86-mlx-platform-Add-support-for-next-gener.patch
-0043-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
 0044-mlxsw-core-Add-support-for-new-hardware-device-types.patch
 0045-mlxsw-minimal-Fix-validation-for-FW-minor-version.patch
 0046-hwmon-pmbus-core-Add-support-for-vid-mode-detecti.patch
