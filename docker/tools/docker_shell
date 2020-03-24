@@ -107,7 +107,7 @@ class User(object):
             execute(cmd, "User creation failed for user %s" % self)
 
         if not g_dry and self.name != 'root':
-            with open("/etc/sudoers.d/%s" % self.name, "w") as f:
+            with open("/etc/sudoers.d/%s" % self.name.replace('.','_'), "w") as f:
                 f.write("%s ALL=(ALL:ALL) NOPASSWD:ALL\n" % self.name)
 
 
@@ -160,7 +160,7 @@ if os.path.isfile("/proc/sys/fs/binfmt_misc/qemu-ppc"):
    logger.debug("qemu-ppc already exists")
 else:
    if not os.path.ismount("/proc/sys/fs/binfmt_misc"):
-      execute("sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc", "The binfmt_misc system could not be mounted.")   
+      execute("sudo mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc", "The binfmt_misc system could not be mounted.")
    execute("sudo /etc/init.d/binfmt-support start", "The binfmt-support service could not be started.")
 
 # Fixme: change this to os.execvp()
