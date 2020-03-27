@@ -34,6 +34,7 @@
 #define MODULE_RXLOS_FORMAT             "/sys/bus/i2c/devices/%d-00%d/module_rx_los_%d"
 #define MODULE_TXFAULT_FORMAT           "/sys/bus/i2c/devices/%d-00%d/module_tx_fault_%d"
 #define MODULE_TXDISABLE_FORMAT         "/sys/bus/i2c/devices/%d-00%d/module_tx_disable_%d"
+#define MODULE_RESET_FORMAT             "/sys/bus/i2c/devices/%d-00%d/module_reset_%d"
 
 int sfp_map_bus[] ={25, 26, 27, 28, 29, 30, 31, 32,
                     33, 34, 35, 36, 37, 38, 39, 40,
@@ -227,16 +228,42 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int rv;
-    int addr = 62;
-    int bus  = 21;
+    int addr=0;
+    int bus=0;
 
     switch(control)
         {
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
                 if(port==32 || port==33) {
+                    addr=62;
+                    bus=21;
                     if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
                         AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                        rv = ONLP_STATUS_E_INTERNAL;
+                    }
+                    else {
+                        rv = ONLP_STATUS_OK;
+                    }
+                }
+                else {
+                    rv = ONLP_STATUS_E_UNSUPPORTED;
+                }
+                break;
+            }
+        case ONLP_SFP_CONTROL_RESET:
+            {
+                if(port >=0 && port<32) {
+                    if(port < 16){
+                        addr=61;
+                        bus=20;
+                    }
+                    else{
+                        addr=62;
+                        bus=21;        
+                    }
+                    if (onlp_file_write_int(value, MODULE_RESET_FORMAT, bus, addr, (port+1)) < 0) {
+                        AIM_LOG_ERROR("Unable to set reset status to port(%d)\r\n", port);
                         rv = ONLP_STATUS_E_INTERNAL;
                     }
                     else {
