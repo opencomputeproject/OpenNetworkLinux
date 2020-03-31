@@ -49,7 +49,7 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 #define MODULE_PRESENT_TOP_BOARD_CPLD4_FORMAT "/sys/bus/i2c/devices/76-0064/module_present_%d"
 #define MODULE_RXLOS_FORMAT             "/sys/bus/i2c/devices/%d-00%d/module_rx_los_%d"
 #define MODULE_TXDISABLE_FORMAT         "/sys/bus/i2c/devices/%d-00%d/module_tx_disable_%d"
-
+#define MODULE_RESET_FORMAT             "/sys/bus/i2c/devices/%d-00%d/module_reset_%d"
 
 /************************************************************
  *
@@ -209,15 +209,17 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int rv;
-    int addr = 62;
-    int bus  = 12;
+    int addr;
+    int bus;
 
     switch(control)
     {
         case ONLP_SFP_CONTROL_TX_DISABLE:
             {
                 if(port==40 || port==41) {
-                    if (onlp_file_write_int(0, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
+                    addr=62;
+                    bus=12; 
+                    if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
                         AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
                         rv = ONLP_STATUS_E_INTERNAL;
                     }
@@ -230,7 +232,32 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 break;
             }
-
+        case ONLP_SFP_CONTROL_RESET:
+            {
+                if(port >=0 && port<20) {
+                    addr=62;
+                    bus=12;
+                }
+                else if ( port>=20 && port <40){
+                    addr=63;
+                    bus=13;        
+                }
+                else if ( port>=42 && port <55){
+                    addr=76;
+                    bus=64;        
+                }
+                else{
+                    return ONLP_STATUS_E_UNSUPPORTED;
+                }
+                if (onlp_file_write_int(value, MODULE_RESET_FORMAT, bus, addr, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to set reset status to port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else {
+                    rv = ONLP_STATUS_OK;
+                }
+                break;
+            }
         default:
             rv = ONLP_STATUS_E_UNSUPPORTED;
             break;
