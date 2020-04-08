@@ -38,7 +38,7 @@ class OnlPlatform_x86_64_accton_as5912_54x_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 # initialize multiplexer (PCA9548)
-                ('pca9548', 0x74, 1),
+                ('pca9548', 0x71, 1),
                 
                 # initiate PSU-1 AC Power
                 ('as5912_54x_psu1', 0x53, 11),
@@ -57,13 +57,13 @@ class OnlPlatform_x86_64_accton_as5912_54x_r0(OnlPlatformAccton,
         self.new_i2c_devices(
             [
                 ('pca9548', 0x72, 1),
-                ('pca9548', 0x77, 18),
-                ('pca9548', 0x77, 19),
+                ('pca9548', 0x70, 18),
+                ('pca9548', 0x71, 19),
                 ('pca9548', 0x77, 20),
-                ('pca9548', 0x77, 21),
-                ('pca9548', 0x77, 22),
-                ('pca9548', 0x77, 23),
-                ('pca9548', 0x77, 24),
+                ('pca9548', 0x73, 21),
+                ('pca9548', 0x74, 22),
+                ('pca9548', 0x75, 23),
+                ('pca9548', 0x76, 24),
                 ]
             )
 
