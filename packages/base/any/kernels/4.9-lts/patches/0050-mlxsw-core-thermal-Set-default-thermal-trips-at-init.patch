@@ -1,0 +1,49 @@
+From a50b84e93f743c13f2568396927c7744ff706e29 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 23 Mar 2020 12:57:16 +0200
+Subject: [thermal_emul 1/2] mlxsw: core: thermal: Set default thermal trips at
+ initialization
+
+Set default thermal trip temperatures during thermal zone
+initialization. Otherwise polling time for thermal control
+could stay zero and such thermal zones will not be triggered by
+thermal algorithm.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 690ae0f1820e..53198e260633 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -20,6 +20,10 @@
+ #define MLXSW_THERMAL_ASIC_TEMP_HIGH	85000	/* 85C */
+ #define MLXSW_THERMAL_ASIC_TEMP_HOT	105000	/* 105C */
+ #define MLXSW_THERMAL_ASIC_TEMP_CRIT	110000	/* 110C */
++#define MLXSW_THERMAL_MODULE_TEMP_NORM	60000	/* 60C */
++#define MLXSW_THERMAL_MODULE_TEMP_HIGH	70000	/* 70C */
++#define MLXSW_THERMAL_MODULE_TEMP_HOT	80000	/* 80C */
++#define MLXSW_THERMAL_MODULE_TEMP_CRIT	90000	/* 90C */
+ #define MLXSW_THERMAL_HYSTERESIS_TEMP	5000	/* 5C */
+ #define MLXSW_THERMAL_MODULE_TEMP_SHIFT	(MLXSW_THERMAL_HYSTERESIS_TEMP * 2)
+ #define MLXSW_THERMAL_ZONE_MAX_NAME	16
+@@ -154,10 +158,10 @@ static int mlxsw_get_cooling_device_idx(struct mlxsw_thermal *thermal,
+ static void
+ mlxsw_thermal_module_trips_reset(struct mlxsw_thermal_module *tz)
+ {
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = 0;
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = 0;
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = 0;
+-	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = 0;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_NORM].temp = MLXSW_THERMAL_MODULE_TEMP_NORM;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HIGH].temp = MLXSW_THERMAL_MODULE_TEMP_HIGH;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_HOT].temp = MLXSW_THERMAL_MODULE_TEMP_HOT;
++	tz->trips[MLXSW_THERMAL_TEMP_TRIP_CRIT].temp = MLXSW_THERMAL_MODULE_TEMP_CRIT;
+ }
+ 
+ static int
+-- 
+2.11.0
+

@@ -1,0 +1,411 @@
+From 148312b80f5285b25140a72cf3d4671e3486dcd2 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Tue, 31 Mar 2020 23:01:41 +0300
+Subject: [backport 2/2] mlxsw: qsfp_sysfs: Remove obsolete code for QSFP
+ EEPROM reading
+
+Remove QSFP EEPROM attribures from 'sysfs'.
+This code is obsoleted.
+
+Make de-init order symmetrical with init.
+    .
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core.c    |   4 +-
+ .../net/ethernet/mellanox/mlxsw/qsfp_sysfs.c  | 299 +-----------------
+ 2 files changed, 13 insertions(+), 290 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core.c b/drivers/net/ethernet/mellanox/mlxsw/core.c
+index c38c1c565..b67d61077 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core.c
+@@ -1120,11 +1120,11 @@ void mlxsw_core_bus_device_unregister(struct mlxsw_core *mlxsw_core,
+ 			return;
+ 	}
+ 
+-	if (mlxsw_core->driver->fini)
+-		mlxsw_core->driver->fini(mlxsw_core);
+ 	mlxsw_qsfp_fini(mlxsw_core->qsfp);
+ 	mlxsw_thermal_fini(mlxsw_core->thermal);
+ 	mlxsw_hwmon_fini(mlxsw_core->hwmon);
++	if (mlxsw_core->driver->fini)
++		mlxsw_core->driver->fini(mlxsw_core);
+ 	if (mlxsw_core->driver->params_unregister && !reload)
+ 		mlxsw_core->driver->params_unregister(mlxsw_core);
+ 	if (!reload)
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+index 49563a703..931dbd58e 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/qsfp_sysfs.c
+@@ -41,171 +41,18 @@
+ 
+ #include "core.h"
+ 
+-#define MLXSW_QSFP_I2C_ADDR		0x50
+-#define MLXSW_QSFP_PAGE_NUM		5
+-#define MLXSW_QSFP_PAGE_SIZE		128
+-#define MLXSW_QSFP_SUB_PAGE_NUM		3
+-#define MLXSW_QSFP_SUB_PAGE_SIZE	48
+-#define MLXSW_QSFP_LAST_SUB_PAGE_SIZE	32
+-#define MLXSW_QSFP_MAX_NUM		128
+-#define MLXSW_QSFP_MIN_REQ_LEN		4
+-#define MLXSW_QSFP_STATUS_VALID_TIME	(HZ)
+-#define MLXSW_QSFP_MAX_CPLD_NUM		3
+-#define MLXSW_QSFP_MIN_CPLD_NUM		1
++#define MLXSW_QSFP_MAX_CPLD_NUM	3
++#define MLXSW_QSFP_MIN_CPLD_NUM	1
+ 
+-static const u8 mlxsw_qsfp_page_number[] = { 0xa0, 0x00, 0x01, 0x02, 0x03 };
+-static const u16 mlxsw_qsfp_page_shift[] = { 0x00, 0x80, 0x80, 0x80, 0x80 };
+-
+-/**
+- * Mellanox device Management Cable Info Access Register buffer for reading
+- * QSFP EEPROM info is limited by 48 bytes. In case full page is to be read
+- * (128 bytes), such request will be implemented by three transactions of size
+- * 48, 48, 32.
+- */
+-static const u16 mlxsw_qsfp_sub_page_size[] = {
+-	MLXSW_QSFP_SUB_PAGE_SIZE,
+-	MLXSW_QSFP_SUB_PAGE_SIZE,
+-	MLXSW_QSFP_LAST_SUB_PAGE_SIZE
+-};
+-
+-struct mlxsw_qsfp_module {
+-	unsigned long last_updated;
+-	u8 cache_status;
+-};
++static int mlxsw_qsfp_cpld_num = MLXSW_QSFP_MIN_CPLD_NUM;
+ 
+ struct mlxsw_qsfp {
+ 	struct mlxsw_core *core;
+ 	const struct mlxsw_bus_info *bus_info;
+-	struct attribute *attrs[MLXSW_QSFP_MAX_NUM + 1];
+-	struct device_attribute *dev_attrs;
+-	struct bin_attribute *eeprom;
+-	struct bin_attribute **eeprom_attr_list;
+-	struct mlxsw_qsfp_module modules[MLXSW_QSFP_MAX_NUM];
+-	u8 module_ind[MLXSW_QSFP_MAX_NUM];
+-	u8 module_count;
+ 	struct attribute *cpld_attrs[MLXSW_QSFP_MAX_CPLD_NUM + 1];
+ 	struct device_attribute *cpld_dev_attrs;
+ };
+ 
+-static int mlxsw_qsfp_cpld_num = MLXSW_QSFP_MIN_CPLD_NUM;
+-static int mlxsw_qsfp_num = MLXSW_QSFP_MAX_NUM / 2;
+-
+-static int
+-mlxsw_qsfp_query_module_eeprom(struct mlxsw_qsfp *mlxsw_qsfp, u8 index,
+-			       loff_t off, size_t count, int page, char *buf)
+-{
+-	char eeprom_tmp[MLXSW_QSFP_PAGE_SIZE];
+-	char mcia_pl[MLXSW_REG_MCIA_LEN];
+-	int status;
+-	int err;
+-
+-	mlxsw_reg_mcia_pack(mcia_pl, index, 0, page, off, count,
+-			    MLXSW_QSFP_I2C_ADDR);
+-
+-	err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(mcia), mcia_pl);
+-	if (err)
+-		return err;
+-
+-	status = mlxsw_reg_mcia_status_get(mcia_pl);
+-	if (status)
+-		return -EIO;
+-
+-	mlxsw_reg_mcia_eeprom_memcpy_from(mcia_pl, eeprom_tmp);
+-	memcpy(buf, eeprom_tmp, count);
+-
+-	return 0;
+-}
+-
+-static int
+-mlxsw_qsfp_get_module_eeprom(struct mlxsw_qsfp *mlxsw_qsfp, u8 index,
+-			     char *buf, loff_t off, size_t count)
+-{
+-	int page_ind, page, page_off, subpage, offset, size, res = 0;
+-	int err;
+-
+-	if (!count)
+-		return -EINVAL;
+-
+-	memset(buf, 0, count);
+-	size = count;
+-	while (res < count) {
+-		page_ind = off / MLXSW_QSFP_PAGE_SIZE;
+-		page_off = off % MLXSW_QSFP_PAGE_SIZE;
+-		page = mlxsw_qsfp_page_number[page_ind];
+-		offset = mlxsw_qsfp_page_shift[page_ind] + page_off;
+-		subpage = page_off / MLXSW_QSFP_SUB_PAGE_SIZE;
+-		size = min_t(u16, size, mlxsw_qsfp_sub_page_size[subpage]);
+-		err = mlxsw_qsfp_query_module_eeprom(mlxsw_qsfp, index, offset,
+-						     size, page, buf + res);
+-		if (err) {
+-			dev_err(mlxsw_qsfp->bus_info->dev, "Eeprom query failed\n");
+-			return err;
+-		}
+-		off += size;
+-		res += size;
+-		size = count - size;
+-	}
+-
+-	return res;
+-}
+-
+-static ssize_t mlxsw_qsfp_bin_read(struct file *filp, struct kobject *kobj,
+-				   struct bin_attribute *attr, char *buf,
+-				   loff_t off, size_t count)
+-{
+-	struct mlxsw_qsfp *mlxsw_qsfp = dev_get_platdata(container_of(kobj,
+-							 struct device, kobj));
+-	u8 *module_ind = attr->private;
+-	size_t size;
+-
+-	size = mlxsw_qsfp->eeprom[*module_ind].size;
+-
+-	if (off > size)
+-		return -ESPIPE;
+-	else if (off == size)
+-		return 0;
+-	else if ((off + count) > size)
+-		count = size - off;
+-
+-	return mlxsw_qsfp_get_module_eeprom(mlxsw_qsfp, *module_ind, buf, off,
+-					    count);
+-}
+-
+-static ssize_t
+-mlxsw_qsfp_status_show(struct device *dev, struct device_attribute *attr,
+-		       char *buf)
+-{
+-	struct mlxsw_qsfp *mlxsw_qsfp = dev_get_platdata(dev);
+-	char mcia_pl[MLXSW_REG_MCIA_LEN];
+-	int status;
+-	u32 i;
+-	int err;
+-
+-	for (i = 0; i < mlxsw_qsfp->module_count; i++) {
+-		if ((mlxsw_qsfp->dev_attrs + i) == attr)
+-			break;
+-	}
+-	if (i == mlxsw_qsfp->module_count)
+-		return -EINVAL;
+-
+-	if (time_before(jiffies, mlxsw_qsfp->modules[i].last_updated +
+-			MLXSW_QSFP_STATUS_VALID_TIME))
+-		return sprintf(buf, "%u\n",
+-			       mlxsw_qsfp->modules[i].cache_status);
+-
+-	mlxsw_reg_mcia_pack(mcia_pl, i, 0, 0, 0, MLXSW_QSFP_MIN_REQ_LEN,
+-			    MLXSW_QSFP_I2C_ADDR);
+-	err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(mcia), mcia_pl);
+-	if (err)
+-		return err;
+-
+-	status = mlxsw_reg_mcia_status_get(mcia_pl);
+-	mlxsw_qsfp->modules[i].cache_status = !status;
+-	mlxsw_qsfp->modules[i].last_updated = jiffies;
+-
+-	return sprintf(buf, "%u\n", !status);
+-}
+-
+ static ssize_t
+ mlxsw_qsfp_cpld_show(struct device *dev, struct device_attribute *attr,
+ 		     char *buf)
+@@ -239,13 +86,6 @@ static int mlxsw_qsfp_dmi_set_cpld_num(const struct dmi_system_id *dmi)
+ 	return 1;
+ };
+ 
+-static int mlxsw_qsfp_dmi_set_qsfp_num(const struct dmi_system_id *dmi)
+-{
+-	mlxsw_qsfp_num = MLXSW_QSFP_MAX_NUM;
+-
+-	return 1;
+-};
+-
+ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 	{
+ 		.callback = mlxsw_qsfp_dmi_set_cpld_num,
+@@ -261,55 +101,18 @@ static const struct dmi_system_id mlxsw_qsfp_dmi_table[] = {
+ 			DMI_MATCH(DMI_PRODUCT_NAME, "MSN27"),
+ 		},
+ 	},
+-	{
+-		.callback = mlxsw_qsfp_dmi_set_qsfp_num,
+-		.matches = {
+-			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
+-			DMI_MATCH(DMI_PRODUCT_NAME, "MSN37"),
+-		},
+-	},
+-	{
+-		.callback = mlxsw_qsfp_dmi_set_qsfp_num,
+-		.matches = {
+-			DMI_MATCH(DMI_BOARD_VENDOR, "Mellanox Technologies"),
+-			DMI_MATCH(DMI_PRODUCT_NAME, "MSN38"),
+-		},
+-	},
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(dmi, mlxsw_qsfp_dmi_table);
+ 
+-static int mlxsw_qsfp_set_module_num(struct mlxsw_qsfp *mlxsw_qsfp)
+-{
+-	char pmlp_pl[MLXSW_REG_PMLP_LEN];
+-	u8 width;
+-	int i, err;
+-
+-	for (i = 1; i <= mlxsw_qsfp_num; i++) {
+-		mlxsw_reg_pmlp_pack(pmlp_pl, i);
+-		err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(pmlp),
+-				      pmlp_pl);
+-		if (err)
+-			return err;
+-		width = mlxsw_reg_pmlp_width_get(pmlp_pl);
+-		if (!width)
+-			continue;
+-		mlxsw_qsfp->module_count++;
+-	}
+-
+-	return 0;
+-}
+ 
+ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 		    const struct mlxsw_bus_info *mlxsw_bus_info,
+ 		    struct mlxsw_qsfp **p_qsfp)
+ {
+-	struct device_attribute *dev_attr, *cpld_dev_attr;
+-	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	struct device_attribute *cpld_dev_attr;
+ 	struct mlxsw_qsfp *mlxsw_qsfp;
+-	struct bin_attribute *eeprom;
+-	int i, count;
+-	int err;
++	int i, err;
+ 
+ 	if (!strcmp(mlxsw_bus_info->device_kind, "i2c"))
+ 		return 0;
+@@ -324,41 +127,6 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	mlxsw_qsfp->core = mlxsw_core;
+ 	mlxsw_qsfp->bus_info = mlxsw_bus_info;
+ 	mlxsw_bus_info->dev->platform_data = mlxsw_qsfp;
+-
+-	mlxsw_reg_mgpir_pack(mgpir_pl);
+-	err = mlxsw_reg_query(mlxsw_qsfp->core, MLXSW_REG(mgpir), mgpir_pl);
+-	if (err) {
+-		err = mlxsw_qsfp_set_module_num(mlxsw_qsfp);
+-		if (err)
+-			return err;
+-	} else {
+-		mlxsw_reg_mgpir_unpack(mgpir_pl, NULL, NULL, NULL,
+-			       &mlxsw_qsfp->module_count);
+-		if (!mlxsw_qsfp->module_count)
+-			return 0;
+-	}
+-
+-	count = mlxsw_qsfp->module_count + 1;
+-	mlxsw_qsfp->eeprom = devm_kzalloc(mlxsw_bus_info->dev,
+-					  mlxsw_qsfp->module_count *
+-					  sizeof(*mlxsw_qsfp->eeprom),
+-					  GFP_KERNEL);
+-	if (!mlxsw_qsfp->eeprom)
+-		return -ENOMEM;
+-
+-	mlxsw_qsfp->eeprom_attr_list = devm_kzalloc(mlxsw_bus_info->dev,
+-						    count *
+-						    sizeof(mlxsw_qsfp->eeprom),
+-						    GFP_KERNEL);
+-	if (!mlxsw_qsfp->eeprom_attr_list)
+-		return -ENOMEM;
+-
+-	mlxsw_qsfp->dev_attrs = devm_kzalloc(mlxsw_bus_info->dev, count *
+-					     sizeof(*mlxsw_qsfp->dev_attrs),
+-					     GFP_KERNEL);
+-	if (!mlxsw_qsfp->dev_attrs)
+-		return -ENOMEM;
+-
+ 	mlxsw_qsfp->cpld_dev_attrs = devm_kzalloc(mlxsw_bus_info->dev,
+ 					mlxsw_qsfp_cpld_num *
+ 					sizeof(*mlxsw_qsfp->cpld_dev_attrs),
+@@ -366,37 +134,6 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	if (!mlxsw_qsfp->cpld_dev_attrs)
+ 		return -ENOMEM;
+ 
+-	eeprom = mlxsw_qsfp->eeprom;
+-	dev_attr = mlxsw_qsfp->dev_attrs;
+-	for (i = 0; i < mlxsw_qsfp->module_count; i++, eeprom++, dev_attr++) {
+-		dev_attr->show = mlxsw_qsfp_status_show;
+-		dev_attr->attr.mode = 0444;
+-		dev_attr->attr.name = devm_kasprintf(mlxsw_bus_info->dev,
+-						     GFP_KERNEL,
+-						     "qsfp%d_status", i + 1);
+-		mlxsw_qsfp->attrs[i] = &dev_attr->attr;
+-		sysfs_attr_init(&dev_attr->attr);
+-		err = sysfs_create_file(&mlxsw_bus_info->dev->kobj,
+-					mlxsw_qsfp->attrs[i]);
+-		if (err)
+-			goto err_create_file;
+-
+-		sysfs_bin_attr_init(eeprom);
+-		eeprom->attr.name = devm_kasprintf(mlxsw_bus_info->dev,
+-						   GFP_KERNEL, "qsfp%d",
+-						   i + 1);
+-		eeprom->attr.mode = 0444;
+-		eeprom->read = mlxsw_qsfp_bin_read;
+-		eeprom->size = MLXSW_QSFP_PAGE_NUM * MLXSW_QSFP_PAGE_SIZE;
+-		mlxsw_qsfp->module_ind[i] = i;
+-		eeprom->private = &mlxsw_qsfp->module_ind[i];
+-		mlxsw_qsfp->eeprom_attr_list[i] = eeprom;
+-		err = sysfs_create_bin_file(&mlxsw_bus_info->dev->kobj,
+-					    eeprom);
+-		if (err)
+-			goto err_create_bin_file;
+-	}
+-
+ 	cpld_dev_attr = mlxsw_qsfp->cpld_dev_attrs;
+ 	for (i = 0; i < mlxsw_qsfp_cpld_num; i++, cpld_dev_attr++) {
+ 		cpld_dev_attr->show = mlxsw_qsfp_cpld_show;
+@@ -417,19 +154,9 @@ int mlxsw_qsfp_init(struct mlxsw_core *mlxsw_core,
+ 	return 0;
+ 
+ err_create_cpld_file:
+-	sysfs_remove_file(&mlxsw_bus_info->dev->kobj,
+-			  mlxsw_qsfp->cpld_attrs[i--]);
+-	i = mlxsw_qsfp->module_count;
+-err_create_bin_file:
+-	sysfs_remove_file(&mlxsw_bus_info->dev->kobj,
+-			  mlxsw_qsfp->attrs[i--]);
+-err_create_file:
+-	while (--i > 0) {
+-		sysfs_remove_bin_file(&mlxsw_bus_info->dev->kobj,
+-				      mlxsw_qsfp->eeprom_attr_list[i]);
++	while (--i > 0)
+ 		sysfs_remove_file(&mlxsw_bus_info->dev->kobj,
+-				  mlxsw_qsfp->attrs[i]);
+-	}
++				  mlxsw_qsfp->cpld_attrs[i]);
+ 
+ 	return err;
+ }
+@@ -438,15 +165,11 @@ void mlxsw_qsfp_fini(struct mlxsw_qsfp *mlxsw_qsfp)
+ {
+ 	int i;
+ 
+-	if (!strcmp(mlxsw_qsfp->bus_info->device_kind, "i2c"))
+-		return;
+-
+-	for (i = mlxsw_qsfp->module_count - 1; i >= 0; i--) {
+-		sysfs_remove_bin_file(&mlxsw_qsfp->bus_info->dev->kobj,
+-				      mlxsw_qsfp->eeprom_attr_list[i]);
++	for (i = 0; i < mlxsw_qsfp_cpld_num; i++)
+ 		sysfs_remove_file(&mlxsw_qsfp->bus_info->dev->kobj,
+-				  mlxsw_qsfp->attrs[i]);
+-	}
++				  mlxsw_qsfp->cpld_attrs[i]);
++	devm_kfree(mlxsw_qsfp->bus_info->dev, mlxsw_qsfp->cpld_dev_attrs);
++	devm_kfree(mlxsw_qsfp->bus_info->dev, mlxsw_qsfp);
+ }
+ 
+ MODULE_LICENSE("Dual BSD/GPL");
+-- 
+2.20.1
+

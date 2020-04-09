@@ -43,11 +43,13 @@ int get_sfp_port_num(void);
 static int
 mc_sfp_node_read_int(char *node_path, int *value)
 {
-    int data_len = 0, ret = 0;
+    int  data_len = 0, ret = 0;
     char buf[SFP_SYSFS_VALUE_LEN] = {0};
     *value = -1;
     char sfp_present_status[16];
     char sfp_not_present_status[16];
+    char bash_keyword[] = "#!/bin/bash";
+    FILE * cmd;
 
     if (mc_get_kernel_ver() >= KERNEL_VERSION(4,9,30)) {
         strcpy(sfp_present_status, "1");
@@ -56,8 +58,15 @@ mc_sfp_node_read_int(char *node_path, int *value)
         strcpy(sfp_present_status, "good");
         strcpy(sfp_not_present_status, "not_connected");
     }
-
     ret = onlp_file_read((uint8_t*)buf, sizeof(buf), &data_len, node_path);
+    if (ret == 0) {
+        if (!strncmp(buf, bash_keyword, strlen(bash_keyword))){
+            cmd = popen(node_path, "r");
+            if (fgets(buf, sizeof(buf), cmd) == NULL)
+                ret = ONLP_STATUS_E_INTERNAL;
+            pclose(cmd);
+        }
+    }
 
     if (ret == 0) {
         if (!strncmp(buf, sfp_present_status, strlen(sfp_present_status))) {

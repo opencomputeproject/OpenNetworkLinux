@@ -18,3 +18,7 @@ driver-hwmon-max6620.patch
 0015-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
 0016-hwmon-pmbus-core-Add-support-for-vid-mode-detection-.patch
 0017-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0018-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
+0019-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
+0020-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0021-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch

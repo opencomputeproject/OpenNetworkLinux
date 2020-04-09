@@ -50,3 +50,7 @@ driver-add-the-support-max6620.patch
 0047-i2c-busses-i2c-mlxcpld-Increase-transaction-pooli.patch
 0048-mfd-lpc-ich-extend-with-additional-chipsets-support.patch
 0049-platform-mellanox-mlxreg-hotplug-Use-capability-r.patch
+0050-mlxsw-core-thermal-Set-default-thermal-trips-at-init.patch
+0051-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
+0052-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
+0053-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
