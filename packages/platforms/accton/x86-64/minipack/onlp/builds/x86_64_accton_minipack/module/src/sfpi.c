@@ -475,35 +475,35 @@ static void *io_base = NULL;
 
 static int fbfpgaio_hw_init(void)
 {
-  const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
-  
-  if (io_base != NULL && io_base != MAP_FAILED) {
-    return ONLP_STATUS_OK; 
-  }
+    const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
 
-  /* Open hardware resource node */
-  hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
-  if (hw_handle == -1) {
-    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-    return ONLP_STATUS_E_INTERNAL;
-  }
+    if (io_base != NULL && io_base != MAP_FAILED) {
+        return ONLP_STATUS_OK;
+    }
 
-  /* Mapping hardware resource */
-  io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
-  if (io_base == MAP_FAILED) {
-    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-    return ONLP_STATUS_E_INTERNAL;
-  }
+    /* Open hardware resource node */
+    hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
+    if (hw_handle == -1) {
+        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+        return ONLP_STATUS_E_INTERNAL;
+    }
 
-  return ONLP_STATUS_OK;
+    /* Mapping hardware resource */
+    io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
+    if (io_base == MAP_FAILED) {
+        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
 }
 
 
 static uint32_t fbfpgaio_read(uint32_t addr)
 {
     int ret = fbfpgaio_hw_init();
-    if (ONLP_STATUS_OK != ret){
-       return 0;
+    if (ONLP_STATUS_OK != ret) {
+        return 0;
     }
 
     void *offset = io_base + addr;
@@ -512,14 +512,14 @@ static uint32_t fbfpgaio_read(uint32_t addr)
 
 #define PIM_STATUS_REG 0x40
 static uint32_t dom_offset[] = {
- 0x40000,
- 0x48000,
- 0x50000,
- 0x58000,
- 0x60000,
- 0x68000,
- 0x70000,
- 0x78000,
+    0x40000,
+    0x48000,
+    0x50000,
+    0x58000,
+    0x60000,
+    0x68000,
+    0x70000,
+    0x78000,
 };
 
 #define QSFP_PRESENT_REG    0x48
@@ -527,13 +527,13 @@ static uint32_t dom_offset[] = {
 #define QSFP_LPMODE_REG     0x78
 
 
-int onlp_read_pim_present(uint32_t *pbmp){
+int onlp_read_pim_present(uint32_t *pbmp) {
     uint32_t pim_status = fbfpgaio_read(PIM_STATUS_REG);
     *pbmp = (pim_status >> 16); /*bit 23~16*/
     return ONLP_STATUS_OK;
 }
 
-static int get_ports_presence(uint32_t pimId, uint32_t *pbmp){
+static int get_ports_presence(uint32_t pimId, uint32_t *pbmp) {
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -542,13 +542,13 @@ static int get_ports_presence(uint32_t pimId, uint32_t *pbmp){
     return ONLP_STATUS_OK;
 }
 
-static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp){
+static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp) {
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    
+
     uint32_t reg = dom_offset[pimId] + QSFP_LPMODE_REG;
-    *pbmp = fbfpgaio_read(reg);  
+    *pbmp = fbfpgaio_read(reg);
     return ONLP_STATUS_OK;
 }
 
