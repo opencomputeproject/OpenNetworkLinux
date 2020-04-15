@@ -66,6 +66,9 @@ static int sfpi_eeprom_close_all_channels(void);
 int onlp_read_pim_present(uint32_t *bmap);
 static int get_ports_presence(uint32_t pimId, uint32_t *pbmp);
 static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp);
+static int get_ports_reset(uint32_t pimId, uint32_t *pbmp);
+static int set_ports_lpmode(uint32_t pimId, uint32_t value);
+static int set_ports_reset(uint32_t pimId, uint32_t value);
 
 #define SEM_LOCK    do {sem_wait(&global_sfpi_st->mutex);} while(0)
 #define SEM_UNLOCK  do {sem_post(&global_sfpi_st->mutex);} while(0)
@@ -116,6 +119,15 @@ int onlp_sfpi_init(void)
         return ONLP_STATUS_E_INTERNAL;
     }
     sfpi_eeprom_close_all_channels();
+
+    /* Unleash the Reset pin again. 
+     * It might be unleashed too early for some types of transcievers.
+     */
+    int i;
+    for (i = 0; i < NUM_OF_PIM; i++) {
+        set_ports_reset(i, 0);
+    }
+
     return ONLP_STATUS_OK;
 }
 
@@ -213,14 +225,12 @@ get_pim_port_present_bmap(int port, uint32_t *bit_array)
 
     if (!ports->valid || (elapse > PORT_POLL_INTERVAL)) {
         ret = get_ports_presence(pim, &present);
-        //ret = bmc_i2c_readw(bus[pim], addr[0], offset, (uint16_t*)&present);
         if (ret < 0) {
             present  = 0;
             update_ports(pim, 0, present);
             *bit_array = present;        /*No needs for remmaped.*/
             return ONLP_STATUS_E_INTERNAL;
         } else {
-            //present = ~present;
             update_ports(pim, 1, present);
         }
     } else {
@@ -427,7 +437,53 @@ exit:
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    uint32_t pbmp;
+    int rv = ONLP_STATUS_OK;
+    if (port < 0) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    switch(control)
+    {
+    case ONLP_SFP_CONTROL_RESET:
+        rv = get_ports_reset(PORT_TO_PIM(port), &pbmp);
+        if (rv < 0) {
+            AIM_LOG_ERROR("Unable to get_ports_lpmode for port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        if (value){
+            pbmp |= BIT(PORT_OF_PIM(port));
+        } else {
+            pbmp &= ~BIT(PORT_OF_PIM(port));
+        }
+        rv = set_ports_reset(PORT_TO_PIM(port), pbmp);
+        if (rv < 0) {
+            AIM_LOG_ERROR("Unable to set_ports_lpmode for port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        break;
+    case ONLP_SFP_CONTROL_LP_MODE:
+        rv = get_ports_lpmode(PORT_TO_PIM(port), &pbmp);
+        if (rv < 0) {
+            AIM_LOG_ERROR("Unable to get_ports_lpmode for port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        if(value) {
+            pbmp |= BIT(PORT_OF_PIM(port));
+        } else {
+            pbmp &= ~BIT(PORT_OF_PIM(port));
+        }
+        rv = set_ports_lpmode(PORT_TO_PIM(port), pbmp);
+        if (rv < 0) {
+            AIM_LOG_ERROR("Unable to set_ports_lpmode for port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        break;
+    default:
+        rv = ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    return rv;
 }
 
 int
@@ -441,6 +497,18 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
     switch(control)
     {
+    case ONLP_SFP_CONTROL_RESET:
+        rv = get_ports_reset(PORT_TO_PIM(port), &pbmp);
+        if (rv < 0) {
+            AIM_LOG_ERROR("Unable to get_ports_reset for port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else {
+            *value = !(pbmp & BIT(PORT_OF_PIM(port)));
+            rv = ONLP_STATUS_OK;
+        }
+        break;
+
     case ONLP_SFP_CONTROL_LP_MODE:
         rv = get_ports_lpmode(PORT_TO_PIM(port), &pbmp);
         if (rv < 0) {
@@ -475,35 +543,51 @@ static void *io_base = NULL;
 
 static int fbfpgaio_hw_init(void)
 {
-    const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
+  const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
 
-    if (io_base != NULL && io_base != MAP_FAILED) {
-        return ONLP_STATUS_OK;
+  if (io_base != NULL && io_base != MAP_FAILED) {
+    return ONLP_STATUS_OK;
+  }
+
+  /* Open hardware resource node */
+  hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
+  if (hw_handle == -1) {
+    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+    return ONLP_STATUS_E_INTERNAL;
+  }
+
+  /* Mapping hardware resource */
+  io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
+  if (io_base == MAP_FAILED) {
+    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+    return ONLP_STATUS_E_INTERNAL;
+  }
+
+  return ONLP_STATUS_OK;
+}
+
+static uint32_t fbfpgaio_write(uint32_t addr, uint32_t input_data)
+{
+    int ret = fbfpgaio_hw_init();
+
+    if (ONLP_STATUS_OK != ret){
+       return 0;
     }
 
-    /* Open hardware resource node */
-    hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
-    if (hw_handle == -1) {
-        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    /* Mapping hardware resource */
-    io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
-    if (io_base == MAP_FAILED) {
-        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-        return ONLP_STATUS_E_INTERNAL;
-    }
+    unsigned int *address =  (unsigned int *) ((unsigned long) io_base 
+                            + (unsigned long) addr);
+    unsigned int data = (unsigned int) (input_data & 0xFFFFFFFF);
+    *address = data;
 
     return ONLP_STATUS_OK;
 }
 
-
 static uint32_t fbfpgaio_read(uint32_t addr)
 {
     int ret = fbfpgaio_hw_init();
-    if (ONLP_STATUS_OK != ret) {
-        return 0;
+
+    if (ONLP_STATUS_OK != ret){
+       return 0;
     }
 
     void *offset = io_base + addr;
@@ -511,45 +595,63 @@ static uint32_t fbfpgaio_read(uint32_t addr)
 }
 
 #define PIM_STATUS_REG 0x40
-static uint32_t dom_offset[] = {
-    0x40000,
-    0x48000,
-    0x50000,
-    0x58000,
-    0x60000,
-    0x68000,
-    0x70000,
-    0x78000,
-};
 
+static uint32_t dom_offset[] = {
+ 0x40000,
+ 0x48000,
+ 0x50000,
+ 0x58000,
+ 0x60000,
+ 0x68000,
+ 0x70000,
+ 0x78000,
+};
 #define QSFP_PRESENT_REG    0x48
 #define QSFP_RESET_REG      0x70
 #define QSFP_LPMODE_REG     0x78
 
-
-int onlp_read_pim_present(uint32_t *pbmp) {
+int onlp_read_pim_present(uint32_t *pbmp){
     uint32_t pim_status = fbfpgaio_read(PIM_STATUS_REG);
     *pbmp = (pim_status >> 16); /*bit 23~16*/
     return ONLP_STATUS_OK;
 }
 
-static int get_ports_presence(uint32_t pimId, uint32_t *pbmp) {
+static int read_pom_reg(uint32_t pimId, uint32_t reg, uint32_t *pbmp){
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    uint32_t reg = dom_offset[pimId] + QSFP_PRESENT_REG;
-    *pbmp = fbfpgaio_read(reg);
+    uint32_t addr = dom_offset[pimId] + reg;
+    *pbmp = fbfpgaio_read(addr);
     return ONLP_STATUS_OK;
 }
 
-static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp) {
+static int get_ports_presence(uint32_t pimId, uint32_t *pbmp){
+    return read_pom_reg(pimId, QSFP_PRESENT_REG, pbmp);
+}
+
+static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp){
+    read_pom_reg(pimId, QSFP_RESET_REG, pbmp);
+    return read_pom_reg(pimId, QSFP_LPMODE_REG, pbmp);
+}
+
+static int get_ports_reset(uint32_t pimId, uint32_t *pbmp){
+    return read_pom_reg(pimId, QSFP_RESET_REG, pbmp);
+}
+
+static int write_pom_reg(uint32_t pimId, uint32_t reg, uint32_t value){
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
 
-    uint32_t reg = dom_offset[pimId] + QSFP_LPMODE_REG;
-    *pbmp = fbfpgaio_read(reg);
-    return ONLP_STATUS_OK;
+    uint32_t addr = dom_offset[pimId] + reg;
+    return fbfpgaio_write(addr, value);
 }
 
+static int set_ports_lpmode(uint32_t pimId, uint32_t value){
+    return write_pom_reg(pimId, QSFP_LPMODE_REG, value);
+}
+
+static int set_ports_reset(uint32_t pimId, uint32_t value){
+    return write_pom_reg(pimId, QSFP_RESET_REG, value);
+}
 
