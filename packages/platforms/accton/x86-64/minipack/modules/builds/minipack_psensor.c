@@ -53,7 +53,8 @@
 #define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
 #define SENSOR_DATA_UPDATE_INTERVAL (9*HZ)
-#define MAX_THERMAL_COUNT           8
+#define MAX_THERMAL_COUNT           12
+#define MAX_PIM_THERMAL_COUNT       24
 #define MAX_FAN_COUNT               (8)
 #define MAX_PSU_COUNT               (4)
 #define CHASSIS_PSU_CHAR_COUNT      (2)    /*2 for input and output.*/
@@ -81,7 +82,7 @@
 #define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 #define TTY_CMD_RETRY                   3
 #define TTY_RX_RETRY                    3
-#define TTY_CMD_MAX_LEN          (64)
+#define TTY_CMD_MAX_LEN         (128)
 #define TTY_READ_MAX_LEN        (256)
 
 #define TTY_RESP_SEPARATOR      '|'     /*For the ease to debug*/
@@ -94,6 +95,8 @@
 
 enum sensor_type_e {
     SENSOR_TYPE_THERMAL,
+    SENSOR_TYPE_THERMAL1,
+    SENSOR_TYPE_THERMAL2,
     SENSOR_TYPE_FAN_RPM,
     SENSOR_TYPE_FAN_RPM_DN,
     SENSOR_TYPE_PSU1,
@@ -105,6 +108,8 @@ enum sensor_type_e {
 
 enum sysfs_attributes_index {
     INDEX_THRM_IN_START     = SENSOR_TYPE_THERMAL   *ATTR_TYPE_INDEX_GAP,
+    INDEX_THRM_IN1_START    = SENSOR_TYPE_THERMAL1   *ATTR_TYPE_INDEX_GAP,
+    INDEX_THRM_IN2_START    = SENSOR_TYPE_THERMAL2   *ATTR_TYPE_INDEX_GAP,
     INDEX_FAN_RPM_START     = SENSOR_TYPE_FAN_RPM   *ATTR_TYPE_INDEX_GAP,
     INDEX_FAN_RPM_START_DN  = SENSOR_TYPE_FAN_RPM_DN*ATTR_TYPE_INDEX_GAP,
     INDEX_PSU1_START        = SENSOR_TYPE_PSU1      *ATTR_TYPE_INDEX_GAP,
@@ -149,6 +154,8 @@ struct pmbus_reg_t {
 
 struct sensor_data {
     int lm75_input[MAX_THERMAL_COUNT];
+    int lm75_input1[MAX_THERMAL_COUNT];
+    int lm75_input2[MAX_THERMAL_COUNT];
     int fan_rpm[MAX_FAN_COUNT];
     int fan_rpm_dn[MAX_FAN_COUNT];
     int psu_data [MAX_PSU_COUNT][PSU_DATA_MAX];
@@ -241,8 +248,16 @@ DECLARE_PSU_SENSOR_DEVICE_ATTR(3);
 
 
 static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
-    "ls -v /sys/class/hwmon/hwmon*/temp1_input|head -n "\
-    __stringify(MAX_THERMAL_COUNT)"| xargs cat\r",
+    "ls -v /sys/class/hwmon/*/temp1_input|head -n "\
+    __stringify(MAX_THERMAL_COUNT)"|xargs cat\r",
+
+    /*Avoid long string to be wrapped at console*/
+    "ls -v /sys/class/hwmon/*/t*ut|tail -n "\
+    __stringify(MAX_PIM_THERMAL_COUNT)"|head -n "\
+    __stringify(MAX_THERMAL_COUNT)"|xargs cat\r",
+
+    "ls -v /sys/class/hwmon/*/temp1_input|tail -n "\
+    __stringify(MAX_THERMAL_COUNT)"|xargs cat\r",
     "ls -v /sys/bus/i2c/devices/72-0033/fan*_input | xargs cat\r",
     "ls -v /sys/bus/i2c/devices/64-0033/fan*_input | xargs cat\r",
     "i2cdump -y -f -r "\
@@ -261,6 +276,14 @@ static char tty_cmd[SENSOR_TYPE_MAX][TTY_CMD_MAX_LEN] = {
 
 static struct attr_pattern temp_in =
 {   MAX_THERMAL_COUNT, 0, "temp","_input",
+    S_IRUGO, _attr_show, NULL
+};
+static struct attr_pattern temp_in1 =
+{   MAX_THERMAL_COUNT, MAX_THERMAL_COUNT, "temp","_input",
+    S_IRUGO, _attr_show, NULL
+};
+static struct attr_pattern temp_in2 =
+{   MAX_THERMAL_COUNT, MAX_THERMAL_COUNT*2, "temp","_input",
     S_IRUGO, _attr_show, NULL
 };
 static struct attr_pattern fan_in_up =
@@ -284,6 +307,12 @@ struct sensor_set model_ssets[SENSOR_TYPE_MAX] =
 {
     {   MAX_THERMAL_COUNT, INDEX_THRM_IN_START, tty_cmd[SENSOR_TYPE_THERMAL],
         TTY_RESPONSE_INTERVAL, {&temp_in, NULL},
+    },
+    {   MAX_THERMAL_COUNT, INDEX_THRM_IN1_START, tty_cmd[SENSOR_TYPE_THERMAL1],
+        TTY_RESPONSE_INTERVAL, {&temp_in1, NULL},
+    },
+    {   MAX_THERMAL_COUNT, INDEX_THRM_IN2_START, tty_cmd[SENSOR_TYPE_THERMAL2],
+        TTY_RESPONSE_INTERVAL, {&temp_in2, NULL},
     },
     {   MAX_FAN_COUNT, INDEX_FAN_RPM_START, tty_cmd[SENSOR_TYPE_FAN_RPM],
         TTY_RESPONSE_INTERVAL, {&fan_in_up, &fan_min_up, NULL},
@@ -824,8 +853,11 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
         ptr = resp;
     }
 
+
     switch (type) {
     case SENSOR_TYPE_THERMAL:
+    case SENSOR_TYPE_THERMAL1:
+    case SENSOR_TYPE_THERMAL2:
     case SENSOR_TYPE_FAN_RPM:
     case SENSOR_TYPE_FAN_RPM_DN:
         ret = extract_numbers(ptr, out, out_cnt);
@@ -858,6 +890,12 @@ static int get_type_data (
     switch (type) {
     case SENSOR_TYPE_THERMAL:
         *out = &data->lm75_input[index];
+        break;
+    case SENSOR_TYPE_THERMAL1:
+        *out = &data->lm75_input1[index];
+        break;
+    case SENSOR_TYPE_THERMAL2:
+        *out = &data->lm75_input2[index];
         break;
     case SENSOR_TYPE_FAN_RPM:
         *out = &data->fan_rpm[index];

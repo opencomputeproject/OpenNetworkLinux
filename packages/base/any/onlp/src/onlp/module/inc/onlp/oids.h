@@ -106,7 +106,7 @@ typedef enum onlp_oid_type_e {
 typedef char onlp_oid_desc_t[ONLP_OID_DESC_SIZE];
 
 /* fixme */
-#define ONLP_OID_TABLE_SIZE 32
+#define ONLP_OID_TABLE_SIZE 64
 typedef onlp_oid_t onlp_oid_table_t[ONLP_OID_TABLE_SIZE];
 #define ONLP_OID_TABLE_SIZE_BYTES (sizeof(onlp_oid_t)*ONLP_OID_TABLE_SIZE)
 #define ONLP_OID_TABLE_COPY(_dst, _src) memcpy(_dst, _src, ONLP_OID_TABLE_SIZE_BYTES)
