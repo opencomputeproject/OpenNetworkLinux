@@ -177,8 +177,8 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     char* path = mc_sfp_get_port_path(port, NULL);
 
 	if (mc_sfp_prepare_eeprom_dump(port, path) != ONLP_STATUS_OK) {
-        AIM_LOG_ERROR("Unable to prepare sfp%d eeprom dump\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
+            AIM_LOG_ERROR("Unable to prepare sfp%d eeprom dump\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
 	}
     /*
      * Read the SFP eeprom into data[]
