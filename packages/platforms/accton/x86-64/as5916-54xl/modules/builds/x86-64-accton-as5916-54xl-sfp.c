@@ -1821,7 +1821,7 @@ static ssize_t sfp_phy_write(loff_t off, char *buf, size_t count, int port)
     /* Fill in the write_buf */
     for (i = 0; i < reg_count; i++) {
         /* Each register takes 3 bytes for IPMI */
-        wdata.write_buf[i*3]     = off + i;  /* The register to be written */
+        wdata.write_buf[i*3]     = off/2 + i;  /* The register to be written */
         wdata.write_buf[i*3 + 1] = buf[i*2]; /* The data to be written into the register */ 
         wdata.write_buf[i*3 + 2] = buf[i*2 + 1];
     }
