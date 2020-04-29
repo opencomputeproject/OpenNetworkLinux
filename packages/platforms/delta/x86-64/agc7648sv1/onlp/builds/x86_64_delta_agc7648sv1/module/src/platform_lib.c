@@ -64,7 +64,6 @@ void lockinit()
     }
 }
 
-#ifdef BMC
 int dni_ipmi_data_time_check(long last_time, long new_time, int time_threshold)
 {
     int ipmi_data_update = 0;
@@ -151,7 +150,6 @@ bmc_info_t dev[] =
     {"Temp_Sensor_5", 0},
     {"Temp_Sensor_6", 0},
     {"Temp_Sensor_7", 0},
-    {"Temp_Sensor_8", 0},
     {"PSU1_Temp_1", 0},
     {"PSU2_Temp_1", 0}
 };
@@ -498,7 +496,7 @@ int dni_bmc_psueeprom_info_get(char * r_data, char *device_name, int number)
 END:
     return rv;
 }
-#endif
+
 int hex_to_int(char hex_input)
 {
     int first = hex_input / 16 - 3;
@@ -653,7 +651,6 @@ int dni_lock_cpld_write_attribute(char *cpld_path, int addr, int data)
 int dni_fan_present(int id)
 {
     int rv;
-#ifdef BMC
     uint8_t bit_data = 0;
     int data = 0;
     uint8_t present_bit = 0x00;
@@ -670,55 +667,8 @@ int dni_fan_present(int id)
     }
     else
        rv = ONLP_STATUS_E_INVALID;
-#elif defined I2C
-    int fantray_present = -1;
-    switch(id) {
-        case LED_REAR_FAN_TRAY_1:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN1_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_2:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN2_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_3:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN3_PRESENT_PATH);
-            break;
-        case LED_REAR_FAN_TRAY_4:
-            fantray_present = dni_i2c_lock_read_attribute(NULL, FAN4_PRESENT_PATH);
-            break;
-    }
-    if(fantray_present == 0)
-        rv = ONLP_STATUS_OK;
-    else if(fantray_present == 1)
-        rv = ONLP_STATUS_E_INVALID;
-#endif
+
     return rv;
-}
-
-int dni_fan_speed_good()
-{
-    int rpm = 0, rpm1 = 0, speed_good = 0;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN1_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN1_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN2_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN2_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN3_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN3_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    rpm = dni_i2c_lock_read_attribute(NULL, FAN4_FRONT);
-    rpm1 = dni_i2c_lock_read_attribute(NULL, FAN4_REAR);
-    if(rpm != 0 && rpm != 960 && rpm1 != 0 && rpm1 != 960)
-        speed_good++;
-
-    return speed_good;
 }
 
 int dni_i2c_read_attribute_binary(char *filename, char *buffer, int buf_size, int data_len)

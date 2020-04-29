@@ -49,32 +49,6 @@ static onlp_psu_info_t pinfo[] =
     }
 };
 
-#ifdef I2C
-static int dni_psu_pmbus_info_get(int id, char *node, int *value)
-{
-    int ret = ONLP_STATUS_OK;
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
-
-    *value = 0;
-
-    switch(id)
-    {
-        case PSU1_ID:
-            sprintf(node_path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
-            break;
-        case PSU2_ID:
-            sprintf(node_path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
-            break;
-        default:
-            break;
-    }
-    /* Read attribute value */
-    *value = dni_i2c_lock_read_attribute(NULL, node_path);
-
-    return ret;
-}
-#endif
-
 int onlp_psui_init(void)
 {
     lockinit();
@@ -92,7 +66,7 @@ static int dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
      * Set PSU's fan and thermal to child OID */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(local_id + CHASSIS_FAN_COUNT);
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(local_id + CHASSIS_THERMAL_COUNT);
-#ifdef BMC
+
     int i = 0;
     char device_name[10] = {0};
     UINT4 u4Data = 0;
@@ -101,7 +75,6 @@ static int dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char name1[20] = {0};
     char *module_name = name;
     char *module_name1 = name1;
-
 
     /* get psu model name */
     if(dni_bmc_psueeprom_info_get(name, "Product Name", local_id) == ONLP_STATUS_OK)
@@ -186,74 +159,6 @@ static int dni_psu_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     else
         info->caps |= ONLP_PSU_STATUS_UNPLUGGED;
 
-#elif defined I2C
-    int val = 0;
-    char val_char[15] = {'\0'};
-    char node_path[PSU_NODE_MAX_PATH_LEN] = {'\0'};
-    char psu_path[PSU_NODE_MAX_PATH_LEN] = {'\0'};
-
-    int index = ONLP_OID_ID_GET(info->hdr.id);
-
-    switch(index)
-    {
-        case PSU1_ID:
-            sprintf(psu_path, "%s", PSU1_AC_PMBUS_PREFIX);
-            break;
-        case PSU2_ID:
-            sprintf(psu_path, "%s", PSU2_AC_PMBUS_PREFIX);
-            break;
-        default:
-            break;
-    }
-
-    /* Read PSU product name from attribute */
-    sprintf(node_path, "%s%s", psu_path, "psu_mfr_model");
-    dni_i2c_read_attribute_string(node_path, val_char, sizeof(val_char), 0);
-    strcpy(info->model, val_char);
-
-    /* Read PSU serial number from attribute */
-    sprintf(node_path, "%s%s", psu_path, "psu_mfr_serial");
-    dni_i2c_read_attribute_string(node_path, val_char, sizeof(val_char), 0);
-    strcpy(info->serial, val_char);
-
-    /* Read voltage, current and power */
-    if (dni_psu_pmbus_info_get(index, "psu_v_in", &val) == 0)
-    {
-        info->mvin = val;
-        info->caps |= ONLP_PSU_CAPS_VIN;
-    }
-
-    if (dni_psu_pmbus_info_get(index, "psu_v_out", &val) == 0)
-    {
-        info->mvout = val;
-        info->caps |= ONLP_PSU_CAPS_VOUT;
-    }
-
-    if (dni_psu_pmbus_info_get(index, "psu_i_in", &val) == 0)
-    {
-        info->miin = val;
-        info->caps |= ONLP_PSU_CAPS_IIN;
-    }
-
-    if (dni_psu_pmbus_info_get(index, "psu_i_out", &val) == 0)
-    {
-        info->miout = val;
-        info->caps |= ONLP_PSU_CAPS_IOUT;
-    }
-
-    if (dni_psu_pmbus_info_get(index, "psu_p_in", &val) == 0)
-    {
-        info->mpin = val;
-        info->caps |= ONLP_PSU_CAPS_PIN;
-    }
-
-    if (dni_psu_pmbus_info_get(index, "psu_p_out", &val) == 0)
-    {
-        info->mpout = val;
-        info->caps |= ONLP_PSU_CAPS_POUT;
-    }
-
-#endif
     return ret;
 }
 
@@ -267,7 +172,7 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Set the onlp_oid_hdr_t */
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[index];
-#ifdef BMC
+
     char device_name[10] = {0};
     UINT4 u4Data = 0;
     UINT4 multiplier = 1000;
@@ -285,43 +190,7 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->status = ONLP_PSU_STATUS_PRESENT;
         info->caps |= ONLP_PSU_CAPS_VIN;
     }
-#elif defined I2C
-    int psu_present = -1;
-    int val = 0;
 
-    switch(index)
-    {
-        case PSU1_ID:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU1_PRESENT_PATH);
-            break;
-        case PSU2_ID:
-            psu_present = dni_i2c_lock_read_attribute(NULL, PSU2_PRESENT_PATH);
-            break;
-        default:
-            break;
-    }
-
-    /* Check PSU have voltage input or not */
-    dni_psu_pmbus_info_get(index, "psu_v_in", &val);
-
-    /* Check PSU is PRESENT or not */
-    if(val == 0 && psu_present == 1)
-    {
-        /* PSU is not PRESENT */
-        /* Able to read PSU VIN(psu_power_not_good) */
-        info->status |= ONLP_PSU_STATUS_FAILED;
-        return ret;
-    }
-    else if(val == 0 && psu_present == 0)
-    {
-        /* Unable to read PSU VIN(psu_power_good) */
-        info->status |= ONLP_PSU_STATUS_UNPLUGGED;
-    }
-    else
-    {
-        info->status |= ONLP_PSU_STATUS_PRESENT;
-    }
-#endif
     ret = dni_psu_info_get(id, info);
     return ret;
 }
