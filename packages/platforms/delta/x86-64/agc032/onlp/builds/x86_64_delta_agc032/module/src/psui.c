@@ -18,155 +18,170 @@
  * License.
  *
  * </bsn.cl>
- ************************************************************
- *
- *
- *
- ***********************************************************/
+ ************************************************************/
 #include <onlp/platformi/psui.h>
 #include "vendor_driver_pool.h"
 #include "vendor_i2c_device_list.h"
 
-
-#define VALIDATE(_id)                           \
-    do {                                        \
-        if(!ONLP_OID_IS_PSU(_id)) {             \
-            return ONLP_STATUS_E_INVALID;       \
-        }                                       \
-    } while(0)
-
-
-enum onlp_psu_id
+/**
+ * @brief Initialize the PSU subsystem.
+ */
+int onlp_psui_init(void)
 {
-    PSU_RESERVED = 0,
-    PSU_1,
-    PSU_2,
-};
+    return ONLP_STATUS_OK;
+}
 
-#define PSU_INFO_ENTRY_INIT(_id, _desc)                                             \
-    {                                                                               \
-        {                                                                           \
-            .id = ONLP_PSU_ID_CREATE(_id),                                          \
-            .description = _desc,                                                   \
-            .poid = 0,                                                              \
-        },                                                                          \
-            .caps = (ONLP_PSU_CAPS_VOUT | ONLP_PSU_CAPS_IOUT | ONLP_PSU_CAPS_POUT), \
+/**
+ * @brief Get the information structure for the given PSU
+ * @param id The PSU OID
+ * @param rv [out] Receives the PSU information.
+ */
+int onlp_psui_info_get(onlp_oid_t oid, onlp_psu_info_t *info)
+{
+    //AIM_LOG_ERROR("Function: %s, instance: %d", __FUNCTION__, ONLP_OID_ID_GET(oid) - 1);
+    int rv = 0, id = ONLP_OID_ID_GET(oid) - 1, fail = 0;
+    vendor_psu_runtime_info_t runtimeInfo;
+
+    if (id < 0 || id > psu_list_size)
+    {
+        AIM_LOG_ERROR("size=%d id=%d", psu_list_size, id + 1);
+        return ONLP_STATUS_E_PARAM;
     }
+    *info = onlp_psu_info[id];
 
-static onlp_psu_info_t onlp_psu_info[] = {
-    {}, /* Not used */
-    PSU_INFO_ENTRY_INIT(PSU_1, "PSU 1"),
-    PSU_INFO_ENTRY_INIT(PSU_2, "PSU 2"),
-};
-
-int
-onlp_psui_init(void)
-{
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_psui_hdr_get(onlp_oid_t id, onlp_oid_hdr_t* hdr)
-{
-    //AIM_LOG_ERROR("Function: %s, instance: %d \n", __FUNCTION__, ONLP_OID_ID_GET(id) - 1);
-
-    *hdr = onlp_psu_info[ONLP_OID_ID_GET(id)].hdr;
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
-{
-    //AIM_LOG_ERROR("Function: %s, instance: %d \n", __FUNCTION__, ONLP_OID_ID_GET(id) - 1);
-    int rv = 0;
-    int nid = ONLP_OID_ID_GET(id) - 1, fail = 0;
-    int present = 0;
-    int mvout = 0, miout = 0, mpout = 0;
-
-    *info = onlp_psu_info[ONLP_OID_ID_GET(id)];
-
-    void *busDrv = (void *)vendor_find_driver_by_name(psu_dev_list[nid].bus_drv_name);
+    void *busDrv = (void *)vendor_find_driver_by_name(psu_dev_list[id].bus_drv_name);
     psu_dev_driver_t *psu =
-        (psu_dev_driver_t *)vendor_find_driver_by_name(psu_dev_list[nid].dev_drv_name);
+        (psu_dev_driver_t *)vendor_find_driver_by_name(psu_dev_list[id].dev_drv_name);
 
-    rv = vendor_get_present_status(&psu_present_list[nid], &present);
-    if(rv < 0) return ONLP_STATUS_E_INVALID;
+    rv = onlp_psui_status_get(oid, &info->status);
+    if (rv < 0)
+        return ONLP_STATUS_E_INVALID;
 
-    if (present)
-    {
-        info->status = ONLP_PSU_STATUS_PRESENT;
-    }
-    else
-    {
-        info->status = ONLP_PSU_STATUS_FAILED;
+    if (info->status == ONLP_PSU_STATUS_UNPLUGGED)
         return ONLP_STATUS_OK;
-    }
 
-    vendor_dev_do_oc(psu_o_list[nid]);
-    if(psu->model_get(
-        busDrv,
-        psu_dev_list[nid].bus,
-        psu_dev_list[nid].addr,
-        (char *) &info->model) != ONLP_STATUS_OK)
+    vendor_dev_do_oc(psu_o_list[id]);
+
+    if (psu->model_get(
+            busDrv,
+            psu_dev_list[id].bus,
+            psu_dev_list[id].dev,
+            (char *)&info->model) != ONLP_STATUS_OK)
     {
         AIM_LOG_ERROR("psu->model_get failed.");
         fail = 1;
     }
 
-    if(psu->serial_get(
-        busDrv,
-        psu_dev_list[nid].bus,
-        psu_dev_list[nid].addr,
-        (char *) &info->serial) != ONLP_STATUS_OK)
+    if (psu->serial_get(
+            busDrv,
+            psu_dev_list[id].bus,
+            psu_dev_list[id].dev,
+            (char *)&info->serial) != ONLP_STATUS_OK)
     {
         AIM_LOG_ERROR("psu->serial_get failed.");
         fail = 1;
     }
 
-    if(psu->volt_get(
+    if (psu->runtime_info_get(
         busDrv,
-        psu_dev_list[nid].bus,
-        psu_dev_list[nid].addr,
-        &mvout) != ONLP_STATUS_OK)
+        psu_dev_list[id].bus,
+        psu_dev_list[id].dev,
+        &runtimeInfo))
     {
-        AIM_LOG_ERROR("psu->volt_get failed.");
+        AIM_LOG_ERROR("psu->runtime_info_get failed.");
         fail = 1;
     }
 
-    info->mvout = mvout;
+    /* millivolts */
+    info->mvin = runtimeInfo.vin;
+    info->mvout = runtimeInfo.vout;
 
-    if(psu->amp_get(
-        busDrv,
-        psu_dev_list[nid].bus,
-        psu_dev_list[nid].addr,
-        &miout) != ONLP_STATUS_OK)
-    {
-        AIM_LOG_ERROR("psu->amp_get failed.");
-        fail = 1;
-    }
+    /* milliamps */
+    info->miin = runtimeInfo.iin;
+    info->miout = runtimeInfo.iout;
 
-    info->miout = miout;
+    /* milliwatts */
+    info->mpin = runtimeInfo.pin;
+    info->mpout = runtimeInfo.pout;
 
-    if(psu->watt_get(
-        busDrv,
-        psu_dev_list[nid].bus,
-        psu_dev_list[nid].addr,
-        &mpout) != ONLP_STATUS_OK)
-    {
-        AIM_LOG_ERROR("psu->watt_get failed.");
-        fail = 1;
-    }
+    vendor_dev_do_oc(psu_o_list[id]);
 
-    info->mpout = mpout;
-    vendor_dev_do_oc(psu_o_list[nid]);
-
-    if(fail == 1) return ONLP_STATUS_E_INVALID;
+    if (fail == 1)
+        return ONLP_STATUS_E_INVALID;
 
     return ONLP_STATUS_OK;
 }
 
-int
-onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
+/**
+ * @brief Get the PSU's operational status.
+ * @param id The PSU OID.
+ * @param status [out] Receives the operational status.
+ */
+int onlp_psui_status_get(onlp_oid_t oid, uint32_t *status)
+{
+    int rv = 0, id = ONLP_OID_ID_GET(oid) - 1;
+    int present = 0, power_good = 0;
+
+    if (id < 0 || id > psu_list_size)
+    {
+        AIM_LOG_ERROR("size=%d id=%d", psu_list_size, id + 1);
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    rv = vendor_get_status(&psu_present_list[id], &present);
+    if (rv < 0)
+        return ONLP_STATUS_E_INVALID;
+
+    if (psu_power_good_list[id].type != 0)
+    {
+        rv = vendor_get_status(&psu_power_good_list[id], &power_good);
+    }
+    else
+    {
+        /* Sometimes system cannot provide power good status */
+        power_good = 1;
+    }
+
+    if (rv < 0)
+        return ONLP_STATUS_E_INVALID;
+
+    if (present && power_good)
+    {
+        *status = ONLP_PSU_STATUS_PRESENT;
+    }
+    else if (present == 1 && power_good == 0)
+    {
+        *status = ONLP_PSU_STATUS_FAILED;
+    }
+    else
+    {
+        *status = ONLP_PSU_STATUS_UNPLUGGED;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Get the PSU's oid header.
+ * @param id The PSU OID.
+ * @param rv [out] Receives the header.
+ */
+int onlp_psui_hdr_get(onlp_oid_t oid, onlp_oid_hdr_t *hdr)
+{
+    //AIM_LOG_ERROR("Function: %s, instance: %d", __FUNCTION__, ONLP_OID_ID_GET(oid) - 1);
+    int id = ONLP_OID_ID_GET(oid) - 1;
+
+    *hdr = onlp_psu_info[id].hdr;
+
+    return ONLP_STATUS_OK;
+}
+
+/**
+ * @brief Generic PSU ioctl
+ * @param id The PSU OID
+ * @param vargs The variable argument list for the ioctl call.
+ */
+int onlp_psui_ioctl(onlp_oid_t pid, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
