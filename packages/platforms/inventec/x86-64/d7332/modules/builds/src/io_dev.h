@@ -155,32 +155,10 @@ struct io_dev_t {
 
 struct sff_io_driver_t *sff_io_drv_get_iodev(void);
 
-
-/*exported functions*/
-#if 0
-//int sff_io_prsL_get(int port, u8 *prsL);
-//int sff_io_prsL_all_get(unsigned long *bitmap);
-int sff_io_prsL_all_get(int lc_id, unsigned long *bitmap);
-int sff_io_reset_set(int port, u8 reset);
-int sff_io_reset_get(int port, u8 *reset);
-int sff_io_lpmode_set(int port, u8 value);
-int sff_io_lpmode_get(int port, u8 *value);
-int sff_io_tx_disable_set(int port, u8 value);
-int sff_io_tx_disable_get(int port, u8 *value);
-int sff_io_mode_sel_set(int port, u8 value);
-int sff_io_mode_sel_get(int port, u8 *value);
-int sff_io_intL_get(int port, u8 *value);
-int sff_io_rx_los_get(int port, u8 *value);
-int sff_io_tx_fault_get(int port, u8 *value);
-
-int sff_io_lpmode_set(int port, u8 lpmode);
-int sff_io_reset_set(int port, u8 reset);
-#endif
-int io_dev_mux_reset(int lc_id, int value);
-int ioexp_input_handler(void);
+int io_dev_mux_reset_set(int lc_id, int val);
+int io_dev_mux_reset_get(int lc_id, int *val);
 bool ioexp_is_channel_ready(int lc_id);
 bool ioexp_is_i2c_ready(void);
-int io_dev_mux_reset_get(int lc_id);
 int io_dev_init(int platform_id, int io_no_init);
 void io_dev_deinit(void);
 int io_dev_hdlr(void);

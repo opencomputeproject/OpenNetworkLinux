@@ -19,7 +19,7 @@
 #include <linux/delay.h>
 #include "sff_eeprom.h"
 #include "inv_def.h"
-#include "sff.h"
+#include "inv_swps.h"
 #include "eeprom_config/eeprom_config.h"
 
 /*
@@ -63,6 +63,7 @@ struct sff_eeprom_t {
     struct mutex lock;
 };
 struct eeprom_i2c_tbl_t *eepromI2cTbl = NULL;
+struct i2c_client *sffEepromI2cClient = NULL;
 struct sff_eeprom_t *sffEEprom = NULL;
 int sff_eeprom_read_lc( int lc_id,
                         int port,
@@ -319,7 +320,7 @@ void sff_eeprom_port_num_set(int port_num)
 static int port_to_new_port(int lc_id, int port)
 {
     int new_port = 0;
-#if 0 /*enable it while bring up*/
+#if 1 /*enable it while bring up*/
     new_port = (lcMaxPortNum * lc_id) + port;
 #else 
     new_port = port;
@@ -425,44 +426,34 @@ int sff_eeprom_write_internal(int port,
 static void sff_eeprom_clients_destroy(int size)
 {
     int port = 0;
-    int port_num = size;
-    struct i2c_client *client = NULL;
-
-    for (port = 0; port < port_num; port++) {
-        client = sffEEprom[port].i2c_client;
-        if (client) {
-            kfree(client);
-        }
+    
+    if (p_valid(sffEepromI2cClient)) {
+        kfree(sffEepromI2cClient);
+    }
+    for (port = 0; port < size; port++) {
+        sffEEprom[port].i2c_client = NULL;
     }
 }
 static int sff_eeprom_clients_create(int size)
 {
-
     struct i2c_client *client = NULL;
-    int port_num = 0;
     int port = 0;
-    int ret = 0;
+    
+    client = kzalloc(sizeof(struct i2c_client) * size, GFP_KERNEL);
 
-    port_num = size;
-    for (port = 0; port < port_num; port++) {
-
-        client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
-
-        if (!client) {
-            ret = -ENOMEM;
-            break;
-        }
-
-        sffEEprom[port].i2c_client = client;
+    if (!p_valid(client)) {
+        return -ENOMEM;
     }
-    if (ret < 0) {
-        sff_eeprom_clients_destroy(eepromI2cTbl->size);
+    sffEepromI2cClient = client;
+    
+    for (port = 0; port < size; port++) {
+        sffEEprom[port].i2c_client = &sffEepromI2cClient[port];
     }
     
     return 0;
 }
 /*init i2c adapter*/
-static int _sff_eeprom_clients_init(struct sff_eeprom_t *eeprom,  struct eeprom_config_t *config)
+static int _sff_eeprom_client_init(struct sff_eeprom_t *eeprom,  struct eeprom_config_t *config)
 {
     struct i2c_adapter *adap;
     struct i2c_client *client = NULL;
@@ -481,8 +472,7 @@ static int _sff_eeprom_clients_init(struct sff_eeprom_t *eeprom,  struct eeprom_
     client->addr = SFF_EEPROM_I2C_ADDR;
 
     eeprom->i2c_client = client;
-    EEPROM_LOG_DBG("%s: i2c check ok port:%d\n", __FUNCTION__,
-                       eeprom->port);
+    EEPROM_LOG_DBG("ok i2c_ch:%d\n", config->i2c_ch);
     mutex_init(&(eeprom->lock));
     return 0;
 
@@ -500,12 +490,11 @@ static void sff_eeprom_clients_deinit(int size)
     }
     for (port = 0; port < port_num; port++) {
         client = sffEEprom[port].i2c_client;
-        if (client) {
-            if (client->adapter) {
+        if (p_valid(client)) {
+            if (p_valid(client->adapter)) {
                 i2c_put_adapter(client->adapter);
             }
         }
-
     }
 }
 
@@ -523,7 +512,7 @@ static int sff_eeprom_clients_init(struct eeprom_i2c_tbl_t *tbl)
     map = tbl->map;
     for (port = 0; port < port_num; port++) {
 
-        if (_sff_eeprom_clients_init(&sffEEprom[port], &map[port]) < 0) {
+        if (_sff_eeprom_client_init(&sffEEprom[port], &map[port]) < 0) {
             ret =  -EBADRQC;
             break;
         }
@@ -540,7 +529,7 @@ static int sff_eeprom_objs_create(int size)
 
     sffEEprom = kzalloc(sizeof(struct sff_eeprom_t) * size, GFP_KERNEL);
 
-    if(!sffEEprom) {
+    if(!p_valid(sffEEprom)) {
         return -ENOMEM;
     }
 
@@ -575,7 +564,7 @@ static int eeprom_i2c_table_load(int platform_id)
 }
 static void sff_eeprom_objs_destroy(void)
 {
-    if(sffEEprom) {
+    if(p_valid(sffEEprom)) {
         kfree(sffEEprom);
     }
 }
@@ -591,11 +580,11 @@ int sff_eeprom_init(int platform_id)
     if (sff_eeprom_clients_create(eepromI2cTbl->size) < 0) {
         goto exit_kfree_obj;
     }
-
+#if 1
     if (sff_eeprom_clients_init(eepromI2cTbl) < 0) {
         goto exit_kfree_client;
     }
-
+#endif
     EEPROM_LOG_INFO("ok\n");
     return 0;
 

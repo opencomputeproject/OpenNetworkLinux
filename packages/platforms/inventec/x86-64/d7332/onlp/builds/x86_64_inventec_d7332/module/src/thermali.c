@@ -27,10 +27,9 @@ typedef struct thermali_path_s {
     char file[ONLP_CONFIG_INFO_STR_MAX];
 } thermali_path_t;
 
-#define MAKE_THERMAL_PATH_ON_CPU(id)                        { "/var/coretemp/temp"#id"_input"}
-#define MAKE_THERMAL_PATH_ON_MAIN_BROAD(id)                 { "/var/thermal_"#id"/temp1_input"}
-#define MAKE_THERMAL_PATH_ON_PSU(psu_id,thermal_id)       { "/var/psu"#psu_id"/device/temp"#thermal_id"_input"}
-#define MAKE_THERMAL_PATH(thermal_id)                       { "/var/thermals/temp"#thermal_id"_input"}
+#define MAKE_THERMAL_PATH_ON_CPU(id)                           { "/var/coretemp/temp"#id"_input"}
+#define MAKE_THERMAL_PATH_ON_MAIN_BROAD(thermal_id,attr_idx)   { "/var/board_thermal_"#thermal_id"/temp"#attr_idx"_input"}
+#define MAKE_THERMAL_PATH_ON_PSU(psu_id,thermal_id)            { "/var/psu"#psu_id"/device/temp"#thermal_id"_input"}
 
 static thermali_path_t __path_list[ ] = {
     {},
@@ -39,13 +38,13 @@ static thermali_path_t __path_list[ ] = {
     MAKE_THERMAL_PATH_ON_CPU(3),
     MAKE_THERMAL_PATH_ON_CPU(4),
     MAKE_THERMAL_PATH_ON_CPU(5),
-    MAKE_THERMAL_PATH(1),
-    MAKE_THERMAL_PATH(2),
-    MAKE_THERMAL_PATH_ON_MAIN_BROAD(8),
-    MAKE_THERMAL_PATH_ON_MAIN_BROAD(9),
-    MAKE_THERMAL_PATH_ON_MAIN_BROAD(10),
-    MAKE_THERMAL_PATH_ON_MAIN_BROAD(11),
-    MAKE_THERMAL_PATH_ON_MAIN_BROAD(12),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(1,1),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(1,2),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(2,1),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(3,1),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(4,1),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(5,1),
+    MAKE_THERMAL_PATH_ON_MAIN_BROAD(6,1),
     MAKE_THERMAL_PATH_ON_PSU(1,1),
     MAKE_THERMAL_PATH_ON_PSU(1,2),
     MAKE_THERMAL_PATH_ON_PSU(1,3),

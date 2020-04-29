@@ -1,5 +1,6 @@
 from onl.platform.base import *
 from onl.platform.inventec import *
+import logging
 
 class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
                                               OnlPlatformPortConfig_32x400):
@@ -25,12 +26,12 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
         "/var/psu1",
         "/var/psu2",
         "/var/coretemp",
-        "/var/thermals",
-        "/var/thermal_8",
-        "/var/thermal_9",
-        "/var/thermal_10",
-        "/var/thermal_11",
-        "/var/thermal_12",
+        "/var/board_thermal_1",
+        "/var/board_thermal_2",
+        "/var/board_thermal_3",
+        "/var/board_thermal_4",
+        "/var/board_thermal_5",
+        "/var/board_thermal_6",
     ]
 
     def baseconfig(self):

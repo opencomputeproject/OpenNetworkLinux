@@ -37,7 +37,6 @@ typedef enum hwmon_fan_state_e {
 #define BLADE_TO_FAN_ID(blade_id) (blade_id%2==0)? blade_id/2:(blade_id+1)/2
 
 
-#define TLV_AREA_OFFSETS_IDX_START      1
 #define TLV_PRODUCT_INFO_OFFSET_IDX     5
 #define TLV_PRODUCT_INFO_AREA_START     3
 #define TLV_ATTR_TYPE_SERIAL            5
@@ -113,9 +112,7 @@ static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
     }
 
     if(ret==ONLP_STATUS_OK) {
-        for(i=TLV_AREA_OFFSETS_IDX_START; i<TLV_PRODUCT_INFO_OFFSET_IDX; i++) {
-            target_offset+=rdata[i];
-        }
+        target_offset=rdata[TLV_PRODUCT_INFO_OFFSET_IDX-1];
         target_offset*=8; /*spec defined: offset are in multiples of 8 bytes*/
         attr_idx=target_offset+TLV_PRODUCT_INFO_AREA_START;
 

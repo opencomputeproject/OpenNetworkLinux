@@ -18,7 +18,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/err.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "io_dev.h"
 #include "inv_def.h"
 #include "io_config/io_config.h"
@@ -59,7 +59,7 @@ struct io_dev_t ioDev;
 
 struct ioexp_config_t *ioexp_head = NULL;
 struct ioexp_config_t *ioexp_tail = NULL;
-
+struct i2c_client *ioexpI2cClient = NULL;
 static int gpio_base = 0;
 static int pca9555_word_read(struct io_dev_client_t *ioexp_client, u8 offset);
 static int pca9555_word_write(struct io_dev_client_t *ioexp_client, u8 offset, u16 val);
@@ -137,6 +137,10 @@ int ioexp_modesel_set(int lc_id, int port, u8 value);
 int ioexp_modesel_get(int lc_id, int port, u8 *value);
 static int ioexp_power_set(int lc_id, int port, u8 val);
 static int ioexp_power_get(int lc_id, int port, u8 *val);
+static int ioexp_reset_all_set(int lc_id, unsigned long bitmap);
+static int ioexp_reset_all_get(int lc_id, unsigned long *bitmap);
+static int ioexp_lpmode_all_set(int lc_id, unsigned long bitmap);
+static int ioexp_lpmode_all_get(int lc_id, unsigned long *bitmap);
 
 struct sff_io_driver_t ioDevSffIoDrv = {
     .prs_all_get = ioexp_prsL_all_get,
@@ -146,10 +150,14 @@ struct sff_io_driver_t ioDevSffIoDrv = {
     .tx_fault_all_get = ioexp_tx_fault_all_get,
     .reset_set = ioexp_reset_set,
     .reset_get = ioexp_reset_get,
+    .reset_all_set = ioexp_reset_all_set,
+    .reset_all_get = ioexp_reset_all_get,
     .power_set = ioexp_power_set,
     .power_get = ioexp_power_get,
     .lpmode_set = ioexp_lpmode_set,
     .lpmode_get = ioexp_lpmode_get,
+    .lpmode_all_set = ioexp_lpmode_all_set,
+    .lpmode_all_get = ioexp_lpmode_all_get,
     .tx_disable_set = ioexp_tx_disable_set,
     .tx_disable_get = ioexp_tx_disable_get,
     .mode_sel_set = ioexp_modesel_set,
@@ -197,14 +205,14 @@ static int valid_num_get(unsigned long bitmap)
     int num = 0;
     int i = 0;
     int size = sizeof(bitmap) * 8;
-    
+
     for (i = 0; i < size; i++) {
         if (test_bit(i, &bitmap)) {
             num++;
-        }  
+        }
     }
     return num;
-}    
+}
 /*[note] when sff module is prsL , corrensponding bit be set*/
 int ioexp_prsL_all_get(int lc_id, unsigned long *bitmap)
 {
@@ -228,7 +236,7 @@ int ioexp_intr_all_get(int lc_id, unsigned long *bitmap)
     struct ldata_format_t *ldata = &(ioDev.ioexp_dev.input_st[IOEXP_INT_TYPE]);
     int intr_num = ioDev.ioexp_dev.input_port_num[IOEXP_INT_TYPE];
     unsigned valid_num = valid_num_get(ldata->valid);
-    
+
     if (0 == intr_num) {
         return REC_SFF_IO_UNSUPPORTED;
     }
@@ -260,7 +268,7 @@ int ioexp_tx_fault_all_get(int lc_id, unsigned long *bitmap)
     struct ldata_format_t *ldata = &(ioDev.ioexp_dev.input_st[IOEXP_TXFAULT_TYPE]);
     int txfault_num = ioDev.ioexp_dev.input_port_num[IOEXP_TXFAULT_TYPE];
     unsigned valid_num = valid_num_get(ldata->valid);
-    
+
     if (0 == txfault_num) {
         return REC_SFF_IO_UNSUPPORTED;
     }
@@ -286,6 +294,22 @@ static int ioexp_power_get(int lc_id, int port, u8 *val)
 
 static void ioexp_i2c_clients_destroy(struct ioexp_dev_t *ioexp_dev)
 {
+    int id = 0;
+    int size = ioexp_dev->i2c_ch_map->size;
+
+    if (!p_valid(ioexp_dev)) {
+        return;
+    }
+    if (p_valid(ioexpI2cClient)) {
+        kfree(ioexpI2cClient);
+    }
+    for (id = 0; id < size; id++) {
+        ioexp_dev->ioexp_client[id].client = NULL;
+    }
+}
+
+static void ioexp_i2c_clients_deinit(struct ioexp_dev_t *ioexp_dev)
+{
     struct i2c_client *client = NULL;
     int id = 0;
     int size = ioexp_dev->i2c_ch_map->size;
@@ -300,7 +324,6 @@ static void ioexp_i2c_clients_destroy(struct ioexp_dev_t *ioexp_dev)
             if (p_valid(client->adapter)) {
                 i2c_put_adapter(client->adapter);
             }
-            kfree(client);
         }
     }
 }
@@ -323,48 +346,61 @@ static int ioexp_clients_create(struct ioexp_dev_t *ioexp_dev)
     return 0;
 }
 
-
-struct i2c_client *ioexp_i2c_client_create_init(int ch)
+int ioexp_i2c_client_init(int ch, struct i2c_client **client)
 {
-    struct i2c_client *client = NULL;
     struct i2c_adapter *adap = NULL;
 
-    client = kzalloc(sizeof(struct i2c_client), GFP_KERNEL);
-    if (!p_valid(client)) {
-        goto exit_err;
+    if (!p_valid(*client)) {
+        return -EBADRQC;
     }
     adap = i2c_get_adapter(ch);
     if (!p_valid(adap)) {
-        SFF_IO_LOG_ERR("get adapter fail ch:%d\n", ch);
-        goto exit_kfree_i2c_client;
+    SFF_IO_LOG_ERR("get adapter fail ch:%d\n", ch);
+    return -EBADRQC;
     }
-    client->adapter = adap;
-    return client;
 
-exit_kfree_i2c_client:
-    kfree(client);
-exit_err:
-    return NULL;
+    SFF_IO_LOG_DBG("get adapter ok ch:%d\n", ch);
+    (*client)->adapter = adap;
+
+    return 0;
 }
-static int ioexp_i2c_clients_create_init(struct ioexp_dev_t *ioexp_dev)
+
+static int ioexp_i2c_clients_init(struct ioexp_dev_t *ioexp_dev)
 {
+    int ret = 0;
     int i = 0;
     int size = ioexp_dev->i2c_ch_map->size;
     int *tbl = ioexp_dev->i2c_ch_map->tbl;
-    struct i2c_client *client = NULL;
+    struct io_dev_client_t *ioexp_client = NULL;
 
     for (i = 0; i < size; i++) {
-        client = ioexp_i2c_client_create_init(tbl[i]);
-        if (!p_valid(client)) {
+        ioexp_client = &ioexp_dev->ioexp_client[i];
+        if ((ret = ioexp_i2c_client_init(tbl[i], &(ioexp_client->client))) < 0) {
             break;
         }
-        ioexp_dev->ioexp_client[i].client = client;
-        mutex_init(&(ioexp_dev->ioexp_client[i].lock));
+        mutex_init(&(ioexp_client->lock));
 
     }
-    if (i < size) {
-        ioexp_i2c_clients_destroy(ioexp_dev);
+    if (ret < 0) {
+        ioexp_i2c_clients_deinit(ioexp_dev);
+        return ret;
+    }
+    return 0;
+}
+static int ioexp_i2c_clients_create(struct ioexp_dev_t *ioexp_dev)
+{
+    int i = 0;
+    int size = ioexp_dev->i2c_ch_map->size;
+    struct i2c_client *client = NULL;
+
+    client = kzalloc(sizeof(struct i2c_client)*size, GFP_KERNEL);
+    if (!p_valid(client)) {
         return -EBADRQC;
+    }
+    ioexpI2cClient = client;
+    /*build a link*/
+    for (i = 0; i < size; i++) {
+        ioexp_dev->ioexp_client[i].client = &ioexpI2cClient[i];
     }
     return 0;
 }
@@ -373,7 +409,7 @@ static void cpld_io_i2c_clients_destroy(struct cpld_io_t *cpld_io)
     struct i2c_client *client = NULL;
     int id = 0;
     int size = cpld_io->config->i2c_ch_map->size;
-
+    
     for (id = 0; id < size; id++) {
         client = cpld_io->cpld_client[id].client;
         if (p_valid(client)) {
@@ -473,15 +509,16 @@ int io_dev_mux_rst_gpio_init(int mux_rst_gpio)
     return 0;
 }
 
-int io_dev_mux_reset_get(int lc_id)
+int io_dev_mux_reset_get(int lc_id, int *val)
 {
-    int val = 0;
-    val = gpio_get_value(ioDev.mux_rst_gpio);
-    return val;
+    int lv = 0;
+    lv = gpio_get_value(ioDev.mux_rst_gpio);
+    *val = lv;
+    return 0;
 }
 
 /*io mux control*/
-int io_dev_mux_reset(int lc_id, int value)
+int io_dev_mux_reset_set(int lc_id, int value)
 {
     gpio_set_value(ioDev.mux_rst_gpio, value);
     return 0;
@@ -772,8 +809,116 @@ int ioexp_output_set(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port
     if ((ret = func->write(ioexp_client, func->offset[PCA95XX_OUTPUT], reg)) < 0) {
         return ret;
     }
-    SFF_IO_LOG_INFO("%s set ok ch_id:%d addr:%d reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
+    SFF_IO_LOG_DBG("%s set ok ch_id:%d addr:0x%x reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
     return 0;
+}
+static void set_reg_update(struct ioexp_output_t *ioexp, unsigned long bitmap, u16 *reg)
+{
+    u16 new_reg = 0;
+    int port_min = 0;
+    int port_max = 0;
+    u16 set_bits = 0;
+    int bit = 0;
+    int port = 0;
+    
+    port_min = ioexp->port_min;
+    port_max = ioexp->port_min + (ioexp->bit_max - ioexp->bit_min);
+    
+    for (port = port_min, bit = ioexp->bit_min; port <= port_max; port++, bit++) {
+        if (test_bit(port, &bitmap)) {
+            set_bit(bit, (unsigned long *)&set_bits);
+        }
+    }
+    
+    SFF_IO_LOG_DBG("bitmap:0x%lx set_bits:0x%x\n", bitmap, set_bits);
+    for (bit = ioexp->bit_min; bit <= ioexp->bit_max; bit++) {
+        if (test_bit(bit, (unsigned long *)&set_bits)) {
+            set_bit(bit, (unsigned long *)&new_reg);
+        } else {
+            clear_bit(bit, (unsigned long *)&new_reg);
+        }
+    }
+    *reg = new_reg;
+}
+
+static void recv_reg_update(struct ioexp_output_t *ioexp, u16 reg, unsigned long *bitmap)
+{
+    int port = 0;
+    int bit = 0;
+    unsigned long recv_bitmap = 0;
+
+    recv_bitmap = *bitmap;
+    
+    for (port = ioexp->port_min, bit = ioexp->bit_min; bit <= ioexp->bit_max; bit++, port++) {
+        if (test_bit(bit, (unsigned long *)&reg)) {
+            set_bit(port, &recv_bitmap);
+        } else {
+            clear_bit(port, &recv_bitmap);
+        }
+    }
+    //SFF_IO_LOG_DBG("bitmap:0x%lx, recv_bit:0x%x\n", recv_bitmap, reg);
+    
+    *bitmap = recv_bitmap;
+}
+int ioexp_output_all_set(struct ioexp_dev_t *dev, ioexp_output_type_t type, unsigned long bitmap)
+{
+    int ret = 0;
+    u16 reg = 0;
+    struct io_dev_client_t *ioexp_client = NULL;
+    struct pca95xx_func_t *func = NULL;
+    struct ioexp_output_t *tbl = NULL;
+    struct ioexp_output_t *ioexp = NULL;
+    int count = 0;
+
+    if (!p_valid(dev->output[type])) {
+        if (p_valid(ioexp_output_name[type])) {
+            SFF_IO_LOG_INFO("%s not supported\n", ioexp_output_name[type]);
+        }
+        return REC_SFF_IO_UNSUPPORTED;
+    }
+    tbl = dev->output[type];
+
+    for (count = 0; tbl[count].end_of_tbl != true; count++) {
+        ioexp = &tbl[count];
+        if (!p_valid(ioexp_client = ioexp_client_find(dev, ioexp->ch_id, ioexp->addr))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if (!p_valid(func = pca95xx_func_find(dev->config_map, ioexp->ioexp_id))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if ((ret = func->read(ioexp_client, func->offset[PCA95XX_OUTPUT])) < 0) {
+            SFF_IO_LOG_ERR("read fail! ioexp_id:%d ch_id:%d addr:0x%x\n",
+                           ioexp->ioexp_id, ioexp->ch_id, ioexp->addr);
+            break;
+        }
+        reg = ret;
+        set_reg_update(ioexp, bitmap, &reg);
+
+        if ((ret = func->write(ioexp_client, func->offset[PCA95XX_OUTPUT], reg)) < 0) {
+            break;
+        }
+
+        SFF_IO_LOG_INFO("%s set ok ch_id:%d addr:0x%x reg:0x%x\n", ioexp_output_name[type], ioexp->ch_id, ioexp->addr, reg);
+    }
+    if (ret < 0) {
+        return ret;
+    }
+
+    return 0;
+}
+
+static int ioexp_reset_all_set(int lc_id, unsigned long bitmap)
+{
+    return ioexp_output_all_set(&(ioDev.ioexp_dev), IOEXP_RESET_TYPE, bitmap);
+}
+
+static int ioexp_lpmode_all_set(int lc_id, unsigned long bitmap)
+{
+    return ioexp_output_all_set(&(ioDev.ioexp_dev), IOEXP_LPMODE_TYPE, bitmap);
 }
 
 int ioexp_output_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port, u8 *val)
@@ -817,6 +962,63 @@ int ioexp_output_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, int port
     }
 
     return 0;
+}
+
+int ioexp_output_all_get(struct ioexp_dev_t *dev, ioexp_output_type_t type, unsigned long *bitmap)
+{
+    int ret = 0;
+    u16 reg = 0;
+    struct io_dev_client_t *ioexp_client = NULL;
+    struct pca95xx_func_t *func = NULL;
+    struct ioexp_output_t *tbl = NULL;
+    struct ioexp_output_t *ioexp = NULL;
+    int count = 0;
+    unsigned long new_bitmap = 0;
+    
+    if (!p_valid(dev->output[type])) {
+        if (p_valid(ioexp_output_name[type])) {
+            SFF_IO_LOG_INFO("%s not supported\n", ioexp_output_name[type]);
+        }
+        return REC_SFF_IO_UNSUPPORTED;
+    }
+    tbl = dev->output[type];
+
+    for (count = 0; tbl[count].end_of_tbl != true; count++) {
+        ioexp = &tbl[count];
+        if (!p_valid(ioexp_client = ioexp_client_find(dev, ioexp->ch_id, ioexp->addr))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if (!p_valid(func = pca95xx_func_find(dev->config_map, ioexp->ioexp_id))) {
+            ret = -EBADRQC;
+            break;
+        }
+
+        if ((ret = func->read(ioexp_client, func->offset[PCA95XX_OUTPUT])) < 0) {
+            SFF_IO_LOG_ERR("read fail! ioexp_id:%d ch_id:%d addr:0x%x\n",
+                           ioexp->ioexp_id, ioexp->ch_id, ioexp->addr);
+            break;
+        }
+        reg = ret;
+        recv_reg_update(ioexp, reg, &new_bitmap);
+    }
+    if (ret < 0) {
+        return ret;
+    }
+    *bitmap = new_bitmap;
+    
+    return 0;
+}
+
+static int ioexp_reset_all_get(int lc_id, unsigned long *bitmap)
+{
+    return ioexp_output_all_get(&(ioDev.ioexp_dev), IOEXP_RESET_TYPE, bitmap);
+}
+
+static int ioexp_lpmode_all_get(int lc_id, unsigned long *bitmap)
+{
+    return ioexp_output_all_get(&(ioDev.ioexp_dev), IOEXP_LPMODE_TYPE, bitmap);
 }
 
 int ioexp_lpmode_set(int lc_id, int port, u8 val)
@@ -1240,7 +1442,7 @@ static int cpld_io_intr_st_get_type2(struct cpld_io_t *cpld_io, u32 *reg)
     *reg = (~qsfp) & 0xf;
     return 0;
 }
-
+#if 0
 /*cedar platform, <TBD> check with new cedar HW spec*/
 static int cpld_io_intr_st_get_type3(struct cpld_io_t *cpld_io, u32 *reg)
 {
@@ -1274,7 +1476,7 @@ static int cpld_io_intr_st_get_type3(struct cpld_io_t *cpld_io, u32 *reg)
     *reg = qsfp;
     return 0;
 }
-
+#endif
 static int cpld_io_func_init(struct cpld_io_t *cpld_io)
 {
     struct io_dev_t *io_dev = cpld_to_io(cpld_io);
@@ -1343,40 +1545,43 @@ int io_dev_init(int platform_id, int io_no_init)
         SFF_IO_LOG_ERR("ioexp_clients_create fail\n");
         goto exit_err;
     }
-    if ((ret = ioexp_i2c_clients_create_init(&ioDev.ioexp_dev)) < 0) {
-        SFF_IO_LOG_ERR("ioexp_i2c_clients_create_init fail\n");
+    if ((ret = ioexp_i2c_clients_create(&ioDev.ioexp_dev)) < 0) {
+        SFF_IO_LOG_ERR("ioexp_i2c_clients_create fail\n");
         goto exit_kfree_clients;
     }
-
+    if ((ret = ioexp_i2c_clients_init(&ioDev.ioexp_dev)) < 0) {
+        SFF_IO_LOG_ERR("ioexp_i2c_clients_init fail\n");
+        goto exit_kfree_i2c_clients;
+    }
     if (!io_no_init) {
         if (ioexp_config_init(&ioDev.ioexp_dev) < 0) {
             SFF_IO_LOG_ERR("ioexp_config_init fail\n");
-            goto exit_kfree_i2c_clients;
+            goto deinit_i2c_clients;
         }
     }
-
     if (ioexp_input_init(&ioDev.ioexp_dev) < 0) {
         SFF_IO_LOG_ERR("ioexp_input_init fail\n");
-        goto exit_kfree_i2c_clients;
+        goto deinit_i2c_clients;
     }
 
     if (ioexp_output_init(&ioDev.ioexp_dev, io_no_init) < 0) {
         SFF_IO_LOG_ERR("ioexp_out_init fail\n");
-        goto exit_kfree_i2c_clients;
+        goto deinit_i2c_clients;
     }
     if (ioDev.intr_mode_supported) {
         if (cpld_io_init(&ioDev.cpld_io) < 0) {
             SFF_IO_LOG_ERR("cpld_io_init fail\n");
-            goto exit_kfree_i2c_clients;
+            goto deinit_i2c_clients;
         }
     }
     if(io_dev_mux_rst_gpio_init(ioDev.mux_rst_gpio) < 0) {
         SFF_IO_LOG_ERR("io_dev_mux_rst_gpio_init fail\n");
-        goto exit_kfree_i2c_clients;
+        goto deinit_i2c_clients;
     }
     SFF_IO_LOG_DBG("OK\n");
     return 0;
-
+deinit_i2c_clients:
+    ioexp_i2c_clients_deinit(&ioDev.ioexp_dev);    
 exit_kfree_i2c_clients:
     ioexp_i2c_clients_destroy(&ioDev.ioexp_dev);
 exit_kfree_clients:
@@ -1387,6 +1592,7 @@ exit_err:
 
 void io_dev_deinit(void)
 {
+    ioexp_i2c_clients_deinit(&ioDev.ioexp_dev);    
     ioexp_i2c_clients_destroy(&ioDev.ioexp_dev);
     ioexp_clients_destroy(&ioDev.ioexp_dev);
 
