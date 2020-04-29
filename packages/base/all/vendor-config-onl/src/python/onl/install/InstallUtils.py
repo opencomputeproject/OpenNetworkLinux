@@ -353,8 +353,17 @@ class BlkidEntry:
 
     def splitDev(self):
         dev, part = self.device, ""
-        while dev[-1:] in string.digits:
+        partition_offset = None
+
+        partition_mark = dev.find('p')
+        if dev[partition_mark - 1].isdigit() and dev[partition_mark + 1].isdigit():
+            partition_offset = -1
+
+        while dev[-1].isdigit():
             dev, part = dev[:-1], dev[-1] + part
+        else:
+            dev = dev[:partition_offset]
+
         return dev, part
 
     def isOnieReserved(self):
@@ -831,7 +840,11 @@ class GdiskParser(SubprocessMixin):
 
             partno = int(line.split()[0])
 
-            partDevice = "%s%d" % (self.device, pidx,)
+            if self.device[-1].isdigit():
+                partDevice = "%sp%d" % (self.device, pidx,)
+            else:
+                partDevice = "%s%d" % (self.device, pidx,)
+
             pidx += 1
             # linux partitions may be numbered differently,
             # if there are holes in the GPT partition table
