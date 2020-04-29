@@ -185,7 +185,7 @@ _psu_info_get_type2(onlp_psu_info_t* info)
         return ONLP_STATUS_OK;
     }
 
-    return psu_read_eeprom(index, info, NULL);
+    return psu_read_eeprom(index, info);
 }
 
 static int
@@ -242,7 +242,7 @@ _psu_info_get_type3(onlp_psu_info_t* info)
         return ONLP_STATUS_OK;
     }
 
-    return psu_read_eeprom(index, info, NULL);
+    return psu_read_eeprom(index, info);
 }
 
 int _psu_info_get(onlp_psu_info_t* info)

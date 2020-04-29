@@ -1,0 +1,402 @@
+From f0b3ddaafa62a2d36ce88bf369dfaf8b8efb7c6b Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 1 Apr 2020 02:20:21 +0300
+Subject: [backport] platform/mellanox: mlxreg-io: Add support for complex
+ attributes
+
+Add support for attributes composed from few registers.
+Such attributes could occupy from 2 to 4 sequential registers.
+This is not the case for double word size register space, for word size
+register space complex attribute can occupy up to two register, for
+byte size - up to four. These attributes can carry, for example, CPLD
+or FPGA versioning, power consuming info, etcetera.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/platform/mellanox/mlxreg-hotplug.c |  31 ++---
+ drivers/platform/mellanox/mlxreg-io.c      |  54 +++++++--
+ drivers/platform/x86/mlx-platform.c        | 128 +++++++++++++++++++++
+ include/linux/platform_data/mlxreg.h       |   2 +
+ 4 files changed, 189 insertions(+), 26 deletions(-)
+
+diff --git a/drivers/platform/mellanox/mlxreg-hotplug.c b/drivers/platform/mellanox/mlxreg-hotplug.c
+index c21754821..832fcf282 100644
+--- a/drivers/platform/mellanox/mlxreg-hotplug.c
++++ b/drivers/platform/mellanox/mlxreg-hotplug.c
+@@ -204,9 +204,26 @@ static int mlxreg_hotplug_attr_init(struct mlxreg_hotplug_priv_data *priv)
+ 
+ 	/* Go over all kinds of items - psu, pwr, fan. */
+ 	for (i = 0; i < pdata->counter; i++, item++) {
++		if (item->capability) {
++			/*
++			 * Read group capability register to get actual number
++			 * of interrupt capable components and set group mask
++			 * accordingly.
++			 */
++			ret = regmap_read(priv->regmap, item->capability,
++					  &regval);
++			if (ret)
++				return ret;
++
++			item->mask = GENMASK((regval & item->mask) - 1, 0);
++		}
++
+ 		data = item->data;
+ 		/* Go over all units within the item. */
+ 		for (j = 0, k = 0; j < item->count; j++, data++) {
++			/* Skip if bit in mask is not set. */
++			if (!(item->mask & BIT(j)))
++				continue;
+ 			if (data->capability) {
+ 				/*
+ 				 * Read capability register and skip non
+@@ -519,20 +536,6 @@ static int mlxreg_hotplug_set_irq(struct mlxreg_hotplug_priv_data *priv)
+ 	item = pdata->items;
+ 
+ 	for (i = 0; i < pdata->counter; i++, item++) {
+-		if (item->capability) {
+-			/*
+-			 * Read group capability register to get actual number
+-			 * of interrupt capable components and set group mask
+-			 * accordingly.
+-			 */
+-			ret = regmap_read(priv->regmap, item->capability,
+-					  &regval);
+-			if (ret)
+-				goto out;
+-
+-			item->mask = GENMASK((regval & item->mask) - 1, 0);
+-		}
+-
+ 		/* Clear group presense event. */
+ 		ret = regmap_write(priv->regmap, item->reg +
+ 				   MLXREG_HOTPLUG_EVENT_OFF, 0);
+diff --git a/drivers/platform/mellanox/mlxreg-io.c b/drivers/platform/mellanox/mlxreg-io.c
+index acfaf64ff..cc7b78301 100644
+--- a/drivers/platform/mellanox/mlxreg-io.c
++++ b/drivers/platform/mellanox/mlxreg-io.c
+@@ -30,6 +30,8 @@
+  * @mlxreg_io_dev_attr: sysfs sensor device attribute array;
+  * @group: sysfs attribute group;
+  * @groups: list of sysfs attribute group for hwmon registration;
++ * @regsize: size of a register value;
++ * @regmax: max register value;
+  */
+ struct mlxreg_io_priv_data {
+ 	struct platform_device *pdev;
+@@ -39,27 +41,31 @@ struct mlxreg_io_priv_data {
+ 	struct sensor_device_attribute mlxreg_io_dev_attr[MLXREG_IO_ATT_NUM];
+ 	struct attribute_group group;
+ 	const struct attribute_group *groups[2];
++	int regsize;
++	int regmax;
+ };
+ 
+ static int
+ mlxreg_io_get_reg(void *regmap, struct mlxreg_core_data *data, u32 in_val,
+-		  bool rw_flag, u32 *regval)
++		  bool rw_flag, int regsize, int regmax, u32 *regval)
+ {
+-	int ret;
++	int i, val, ret;
+ 
+ 	ret = regmap_read(regmap, data->reg, regval);
+ 	if (ret)
+ 		goto access_error;
+ 
+ 	/*
+-	 * There are three kinds of attributes: single bit, full register's
+-	 * bits and bit sequence. For the first kind field mask indicates which
+-	 * bits are not related and field bit is set zero. For the second kind
+-	 * field mask is set to zero and field bit is set with all bits one.
+-	 * No special handling for such kind of attributes - pass value as is.
+-	 * For the third kind, field mask indicates which bits are related and
+-	 * field bit is set to the first bit number (from 1 to 32) is the bit
+-	 * sequence.
++	 * There are four kinds of attributes: single bit, full register's
++	 * bits, bit sequence, bits in few registers For the first kind field
++	 * mask indicates which bits are not related and field bit is set zero.
++	 * For the second kind field mask is set to zero and field bit is set
++	 * with all bits one. No special handling for such kind of attributes -
++	 * pass value as is. For the third kind, field mask indicates which
++	 * bits are related and field bit is set to the first bit number (from
++	 * 1 to 32) is the bit sequence. For the fourth mask - the number of
++	 * registers which should be written for attribute are set according
++	 * to 'data->bit' field.
+ 	 */
+ 	if (!data->bit) {
+ 		/* Single bit. */
+@@ -83,6 +89,22 @@ mlxreg_io_get_reg(void *regmap, struct mlxreg_core_data *data, u32 in_val,
+ 			/* Clear relevant bits and set them to new value. */
+ 			*regval = (*regval & ~data->mask) | in_val;
+ 		}
++	} else {
++		/*
++		 * Some attributes could occupied few registers in case regmap
++		 * bit size is 8 or 16. Maximum register for such case is
++		 * respectively 0xff or 0xffff. Not relevant for the case, when
++		 * regmap bit size is 32 and maximum registers 0xffffffff.
++		 * Compose attribute from 'regnum' registers.
++		 */
++		for (i = 1; i < data->regnum; i++) {
++			ret = regmap_read(regmap, data->reg + i, &val);
++			if (ret)
++				goto access_error;
++
++			*regval |= rol32(val, regsize * i);
++		}
++		*regval = le32_to_cpu(*regval & regmax);
+ 	}
+ 
+ access_error:
+@@ -99,7 +121,8 @@ mlxreg_io_attr_show(struct device *dev, struct device_attribute *attr,
+ 	u32 regval = 0;
+ 	int ret;
+ 
+-	ret = mlxreg_io_get_reg(priv->pdata->regmap, data, 0, true, &regval);
++	ret = mlxreg_io_get_reg(priv->pdata->regmap, data, 0, true,
++				priv->regsize, priv->regmax, &regval);
+ 	if (ret)
+ 		goto access_error;
+ 
+@@ -128,7 +151,7 @@ mlxreg_io_attr_store(struct device *dev, struct device_attribute *attr,
+ 		return ret;
+ 
+ 	ret = mlxreg_io_get_reg(priv->pdata->regmap, data, input_val, false,
+-				&regval);
++				priv->regsize, priv->regmax, &regval);
+ 	if (ret)
+ 		goto access_error;
+ 
+@@ -207,6 +230,13 @@ static int mlxreg_io_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	priv->pdev = pdev;
++	priv->regsize = regmap_get_val_bytes(priv->pdata->regmap);
++	if (priv->regsize < 0)
++		return priv->regsize;
++
++	priv->regmax = regmap_get_max_register(priv->pdata->regmap);
++	if (priv->regmax < 0)
++		return priv->regmax;
+ 
+ 	err = mlxreg_io_attr_init(priv);
+ 	if (err) {
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index c27548fd3..034736cec 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -26,6 +26,10 @@
+ #define MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET	0x01
+ #define MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET	0x02
+ #define MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET	0x03
++#define MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET	0x04
++#define MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET	0x06
++#define MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET	0x08
++#define MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET	0x0a
+ #define MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET	0x1d
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET	0x1e
+ #define MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET	0x1f
+@@ -72,6 +76,10 @@
+ #define MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET	0xd1
+ #define MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET	0xd2
+ #define MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET	0xd3
++#define MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET	0xde
++#define MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET	0xdf
++#define MLXPLAT_CPLD_LPC_REG_CPLD3_MVER_OFFSET	0xe0
++#define MLXPLAT_CPLD_LPC_REG_CPLD4_MVER_OFFSET	0xe1
+ #define MLXPLAT_CPLD_LPC_REG_UFM_VERSION_OFFSET	0xe2
+ #define MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET	0xe3
+ #define MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET	0xe4
+@@ -1303,6 +1311,32 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_regs_io_data[] = {
+ 		.bit = GENMASK(7, 0),
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "cpld1_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
+ 	{
+ 		.label = "reset_long_pb",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+@@ -1409,6 +1443,32 @@ static struct mlxreg_core_data mlxplat_mlxcpld_msn21xx_regs_io_data[] = {
+ 		.bit = GENMASK(7, 0),
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "cpld1_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
+ 	{
+ 		.label = "reset_long_pb",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+@@ -1527,6 +1587,58 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_regs_io_data[] = {
+ 		.bit = GENMASK(7, 0),
+ 		.mode = 0444,
+ 	},
++	{
++		.label = "cpld1_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld2_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld3_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld4_pn",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET,
++		.bit = GENMASK(15, 0),
++		.mode = 0444,
++		.regnum = 2,
++	},
++	{
++		.label = "cpld1_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld2_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld3_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD3_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
++	{
++		.label = "cpld4_version_min",
++		.reg = MLXPLAT_CPLD_LPC_REG_CPLD4_MVER_OFFSET,
++		.bit = GENMASK(7, 0),
++		.mode = 0444,
++	},
+ 	{
+ 		.label = "reset_long_pb",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET,
+@@ -2006,6 +2118,10 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET:
+@@ -2051,6 +2167,10 @@ static bool mlxplat_mlxcpld_readable_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_ACT_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_MVER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO2_OFFSET:
+@@ -2085,6 +2205,10 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD2_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD3_VER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_CPLD4_VER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_PN_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_PN_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RESET_CAUSE_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_RST_CAUSE2_OFFSET:
+@@ -2122,6 +2246,10 @@ static bool mlxplat_mlxcpld_volatile_reg(struct device *dev, unsigned int reg)
+ 	case MLXPLAT_CPLD_LPC_REG_WD2_TLEFT_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TMR_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_WD3_TLEFT_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD1_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD2_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD3_MVER_OFFSET:
++	case MLXPLAT_CPLD_LPC_REG_CPLD4_MVER_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_PWM1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO1_OFFSET:
+ 	case MLXPLAT_CPLD_LPC_REG_TACHO2_OFFSET:
+diff --git a/include/linux/platform_data/mlxreg.h b/include/linux/platform_data/mlxreg.h
+index b8da8aef2..a2adc3ad4 100644
+--- a/include/linux/platform_data/mlxreg.h
++++ b/include/linux/platform_data/mlxreg.h
+@@ -80,6 +80,7 @@ struct mlxreg_hotplug_device {
+  * @hpdev - hotplug device data;
+  * @health_cntr: dynamic device health indication counter;
+  * @attached: true if device has been attached after good health indication;
++ * @regnum: number of registers occupied by multi-register attribute;
+  */
+ struct mlxreg_core_data {
+ 	char label[MLXREG_CORE_LABEL_MAX_SIZE];
+@@ -92,6 +93,7 @@ struct mlxreg_core_data {
+ 	struct mlxreg_hotplug_device hpdev;
+ 	u8 health_cntr;
+ 	bool attached;
++	u8 regnum;
+ };
+ 
+ /**
+-- 
+2.20.1
+

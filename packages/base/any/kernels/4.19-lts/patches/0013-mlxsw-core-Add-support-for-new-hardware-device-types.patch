@@ -1,0 +1,73 @@
+From 9e19b12bf20acff417ac9dd95d7114e929387123 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Mon, 17 Feb 2020 08:37:28 +0200
+Subject: [v4.19 backport 1/2] mlxsw: core: Add support for new hardware device
+ types
+
+Add validation for new device types, provided by MGPIR
+register.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c   | 6 ++++--
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 8 ++++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+index 9cb19ec47e4d..b99062abca90 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_hwmon.c
+@@ -575,6 +575,7 @@ static int mlxsw_hwmon_module_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 
+ static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ {
++	enum mlxsw_reg_mgpir_device_type device_type;
+ 	int index, max_index, sensor_index;
+ 	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+@@ -586,8 +587,9 @@ static int mlxsw_hwmon_gearbox_init(struct mlxsw_hwmon *mlxsw_hwmon)
+ 	if (err)
+ 		return 0;
+ 
+-	mlxsw_reg_mgpir_unpack(mgpir_pl, &gbox_num, NULL, NULL, NULL);
+-	if (!gbox_num)
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &gbox_num, &device_type, NULL, NULL);
++	if ((device_type != MLXSW_REG_MGPIR_TYPE_GEARBOX_DIE) ||
++	    !gbox_num)
+ 		return 0;
+ 
+ 	index = mlxsw_hwmon->module_sensor_count;
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 5087f4c4e003..0407e5224c7f 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -865,8 +865,10 @@ static int
+ mlxsw_thermal_gearboxes_init(struct device *dev, struct mlxsw_core *core,
+ 			     struct mlxsw_thermal *thermal)
+ {
++	enum mlxsw_reg_mgpir_device_type device_type;
+ 	struct mlxsw_thermal_module *gearbox_tz;
+ 	char mgpir_pl[MLXSW_REG_MGPIR_LEN];
++	u8 num_of_device;
+ 	int i;
+ 	int err;
+ 
+@@ -878,11 +880,13 @@ mlxsw_thermal_gearboxes_init(struct device *dev, struct mlxsw_core *core,
+ 	if (err)
+ 		return 0;
+ 
+-	mlxsw_reg_mgpir_unpack(mgpir_pl, &thermal->tz_gearbox_num, NULL, NULL,
++	mlxsw_reg_mgpir_unpack(mgpir_pl, &num_of_device, &device_type, NULL,
+ 			       NULL);
+-	if (!thermal->tz_gearbox_num)
++	if ((device_type != MLXSW_REG_MGPIR_TYPE_GEARBOX_DIE) ||
++	    !num_of_device)
+ 		return 0;
+ 
++	thermal->tz_gearbox_num = num_of_device;
+ 	thermal->tz_gearbox_arr = kcalloc(thermal->tz_gearbox_num,
+ 					  sizeof(*thermal->tz_gearbox_arr),
+ 					  GFP_KERNEL);
+-- 
+2.20.1
+

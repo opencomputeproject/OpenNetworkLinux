@@ -1,0 +1,74 @@
+From 807b5aab7955b0d8777a3c26af745c6bfa8efd7c Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Sun, 1 Sep 2019 09:36:28 +0300
+Subject: [PATCH backport 5.1] mfd lpc ich: extend with additional chipsets
+ support
+
+It extends chipsets types supported by 'lpc_ich' driver
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/mfd/lpc_ich.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/drivers/mfd/lpc_ich.c b/drivers/mfd/lpc_ich.c
+index c8dee47b45d9..21e4824d6e33 100644
+--- a/drivers/mfd/lpc_ich.c
++++ b/drivers/mfd/lpc_ich.c
+@@ -216,6 +216,9 @@ enum lpc_chipsets {
+ 	LPC_BRASWELL,	/* Braswell SoC */
+ 	LPC_LEWISBURG,	/* Lewisburg */
+ 	LPC_9S,		/* 9 Series */
++	LPC_APL,	/* Apollo Lake SoC */
++	LPC_GLK,	/* Gemini Lake SoC */
++	LPC_COUGARMOUNTAIN,/* Cougar Mountain SoC*/
+ };
+ 
+ static struct lpc_ich_info lpc_chipset_info[] = {
+@@ -493,6 +496,7 @@ static struct lpc_ich_info lpc_chipset_info[] = {
+ 	[LPC_LPT] = {
+ 		.name = "Lynx Point",
+ 		.iTCO_version = 2,
++		.gpio_version = ICH_V5_GPIO,
+ 	},
+ 	[LPC_LPT_LP] = {
+ 		.name = "Lynx Point_LP",
+@@ -530,6 +534,18 @@ static struct lpc_ich_info lpc_chipset_info[] = {
+ 	[LPC_9S] = {
+ 		.name = "9 Series",
+ 		.iTCO_version = 2,
++		.gpio_version = ICH_V5_GPIO,
++	},
++	[LPC_APL] = {
++		.name = "Apollo Lake SoC",
++		.iTCO_version = 5,
++	},
++	[LPC_GLK] = {
++		.name = "Gemini Lake SoC",
++	},
++	[LPC_COUGARMOUNTAIN] = {
++		.name = "Cougar Mountain SoC",
++		.iTCO_version = 3,
+ 	},
+ };
+ 
+@@ -659,6 +675,8 @@ static const struct pci_device_id lpc_ich_ids[] = {
+ 	{ PCI_VDEVICE(INTEL, 0x2917), LPC_ICH9ME},
+ 	{ PCI_VDEVICE(INTEL, 0x2918), LPC_ICH9},
+ 	{ PCI_VDEVICE(INTEL, 0x2919), LPC_ICH9M},
++	{ PCI_VDEVICE(INTEL, 0x3197), LPC_GLK},
++	{ PCI_VDEVICE(INTEL, 0x2b9c), LPC_COUGARMOUNTAIN},
+ 	{ PCI_VDEVICE(INTEL, 0x3a14), LPC_ICH10DO},
+ 	{ PCI_VDEVICE(INTEL, 0x3a16), LPC_ICH10R},
+ 	{ PCI_VDEVICE(INTEL, 0x3a18), LPC_ICH10},
+@@ -679,6 +697,7 @@ static const struct pci_device_id lpc_ich_ids[] = {
+ 	{ PCI_VDEVICE(INTEL, 0x3b14), LPC_3420},
+ 	{ PCI_VDEVICE(INTEL, 0x3b16), LPC_3450},
+ 	{ PCI_VDEVICE(INTEL, 0x5031), LPC_EP80579},
++	{ PCI_VDEVICE(INTEL, 0x5ae8), LPC_APL},
+ 	{ PCI_VDEVICE(INTEL, 0x8c40), LPC_LPT},
+ 	{ PCI_VDEVICE(INTEL, 0x8c41), LPC_LPT},
+ 	{ PCI_VDEVICE(INTEL, 0x8c42), LPC_LPT},
+-- 
+2.11.0
+
