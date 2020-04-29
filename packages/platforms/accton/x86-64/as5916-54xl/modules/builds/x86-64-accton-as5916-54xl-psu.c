@@ -36,8 +36,11 @@
 #define IPMI_PSU_MODEL_NAME_CMD 0x10
 #define IPMI_PSU_SERIAL_NUM_CMD 0x11
 #define IPMI_TIMEOUT		(20 * HZ)
+#define IPMI_MODEL_SERIAL_LEN   32
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
+static ssize_t show_linear(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t show_vout(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_psu(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *attr, char *buf);
 static int as5916_54xl_psu_probe(struct platform_device *pdev);
@@ -69,6 +72,7 @@ enum psu_data_index {
     PSU_FAN1,
     PSU_POUT0,
     PSU_POUT1,
+    PSU_VOUT_MODE,
     PSU_STATUS_COUNT,
     PSU_MODEL = 0,
     PSU_SERIAL = 0
@@ -92,9 +96,9 @@ struct ipmi_data {
 };
 
 struct ipmi_psu_resp_data {
-    unsigned char   status[19];
-    char   serial[19];
-    char   model[9];
+    unsigned char   status[20];
+    char   serial[IPMI_MODEL_SERIAL_LEN+1];
+    char   model[IPMI_MODEL_SERIAL_LEN+1];
 };
 
 struct as5916_54xl_psu_data {
@@ -151,9 +155,9 @@ enum as5916_54x_psu_sysfs_attrs {
 #define DECLARE_PSU_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(psu##index##_present,    S_IRUGO, show_psu, NULL, PSU##index##_PRESENT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_power_good, S_IRUGO, show_psu, NULL, PSU##index##_POWER_GOOD); \
-	static SENSOR_DEVICE_ATTR(psu##index##_vout, S_IRUGO, show_psu,  NULL, PSU##index##_VOUT); \
-	static SENSOR_DEVICE_ATTR(psu##index##_iout, S_IRUGO, show_psu,  NULL, PSU##index##_IOUT); \
-	static SENSOR_DEVICE_ATTR(psu##index##_pout, S_IRUGO, show_psu,  NULL, PSU##index##_POUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vout, S_IRUGO, show_vout,  NULL, PSU##index##_VOUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_iout, S_IRUGO, show_linear,  NULL, PSU##index##_IOUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_pout, S_IRUGO, show_linear,  NULL, PSU##index##_POUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_model, S_IRUGO, show_string,  NULL, PSU##index##_MODEL); \
 	static SENSOR_DEVICE_ATTR(psu##index##_serial, S_IRUGO, show_string,  NULL, PSU##index##_SERIAL);\
 	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input, S_IRUGO, show_psu,  NULL, PSU##index##_TEMP_INPUT); \
@@ -303,6 +307,7 @@ static struct as5916_54xl_psu_data *as5916_54xl_psu_update_device(struct device_
     }
 
     data->valid[pid] = 0;
+    data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff; /* To be compatible for older BMC firmware */
 
     /* Get status from ipmi */
     data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
@@ -318,7 +323,7 @@ static struct as5916_54xl_psu_data *as5916_54xl_psu_update_device(struct device_
     }
 
     /* Get model name from ipmi */
-    data->ipmi_tx_data[1] = 0x10;
+    data->ipmi_tx_data[1] = IPMI_PSU_MODEL_NAME_CMD;
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD, data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].model, sizeof(data->ipmi_resp[pid].model) - 1);
     if (unlikely(status != 0)) {
@@ -331,7 +336,7 @@ static struct as5916_54xl_psu_data *as5916_54xl_psu_update_device(struct device_
     }
 
     /* Get serial number from ipmi */
-    data->ipmi_tx_data[1] = 0x11;
+    data->ipmi_tx_data[1] = IPMI_PSU_SERIAL_NUM_CMD;
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,  data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].serial, sizeof(data->ipmi_resp[pid].serial) - 1);
     if (unlikely(status != 0)) {
@@ -356,6 +361,112 @@ exit:
         mutex_unlock(&data->update_lock);   \
         return -ENXIO; \
     } \
+}
+
+static int two_complement_to_int(u16 data, u8 valid_bit, int mask)
+{
+	u16  valid_data  = data & mask;
+	bool is_negative = valid_data >> (valid_bit - 1);
+
+	return is_negative ? (-(((~valid_data) & mask) + 1)) : valid_data;
+}
+
+static ssize_t show_linear(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+    u16 value = 0;
+    int error = 0;
+	int exponent = 0, mantissa = 0;
+	int multiplier = 1000;
+
+    mutex_lock(&data->update_lock);
+
+    data = as5916_54xl_psu_update_device(da);
+    if (!data->valid[pid]) {
+        error = -EIO;
+        goto exit;
+    }
+
+	switch (attr->index) {
+		case PSU1_VOUT:
+		case PSU2_VOUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((u16)data->ipmi_resp[pid].status[PSU_VOUT0] |
+                     (u16)data->ipmi_resp[pid].status[PSU_VOUT1] << 8);
+			break;
+		case PSU1_IOUT:
+		case PSU2_IOUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((u16)data->ipmi_resp[pid].status[PSU_IOUT0] |
+                     (u16)data->ipmi_resp[pid].status[PSU_IOUT1] << 8);
+			break;
+		case PSU1_POUT:
+		case PSU2_POUT:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((u16)data->ipmi_resp[pid].status[PSU_POUT0] |
+                     (u16)data->ipmi_resp[pid].status[PSU_POUT1] << 8);
+			break;
+		default:
+			error = -EINVAL;
+            goto exit;
+	}
+
+    mutex_unlock(&data->update_lock);
+
+	exponent = two_complement_to_int(value >> 11, 5, 0x1f);
+	mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+
+	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
+							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
+}
+
+static ssize_t show_vout(struct device *dev, struct device_attribute *da, char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+    u16 value = 0;
+    int error = 0;
+	int exponent = 0, mantissa = 0;
+	int multiplier = 1000;
+    u8  vout_mode = 0xff;    
+
+    mutex_lock(&data->update_lock);
+
+    data = as5916_54xl_psu_update_device(da);
+    if (!data->valid[pid]) {
+        error = -EIO;
+        goto exit;
+    }
+
+    vout_mode = (u8)data->ipmi_resp[pid].status[PSU_VOUT_MODE];
+	value     = ((u16)data->ipmi_resp[pid].status[PSU_VOUT0] |
+                 (u16)data->ipmi_resp[pid].status[PSU_VOUT1] << 8);
+
+    mutex_unlock(&data->update_lock);
+
+    if (vout_mode == 0xff) {
+        exponent = two_complement_to_int(value >> 11, 5, 0x1f);
+        mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+    }
+    else if (!(vout_mode & 0xe0)){
+        exponent = two_complement_to_int(vout_mode & 0x1f, 5, 0x1f);
+        mantissa = two_complement_to_int(value & 0xffff, 16, 0xffff);
+    }
+    else {
+        return -EINVAL;
+    }    
+
+	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
+							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return error;
 }
 
 static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *buf)
@@ -383,35 +494,17 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
             VALIDATE_PRESENT_RETURN(pid);
 			value = data->ipmi_resp[pid].status[PSU_POWER_GOOD_CPLD];
 			break;
-		case PSU1_VOUT:
-		case PSU2_VOUT:
-            VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_VOUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_VOUT1] << 8) * 1000;
-			break;
-		case PSU1_IOUT:
-		case PSU2_IOUT:
-            VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_IOUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_IOUT1] << 8) * 1000;
-			break;
-		case PSU1_POUT:
-		case PSU2_POUT:
-            VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_POUT0] |
-                     (int)data->ipmi_resp[pid].status[PSU_POUT1] << 8) * 1000;
-			break;
 		case PSU1_TEMP_INPUT:
 		case PSU2_TEMP_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_TEMP0] |
-                     (int)data->ipmi_resp[pid].status[PSU_TEMP1] << 8) * 1000;
+			value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_TEMP1] << 8) * 1000;
 			break;
 		case PSU1_FAN_INPUT:
 		case PSU2_FAN_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
-			value = ((int)data->ipmi_resp[pid].status[PSU_FAN0] |
-                     (int)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
+			value = ((u32)data->ipmi_resp[pid].status[PSU_FAN0] |
+                     (u32)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
 			break; 
 		default:
 			error = -EINVAL;
