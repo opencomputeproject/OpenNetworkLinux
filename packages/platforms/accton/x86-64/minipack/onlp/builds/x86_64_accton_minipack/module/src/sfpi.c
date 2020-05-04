@@ -707,7 +707,7 @@ static uint32_t fbfpgaio_read(uint32_t addr)
     return *(uint32_t*)offset;
 }
 
-#define PIM_STATUS_REG 0x40
+#define IOB_PIM_STATUS_REG 0x40
 
 static uint32_t dom_offset[] = {
     0x40000,
@@ -724,7 +724,7 @@ static uint32_t dom_offset[] = {
 #define QSFP_LPMODE_REG     0x78
 
 int onlp_read_pim_present(uint32_t *pbmp) {
-    uint32_t pim_status = fbfpgaio_read(PIM_STATUS_REG);
+    uint32_t pim_status = fbfpgaio_read(IOB_PIM_STATUS_REG);
     *pbmp = (pim_status >> 16); /*bit 23~16*/
     return ONLP_STATUS_OK;
 }

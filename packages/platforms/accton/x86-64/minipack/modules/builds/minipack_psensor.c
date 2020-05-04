@@ -279,7 +279,7 @@ static struct attr_pattern temp_in =
     S_IRUGO, _attr_show, NULL
 };
 static struct attr_pattern temp_in1 =
-{   MAX_THERMAL_COUNT, MAX_THERMAL_COUNT , "temp","_input",
+{   MAX_THERMAL_COUNT, MAX_THERMAL_COUNT, "temp","_input",
     S_IRUGO, _attr_show, NULL
 };
 static struct attr_pattern temp_in2 =
@@ -858,7 +858,6 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
     case SENSOR_TYPE_THERMAL:
     case SENSOR_TYPE_THERMAL1:
     case SENSOR_TYPE_THERMAL2:
-    DEBUG_INTR("%s-%d, xxx:%s\n", __func__, __LINE__, ptr);
     case SENSOR_TYPE_FAN_RPM:
     case SENSOR_TYPE_FAN_RPM_DN:
         ret = extract_numbers(ptr, out, out_cnt);
