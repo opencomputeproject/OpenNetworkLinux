@@ -120,7 +120,7 @@ int onlp_sfpi_init(void)
     }
     sfpi_eeprom_close_all_channels();
 
-    /* Unleash the Reset pin again. 
+    /* Unleash the Reset pin again.
      * It might be unleashed too early for some types of transcievers.
      */
     int i;
@@ -435,6 +435,119 @@ exit:
 }
 
 int
+onlp_sfpi_dom_read(int port, uint8_t data[256])
+{
+    FILE* fp;
+    int ret, bytes;
+    char file[64] = {0};
+
+    bytes = 256;
+    SEM_LOCK;
+    ret = sfpi_eeprom_channel_open(port);
+    if (ret != ONLP_STATUS_OK) {
+        DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
+        goto exit;
+    }
+
+    sprintf(file, PORT_EEPROM_FORMAT, I2C_BUS);
+    fp = fopen(file, "r");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+        ret = ONLP_STATUS_E_INTERNAL;
+        goto exit;
+    }
+
+    if (fseek(fp, 256, SEEK_CUR) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    ret = fread(data, 1, bytes, fp);
+    fclose(fp);
+    if (ret != bytes) {
+        ret = ONLP_STATUS_E_INTERNAL;
+        goto exit;
+    }
+    ret = ONLP_STATUS_OK;
+exit:
+    SEM_UNLOCK;
+    return ret;
+}
+
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int ret;
+
+    SEM_LOCK;
+    ret = sfpi_eeprom_channel_open(port);
+    if (ret != ONLP_STATUS_OK) {
+        DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
+        goto exit;
+    }
+    ret = onlp_i2c_readb(I2C_BUS, devaddr, addr, ONLP_I2C_F_FORCE);
+exit:
+    SEM_UNLOCK;
+    return ret;
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int ret;
+
+    SEM_LOCK;
+    ret = sfpi_eeprom_channel_open(port);
+    if (ret != ONLP_STATUS_OK) {
+        DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
+        goto exit;
+    }
+    ret = onlp_i2c_writeb(I2C_BUS, devaddr, addr, value, ONLP_I2C_F_FORCE);
+exit:
+    SEM_UNLOCK;
+    return ret;
+
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int ret;
+
+    SEM_LOCK;
+    ret = sfpi_eeprom_channel_open(port);
+    if (ret != ONLP_STATUS_OK) {
+        DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
+        goto exit;
+    }
+    ret = onlp_i2c_readw(I2C_BUS, devaddr, addr, ONLP_I2C_F_FORCE);
+exit:
+    SEM_UNLOCK;
+    return ret;
+
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int ret;
+
+    SEM_LOCK;
+    ret = sfpi_eeprom_channel_open(port);
+    if (ret != ONLP_STATUS_OK) {
+        DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
+        goto exit;
+    }
+    ret = onlp_i2c_writew(I2C_BUS, devaddr, addr, value, ONLP_I2C_F_FORCE);
+exit:
+    SEM_UNLOCK;
+    return ret;
+}
+
+
+int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     uint32_t pbmp;
@@ -451,7 +564,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             AIM_LOG_ERROR("Unable to get_ports_lpmode for port(%d)\r\n", port);
             rv = ONLP_STATUS_E_INTERNAL;
         }
-        if (value){
+        if (value) {
             pbmp |= BIT(PORT_OF_PIM(port));
         } else {
             pbmp &= ~BIT(PORT_OF_PIM(port));
@@ -543,39 +656,39 @@ static void *io_base = NULL;
 
 static int fbfpgaio_hw_init(void)
 {
-  const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
+    const char fpga_resource_node[] = FPGA_RESOURCE_NODE;
 
-  if (io_base != NULL && io_base != MAP_FAILED) {
+    if (io_base != NULL && io_base != MAP_FAILED) {
+        return ONLP_STATUS_OK;
+    }
+
+    /* Open hardware resource node */
+    hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
+    if (hw_handle == -1) {
+        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    /* Mapping hardware resource */
+    io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
+    if (io_base == MAP_FAILED) {
+        AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     return ONLP_STATUS_OK;
-  }
-
-  /* Open hardware resource node */
-  hw_handle = open(fpga_resource_node, O_RDWR|O_SYNC);
-  if (hw_handle == -1) {
-    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-    return ONLP_STATUS_E_INTERNAL;
-  }
-
-  /* Mapping hardware resource */
-  io_base = mmap(NULL, FPGA_RESOURCE_LENGTH, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_NORESERVE, hw_handle, 0);
-  if (io_base == MAP_FAILED) {
-    AIM_LOG_ERROR("%d %s\\n",errno,strerror(errno));
-    return ONLP_STATUS_E_INTERNAL;
-  }
-
-  return ONLP_STATUS_OK;
 }
 
 static uint32_t fbfpgaio_write(uint32_t addr, uint32_t input_data)
 {
     int ret = fbfpgaio_hw_init();
 
-    if (ONLP_STATUS_OK != ret){
-       return 0;
+    if (ONLP_STATUS_OK != ret) {
+        return 0;
     }
 
-    unsigned int *address =  (unsigned int *) ((unsigned long) io_base 
-                            + (unsigned long) addr);
+    unsigned int *address =  (unsigned int *) ((unsigned long) io_base
+                             + (unsigned long) addr);
     unsigned int data = (unsigned int) (input_data & 0xFFFFFFFF);
     *address = data;
 
@@ -586,8 +699,8 @@ static uint32_t fbfpgaio_read(uint32_t addr)
 {
     int ret = fbfpgaio_hw_init();
 
-    if (ONLP_STATUS_OK != ret){
-       return 0;
+    if (ONLP_STATUS_OK != ret) {
+        return 0;
     }
 
     void *offset = io_base + addr;
@@ -597,26 +710,26 @@ static uint32_t fbfpgaio_read(uint32_t addr)
 #define PIM_STATUS_REG 0x40
 
 static uint32_t dom_offset[] = {
- 0x40000,
- 0x48000,
- 0x50000,
- 0x58000,
- 0x60000,
- 0x68000,
- 0x70000,
- 0x78000,
+    0x40000,
+    0x48000,
+    0x50000,
+    0x58000,
+    0x60000,
+    0x68000,
+    0x70000,
+    0x78000,
 };
 #define QSFP_PRESENT_REG    0x48
 #define QSFP_RESET_REG      0x70
 #define QSFP_LPMODE_REG     0x78
 
-int onlp_read_pim_present(uint32_t *pbmp){
+int onlp_read_pim_present(uint32_t *pbmp) {
     uint32_t pim_status = fbfpgaio_read(PIM_STATUS_REG);
     *pbmp = (pim_status >> 16); /*bit 23~16*/
     return ONLP_STATUS_OK;
 }
 
-static int read_pom_reg(uint32_t pimId, uint32_t reg, uint32_t *pbmp){
+static int read_pom_reg(uint32_t pimId, uint32_t reg, uint32_t *pbmp) {
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -625,20 +738,20 @@ static int read_pom_reg(uint32_t pimId, uint32_t reg, uint32_t *pbmp){
     return ONLP_STATUS_OK;
 }
 
-static int get_ports_presence(uint32_t pimId, uint32_t *pbmp){
+static int get_ports_presence(uint32_t pimId, uint32_t *pbmp) {
     return read_pom_reg(pimId, QSFP_PRESENT_REG, pbmp);
 }
 
-static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp){
+static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp) {
     read_pom_reg(pimId, QSFP_RESET_REG, pbmp);
     return read_pom_reg(pimId, QSFP_LPMODE_REG, pbmp);
 }
 
-static int get_ports_reset(uint32_t pimId, uint32_t *pbmp){
+static int get_ports_reset(uint32_t pimId, uint32_t *pbmp) {
     return read_pom_reg(pimId, QSFP_RESET_REG, pbmp);
 }
 
-static int write_pom_reg(uint32_t pimId, uint32_t reg, uint32_t value){
+static int write_pom_reg(uint32_t pimId, uint32_t reg, uint32_t value) {
     if (pimId >= AIM_ARRAYSIZE(dom_offset)) {
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -647,11 +760,11 @@ static int write_pom_reg(uint32_t pimId, uint32_t reg, uint32_t value){
     return fbfpgaio_write(addr, value);
 }
 
-static int set_ports_lpmode(uint32_t pimId, uint32_t value){
+static int set_ports_lpmode(uint32_t pimId, uint32_t value) {
     return write_pom_reg(pimId, QSFP_LPMODE_REG, value);
 }
 
-static int set_ports_reset(uint32_t pimId, uint32_t value){
+static int set_ports_reset(uint32_t pimId, uint32_t value) {
     return write_pom_reg(pimId, QSFP_RESET_REG, value);
 }
 
