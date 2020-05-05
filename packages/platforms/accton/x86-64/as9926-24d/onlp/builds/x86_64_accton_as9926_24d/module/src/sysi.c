@@ -42,7 +42,7 @@
 
 static char* cpld_path[NUM_OF_CPLD] =
 {
- "19-0060", /* CPLD-1 */
+ "19-0068", /* CPLD-1 */
  "20-0061", /* CPLD-2 */
  "21-0062", /* CPLD-3 */
  "17-0066", /* Fan board CPLD */
