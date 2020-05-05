@@ -37,7 +37,7 @@
 #include "x86_64_mlnx_msn3510_int.h"
 #include "x86_64_mlnx_msn3510_log.h"
 
-#define ONL_PLATFORM_NAME  "x86-64-mlnx-msn2010-r0"
+#define ONL_PLATFORM_NAME  "x86-64-mlnx-msn3510-r0"
 
 int mc_get_platform_info(mlnx_platform_info_t* mlnx_platform)
 {
