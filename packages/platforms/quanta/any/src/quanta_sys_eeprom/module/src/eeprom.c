@@ -167,6 +167,11 @@ quanta_onie_sys_eeprom_custom_format(onlp_onie_info_t* onie)
         return -1;
     }
 
+    /* legacy format is four bytes long */
+    if(strlen(onie->diag_version) != 4) {
+        return 0;
+    }
+
     memset(buf, 0, sizeof(buf));
     sprintf(buf, "%d.%d.%d.%d (0x%02x%02x)",
         ((onie->diag_version[0] & 0xf0) >> 4),
