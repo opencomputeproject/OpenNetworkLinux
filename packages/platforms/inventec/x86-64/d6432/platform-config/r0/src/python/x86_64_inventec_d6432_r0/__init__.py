@@ -10,6 +10,7 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
     CHASSIS_FAN_NUM=6
     FAN_VPD_CHANNEL=3
     FAN_VPD_ADDR_BASE=0x52
+    EEPROM_PATH="/sys/bus/i2c/devices/2-0055/eeprom"
 
     _path_prefix_list=[
         "/sys/bus/i2c/devices/2-0058/hwmon/",
@@ -35,6 +36,11 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
     ]
 
     def baseconfig(self):
+        psu1_addr_old="2-0058"
+        psu2_addr_old="2-0059"
+        psu1_addr_new="2-005a"
+        psu2_addr_new="2-005b"
+
         os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko gpiobase=0")
         self.insmod('i2c-gpio')
         self.insmod('inv_ucd90160')
@@ -45,14 +51,20 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
         self.insmod('inv_eeprom')
         self.new_i2c_device('inv_eeprom', 0x55, 2)
 
-        for addr_offset in range(0,self.CHASSIS_FAN_NUM):
-            self.new_i2c_device('inv_eeprom',self.FAN_VPD_ADDR_BASE+addr_offset,self.FAN_VPD_CHANNEL)
-
         self.insmod('inv_sff')
         self.insmod('vpd')
+        
         self.insmod('optoe')
         for ch  in range(0,32):
-           self.new_i2c_device('optoe1', 0x50, 14 + ch )        
+            self.new_i2c_device('optoe1', 0x50, 14 + ch )
+
+        status=self.check_version()
+        if (status>=0): #if detect the machine is new version, then run the follow script
+            self._path_prefix_list[0]=self._path_prefix_list[0].replace(psu1_addr_old,psu1_addr_new)
+            self._path_prefix_list[1]=self._path_prefix_list[1].replace(psu2_addr_old,psu2_addr_new)
+        else: #if detect the machine is old version, then run the following script
+            for addr_offset in range(0,self.CHASSIS_FAN_NUM):
+                self.new_i2c_device('inv_eeprom',self.FAN_VPD_ADDR_BASE+addr_offset,self.FAN_VPD_CHANNEL)
 
         for i in range(0,len(self._path_prefix_list)):
             if( os.path.islink(self._path_dst_list[i]) ):
@@ -77,3 +89,9 @@ class OnlPlatform_x86_64_inventec_d6432_r0(OnlPlatformInventec,
                 logging.warning("Can't find proper dir to link under %s" % prefix)            
         else:
             logging.warning("Path %s is not a dir" % prefix)
+
+    def check_version(self):
+        with open(self.EEPROM_PATH, 'rb') as f:
+            hex_content = f.read()
+        result = hex_content.find(b'\xfd')
+        return result

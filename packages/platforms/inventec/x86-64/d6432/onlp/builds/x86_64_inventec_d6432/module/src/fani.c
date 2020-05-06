@@ -32,8 +32,10 @@ typedef enum hwmon_fan_state_e {
 #define SLOW_PWM 100
 #define NORMAL_PWM 175
 #define MAX_PWM 255
+#define PSU_I2C_ADDR_VER2  "005a"
 #define STEP_SIZE 100
 #define FAN_ID_TO_PSU_ID(id) (id-ONLP_FAN_PSU_1+1)
+#define PSU_ID_TO_PSUFAN_ID(psu_id) (psu_id+ONLP_FAN_PSU_1-1)
 #define BLADE_TO_FAN_ID(blade_id) (blade_id%2==0)? blade_id/2:(blade_id+1)/2
 
 #define TLV_PRODUCT_INFO_OFFSET_IDX     5
@@ -49,7 +51,6 @@ typedef enum hwmon_fan_state_e {
 static int _fani_status_failed_check(uint32_t* status, int fan_id);
 static int _fani_status_present_check(uint32_t* status, int fan_id);
 static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id);
-extern char* psu_i2c_addr[ONLP_PSU_MAX];
 
 #define MAKE_FAN_INFO_NODE_ON_PSU(psu_id)		\
     {							\
@@ -83,6 +84,23 @@ static onlp_fan_info_t __onlp_fan_info[] = {
 int
 onlp_fani_init(void)
 {
+    onlp_fan_info_t* info;
+    char real_path[ONLP_CONFIG_INFO_STR_MAX];
+    char *ptr;
+    int i;
+
+    ptr=realpath("/var/psu1/",real_path);
+    if(ptr!=NULL){
+        if( strstr(real_path,PSU_I2C_ADDR_VER2) != NULL){
+            for(i=0;i<=ONLP_FAN_MAX;i++){
+                info = &__onlp_fan_info[i];
+                snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"UNSUPPORTED");
+                snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"UNSUPPORTED");                
+            }
+        }
+    }else{
+        AIM_LOG_ERROR("[ONLP][FAN] Failed to find psu softlink in %s", __FUNCTION__);
+    }
     return ONLP_STATUS_OK;
 }
 
@@ -92,11 +110,12 @@ static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
     uint8_t* rdata;
     char file_path[ONLP_CONFIG_INFO_STR_MAX];
     char s;
-    int rdata_size=0,target_offset=0,attr_idx=0,attr_length=0;
+    int rdata_size=0,target_offset=
+    0,attr_idx=0,attr_length=0;
     int i=0;
     int offset=BLADE_TO_FAN_ID(fan_id);
 
-    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%d/eeprom",INV_DEVICE_BASE,FAN_I2C_CHANNEL,(FAN_I2C_ADDR_BASE+offset-1) );
+    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"/sys/bus/i2c/devices/%d-00%d/eeprom",FAN_I2C_CHANNEL,(FAN_I2C_ADDR_BASE+offset-1) );
     
     FILE* fp  = fopen(file_path, "rb");
     if(fp){
@@ -158,6 +177,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     if(rv==ONLP_STATUS_OK) {
         *info=__onlp_fan_info[fan_id];
         rv=onlp_fani_status_get(id, &info->status);
+
     }
     if(rv == ONLP_STATUS_OK) {
         if(info->status & ONLP_FAN_STATUS_PRESENT) {
@@ -188,14 +208,16 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
                 }
-                
-                rv=_inv_get_fan_fru(info->serial,TLV_ATTR_TYPE_SERIAL,fan_id);
-                if(rv!=ONLP_STATUS_OK){
-                    snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"N/A");
-                }
-                rv=_inv_get_fan_fru(info->model,TLV_ATTR_TYPE_MODEL,fan_id);
-                if(rv!=ONLP_STATUS_OK){
-                    snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+
+                if( (strcmp(info->serial,"UNSUPPORTED")!=0) && (strcmp(info->serial,"UNSUPPORTED")!=0) ){
+                    rv=_inv_get_fan_fru(info->serial,TLV_ATTR_TYPE_SERIAL,fan_id);
+                    if(rv!=ONLP_STATUS_OK){
+                        snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                    }
+                    rv=_inv_get_fan_fru(info->model,TLV_ATTR_TYPE_MODEL,fan_id);
+                    if(rv!=ONLP_STATUS_OK){
+                        snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"N/A");
+                    }  
                 }
 
                 break;
@@ -204,12 +226,12 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
                 info->caps = FAN_CAPS|ONLP_FAN_CAPS_F2B;
                 psu_id = FAN_ID_TO_PSU_ID(fan_id);
 
-                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/fan1_input",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
+                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"/var/psu%d/device/fan1_input",psu_id);
                 rv = onlp_file_read_int(&info->rpm, path);
                 if(rv != ONLP_STATUS_OK) {
                     return rv;
                 }
-                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/pwm1",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
+                snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"/var/psu%d/device/pwm1",psu_id);
                 rv = onlp_file_read_int(&pwm, path);
                 if(rv != ONLP_STATUS_OK) {
                     return rv;
@@ -287,12 +309,12 @@ static int _fani_status_failed_check(uint32_t* status, int fan_id)
     case ONLP_FAN_PSU_2:
         psu_id = FAN_ID_TO_PSU_ID(fan_id);
 
-        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/fan1_input",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
+        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"/var/psu%d/device/fan1_input",psu_id);
         rv = onlp_file_read_int(&rpm, path);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%s/pwm1",INV_DEVICE_BASE,PSU_I2C_CHAN,psu_i2c_addr[psu_id]);
+        snprintf(path,ONLP_CONFIG_INFO_STR_MAX,"/var/psu%d/device/pwm1",psu_id);
         rv = onlp_file_read_int(&pwm, path);
         if(rv != ONLP_STATUS_OK ) {
             return rv;
