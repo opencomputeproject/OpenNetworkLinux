@@ -163,12 +163,12 @@ _onlp_get_fan_direction_on_psu(void)
 
 		switch (psu_type) {
             case PSU_TYPE_AC_DPS850_F2B:
+			case PSU_TYPE_AC_YM2851FCR_F2B:
+            case PSU_TYPE_DC_YM2851JER_F2B:
 				return ONLP_FAN_STATUS_F2B;
 			case PSU_TYPE_AC_DPS850_B2F:
-				return ONLP_FAN_STATUS_B2F;
-			case PSU_TYPE_AC_YM2851_F2B:
-				return ONLP_FAN_STATUS_F2B;
-			case PSU_TYPE_AC_YM2851_B2F:
+			case PSU_TYPE_AC_YM2851FDR_B2F:
+            case PSU_TYPE_DC_YM2851JFR_B2F:
 				return ONLP_FAN_STATUS_B2F;
 			default:
 				return 0;
@@ -208,7 +208,8 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
     }
     }
     
-    if (psu_type == PSU_TYPE_AC_YM2851_F2B || psu_type == PSU_TYPE_AC_YM2851_B2F)
+    if (psu_type == PSU_TYPE_AC_YM2851FCR_F2B || psu_type == PSU_TYPE_AC_YM2851FDR_B2F ||
+        psu_type == PSU_TYPE_DC_YM2851JER_F2B || psu_type == PSU_TYPE_DC_YM2851JFR_B2F)
     {
         if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK)
         {

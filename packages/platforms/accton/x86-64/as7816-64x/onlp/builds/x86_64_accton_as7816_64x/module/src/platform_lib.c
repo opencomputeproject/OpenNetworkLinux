@@ -30,7 +30,7 @@
 #include "platform_lib.h"
 
 #define PSU_MODEL_NAME_LEN 		8
-#define PSU_SERIAL_NUMBER_LEN	18
+#define PSU_SERIAL_NUMBER_LEN	20
 #define PSU_NODE_MAX_PATH_LEN   64
 #define PSU_FAN_DIR_LEN    3
 
@@ -83,12 +83,12 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
 	}
 
 	ret = onlp_file_read((uint8_t*)serial, PSU_SERIAL_NUMBER_LEN, &size, "%s%s", prefix, "psu_mfr_serial");
-    if (ret != ONLP_STATUS_OK || size != PSU_SERIAL_NUMBER_LEN) {
+    if (ret != ONLP_STATUS_OK) {
 		return ONLP_STATUS_E_INTERNAL;
 
     }
 
-	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+	serial[size-1] = '\0';
 	return ONLP_STATUS_OK;
 }
 
@@ -135,22 +135,50 @@ psu_type_t psu_type_get(int id, char* modelname, int modelname_len)
     }
 
     if (strncmp(model, "YM-2851F", strlen("YM-2851F")) == 0) {
-        ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
-        if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-            return PSU_TYPE_AC_YM2851_B2F;
+        char  model_opt[PSU_MODEL_NAME_LEN + 1] = {0};
+
+        ret = onlp_file_read((uint8_t*)model_opt, PSU_MODEL_NAME_LEN, &value, "%s%s", prefix, "psu_mfr_model_opt");
+        if (modelname && value) {
+            memcpy(modelname + PSU_MODEL_NAME_LEN, model_opt, strlen(model_opt)-1);
         }
 
-        return PSU_TYPE_AC_YM2851_F2B;
+        if ((strncmp(model_opt, "DR", strlen("DR")) == 0) || (strncmp(model_opt, "D01R", strlen("D01R")) == 0)) {
+            return PSU_TYPE_AC_YM2851FDR_B2F; /* YM-2851FDR or YM-2851FD01R */
+        }
+        else if ((strncmp(model_opt, "CR", strlen("CR")) == 0) || (strncmp(model_opt, "C01R", strlen("C01R")) == 0)) {
+            return PSU_TYPE_AC_YM2851FCR_F2B; /* YM-2851FDR or YM-2851FD01R */
+        }
+
+        ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
+        if ((strncmp(fan_dir, "B2F", strlen("B2F")) == 0) || (strncmp(fan_dir, "AFI", strlen("AFI")) == 0)) {
+            return PSU_TYPE_AC_YM2851FDR_B2F;
+        }
+
+        return PSU_TYPE_AC_YM2851FCR_F2B;
     }
-    
+
     if (strncmp(model, "YM-2851J", strlen("YM-2851J")) == 0) {
+        char  model_opt[PSU_MODEL_NAME_LEN + 1] = {0};
+
+        ret = onlp_file_read((uint8_t*)model_opt, PSU_MODEL_NAME_LEN, &value, "%s%s", prefix, "psu_mfr_model_opt");
+        if (modelname && value) {
+            memcpy(modelname + PSU_MODEL_NAME_LEN, model_opt, strlen(model_opt)-1);
+        }
+
+        if (strncmp(model_opt, "FR", strlen("FR")) == 0) {
+            return PSU_TYPE_DC_YM2851JFR_B2F;
+        }
+        else if (strncmp(model_opt, "ER", strlen("ER")) == 0) {
+            return PSU_TYPE_DC_YM2851JER_F2B;
+        }
+
         ret = onlp_file_read((uint8_t*)fan_dir, PSU_FAN_DIR_LEN, &value, "%s%s", prefix, "psu_fan_dir");
-        if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-            return PSU_TYPE_AC_YM2851_B2F;
+        if ((strncmp(fan_dir, "B2F", strlen("B2F")) == 0) || (strncmp(fan_dir, "AFI", strlen("AFI")) == 0)) {
+            return PSU_TYPE_DC_YM2851JFR_B2F;
         }
 
 
-        return PSU_TYPE_AC_YM2851_F2B;
+        return PSU_TYPE_DC_YM2851JER_F2B; /* YM-2851JER */
     }
 
     return PSU_TYPE_UNKNOWN;

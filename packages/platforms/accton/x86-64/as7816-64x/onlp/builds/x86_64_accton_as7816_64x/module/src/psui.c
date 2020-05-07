@@ -48,11 +48,7 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
-    
-    /* Set capability
-     */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
+
 	if (info->status & ONLP_PSU_STATUS_FAILED) {
 	    return ONLP_STATUS_OK;
 	}
@@ -80,6 +76,7 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
         }
 
         if (psu_dps850_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+            info->miin = val;
             info->caps |= ONLP_PSU_CAPS_IIN;
         }
 
@@ -228,8 +225,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         case PSU_TYPE_AC_DPS850_B2F:
             ret = psu_dps850_info_get(info);      
             break;
-        case PSU_TYPE_AC_YM2851_F2B:
-        case PSU_TYPE_AC_YM2851_B2F:
+        case PSU_TYPE_AC_YM2851FCR_F2B:
+        case PSU_TYPE_AC_YM2851FDR_B2F:
+            info->caps = ONLP_PSU_CAPS_AC; /* Set capability */
+            ret = psu_ym2651y_info_get(info);
+            break;
+        case PSU_TYPE_DC_YM2851JER_F2B:
+        case PSU_TYPE_DC_YM2851JFR_B2F:
+            info->caps = ONLP_PSU_CAPS_DC12; /* Set capability */
             ret = psu_ym2651y_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
