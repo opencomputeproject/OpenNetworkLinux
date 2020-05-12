@@ -25,6 +25,11 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/i2c.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
+
+
 #include <linux/../../drivers/hwmon/pmbus/pmbus.h>
 
 /*
@@ -231,3 +236,5 @@ module_i2c_driver(emerson700_pmbus_driver);
 MODULE_AUTHOR("Audi Hsu	");
 MODULE_DESCRIPTION("Emerson 700 PMBus driver");
 MODULE_LICENSE("GPL");
+
+#endif /* #if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0) */
