@@ -26,7 +26,7 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
                 ('pca9548', 0x76, 2),
 
                 # initialize CPLD
-                ('as9926_24d_cpld1', 0x60, 19),
+                ('as9926_24d_cpld1', 0x68, 19),
                 ('as9926_24d_cpld2', 0x61, 20),
                 ('as9926_24d_cpld3', 0x62, 21),
                 ('as9926_24d_fan', 0x66, 17),
