@@ -50,9 +50,9 @@ while getopts ":b:s:d:u:p:vVc789r:" opt; do
 done
 
 if [ -z "$ONLB_OPTIONS" ]; then
-    # Build both 8 and 9
     $AUTOBUILD_SCRIPT --8 $@
     $AUTOBUILD_SCRIPT --9 $@
+    $AUTOBUILD_SCRIPT --10 $@
     exit $?
 fi
 
