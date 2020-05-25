@@ -65,6 +65,7 @@
 #include <linux/pci.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/lpc_ich.h>
+#include <linux/platform_data/itco_wdt.h>
 
 #define ACPIBASE		0x40
 #define ACPIBASE_GPE_OFF	0x28

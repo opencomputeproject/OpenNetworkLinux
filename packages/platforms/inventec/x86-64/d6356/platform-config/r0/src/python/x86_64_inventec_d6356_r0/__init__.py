@@ -30,6 +30,8 @@ class OnlPlatform_x86_64_inventec_d6356_r0(OnlPlatformInventec,
         os.system("rmmod gpio_ich")
         self.insmod('i2c-gpio')
         os.system("insmod /lib/modules/`uname -r`/kernel/drivers/gpio/gpio-ich.ko gpiobase=0")
+        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/pmbus_core.ko")
+        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/pmbus.ko")
         self.insmod('ucd9000')
         self.insmod('inv-i2c-mux-pca9641')
         self.insmod('inv_platform')
@@ -40,7 +42,6 @@ class OnlPlatform_x86_64_inventec_d6356_r0(OnlPlatformInventec,
         self.insmod('inv_ipmi')
         
         for i in range(0,len(self._path_prefix_list)):
-            logging.warning("%s" % self._path_prefix_list[i] )
             if( os.path.islink(self._path_dst_list[i]) ):
                 os.unlink(self._path_dst_list[i])
                 logging.warning("Path %s exists, remove before link again" % self._path_dst_list[i] )
