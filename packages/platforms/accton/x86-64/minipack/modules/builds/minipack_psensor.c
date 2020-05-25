@@ -39,20 +39,23 @@
 #include <linux/tty.h>
 #include <asm/uaccess.h>
 
+#define DEBUG_INTR(args...) \
+    debug_print(__func__, __LINE__,1, args)
 
-//#define DEBUG
+#define DEBUG_LEX(args...) \
+    debug_print(__func__, __LINE__,2, args)
 
-#ifdef DEBUG
-#define DEBUG_INTR(fmt, ...)	pr_err(fmt, ##__VA_ARGS__)
-#else
-#define DEBUG_INTR(fmt...)	    do { } while (0)
-#endif
-#define DEBUG_LEX(fmt, ...)	    do { } while (0)
+static unsigned int verbose = 0;
+module_param(verbose, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(verbose, "Print more information for debugging. Default is disabled.");
+
+static unsigned int poll_interval = 9;
+module_param(poll_interval, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of second.");
 
 
 #define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
-#define SENSOR_DATA_UPDATE_INTERVAL (9*HZ)
 #define MAX_THERMAL_COUNT           12
 #define MAX_PIM_THERMAL_COUNT       24
 #define MAX_FAN_COUNT               (8)
@@ -69,7 +72,7 @@
 #define ATTR_MAX_LIST   		8
 
 #define TTY_DEVICE                      "/dev/ttyACM0"
-#define TTY_PROMPT                      "@bmc-oob"
+#define TTY_PROMPT                      "root@"
 #define TTY_USER                        "root"
 #define TTY_PASSWORD                    "0penBmc"
 #define TTY_BAUDRATE                    (57600)
@@ -336,6 +339,18 @@ struct sensor_set model_ssets[SENSOR_TYPE_MAX] =
 static struct minipack_data *mp_data = NULL;
 
 /*-----------------------------------------------------------------------*/
+static void debug_print(const char *func, int line, int level,
+                        const char *fmt, ...)
+{
+    va_list args;
+    char buf[256];
+    if (verbose >= level) {
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        pr_info("[DBG]%s#%d: %s\n", func, line, buf);
+    }
+}
 
 static int _tty_wait(u32 mdelay) {
     if (mdelay) {
@@ -368,7 +383,7 @@ static int _tty_open(struct file **fd)
         kt = tty->termios;
         tty_termios_encode_baud_rate(&kt, baudrate, baudrate);
         kt.c_cflag = B57600 | CS8 | CLOCAL | CREAD;
-        kt.c_iflag = IGNPAR;
+        kt.c_iflag = IGNPAR|IGNCR;
         kt.c_oflag = 0;
         kt.c_lflag = 0;
         kt.c_cc[VMIN] = (unsigned char)
@@ -414,7 +429,7 @@ static int _tty_tx(struct file *tty_fd, const char *str)
         pr_err( "failed to write(%d)\n", rc);
         return -EBUSY;
     }
-    DEBUG_INTR("[TX]%s-%d, %d BYTES, write:\n\"%s\"\n", __func__, __LINE__,rc, str);
+    DEBUG_INTR("[TX]%d BYTES, write:\n\"%s\"\n",rc, str);
     return rc;
 }
 
@@ -446,7 +461,7 @@ static int _tty_rx(struct file *tty_fd, char *buf, int max_len)
     if (timeout == TTY_RX_RETRY) {
         rc = -EAGAIN;
     }
-    DEBUG_INTR("[RX]%s-%d, %d BYTES, read:\n\"%s\"\n", __func__, __LINE__,rc, buf);
+    DEBUG_INTR("[RX]%d BYTES, read:\n\"%s\"\n", rc, buf);
     return rc;
 }
 
@@ -519,11 +534,11 @@ static bool _is_logged_in(struct file *tty_fd, char* buf, size_t max_size)
     for (i = 0; i < TTY_LOGIN_RETRY; i++) {
         ret = _tty_writeNread(tty_fd, "\r\r", buf, max_size, TTY_RETRY_INTERVAL);
         if (ret < 0) {
-            DEBUG_INTR("%s-%d, failed ret:%d\n", __func__, __LINE__, ret);
+            DEBUG_INTR("failed ret:%d\n",ret);
             continue;
         }
 
-        DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
+        DEBUG_INTR("tty_buf:%s\n", buf);
         /*Check if logined by comparing BMC's cmd prompt.*/
         if (strstr(buf, TTY_PROMPT) != NULL) {
             mp_data->logged_in = true;
@@ -548,26 +563,25 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
         if (_is_logged_in(tty_fd, buf, max_size))
             return 0;
 
-        DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
-        if ((strstr(buf, "bmc") != NULL) &&
-                (strstr(buf, "login:") != NULL))
+        DEBUG_INTR("tty_buf:%s\n", buf);
+        if (strstr(buf, " login:") != NULL)
         {
             ret = _tty_writeNread(tty_fd, TTY_USER"\r",
                                   buf, max_size, TTY_LOGIN_RETRY_INTV);
             if (ret < 0) {
-                DEBUG_INTR("%s-%d, failed ret:%d\n", __func__, __LINE__, ret);
+                DEBUG_INTR("failed ret:%d\n", ret);
                 continue;
             }
-            DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
+            DEBUG_INTR("tty_buf:%s\n", buf);
             if (strstr(buf, "Password:") != NULL) {
-                DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
-                ret = _tty_writeNread(tty_fd, TTY_PASSWORD"\r", buf, max_size, 0);
+                DEBUG_INTR("tty_buf:%s\n", buf);
+                ret = _tty_writeNread(tty_fd, TTY_PASSWORD"\r\n", buf, max_size, 0);
                 if (ret < 0) {
-                    DEBUG_INTR("%s-%d, failed ret:%d\n", __func__, __LINE__, ret);
+                    DEBUG_INTR("failed ret:%d\n", ret);
                     continue;
                 }
                 if (strstr(buf, TTY_PROMPT) != NULL) {
-                    DEBUG_INTR("%s-%d, tty_buf:%s\n", __func__, __LINE__, buf);
+                    DEBUG_INTR("tty_buf:%s\n",buf);
                     return 0;
                 }
             }
@@ -577,6 +591,34 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
 
     dev_err(mp_data->dev, "Failed on %s ret:%d\n", __func__, ret);
     return -EAGAIN;
+}
+
+
+static char * deblank(char *str)
+{
+    char *out = str, *put = str;
+
+    for(; *str != '\0'; ++str)
+    {
+        if(*str != ' ' && *str != '\r' && *str != '\n')
+            *put++ = *str;
+    }
+    *put = '\0';
+
+    return out;
+}
+
+static char * _strstr(const char *str1, const char *str2) {
+    char *p1, *p2;
+    char o1[TTY_READ_MAX_LEN];
+    char o2[TTY_READ_MAX_LEN];
+
+    strcpy(o1, str1);
+    strcpy(o2, str2);
+    p1 = deblank(o1);
+    p2 = deblank(o2);
+
+    return strstr(p1, p2);
 }
 
 static int
@@ -615,12 +657,12 @@ bmc_transaction(char *cmd, char* resp, int max, u32 mdelay)
             goto exit;
         }
         i++;
-    } while(strstr(buf, cmd) == NULL && i <= TTY_CMD_RETRY);
+    } while(_strstr(buf, cmd) == NULL && i <= TTY_CMD_RETRY);
     if (i > TTY_CMD_RETRY) {
         ret = -ENOENT;
         goto exit;
     }
-    strncpy(resp, buf, max);
+    strncpy(resp, &buf[strlen(cmd)], max);
 exit:
     kfree(buf);
     _tty_close(&tty_fd);
@@ -687,7 +729,7 @@ static int attributs_init(struct minipack_data *data)
                               ptn->show, ptn->store);
                 sensor_dattr->index = acc + ai;
 
-                DEBUG_INTR("%s-%d, name:%s index:%d\n", __func__, __LINE__,
+                DEBUG_INTR("name:%s index:%d\n",
                            name, sensor_dattr->index);
                 ret = add_attr2group(data, &dev_attr->attr);
                 if (ret)
@@ -841,7 +883,7 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
         return 0;
 
     snprintf(cmd, sizeof(cmd), model_ssets[type].query);
-    DEBUG_INTR("%s-%d, cmd:%s\n", __func__, __LINE__, cmd);
+    DEBUG_INTR("cmd:%s\n", cmd);
     ret = bmc_transaction(cmd, resp, sizeof(resp)-1, model_ssets[type].mdelay);
     if (ret < 0) {
         return ret;
@@ -926,14 +968,14 @@ update_data(struct device *dev, enum sensor_type_e type) {
     int data_cnt, rc;
 
     mutex_lock(&data->update_lock);
-    if (time_after(jiffies, (*last_updated) + SENSOR_DATA_UPDATE_INTERVAL)
+    if (time_after(jiffies, (*last_updated) + (poll_interval*HZ))
             || !(*valid))
     {
         rc = get_type_data(&data->sdata, type, 0, &data_ptr, &data_cnt);
         if (rc < 0)
             goto exit_err;
 
-        DEBUG_INTR("%s-%d, type:%d cnt:%d\n", __func__, __LINE__, type, data_cnt);
+        DEBUG_INTR("type:%d cnt:%d\n", type, data_cnt);
         rc = comm2BMC(type, data_ptr, data_cnt);
         if (rc < 0) {
             /*Clear data if failed.*/
@@ -973,7 +1015,7 @@ static ssize_t _attr_show(struct device *dev, struct device_attribute *da,
 
     type = attr->index / ATTR_TYPE_INDEX_GAP;
 
-    DEBUG_INTR("%s-%d, type:%d index:%d\n", __func__, __LINE__, type, attr->index);
+    DEBUG_INTR("type:%d index:%d\n", type, attr->index);
     data = update_data(dev, type);
     if (data == NULL)
         return -EINVAL;
@@ -1013,7 +1055,7 @@ static int add_attr2group(struct minipack_data *data, struct attribute *attr)
     void *new_attrs = krealloc(data->group.attrs,
                                new_max_attrs * sizeof(void *),
                                GFP_KERNEL);
-    DEBUG_INTR("%s-%d, num_attr:%d\n", __func__, __LINE__, new_max_attrs);
+    DEBUG_INTR("num_attr:%d\n", new_max_attrs);
     if (!new_attrs)
         return -ENOMEM;
     data->group.attrs = new_attrs;
@@ -1031,14 +1073,14 @@ static int minipack_probe(struct platform_device *pdev)
 
     mp_data->dev = &pdev->dev;
     status = attributs_init(mp_data);
-    DEBUG_INTR("%s-%d, status:%d\n", __func__, __LINE__, status);
+    DEBUG_INTR("status:%d\n", status);
     if (status) {
         goto exit;
     }
 
     /* Register sysfs hooks */
     status = sysfs_create_group(&pdev->dev.kobj, &mp_data->group);
-    DEBUG_INTR("%s-%d, status:%d\n", __func__, __LINE__, status);
+    DEBUG_INTR("status:%d\n", status);
 
     if (status) {
         goto exit_kfree;

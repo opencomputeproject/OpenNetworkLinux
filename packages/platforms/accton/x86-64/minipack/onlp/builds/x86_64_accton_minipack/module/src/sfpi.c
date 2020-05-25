@@ -51,6 +51,7 @@
 
 #define NUM_I2C_MUX_ON_PIM      2
 static const int muxAddrOnPIM[NUM_I2C_MUX_ON_PIM] = {0x72, 0x71};
+static const int muxAddrRoot = 0x70;
 
 typedef struct {
     bool      valid;
@@ -61,11 +62,11 @@ typedef struct {
 typedef struct {
     present_status_t pim;
     present_status_t port_at_pim[NUM_OF_SFP_PORT/NUM_OF_PIM];
-    int mux_reg[NUM_OF_PIM][NUM_I2C_MUX_ON_PIM];
+    int root_muxReg;
+    int pim_muxReg[NUM_OF_PIM][NUM_I2C_MUX_ON_PIM];
     sem_t mutex;
 } sfpi_port_status_t;
 
-static int sfpi_eeprom_close_all_channels(void);
 int onlp_read_pim_present(uint32_t *bmap);
 static int get_ports_presence(uint32_t pimId, uint32_t *pbmp);
 static int get_ports_lpmode(uint32_t pimId, uint32_t *pbmp);
@@ -126,15 +127,14 @@ int onlp_sfpi_init(void)
     }
 
     if (rv == 1) { /* shared memory was newly created*/
-        sfpi_eeprom_close_all_channels();
-
         /*Clear cache for muxes on PIM */
         SEM_LOCK;
         for (i = 0; i < NUM_OF_PIM; i++) {
             for (j = 0; j < NUM_I2C_MUX_ON_PIM; j++) {
-                global_sfpi_st->mux_reg[i][j] = -1;
+                global_sfpi_st->pim_muxReg[i][j] = -1;
             }
         }
+        global_sfpi_st->root_muxReg = -1;
         SEM_UNLOCK;
     }
 
@@ -276,21 +276,26 @@ sfpi_get_i2cmux_mapping(int port)
 }
 
 
-static int i2c_writebF(int bus, uint8_t addr, uint8_t offset, uint8_t byte)
+static int i2c_writebF(uint8_t addr, uint8_t offset, uint8_t byte)
 {
-    return onlp_i2c_writeb( bus,  addr,  offset,  byte, ONLP_I2C_F_FORCE);
+    return onlp_i2c_writeb(I2C_BUS,  addr,  offset,  byte, ONLP_I2C_F_FORCE);
 }
 
 /*Set the i2c mux of PIM to open channel to that port.*/
 static int
 sfpi_eeprom_channel_open(int port)
 {
-    uint32_t pim, reg, i, index, bus;
+    uint32_t pim, reg, i, index;
     int offset = 0;
 
     pim = PORT_TO_PIM(port);
-    bus = pim + I2C_BUS +1;
-
+    reg = BIT(pim);
+    if (global_sfpi_st->root_muxReg != reg) {
+        if (i2c_writebF(muxAddrRoot, offset, reg) < 0) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        global_sfpi_st->root_muxReg = reg;
+    }
     /*Open only 1 channel on that PIM.*/
     index = sfpi_get_i2cmux_mapping(port);
     for (i = 0; i < NUM_I2C_MUX_ON_PIM; i++) {
@@ -300,11 +305,11 @@ sfpi_eeprom_channel_open(int port)
             reg = BIT(index%8);
         }
 
-        if (global_sfpi_st->mux_reg[pim][i] != reg) {
-            if (i2c_writebF(bus, muxAddrOnPIM[i], offset, reg) < 0) {
+        if (global_sfpi_st->pim_muxReg[pim][i] != reg) {
+            if (i2c_writebF(muxAddrOnPIM[i], offset, reg) < 0) {
                 return ONLP_STATUS_E_INTERNAL;
             }
-            global_sfpi_st->mux_reg[pim][i] = reg;
+            global_sfpi_st->pim_muxReg[pim][i] = reg;
         }
     }
     return ONLP_STATUS_OK;
@@ -373,47 +378,6 @@ int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
     AIM_BITMAP_CLR_ALL(dst);
-    return ONLP_STATUS_OK;
-}
-
-static int
-sfpi_eeprom_close_all_channels(void)
-{
-    int i, k;
-    int value = 0 ;
-    int mux_1st = 0x70;
-    int mux_2st[] = {0x72, 0x71};
-    int offset = 0;
-    int channels = 8;
-    uint32_t present;
-
-    SEM_LOCK;
-    onlp_read_pim_present(&present);
-
-    for (i = 0; i < channels; i++) {
-        if (!(present & BIT(i)))
-            continue;
-
-        value = BIT(i);
-        /*Open only 1 channel of level-1 mux*/
-        if (onlp_i2c_writeb(I2C_BUS, mux_1st, offset, value, ONLP_I2C_F_FORCE) < 0) {
-            SEM_UNLOCK;
-            return ONLP_STATUS_E_INTERNAL;
-        }
-        /*Close mux on each PIM.*/
-        for (k = 0; k < AIM_ARRAYSIZE(mux_2st); k++) {
-            if (onlp_i2c_writeb(I2C_BUS, mux_2st[k], offset, 0, ONLP_I2C_F_FORCE) < 0) {
-                DEBUG_PRINT("Unable to write to I2C slave(0x%x)", mux_2st[k]);
-            }
-        }
-    }
-
-    /*close level-1 mux*/
-    if (onlp_i2c_writeb(I2C_BUS, mux_1st, offset, 0, ONLP_I2C_F_FORCE) < 0) {
-        SEM_UNLOCK;
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    SEM_UNLOCK;
     return ONLP_STATUS_OK;
 }
 
@@ -493,10 +457,7 @@ exit:
 int
 onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
 {
-    int ret, pim,  bus;
-
-    pim = PORT_TO_PIM(port);
-    bus = pim + I2C_BUS +1;
+    int ret;
 
     SEM_LOCK;
     ret = sfpi_eeprom_channel_open(port);
@@ -504,7 +465,7 @@ onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
         DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
         goto exit;
     }
-    ret = i2c_writebF(bus, devaddr, addr, value);
+    ret = i2c_writebF(devaddr, addr, value);
 exit:
     SEM_UNLOCK;
     return ret;
@@ -513,10 +474,7 @@ exit:
 int
 onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
 {
-    int ret, pim,  bus;
-
-    pim = PORT_TO_PIM(port);
-    bus = pim + I2C_BUS +1;
+    int ret;
 
     SEM_LOCK;
     ret = sfpi_eeprom_channel_open(port);
@@ -524,7 +482,7 @@ onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
         DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
         goto exit;
     }
-    ret = onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+    ret = onlp_i2c_readw(I2C_BUS, devaddr, addr, ONLP_I2C_F_FORCE);
 exit:
     SEM_UNLOCK;
     return ret;
@@ -533,10 +491,7 @@ exit:
 int
 onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 {
-    int ret, pim,  bus;
-
-    pim = PORT_TO_PIM(port);
-    bus = pim + I2C_BUS +1;
+    int ret;
 
     SEM_LOCK;
     ret = sfpi_eeprom_channel_open(port);
@@ -544,7 +499,7 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
         DEBUG_PRINT("Unable to set i2c channel for the module_eeprom of port(%d, %d)", port, ret);
         goto exit;
     }
-    ret = onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    ret = onlp_i2c_writew(I2C_BUS, devaddr, addr, value, ONLP_I2C_F_FORCE);
 exit:
     SEM_UNLOCK;
     return ret;
@@ -710,7 +665,7 @@ static uint32_t fbfpgaio_read(uint32_t addr)
     return *(uint32_t*)offset;
 }
 
-#define PIM_STATUS_REG 0x40
+#define IOB_PIM_STATUS_REG 0x40
 
 static uint32_t dom_offset[] = {
     0x40000,
@@ -727,7 +682,7 @@ static uint32_t dom_offset[] = {
 #define QSFP_LPMODE_REG     0x78
 
 int onlp_read_pim_present(uint32_t *pbmp) {
-    uint32_t pim_status = fbfpgaio_read(PIM_STATUS_REG);
+    uint32_t pim_status = fbfpgaio_read(IOB_PIM_STATUS_REG );
     *pbmp = (pim_status >> 16); /*bit 23~16*/
     return ONLP_STATUS_OK;
 }

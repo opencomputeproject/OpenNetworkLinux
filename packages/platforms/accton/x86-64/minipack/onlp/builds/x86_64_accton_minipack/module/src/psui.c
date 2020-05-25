@@ -133,8 +133,8 @@ onlp_psui_rm_special_char(char* in, char* out, int max)
 static int
 onlp_psui_get_BMC_info(int pid, onlp_psu_info_t* info)
 {
-    char cmd[128] = {0};
-    char resp[128] = {0};
+    char cmd[MAX_TTY_CMD_LENGTH] = {0};
+    char resp[MAX_TTY_CMD_LENGTH] = {0};
 
     int i2c_addr[][2] = {{49, 0x59},{48, 0x58},{57, 0x59},{56, 0x58}};
     int model  = 0x9a;
