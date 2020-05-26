@@ -53,13 +53,10 @@ typedef struct {
 
 typedef struct {
     led_status_t ls[1];  /*2 LEDs but Only 1 reg*/
-    sem_t mutex;
 } ledi_status_t;
 
 
 #define POLL_INTERVAL       (5) /*in seconds*/
-#define SEM_LOCK    do {sem_wait(&global_ledi_st->mutex);} while(0)
-#define SEM_UNLOCK  do {sem_post(&global_ledi_st->mutex);} while(0)
 
 
 typedef struct led_address_s {
@@ -134,27 +131,36 @@ static onlp_led_info_t linfo[] =
     },
 };
 
-ledi_status_t *global_ledi_st = NULL;
+#define SEM_LOCK    do { \
+            onlp_shlock_take(g_Lock);} while(0)
 
+#define SEM_UNLOCK    do { \
+            onlp_shlock_give(g_Lock);} while(0)
+
+
+static onlp_shlock_t* g_Lock = NULL;
+static ledi_status_t *g_lediStat = NULL;
 
 /*--------------------------------------------------------*/
 static int _create_shm(key_t id) {
-    int rv;
+    int rv = ONLP_STATUS_OK;
 
-    if (global_ledi_st == NULL) {
-        rv = onlp_shmem_create(id, sizeof(led_status_t),
-                               (void**)&global_ledi_st);
-        if (rv >= 0) {
-            if(pltfm_create_sem(&global_ledi_st->mutex) != 0) {
-                AIM_DIE("%s(): mutex_init failed\n", __func__);
-                return ONLP_STATUS_E_INTERNAL;
-            }
+    if(g_Lock == NULL) {
+        if(onlp_shlock_create(ONLP_LEDI_SHLOCK_KEY, &g_Lock,
+                              "onlp-psui-lock") < 0) {
+            AIM_DIE("onlp-psui lock created failed.");
+            return ONLP_STATUS_E_INTERNAL;
         }
-        else {
+    }
+
+    if (g_lediStat == NULL) {
+        rv = onlp_shmem_create(id, sizeof(led_status_t),
+                               (void**)&g_lediStat);
+        if (rv < 0) {
             AIM_DIE("Global %s created failed.", __func__);
         }
     }
-    return ONLP_STATUS_OK;
+    return rv;
 }
 /*
  * This function will be called prior to any other onlp_ledi_* functions.
@@ -217,7 +223,7 @@ static int ledi_read_reg(int lid, uint8_t* data)
 
     cur = time (NULL);
     SEM_LOCK;
-    ps = &global_ledi_st->ls[0];    /*2 LED share same REG. Not take lid here.*/
+    ps = &g_lediStat->ls[0];    /*2 LED share same REG. Not take lid here.*/
     elapse = cur - ps->last_poll;
     if (!ps->valid || (elapse > POLL_INTERVAL)) {
         value = bmc_i2c_readb(led_addr[lid].bus, led_addr[lid].devaddr, led_addr[lid].offset);
@@ -242,7 +248,7 @@ static int ledi_write_reg(int lid, uint8_t data)
     led_status_t *ps;
 
     SEM_LOCK;
-    ps = &global_ledi_st->ls[0];    /*2LED shares same REG. Not take lid here.*/
+    ps = &g_lediStat->ls[0];    /*2LED shares same REG. Not take lid here.*/
     if (bmc_i2c_writeb(led_addr[lid].bus, led_addr[lid].devaddr,
                        led_addr[lid].offset, data) < 0) {
         SEM_UNLOCK;

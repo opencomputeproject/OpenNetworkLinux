@@ -107,6 +107,12 @@ enum onlp_thermal_id
 #define ONLP_SFPI_SHM_KEY   (0xF001100 | ONLP_OID_TYPE_MODULE)
 #define ONLP_LEDI_SHM_KEY   (0xF001100 | ONLP_OID_TYPE_LED)
 
+/*Avoid #define ONLP_SHLOCK_GLOBAL_KEY 0xF00DF00D*/
+#define ONLP_PSUI_SHLOCK_KEY   (0xF00D100 | ONLP_OID_TYPE_PSU)
+#define ONLP_SFPI_SHLOCK_KEY   (0xF00D100 | ONLP_OID_TYPE_MODULE)
+#define ONLP_LEDI_SHLOCK_KEY   (0xF00D100 | ONLP_OID_TYPE_LED)
+
+
 #define PLATFOTM_NUM_OF_PIM  (8)
 
 
@@ -117,7 +123,6 @@ int bmc_i2c_readb(uint8_t bus, uint8_t devaddr, uint8_t addr);
 int bmc_i2c_writeb(uint8_t bus, uint8_t devaddr, uint8_t addr, uint8_t value);
 int bmc_i2c_readw(uint8_t bus, uint8_t devaddr, uint8_t addr, uint16_t *data);
 int bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data_size);
-uint32_t pltfm_create_sem (sem_t *mutex);
 
 #endif  /* __PLATFORM_LIB_H__ */
 

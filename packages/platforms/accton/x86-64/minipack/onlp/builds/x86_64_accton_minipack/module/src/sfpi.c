@@ -64,7 +64,6 @@ typedef struct {
     present_status_t port_at_pim[NUM_OF_SFP_PORT/NUM_OF_PIM];
     int root_muxReg;
     int pim_muxReg[NUM_OF_PIM][NUM_I2C_MUX_ON_PIM];
-    sem_t mutex;
 } sfpi_port_status_t;
 
 int onlp_read_pim_present(uint32_t *bmap);
@@ -74,33 +73,40 @@ static int get_ports_reset(uint32_t pimId, uint32_t *pbmp);
 static int set_ports_lpmode(uint32_t pimId, uint32_t value);
 static int set_ports_reset(uint32_t pimId, uint32_t value);
 
-#define SEM_LOCK    do {sem_wait(&global_sfpi_st->mutex);} while(0)
-#define SEM_UNLOCK  do {sem_post(&global_sfpi_st->mutex);} while(0)
 
-sfpi_port_status_t *global_sfpi_st = NULL;
+#define SEM_LOCK    do { \
+            onlp_shlock_take(g_sfpiLock);} while(0)
 
+#define SEM_UNLOCK    do { \
+            onlp_shlock_give(g_sfpiLock);} while(0)
+
+static sfpi_port_status_t *g_sfpiPortStat = NULL;
+static onlp_shlock_t* g_sfpiLock = NULL;
 /************************************************************
  *
  * SFPI Entry Points
  *
  ***********************************************************/
 static int sfpi_create_shm(key_t id) {
-    int rv;
+    int rv = ONLP_STATUS_OK;
 
-    if (global_sfpi_st == NULL) {
-        rv = onlp_shmem_create(id, sizeof(sfpi_port_status_t),
-                               (void**)&global_sfpi_st);
-        if (rv >= 0) {
-            if(pltfm_create_sem(&global_sfpi_st->mutex) != 0) {
-                AIM_DIE("onlpi_create_sem(): mutex_init failed\n");
-                return ONLP_STATUS_E_INTERNAL;
-            }
+    if(g_sfpiLock == NULL) {
+        if(onlp_shlock_create(ONLP_SFPI_SHLOCK_KEY, &g_sfpiLock,
+                              "onlp-sfpi-lock") < 0) {
+            AIM_DIE("onlp-sfpi lock created failed.");
+            return ONLP_STATUS_E_INTERNAL;
         }
-        else {
+    }
+
+    if (g_sfpiPortStat == NULL) {
+        rv = onlp_shmem_create(id, sizeof(sfpi_port_status_t),
+                               (void**)&g_sfpiPortStat);
+        if (rv < 0) {
             AIM_DIE("Global %s created failed.", __func__);
             return ONLP_STATUS_E_INTERNAL;
         }
     }
+
     return rv;
 }
 
@@ -108,7 +114,7 @@ static int update_ports(int pim, bool valid, uint32_t present) {
     present_status_t *ports;
 
     SEM_LOCK;
-    ports = &global_sfpi_st->port_at_pim[pim];
+    ports = &g_sfpiPortStat->port_at_pim[pim];
     ports->valid = valid;
     ports->present = present;
     ports->last_poll = time (NULL);
@@ -117,9 +123,18 @@ static int update_ports(int pim, bool valid, uint32_t present) {
     return ONLP_STATUS_OK;
 }
 
+void onlp_sfpi_sleep(uint8_t sec)
+{
+    onlp_sfpi_init();
+    SEM_LOCK;
+    sleep(sec);
+    SEM_UNLOCK;
+}
+
 int onlp_sfpi_init(void)
 {
     int i, j;
+
     int rv = sfpi_create_shm(ONLP_SFPI_SHM_KEY);
     if (rv < 0) {
         AIM_DIE("onlp_sfpi_init::sfpi_create_shm created failed.");
@@ -131,10 +146,10 @@ int onlp_sfpi_init(void)
         SEM_LOCK;
         for (i = 0; i < NUM_OF_PIM; i++) {
             for (j = 0; j < NUM_I2C_MUX_ON_PIM; j++) {
-                global_sfpi_st->pim_muxReg[i][j] = -1;
+                g_sfpiPortStat->pim_muxReg[i][j] = -1;
             }
         }
-        global_sfpi_st->root_muxReg = -1;
+        g_sfpiPortStat->root_muxReg = -1;
         SEM_UNLOCK;
     }
 
@@ -192,7 +207,7 @@ onlp_pim_is_present(int pim)
     sfpi_port_status_t *ps;
 
     SEM_LOCK;
-    ps = global_sfpi_st;
+    ps = g_sfpiPortStat;
     cur = time (NULL);
     elapse = cur - ps->pim.last_poll;
     if (!ps->pim.valid || (elapse > PIM_POLL_INTERVAL)) {
@@ -235,7 +250,7 @@ get_pim_port_present_bmap(int port, uint32_t *bit_array)
         return ONLP_STATUS_OK;
     }
 
-    ports = &global_sfpi_st->port_at_pim[pim];
+    ports = &g_sfpiPortStat->port_at_pim[pim];
     cur = time (NULL);
     elapse = cur - ports->last_poll;
 
@@ -290,11 +305,11 @@ sfpi_eeprom_channel_open(int port)
 
     pim = PORT_TO_PIM(port);
     reg = BIT(pim);
-    if (global_sfpi_st->root_muxReg != reg) {
+    if (g_sfpiPortStat->root_muxReg != reg) {
         if (i2c_writebF(muxAddrRoot, offset, reg) < 0) {
             return ONLP_STATUS_E_INTERNAL;
         }
-        global_sfpi_st->root_muxReg = reg;
+        g_sfpiPortStat->root_muxReg = reg;
     }
     /*Open only 1 channel on that PIM.*/
     index = sfpi_get_i2cmux_mapping(port);
@@ -305,11 +320,11 @@ sfpi_eeprom_channel_open(int port)
             reg = BIT(index%8);
         }
 
-        if (global_sfpi_st->pim_muxReg[pim][i] != reg) {
+        if (g_sfpiPortStat->pim_muxReg[pim][i] != reg) {
             if (i2c_writebF(muxAddrOnPIM[i], offset, reg) < 0) {
                 return ONLP_STATUS_E_INTERNAL;
             }
-            global_sfpi_st->pim_muxReg[pim][i] = reg;
+            g_sfpiPortStat->pim_muxReg[pim][i] = reg;
         }
     }
     return ONLP_STATUS_OK;

@@ -55,15 +55,20 @@ typedef struct {
 
 typedef struct {
     psu_status_t info[CHASSIS_PSU_COUNT];
-    sem_t mutex;
 } psus_status_t;
 
 
 #define PMBUS_PATH_STR "/sys/bus/platform/devices/minipack_psensor/%s%d_input"
 #define TTY_INTERVAL        (300000) /*in useconds*/
 #define PSU_POLL_INTERVAL       (24) /*in seconds*/
-#define SEM_LOCK    do {sem_wait(&global_psui_st->mutex);} while(0)
-#define SEM_UNLOCK  do {sem_post(&global_psui_st->mutex);} while(0)
+#define SEM_LOCK    do { \
+            onlp_shlock_take(g_Lock);} while(0)
+
+#define SEM_UNLOCK    do { \
+            onlp_shlock_give(g_Lock);} while(0)
+
+static onlp_shlock_t* g_Lock = NULL;
+static psus_status_t *g_psuiStat = NULL;
 
 /*
  * Get all information about the given PSU oid.
@@ -76,22 +81,23 @@ static onlp_psu_info_t pinfo[] =
     { {ONLP_PSU_ID_CREATE(PSU3_ID), "PSU-3", 0}, },
     { {ONLP_PSU_ID_CREATE(PSU4_ID), "PSU-4", 0}, },
 };
-psus_status_t *global_psui_st = NULL;
 
 /*---------------------------------------------------------*/
 static int psui_create_shm(key_t id) {
     int rv;
 
-    if (global_psui_st == NULL) {
-        rv = onlp_shmem_create(id, sizeof(psus_status_t),
-                               (void**)&global_psui_st);
-        if (rv >= 0) {
-            if(pltfm_create_sem(&global_psui_st->mutex) != 0) {
-                AIM_DIE("%s(): mutex_init failed\n", __func__);
-                return ONLP_STATUS_E_INTERNAL;
-            }
+    if(g_Lock == NULL) {
+        if(onlp_shlock_create(ONLP_PSUI_SHLOCK_KEY, &g_Lock,
+                              "onlp-psui-lock") < 0) {
+            AIM_DIE("onlp-psui lock created failed.");
+            return ONLP_STATUS_E_INTERNAL;
         }
-        else {
+    }
+
+    if (g_psuiStat == NULL) {
+        rv = onlp_shmem_create(id, sizeof(psus_status_t),
+                               (void**)&g_psuiStat);
+        if (rv < 0) {
             AIM_DIE("Global %s created failed.", __func__);
         }
     }
@@ -189,7 +195,7 @@ onlp_psui_get_string(int pid, onlp_psu_info_t* info)
 
     cur = time (NULL);
     SEM_LOCK;
-    ps = &global_psui_st->info[pid-1];
+    ps = &g_psuiStat->info[pid-1];
     elapse = cur - ps->last_poll;
     if (!ps->valid || (elapse > PSU_POLL_INTERVAL)) {
         if (onlp_psui_get_BMC_info(pid, info) != ONLP_STATUS_OK)

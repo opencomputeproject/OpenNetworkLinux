@@ -471,15 +471,3 @@ bmc_i2c_readraw(uint8_t bus, uint8_t devaddr, uint8_t addr, char* data, int data
     return 0;
 }
 
-uint32_t pltfm_create_sem (sem_t *mutex)
-{
-    int         rc;
-
-    rc = sem_init(mutex, 1, 1);
-    if (rc != 0) {
-        AIM_DIE("%s failed, errno %d.", __func__, errno);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    return ONLP_STATUS_OK;
-}
-
