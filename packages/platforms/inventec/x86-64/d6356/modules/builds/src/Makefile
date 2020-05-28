@@ -1,3 +1,5 @@
+ccflags-y += -Werror
+
 #obj-m += gpio-ich.o
 obj-m += i2c-gpio.o
 obj-m += inv-i2c-mux-pca9641.o

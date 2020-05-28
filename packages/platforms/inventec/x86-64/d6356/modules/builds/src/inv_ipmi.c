@@ -245,7 +245,7 @@ static int inv_ipmi_wdt_get(u8 *buf, size_t buf_len)
 	return ret;
 }
 
-
+#if 0
 static int inv_ipmi_oem_read(u8 *buf, u8 offset, size_t count)
 {
 	uint8_t data[2];
@@ -279,6 +279,7 @@ static int inv_ipmi_oem_write(char *buf, unsigned offset, size_t count)
 	}
 	return count;
 }
+#endif
 
 static int _inv_ipmi_init(void)
 {
@@ -501,7 +502,7 @@ static ssize_t show_fru_data(struct device *dev, struct device_attribute *da,
 	int ret;
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	uint8_t data[LEN_FRU_READ_RESP], result[MAX_IPMI_RECV_LENGTH];
-	int result_len = 0, attr_length=0, attr_type=TLV_ATTR_TYPE_SERIAL, str_offset=0;
+	int result_len = 0, attr_length=0/*, attr_type=TLV_ATTR_TYPE_SERIAL, str_offset=0*/;
 	int i;
 	int offset = 1;  /* first bit in ipmi raw info dump is the size of result, then the fru data */
 	uint8_t data_size;
