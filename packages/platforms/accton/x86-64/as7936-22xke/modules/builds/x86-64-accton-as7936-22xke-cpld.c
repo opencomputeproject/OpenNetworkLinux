@@ -364,6 +364,11 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *da,
         return value;
     }
 
+    /*2nd temp run in tmp432 extended mode.*/
+    if (attr->index == TEMP_INPUT_2) {
+         value -= 64;
+    }
+
     return sprintf(buf, "%ld\n", value*1000);
 }
 

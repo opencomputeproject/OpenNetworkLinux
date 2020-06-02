@@ -45,7 +45,8 @@ class OnlPlatform_x86_64_accton_as7936_22xke_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod('ym2651y')
-        self.insmod_platform()  #insmod *.ko of platform dir under /lib/module/*/extra
+        for m in [ 'fan', 'cpld', 'psu', 'leds']:
+            self.insmod("x86-64-accton-as7936-22xke-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
         self.new_i2c_devices([
