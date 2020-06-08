@@ -70,8 +70,9 @@ typedef struct led_light_mode_map {
 led_light_mode_map_t led_map[] = {
 {LED_LOC,  LED_MODE_OFF,   ONLP_LED_MODE_OFF},
 {LED_LOC,  LED_MODE_AMBER_BLINK, ONLP_LED_MODE_ORANGE_BLINKING},
-{LED_DIAG, LED_MODE_OFF,   ONLP_LED_MODE_OFF},
+{LED_DIAG, LED_MODE_GREEN_BLINK,   ONLP_LED_MODE_GREEN_BLINKING},
 {LED_DIAG, LED_MODE_GREEN, ONLP_LED_MODE_GREEN},
+{LED_DIAG, LED_MODE_AMBER, ONLP_LED_MODE_ORANGE},
 {LED_FAN,  LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
 {LED_PSU1, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO},
 {LED_PSU2, LED_MODE_AUTO,  ONLP_LED_MODE_AUTO}
@@ -101,7 +102,7 @@ static onlp_led_info_t linfo[] =
     {
         { ONLP_LED_ID_CREATE(LED_DIAG), "Chassis LED 2 (DIAG LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN,
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_ORANGE,
     },
     {
         { ONLP_LED_ID_CREATE(LED_PSU1), "Chassis LED 3 (PSU1 LED)", 0 },
@@ -156,6 +157,7 @@ static int onlp_to_driver_led_mode(enum onlp_led_id id, onlp_led_mode_t onlp_led
 int
 onlp_ledi_init(void)
 {
+    onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_DIAG), ONLP_LED_MODE_GREEN);
     return ONLP_STATUS_OK;
 }
 

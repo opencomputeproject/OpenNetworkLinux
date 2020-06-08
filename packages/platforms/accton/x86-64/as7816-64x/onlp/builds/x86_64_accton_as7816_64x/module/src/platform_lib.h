@@ -76,10 +76,12 @@ enum onlp_thermal_id
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
-    PSU_TYPE_AC_YM2851_F2B,
-    PSU_TYPE_AC_YM2851_B2F,
+    PSU_TYPE_AC_YM2851FCR_F2B,
+    PSU_TYPE_AC_YM2851FDR_B2F,
     PSU_TYPE_AC_DPS850_F2B,
-    PSU_TYPE_AC_DPS850_B2F
+    PSU_TYPE_AC_DPS850_B2F,
+    PSU_TYPE_DC_YM2851JER_F2B,
+    PSU_TYPE_DC_YM2851JFR_B2F,
 } psu_type_t;
 
 psu_type_t psu_type_get(int id, char* modelname, int modelname_len);

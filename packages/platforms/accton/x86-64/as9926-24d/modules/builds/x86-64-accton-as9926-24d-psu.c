@@ -35,7 +35,7 @@
 #include <linux/dmi.h>
 
 
-#define PSU_STATUS_I2C_ADDR			0x60
+#define PSU_STATUS_I2C_ADDR			0x68
 #define PSU_STATUS_I2C_REG_OFFSET	0x3
 
 #define MODEL_NAME_LEN				13
