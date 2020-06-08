@@ -23,7 +23,7 @@ x86-64-alphanetworks-stx60d0-062f-r0:
     args: >-
       nopat
       i2c-ismt.enable=0
-      console=ttyS0,115200n8
+      console=ttyS1,115200n8
 
   ##network
   ##  interfaces:
