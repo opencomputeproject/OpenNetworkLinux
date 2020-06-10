@@ -271,6 +271,8 @@ class OnlMultistrapConfig(object):
                 if k == 'packages':
                     if type(v) is list:
                         pkgs = pkgs + list(onlu.sflatten(v))
+                    elif v == None:
+                        continue
                     else:
                         pkgs = pkgs + v.split()
         return pkgs
@@ -479,35 +481,43 @@ rm -f /usr/sbin/policy-rc.d
             Configure = self.config.get('Configure', None)
             if Configure:
 
-                for cmd in Configure.get('run', []):
-                    onlu_execute_sudo(cmd,
-                                      ex=OnlRfsError("run command '%s' failed" % cmd),
-                                      chroot=dir_)
+                cmds = Configure.get('run', None)
+                if cmds:
+                    for cmd in cmds:
+                        onlu_execute_sudo(cmd,
+                                          ex=OnlRfsError("run command '%s' failed" % cmd),
+                                          chroot=dir_)
 
-                for overlay in Configure.get('overlays', []):
-                    logger.info("Overlay %s..." % overlay)
-                    onlu.execute('tar -C %s -c --exclude "*~" . | sudo tar -C %s -x -v --no-same-owner' % (overlay, dir_),
-                                 ex=OnlRfsError("Overlay '%s' failed." % overlay))
+                overlays = Configure.get('overlays', None)
+                if overlays:
+                    for overlay in overlays:
+                        logger.info("Overlay %s..." % overlay)
+                        onlu.execute('tar -C %s -c --exclude "*~" . | sudo tar -C %s -x -v --no-same-owner' % (overlay, dir_),
+                                     ex=OnlRfsError("Overlay '%s' failed." % overlay))
 
-                for update in Configure.get('update-rc.d', []):
-                    onlu_execute_sudo("/usr/sbin/update-rc.d %s" % update,
-                                      ex=OnlRfsError("update-rc.d %s failed." % (update)),
-                                      chroot=dir_)
+                updates = Configure.get('update-rc.d', None)
+                if updates:
+                    for update in updates:
+                        onlu_execute_sudo("/usr/sbin/update-rc.d %s" % update,
+                                          ex=OnlRfsError("update-rc.d %s failed." % (update)),
+                                          chroot=dir_)
 
-                for script in Configure.get('scripts', []):
-                    logger.info("Configuration script %s..." % script)
-                    onlu_execute_sudo("unshare -pf --mount-proc %s %s" % (script, dir_),
-                                      ex=OnlRfsError("script '%s' failed." % script),
-                                      env=True)
+                scripts = Configure.get('scripts', None)
+                if scripts:
+                    for script in scripts:
+                        logger.info("Configuration script %s..." % script)
+                        onlu_execute_sudo("unshare -pf --mount-proc %s %s" % (script, dir_),
+                                          ex=OnlRfsError("script '%s' failed." % script),
+                                          env=True)
 
-
-                for command in Configure.get('commands', []):
-                    if '__rfs__' in command:
-                        command = command.replace('__rfs__', dir_)
-                    logger.info("Configuration command '%s'..." % command)
-                    onlu.execute(command,
-                                 ex=OnlRfsError("Command '%s' failed." % command))
-
+                commands = Configure.get('commands', None)
+                if commands:
+                    for command in commands:
+                        if '__rfs__' in command:
+                            command = command.replace('__rfs__', dir_)
+                        logger.info("Configuration command '%s'..." % command)
+                        onlu.execute(command,
+                                     ex=OnlRfsError("Command '%s' failed." % command))
 
                 ua = OnlRfsSystemAdmin(dir_)
                 for (group, values) in Configure.get('groups', {}).iteritems():
@@ -771,9 +781,10 @@ if __name__ == '__main__':
 
         if not ops.no_build_packages:
             pkgs = x.get_packages()
-            # Invoke onlpm to build all required (local) packages.
-            onlu.execute("%s/tools/onlpm.py --try-arches %s all --skip-missing --require %s" % (os.getenv('ONL'), ops.arch, " ".join(pkgs)),
-                         ex=OnlRfsError("Failed to build all required packages."))
+            if pkgs:
+                # Invoke onlpm to build all required (local) packages.
+                onlu.execute("%s/tools/onlpm.py --try-arches %s all --skip-missing --require %s" % (os.getenv('ONL'), ops.arch, " ".join(pkgs)),
+                             ex=OnlRfsError("Failed to build all required packages."))
             if ops.only_build_packages:
                 sys.exit(0)
 
