@@ -19,7 +19,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/*#define DEBUG*/ 
+/*#define DEBUG*/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -48,31 +48,32 @@ static struct as7926_40xke_led_data  *ledctl = NULL;
 /* LED related data
  */
 
-#define LED_CPLD_I2C_BUS_NUM         13
-#define LED_CNTRLER_I2C_ADDRESS		(0x63)
- 
+#define LED_CPLD_I2C_BUS_NUM         20
+#define LED_CNTRLER_I2C_ADDRESS_1	(0x70)
+#define LED_CNTRLER_I2C_ADDRESS_2	(0x73)
+
 #define LED_TYPE_DIAG_REG_MASK	 	(0x1|0x2|0x4)
-#define LED_MODE_DIAG_RED_VALUE  	(0x2|0x4)
+#define LED_MODE_DIAG_RED_VALUE  	(0x1|0x2)
 #define LED_MODE_DIAG_GREEN_VALUE  	(0x1|0x4)
-#define LED_MODE_DIAG_BLUE_VALUE  	(0x1|0x2)
+#define LED_MODE_DIAG_BLUE_VALUE  	(0x2|0x4)
 #define LED_MODE_DIAG_OFF_VALUE		(0x1|0x2|0x4)
 
 #define LED_TYPE_LOC_REG_MASK	 	(0x10|0x20|0x40)
-#define LED_MODE_LOC_RED_VALUE	    (0x20|0x40)
+#define LED_MODE_LOC_RED_VALUE	    (0x10|0x20)
 #define LED_MODE_LOC_GREEN_VALUE	(0x10|0x40)
-#define LED_MODE_LOC_BLUE_VALUE	    (0x10|0x20)
+#define LED_MODE_LOC_BLUE_VALUE	    (0x20|0x40)
 #define LED_MODE_LOC_OFF_VALUE		(0x10|0x20|0x40)
 
 #define LED_TYPE_PSU_REG_MASK       (0x1|0x2|0x4)
-#define LED_MODE_PSU_RED_VALUE      (0x2|0x4)
+#define LED_MODE_PSU_RED_VALUE      (0x1|0x2)
 #define LED_MODE_PSU_GREEN_VALUE    (0x1|0x4)
-#define LED_MODE_PSU_BLUE_VALUE     (0x1|0x2)
+#define LED_MODE_PSU_BLUE_VALUE     (0x2|0x4)
 #define LED_MODE_PSU_OFF_VALUE		(0x1|0x2|0x4)
 
 #define LED_TYPE_FAN_REG_MASK       (0x10|0x20|0x40)
-#define LED_MODE_FAN_RED_VALUE      (0x20|0x40)
+#define LED_MODE_FAN_RED_VALUE      (0x10|0x20)
 #define LED_MODE_FAN_GREEN_VALUE    (0x10|0x40)
-#define LED_MODE_FAN_BLUE_VALUE     (0x10|0x20)
+#define LED_MODE_FAN_BLUE_VALUE     (0x20|0x40)
 #define LED_MODE_FAN_OFF_VALUE		(0x10|0x20|0x40)
 
 enum led_type {
@@ -88,8 +89,8 @@ struct led_reg {
 };
 
 static const struct led_reg led_reg_map[] = {
-	{(1 << LED_TYPE_LOC) | (1 << LED_TYPE_DIAG) , 0x30},
-    {(1 << LED_TYPE_FAN) | (1 << LED_TYPE_PSU) , 0x31},
+	{(1 << LED_TYPE_FAN) | (1 << LED_TYPE_DIAG) , 0x01},
+    {(1 << LED_TYPE_LOC) | (1 << LED_TYPE_PSU)  , 0x01},
 };
 
 enum led_light_mode {
@@ -117,7 +118,7 @@ enum led_light_mode {
 
 struct led_type_mode {
 	enum led_type type;
-	enum led_light_mode mode;	
+	enum led_light_mode mode;
 	int  reg_bit_mask;
 	int  mode_value;
 };
@@ -145,12 +146,12 @@ static struct led_type_mode led_type_mode_data[] = {
 {LED_TYPE_PSU,  LED_MODE_BLUE,  LED_TYPE_PSU_REG_MASK,  LED_MODE_PSU_BLUE_VALUE},
 
 };
-  
+
 static int get_led_reg(enum led_type type, u8 *reg)
-{	 
+{
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(led_reg_map); i++) {	
+	for (i = 0; i < ARRAY_SIZE(led_reg_map); i++) {
 		if(led_reg_map[i].types & (1 << type)) {
 			*reg = led_reg_map[i].reg_addr;
 			return 0;
@@ -163,26 +164,26 @@ static int get_led_reg(enum led_type type, u8 *reg)
 static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val)
 {
 	int i;
-	
+
 	for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
 
 		if (type != led_type_mode_data[i].type)
 			continue;
-		   
-		if ((led_type_mode_data[i].reg_bit_mask & reg_val) == 
+
+		if ((led_type_mode_data[i].reg_bit_mask & reg_val) ==
 			 led_type_mode_data[i].mode_value)
 		{
 			return led_type_mode_data[i].mode;
 		}
 	}
-	
+
 	return 0;
 }
 
-static u8 led_light_mode_to_reg_val(enum led_type type, 
+static u8 led_light_mode_to_reg_val(enum led_type type,
 									enum led_light_mode mode, u8 reg_val) {
 	int i;
-									  
+
 	for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
 		if (type != led_type_mode_data[i].type)
 			continue;
@@ -190,22 +191,34 @@ static u8 led_light_mode_to_reg_val(enum led_type type,
 		if (mode != led_type_mode_data[i].mode)
 			continue;
 
-		reg_val = led_type_mode_data[i].mode_value | 
+		reg_val = led_type_mode_data[i].mode_value |
 					 (reg_val & (~led_type_mode_data[i].reg_bit_mask));
 		break;
 	}
-	
+
 	return reg_val;
 }
 
-static int as7926_40xke_led_read_value(u8 reg)
+static int as7926_40xke_led_read_value(enum led_type type, u8 reg)
 {
-	return as7926_40xke_cpld_read(LED_CPLD_I2C_BUS_NUM, LED_CNTRLER_I2C_ADDRESS, reg);
+	unsigned short cpld_addr = LED_CNTRLER_I2C_ADDRESS_1;
+
+	if (type == LED_TYPE_DIAG || type == LED_TYPE_FAN) {
+		cpld_addr = LED_CNTRLER_I2C_ADDRESS_2;
+	}
+
+	return as7926_40xke_cpld_read(LED_CPLD_I2C_BUS_NUM, cpld_addr, reg);
 }
 
-static int as7926_40xke_led_write_value(u8 reg, u8 value)
+static int as7926_40xke_led_write_value(enum led_type type, u8 reg, u8 value)
 {
-	return as7926_40xke_cpld_write(LED_CPLD_I2C_BUS_NUM, LED_CNTRLER_I2C_ADDRESS, reg, value);
+	unsigned short cpld_addr = LED_CNTRLER_I2C_ADDRESS_1;
+
+	if (type == LED_TYPE_DIAG || type == LED_TYPE_FAN) {
+		cpld_addr = LED_CNTRLER_I2C_ADDRESS_2;
+	}
+
+	return as7926_40xke_cpld_write(LED_CPLD_I2C_BUS_NUM, cpld_addr, reg, value);
 }
 
 static void as7926_40xke_led_update(void)
@@ -221,8 +234,8 @@ static void as7926_40xke_led_update(void)
 		/* Update LED data
 		 */
 		for (i = 0; i < ARRAY_SIZE(ledctl->reg_val); i++) {
-			int status = as7926_40xke_led_read_value(led_reg_map[i].reg_addr);
-			
+			int status = as7926_40xke_led_read_value(i, led_reg_map[i].reg_addr);
+
 			if (status < 0) {
 				ledctl->valid = 0;
 				dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", led_reg_map[i].reg_addr, status);
@@ -230,38 +243,39 @@ static void as7926_40xke_led_update(void)
 			}
 			else
 			{
-				ledctl->reg_val[i] = status; 
+				ledctl->reg_val[i] = status;
 			}
 		}
-		
+
 		ledctl->last_updated = jiffies;
 		ledctl->valid = 1;
 	}
-	
-exit:	
+
+exit:
 	mutex_unlock(&ledctl->update_lock);
 }
 
 static void as7926_40xke_led_set(struct led_classdev *led_cdev,
-									  enum led_brightness led_light_mode, 
+									  enum led_brightness led_light_mode,
 									  enum led_type type)
 {
 	int reg_val;
-	u8 reg;
+	u8 reg = 0;
 	mutex_lock(&ledctl->update_lock);
 
 	if( !get_led_reg(type, &reg)) {
 		dev_dbg(&ledctl->pdev->dev, "Not match register for %d.\n", type);
 	}
-	
-	reg_val = as7926_40xke_led_read_value(reg);
+
+	reg_val = as7926_40xke_led_read_value(type, reg);
 	if (reg_val < 0) {
 		dev_dbg(&ledctl->pdev->dev, "reg %d, err %d\n", reg, reg_val);
 		goto exit;
 	}
 
-	reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);  
-	as7926_40xke_led_write_value(reg, reg_val);
+	reg_val = led_light_mode_to_reg_val(type, led_light_mode, reg_val);
+    as7926_40xke_led_write_value(type, 0x3, 0); /* Enable write access for LED */
+	as7926_40xke_led_write_value(type, reg, reg_val);
 
 	/* to prevent the slow-update issue */
 	ledctl->valid = 0;
@@ -280,7 +294,7 @@ static void as7926_40xke_led_diag_set(struct led_classdev *led_cdev,
 static enum led_brightness as7926_40xke_led_diag_get(struct led_classdev *cdev)
 {
 	as7926_40xke_led_update();
-	return led_reg_val_to_light_mode(LED_TYPE_DIAG, ledctl->reg_val[0]);
+	return led_reg_val_to_light_mode(LED_TYPE_DIAG, ledctl->reg_val[1]);
 }
 
 static void as7926_40xke_led_loc_set(struct led_classdev *led_cdev,
@@ -316,7 +330,7 @@ static void as7926_40xke_led_psu_set(struct led_classdev *led_cdev,
 static enum led_brightness as7926_40xke_led_psu_get(struct led_classdev *cdev)
 {
 	as7926_40xke_led_update();
-	return led_reg_val_to_light_mode(LED_TYPE_PSU, ledctl->reg_val[1]);
+	return led_reg_val_to_light_mode(LED_TYPE_PSU, ledctl->reg_val[0]);
 }
 
 static struct led_classdev as7926_40xke_leds[] = {
@@ -358,7 +372,7 @@ static int as7926_40xke_led_suspend(struct platform_device *dev,
 		pm_message_t state)
 {
 	int i = 0;
-	
+
 	for (i = 0; i < ARRAY_SIZE(as7926_40xke_leds); i++) {
 		led_classdev_suspend(&as7926_40xke_leds[i]);
 	}
@@ -369,7 +383,7 @@ static int as7926_40xke_led_suspend(struct platform_device *dev,
 static int as7926_40xke_led_resume(struct platform_device *dev)
 {
 	int i = 0;
-	
+
 	for (i = 0; i < ARRAY_SIZE(as7926_40xke_leds); i++) {
 		led_classdev_resume(&as7926_40xke_leds[i]);
 	}
@@ -383,15 +397,15 @@ static int as7926_40xke_led_probe(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(as7926_40xke_leds); i++) {
 		ret = led_classdev_register(&pdev->dev, &as7926_40xke_leds[i]);
-		
+
 		if (ret < 0)
 			break;
 	}
-	
+
 	/* Check if all LEDs were successfully registered */
 	if (i != ARRAY_SIZE(as7926_40xke_leds)){
 		int j;
-		
+
 		/* only unregister the LEDs that were successfully registered */
 		for (j = 0; j < i; j++) {
 			led_classdev_unregister(&as7926_40xke_leds[i]);

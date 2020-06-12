@@ -4,7 +4,7 @@ from onl.platform.accton import *
 import commands
 
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
-#It happen when read 16th-byte offset that value is 0x8. So disable chip 
+#It happen when read 16th-byte offset that value is 0x8. So disable chip
 def disable_i2c_ir3570a(addr):
     check_i2c="i2cget -y 0 0x4 0x1"
     status, output = commands.getstatusoutput(check_i2c)
@@ -45,7 +45,7 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod('ym2651y')
-        for m in [ 'fan', 'cpld', 'psu', 'leds']:
+        for m in [ 'cpld', 'fan', 'psu', 'leds']:
             self.insmod("x86-64-accton-as7926-40xke-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -57,20 +57,20 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
                 ('pca9548', 0x76, 1),
                 ('pca9548', 0x72, 2),
                 ('pca9548', 0x73, 9),
-                
+
                  #HW SPEC:6.3. PDU BOARD I2C ADDRESS TABLE
                  # initiate PSU-1
                 ('as7926_40xke_psu1', 0x52, 18),
-                ('ym2651', 0x5a, 18),
+                ('ym2401', 0x5a, 18),
 
                 # initiate PSU-2
                 ('as7926_40xke_psu2', 0x53, 18),
-                ('ym2651', 0x5b, 18),
-                
+                ('ym2401', 0x5b, 18),
+
                 # initiate PSU-3
                 ('as7926_40xke_psu3', 0x51, 18),
-                ('ym2651', 0x59, 18),
-                
+                ('ym2401', 0x59, 18),
+
                 # initiate fan
                 ('as7926_40xke_fan', 0x66, 22),
 
@@ -81,35 +81,44 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
                 ('pca9548', 0x74, 28),
                 ('pca9548', 0x74, 29),
                 ('24c02', 0x57, 0),
-                
+
                 # initiate leaf multiplexer (PCA9548) of top board
-                ('pca9548', 0x70, 1),                
+                ('pca9548', 0x70, 1),
                 ('pca9548', 0x74, 73),
                 ('pca9548', 0x74, 74),
                 ('pca9548', 0x74, 75),
-                
+
                 #initiate CPLD
                 ('as7926_40xke_cpld1', 0x60, 11),
                 ('as7926_40xke_cpld2', 0x62, 12),
                 ('as7926_40xke_cpld3', 0x63, 13),
-                ('as7926_40xke_cpld4', 0x64, 76),                
+                ('as7926_40xke_cpld4', 0x64, 76),
+                ('as7926_40xke_cpld5', 0x70, 20),
+                ('as7926_40xke_cpld6', 0x73, 20),
                 ])
-        
+
+        # Bring QSFP out of reset
+        for i in range(1, 21):
+            subprocess.call("echo 0 > /sys/bus/i2c/devices/12-0062/module_reset_"+str(i), shell=True)
+
+        for i in range(21, 41):
+            subprocess.call("echo 0 > /sys/bus/i2c/devices/13-0063/module_reset_"+str(i), shell=True)
+
         # initialize QSFP port 1-40 of bottom board
         for port in range(1, 41):
-            self.new_i2c_device('optoe1', 0x50, port+32)            
+            self.new_i2c_device('optoe1', 0x50, port+32)
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+32), shell=True)
-        
+
         # initialize SFP port 41-42 of bottom board
         self.new_i2c_device('optoe2', 0x50, 30)
         subprocess.call('echo port41 > /sys/bus/i2c/devices/30-0050/port_name', shell=True)
         self.new_i2c_device('optoe2', 0x50, 31)
         subprocess.call('echo port42 > /sys/bus/i2c/devices/31-0050/port_name', shell=True)
-      
+
         # initialize  port 43-55 of QSFP-DD Board
         for port in range(43, 56):
-            self.new_i2c_device('optoe1', 0x50, port+38)            
-       
+            self.new_i2c_device('optoe1', 0x50, port+38)
+
         subprocess.call('echo port47 > /sys/bus/i2c/devices/81-0050/port_name', shell=True)
         subprocess.call('echo port46 > /sys/bus/i2c/devices/82-0050/port_name', shell=True)
         subprocess.call('echo port45 > /sys/bus/i2c/devices/83-0050/port_name', shell=True)
@@ -124,6 +133,6 @@ class OnlPlatform_x86_64_accton_as7926_40xke_r0(OnlPlatformAccton,
         subprocess.call('echo port54 > /sys/bus/i2c/devices/92-0050/port_name', shell=True)
         subprocess.call('echo port43 > /sys/bus/i2c/devices/93-0050/port_name', shell=True)
 
-        ir3570_check() 
-                
+        ir3570_check()
+
         return True
