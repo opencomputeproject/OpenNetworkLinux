@@ -77,8 +77,8 @@ static struct as7926_40xke_led_data  *ledctl = NULL;
 #define LED_MODE_FAN_OFF_VALUE		(0x10|0x20|0x40)
 
 enum led_type {
-	LED_TYPE_DIAG,
 	LED_TYPE_LOC,
+	LED_TYPE_DIAG,
 	LED_TYPE_FAN,
 	LED_TYPE_PSU
 };
