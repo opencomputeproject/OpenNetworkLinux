@@ -198,7 +198,7 @@ if __name__ == '__main__':
                     help="Specify a Python plugin (runs from within the installer chroot)")
 
     ops = ap.parse_args()
-    installer = InstallerShar(ops.onl_version, ops.arch, ops.work_dir)
+    installer = InstallerShar(ops.onl_version, ops.arch, work_dir=ops.work_dir)
 
     if ops.arch == 'amd64':
         if ops.initrd is None:
