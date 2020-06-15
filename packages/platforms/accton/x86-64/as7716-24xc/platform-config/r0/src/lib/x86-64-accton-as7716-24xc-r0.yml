@@ -18,7 +18,7 @@ x86-64-accton-as7716-24xc-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-4-14
+      <<: *kernel-5-4
 
     args: >-
       nopat
