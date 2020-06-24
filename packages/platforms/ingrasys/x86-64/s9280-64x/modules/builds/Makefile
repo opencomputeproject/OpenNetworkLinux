@@ -1,4 +1,4 @@
-KERNELS := onl-kernel-3.16-lts-x86-64-all:amd64
+KERNELS := onl-kernel-4.19-lts-x86-64-all:amd64
 KMODULES := $(wildcard *.c)
 VENDOR := ingrasys
 BASENAME := x86-64-ingrasys-s9280-64x
