@@ -88,16 +88,6 @@ class OnlPlatform_x86_64_accton_as7716_24sc_r0(OnlPlatformAccton,
                 ('as7716_24sc_port29', 0x50, 54),
                 ('as7716_24sc_port32', 0x50, 55),
                 ('as7716_24sc_port31', 0x50, 56),
-
-                # initialize expansion card
-                ('as7716_24sc_excard1', 0x6a, 41),
-                ('as7716_24sc_excard2', 0x6a, 43),
-                ('as7716_24sc_excard3', 0x6a, 45),
-                ('as7716_24sc_excard4', 0x6a, 47),
-                ('as7716_24sc_excard5', 0x6a, 49),
-                ('as7716_24sc_excard6', 0x6a, 51),
-                ('as7716_24sc_excard7', 0x6a, 53),
-                ('as7716_24sc_excard8', 0x6a, 55),
                 ])
 
         # Linux 5.4
