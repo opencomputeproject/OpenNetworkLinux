@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 import os
 import sys
@@ -166,8 +166,10 @@ else:
    ops.volumes += [ '/lib/modules' ]
 
    if not ops.no_mount_current:
-      # Add the current working directory to the volume list.
-      ops.volumes.append(os.getcwd())
+      # When the working dir is git submodule, we need to mount
+      # superproject directory
+      cmd = ('git', 'rev-parse', '--show-superproject-working-tree')
+      ops.volumes.append(os.path.dirname(os.path.abspath(subprocess.check_output(cmd).strip())))
 
    g_arg_d['volume_options']  = " ".join( [ " -v %s:%s " % (v, v) for v in ops.volumes ] )
 
