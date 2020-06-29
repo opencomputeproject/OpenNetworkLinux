@@ -37,3 +37,16 @@ packages:
 
     changelog:  Change changes changes.,
     asr: True
+
+  - name: onlp-dev
+    version: 1.0.0
+    summary: Open Network Linux Platform development files
+
+    depends:
+    - onlp:$ARCH
+
+    files:
+      ${ONL}/sm/infra/modules/AIM/module/inc/AIM: /usr/local/include/AIM
+      ${ONL}/sm/bigcode/modules/IOF/module/inc/IOF: /usr/local/include/IOF
+      ${ONL}/packages/base/any/onlp/src/onlp/module/inc/onlp: /usr/local/include/onlp
+      ${ONL}/packages/base/any/onlp/src/onlplib/module/inc/onlplib: /usr/local/include/onlplib
