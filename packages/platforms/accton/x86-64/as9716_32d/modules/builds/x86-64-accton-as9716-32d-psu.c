@@ -331,7 +331,6 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
             if (!strncmp(data->model_name, "YESM1300AM", strlen("YESM1300AM"))) /*for YESM1300AM, SN length=19*/
             {
                 data->serial_number[MAX_SERIAL_NUMBER]='\0';
-                //printk("data->serial_number=%s\n",data->serial_number);   
             }
             else
                 data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
@@ -339,7 +338,6 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
             {
                 if(strncmp(data->serial_number, "FSH082", strlen("FSH082"))) /*for FSH082, SN length=18*/
                 {
-                    printk("Trt to read 0x35 offser\n");
                     status = as9716_32d_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
                     if (status < 0)
                     {
