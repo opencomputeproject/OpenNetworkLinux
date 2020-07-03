@@ -97,7 +97,7 @@ default:
       =: 128MiB
       format: ext4
   - ONL-IMAGES:
-      =: 1GiB
+      =: 2GiB
       format: ext4
   - ONL-DATA:
       =: 100%
