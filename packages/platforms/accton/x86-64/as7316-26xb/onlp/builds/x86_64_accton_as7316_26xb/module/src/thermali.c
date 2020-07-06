@@ -38,9 +38,9 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     NULL,
     NULL,                  /* CPU_CORE files */
+    "/sys/devices/platform/as7316_26xb_thermal/temp3_input",
     "/sys/devices/platform/as7316_26xb_thermal/temp1_input",
     "/sys/devices/platform/as7316_26xb_thermal/temp2_input",
-    "/sys/devices/platform/as7316_26xb_thermal/temp3_input",
     "/sys/devices/platform/as7316_26xb_thermal/temp4_input",
     "/sys/devices/platform/as7316_26xb_thermal/temp5_input",
     "/sys/devices/platform/as7316_26xb_thermal/temp6_input",
@@ -57,36 +57,40 @@ static char* cpu_coretemp_files[] =
         NULL,
     };
 
+#define AS7316_THERMAL_CAPS (ONLP_THERMAL_CAPS_GET_TEMPERATURE | \
+                             ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD | \
+                             ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD)
+
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
 	{ }, /* Not used */
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },	
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-1", 0}, 
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {95000, 95000, 100000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-2", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75_1", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-3", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75_2", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BROAD), "LM75-4", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75_3", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BROAD), "LM75-5", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_4_ON_MAIN_BROAD), "LM75_Heater_CPU", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_6_ON_MAIN_BROAD), "LM75-6", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BROAD), "LM75_Heater_BMC", 0},
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
+        },
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_6_ON_MAIN_BROAD), "LM75_CPU", 0},
+            ONLP_THERMAL_STATUS_PRESENT,
+            AS7316_THERMAL_CAPS, 0, {65000, 65000, 69000}
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)}, 
             ONLP_THERMAL_STATUS_PRESENT,
