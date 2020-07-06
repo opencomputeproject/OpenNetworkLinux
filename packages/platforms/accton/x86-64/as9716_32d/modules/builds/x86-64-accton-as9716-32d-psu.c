@@ -297,20 +297,18 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
                 dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
             }
             else
-            {                
+            {
                 if (!strncmp(data->model_name, "FSH082", strlen("FSH082")))
-                {               
-                    //printk("Test2");     
+                {                    
                     data->model_name[strlen("FSH082")]='\0';
                 }    
                 else if (!strncmp(data->model_name, "YESM1300", strlen("YESM1300")))
-                {                   
+                {                
                     if (data->model_name[9]=='A' && data->model_name[10]=='M')
                     {
                        data->model_name[8]='A';
                        data->model_name[9]='M';
-                       data->model_name[strlen("YESM1300AM")]='\0'; 
-                       //printk("Ddata->model_name=%s\n",data->model_name); 
+                       data->model_name[strlen("YESM1300AM")]='\0';
                     }
                     else  
                         data->model_name[strlen("YESM1300")]='\0';
@@ -333,37 +331,10 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
             if (!strncmp(data->model_name, "YESM1300AM", strlen("YESM1300AM"))) /*for YESM1300AM, SN length=19*/
             {
                 data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
-                //printk("data->serial_number=%s\n",data->serial_number);   
-            }
-            //else if (!strncmp(data->model_name, "FSH082", strlen("FSH082"))) /*for FSH082, SN length=18*/ 
-            //{
-               // data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
-            //} 
+            }           
             else /*for FSH082, SN length=18*/
                 data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
-#if 0                
-                
-            if (!strncmp(data->model_name, "FSH082", strlen("FSH082"))) /*for FSH082, SN length=18*/ 
-            {
-                
-            }   
-                
-                
-            if (strstr(data->serial_number, "FSH082"))
-            {
-                if(strncmp(data->serial_number, "FSH082", strlen("FSH082")))
-                {
-                    printk("Trt to read 0x35 offser\n");
-                    status = as9716_32d_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
-                    if (status < 0)
-                    {
-                        data->serial_number[0] = '\0';
-                        dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x2e)\n", client->addr);
-                    }   
-                    data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
-                }
-            }
-#endif            
+
         }
 
         data->last_updated = jiffies;
