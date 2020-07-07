@@ -43,7 +43,7 @@
 #define CPLD_FAN4_SPEED_ADDR_OFFSET   0x17
 
 #define BMC_FAN1_SENSOR_NUM                 0x34 //0x31
-#define BMC_FAN2_SENSOR_NUM                 0x32//0x32
+#define BMC_FAN2_SENSOR_NUM                 0x33//0x32
 #define BMC_FAN3_SENSOR_NUM                 0x32 //0x33
 #define BMC_FAN4_SENSOR_NUM                 0x31 //0x34
 

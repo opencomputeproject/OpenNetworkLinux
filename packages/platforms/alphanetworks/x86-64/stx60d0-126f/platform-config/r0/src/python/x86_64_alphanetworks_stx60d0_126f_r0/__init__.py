@@ -12,7 +12,7 @@ class OnlPlatform_x86_64_alphanetworks_stx60d0_126f_r0(OnlPlatformAlphaNetworks,
         self.new_i2c_devices([
 
             # 8A34002 @MB
-            ('8a34002', 0x58, 0),
+            ('8a34002', 0x5B, 0),
 
             # ONIE EEPROM @MB
             ('fm24c512d', 0x56, 0),
