@@ -10,7 +10,7 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod("dps850")
-        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'fpga' ]:
             self.insmod("x86-64-accton-as9926-24d-%s" % m)
 
         ########### initialize I2C bus 0 ###########
