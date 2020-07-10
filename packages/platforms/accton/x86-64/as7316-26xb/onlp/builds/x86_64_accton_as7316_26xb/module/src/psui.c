@@ -116,12 +116,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Read voltage, current and power */
     val = 0;
-    if (onlp_file_read_int(&val, "%s""psu%d_vin", PSU_SYSFS_PATH, pid) == 0 && val) {
-        info->mvin  = val;
-        info->caps |= ONLP_PSU_CAPS_VIN;
-    }
-    
-    val = 0;
     if (onlp_file_read_int(&val, "%s""psu%d_vout", PSU_SYSFS_PATH, pid) == 0 && val) {
         info->mvout = val;
         info->caps |= ONLP_PSU_CAPS_VOUT;
@@ -154,7 +148,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->model, string, len);
+        strncpy(info->model, string, len);
+        info->model[len] = '\0';
         aim_free(string);
         info->caps |= get_DCorAC_cap (info->model);
     }
@@ -162,7 +157,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Read serial */
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->serial, string, len);
+        strncpy(info->serial, string, len);
+        info->serial[len] = '\0';
         aim_free(string);
     }
 
