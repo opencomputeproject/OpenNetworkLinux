@@ -243,8 +243,8 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                     bus=13;        
                 }
                 else if ( port>=42 && port <55){
-                    addr=76;
-                    bus=64;        
+                    addr=64;
+                    bus=76;        
                 }
                 else{
                     return ONLP_STATUS_E_UNSUPPORTED;
