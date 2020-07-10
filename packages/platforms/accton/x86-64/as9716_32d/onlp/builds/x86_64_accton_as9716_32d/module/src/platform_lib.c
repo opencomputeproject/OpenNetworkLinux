@@ -101,7 +101,8 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     /* Check model name */
     node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_mfr_model) : PSU2_AC_PMBUS_NODE(psu_mfr_model);
     memset(model_name, 0x0, I2C_PSU_MODEL_NAME_LEN + 1);
-    memset(modelname, 0x0, modelname_len); 
+    memset(modelname, 0x0, modelname_len);
+    
     if (onlp_file_read_string(node, model_name, sizeof(model_name), 0) != 0) {
         
         return PSU_TYPE_UNKNOWN;
@@ -110,7 +111,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (!strncmp(model_name, "FSH082", strlen("FSH082")))
     {
         if (modelname)
-            aim_strlcpy(modelname, model_name, strlen("FSH082")<(modelname_len-1)?strlen("FSH082"):(modelname_len-1));
+            aim_strlcpy(modelname, model_name, strlen("FSH082")<(modelname_len-1)?(strlen("FSH082")+1):(modelname_len-1));
         
         return PSU_TYPE_ACBEL;
     }
@@ -118,7 +119,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (!strncmp(model_name, "YESM1300AM", strlen("YESM1300AM")))
     {
         if (modelname)
-            aim_strlcpy(modelname, model_name, strlen("YESM1300AM")<(modelname_len-1)?strlen("YESM1300AM"):(modelname_len-1));
+            aim_strlcpy(modelname, model_name, strlen("YESM1300AM")<(modelname_len-1)?(strlen("YESM1300AM")+1):(modelname_len-1));
 
         return PSU_TYPE_YESM1300;
     }
@@ -203,7 +204,7 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value)
 
 #define PSU_SERIAL_NUMBER_LEN	19
 
-int psu_serial_number_get(int id, char *serial, int serial_len)
+int psu_serial_number_get(int id, char *serial, int serial_len, char* model_name)
 {
     int   size = 0;
     int   ret  = ONLP_STATUS_OK; 
@@ -220,7 +221,12 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
 		return ONLP_STATUS_E_INTERNAL;
 
     }
-    serial[PSU_SERIAL_NUMBER_LEN-1] = '\0';
+    if (!strncmp(model_name, "YESM1300AM", strlen("YESM1300AM"))) /*for YESM1300AM, SN length=19*/
+    {
+        serial[PSU_SERIAL_NUMBER_LEN] = '\0';
+    } 
+    else
+        serial[PSU_SERIAL_NUMBER_LEN-1] = '\0';
 
     return ONLP_STATUS_OK;
 }

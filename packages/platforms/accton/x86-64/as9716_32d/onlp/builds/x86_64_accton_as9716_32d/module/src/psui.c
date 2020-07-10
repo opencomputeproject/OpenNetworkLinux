@@ -77,7 +77,7 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
 
-    psu_serial_number_get(index, info->serial, sizeof(info->serial));
+    psu_serial_number_get(index, info->serial, sizeof(info->serial), info->model);
 
     return ONLP_STATUS_OK;
 }
@@ -132,7 +132,7 @@ psu_data_info_get(onlp_psu_info_t* info)
         info->mpin = val;
         info->caps |= ONLP_PSU_CAPS_PIN;
     }  
-    psu_serial_number_get(index, info->serial, sizeof(info->serial));
+    psu_serial_number_get(index, info->serial, sizeof(info->serial), info->model);
 	
     return ONLP_STATUS_OK;
 }
