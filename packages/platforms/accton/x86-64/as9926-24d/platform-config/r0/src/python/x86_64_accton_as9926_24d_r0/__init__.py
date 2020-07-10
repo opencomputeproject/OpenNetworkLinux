@@ -61,6 +61,13 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
         for port in range(25, 27):
             self.new_i2c_device('optoe2', 0x50, port+24)
 
+        # Bring QSFP out of reset
+        for port in range(1, 17):
+            subprocess.call('echo 0 > /sys/bus/i2c/devices/20-0061/module_reset_%d' % port, shell=True)
+
+        for port in range(17, 25):
+            subprocess.call('echo 0 > /sys/bus/i2c/devices/21-0062/module_reset_%d' % port, shell=True)
+
         # set port name
         for port in range(1, 27):
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+24), shell=True)
