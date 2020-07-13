@@ -1,0 +1,243 @@
+From 52bf9a15d6bc3669c8102eaf9e49bdd8dbef73a0 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Sun, 26 Apr 2020 11:54:13 +0300
+Subject: [backport] Add support for new transceivers types: QSFP-DD and QSFP+
+ with Common Management Interface Specification (CMIS).
+
+The Quad Small Form Factor Pluggable Double Density (QSFP-DD) hardware
+specification defines a form factor that supports up to 400 Gbps in
+aggregate over an 8x50-Gbps electrical interface.
+The Common Management Interface Specification (CMIS) supports multiple
+interface settings and speed negotiation controls.
+The QSFP-DD supports both optical and copper interfaces.
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_env.c | 71 +++++++++++++++++++-------
+ drivers/net/ethernet/mellanox/mlxsw/reg.h      | 14 +++--
+ 2 files changed, 61 insertions(+), 24 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_env.c b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+index 0a5495f9f4c7..066c35e42dc8 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_env.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_env.c
+@@ -10,8 +10,14 @@
+ #include "item.h"
+ #include "reg.h"
+ 
++#define MLXSW_REG_MCIA_EEPROM_FLAT_MEMORY	BIT(7)
++#define MLXSW_ENV_CMIS_PAGE_OFF	0x0d
++#define MLXSW_ENV_PAGE_MAP(page) (((page) < \
++	MLXSW_REG_MCIA_TH_PAGE_NUM) ? (page) : (page) + \
++	MLXSW_ENV_CMIS_PAGE_OFF)
++
+ static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
+-					  bool *qsfp)
++					  bool *qsfp, bool *cmis)
+ {
+ 	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN];
+@@ -25,15 +31,21 @@ static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
+ 		return err;
+ 	mlxsw_reg_mcia_eeprom_memcpy_from(mcia_pl, eeprom_tmp);
+ 	ident = eeprom_tmp[0];
++	*cmis = false;
+ 	switch (ident) {
+-	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP_DD:
+ 		*qsfp = false;
+ 		break;
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP: /* fall-through */
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS: /* fall-through */
+-	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28: /* fall-through */
+-	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD:
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28:
++		*qsfp = true;
++		break;
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS_CMIS:
+ 		*qsfp = true;
++		*cmis = true;
+ 		break;
+ 	default:
+ 		return -EINVAL;
+@@ -44,8 +56,8 @@ static int mlxsw_env_validate_cable_ident(struct mlxsw_core *core, int id,
+ 
+ static int
+ mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
+-			      u16 offset, u16 size, bool qsfp, void *data,
+-			      unsigned int *p_read_size)
++			      u16 offset, u16 size, bool qsfp, bool cmis,
++			      void *data, unsigned int *p_read_size)
+ {
+ 	char eeprom_tmp[MLXSW_REG_MCIA_EEPROM_SIZE];
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN];
+@@ -75,6 +87,8 @@ mlxsw_env_query_module_eeprom(struct mlxsw_core *mlxsw_core, int module,
+ 		}
+ 	}
+ 
++	if (cmis)
++		page = MLXSW_ENV_PAGE_MAP(page);
+ 	mlxsw_reg_mcia_pack(mcia_pl, module, 0, page, offset, size, i2c_addr);
+ 
+ 	err = mlxsw_reg_query(mlxsw_core, MLXSW_REG(mcia), mcia_pl);
+@@ -103,7 +117,8 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 	char mcia_pl[MLXSW_REG_MCIA_LEN] = {0};
+ 	char mtmp_pl[MLXSW_REG_MTMP_LEN];
+ 	unsigned int module_temp;
+-	bool qsfp;
++	bool qsfp, cmis;
++	int page;
+ 	int err;
+ 
+ 	mlxsw_reg_mtmp_pack(mtmp_pl, MLXSW_REG_MTMP_MODULE_INDEX_MIN + module,
+@@ -127,21 +142,25 @@ int mlxsw_env_module_temp_thresholds_get(struct mlxsw_core *core, int module,
+ 	 */
+ 
+ 	/* Validate module identifier value. */
+-	err = mlxsw_env_validate_cable_ident(core, module, &qsfp);
++	err = mlxsw_env_validate_cable_ident(core, module, &qsfp, &cmis);
+ 	if (err)
+ 		return err;
+ 
+-	if (qsfp)
+-		mlxsw_reg_mcia_pack(mcia_pl, module, 0,
+-				    MLXSW_REG_MCIA_TH_PAGE_NUM,
++	if (qsfp) {
++		if (cmis)
++			page = MLXSW_REG_MCIA_TH_PAGE_CMIS_NUM;
++		else
++			page = MLXSW_REG_MCIA_TH_PAGE_NUM;
++		mlxsw_reg_mcia_pack(mcia_pl, module, 0, page,
+ 				    MLXSW_REG_MCIA_TH_PAGE_OFF + off,
+ 				    MLXSW_REG_MCIA_TH_ITEM_SIZE,
+ 				    MLXSW_REG_MCIA_I2C_ADDR_LOW);
+-	else
++	} else {
+ 		mlxsw_reg_mcia_pack(mcia_pl, module, 0,
+ 				    MLXSW_REG_MCIA_PAGE0_LO,
+ 				    off, MLXSW_REG_MCIA_TH_ITEM_SIZE,
+ 				    MLXSW_REG_MCIA_I2C_ADDR_HIGH);
++	}
+ 
+ 	err = mlxsw_reg_query(core, MLXSW_REG(mcia), mcia_pl);
+ 	if (err)
+@@ -165,7 +184,8 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 	int err;
+ 
+ 	err = mlxsw_env_query_module_eeprom(mlxsw_core, module, 0, offset,
+-					    unused, module_info, &read_size);
++					    unused, unused, module_info,
++					    &read_size);
+ 	if (err)
+ 		return err;
+ 
+@@ -174,7 +194,6 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 
+ 	module_rev_id = module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID];
+ 	module_id = module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID];
+-
+ 	switch (module_id) {
+ 	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP:
+ 		modinfo->type       = ETH_MODULE_SFF_8436;
+@@ -192,11 +211,13 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 			modinfo->eeprom_len = ETH_MODULE_SFF_8436_MAX_LEN;
+ 		}
+ 		break;
+-	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP:
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP_DD:
+ 		/* Verify if transceiver provides diagnostic monitoring page */
+ 		err = mlxsw_env_query_module_eeprom(mlxsw_core, module,
+ 						    SFP_DIAGMON, 1, unused,
+-						    &diag_mon, &read_size);
++						    unused, &diag_mon,
++						    &read_size);
+ 		if (err)
+ 			return err;
+ 
+@@ -209,6 +230,18 @@ int mlxsw_env_get_module_info(struct mlxsw_core *mlxsw_core, int module,
+ 		else
+ 			modinfo->eeprom_len = ETH_MODULE_SFF_8472_LEN / 2;
+ 		break;
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD: /* fall-through */
++	case MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS_CMIS:
++		modinfo->type       = ETH_MODULE_SFF_8636;
++		/* Verify if module's EEPROM is a flat memory. In case of flat
++		 * memory only page 00h 0-255 bytes can be read.
++		 */
++		if (module_info[MLXSW_REG_MCIA_EEPROM_MODULE_INFO_TYPE_ID] &
++		    MLXSW_REG_MCIA_EEPROM_FLAT_MEMORY)
++			modinfo->eeprom_len = ETH_MODULE_SFF_8636_LEN;
++		else
++			modinfo->eeprom_len = ETH_MODULE_SFF_8636_MAX_LEN;
++		break;
+ 	default:
+ 		return -EINVAL;
+ 	}
+@@ -223,7 +256,7 @@ int mlxsw_env_get_module_eeprom(struct net_device *netdev,
+ {
+ 	int offset = ee->offset;
+ 	unsigned int read_size;
+-	bool qsfp;
++	bool qsfp, cmis;
+ 	int i = 0;
+ 	int err;
+ 
+@@ -233,13 +266,13 @@ int mlxsw_env_get_module_eeprom(struct net_device *netdev,
+ 	memset(data, 0, ee->len);
+ 
+ 	/* Validate module identifier type. */
+-	err = mlxsw_env_validate_cable_ident(mlxsw_core, module, &qsfp);
++	err = mlxsw_env_validate_cable_ident(mlxsw_core, module, &qsfp, &cmis);
+ 	if (err)
+ 		return err;
+ 
+ 	while (i < ee->len) {
+ 		err = mlxsw_env_query_module_eeprom(mlxsw_core, module, offset,
+-						    ee->len - i, qsfp,
++						    ee->len - i, qsfp, cmis,
+ 						    data + i, &read_size);
+ 		if (err) {
+ 			netdev_err(netdev, "Eeprom query failed\n");
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/reg.h b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+index 43e73701a125..223052256923 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/reg.h
++++ b/drivers/net/ethernet/mellanox/mlxsw/reg.h
+@@ -7830,6 +7830,7 @@ MLXSW_ITEM32(reg, mcia, size, 0x08, 0, 16);
+ #define MLXSW_REG_MCIA_PAGE0_LO_OFF		0xa0
+ #define MLXSW_REG_MCIA_TH_ITEM_SIZE		2
+ #define MLXSW_REG_MCIA_TH_PAGE_NUM		3
++#define MLXSW_REG_MCIA_TH_PAGE_CMIS_NUM		2
+ #define MLXSW_REG_MCIA_PAGE0_LO			0
+ #define MLXSW_REG_MCIA_TH_PAGE_OFF		0x80
+ 
+@@ -7840,16 +7841,19 @@ enum mlxsw_reg_mcia_eeprom_module_info_rev_id {
+ };
+ 
+ enum mlxsw_reg_mcia_eeprom_module_info_id {
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP	= 0x03,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP	= 0x0C,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS	= 0x0D,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28	= 0x11,
+-	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD	= 0x18,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP		= 0x03,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP		= 0x0C,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS		= 0x0D,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP28		= 0x11,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_DD		= 0x18,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_SFP_DD		= 0x1A,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID_QSFP_PLUS_CMIS	= 0x1E,
+ };
+ 
+ enum mlxsw_reg_mcia_eeprom_module_info {
+ 	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_ID,
+ 	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_REV_ID,
++	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_TYPE_ID,
+ 	MLXSW_REG_MCIA_EEPROM_MODULE_INFO_SIZE,
+ };
+ 
+-- 
+2.11.0
+

@@ -1,0 +1,64 @@
+From 3ce235145dfc28ac3e937b55581cdeaaf47a9929 Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Wed, 3 Jun 2020 11:09:47 +0300
+Subject: [backport bugfix] platform/x86: mlx-platform: Remove PSU EEPROM
+ configuration
+
+Remove PSU EEPROM configuration for systems class equipped with
+Mellanox chip Spectrume-2. Till now all the systems from this class
+used few types of power units, all equipped with EEPROM device with
+address space two bytes. Thus, all these devices have been handled by
+EEPROM driver "24c32".
+There is a new requirement is to support power unit replacement by "off
+the shelf" device, matching electrical required parameters. Such device
+could be equpped with different EEPROM type, which could be one byte
+address space adressing or even could be not equipped with EEPROM.
+In such case "24c32" will not work.
+
+Fixes: 1bd42d94ccab ("platform/x86: mlx-platform: Add support for new 200G IB and Ethernet systems")
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/platform/x86/mlx-platform.c | 15 ++-------------
+ 1 file changed, 2 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/platform/x86/mlx-platform.c b/drivers/platform/x86/mlx-platform.c
+index 208f4a476229..d6c87fb88507 100644
+--- a/drivers/platform/x86/mlx-platform.c
++++ b/drivers/platform/x86/mlx-platform.c
+@@ -329,15 +329,6 @@ static struct i2c_board_info mlxplat_mlxcpld_psu[] = {
+ 	},
+ };
+ 
+-static struct i2c_board_info mlxplat_mlxcpld_ng_psu[] = {
+-	{
+-		I2C_BOARD_INFO("24c32", 0x51),
+-	},
+-	{
+-		I2C_BOARD_INFO("24c32", 0x50),
+-	},
+-};
+-
+ static struct i2c_board_info mlxplat_mlxcpld_pwr[] = {
+ 	{
+ 		I2C_BOARD_INFO("dps460", 0x59),
+@@ -762,15 +753,13 @@ static struct mlxreg_core_data mlxplat_mlxcpld_default_ng_psu_items_data[] = {
+ 		.label = "psu1",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_PSU_OFFSET,
+ 		.mask = BIT(0),
+-		.hpdev.brdinfo = &mlxplat_mlxcpld_ng_psu[0],
+-		.hpdev.nr = MLXPLAT_CPLD_PSU_MSNXXXX_NR,
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ 	{
+ 		.label = "psu2",
+ 		.reg = MLXPLAT_CPLD_LPC_REG_PSU_OFFSET,
+ 		.mask = BIT(1),
+-		.hpdev.brdinfo = &mlxplat_mlxcpld_ng_psu[1],
+-		.hpdev.nr = MLXPLAT_CPLD_PSU_MSNXXXX_NR,
++		.hpdev.nr = MLXPLAT_CPLD_NR_NONE,
+ 	},
+ };
+ 
+-- 
+2.11.0
+
