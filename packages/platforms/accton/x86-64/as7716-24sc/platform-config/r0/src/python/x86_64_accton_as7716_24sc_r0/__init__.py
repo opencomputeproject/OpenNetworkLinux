@@ -12,6 +12,7 @@ class OnlPlatform_x86_64_accton_as7716_24sc_r0(OnlPlatformAccton,
 
         self.insmod('accton_i2c_cpld')
         self.insmod('dps850')
+        self.insmod('cfp2piu')
         self.insmod_platform()
 
         ########### initialize I2C bus 0 ###########
@@ -88,6 +89,16 @@ class OnlPlatform_x86_64_accton_as7716_24sc_r0(OnlPlatformAccton,
                 ('as7716_24sc_port29', 0x50, 54),
                 ('as7716_24sc_port32', 0x50, 55),
                 ('as7716_24sc_port31', 0x50, 56),
+
+                # initialize PIU 1-8
+                ('piu1', 0x6a, 41),
+                ('piu2', 0x6a, 43),
+                ('piu3', 0x6a, 45),
+                ('piu4', 0x6a, 47),
+                ('piu5', 0x6a, 49),
+                ('piu6', 0x6a, 51),
+                ('piu7', 0x6a, 53),
+                ('piu8', 0x6a, 55),
                 ])
 
         # Linux 5.4
