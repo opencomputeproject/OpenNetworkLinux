@@ -21,9 +21,9 @@ g_builders = {
    'default' : 8,
    'builders' : {
       7  : ('wheezy', 'opennetworklinux/builder7:1.2'),
-      8  : ('jessie',  'opennetworklinux/builder8:1.10'),
-      9  : ('stretch', 'opennetworklinux/builder9:1.5' ),
-      10 : ('buster',  'opennetworklinux/builder10:1.0'),
+      8  : ('jessie',  'opennetworklinux/builder8:1.11'),
+      9  : ('stretch', 'opennetworklinux/builder9:1.6' ),
+      10 : ('buster',  'opennetworklinux/builder10:1.2'),
       },
 }
 

@@ -22,14 +22,20 @@
         }                                       \
     } while(0)
 
+typedef enum hwmon_fan_state_e {
+    HWMON_FAN_F2B = 0,
+    HWMON_FAN_B2F = 1,  
+    HWMON_FAN_UNPLUGGED = 2,   
+    HWMON_FAN_UNPLUGGED2 = 3
+} hwmon_fan_state_t;
 
 #define SLOW_PWM 100
 #define NORMAL_PWM 175
 #define MAX_PWM 255
 #define STEP_SIZE 100
 #define FAN_ID_TO_PSU_ID(id) (id-ONLP_FAN_PSU_1+1)
+#define BLADE_TO_FAN_ID(blade_id) (blade_id%2==0)? blade_id/2:(blade_id+1)/2
 
-#define TLV_AREA_OFFSETS_IDX_START      1
 #define TLV_PRODUCT_INFO_OFFSET_IDX     5
 #define TLV_PRODUCT_INFO_AREA_START     3
 #define TLV_ATTR_TYPE_SERIAL            5
@@ -45,33 +51,27 @@ static int _fani_status_present_check(uint32_t* status, int fan_id);
 static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id);
 extern char* psu_i2c_addr[ONLP_PSU_MAX];
 
-#define MAKE_FAN_INFO_NODE_ON_FAN_BOARD(id)			\
-    {								\
-        {							\
-            ONLP_FAN_ID_CREATE(ONLP_FAN_##id), "Fan "#id, 0,	\
-            {							\
-                ONLP_LED_ID_CREATE(ONLP_LED_FAN##id),		\
-            }							\
-        },							\
-        0, FAN_CAPS							\
-    }
-
 #define MAKE_FAN_INFO_NODE_ON_PSU(psu_id)		\
     {							\
         { ONLP_FAN_ID_CREATE(ONLP_FAN_PSU_##psu_id), "PSU-"#psu_id" Fan", ONLP_PSU_ID_CREATE(ONLP_PSU_##psu_id)}, \
         0, FAN_CAPS						\
     }
 
-
 /* Static values */
 static onlp_fan_info_t __onlp_fan_info[] = {
     {},
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(1),
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(2),
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(3),
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(4),
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(5),
-    MAKE_FAN_INFO_NODE_ON_FAN_BOARD(6),
+    { { ONLP_FAN_1,   "Fan1-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_2,   "Fan1-2",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_3,   "Fan2-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_4,   "Fan2-2",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_5,   "Fan3-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_6,   "Fan3-2",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_7,   "Fan4-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_8,   "Fan4-2",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_9,   "Fan5-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_10,  "Fan5-2",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_11,  "Fan6-1",  0, }, 0, FAN_CAPS },
+    { { ONLP_FAN_12,  "Fan6-2",  0, }, 0, FAN_CAPS },
     MAKE_FAN_INFO_NODE_ON_PSU(1),
     MAKE_FAN_INFO_NODE_ON_PSU(2),
 };
@@ -94,8 +94,9 @@ static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
     char s;
     int rdata_size=0,target_offset=0,attr_idx=0,attr_length=0;
     int i=0;
+    int offset=BLADE_TO_FAN_ID(fan_id);
 
-    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%d/eeprom",INV_DEVICE_BASE,FAN_I2C_CHANNEL,FAN_I2C_ADDR_BASE+fan_id-1);
+    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"%s%d-00%d/eeprom",INV_DEVICE_BASE,FAN_I2C_CHANNEL,(FAN_I2C_ADDR_BASE+offset-1) );
     
     FILE* fp  = fopen(file_path, "rb");
     if(fp){
@@ -110,9 +111,7 @@ static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
     }
 
     if(ret==ONLP_STATUS_OK) {
-        for(i=TLV_AREA_OFFSETS_IDX_START; i<TLV_PRODUCT_INFO_OFFSET_IDX; i++) {
-            target_offset+=rdata[i];
-        }
+        target_offset=rdata[TLV_PRODUCT_INFO_OFFSET_IDX-1];
         target_offset*=8; /*spec defined: offset are in multiples of 8 bytes*/
         attr_idx=target_offset+TLV_PRODUCT_INFO_AREA_START;
 
@@ -147,7 +146,7 @@ int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 {
     int rv = ONLP_STATUS_OK;
-    int lrpm=0, rrpm=0, pwm=0, psu_id;
+    int pwm=0, psu_id;
     char path[ONLP_CONFIG_INFO_STR_MAX];
     int fan_id;
     VALIDATE(id);
@@ -156,7 +155,6 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
     if(fan_id>=ONLP_FAN_MAX) {
         rv=ONLP_STATUS_E_INVALID;
     }
-
     if(rv==ONLP_STATUS_OK) {
         *info=__onlp_fan_info[fan_id];
         rv=onlp_fani_status_get(id, &info->status);
@@ -170,33 +168,25 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
             case ONLP_FAN_4:
             case ONLP_FAN_5:
             case ONLP_FAN_6:
+            case ONLP_FAN_7:
+            case ONLP_FAN_8:
+            case ONLP_FAN_9:
+            case ONLP_FAN_10:
+            case ONLP_FAN_11:
+            case ONLP_FAN_12:
                 if(info->status & ONLP_FAN_STATUS_F2B) {
                     info->caps = ADD_STATE(info->caps,ONLP_FAN_CAPS_F2B);
                 } else if(info->status & ONLP_FAN_STATUS_B2F) {
                     info->caps = ADD_STATE(info->caps,ONLP_FAN_CAPS_B2F) ;
                 }
 
-                rv = onlp_file_read_int(&lrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2-1);
+                rv = onlp_file_read_int(&info->rpm, INV_FAN_PREFIX"fan%d_input", fan_id);
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
                 }
-                rv = onlp_file_read_int(&rrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2);
+                rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", BLADE_TO_FAN_ID(fan_id));
                 if(rv != ONLP_STATUS_OK ) {
                     return rv;
-                }
-                rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", fan_id);
-                if(rv != ONLP_STATUS_OK ) {
-                    return rv;
-                }
-
-                if(lrpm <=0 && rrpm <=0) {
-                    info->rpm = 0;
-                } else if(lrpm <= 0) {
-                    info->rpm = rrpm;
-                } else if(rrpm <= 0) {
-                    info->rpm = lrpm;
-                } else {
-                    info->rpm = (lrpm+rrpm)/2;
                 }
                 
                 rv=_inv_get_fan_fru(info->serial,TLV_ATTR_TYPE_SERIAL,fan_id);
@@ -259,7 +249,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 static int _fani_status_failed_check(uint32_t* status, int fan_id)
 {
     int rv;
-    int lrpm, rrpm, rpm, pwm, psu_id;
+    int rpm, pwm, psu_id;
     char path[ONLP_CONFIG_INFO_STR_MAX];
 
     switch(fan_id) {
@@ -269,20 +259,23 @@ static int _fani_status_failed_check(uint32_t* status, int fan_id)
     case ONLP_FAN_4:
     case ONLP_FAN_5:
     case ONLP_FAN_6:
-        rv = onlp_file_read_int(&lrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2-1);
+    case ONLP_FAN_7:
+    case ONLP_FAN_8:
+    case ONLP_FAN_9:
+    case ONLP_FAN_10:
+    case ONLP_FAN_11:
+    case ONLP_FAN_12:
+        rv = onlp_file_read_int(&rpm, INV_FAN_PREFIX"fan%d_input", fan_id);
+        
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
-        rv = onlp_file_read_int(&rrpm, INV_FAN_PREFIX"fan%d_input", fan_id*2);
-        if(rv != ONLP_STATUS_OK ) {
-            return rv;
-        }
-        rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", fan_id);
+        rv = onlp_file_read_int(&pwm,INV_FAN_PREFIX"pwm%d", BLADE_TO_FAN_ID(fan_id));
         if(rv != ONLP_STATUS_OK ) {
             return rv;
         }
 
-        if(lrpm<=0 || rrpm<=0 || pwm<=0 || pwm > MAX_PWM) {
+        if(rpm<=0 || pwm<=0 || pwm > MAX_PWM) {
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_FAILED);
             *status=REMOVE_STATE(*status,ONLP_FAN_STATUS_B2F);
             *status=REMOVE_STATE(*status,ONLP_FAN_STATUS_F2B);
@@ -325,23 +318,23 @@ static int _fani_status_present_check(uint32_t* status, int fan_id)
     int rv;
     int len;
     char buf[ONLP_CONFIG_INFO_STR_MAX];
-    if(fan_id >= ONLP_FAN_1 && fan_id <= ONLP_FAN_6) {
-        rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, INV_FAN_PREFIX"fanmodule%d_type",fan_id);
+    if(fan_id >= ONLP_FAN_1 && fan_id <= ONLP_FAN_12) {
+            rv = onlp_file_read((uint8_t*)buf,ONLP_CONFIG_INFO_STR_MAX, &len, INV_FAN_PREFIX"fanmodule%d_type",BLADE_TO_FAN_ID(fan_id));
     } else {
         rv = ONLP_STATUS_E_INVALID;
     }
     if( rv == ONLP_STATUS_OK ) {
-        switch(buf[0]) {
-        case '0':
+        switch( (int)(buf[0]-'0')  ){
+        case HWMON_FAN_F2B:
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_PRESENT);
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_F2B);
             break;
-        case '1':
+        case HWMON_FAN_B2F:
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_PRESENT);
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_B2F);
             break;
-        case '3':
-        case '4':
+        case HWMON_FAN_UNPLUGGED:
+        case HWMON_FAN_UNPLUGGED2:
             *status=ADD_STATE(*status,ONLP_FAN_STATUS_FAILED);
             break;
         default:
@@ -372,15 +365,20 @@ int onlp_fani_status_get(onlp_oid_t id, uint32_t* rv)
     if(fan_id >= ONLP_FAN_MAX) {
         result = ONLP_STATUS_E_INVALID;
     } else {
-
         info = &__onlp_fan_info[fan_id];
         switch(fan_id) {
-        case ONLP_FAN_1:
-        case ONLP_FAN_2:
-        case ONLP_FAN_3:
-        case ONLP_FAN_4:
-        case ONLP_FAN_5:
-        case ONLP_FAN_6:
+            case ONLP_FAN_1:
+            case ONLP_FAN_2:
+            case ONLP_FAN_3:
+            case ONLP_FAN_4:
+            case ONLP_FAN_5:
+            case ONLP_FAN_6:
+            case ONLP_FAN_7:
+            case ONLP_FAN_8:
+            case ONLP_FAN_9:
+            case ONLP_FAN_10:
+            case ONLP_FAN_11:
+            case ONLP_FAN_12:
             result = _fani_status_present_check(&info->status, fan_id);
             if (result == ONLP_STATUS_OK ) {
                 if (info->status & ONLP_FAN_STATUS_PRESENT) {

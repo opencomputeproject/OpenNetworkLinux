@@ -63,10 +63,13 @@ int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
+    PSU_TYPE_AC_B2F,
+    PSU_TYPE_DC_48V_F2B,
+    PSU_TYPE_DC_48V_B2F
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+int psu_serial_number_get(int id, char *serial, int serial_len);
 
 enum onlp_thermal_id
 {
@@ -82,6 +85,9 @@ enum onlp_thermal_id
 
 #define DEBUG_MODE 0
 
+/*Old board's eeprom i2c-addr is 0x56, new board eeprom i2c-addr is 0x57*/
+#define IDPROM_PATH_1 "/sys/class/i2c-adapter/i2c-0/0-0056/eeprom"
+#define IDPROM_PATH_2 "/sys/class/i2c-adapter/i2c-0/0-0057/eeprom"
 #if (DEBUG_MODE == 1)
 	#define DEBUG_PRINT(fmt, args...)                                        \
 		printf("%s:%s[%d]: " fmt "\r\n", __FILE__, __FUNCTION__, __LINE__, ##args)

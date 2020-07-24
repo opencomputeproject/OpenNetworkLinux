@@ -12,10 +12,12 @@
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
-#include "sff.h"
+#include "inv_swps.h"
 #include "sfp.h"
 #include "inv_def.h"
 
+
+extern u32 logLevel;
 static sff_sfp_field_map_t sfp_field_map[] = {
     /* Base page values, including alarms and sensors */
     {IDENTIFIER, {0x50, 0, 1}},
@@ -55,6 +57,53 @@ const u8 Sfp_Eth_Comp_Table[] = {
 #define SFP_DDM_TX_POWER_OFFSET (102)
 #define SFP_DDM_RX_POWER_OFFSET (104)
 
+static int sfp_tx_disable_set(struct sff_obj_t *sff_obj, u8 value);
+static int sfp_tx_disable_get(struct sff_obj_t *sff_obj, u8 *value);
+static int sfp_rx_los_get(struct sff_obj_t *sff_obj, u8 *value);
+static int sfp_tx_fault_get(struct sff_obj_t *sff_obj, u8 *value);
+int sfp_vendor_info_get(struct sff_obj_t *sff_obj, int type, u8 *buf, int buf_size);
+int sfp_temperature_get(struct sff_obj_t *sff_obj, u8 *buf, int buf_size);
+int sfp_voltage_get(struct sff_obj_t *sff_obj, u8 *buf, int buf_size);
+int sfp_lane_status_get(struct sff_obj_t *sff_obj, int type, u8 *value);
+int sfp_lane_monitor_get(struct sff_obj_t *sff_obj, int type, u8 *buf, int buf_size);
+int sfp_lane_control_set(struct sff_obj_t *sff_obj, int type, u32 value);
+int sfp_lane_control_get(struct sff_obj_t *sff_obj, int type, u32 *value);
+int sfp_id_get(struct sff_obj_t *sff_obj, u8 *id);
+bool sfp_is_id_matched(struct sff_obj_t *sff_obj);
+
+struct func_tbl_t sfp_func_tbl = {
+    .eeprom_read = sff_eeprom_read,
+    .eeprom_write = sff_eeprom_write,
+    .prs_get = sff_prs_get,
+    .lpmode_set = dummy_lpmode_set,
+    .lpmode_get = dummy_lpmode_get,
+    .reset_set = dummy_reset_set,
+    .reset_get = dummy_reset_get,
+    .power_set = sff_power_set,
+    .power_get = sff_power_get,
+    .mode_sel_set = dummy_mode_sel_set,
+    .mode_sel_get = dummy_mode_sel_get,
+    .intL_get = dummy_intL_get,
+    .tx_disable_set = sfp_tx_disable_set,
+    .tx_disable_get = sfp_tx_disable_get,
+    .temperature_get = sfp_temperature_get,
+    .voltage_get = sfp_voltage_get,
+    .lane_control_set = sfp_lane_control_set,
+    .lane_control_get = sfp_lane_control_get,
+    .lane_monitor_get = sfp_lane_monitor_get,
+    .vendor_info_get = sfp_vendor_info_get,
+    .lane_status_get =  sfp_lane_status_get,
+    .module_st_get = dummy_module_st_get,
+    .id_get = sfp_id_get,
+    .is_id_matched = sfp_is_id_matched,
+    .eeprom_dump = dummy_eeprom_dump,
+    .page_sel = dummy_page_sel,
+    .page_get = dummy_page_get,
+};
+struct func_tbl_t *sfp_func_load(void)
+{
+    return &sfp_func_tbl;
+}    
 /* return sff_field_info_t for a given field in qsfp_field_map[] */
 static sff_sfp_field_info_t *get_sff_sfp_field_addr(const Sff_field field)
 {
@@ -88,6 +137,88 @@ static int get_sfp_field_addr(Sff_field field,
     *length = info_data->length;
     return 0;
 }
+
+static int sfp_tx_disable_set(struct sff_obj_t *sff_obj, u8 value)
+{
+    return sff_obj->mgr->io_drv->tx_disable_set(sff_obj->lc_id, sff_obj->port, value);
+}
+
+static int sfp_tx_disable_get(struct sff_obj_t *sff_obj, u8 *value)
+{
+
+    if (!p_valid(value)) {
+        return -EINVAL;
+    }
+    return sff_obj->mgr->io_drv->tx_disable_get(sff_obj->lc_id, sff_obj->port, value);
+}
+static int sfp_rx_los_get(struct sff_obj_t *sff_obj, u8 *value)
+{
+    int ret = 0;
+    unsigned long bitmap = 0;
+
+    if (!p_valid(value)) {
+        return -EINVAL;
+    }
+
+    if ((ret = sff_obj->mgr->io_drv->rx_los_all_get(sff_obj->lc_id, &bitmap)) < 0) {
+        return ret;
+    }
+
+    if (test_bit(sff_obj->port, &bitmap)) {
+        *value = 1;
+    } else {
+        *value = 0;
+    }
+    return 0;
+}
+static int sfp_tx_fault_get(struct sff_obj_t *sff_obj, u8 *value)
+{
+    int ret = 0;
+    unsigned long bitmap = 0;
+
+    if (!p_valid(value)) {
+        return -EINVAL;
+    }
+
+    if ((ret = sff_obj->mgr->io_drv->tx_fault_all_get(sff_obj->lc_id, &bitmap)) < 0) {
+        return ret;
+    }
+
+    if (test_bit(sff_obj->port, &bitmap)) {
+        *value = 1;
+    } else {
+        *value = 0;
+    }
+    return 0;
+}
+
+static int sfp_eeprom_read(struct sff_obj_t *sff_obj,
+                           u8 slave_addr,
+                           u8 offset,
+                           u8 *buf,
+                           int len)
+{
+    if (slave_addr != SFF_EEPROM_I2C_ADDR &&
+            slave_addr != SFF_DDM_I2C_ADDR) {
+        MODULE_LOG_ERR("addr out of range:0x%x\n", slave_addr);
+        return -EINVAL;
+    }
+
+    return sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, buf, len);
+}
+static int sfp_eeprom_write(struct sff_obj_t *sff_obj,
+                            u8 slave_addr,
+                            u8 offset,
+                            u8 *buf,
+                            int len)
+{
+    if (slave_addr != SFF_EEPROM_I2C_ADDR &&
+            slave_addr != SFF_DDM_I2C_ADDR) {
+        MODULE_LOG_ERR("addr out of range:0x%x\n", slave_addr);
+        return -EINVAL;
+    }
+    return sff_obj->func_tbl->eeprom_write(sff_obj, slave_addr, offset, buf, len);
+}
 static int _sfp_transvr_codes_read(struct sff_obj_t *sff_obj, u8 *transvr_codes, int size)
 {
     u8 slave_addr = 0xff;
@@ -95,17 +226,17 @@ static int _sfp_transvr_codes_read(struct sff_obj_t *sff_obj, u8 *transvr_codes,
     int data_len = 0;
 
     if(IS_ERR_OR_NULL(transvr_codes)) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
     get_sfp_field_addr(TRANSCEIVER_CODE, &slave_addr, &offset, &data_len);
     if(data_len != size) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
 
-    if(sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, transvr_codes, data_len) < 0) {
-        SFF_MGR_ERR("sff_obj->func_tbl->eeprom_read fail");
+    if(sfp_eeprom_read(sff_obj, slave_addr, offset, transvr_codes, data_len) < 0) {
+        MODULE_LOG_ERR("sfp_eeprom_read fail");
         return -1;
     }
 
@@ -119,17 +250,17 @@ static int _sfp_eth_extended_compliance_get(struct sff_obj_t *sff_obj, u8 *eth_e
     int data_len = 0;
     u8 data = 0;
     if(IS_ERR_OR_NULL(eth_ext_comp)) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
     get_sfp_field_addr(ETHERNET_EXTENDED_COMPLIANCE, &slave_addr, &offset, &data_len);
     if(data_len != sizeof(data)) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
 
-    if(sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, &data, data_len) < 0) {
-        SFF_MGR_ERR("sff_obj->func_tbl->eeprom_read fail");
+    if(sfp_eeprom_read(sff_obj, slave_addr, offset, &data, data_len) < 0) {
+        MODULE_LOG_ERR("sfp_eeprom_read fail");
         return -1;
     }
     *eth_ext_comp = data;
@@ -143,17 +274,17 @@ static int _sfp_connector_type_read(struct sff_obj_t *sff_obj, u8 *conn_type)
     int data_len = 0;
     u8 data = 0;
     if(NULL == conn_type) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
     get_sfp_field_addr(CONNECTOR_TYPE, &slave_addr, &offset, &data_len);
     if(data_len != sizeof(data)) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
 
-    if(sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, &data, data_len) < 0) {
-        SFF_MGR_ERR("sff_obj->func_tbl->eeprom_read fail");
+    if(sfp_eeprom_read(sff_obj, slave_addr, offset, &data, data_len) < 0) {
+        MODULE_LOG_ERR("sfp_eeprom_read fail");
         return -1;
     }
     *conn_type = data;
@@ -168,14 +299,14 @@ static bool sfp_eth_comp_is_supported(struct sff_obj_t *sff_obj, u8 eth_comp)
     u8 comp_codes = 0;
     for (idx = 0; idx < size; idx++) {
         if(eth_comp & Sfp_Eth_Comp_Table[idx]) {
-            SFF_MGR_DEBUG("port:%d known eth_cmp:0x%x\n", sff_obj->port, eth_comp & Sfp_Eth_Comp_Table[idx]);
+            MODULE_LOG_DBG("%s known eth_cmp:0x%x\n", sff_obj->name, eth_comp & Sfp_Eth_Comp_Table[idx]);
             comp_codes = eth_comp & Sfp_Eth_Comp_Table[idx];
             break;
         }
     }
     if(idx >= size) {
 
-        SFF_MGR_DEBUG("port:%d unknown eth_cmp:0x%x\n", sff_obj->port, (eth_comp & 0xf0) >> 4);
+        MODULE_LOG_DBG("%s unknown eth_cmp:0x%x\n", sff_obj->name, (eth_comp & 0xf0) >> 4);
     }
 
     switch (comp_codes) {
@@ -195,8 +326,8 @@ static bool sfp_eth_comp_is_supported(struct sff_obj_t *sff_obj, u8 eth_comp)
     }
     if (TRANSVR_CLASS_UNKNOWN != transvr_type_get(sff_obj)) {
         is_supported = true;
-        SFF_MGR_DEBUG("port:%d known eth_ext_cmp:0x%x transvr:%d\n",
-                      sff_obj->port, eth_comp, transvr_type_get(sff_obj));
+        MODULE_LOG_DBG("%s known eth_ext_cmp:0x%x transvr:%d\n",
+                      sff_obj->name, eth_comp, transvr_type_get(sff_obj));
     }
     return is_supported;
 }
@@ -228,18 +359,18 @@ static bool sfp_eth_ext_is_supported(struct sff_obj_t *sff_obj, u8 eth_ext_comp)
     case CR_25GBASE_CA_N:
     case T_10BASE_SFI: { /* 10BASE-T with SFI electrical interface */
         /*<to do> how about these types!?*/
-        SFF_MGR_DEBUG("port:%d known eth_ext_cmp:0x%x\n", sff_obj->port, eth_ext_comp);
+        MODULE_LOG_DBG("%s known eth_ext_cmp:0x%x\n", sff_obj->name, eth_ext_comp);
     }
     break;
     default:
-        SFF_MGR_DEBUG("port:%d unknown eth_ext_cmp:%d\n", sff_obj->port, eth_ext_comp);
+        MODULE_LOG_DBG("%s unknown eth_ext_cmp:%d\n", sff_obj->name, eth_ext_comp);
 
         break;
     }
     if (TRANSVR_CLASS_UNKNOWN != transvr_type_get(sff_obj)) {
         is_supported = true;
-        SFF_MGR_DEBUG("port:%d known eth_ext_cmp:0x%x transvr_type:%d\n",
-                      sff_obj->port, eth_ext_comp, transvr_type_get(sff_obj));
+        MODULE_LOG_DBG("%s known eth_ext_cmp:0x%x transvr_type:%d\n",
+                      sff_obj->name, eth_ext_comp, transvr_type_get(sff_obj));
     }
     return is_supported;
 }
@@ -249,7 +380,25 @@ int sfp_id_get(struct sff_obj_t *sff_obj, u8 *id)
     u8 offset = 0;
     int len = 0;
     get_sfp_field_addr(IDENTIFIER, &slave_addr, &offset, &len);
-    return sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, id, len);
+    return sfp_eeprom_read(sff_obj, slave_addr , offset, id, len);
+}
+bool sfp_is_id_matched(struct sff_obj_t *sff_obj)
+{
+    u8 id = 0;
+    bool match = false;
+    if (sfp_id_get(sff_obj, &id) < 0) {
+        return match;
+    }
+    switch (id) {
+    case 0x3:
+        match = true;
+        break;
+    default:
+        MODULE_LOG_ERR("%s not match id:%d\n", sff_obj->name, id);
+        break;
+    }
+
+    return match;
 }
 static int sfp_type_identify(struct sff_obj_t *sff_obj, bool *is_found)
 {
@@ -263,7 +412,7 @@ static int sfp_type_identify(struct sff_obj_t *sff_obj, bool *is_found)
         goto exit_err;
     }
     if(0x03 != id) { //sfp/sfp+/sfp28
-        SFF_MGR_ERR("unknown id:0x%x\n", id);
+        MODULE_LOG_ERR("unknown id:0x%x\n", id);
         goto exit_non_support_err; /*<TBD> error handling in the future*/
     }
 
@@ -277,14 +426,14 @@ static int sfp_type_identify(struct sff_obj_t *sff_obj, bool *is_found)
             goto exit_err;
         }
         for (idx = 0; idx < 8; idx++) {
-            SFF_MGR_DEBUG("port:%d transvr[%d]:0x%x\n", sff_obj->port, idx, transvr_codes[idx]);
+            MODULE_LOG_DBG("%s transvr[%d]:0x%x\n", sff_obj->name, idx, transvr_codes[idx]);
         }
 
         if((ret = _sfp_connector_type_read(sff_obj, &conn_type)) < 0) {
             goto exit_err;
         }
 
-        SFF_MGR_DEBUG("port:%d conn_type:0x%x\n", sff_obj->port,conn_type);
+        MODULE_LOG_DBG("%s conn_type:0x%x\n", sff_obj->name,conn_type);
 
         /*check connector type first*/
         /*check transvr codes start from offset:3 */
@@ -346,7 +495,7 @@ int sfp_lane_control_set(struct sff_obj_t *sff_obj, int type, u32 value)
     if (fail) {
         return -EINVAL;
     }
-    if((ret = sff_obj->func_tbl->eeprom_write(sff_obj, addr, offset, &data, sizeof(data))) < 0) {
+    if((ret = sfp_eeprom_write(sff_obj, addr, offset, &data, sizeof(data))) < 0) {
         return ret;
     }
 
@@ -380,7 +529,7 @@ int sfp_lane_control_get(struct sff_obj_t *sff_obj, int type, u32 *value)
     if (fail) {
         return -EINVAL;
     }
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, addr, offset, &data, sizeof(data))) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, addr, offset, &data, sizeof(data))) < 0) {
         return ret;
     }
     *value = data;
@@ -390,24 +539,19 @@ int sfp_lane_status_get(struct sff_obj_t *sff_obj, int type, u8 *value)
 {
     u8 reg = 0;
     int ret = 0;
-    int (*func)(struct sff_obj_t *, u8 *value) = NULL;
 
     switch(type) {
     case LN_STATUS_RX_LOS_TYPE:
-        func = sff_obj->func_tbl->rx_los_get;
+        ret = sfp_rx_los_get(sff_obj, &reg);
         break;
     case LN_STATUS_TX_FAULT_TYPE:
-        func = sff_obj->func_tbl->tx_fault_get;
+        ret = sfp_tx_fault_get(sff_obj, &reg) ;
         break;
     case LN_STATUS_TX_LOS_TYPE:
     default:
         break;
     }
-
-    if (NULL == func) {
-        return -ENOSYS;
-    }
-    if ((ret = func(sff_obj, &reg)) < 0) {
+    if (ret < 0) {
         return ret;
     }
     *value = reg;
@@ -428,7 +572,7 @@ int sfp_temperature_get(struct sff_obj_t *sff_obj, u8 *buf, int buf_size)
     s16 decimal = 0;
     char *unit = "c";
 
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, addr, offset, reg, WORD_SIZE)) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, addr, offset, reg, WORD_SIZE)) < 0) {
         return ret;
     }
 
@@ -458,7 +602,7 @@ int sfp_voltage_get(struct sff_obj_t *sff_obj, u8 *buf, int buf_size)
     u16 divider = 10000;
     char *unit = "v";
 
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, addr, offset, reg, WORD_SIZE)) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, addr, offset, reg, WORD_SIZE)) < 0) {
         return ret;
     }
 
@@ -503,7 +647,7 @@ int sfp_lane_monitor_get(struct sff_obj_t *sff_obj, int type, u8 *buf, int buf_s
     if(fail) {
         return -EINVAL;
     }
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, addr, offset, reg, sizeof(monitor_data))) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, addr, offset, reg, sizeof(monitor_data))) < 0) {
         return ret;
     }
     para = monitor_para_find(type);
@@ -558,7 +702,7 @@ int sfp_vendor_info_get(struct sff_obj_t *sff_obj, int type, u8 *buf, int buf_si
     if(fail) {
         return -EINVAL;
     }
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, addr, offset, reg, len)) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, addr, offset, reg, len)) < 0) {
         return ret;
     }
     /*add terminal of string*/
@@ -578,44 +722,44 @@ static int sfp_rate_select(struct sff_obj_t *sff_obj, u8 rate_bitmap)
     int port = sff_obj->port;
     if(rate_bitmap & SOFT_RX_RATE_RS0) {
         get_sfp_field_addr(STATUS_CONTROL, &slave_addr, &offset, &len);
-        if( sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, &status, len) < 0) {
+        if( sfp_eeprom_read(sff_obj, slave_addr , offset, &status, len) < 0) {
             goto exit_err;
 
         }
-        SFF_MGR_DEBUG("port:%d status:0x%x\n", port, status);
+        MODULE_LOG_DBG("port:%d status:0x%x\n", port, status);
         /*set bit 3:  Soft Rate_Select
         *          * Select * [aka. "RS(0)"] */
         set_bit(3, (unsigned long *)&status);
-        if( sff_obj->func_tbl->eeprom_write(sff_obj, slave_addr , offset, &status, len) < 0) {
+        if( sfp_eeprom_write(sff_obj, slave_addr , offset, &status, len) < 0) {
             goto exit_err;
         }
 #ifdef READBACK_CHECK
-        if( sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, &status, len) < 0) {
+        if( sfp_eeprom_read(sff_obj, slave_addr , offset, &status, len) < 0) {
             goto exit_err;
 
         }
-        SFF_MGR_DEBUG("port:%d status:0x%x\n", port, status);
+        MODULE_LOG_DBG("port:%d status:0x%x\n", port, status);
 #endif
     }
     if(rate_bitmap & SOFT_TX_RATE_RS1) {
         get_sfp_field_addr(EXTENDED_STATUS_CONTROL, &slave_addr, &offset, &len);
-        if( sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
+        if( sfp_eeprom_read(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
             goto exit_err;
 
         }
-        SFF_MGR_DEBUG("port:%d status:0x%x\n", port, ext_status);
+        MODULE_LOG_DBG("port:%d status:0x%x\n", port, ext_status);
         /*set bit 3:  Soft Rate_Select
         *          * Select * [aka. "RS(0)"] */
         set_bit(3, (unsigned long *)&ext_status);
-        if( sff_obj->func_tbl->eeprom_write(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
+        if( sfp_eeprom_write(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
             goto exit_err;
         }
 #ifdef READBACK_CHECK
-        if( sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
+        if( sfp_eeprom_read(sff_obj, slave_addr , offset, &ext_status, len) < 0) {
             goto exit_err;
 
         }
-        SFF_MGR_DEBUG("port:%d status:0x%x\n", port, status);
+        MODULE_LOG_DBG("port:%d status:0x%x\n", port, status);
 #endif
     }
     return 0;
@@ -629,13 +773,12 @@ static int sfp_rate_select_control(struct sff_obj_t *sff_obj)
     u8 offset = 0;
     int len = 0;
     bool found = false;
-    int port = sff_obj->port;
     /*read rate id*/
     get_sfp_field_addr(RATE_IDENTIFIER, &slave_addr, &offset, &len);
-    if( sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr , offset, &rate_id, len) < 0) {
+    if( sfp_eeprom_read(sff_obj, slave_addr , offset, &rate_id, len) < 0) {
         goto exit_err;
     }
-    SFF_MGR_DEBUG("port:%d rate_id:0x%x\n", port, rate_id);
+    MODULE_LOG_DBG("%s rate_id:0x%x\n", sff_obj->name, rate_id);
     switch (rate_id) {
     case 0x00: /* Unspecified */
     case 0x03: /* Unspecified */
@@ -686,7 +829,7 @@ static int sfp_rate_select_control(struct sff_obj_t *sff_obj)
         break;
     }
     if(!found) {
-        SFF_MGR_DEBUG("port:%d no support\n", port);
+        MODULE_LOG_DBG("%s no support\n", sff_obj->name);
     }
     return 0;
 exit_err:
@@ -701,12 +844,12 @@ static int _sfp_data_ready_check(struct sff_obj_t *sff_obj, u8 *is_ready)
     int ret = 0;
     u8 status = 0;
     if(IS_ERR_OR_NULL(is_ready)) {
-        SFF_MGR_ERR("invalid para");
+        MODULE_LOG_ERR("invalid para");
         return -1;
     }
 
     get_sfp_field_addr(STATUS_CONTROL, &slave_addr, &offset, &data_len);
-    if((ret = sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, &status, data_len)) < 0) {
+    if((ret = sfp_eeprom_read(sff_obj, slave_addr, offset, &status, data_len)) < 0) {
         return ret;
     }
     status = ~(status & 0x01) & 0x01;
@@ -714,13 +857,13 @@ static int _sfp_data_ready_check(struct sff_obj_t *sff_obj, u8 *is_ready)
 
     return 0;
 #if 0
-    SFF_MGR_DEBUG("special_case of checking data ready\n");
+    MODULE_LOG_DBG("special_case of checking data ready\n");
     /*some cables don't support status control, in this case, check id item instead*/
     get_sfp_field_addr(IDENTIFIER, &slave_addr, &offset, &data_len);
     if (data_len != sizeof(status)) {
         goto exit_err;
     }
-    if(sff_obj->func_tbl->eeprom_read(sff_obj, slave_addr, offset, &status, data_len) < 0) {
+    if(sfp_eeprom_read(sff_obj, slave_addr, offset, &status, data_len) < 0) {
         goto exit_err;
     }
     *is_ready = 1;
@@ -761,7 +904,7 @@ int sff_fsm_sfp_task(struct sff_obj_t *sff_obj)
         }
 
         if(is_found) {
-            sff_fsm_st_set(sff_obj, SFF_FSM_ST_DETECTED);
+            sff_fsm_st_set(sff_obj, SFF_FSM_ST_READY);
         } else {
             /*unknown type: special handling*/
             sff_fsm_st_set(sff_obj, SFF_FSM_ST_UNKNOWN_TYPE);
@@ -769,7 +912,7 @@ int sff_fsm_sfp_task(struct sff_obj_t *sff_obj)
 
         break;
 
-    case SFF_FSM_ST_DETECTED:
+    case SFF_FSM_ST_READY:
 
         if((ret = sff_obj->func_tbl->tx_disable_set(sff_obj, 0)) < 0) {
             break;
@@ -796,18 +939,13 @@ int sff_fsm_sfp_task(struct sff_obj_t *sff_obj)
     case SFF_FSM_ST_UNKNOWN_TYPE:
         break;
     default:
-        SFF_MGR_ERR("unknown fsm st:%d\n", st);
+        MODULE_LOG_ERR("unknown fsm st:%d\n", st);
         break;
 
     }
-#if 0
     if(ret < 0) {
-        if (!ioexp_is_lane_ready()) {
-            SFF_MGR_ERR("i2c_crush port:%d\n", sff_obj->port);
-            return (-1);
-        }
+        return ret;
     }
-#endif
     return 0;
 }
 

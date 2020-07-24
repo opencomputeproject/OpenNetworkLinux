@@ -37,6 +37,9 @@
 #define LED_CPLD_I2C_BUS_NUM         11
 #define LED_CNTRLER_I2C_ADDRESS		(0x60)
 
+#define IS_POWER_GOOD(id, value)	(!!(value & BIT(id)))
+#define IS_PRESENT(id, value)		(!(value & BIT(id)))
+
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 
 extern int as7926_40xke_cpld_read(int bus_num, unsigned short cpld_addr, u8 reg);
@@ -89,10 +92,11 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     }
    
     if (attr->index == PSU_PRESENT) {
-        status = !((data->psu_present >> data->index) & 0x1);
+        status = IS_PRESENT(data->index, data->psu_present);
     }
     else { /* PSU_POWER_GOOD */
-        status = ((data->psu_power_good >> data->index) & 0x1);
+        status = IS_PRESENT(data->index, data->psu_present) && 
+                 IS_POWER_GOOD(data->index, data->psu_power_good);
     }
 
     return sprintf(buf, "%d\n", status);

@@ -1,0 +1,4 @@
+#!/bin/bash
+/etc/boot.d/boot
+echo "Starting systemd..."
+exec /lib/systemd/systemd

@@ -33,10 +33,13 @@
 #define DRVNAME "as7926_40xke_fan"
 
 extern int accton_i2c_cpld_read (unsigned short cpld_addr, u8 reg);
-static struct as7926_40xke_fan_data *as7926_40xke_fan_update_device(struct device *dev);                    
+static struct as7926_40xke_fan_data *as7926_40xke_fan_update_device(struct device *dev);
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
             const char *buf, size_t count);
+static ssize_t set_temp(struct device *dev, struct device_attribute *da,
+            const char *buf, size_t count);
+extern int as7926_40xke_cpld_write(int bus_num, unsigned short cpld_addr, u8 reg, u8 value);
 
 /* fan related data, the index should match sysfs_fan_attributes
  */
@@ -64,9 +67,9 @@ static const u8 fan_reg[] = {
     0x27,       /* rear fan 6 speed(rpm) */
     0x28,       /* rear fan 7 speed(rpm) */
     0x29,       /* rear fan 8 speed(rpm) */
-    0x2A,       /* rear fan 9 speed(rpm) */  
-    0x2B,       /* rear fan 10 speed(rpm) */ 
-    0x2C,       /* rear fan 11 speed(rpm) */  
+    0x2A,       /* rear fan 9 speed(rpm) */
+    0x2B,       /* rear fan 10 speed(rpm) */
+    0x2C,       /* rear fan 11 speed(rpm) */
     0x2D,       /* rear fan 12 speed(rpm) */
     0x50,       /* CPU temp */
     0x51,       /* Main Board Bottom ASIC Temp */
@@ -75,7 +78,7 @@ static const u8 fan_reg[] = {
     0x54,       /* Main Board Bottom TMP432_3 Temp */
     0x55,       /* Main Board Bottom LM75_1 Temp */
     0x56,       /* Main Board Bottom LM75_2 Temp */
-    0x57,       /* Main Board Bottom LM75_2 Temp */
+    0x57,       /* Main Board Bottom LM75_3 Temp */
     0x58,       /* Main Board Bottom LM75_4 Temp */
     0x60,       /* QSFP-DD Board LM75_1 Temp */
     0x61,       /* QSFP-DD Board LM75_2 Temp  */
@@ -134,6 +137,18 @@ enum sysfs_fan_attributes {
     FAN10_REAR_SPEED_RPM,
     FAN11_REAR_SPEED_RPM,
     FAN12_REAR_SPEED_RPM,
+    TEMP1_INPUT,
+    TEMP2_INPUT,
+    TEMP3_INPUT,
+    TEMP4_INPUT,
+    TEMP5_INPUT,
+    TEMP6_INPUT,
+    TEMP7_INPUT,
+    TEMP8_INPUT,
+    TEMP9_INPUT,
+    TEMP10_INPUT,
+    TEMP11_INPUT,
+    TEMP12_INPUT,
     FAN1_PRESENT,
     FAN2_PRESENT,
     FAN3_PRESENT,
@@ -158,26 +173,16 @@ enum sysfs_fan_attributes {
     FAN10_FAULT,
     FAN11_FAULT,
     FAN12_FAULT,
-    TEMP1_INPUT,
-    TEMP2_INPUT,
-    TEMP3_INPUT,
-    TEMP4_INPUT,
-    TEMP5_INPUT,
-    TEMP6_INPUT,
-    TEMP7_INPUT,
-    TEMP8_INPUT,
-    TEMP9_INPUT,
-    TEMP10_INPUT,
-    TEMP11_INPUT,
-    TEMP12_INPUT,
-    //TEMP13_INPUT,
 };
 
 /* Define attributes
  */
-#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
-#define DECLARE_FAN_FAULT_ATTR(index)      &sensor_dev_attr_fan##index##_fault.dev_attr.attr
+#define DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(index, index2) \
+    static SENSOR_DEVICE_ATTR(fan##index##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT);\
+    static SENSOR_DEVICE_ATTR(fan##index2##_fault, S_IRUGO, fan_show_value, NULL, FAN##index##_FAULT)
+
+#define DECLARE_FAN_FAULT_ATTR(index, index2)      &sensor_dev_attr_fan##index##_fault.dev_attr.attr, \
+                                                   &sensor_dev_attr_fan##index2##_fault.dev_attr.attr
 
 #define DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR(index) \
     static SENSOR_DEVICE_ATTR(fan##index##_duty_cycle_percentage, S_IWUSR | S_IRUGO, fan_show_value, set_duty_cycle, FAN##index##_DUTY_CYCLE_PERCENTAGE)
@@ -187,42 +192,50 @@ enum sysfs_fan_attributes {
     static SENSOR_DEVICE_ATTR(fan##index##_present, S_IRUGO, fan_show_value, NULL, FAN##index##_PRESENT)
 #define DECLARE_FAN_PRESENT_ATTR(index)      &sensor_dev_attr_fan##index##_present.dev_attr.attr
 
-#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index) \
+#define DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(index, index2) \
     static SENSOR_DEVICE_ATTR(fan##index##_front_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_FRONT_SPEED_RPM);\
-    static SENSOR_DEVICE_ATTR(fan##index##_rear_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM)
-#define DECLARE_FAN_SPEED_RPM_ATTR(index)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
-                                           &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr
-                                           
+    static SENSOR_DEVICE_ATTR(fan##index##_rear_speed_rpm, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM);\
+    static SENSOR_DEVICE_ATTR(fan##index##_input, S_IRUGO, fan_show_value, NULL, FAN##index##_FRONT_SPEED_RPM);\
+    static SENSOR_DEVICE_ATTR(fan##index2##_input, S_IRUGO, fan_show_value, NULL, FAN##index##_REAR_SPEED_RPM)
+#define DECLARE_FAN_SPEED_RPM_ATTR(index, index2)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
+                                                   &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr,  \
+                                                   &sensor_dev_attr_fan##index##_input.dev_attr.attr,  \
+                                                   &sensor_dev_attr_fan##index2##_input.dev_attr.attr
+
 #define DECLARE_TEMP_SENSOR_DEV_ATTR(index) \
     static SENSOR_DEVICE_ATTR(temp##index##_input, S_IRUGO, fan_show_value, NULL, TEMP##index##_INPUT)
 #define DECLARE_TEMP_SENSOR_ATTR(index)      &sensor_dev_attr_temp##index##_input.dev_attr.attr
 
+#define DECLARE_CPU_MAC_TEMP_SENSOR_DEV_ATTR(index) \
+    static SENSOR_DEVICE_ATTR(temp##index##_input, S_IWUSR | S_IRUGO, fan_show_value, set_temp, TEMP##index##_INPUT)
+#define DECLARE_CPU_MAC_TEMP_SENSOR_ATTR(index)      &sensor_dev_attr_temp##index##_input.dev_attr.attr
+
 /* 10 fan fault attributes in this platform */
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(3);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(4);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(5);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(6);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(7);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(8);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(9);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(10);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(11);
-DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(12);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1, 13);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(2, 14);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(3, 15);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(4, 16);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(5, 17);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(6, 18);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(7, 19);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(8, 20);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(9, 21);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(10, 22);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(11, 23);
+DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(12, 24);
 /* 10 fan speed(rpm) attributes in this platform */
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(3);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(4);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(5);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(6);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(7);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(8);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(9);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(10);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(11);
-DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(12);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(1, 13);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(2, 14);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(3, 15);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(4, 16);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(5, 17);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(6, 18);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(7, 19);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(8, 20);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(9, 21);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(10, 22);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(11, 23);
+DECLARE_FAN_SPEED_RPM_SENSOR_DEV_ATTR(12, 24);
 /* 10 fan present attributes in this platform */
 DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(1);
 DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(2);
@@ -240,8 +253,8 @@ DECLARE_FAN_PRESENT_SENSOR_DEV_ATTR(12);
 DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
 
 /* 12 thermal sensor attributes in this platform */
-DECLARE_TEMP_SENSOR_DEV_ATTR(1);
-DECLARE_TEMP_SENSOR_DEV_ATTR(2);
+DECLARE_CPU_MAC_TEMP_SENSOR_DEV_ATTR(1);
+DECLARE_CPU_MAC_TEMP_SENSOR_DEV_ATTR(2);
 DECLARE_TEMP_SENSOR_DEV_ATTR(3);
 DECLARE_TEMP_SENSOR_DEV_ATTR(4);
 DECLARE_TEMP_SENSOR_DEV_ATTR(5);
@@ -252,34 +265,33 @@ DECLARE_TEMP_SENSOR_DEV_ATTR(9);
 DECLARE_TEMP_SENSOR_DEV_ATTR(10);
 DECLARE_TEMP_SENSOR_DEV_ATTR(11);
 DECLARE_TEMP_SENSOR_DEV_ATTR(12);
-//DECLARE_TEMP_SENSOR_DEV_ATTR(13);
 
 static struct attribute *as7926_40xke_fan_attributes[] = {
     /* fan related attributes */
-    DECLARE_FAN_FAULT_ATTR(1),
-    DECLARE_FAN_FAULT_ATTR(2),
-    DECLARE_FAN_FAULT_ATTR(3),
-    DECLARE_FAN_FAULT_ATTR(4),
-    DECLARE_FAN_FAULT_ATTR(5),
-    DECLARE_FAN_FAULT_ATTR(6),
-    DECLARE_FAN_FAULT_ATTR(7),
-    DECLARE_FAN_FAULT_ATTR(8),
-    DECLARE_FAN_FAULT_ATTR(9),
-    DECLARE_FAN_FAULT_ATTR(10),
-    DECLARE_FAN_FAULT_ATTR(11),
-    DECLARE_FAN_FAULT_ATTR(12),
-    DECLARE_FAN_SPEED_RPM_ATTR(1),
-    DECLARE_FAN_SPEED_RPM_ATTR(2),
-    DECLARE_FAN_SPEED_RPM_ATTR(3),
-    DECLARE_FAN_SPEED_RPM_ATTR(4),
-    DECLARE_FAN_SPEED_RPM_ATTR(5),
-    DECLARE_FAN_SPEED_RPM_ATTR(6),
-    DECLARE_FAN_SPEED_RPM_ATTR(7),
-    DECLARE_FAN_SPEED_RPM_ATTR(8),
-    DECLARE_FAN_SPEED_RPM_ATTR(9),
-    DECLARE_FAN_SPEED_RPM_ATTR(10),
-    DECLARE_FAN_SPEED_RPM_ATTR(11),
-    DECLARE_FAN_SPEED_RPM_ATTR(12),
+    DECLARE_FAN_FAULT_ATTR(1, 13),
+    DECLARE_FAN_FAULT_ATTR(2, 14),
+    DECLARE_FAN_FAULT_ATTR(3, 15),
+    DECLARE_FAN_FAULT_ATTR(4, 16),
+    DECLARE_FAN_FAULT_ATTR(5, 17),
+    DECLARE_FAN_FAULT_ATTR(6, 18),
+    DECLARE_FAN_FAULT_ATTR(7, 19),
+    DECLARE_FAN_FAULT_ATTR(8, 20),
+    DECLARE_FAN_FAULT_ATTR(9, 21),
+    DECLARE_FAN_FAULT_ATTR(10, 22),
+    DECLARE_FAN_FAULT_ATTR(11, 23),
+    DECLARE_FAN_FAULT_ATTR(12, 24),
+    DECLARE_FAN_SPEED_RPM_ATTR(1, 13),
+    DECLARE_FAN_SPEED_RPM_ATTR(2, 14),
+    DECLARE_FAN_SPEED_RPM_ATTR(3, 15),
+    DECLARE_FAN_SPEED_RPM_ATTR(4, 16),
+    DECLARE_FAN_SPEED_RPM_ATTR(5, 17),
+    DECLARE_FAN_SPEED_RPM_ATTR(6, 18),
+    DECLARE_FAN_SPEED_RPM_ATTR(7, 19),
+    DECLARE_FAN_SPEED_RPM_ATTR(8, 20),
+    DECLARE_FAN_SPEED_RPM_ATTR(9, 21),
+    DECLARE_FAN_SPEED_RPM_ATTR(10, 22),
+    DECLARE_FAN_SPEED_RPM_ATTR(11, 23),
+    DECLARE_FAN_SPEED_RPM_ATTR(12, 24),
     DECLARE_FAN_PRESENT_ATTR(1),
     DECLARE_FAN_PRESENT_ATTR(2),
     DECLARE_FAN_PRESENT_ATTR(3),
@@ -294,8 +306,8 @@ static struct attribute *as7926_40xke_fan_attributes[] = {
     DECLARE_FAN_PRESENT_ATTR(12),
     DECLARE_FAN_DUTY_CYCLE_ATTR(),
     /* temperature related attributes */
-    DECLARE_TEMP_SENSOR_ATTR(1),
-    DECLARE_TEMP_SENSOR_ATTR(2),
+    DECLARE_CPU_MAC_TEMP_SENSOR_ATTR(1),
+    DECLARE_CPU_MAC_TEMP_SENSOR_ATTR(2),
     DECLARE_TEMP_SENSOR_ATTR(3),
     DECLARE_TEMP_SENSOR_ATTR(4),
     DECLARE_TEMP_SENSOR_ATTR(5),
@@ -306,7 +318,6 @@ static struct attribute *as7926_40xke_fan_attributes[] = {
     DECLARE_TEMP_SENSOR_ATTR(10),
     DECLARE_TEMP_SENSOR_ATTR(11),
     DECLARE_TEMP_SENSOR_ATTR(12),
-    //DECLARE_TEMP_SENSOR_ATTR(13),
     NULL
 };
 
@@ -326,7 +337,7 @@ static int as7926_40xke_fan_write_value(struct i2c_client *client, u8 reg, u8 va
 
 /* fan utility functions
  */
-static u32 reg_val_to_duty_cycle(u8 reg_val) 
+static u32 reg_val_to_duty_cycle(u8 reg_val)
 {
     reg_val &= FAN_DUTY_CYCLE_REG_MASK;
 
@@ -341,7 +352,7 @@ static u32 reg_val_to_duty_cycle(u8 reg_val)
     return (reg_val * 6) + 10;
 }
 
-static u8 duty_cycle_to_reg_val(u8 duty_cycle) 
+static u8 duty_cycle_to_reg_val(u8 duty_cycle)
 {
     if (duty_cycle < 16) {
         return 0;
@@ -371,7 +382,7 @@ static u8 is_fan_fault(struct as7926_40xke_fan_data *data, enum fan_id id)
     int front_fan_index = FAN1_FRONT_SPEED_RPM + id;
     int rear_fan_index  = FAN1_REAR_SPEED_RPM  + id;
 
-    /* Check if the speed of front or rear fan is ZERO,  
+    /* Check if the speed of front or rear fan is ZERO,
      */
     if (reg_val_to_speed_rpm(data->reg_val[front_fan_index]) &&
         reg_val_to_speed_rpm(data->reg_val[rear_fan_index]))  {
@@ -382,19 +393,19 @@ static u8 is_fan_fault(struct as7926_40xke_fan_data *data, enum fan_id id)
 }
 
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
-            const char *buf, size_t count) 
+            const char *buf, size_t count)
 {
     int error, value;
     struct i2c_client *client = to_i2c_client(dev);
-    
+
     error = kstrtoint(buf, 10, &value);
     if (error)
         return error;
-        
+
     if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
         return -EINVAL;
-    
-    as7926_40xke_fan_write_value(client, 0x28, 0); /* Disable fan speed watch dog */
+
+    as7926_40xke_fan_write_value(client, 0x33, 0); /* Disable fan speed watch dog */
     as7926_40xke_fan_write_value(client, fan_reg[FAN_DUTY_CYCLE_PERCENTAGE], duty_cycle_to_reg_val(value));
     return count;
 }
@@ -420,7 +431,7 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct as7926_40xke_fan_data *data = as7926_40xke_fan_update_device(dev);
     ssize_t ret = 0;
-    
+
     if (data->valid) {
         switch (attr->index) {
             case FAN_DUTY_CYCLE_PERCENTAGE:
@@ -512,18 +523,68 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
             case TEMP11_INPUT:
             case TEMP12_INPUT:
             {
-                ret = sprintf(buf, "%u\n", 
-                              (1000 * (reg_val_to_thermal_value(data->reg_val[attr->index - FAN10_REAR_SPEED_RPM]))));
+                ret = sprintf(buf, "%u\n",
+                              (1000 * (reg_val_to_thermal_value(data->reg_val[attr->index]))));
                 break;
             }
             default:
                 break;
-        }        
+        }
     }
-    
+
     return ret;
 }
 
+static ssize_t set_temp(struct device *dev, struct device_attribute *da,
+            const char *buf, size_t count)
+{
+    long temp;
+    int status;
+    int bus, addr, reg;
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as7926_40xke_fan_data *data = i2c_get_clientdata(client);
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+
+    status = kstrtol(buf, 10, &temp);
+    if (status) {
+        return status;
+    }
+
+    if (temp > 127 || temp < -128) {
+        return -EINVAL;
+    }
+
+    mutex_lock(&data->update_lock);
+
+    /* write to cpld */
+    switch (attr->index) {
+        case TEMP1_INPUT:
+            bus  = 11;
+            addr = 0x60;
+            reg  = 0x30;
+            break;
+        case TEMP2_INPUT:
+            bus  = 11;
+            addr = 0x60;
+            reg  = 0x31;
+            break;
+        default:
+            status = -EINVAL;
+            goto exit;
+    }
+
+    status = as7926_40xke_cpld_write(bus, addr, reg, (u8)temp);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    data->valid = 0;
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+}
 static const struct attribute_group as7926_40xke_fan_group = {
     .attrs = as7926_40xke_fan_attributes,
 };
@@ -532,20 +593,20 @@ static struct as7926_40xke_fan_data *as7926_40xke_fan_update_device(struct devic
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as7926_40xke_fan_data *data = i2c_get_clientdata(client);
-    int status, reg=0;
-    
+    int status;
+
     mutex_lock(&data->update_lock);
 
-    if (time_after(jiffies, data->last_updated + HZ + HZ / 2) || 
+    if (time_after(jiffies, data->last_updated + HZ + HZ / 2) ||
         !data->valid) {
         int i;
 
         dev_dbg(&client->dev, "Starting as7926_40xke_fan update\n");
         data->valid = 0;
-        
+
         /* Update fan data
          */
-        for (i = 0; i < ARRAY_SIZE(data->reg_val); i++) {           
+        for (i = 0; i < ARRAY_SIZE(data->reg_val); i++) {
             status = as7926_40xke_fan_read_value(client, fan_reg[i]);
             if (status < 0) {
                 data->valid = 0;
@@ -557,11 +618,11 @@ static struct as7926_40xke_fan_data *as7926_40xke_fan_update_device(struct devic
                 data->reg_val[i] = status;
             }
         }
-        
+
         data->last_updated = jiffies;
         data->valid = 1;
     }
-    
+
     mutex_unlock(&data->update_lock);
 
     return data;
@@ -596,7 +657,7 @@ static int as7926_40xke_fan_probe(struct i2c_client *client,
         goto exit_free;
     }
 
-    data->hwmon_dev = hwmon_device_register(&client->dev);
+    data->hwmon_dev = hwmon_device_register_with_info(&client->dev, DRVNAME, NULL, NULL, NULL);
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         goto exit_remove;
@@ -604,7 +665,7 @@ static int as7926_40xke_fan_probe(struct i2c_client *client,
 
     dev_info(&client->dev, "%s: fan '%s'\n",
          dev_name(data->hwmon_dev), client->name);
-    
+
     return 0;
 
 exit_remove:
@@ -612,7 +673,7 @@ exit_remove:
 exit_free:
     kfree(data);
 exit:
-    
+
     return status;
 }
 
@@ -621,7 +682,7 @@ static int as7926_40xke_fan_remove(struct i2c_client *client)
     struct as7926_40xke_fan_data *data = i2c_get_clientdata(client);
     hwmon_device_unregister(data->hwmon_dev);
     sysfs_remove_group(&client->dev.kobj, &as7926_40xke_fan_group);
-    
+
     return 0;
 }
 

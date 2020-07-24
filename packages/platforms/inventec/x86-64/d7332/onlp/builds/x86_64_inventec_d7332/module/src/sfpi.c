@@ -18,13 +18,19 @@
 #include <dirent.h>
 #include <onlplib/file.h>
 
-#define MAX_SFP_PATH 128
+#define SLEEP_TIME 0.5
+#define RETRY_TIME 5
+#define SFP_PRESENT '1'
+#define SFP_NOT_PRESENT '0'
+#define SFP_PAGE_IDLE 0
+#define SFP_PAGE_LOCKED 1
 #define MUX_START_INDEX 14
 #define QSFP_DEV_ADDR 0x50
 #define NUM_OF_QSFP_DD_PORT 32
 #define NUM_OF_ALL_PORT (NUM_OF_QSFP_DD_PORT)
 
 #define FRONT_PORT_TO_MUX_INDEX(port) (port+MUX_START_INDEX)
+#define PORT_TO_PATH_ID(port)         (port+1)
 #define VALIDATE_PORT(p) { if ((p < 0) || (p >= NUM_OF_ALL_PORT)) return ONLP_STATUS_E_PARAM; }
 /************************************************************
  *
@@ -70,16 +76,15 @@ onlp_sfpi_is_present(int port)
      * Return < 0 if error.
      */
     VALIDATE_PORT(port);
-    //int present;
     int rv,len;
     char buf[ONLP_CONFIG_INFO_STR_MAX];
-    if(onlp_file_read( (uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"prsL") != ONLP_STATUS_OK) {
+    if(onlp_file_read( (uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"prs") != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    if(buf[port] == '0') {
-        rv = 1;
-    } else if (buf[port] == '1') {
+    if(buf[port] == SFP_NOT_PRESENT) {
         rv = 0;
+    } else if (buf[port] == SFP_PRESENT) {
+        rv = 1;
     } else {
         AIM_LOG_ERROR("Unvalid present status %d from port(%d)\r\n",buf[port],port);
         return ONLP_STATUS_E_INTERNAL;
@@ -107,54 +112,14 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_is_rx_los(int port)
 {
-    /*int rxlos;
-    int rv;
-    int len;
-    char buf[ONLP_CONFIG_INFO_STR_MAX];
-    if(port > NUM_OF_ALL_PORT) {
-        return ONLP_STATUS_E_INVALID;
-    }
-    if(onlp_sfpi_is_present(port) == 0) {
-        return ONLP_STATUS_E_INVALID;
-    }
-    if(onlp_file_read((uint8_t*)buf, ONLP_CONFIG_INFO_STR_MAX, &len, INV_SFP_PREFIX"port%d/rx_los", port) != ONLP_STATUS_OK) {
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    if(sscanf( buf, "0x%x\n", &rxlos) != 1) {
-        AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-    if(rxlos < 0 || rxlos > 0x0f) {
-        AIM_LOG_ERROR("Unable to read rxlos from port(%d)\r\n", port);
-        return ONLP_STATUS_E_INTERNAL;
-    } else if(rxlos == 0) {
-        rv = 1;
-    } else {
-        rv = 0;
-    }
-    return rv;*/
+    /* rx los of QSFP-DD are not supported*/
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    /*AIM_BITMAP_CLR_ALL(dst);
-    int port;
-    int isrxlos;
-    for(port = 0; port < NUM_OF_ALL_PORT; port++) {
-        if(onlp_sfpi_is_present(port) == 1) {
-            isrxlos = onlp_sfpi_is_rx_los(port);
-            if(isrxlos == 1) {
-                AIM_BITMAP_MOD(dst, port, 1);
-            } else if(isrxlos == 0) {
-                AIM_BITMAP_MOD(dst, port, 0);
-            } else {
-                return ONLP_STATUS_E_INTERNAL;
-            }
-        }
-    }
-    return ONLP_STATUS_OK;*/
+    /* rx los of QSFP-DD are not supported*/
     return ONLP_STATUS_E_UNSUPPORTED;
 }
 
@@ -179,18 +144,44 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
      * Return MISSING if SFP is missing.
      * Return OK if eeprom is read
      */
-    /*memset(data, 0, 256);
+    memset(data, 0, 256);
 
     VALIDATE_PORT(port);
-    int sts;
+    int rv=ONLP_STATUS_OK;
     int bus = FRONT_PORT_TO_MUX_INDEX(port);
-    sts = onlp_i2c_block_read(bus, QSFP_DEV_ADDR, 0, 256, data, ONLP_I2C_F_FORCE);
-    if(sts < 0){
-        AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
-        return ONLP_STATUS_E_MISSING;
+    int retry=RETRY_TIME;
+    int value;
+    int succeed=false;
+    int port_id=PORT_TO_PATH_ID(port);
+
+    do {
+        rv=onlp_file_read_int(&value,INV_SFP_PREFIX"port%d/page_sel_lock",port_id);
+        if( (rv==ONLP_STATUS_OK)&&(value==SFP_PAGE_IDLE) ){
+            rv=onlp_file_write_int(SFP_PAGE_LOCKED,INV_SFP_PREFIX"port%d/page_sel_lock",port_id);
+            succeed=true;
+            break;
+        } else {
+            retry--;
+            AIM_LOG_ERROR("Eeprom of port(%d) is locked, retry to read again\r\n", port_id);
+            sleep(SLEEP_TIME);
+        }
+    } while(retry>0);
+
+    if( succeed&&(rv==ONLP_STATUS_OK) ) {
+        rv=onlp_file_write_int(0,INV_SFP_PREFIX"port%d/page",port_id);
+        if(rv==ONLP_STATUS_OK) {
+            rv = onlp_i2c_block_read(bus, QSFP_DEV_ADDR, 0, 256, data, ONLP_I2C_F_FORCE);
+        } else {
+            AIM_LOG_ERROR("Unable to switch page from port(%d)\r\n", port_id);
+        }
+        if(rv!=ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port_id);
+        }            
+        if( onlp_file_write_int(SFP_PAGE_IDLE,INV_SFP_PREFIX"port%d/page_sel_lock",port_id)<0 ) {
+            AIM_LOG_ERROR("Unable to relase eeprom from port(%d), please double check!\r\n", port_id);
+        }
     }
-    return ONLP_STATUS_OK;*/
-    return ONLP_STATUS_E_UNSUPPORTED;
+    return rv;
 }
 
 int
@@ -246,13 +237,15 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int ret = ONLP_STATUS_E_UNSUPPORTED;
+    int port_id=PORT_TO_PATH_ID(port);
+
     if(port >= 0 && port < NUM_OF_QSFP_DD_PORT) {
         switch (control) {
         case ONLP_SFP_CONTROL_RESET_STATE:
-            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/reset", port);
+            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/reset", port_id);
             break;
         case ONLP_SFP_CONTROL_LP_MODE:
-            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/lpmod", port);
+            ret = onlp_file_write_int(value, INV_SFP_PREFIX"port%d/lpmod", port_id);
             break;
         default:
             break;
@@ -265,16 +258,18 @@ int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int ret = ONLP_STATUS_E_UNSUPPORTED;
+    int port_id = PORT_TO_PATH_ID(port);
+
     if(port >= 0 && port < NUM_OF_QSFP_DD_PORT) {
         switch (control) {
         /*the value of /port(id)/reset
         0: in reset state; 1:not in reset state*/
         case ONLP_SFP_CONTROL_RESET_STATE:
-            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port);
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/reset", port_id);
             *value=(!(*value));
             break;
         case ONLP_SFP_CONTROL_LP_MODE:
-            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/lpmode", port);
+            ret = onlp_file_read_int(value, INV_SFP_PREFIX"port%d/lpmode", port_id);
             break;
         default:
             break;

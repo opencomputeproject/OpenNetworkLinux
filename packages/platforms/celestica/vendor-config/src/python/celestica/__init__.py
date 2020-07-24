@@ -3,6 +3,6 @@
 from onl.platform.base import *
 
 class OnlPlatformCelestica(OnlPlatformBase):
-    MANUFACTUTER='Celestica'
+    MANUFACTURER='Celestica'
     PRIVATE_ENTERPRISE_NUMBER=12290
 

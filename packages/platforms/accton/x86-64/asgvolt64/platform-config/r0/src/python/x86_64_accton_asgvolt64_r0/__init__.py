@@ -3,6 +3,11 @@ from onl.platform.accton import *
 
 import commands
 
+def fpga_pcie_init():
+    cmd= "setpci -s 16:00.0 0x04.B=0x7"
+    status, output = commands.getstatusoutput(cmd)
+    return status
+
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
 #It happen when read 16th-byte offset that value is 0x8. So disable chip 
 def disable_i2c_ir3570a(addr):
@@ -57,7 +62,7 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
     def baseconfig(self):
         #self.insmod('ym2651y')
         self.insmod('optoe')
-        for m in [ 'cpld', 'fan', 'psu', 'leds', 'thermal', 'sys' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'thermal', 'sys', 'fpga' ]:
             self.insmod("x86-64-accton-asgvolt64-%s.ko" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -116,6 +121,8 @@ class OnlPlatform_x86_64_accton_asgvolt64_r0(OnlPlatformAccton,
         #self.new_i2c_device('24c02', 0x57, 0)
         
         ir3570_check()
+
+        fpga_pcie_init()
 
         return True
 

@@ -10,7 +10,7 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod("dps850")
-        for m in [ 'cpld', 'fan', 'psu', 'leds' ]:
+        for m in [ 'cpld', 'fan', 'psu', 'leds', 'fpga' ]:
             self.insmod("x86-64-accton-as9926-24d-%s" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -26,7 +26,7 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
                 ('pca9548', 0x76, 2),
 
                 # initialize CPLD
-                ('as9926_24d_cpld1', 0x60, 19),
+                ('as9926_24d_cpld1', 0x68, 19),
                 ('as9926_24d_cpld2', 0x61, 20),
                 ('as9926_24d_cpld3', 0x62, 21),
                 ('as9926_24d_fan', 0x66, 17),
@@ -60,6 +60,13 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
         # initialize SFP devices
         for port in range(25, 27):
             self.new_i2c_device('optoe2', 0x50, port+24)
+
+        # Bring QSFP out of reset
+        for port in range(1, 17):
+            subprocess.call('echo 0 > /sys/bus/i2c/devices/20-0061/module_reset_%d' % port, shell=True)
+
+        for port in range(17, 25):
+            subprocess.call('echo 0 > /sys/bus/i2c/devices/21-0062/module_reset_%d' % port, shell=True)
 
         # set port name
         for port in range(1, 27):

@@ -77,6 +77,7 @@ MODULE_DEVICE_TABLE(i2c, asgvolt64_cpld_id);
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index)   	MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index)   		MODULE_RXLOS_##index
 #define TRANSCEIVER_TXFAULT_ATTR_ID(index)   	MODULE_TXFAULT_##index
+#define TRANSCEIVER_LPMODE_ATTR_ID(index)   	MODULE_LPMODE_##index
 #define PON_PORT_ACT_LED_ATTR_ID(index)         PON_PORT_ACT_LED_##index
 #define PON_PORT_LINK_LED_ATTR_ID(index)        PON_PORT_LINK_LED_##index
 
@@ -441,6 +442,8 @@ enum asgvolt64_cpld_sysfs_attributes {
 	PON_PORT_LINK_LED_ATTR_ID(62),
 	PON_PORT_LINK_LED_ATTR_ID(63),
 	PON_PORT_LINK_LED_ATTR_ID(64),
+	TRANSCEIVER_LPMODE_ATTR_ID(65),
+	TRANSCEIVER_LPMODE_ATTR_ID(66)
 };
 
 /* sysfs attributes for hwmon 
@@ -457,6 +460,10 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
              char *buf);
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
+static ssize_t set_lp_mode(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t show_lp_mode(struct device *dev, struct device_attribute *da,
+             char *buf);		
 static ssize_t access(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
@@ -479,10 +486,12 @@ static int asgvolt64_cpld_write_internal(struct i2c_client *client, u8 reg, u8 v
 
 /* qsfp transceiver attributes */
 #define DECLARE_QSFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, NULL, MODULE_PRESENT_##index);
+    static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, NULL, MODULE_PRESENT_##index); \
+    static SENSOR_DEVICE_ATTR(module_lp_mode_##index, S_IRUGO | S_IWUSR, show_lp_mode, set_lp_mode, MODULE_LPMODE_##index);
 
 #define DECLARE_QSFP_TRANSCEIVER_ATTR(index)  \
-    &sensor_dev_attr_module_present_##index.dev_attr.attr
+    &sensor_dev_attr_module_present_##index.dev_attr.attr, \
+    &sensor_dev_attr_module_lp_mode_##index.dev_attr.attr
     
 /*gpon transceiver attributes*/
 #define DECLARE_GPON_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
@@ -1566,6 +1575,98 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
     
     mutex_unlock(&data->update_lock);
     return count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+}
+
+static ssize_t set_lp_mode(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    long disable;
+    int status;
+    u8 reg = 0x33, mask = 0;
+     
+    status = kstrtol(buf, 10, &disable);
+    if (status)
+    {
+        return status;
+    }
+	
+    if (disable)
+    {
+        disable=1;
+    }
+    else
+        disable=0;
+ 
+    if (attr->index == MODULE_LPMODE_65 || attr->index == MODULE_LPMODE_66)
+    {
+         mask = 0x1 << (attr->index- MODULE_LPMODE_65);
+    }
+    else
+        return -ENXIO;
+
+    /* Read current status */
+    mutex_lock(&data->update_lock);
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0))
+    {
+        goto exit;
+    }
+    /* Update tx_disable status */
+    if (disable)
+    {
+        status |= mask;
+        
+    }
+    else
+    {
+        status &= ~mask;
+    }
+    status = asgvolt64_cpld_write_internal(client, reg, status);
+    if (unlikely(status < 0))
+    {
+        goto exit;
+    }
+    
+    mutex_unlock(&data->update_lock);
+    return count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
+}
+
+static ssize_t show_lp_mode(struct device *dev, struct device_attribute *da,
+             char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct asgvolt64_cpld_data *data = i2c_get_clientdata(client);
+    int status = 0, ouput=0, i=0;
+    u8 reg = 0x33, mask = 0;
+   
+    if (attr->index == MODULE_LPMODE_65 || attr->index == MODULE_LPMODE_66)
+    {
+         mask = 0x1 << (attr->index- MODULE_LPMODE_65);
+    }   
+    else
+        return -ENXIO;
+
+    mutex_lock(&data->update_lock);
+    status = asgvolt64_cpld_read_internal(client, reg);
+    if (unlikely(status < 0))
+    {
+        goto exit;
+    }
+    mutex_unlock(&data->update_lock);
+
+    return sprintf(buf, "%d\n", !!(status & mask));
 
 exit:
     mutex_unlock(&data->update_lock);

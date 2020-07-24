@@ -42,23 +42,6 @@
     ERROR_DEFAULT,                                                                    \
     SHUTDOWN_DEFAULT,                                                                 \
 }
-#ifdef I2C
-static char* path[] =  /* must map with onlp_thermal_id */
-{
-    "reserved",
-    "26-004f/hwmon/hwmon6/temp1_input",
-    "8-004b/hwmon/hwmon1/temp1_input",
-    "8-004c/hwmon/hwmon2/temp1_input",
-    "8-004c/hwmon/hwmon2/temp2_input",
-    "8-004d/hwmon/hwmon3/temp1_input",
-    "8-004d/hwmon/hwmon3/temp2_input",
-    "8-004d/hwmon/hwmon3/temp3_input",
-    "8-004e/hwmon/hwmon4/temp1_input",
-    "8-004f/hwmon/hwmon5/temp1_input",
-    "31-0058/psu_temp1_input",
-    "32-0058/psu_temp1_input"
-};
-#endif
 
 /* Static values */
 static onlp_thermal_info_t linfo[] = {
@@ -95,15 +78,11 @@ static onlp_thermal_info_t linfo[] = {
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_9_ON_MAIN_BOARD), "Board sensor near MAC", 0},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_9_ON_PSU1), "PSU-1 internal sensor", ONLP_PSU_ID_CREATE(PSU1_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_10_ON_PSU1), "PSU-1 internal sensor", ONLP_PSU_ID_CREATE(PSU1_ID)},
-        ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-    },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_11_ON_PSU2), "PSU-2 internal Sensor", ONLP_PSU_ID_CREATE(PSU2_ID)},
+    { { ONLP_THERMAL_ID_CREATE(THERMAL_10_ON_PSU2), "PSU-2 internal Sensor", ONLP_PSU_ID_CREATE(PSU2_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     }
@@ -139,7 +118,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     local_id = ONLP_OID_ID_GET(id);
     *info = linfo[local_id];
 
-#ifdef BMC
     UINT4 multiplier = 1000;
     UINT4 u4Data = 0;
     char device_buf[20] = {0};
@@ -156,16 +134,15 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         case THERMAL_6_ON_MAIN_BOARD_TEMP_2:
         case THERMAL_7_ON_MAIN_BOARD_TEMP_3:
         case THERMAL_8_ON_MAIN_BOARD:
-        case THERMAL_9_ON_MAIN_BOARD:
             local_id--;
             sprintf(device_buf, "Temp_Sensor_%d", local_id);
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;
-        case THERMAL_10_ON_PSU1:
+        case THERMAL_9_ON_PSU1:
             sprintf(device_buf, "PSU1_Temp_1");
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;
-        case THERMAL_11_ON_PSU2:
+        case THERMAL_10_ON_PSU2:
             sprintf(device_buf, "PSU2_Temp_1");
             rv = dni_bmc_sensor_read(device_buf, &u4Data, multiplier, THERMAL_SENSOR);
             break;
@@ -181,48 +158,6 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
         info->mcelsius = u4Data;
         return 0;
     }
-#elif defined I2C
-    int temp_base = 1;
-    char fullpath[50] = {0};
-    int r_data = 0;
 
-    switch (local_id) {
-        case THERMAL_1_ON_FAN_BOARD:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_2_ON_CPU_BOARD:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_3_ON_MAIN_BOARD_TEMP_1:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_4_ON_MAIN_BOARD_TEMP_2:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_5_ON_MAIN_BOARD_TEMP_1:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_6_ON_MAIN_BOARD_TEMP_2:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_7_ON_MAIN_BOARD_TEMP_3:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_8_ON_MAIN_BOARD:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_9_ON_MAIN_BOARD:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_10_ON_PSU1:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-        case THERMAL_11_ON_PSU2:
-            sprintf(fullpath,"%s%s", PREFIX_PATH, path[local_id]);
-            break;
-    }  
-    r_data = dni_i2c_lock_read_attribute(NULL, fullpath);
-    info->mcelsius = r_data / temp_base;
-#endif
     return rv;
 }

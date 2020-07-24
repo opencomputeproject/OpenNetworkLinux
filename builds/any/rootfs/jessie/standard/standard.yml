@@ -64,6 +64,7 @@ Multistrap:
 Configure:
   overlays:
     - ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/common/overlay
+    - ${ONL}/builds/any/rootfs/${ONL_DEBIAN_SUITE}/${INIT}/overlay
 
   update-rc.d:
     - 'faultd defaults'

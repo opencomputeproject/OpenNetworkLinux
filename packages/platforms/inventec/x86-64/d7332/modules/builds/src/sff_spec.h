@@ -211,6 +211,7 @@ typedef enum {
     MODULE_FAULT_ST_ENCODE = 0x5,
 
 } Module_State_Encoding_t;
+
 typedef enum {
 
     MODULE_TYPE_MMF = 0x1,
@@ -241,7 +242,7 @@ typedef enum {
     CONFIG_REJECTED_INCOMPLETE_LANE_INFO,
 } config_err_code_t;
 
-
+#if 0
 struct id_status_field_offset2_t {
     unsigned reserved : 2;
     unsigned twi_max_speed : 2;
@@ -262,12 +263,12 @@ struct qsfp_dd_id_status_t {
 };
 
 struct qsfp_dd_module_flags_t {
-    unsigned state_change_flag : 1;
-    unsigned module_fw_fault : 1;
-    unsigned data_path_fw_fault : 1;
-    unsigned reserved : 2;
+    unsigned char state_change_flag : 1;
+    unsigned char module_fw_fault : 1;
+    unsigned char data_path_fw_fault : 1;
+    unsigned char reserved : 2;
 };
-
+#endif
 /*app_advert_field*/
 #define APP_ADVERT_FIELD_NUM (5)
 struct qsfp_dd_app_advert_fields_t {
@@ -292,9 +293,9 @@ typedef enum {
 } apsel_code_t;
 
 struct stage_set_t {
-    unsigned explicit_control : 1;
-    unsigned datapath_code : 3;
-    unsigned app_code : 4;
+    unsigned char explicit_control : 1;
+    unsigned char datapath_code : 3;
+    unsigned char app_code : 4;
 
 };
 #define RESET_ASSERT_TIME (10) /*ms*/

@@ -53,11 +53,13 @@ struct as9926_24d_led_data {
 
 static struct as9926_24d_led_data  *ledctl = NULL;
 
-#define LED_CNTRLER_I2C_ADDRESS          (0x60)
+#define LED_CNTRLER_I2C_ADDRESS          (0x68)
 
-#define LED_TYPE_DIAG_REG_MASK           (0x04)
-#define LED_MODE_DIAG_OFF_VALUE          (0x00)
-#define LED_MODE_DIAG_GREEN_VALUE        (0x04)
+#define LED_TYPE_DIAG_REG_MASK           (0x0C)
+#define LED_MODE_DIAG_GREEN_BLINK_VALUE  (0x08)
+#define LED_MODE_DIAG_GREEN_VALUE        (0x0C)
+#define LED_MODE_DIAG_AMBER_VALUE        (0x04)
+#define LED_MODE_DIAG_AMBER_VALUE_1      (0x00)
 
 #define LED_TYPE_LOC_REG_MASK            (0x01)
 #define LED_MODE_LOC_OFF_VALUE           (0x00)
@@ -100,8 +102,10 @@ struct led_type_mode {
 static struct led_type_mode led_type_mode_data[] = {
 {LED_TYPE_LOC,  LED_MODE_OFF,         LED_TYPE_LOC_REG_MASK,  LED_MODE_LOC_OFF_VALUE},
 {LED_TYPE_LOC,  LED_MODE_AMBER_BLINK, LED_TYPE_LOC_REG_MASK,  LED_MODE_LOC_AMBER_BLINK_VALUE},
-{LED_TYPE_DIAG, LED_MODE_OFF,         LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_OFF_VALUE},
+{LED_TYPE_DIAG, LED_MODE_GREEN_BLINK, LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_GREEN_BLINK_VALUE},
 {LED_TYPE_DIAG, LED_MODE_GREEN,       LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_GREEN_VALUE},
+{LED_TYPE_DIAG, LED_MODE_AMBER,       LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_AMBER_VALUE},
+{LED_TYPE_DIAG, LED_MODE_AMBER,       LED_TYPE_DIAG_REG_MASK, LED_MODE_DIAG_AMBER_VALUE_1},
 };
 
 static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {

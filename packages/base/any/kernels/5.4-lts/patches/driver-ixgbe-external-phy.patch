@@ -1,0 +1,24 @@
+diff -urpN a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_phy.c	2019-08-21 20:37:39.221097032 +0000
+@@ -379,6 +379,9 @@ static enum ixgbe_phy_type ixgbe_get_phy
+ 	case X557_PHY_ID2:
+ 		phy_type = ixgbe_phy_x550em_ext_t;
+ 		break;
++	case BCM54616S_E_PHY_ID:
++		phy_type = ixgbe_phy_ext_1g_t;
++		break;
+ 	default:
+ 		phy_type = ixgbe_phy_unknown;
+ 		break;
+diff -urpN a/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h b/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h
+--- a/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h	2019-08-16 08:12:54.000000000 +0000
++++ b/drivers/net/ethernet/intel/ixgbe/ixgbe_type.h	2019-08-21 20:37:39.225096955 +0000
+@@ -1403,6 +1403,7 @@ struct ixgbe_nvm_version {
+ #define QT2022_PHY_ID    0x0043A400
+ #define ATH_PHY_ID       0x03429050
+ #define AQ_FW_REV        0x20
++#define BCM54616S_E_PHY_ID	0x03625D10
+ 
+ /* Special PHY Init Routine */
+ #define IXGBE_PHY_INIT_OFFSET_NL 0x002B

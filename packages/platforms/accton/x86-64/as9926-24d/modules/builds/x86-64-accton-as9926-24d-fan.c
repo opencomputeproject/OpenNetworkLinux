@@ -223,7 +223,7 @@ static struct attribute *as9926_24d_fan_attributes[] = {
 
 #define FAN_DUTY_CYCLE_REG_MASK         0x0F
 #define FAN_MAX_DUTY_CYCLE              100
-#define FAN_REG_VAL_TO_SPEED_RPM_STEP   100
+#define FAN_REG_VAL_TO_SPEED_RPM_STEP   200
 
 static int as9926_24d_fan_read_value(struct i2c_client *client, u8 reg)
 {

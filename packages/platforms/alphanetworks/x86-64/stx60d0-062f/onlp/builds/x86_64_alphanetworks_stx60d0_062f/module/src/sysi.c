@@ -251,6 +251,10 @@ onlp_sysi_platform_manage_fans(void)
     onlp_thermal_info_t thermal_info;
     onlp_fan_info_t fan_info;
 
+
+    /********    FAN control only by BMC.  ********/
+    return ONLP_STATUS_OK;
+
     if (diag_debug_pause_platform_manage_check() == 1) //diag test mode
     {
         return ONLP_STATUS_OK;

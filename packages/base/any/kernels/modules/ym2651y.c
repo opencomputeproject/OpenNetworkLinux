@@ -79,8 +79,9 @@ struct ym2651y_data {
     u8   pmbus_revision; /* Register value */
     u8   mfr_id[10];     /* Register value */
     u8   mfr_model[16]; /* Register value */
+    u8   mfr_model_opt[8]; /* Register value */
     u8   mfr_revsion[3]; /* Register value */
-    u8   mfr_serial[20]; /* Register value */
+    u8   mfr_serial[21]; /* Register value */
     u16  mfr_vin_min;   /* Register value */
     u16  mfr_vin_max;   /* Register value */
     u16  mfr_iin_max;   /* Register value */
@@ -137,7 +138,8 @@ enum ym2651y_sysfs_attributes {
     PSU_MFR_IIN_MAX,
     PSU_MFR_IOUT_MAX,
     PSU_MFR_PIN_MAX,
-    PSU_MFR_POUT_MAX
+    PSU_MFR_POUT_MAX,
+    PSU_MFR_MODEL_OPTION
 };
 
 /* sysfs attributes for hwmon
@@ -170,6 +172,7 @@ static SENSOR_DEVICE_ATTR(psu_mfr_iin_max,  S_IRUGO, show_linear, NULL, PSU_MFR_
 static SENSOR_DEVICE_ATTR(psu_mfr_iout_max, S_IRUGO, show_linear, NULL, PSU_MFR_IOUT_MAX);
 static SENSOR_DEVICE_ATTR(psu_mfr_pin_max,  S_IRUGO, show_linear, NULL, PSU_MFR_PIN_MAX);
 static SENSOR_DEVICE_ATTR(psu_mfr_pout_max, S_IRUGO, show_linear, NULL, PSU_MFR_POUT_MAX);
+static SENSOR_DEVICE_ATTR(psu_mfr_model_opt,S_IRUGO, show_ascii,  NULL, PSU_MFR_MODEL_OPTION);
 
 static struct attribute *ym2651y_attributes[] = {
     &sensor_dev_attr_psu_power_on.dev_attr.attr,
@@ -200,6 +203,7 @@ static struct attribute *ym2651y_attributes[] = {
     &sensor_dev_attr_psu_mfr_vout_min.dev_attr.attr,
     &sensor_dev_attr_psu_mfr_vout_max.dev_attr.attr,
     &sensor_dev_attr_psu_mfr_iout_max.dev_attr.attr,
+    &sensor_dev_attr_psu_mfr_model_opt.dev_attr.attr,
     NULL
 };
 
@@ -427,6 +431,9 @@ static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
         break;
     case PSU_MFR_MODEL: /* psu_mfr_model */
             ptr = data->mfr_model + 1; /* The first byte is the count byte of string. */
+        break;
+    case PSU_MFR_MODEL_OPTION: /* psu_mfr_model_opt */
+            ptr = data->mfr_model_opt + 1; /* The first byte is the count byte of string. */
         break;
     case PSU_MFR_REVISION: /* psu_mfr_revision */
             ptr = data->mfr_revsion + 1; /* The first byte is the count byte of string. */
@@ -781,6 +788,25 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 goto exit;
             }
 
+            /* Read mfr_model_opt */
+            command = 0xd0;
+            length  = 1;
+
+            /* Read first byte to determine the length of data */
+            status = ym2651y_read_block(client, command, &buf, length);
+            if (status < 0) {
+                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                goto exit;
+            }
+
+            status = ym2651y_read_block(client, command, data->mfr_model_opt, buf+1);
+            data->mfr_model_opt[buf+1] = '\0';
+
+            if (status < 0) {
+                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                goto exit;
+            }
+
             /* Read mfr_revsion */
             command = 0x9b;
             status = ym2651y_read_block(client, command, data->mfr_revsion,
@@ -794,9 +820,17 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
 
             /* Read mfr_serial */
             command = 0x9e;
-            status = ym2651y_read_block(client, command, data->mfr_serial,
-                                            ARRAY_SIZE(data->mfr_serial)-1);
-            data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
+            length  = 1;
+
+            /* Read first byte to determine the length of data */
+            status = ym2651y_read_block(client, command, &buf, length);
+            if (status < 0) {
+                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                goto exit;
+            }
+
+            status = ym2651y_read_block(client, command, data->mfr_serial, buf+1);
+            data->mfr_serial[buf+1] = '\0';
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
