@@ -188,9 +188,10 @@ mbuild: build
 	$(foreach f,$(MODSYNCLIST),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
 	find $(K_MBUILD_DIR) -name "*.o*" -delete
 
-#	This breaks the 5.x kernel builds
-#	find $(K_MBUILD_DIR) -name "*.c" -delete
-
+# This breaks the 5.x kernel builds
+ifeq ($(shell test $(K_MAJOR_VERSION) -lt 5 && echo 1),1)
+	find $(K_MBUILD_DIR) -name "*.c" -delete
+endif
 	find $(K_MBUILD_DIR) -name "*.ko" -delete
 
 # Remove symlink directory so that build does not fail
