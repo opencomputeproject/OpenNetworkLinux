@@ -678,7 +678,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
     struct i2c_client *client = to_i2c_client(dev);
     struct as5835_54x_cpld_data *data = i2c_get_clientdata(client);
 	int status = 0;
-	u8 reg = 0, mask = 0, revert = 0;
+	u8 reg = 0, mask = 0, invert = 0;
 
 	switch (attr->index) {
 	case MODULE_PRESENT_1 ... MODULE_PRESENT_8:
@@ -804,13 +804,14 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	case MODULE_RESET_49 ... MODULE_RESET_54:
 		reg  = 0x15;
 		mask = 0x1 << (attr->index - MODULE_RESET_49);
+		invert = 1;
 		break;
 	default:
 		return 0;
 	}
 
     if (attr->index >= MODULE_PRESENT_1 && attr->index <= MODULE_PRESENT_54) {
-        revert = 1;
+        invert = 1;
     }
 
     mutex_lock(&data->update_lock);
@@ -820,7 +821,7 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	}
 	mutex_unlock(&data->update_lock);
 
-	return sprintf(buf, "%d\n", revert ? !(status & mask) : !!(status & mask));
+	return sprintf(buf, "%d\n", invert ? !(status & mask) : !!(status & mask));
 
 exit:
 	mutex_unlock(&data->update_lock);
@@ -891,6 +892,10 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	}
 
 	/* Update tx_disable/lpmode/reset status */
+    if (attr->index >= MODULE_RESET_49 && attr->index <= MODULE_RESET_54) {
+        value = !value;
+    }
+
 	if (value) {
 		status |= mask;
 	}
