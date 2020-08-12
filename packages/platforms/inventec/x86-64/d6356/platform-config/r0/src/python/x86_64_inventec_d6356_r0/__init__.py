@@ -19,6 +19,4 @@ class OnlPlatform_x86_64_inventec_d6356_r0(OnlPlatformInventec,
 	self.new_i2c_device('inv_eeprom', 0x55, 2)
 	os.system("insmod /lib/modules/`uname -r`/onl/inventec/common/inv_eeprom.ko")
 
-	#self.insmod('vpd')
-	#self.insmod('inv_pthread')
 	return True
