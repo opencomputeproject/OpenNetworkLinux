@@ -33,6 +33,7 @@
 
 #define DRVNAME "as5916_54xks_sys"
 #define ACCTON_IPMI_NETFN       0x34
+#define IPMI_MAC_RESET_CMD      0x2B
 #define IPMI_TCAM_READ_CMD      0x1E
 #define IPMI_TCAM_WRITE_CMD     0x1F
 #define IPMI_TCAM_RESET_SUBCMD      1
@@ -68,6 +69,8 @@ static ssize_t set_interrupt_status_6_mask(struct device *dev, struct device_att
 static ssize_t show_cpld_version(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_watchdog(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_watchdog(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t mac_reset(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 
 struct ipmi_data {
@@ -146,6 +149,7 @@ enum as5916_54xks_sys_sysfs_attrs {
     MB_CPLD_SR1,  /* main board CPLD Offset 0x08 System Reset-1 */
 };
 
+static SENSOR_DEVICE_ATTR(mac_rst, S_IWUSR, NULL, mac_reset, RESET_MAC);
 static SENSOR_DEVICE_ATTR(tcam_rst_c, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_CRST_L);
 static SENSOR_DEVICE_ATTR(tcam_rst_pe, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_PERST_L);
 static SENSOR_DEVICE_ATTR(tcam_rst_s, S_IWUSR | S_IRUGO, show_sys_reset_6, set_sys_reset_6, TCAM_SRST_L);
@@ -163,8 +167,8 @@ static SENSOR_DEVICE_ATTR(cpu_cpld_system_reset, S_IWUSR | S_IRUGO, show_watchdo
 static SENSOR_DEVICE_ATTR(cpu_cpld_last_reset_reson, S_IRUGO, show_watchdog, NULL, CPU_CPLD_LRS);
 static SENSOR_DEVICE_ATTR(mb_cpld1_system_reset1, S_IWUSR | S_IRUGO, show_watchdog, set_watchdog, MB_CPLD_SR1);
 
-
 static struct attribute *as5916_54xks_sys_attributes[] = {
+    &sensor_dev_attr_mac_rst.dev_attr.attr,
     &sensor_dev_attr_tcam_rst_c.dev_attr.attr,
     &sensor_dev_attr_tcam_rst_pe.dev_attr.attr,
     &sensor_dev_attr_tcam_rst_s.dev_attr.attr,
@@ -433,6 +437,40 @@ static struct as5916_54xks_sys_data *as5916_54xks_sys_update_tcam(unsigned char 
 
 exit:
     return data;
+}
+
+static ssize_t mac_reset(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+    long reset;
+    int status = 0;
+
+	status = kstrtol(buf, 10, &reset);
+	if (status) {
+		return status;
+	}
+
+    if (!reset) {
+        return count;
+    }
+
+    mutex_lock(&data->update_lock);
+
+    status = ipmi_send_message(&data->ipmi, IPMI_MAC_RESET_CMD, NULL, 0, NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    status = count;
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return status;
 }
 
 static ssize_t set_sys_reset_6(struct device *dev, struct device_attribute *da,
