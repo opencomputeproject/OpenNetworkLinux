@@ -202,9 +202,8 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     enum {E_DOWN, E_UP, E_THRESHS};
     enum {_LOW, _NORMAL, _MID, _HIGH, _MAX} static stage = _MID;
     const int duties[] = {20, 30, 60, FAN_DUTY_MAX};
-    const int thrs[E_THRESHS][_MAX] = {{INT_MIN, 1000, 33000, 53000},
-        {11000, 43000, 58000, INT_MAX}
-    };
+    const int thrs[E_THRESHS][_MAX] = {{INT_MIN, 1000, 36000, 54000},
+                                               {10000, 47000, 62000, INT_MAX}};
 
     thermal = get_ambient_thermal(ti);
     /*Take fan 1 only.*/
