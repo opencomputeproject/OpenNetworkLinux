@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include <onlplib/file.h>
 #include <onlp/platformi/sysi.h>
@@ -180,50 +181,52 @@ sysi_fanctrl_fan_fault_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     return ONLP_STATUS_OK;
 }
 
+static int get_ambient_thermal(onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT]) {
+    int i = 2;  /*Take LM75 0x4A, supposed to be indexed 2*/
+    char *tSenorKey = "4A";
+
+    /*check node desc.*/
+    if (NULL == AIM_STRSTR(ti[i].hdr.description, tSenorKey)) {
+        _set_all_fans_pwm(FAN_DUTY_MAX);
+        AIM_DIE("%s: Cannot find the thermal sensor: %s\n", __func__, tSenorKey);
+    }
+    return ti[i].mcelsius;
+}
+
 static int
 sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                          onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                          int *adjusted)
 {
-    static int last_temp = 0;
-    int i, duty, *threshs, curr_duty;
-    int temp = 0;
-    enum trend_e {E_TREND_FALL, E_TREND_RISE, E_TRENDS} trend = 0;
-    int policys[E_TRENDS][2] = {{1000, 33000}, {11000, 43000}};
-    int duties[] = {20, 30, 100};
+    int duty, curr_duty, thermal;
+    enum {E_DOWN, E_UP, E_THRESHS};
+    enum {_LOW, _NORMAL, _MID, _HIGH, _MAX} static stage = _MID;
+    const int duties[] = {20, 30, 60, FAN_DUTY_MAX};
+    const int thrs[E_THRESHS][_MAX] = {{INT_MIN, 1000, 36000, 54000},
+                                               {10000, 47000, 62000, INT_MAX}};
 
-    temp = ti[2].mcelsius;  /*Take LM75 0x4a*/
-    if (temp == last_temp) {
-        return ONLP_STATUS_OK;
-    }
-    trend = (temp - last_temp) > 0 ? E_TREND_RISE: E_TREND_FALL;
-    last_temp = temp;
-
+    thermal = get_ambient_thermal(ti);
     /*Take fan 1 only.*/
     if( fani_get_fan_duty(1, &curr_duty) != ONLP_STATUS_OK) {
         *adjusted = 1;
         return _set_all_fans_pwm(FAN_DUTY_MAX);
     }
 
-    duty = curr_duty;
-    threshs = policys[trend];
-    if (trend == E_TREND_RISE) {
-        for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
-            if (temp > threshs[i]) {
-                duty = duties[i+1];
-            }
+    switch(stage) {
+    case _LOW:
+    case _NORMAL:
+    case _MID:
+    case _HIGH:
+        if (thermal < thrs[E_DOWN][stage]) {
+            stage--;
+        } else if (thermal > thrs[E_UP][stage]) {
+            stage++;
         }
-
-    } else if (trend == E_TREND_FALL) {
-        for (i = 0; i < sizeof(policys)/sizeof(policys[0]); i++) {
-            if (temp < threshs[i]) {
-                duty = duties[i];
-                break;
-            }
-        }
-
+        break;
+    default:
+        stage = _HIGH;
     }
-
+    duty = duties[stage];
     if (curr_duty != duty) {
         *adjusted = 1;
         return _set_all_fans_pwm(duty);
@@ -231,7 +234,6 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
 
     return ONLP_STATUS_OK;
 }
-
 
 static int
 sysi_fanctrl_thermal_shutdown_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
