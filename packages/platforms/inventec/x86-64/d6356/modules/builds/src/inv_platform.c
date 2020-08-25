@@ -5,7 +5,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
-#include <linux/i2c/pca954x.h>
+#include <linux/platform_data/pca954x.h>
 
 struct inv_i2c_board_info {
     int ch;
