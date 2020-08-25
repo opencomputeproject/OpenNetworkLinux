@@ -228,9 +228,9 @@ sysi_fanctrl_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
     /* Determine if temperature above the shutdown threshold 
     */
     if (aboveSd) {
-        char* path = "/sys/bus/i2c/devices/19-0060/shutdown";
+        char* path = "/sys/bus/i2c/devices/19-0068/shutdown";
 
-        if (onlp_file_write_int(1, "/sys/bus/i2c/devices/19-0060/shutdown") != 0) {
+        if (onlp_file_write_int(1, path) != 0) {
             AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", path);
             return ONLP_STATUS_E_INTERNAL;
         }
