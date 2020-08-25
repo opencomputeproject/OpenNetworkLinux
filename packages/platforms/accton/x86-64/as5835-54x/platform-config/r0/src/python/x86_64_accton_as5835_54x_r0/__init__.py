@@ -66,6 +66,7 @@ class OnlPlatform_x86_64_accton_as5835_54x_r0(OnlPlatformAccton,
         # initialize QSFP devices
         for port in range(49, 55):
             self.new_i2c_device('optoe1', 0x50, port-23)	
+            subprocess.call('echo 0 > /sys/bus/i2c/devices/3-0062/module_reset_%d' % port, shell=True)
 
         sfp_map = [28,29,26,30,31,27]
         for i in range(0,len(sfp_map)):
