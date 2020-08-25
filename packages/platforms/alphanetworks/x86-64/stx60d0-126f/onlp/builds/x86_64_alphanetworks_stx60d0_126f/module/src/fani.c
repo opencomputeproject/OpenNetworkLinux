@@ -144,8 +144,8 @@ typedef union
     unsigned char val;
     struct
     {
-        unsigned char fan_direction :1;
-        unsigned char fan_present :1;
+        unsigned char fan_direction :1; //bit 0
+        unsigned char fan_present :1; //bit 1
         unsigned char fan0_rps_err :1;
         unsigned char fan1_rps_err :1;
         unsigned char :4;  /* reserved */

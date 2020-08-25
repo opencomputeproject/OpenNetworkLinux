@@ -32,8 +32,8 @@
 #include <onlplib/file.h>
 #include <onlplib/i2c.h>
 
-#include "x86_64_alphanetworks_stx60d0_062f_int.h"
-#include "x86_64_alphanetworks_stx60d0_062f_log.h"
+#include "x86_64_alphanetworks_stx60d0_126f_int.h"
+#include "x86_64_alphanetworks_stx60d0_126f_log.h"
 #include "platform_lib.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -55,7 +55,7 @@
 
 
 
-#define PLATFORM_STRING "x86-64-alphanetworks-stx60d0-062f-r0"
+#define PLATFORM_STRING "x86-64-alphanetworks-stx60d0-126f-r0"
 
 const char*
 onlp_sysi_platform_get(void)
