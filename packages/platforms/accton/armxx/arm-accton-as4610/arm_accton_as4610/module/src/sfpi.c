@@ -23,8 +23,10 @@
  *
  *
  ***********************************************************/
+#include <unistd.h>
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/file.h>
+#include <onlplib/i2c.h>
 #include "platform_lib.h"
 
 #include <arm_accton_as4610/arm_accton_as4610_config.h>
@@ -39,6 +41,17 @@
 
 static int front_port_bus_index(int port)
 {
+    if (platform_id == PLATFORM_ID_POWERPC_ACCTON_AS4610_30_R0) {
+        if (port < 24 || port > 29) {
+            return ONLP_STATUS_E_PARAM;
+        }
+    }
+    else if (platform_id == PLATFORM_ID_POWERPC_ACCTON_AS4610_54_R0) {
+        if (port < 48 || port > 53) {
+            return ONLP_STATUS_E_PARAM;
+        }
+    }
+
     return (platform_id == PLATFORM_ID_POWERPC_ACCTON_AS4610_30_R0) ? 
            (port - 22) : /* PLATFORM_ID_POWERPC_ACCTON_AS4610_30_R0 */
            (port - 46) ; /* PLATFORM_ID_POWERPC_ACCTON_AS4610_54_R0 */
@@ -291,6 +304,65 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         }
 
     return rv;
+}
+
+#define VALIDATE_BUS(bus) \
+do {\
+    if (bus < 0) { \
+        AIM_LOG_ERROR("Invalid port number: (%d)\r\n", port); \
+        return bus; \
+    } \
+}\
+while (0)
+
+int
+onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    int ret = 0;
+    int bus = front_port_bus_index(port);
+
+    VALIDATE_BUS(bus);
+    ret = onlp_i2c_readb(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+
+    return ret;
+}
+
+int
+onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    int ret = 0;
+    int bus = front_port_bus_index(port);
+
+    VALIDATE_BUS(bus);
+    ret = onlp_i2c_writeb(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    usleep(10000);
+
+    return ret;
+}
+
+int
+onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    int ret = 0;
+    int bus = front_port_bus_index(port);
+
+    VALIDATE_BUS(bus);
+    ret = onlp_i2c_readw(bus, devaddr, addr, ONLP_I2C_F_FORCE);
+
+    return ret;
+}
+
+int
+onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int ret = 0;
+    int bus = front_port_bus_index(port);
+
+    VALIDATE_BUS(bus);
+    ret = onlp_i2c_writew(bus, devaddr, addr, value, ONLP_I2C_F_FORCE);
+    usleep(10000);
+
+    return ret;
 }
 
 int
