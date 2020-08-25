@@ -54,3 +54,9 @@ driver-add-the-support-max6620.patch
 0051-mlxsw-qsfp_sysfs-Remove-obsolete-code-for-QSFP-EEPRO.patch
 0052-platform-mellanox-mlxreg-io-Add-support-for-compl.patch
 0053-platform-mellanox-mlxreg-hotplug-Add-environmental-d.patch
+0054-Add-support-for-new-transceivers-types-QSFP-DD-and-Q.patch
+0055-mlxsw-core-Add-the-hottest-thermal-zone-detection.patch
+0056-mlxsw-core-thermal-Separate-temperature-trend-read-c.patch
+0057-watchdog-mlx-wdt-support-new-watchdog-type-with-long.patch
+0058-mlxsw-core-thermal-Enable-thermal-zones-by-default.patch
+0059-platform-x86-mlx-platform-Remove-PSU-EEPROM-configur.patch

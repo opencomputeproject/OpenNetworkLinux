@@ -1,0 +1,48 @@
+From 21833c9ab0b71b921f830e9a338b2084a0787a7e Mon Sep 17 00:00:00 2001
+From: Vadim Pasternak <vadimp@mellanox.com>
+Date: Thu, 21 May 2020 13:41:23 +0300
+Subject: [backport 4.19 3/3] mlxsw: core: thermal: Enable thermal zones by
+ default
+
+Change default setting for the all thermal zones from "disabled" to
+"enabled"
+
+Signed-off-by: Vadim Pasternak <vadimp@mellanox.com>
+---
+ drivers/net/ethernet/mellanox/mlxsw/core_thermal.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+index 775343a25..d77c4c82b 100644
+--- a/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
++++ b/drivers/net/ethernet/mellanox/mlxsw/core_thermal.c
+@@ -807,7 +807,7 @@ mlxsw_thermal_module_tz_init(struct mlxsw_thermal_module *module_tz)
+ 		return err;
+ 	}
+ 
+-	module_tz->mode = THERMAL_DEVICE_DISABLED;
++	module_tz->mode = THERMAL_DEVICE_ENABLED;
+ 	return 0;
+ }
+ 
+@@ -925,7 +925,7 @@ mlxsw_thermal_gearbox_tz_init(struct mlxsw_thermal_module *gearbox_tz)
+ 	if (IS_ERR(gearbox_tz->tzdev))
+ 		return PTR_ERR(gearbox_tz->tzdev);
+ 
+-	gearbox_tz->mode = THERMAL_DEVICE_DISABLED;
++	gearbox_tz->mode = THERMAL_DEVICE_ENABLED;
+ 	return 0;
+ }
+ 
+@@ -1095,7 +1095,7 @@ int mlxsw_thermal_init(struct mlxsw_core *core,
+ 	if (err)
+ 		goto err_unreg_modules_tzdev;
+ 
+-	thermal->mode = THERMAL_DEVICE_DISABLED;
++	thermal->mode = THERMAL_DEVICE_ENABLED;
+ 	thermal->initializing = false;
+ 	*p_thermal = thermal;
+ 	return 0;
+-- 
+2.11.0
+
