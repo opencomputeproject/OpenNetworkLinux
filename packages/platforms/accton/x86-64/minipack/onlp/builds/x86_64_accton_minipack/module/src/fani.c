@@ -104,7 +104,7 @@ onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
 
     /* get front fan rpm
      */
-    fan_input = ((fid-1) % 2)*CHASSIS_FAN_COUNT;
+    fan_input = ((fid) % 2)*CHASSIS_FAN_COUNT;
     fan_input += (fid) + (fid%2);
 
     DEBUG_PRINT("fan%d_input: for fid:%d\n",fan_input, fid);

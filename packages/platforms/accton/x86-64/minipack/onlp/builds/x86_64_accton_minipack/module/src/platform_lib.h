@@ -55,6 +55,8 @@
 #define MAXIMUM_TTY_BUFFER_LENGTH       1024
 #define MAXIMUM_TTY_STRING_LENGTH       (MAXIMUM_TTY_BUFFER_LENGTH - 1)
 
+#define MAX_TTY_CMD_LENGTH    (256)
+
 enum onlp_thermal_id
 {
     THERMAL_RESERVED = 0,
