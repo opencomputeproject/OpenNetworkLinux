@@ -43,27 +43,29 @@
 #define IPMI_SFP_READ_CMD       0x1C
 #define IPMI_SFP_WRITE_CMD      0x1D
 #define IPMI_TIMEOUT			(5 * HZ)
-#define IPMI_READ_MAX_LEN       128
+#define IPMI_ERR_RETRY_TIMES    1
+#define IPMI_DATA_MAX_LEN       128
 
-#define EEPROM_SIZE				256	/*	256 byte eeprom */
+#define SFP_EEPROM_SIZE         768
+#define QSFP_EEPROM_SIZE        640
 
 #define NUM_OF_SFP              24
 #define NUM_OF_QSFP             2
+#define NUM_OF_PORT             (NUM_OF_SFP + NUM_OF_QSFP)
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_sfp(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_sfp_eeprom(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_qsfp(struct device *dev, struct device_attribute *da, char *buf);
-static ssize_t show_qsfp_eeprom(struct device *dev, struct device_attribute *da, char *buf);
 static int as7316_26xb_sfp_probe(struct platform_device *pdev);
 static int as7316_26xb_sfp_remove(struct platform_device *pdev);
 static ssize_t show_all(struct device *dev, struct device_attribute *da, char *buf);
+static ssize_t show_port(struct device *dev, struct device_attribute *da, char *buf);
 static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_present(void);
 static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_txdisable(void);
 static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_txfault(void);
@@ -71,7 +73,6 @@ static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_rxlos(void);
 static struct as7316_26xb_sfp_data *as7316_26xb_qsfp_update_present(void);
 static struct as7316_26xb_sfp_data *as7316_26xb_qsfp_update_txdisable(void);
 static struct as7316_26xb_sfp_data *as7316_26xb_qsfp_update_reset(void);
-static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_eeprom(int port);
 
 struct ipmi_data {
 	struct completion   read_complete;
@@ -107,7 +108,7 @@ enum module_status {
 };
 
 struct ipmi_sfp_resp_data {
-    unsigned char eeprom[EEPROM_SIZE];
+    unsigned char eeprom[IPMI_DATA_MAX_LEN];
     char          eeprom_valid;
 
     char          sfp_valid[NUM_OF_SFP_STATUS];        /* != 0 if registers are valid */
@@ -125,6 +126,12 @@ struct as7316_26xb_sfp_data {
     struct ipmi_data ipmi;
     struct ipmi_sfp_resp_data ipmi_resp;
     unsigned char ipmi_tx_data[3];
+    struct bin_attribute eeprom[NUM_OF_PORT*2]; /* eeprom data */
+};
+
+struct sfp_eeprom_write_data {
+    unsigned char ipmi_tx_data[4]; /* 0:port index  1:page number 2:offset 3:Data len */
+    unsigned char write_buf[IPMI_DATA_MAX_LEN];
 };
 
 struct as7316_26xb_sfp_data *data = NULL;
@@ -142,25 +149,21 @@ static struct platform_driver as7316_26xb_sfp_driver = {
 #define SFP_TXDISABLE_ATTR_ID(port)	    SFP##port##_TXDISABLE
 #define SFP_TXFAULT_ATTR_ID(port)		SFP##port##_TXFAULT
 #define SFP_RXLOS_ATTR_ID(port)		    SFP##port##_RXLOS
-#define SFP_EEPROM_ATTR_ID(port)		SFP##port##_EEPROM
 
 #define SFP_ATTR(port) \
     SFP_PRESENT_ATTR_ID(port),    \
     SFP_TXDISABLE_ATTR_ID(port),  \
     SFP_TXFAULT_ATTR_ID(port),    \
-    SFP_RXLOS_ATTR_ID(port),      \
-    SFP_EEPROM_ATTR_ID(port)
+    SFP_RXLOS_ATTR_ID(port)
 
 #define QSFP_PRESENT_ATTR_ID(port)		QSFP##port##_PRESENT
 #define QSFP_TXDISABLE_ATTR_ID(port)	QSFP##port##_TXDISABLE
 #define QSFP_RESET_ATTR_ID(port)		QSFP##port##_RESET
-#define QSFP_EEPROM_ATTR_ID(port)		QSFP##port##_EEPROM
 
 #define QSFP_ATTR(port) \
     QSFP_PRESENT_ATTR_ID(port),    \
     QSFP_TXDISABLE_ATTR_ID(port),  \
-    QSFP_RESET_ATTR_ID(port),      \
-    QSFP_EEPROM_ATTR_ID(port)
+    QSFP_RESET_ATTR_ID(port)
 
 enum as7316_54x_sfp_sysfs_attrs {
 	SFP_ATTR(1),
@@ -203,29 +206,25 @@ enum as7316_54x_qsfp_sysfs_attrs {
 	static SENSOR_DEVICE_ATTR(module_present_##port, S_IRUGO, show_sfp, NULL, SFP##port##_PRESENT); \
 	static SENSOR_DEVICE_ATTR(module_tx_disable_##port, S_IWUSR | S_IRUGO, show_sfp, set_sfp, SFP##port##_TXDISABLE); \
 	static SENSOR_DEVICE_ATTR(module_tx_fault_##port, S_IRUGO, show_sfp, NULL, SFP##port##_TXFAULT); \
-	static SENSOR_DEVICE_ATTR(module_rx_los_##port, S_IRUGO, show_sfp, NULL, SFP##port##_RXLOS); \
-	static SENSOR_DEVICE_ATTR(module_eeprom_##port, S_IRUGO, show_sfp_eeprom, NULL, SFP##port##_EEPROM)
+	static SENSOR_DEVICE_ATTR(module_rx_los_##port, S_IRUGO, show_sfp, NULL, SFP##port##_RXLOS)
 #define DECLARE_SFP_ATTR(port) \
     &sensor_dev_attr_module_present_##port.dev_attr.attr, \
     &sensor_dev_attr_module_tx_disable_##port.dev_attr.attr, \
     &sensor_dev_attr_module_tx_fault_##port.dev_attr.attr, \
-    &sensor_dev_attr_module_rx_los_##port.dev_attr.attr, \
-    &sensor_dev_attr_module_eeprom_##port.dev_attr.attr
+    &sensor_dev_attr_module_rx_los_##port.dev_attr.attr
 
 /* qsfp attributes */
 #define DECLARE_QSFP_SENSOR_DEVICE_ATTR(port) \
 	static SENSOR_DEVICE_ATTR(module_present_##port, S_IRUGO, show_qsfp, NULL, QSFP##port##_PRESENT); \
 	static SENSOR_DEVICE_ATTR(module_tx_disable_##port, S_IWUSR | S_IRUGO, show_qsfp, set_qsfp_txdisable, QSFP##port##_TXDISABLE); \
-	static SENSOR_DEVICE_ATTR(module_reset_##port, S_IWUSR | S_IRUGO, show_qsfp, set_qsfp_reset, QSFP##port##_RESET); \
-	static SENSOR_DEVICE_ATTR(module_eeprom_##port, S_IRUGO, show_qsfp_eeprom, NULL, QSFP##port##_EEPROM)
+	static SENSOR_DEVICE_ATTR(module_reset_##port, S_IWUSR | S_IRUGO, show_qsfp, set_qsfp_reset, QSFP##port##_RESET)
 #define DECLARE_QSFP_ATTR(port) \
     &sensor_dev_attr_module_present_##port.dev_attr.attr, \
     &sensor_dev_attr_module_tx_disable_##port.dev_attr.attr, \
-    &sensor_dev_attr_module_reset_##port.dev_attr.attr, \
-    &sensor_dev_attr_module_eeprom_##port.dev_attr.attr
+    &sensor_dev_attr_module_reset_##port.dev_attr.attr
 
-static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_all, NULL, PRESENT_ALL); \
-static SENSOR_DEVICE_ATTR(module_rxlos_all, S_IRUGO, show_all, NULL, RXLOS_ALL); \
+static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_all, NULL, PRESENT_ALL);
+static SENSOR_DEVICE_ATTR(module_rxlos_all, S_IRUGO, show_all, NULL, RXLOS_ALL);
 
 DECLARE_SFP_SENSOR_DEVICE_ATTR(1);
 DECLARE_SFP_SENSOR_DEVICE_ATTR(2);
@@ -291,6 +290,77 @@ static const struct attribute_group as7316_26xb_sfp_group = {
     .attrs = as7316_26xb_sfp_attributes,
 };
 
+static struct bin_attribute *oom_bin_attributes[NUM_OF_PORT][2] = {{NULL}};
+
+#define OOM_ATTRS(port) \
+    static struct sensor_device_attribute sensor_attr_oom##port = \
+        SENSOR_ATTR(port_name, S_IRUGO, show_port, NULL, port); \
+    static struct attribute *oom_attributes##port[] = { \
+        &sensor_attr_oom##port.dev_attr.attr, \
+        NULL \
+    }
+
+OOM_ATTRS(1);
+OOM_ATTRS(2);
+OOM_ATTRS(3);
+OOM_ATTRS(4);
+OOM_ATTRS(5);
+OOM_ATTRS(6);
+OOM_ATTRS(7);
+OOM_ATTRS(8);
+OOM_ATTRS(9);
+OOM_ATTRS(10);
+OOM_ATTRS(11);
+OOM_ATTRS(12);
+OOM_ATTRS(13);
+OOM_ATTRS(14);
+OOM_ATTRS(15);
+OOM_ATTRS(16);
+OOM_ATTRS(17);
+OOM_ATTRS(18);
+OOM_ATTRS(19);
+OOM_ATTRS(20);
+OOM_ATTRS(21);
+OOM_ATTRS(22);
+OOM_ATTRS(23);
+OOM_ATTRS(24);
+OOM_ATTRS(25);
+OOM_ATTRS(26);
+
+#define OOM_ATTR_GROUP(port) \
+    { .attrs = oom_attributes##port, \
+      .name  = "port"#port \
+    }
+
+static struct attribute_group oom_group[] = {
+    OOM_ATTR_GROUP(1),
+    OOM_ATTR_GROUP(2),
+    OOM_ATTR_GROUP(3),
+    OOM_ATTR_GROUP(4),
+    OOM_ATTR_GROUP(5),
+    OOM_ATTR_GROUP(6),
+    OOM_ATTR_GROUP(7),
+    OOM_ATTR_GROUP(8),
+    OOM_ATTR_GROUP(9),
+    OOM_ATTR_GROUP(10),
+    OOM_ATTR_GROUP(11),
+    OOM_ATTR_GROUP(12),
+    OOM_ATTR_GROUP(13),
+    OOM_ATTR_GROUP(14),
+    OOM_ATTR_GROUP(15),
+    OOM_ATTR_GROUP(16),
+    OOM_ATTR_GROUP(17),
+    OOM_ATTR_GROUP(18),
+    OOM_ATTR_GROUP(19),
+    OOM_ATTR_GROUP(20),
+    OOM_ATTR_GROUP(21),
+    OOM_ATTR_GROUP(22),
+    OOM_ATTR_GROUP(23),
+    OOM_ATTR_GROUP(24),
+    OOM_ATTR_GROUP(25),
+    OOM_ATTR_GROUP(26)
+};
+
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
@@ -326,7 +396,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 }
 
 /* Send an IPMI command */
-static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
                                      unsigned char *tx_data, unsigned short tx_len,
                                      unsigned char *rx_data, unsigned short rx_len)
 {
@@ -364,6 +434,31 @@ ipmi_req_err:
 addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
+}
+
+/* Send an IPMI command with retry */
+static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
+                                     unsigned char *tx_data, unsigned short tx_len,
+                                     unsigned char *rx_data, unsigned short rx_len)
+{
+    int status = 0, retry = 0;
+
+    for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+        if (unlikely(status != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n", retry, status);
+            continue;
+        }
+
+        if (unlikely(ipmi->rx_result != 0)) {
+            dev_err(&data->pdev->dev, "ipmi_send_message_%d err rx_result(%d)\r\n", retry, ipmi->rx_result);
+            continue;
+        }
+
+        break;
+    }
+
+    return status;
 }
 
 /* Dispatch IPMI messages to callers */
@@ -631,36 +726,6 @@ exit:
     return data;
 }
 
-static struct as7316_26xb_sfp_data *as7316_26xb_sfp_update_eeprom(int port)
-{
-    int status = 0, i = 0;
-    unsigned char cmd = (port <= NUM_OF_SFP) ? IPMI_SFP_READ_CMD : IPMI_QSFP_READ_CMD;
-    unsigned char ipmi_port_id = (port <= NUM_OF_SFP) ? port : (port - NUM_OF_SFP);
-
-    data->ipmi_resp.eeprom_valid = 0;
-
-    for (i = 0; i <= 1; i++) {
-        data->ipmi_tx_data[0] = ipmi_port_id;
-        data->ipmi_tx_data[1] = i; /* 0: Get eeprom byte (0~127) from ipmi 
-                                      1: Get eeprom byte (128~255) from ipmi */
-        status = ipmi_send_message(&data->ipmi, cmd, data->ipmi_tx_data, 2,
-                                    data->ipmi_resp.eeprom + i*128, 128);
-        if (unlikely(status != 0)) {
-            goto exit;
-        }
-
-        if (unlikely(data->ipmi.rx_result != 0)) {
-            status = -EIO;
-            goto exit;
-        }
-    }
-
-    data->ipmi_resp.eeprom_valid = 1;
-
-exit:
-    return data;
-}
-
 static ssize_t show_all(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
@@ -895,26 +960,6 @@ exit:
     return error;
 }
 
-
-static ssize_t show_sfp_eeprom(struct device *dev, struct device_attribute *da, char *buf)
-{
-    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    unsigned char pid = attr->index / NUM_OF_PER_SFP_ATTR; /* port id, 0 based */
-
-    mutex_lock(&data->update_lock);
-
-    data = as7316_26xb_sfp_update_eeprom(pid + 1);
-    if (!data->ipmi_resp.eeprom_valid) {
-        mutex_unlock(&data->update_lock);
-        return -EIO;
-    }
-
-    memcpy(buf, data->ipmi_resp.eeprom, sizeof(data->ipmi_resp.eeprom));
-    mutex_unlock(&data->update_lock);
-
-    return sizeof(data->ipmi_resp.eeprom);
-}
-
 static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
@@ -933,7 +978,7 @@ static ssize_t set_sfp(struct device *dev, struct device_attribute *da,
     mutex_lock(&data->update_lock);
 
     /* Send IPMI write command */
-    data->ipmi_tx_data[0] = pid + 1; /* FAN ID base id for ipmi start from 1 */
+    data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x01;
     data->ipmi_tx_data[2] = disable;
     status = ipmi_send_message(&data->ipmi, IPMI_SFP_WRITE_CMD,
@@ -1042,7 +1087,7 @@ static ssize_t set_qsfp_txdisable(struct device *dev, struct device_attribute *d
 	}
 
     /* Send IPMI write command */
-    data->ipmi_tx_data[0] = pid + 1; /* FAN ID base id for ipmi start from 1 */
+    data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x01;
     data->ipmi_tx_data[2] = disable ? 0xf : 0;
     status = ipmi_send_message(&data->ipmi, IPMI_QSFP_WRITE_CMD,
@@ -1083,7 +1128,7 @@ static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
     mutex_lock(&data->update_lock);
 
     /* Send IPMI write command */
-    data->ipmi_tx_data[0] = pid + 1; /* FAN ID base id for ipmi start from 1 */
+    data->ipmi_tx_data[0] = pid + 1; /* Port ID base id for ipmi start from 1 */
     data->ipmi_tx_data[1] = 0x11;
     data->ipmi_tx_data[2] = reset;
     status = ipmi_send_message(&data->ipmi, IPMI_QSFP_WRITE_CMD,
@@ -1100,52 +1145,368 @@ static ssize_t set_qsfp_reset(struct device *dev, struct device_attribute *da,
     /* Update to ipmi_resp buffer to prevent from the impact of lazy update */
     data->ipmi_resp.qsfp_resp[QSFP_RESET][pid] = reset;
     status = count;
-    
+
 exit:
     mutex_unlock(&data->update_lock);
     return status;
 }
 
-static ssize_t show_qsfp_eeprom(struct device *dev, struct device_attribute *da, char *buf)
+/*************************************************************************************
+SFP:  PS: Index of SFP is 1~48
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 0"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 1"
+Offset 256 ~ 383: Addr 0x51 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 2"
+Offset 384 ~ 511: Addr 0x51 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 3"
+Offset 512 ~ 639: Addr 0x51 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 4"
+Offset 640 ~ 767: Addr 0x51 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x1C <index of SFP> 5"
+
+QSFP:  PS: index of QSFP is 1~6"
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 0"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 1"
+Offset 256 ~ 383: Addr 0x50 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 2"
+Offset 384 ~ 511: Addr 0x50 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 3"
+Offset 512 ~ 639: Addr 0x50 Offset 128~255(Page 3) IPMI CMD: "ipmitool raw 0x34 0x10 <index of QSFP> 4"
+**************************************************************************************/
+static ssize_t sfp_eeprom_read(loff_t off, char *buf, size_t count, int port)
+{
+    int status = 0;
+    unsigned char cmd           = (port <= NUM_OF_SFP) ? IPMI_SFP_READ_CMD : IPMI_QSFP_READ_CMD;
+    unsigned char ipmi_port_id  = (port <= NUM_OF_SFP) ? port : (port - NUM_OF_SFP);
+    unsigned char ipmi_page     = off / IPMI_DATA_MAX_LEN;
+    unsigned char length        = IPMI_DATA_MAX_LEN - (off % IPMI_DATA_MAX_LEN);
+
+    data->ipmi_resp.eeprom_valid = 0;
+    data->ipmi_tx_data[0] = ipmi_port_id;
+    data->ipmi_tx_data[1] = ipmi_page;
+    status = ipmi_send_message(&data->ipmi, cmd, data->ipmi_tx_data, 2,
+                                data->ipmi_resp.eeprom, IPMI_DATA_MAX_LEN);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    /* Calculate return length */
+    if (count < length) {
+        length = count;
+    }
+
+    memcpy(buf, data->ipmi_resp.eeprom + (off % IPMI_DATA_MAX_LEN), length);
+    data->ipmi_resp.eeprom_valid = 1;
+    return length;
+
+exit:
+    return status;
+}
+
+static ssize_t show_port(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-    unsigned char pid = attr->index / NUM_OF_PER_QSFP_ATTR; /* port id, 0 based */
+    return sprintf(buf, "port%d\n", attr->index);
+}
+
+static int sfp_is_port_present(u8 port)
+{
+    int value = 0;
+
+    if (port > NUM_OF_PORT)
+        return -EINVAL;
 
     mutex_lock(&data->update_lock);
 
-    data = as7316_26xb_sfp_update_eeprom(pid + 1 + NUM_OF_SFP);
-    if (!data->ipmi_resp.eeprom_valid) {
-        mutex_unlock(&data->update_lock);
-        return -EIO;
+    if (port <= NUM_OF_SFP) {
+        data = as7316_26xb_sfp_update_present();
+        if (!data->ipmi_resp.sfp_valid[SFP_PRESENT]) {
+            mutex_unlock(&data->update_lock);
+            return -EIO;
+        }
+
+        value = data->ipmi_resp.sfp_resp[SFP_PRESENT][port-1];
+    }
+    else { /* QSFP */
+        port -= NUM_OF_SFP;
+
+        data = as7316_26xb_qsfp_update_present();
+        if (!data->ipmi_resp.qsfp_valid[QSFP_PRESENT]) {
+            mutex_unlock(&data->update_lock);
+            return -EIO;
+        }
+
+        value = data->ipmi_resp.qsfp_resp[QSFP_PRESENT][port-1];
     }
 
-    memcpy(buf, data->ipmi_resp.eeprom, sizeof(data->ipmi_resp.eeprom));
     mutex_unlock(&data->update_lock);
+    return value;
+}
 
-    return sizeof(data->ipmi_resp.eeprom);
+/* Validate port presence
+ */
+#define VALIDATE_PORT_PRESENCE(p)                  \
+do {                                               \
+    int present = 0;                               \
+    present = sfp_is_port_present(p); \
+    if (present < 0) {                             \
+        return present;                            \
+    }                                              \
+    else if (!present) {                           \
+        return -EIO;                               \
+    }                                              \
+} while (0)
+
+static ssize_t sfp_bin_read(struct file *filp, struct kobject *kobj,
+		struct bin_attribute *attr,
+		char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+    u64 port = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+    port = (u64)(attr->private);
+	VALIDATE_PORT_PRESENCE(port);
+
+	/*
+	 * Read data from chip, protecting against concurrent updates
+	 * from this host
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sfp_eeprom_read(off, buf, count, port);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+}
+
+/*************************************************************************************
+SFP:  PS: Index of SFP is 1~24
+ipmitool raw 0x34 0x1d <index of SFP> <page number> <offset> <Data len> <Data>
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 0 offset <Data len> <Data>"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 1 offset <Data len> <Data>"
+Offset 256 ~ 383: Addr 0x51 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 2 offset <Data len> <Data>"
+Offset 384 ~ 511: Addr 0x51 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 3 offset <Data len> <Data>"
+Offset 512 ~ 639: Addr 0x51 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 4 offset <Data len> <Data>"
+Offset 640 ~ 767: Addr 0x51 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x1d <index of SFP> 5 offset <Data len> <Data>"
+
+QSFP:  PS: index of QSFP is 1~2"
+ipmitool raw 0x34 0x11 <index of QSFP> <page number> <offset> <Data len> <Data>
+Offset   0 ~ 127: Addr 0x50 Offset   0~127         IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 0 offset <Data len> <Data>"
+Offset 128 ~ 255: Addr 0x50 Offset 128~255(Page 0) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 1 offset <Data len> <Data>"
+Offset 256 ~ 383: Addr 0x50 Offset 128~255(Page 1) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 2 offset <Data len> <Data>"
+Offset 384 ~ 511: Addr 0x50 Offset 128~255(Page 2) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 3 offset <Data len> <Data>"
+Offset 512 ~ 639: Addr 0x50 Offset 128~255(Page 3) IPMI CMD: "ipmitool raw 0x34 0x11 <index of QSFP> 4 offset <Data len> <Data>"
+**************************************************************************************/
+static ssize_t sfp_eeprom_write(loff_t off, char *buf, size_t count, int port)
+{
+    int status = 0;
+    unsigned char cmd           = (port <= NUM_OF_SFP) ? IPMI_SFP_WRITE_CMD : IPMI_QSFP_WRITE_CMD;
+    unsigned char ipmi_port_id  = (port <= NUM_OF_SFP) ? port : (port - NUM_OF_SFP);
+    unsigned char ipmi_page     = off / IPMI_DATA_MAX_LEN;
+    unsigned char length        = IPMI_DATA_MAX_LEN - (off % IPMI_DATA_MAX_LEN);
+    struct sfp_eeprom_write_data wdata;
+
+    /* Calculate write length */
+    if (count < length) {
+        length = count;
+    }
+
+    wdata.ipmi_tx_data[0] = ipmi_port_id;
+    wdata.ipmi_tx_data[1] = ipmi_page;
+    wdata.ipmi_tx_data[2] = (off % IPMI_DATA_MAX_LEN);
+    wdata.ipmi_tx_data[3] = length;
+    memcpy(&wdata.write_buf, buf, length);
+    status = ipmi_send_message(&data->ipmi, cmd, &wdata.ipmi_tx_data[0],
+                                length + sizeof(wdata.ipmi_tx_data), NULL, 0);
+    if (unlikely(status != 0)) {
+        goto exit;
+    }
+
+    if (unlikely(data->ipmi.rx_result != 0)) {
+        status = -EIO;
+        goto exit;
+    }
+
+    return length;
+
+exit:
+    return status;
+}
+
+static ssize_t sfp_bin_write(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+	u64 port = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+	port = (u64)(attr->private);
+    VALIDATE_PORT_PRESENCE(port);
+
+	/*
+	 * Write data to chip, protecting against concurrent updates
+	 * from this host, but not from other I2C masters.
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sfp_eeprom_write(off, buf, count, port);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+}
+
+#define EEPROM_FORMAT "module_eeprom_%d"
+#define EEPROM_FORMAT_OOM "eeprom"
+
+static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom, u64 port, u8 is_oom)
+{
+    int ret = 0;
+    char *eeprom_name = NULL;
+
+    eeprom_name = kzalloc(32, GFP_KERNEL);
+    if (!eeprom_name) {
+        ret = -ENOMEM;
+        goto alloc_err;
+    }
+
+    if (is_oom)
+        sprintf(eeprom_name, EEPROM_FORMAT_OOM);
+    else
+        sprintf(eeprom_name, EEPROM_FORMAT, (int)port);
+
+    sysfs_bin_attr_init(eeprom);
+	eeprom->attr.name = eeprom_name;
+	eeprom->attr.mode = S_IRUGO | S_IWUSR;
+	eeprom->read	  = sfp_bin_read;
+	eeprom->write	  = sfp_bin_write;
+	eeprom->size	  = (port <= NUM_OF_SFP) ? SFP_EEPROM_SIZE : QSFP_EEPROM_SIZE;
+    eeprom->private   = (void*)port;
+
+    if (!is_oom) {
+        /* Create eeprom file */
+        ret = sysfs_create_bin_file(kobj, eeprom);
+        if (unlikely(ret != 0)) {
+            goto bin_err;
+        }
+    }
+
+    return ret;
+
+bin_err:
+    kfree(eeprom_name);
+alloc_err:
+    return ret;
+}
+
+static int sysfs_bin_attr_cleanup(struct kobject *kobj, struct bin_attribute *bin_attr, u8 is_oom)
+{
+    if (!is_oom)
+        sysfs_remove_bin_file(kobj, bin_attr);
+
+    return 0;
 }
 
 static int as7316_26xb_sfp_probe(struct platform_device *pdev)
 {
     int status = -1;
+    int i = 0, k = 0;
+
+    for (i = 0; i < ARRAY_SIZE(data->eeprom); i++) {
+        /* Register sysfs hooks */
+        status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom[i],
+                                  (i % NUM_OF_PORT) + 1 /*port name start from 1*/,
+                                  (i / NUM_OF_PORT));
+        if (status) {
+            goto exit_eeprom;
+        }
+    }
+
+    for (k = 0; k < ARRAY_SIZE(oom_group); k++) {
+        /* Register oom sysfs hooks */
+        oom_bin_attributes[k][0] = &data->eeprom[k+NUM_OF_PORT];
+        oom_group[k].bin_attrs = oom_bin_attributes[k];
+
+        status = sysfs_create_group(&pdev->dev.kobj, &oom_group[k]);
+        if (status) {
+            goto exit_oom;
+        }
+    }
 
 	/* Register sysfs hooks */
 	status = sysfs_create_group(&pdev->dev.kobj, &as7316_26xb_sfp_group);
 	if (status) {
-		goto exit;
+		goto exit_oom;
 	}
 
     dev_info(&pdev->dev, "device created\n");
 
     return 0;
 
-exit:
+exit_oom:
+    /* Remove the phy attributes which were created successfully */
+    for (--k; k >= 0; k--) {
+        sysfs_remove_group(&pdev->dev.kobj, &oom_group[k]);
+    }
+exit_eeprom:
+    /* Remove the eeprom attributes which were created successfully */
+    for (--i; i >= 0; i--) {
+        sysfs_bin_attr_cleanup(&pdev->dev.kobj, &data->eeprom[i], (i / NUM_OF_PORT));
+    }
+
     return status;
 }
 
 static int as7316_26xb_sfp_remove(struct platform_device *pdev)
 {
+    int i = 0;
+
     sysfs_remove_group(&pdev->dev.kobj, &as7316_26xb_sfp_group);
+
+    for (i = 0; i < ARRAY_SIZE(oom_group); i++) {
+        sysfs_remove_group(&pdev->dev.kobj, &oom_group[i]);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(data->eeprom); i++) {
+        sysfs_bin_attr_cleanup(&pdev->dev.kobj, &data->eeprom[i], (i / NUM_OF_PORT));
+    }
+
     return 0;
 }
 
