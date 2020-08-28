@@ -352,6 +352,7 @@ static int onlp_sfpi_dev_read_write(int port, uint8_t devaddr, uint8_t addr, uin
 
     int ret = fread(&page, 1, 1, fp);
     if (ret != 1) {
+        fclose(fp);
         AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
         return ONLP_STATUS_E_INTERNAL;
     }
