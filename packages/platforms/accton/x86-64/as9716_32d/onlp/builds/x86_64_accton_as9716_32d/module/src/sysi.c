@@ -453,7 +453,7 @@ int onlp_sysi_platform_manage_fans(void)
     if(fan_state==LEVEL_FAN_INIT)
     {
         fan_state=LEVEL_FAN_MAX; /*This is default state*/
-        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), 100);
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
         return ONLP_STATUS_OK;
     }
     count_check++;
@@ -469,7 +469,7 @@ int onlp_sysi_platform_manage_fans(void)
         if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal[k]) != ONLP_STATUS_OK  )
         {
             AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
-            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), 100);
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
             return ONLP_STATUS_E_INTERNAL;
        }
         k++; 
@@ -479,7 +479,7 @@ int onlp_sysi_platform_manage_fans(void)
         if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal[k]) != ONLP_STATUS_OK  )
         {
             AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
-            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), 100);
+            onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
             return ONLP_STATUS_E_INTERNAL;
         }
         k++; 
@@ -493,7 +493,7 @@ int onlp_sysi_platform_manage_fans(void)
     if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(5), &thermal[7]) != ONLP_STATUS_OK  )
     {
         AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
-        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(5), 100);
+        onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
         return ONLP_STATUS_E_INTERNAL;
     }
     /* Get current fan pwm percent
@@ -521,7 +521,7 @@ int onlp_sysi_platform_manage_fans(void)
         {
             if(ori_state==LEVEL_FAN_MID)
             {
-                if (thermal[i].mcelsius >= afi_thermal_spec.mid_to_max_temp[i])
+                if (thermal[i].mcelsius >= afi_thermal_spec.mid_to_max_temp[i] && fan_fail==0)
                 {
                    current_state=LEVEL_FAN_MAX;
                    break;  
@@ -537,7 +537,10 @@ int onlp_sysi_platform_manage_fans(void)
         }
         if(max_to_mid==CHASSIS_THERMAL_COUNT && fan_state==LEVEL_FAN_MAX)
         {
-            current_state=LEVEL_FAN_MID;
+            if (fan_fail==0)
+            {
+                current_state=LEVEL_FAN_MID;
+            }
         }
     }
     else  /* AFO */
@@ -547,7 +550,7 @@ int onlp_sysi_platform_manage_fans(void)
         {
             if (ori_state==LEVEL_FAN_MID)
             {
-                if (thermal[i].mcelsius >= afo_thermal_spec.mid_to_max_temp[i])
+                if (thermal[i].mcelsius >= afo_thermal_spec.mid_to_max_temp[i] && fan_fail==0)
                 {
                     current_state=LEVEL_FAN_MAX;
                     break;
@@ -562,9 +565,11 @@ int onlp_sysi_platform_manage_fans(void)
             }
             else if (ori_state==LEVEL_FAN_MIN)
             {
-                if(psu_full_load)
+                if(psu_full_load==1 && fan_fail==0 )
+                {
                      current_state=LEVEL_FAN_MID;
-                else if (thermal[i].mcelsius >= afo_thermal_spec.min_to_mid_temp[i])
+                }
+                else if (thermal[i].mcelsius >= afo_thermal_spec.min_to_mid_temp[i] && fan_fail==0 )
                 {
                     current_state=LEVEL_FAN_MID;               
                 }
@@ -615,7 +620,12 @@ int onlp_sysi_platform_manage_fans(void)
         }
         if(max_to_mid==CHASSIS_THERMAL_COUNT && ori_state==LEVEL_FAN_MAX)
         {
-            current_state=LEVEL_FAN_MID;
+            if (fan_fail==0) /*For fan fail or remove_test, don't set current_state to MID, must keep MAX*/
+            {
+                current_state=LEVEL_FAN_MID;
+            }
+           
+             
             if (fan_alarm_state)
             {
                 fan_alarm_state=0;
@@ -626,7 +636,7 @@ int onlp_sysi_platform_manage_fans(void)
         }
         if(mid_to_min==CHASSIS_THERMAL_COUNT && ori_state==LEVEL_FAN_MID)
         {
-            if (!psu_full_load)
+            if (!psu_full_load && fan_fail==0)
             {
                 current_state=LEVEL_FAN_MIN;
             }
@@ -646,6 +656,11 @@ int onlp_sysi_platform_manage_fans(void)
             {
                 onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
             }
+            if (fan_state <LEVEL_FAN_MAX)
+            {
+                AIM_LOG_ERROR("Unable to get fan(%d), set fan_state=LEVEL_FAN_MAX\n", i);
+                fan_state=LEVEL_FAN_MAX;
+            }
             fan_fail=1;
             break;
         }
@@ -657,8 +672,14 @@ int onlp_sysi_platform_manage_fans(void)
                 onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
             }
             fan_fail=1;
+            if (fan_state <LEVEL_FAN_MAX)
+            {
+                AIM_LOG_ERROR("fan(%d) fail, set fan_state=LEVEL_FAN_MAX\n", i);
+                fan_state=LEVEL_FAN_MAX;
+            }
             break;
-        }            	    
+        }
+        fan_fail=0;           	    
     }
     if(current_state!=ori_state)
     {
