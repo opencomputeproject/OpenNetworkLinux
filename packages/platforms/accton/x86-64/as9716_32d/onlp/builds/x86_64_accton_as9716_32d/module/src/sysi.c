@@ -143,8 +143,8 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
     aim_free(pi->cpld_versions);
 }
 
-/*Read fanN_direction=1: The air flow of Fan6 is ¡§AFI-Back to Front¡¨
- *                    0: The air flow of Fan6 is ¡§AFO-Front to back¡¨
+/*Read fanN_direction=1: The air flow of Fan6 is Â¡Â§AFI-Back to FrontÂ¡Â¨
+ *                    0: The air flow of Fan6 is Â¡Â§AFO-Front to backÂ¡Â¨
  */
 /*
  Thermal policy:
@@ -656,6 +656,13 @@ int onlp_sysi_platform_manage_fans(void)
             {
                 onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
             }
+           /*
+            * 1.When insert/remove fan, fan speed/log still according to thermal policy.
+            * 2.If thermal policy state is bigger than LEVEL_FAN_MAX:
+            *   Do not change back to LEVEL_FAN_MAX, beacuse still need to deal with LOG or shutdown case.
+            * 3.If thermal policy state is smaller than LEVEL_FAN_MAX, set state=MAX.
+            *   When remove and insert back fan test, policy check temp and set to correct fan_speed.
+            */
             if (fan_state <LEVEL_FAN_MAX)
             {
                 AIM_LOG_ERROR("Unable to get fan(%d), set fan_state=LEVEL_FAN_MAX\n", i);
