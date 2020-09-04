@@ -1,5 +1,5 @@
-#ifndef NET_MUX_H
-#define NET_MUX_H
+#ifndef NB_MUX_H
+#define NB_MUX_H
 
 #include <linux/types.h>
 
@@ -43,7 +43,7 @@ int  reset_mux_objs(void);
 int  init_mux_objs(unsigned gpio);
 
 
-#endif /* NET_MUX_H */
+#endif /* NB_MUX_H */
 
 
 

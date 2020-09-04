@@ -8,6 +8,7 @@
 /* For build single module using (Ex: ONL platform) */
 #include <linux/module.h>
 
+
 /* ========== Register EEPROM address mapping ==========
  */
 struct eeprom_map_s eeprom_map_sfp = {
@@ -5885,11 +5886,11 @@ err_sfp_set_redwood_if_type_1:
 
 
 int
-_sfp_set_lavender_if_type(struct transvr_obj_s* self,
+_sfp_set_bf_lavender_if_type(struct transvr_obj_s* self,
                            int transvr_cls,
                            char *result) {
     /* (TBD)
-     *  Due to 'LAV' looks like doesn't have interface type.
+     *  Due to BF looks like doesn't have interface type.
      *  We bypass it currently.
      */
     int lmax = 8;    
@@ -5914,8 +5915,8 @@ _sfp_detect_if_type(struct transvr_obj_s* self,
             return _sfp_set_redwood_if_type(self, detect_cls, result);
 
         case CHIP_TYPE_LAVENDER:
-            return _sfp_set_lavender_if_type(self, detect_cls, result);
-
+            return _sfp_set_bf_lavender_if_type(self, detect_cls, result);
+            
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",
                       __func__, self->chipset_type, self->swp_name);
@@ -6515,11 +6516,11 @@ err_qsfp_set_magnolia_if_type_1:
 
 
 int
-_qsfp_set_lavender_if_type(struct transvr_obj_s* self,
+_qsfp_set_bf_lavender_if_type(struct transvr_obj_s* self,
                             int transvr_cls,
                             char *result) {
     /* (TBD)
-     *  Due to 'LAV' looks like doesn't have interface type.
+     *  Due to BF looks like doesn't have interface type.
      *  We bypass it currently.
      */
     int lmax = 8;    
@@ -6544,7 +6545,7 @@ _qsfp_detect_if_type(struct transvr_obj_s* self,
             return _qsfp_set_redwood_if_type(self, detect_cls, result);
 
         case CHIP_TYPE_LAVENDER:
-            return _qsfp_set_lavender_if_type(self, detect_cls, result);
+            return _qsfp_set_bf_lavender_if_type(self, detect_cls, result);
             
         default:
             SWPS_INFO("%s: non-defined chipset_type:%d <port>:%s\n",

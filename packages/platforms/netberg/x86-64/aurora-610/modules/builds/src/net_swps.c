@@ -22,9 +22,9 @@ static int flag_i2c_reset;
 static int flag_mod_state;
 static unsigned gpio_rest_mux;
 static struct class *swp_class_p = NULL;
-static struct net_platform_s *platform_p = NULL;
-static struct net_ioexp_layout_s *ioexp_layout = NULL;
-static struct net_port_layout_s *port_layout = NULL;
+static struct nb_platform_s *platform_p = NULL;
+static struct nb_ioexp_layout_s *ioexp_layout = NULL;
+static struct nb_port_layout_s *port_layout = NULL;
 
 static void swp_polling_worker(struct work_struct *work);
 static DECLARE_DELAYED_WORK(swp_polling, swp_polling_worker);
@@ -1806,7 +1806,7 @@ get_platform_type(void){
     int pf_total  = ARRAY_SIZE(platform_map);
     char log_msg[64] = "ERROR";
 
-    platform_p = kzalloc(sizeof(struct net_platform_s), GFP_KERNEL);
+    platform_p = kzalloc(sizeof(struct nb_platform_s), GFP_KERNEL);
     if (!platform_p){
         snprintf(log_msg, sizeof(log_msg), "kzalloc fail");
         goto err_get_platform_type_1;
@@ -1831,7 +1831,6 @@ get_platform_type(void){
                     platform_p->name);
             goto err_get_platform_type_2;
 
-        case PLATFORM_TYPE_AURORA_610_GA:
         case PLATFORM_TYPE_AURORA_610:
             platform_p->id = PLATFORM_SETTINGS;
             goto map_platform_name;
@@ -1875,15 +1874,6 @@ static int
 get_layout_info(void){
 
     switch (platform_p->id) {
-#ifdef SWPS_AURORA_610_GA
-        case PLATFORM_TYPE_AURORA_610_GA:
-            gpio_rest_mux = aurora_610_ga_gpio_rest_mux;
-            ioexp_layout  = aurora_610_ga_ioexp_layout;
-            port_layout   = aurora_610_ga_port_layout;
-            ioexp_total   = ARRAY_SIZE(aurora_610_ga_ioexp_layout);
-            port_total    = ARRAY_SIZE(aurora_610_ga_port_layout);
-            break;
-#endif
 #ifdef SWPS_AURORA_610
         case PLATFORM_TYPE_AURORA_610:
             gpio_rest_mux = aurora_610_gpio_rest_mux;
@@ -2457,9 +2447,7 @@ err_reg_tvr_attr:
 
 static int
 register_ioexp_attr_sfp_1(struct device *device_p){
-    /* Support machine type:
-     * - SFP : Magnolia
-     */
+
     char *err_attr = NULL;
 
     if (device_create_file(device_p, &dev_attr_present) < 0) {
@@ -2488,9 +2476,7 @@ err_ioexp_sfp1_attr:
 
 static int
 register_ioexp_attr_sfp_2(struct device *device_p){
-    /* Support machine type:
-     * - SFP28 : Cypress
-     */
+
     char *err_attr = NULL;
 
     if (register_ioexp_attr_sfp_1(device_p) < 0){
@@ -2514,11 +2500,7 @@ err_ioexp_sfp2_attr:
 
 static int
 register_ioexp_attr_qsfp_1(struct device *device_p){
-    /* Support machine type:
-     * - QSFP  : Magnolia, Redwood, Hudson32i
-     * - QSFP+ : Magnolia, Redwood, Hudson32i
-     * - QSFP28: Redwood
-     */
+
     char *err_attr = NULL;
 
     if (device_create_file(device_p, &dev_attr_present) < 0) {
@@ -2593,8 +2575,6 @@ register_ioexp_attr(struct device *device_p,
     char *err_msg = "ERR";
 
     switch (transvr_obj->ioexp_obj_p->ioexp_type){
-
-        case IOEXP_TYPE_AURORA_610_GA_NABC:
         case IOEXP_TYPE_AURORA_610_NABC:
         case IOEXP_TYPE_AURORA_610_1ABC:
         case IOEXP_TYPE_AURORA_610_3ABC:
@@ -2604,9 +2584,7 @@ register_ioexp_attr(struct device *device_p,
             }
             break;
 
-        case IOEXP_TYPE_AURORA_610_GA_7ABC:
         case IOEXP_TYPE_AURORA_610_7ABC:
-        case IOEXP_TYPE_QSFP_6P_LAYOUT_1:
             if (register_ioexp_attr_qsfp_1(device_p) < 0){
                 err_msg = "register_ioexp_attr_qsfp_1 fail";
                 goto err_reg_ioexp_attr;
@@ -3005,7 +2983,7 @@ MODULE_AUTHOR(SWP_AUTHOR);
 MODULE_DESCRIPTION(SWP_DESC);
 MODULE_VERSION(SWP_VERSION);
 MODULE_LICENSE(SWP_LICENSE);
-MODULE_SOFTDEP("pre: net_platform");
+MODULE_SOFTDEP("pre: nb_platform");
 
 module_init(swp_module_init);
 module_exit(swp_module_exit);

@@ -5,15 +5,12 @@
 
 
 /* IOEXP type define (SFP series) */
-#define IOEXP_TYPE_AURORA_610_GA_NABC    (10105)
-#define IOEXP_TYPE_AURORA_610_NABC       (10106)
-#define IOEXP_TYPE_AURORA_610_1ABC       (10108)
-#define IOEXP_TYPE_AURORA_610_3ABC       (10109)
+#define IOEXP_TYPE_AURORA_610_NABC (10106)
+#define IOEXP_TYPE_AURORA_610_1ABC (10108)
+#define IOEXP_TYPE_AURORA_610_3ABC (10109)
 
 /* IOEXP type define (QSFP series) */
-#define IOEXP_TYPE_AURORA_610_GA_7ABC    (10213)
-#define IOEXP_TYPE_AURORA_610_7ABC       (10214)
-#define IOEXP_TYPE_QSFP_6P_LAYOUT_1      (10215)
+#define IOEXP_TYPE_AURORA_610_7ABC (10214)
 
 /* CPLD type define */
 #define CPLD_TYPE_COTTONWOOD          (10301)
@@ -163,3 +160,11 @@ int  resync_channel_tier_1(void);
 
 
 #endif /* IO_EXPANDER_H */
+
+
+
+
+
+
+
+

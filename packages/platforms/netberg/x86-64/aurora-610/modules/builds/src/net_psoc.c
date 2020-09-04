@@ -182,7 +182,7 @@ struct __attribute__ ((__packed__))  psoc_layout {
 #define FAN2_CLEI_INDEX         1
 #define FAN3_CLEI_INDEX         2
 #define FAN4_CLEI_INDEX         3
-#define FAN5_CLEI_INDEX		    4
+#define FAN5_CLEI_INDEX		4
 #define PSU1_CLEI_INDEX         5
 #define PSU2_CLEI_INDEX         6
 
@@ -638,7 +638,7 @@ static ssize_t show_psu_psoc(struct device *dev, struct device_attribute *da,
 static ssize_t show_name(struct device *dev,
 			struct device_attribute *devattr, char *buf)
 {
-	return sprintf(buf, "net_psoc\n");
+	return sprintf(buf, "nb_psoc\n");
 }
 
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
@@ -913,7 +913,6 @@ static void check_switch_temp(void)
         if(IS_ERR(f)) {
                 return;
         }
-        
         filp_close(f,NULL);
         set_fs(old_fs);
 }
@@ -932,7 +931,7 @@ static int psoc_polling_thread(void *p)
     return 0;
 }
 
-static int __init net_psoc_init(void)
+static int __init nb_psoc_init(void)
 {
 	int ret;
 	
@@ -968,7 +967,7 @@ fail_hwmon_device_register:
 	return  -ENOMEM;
 }
 
-static void __exit net_psoc_exit(void)
+static void __exit nb_psoc_exit(void)
 {
         kthread_stop(kthread_auto_update);
 	if(ipmi_mh_user!=NULL) {ipmi_destroy_user(ipmi_mh_user);}
@@ -980,6 +979,6 @@ MODULE_AUTHOR("Netberg <support@netbergtw.com>");
 MODULE_DESCRIPTION("Netberg psoc driver");
 MODULE_LICENSE("GPL");
 
-module_init(net_psoc_init);
-module_exit(net_psoc_exit);
+module_init(nb_psoc_init);
+module_exit(nb_psoc_exit);
 

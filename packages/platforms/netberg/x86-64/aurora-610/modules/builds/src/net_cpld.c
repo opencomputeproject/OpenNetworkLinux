@@ -15,7 +15,6 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
-//#include "I2CHostCommunication.h"
 
 #define USE_SMBUS    1
 
@@ -433,8 +432,8 @@ static int cpld_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id cpld_ids[] = {
-	{ "net_cpld" , 0, },
-	{ "net_cpld2", 1, },
+	{ "nb_cpld" , 0, },
+	{ "nb_cpld2", 1, },
 	{ /* LIST END */ }
 };
 MODULE_DEVICE_TABLE(i2c, cpld_ids);
@@ -442,7 +441,7 @@ MODULE_DEVICE_TABLE(i2c, cpld_ids);
 static struct i2c_driver cpld_driver = {
 	.class		= I2C_CLASS_HWMON,
 	.driver = {
-		.name	= "net_cpld",
+		.name	= "nb_cpld",
 	},
 	.probe		= cpld_probe,
 	.remove		= cpld_remove,
@@ -453,12 +452,12 @@ static struct i2c_driver cpld_driver = {
 
 /* module glue */
 
-static int __init net_cpld_init(void)
+static int __init nb_cpld_init(void)
 {
 	return i2c_add_driver(&cpld_driver);
 }
 
-static void __exit net_cpld_exit(void)
+static void __exit nb_cpld_exit(void)
 {
 	i2c_del_driver(&cpld_driver);
 }
@@ -467,5 +466,5 @@ MODULE_AUTHOR("Netberg <support@netbergtw.com>");
 MODULE_DESCRIPTION("Netberg cpld driver");
 MODULE_LICENSE("GPL");
 
-module_init(net_cpld_init);
-module_exit(net_cpld_exit);
+module_init(nb_cpld_init);
+module_exit(nb_cpld_exit);

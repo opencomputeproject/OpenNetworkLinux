@@ -6,9 +6,9 @@
 #include <linux/i2c.h>
 #include "io_expander.h"
 #include "net_mux.h"
-
-/* For build single module using (Ex: ONL platform) */
 #include <linux/module.h>
+
+
 
 static struct mux_obj_s *mux_head_p = NULL;
 
@@ -512,8 +512,8 @@ init_mux_objs(unsigned gpio){
         clean_mux_objs();
     }
     /* Currently, it is using single muxctl architecture.
+
      * In the future, it may use the multi-muxctl.
-     * (Ex: Aurora 610's advance I2C control)
      */
     curr_p = _create_mux_obj(gpio);
     if (!curr_p) {

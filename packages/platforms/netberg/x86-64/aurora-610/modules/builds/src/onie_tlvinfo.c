@@ -2,11 +2,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/ctype.h>
-//#include <linux/crc32.h>
 #include <linux/delay.h>
-
-//#include <linux/slab.h>
-//#include <linux/platform_device.h>
 #include "onie_tlvinfo.h"
 
 /* Set to 1 if we've read EEPROM into memory */

@@ -1,5 +1,5 @@
-#ifndef NET_VPD_H
-#define NET_VPD_H
+#ifndef NB_VPD_H
+#define NB_VPD_H
 
 #define EEPROM_CLASS   "eeprom"
 #define VPD_DEVICE     "vpd"
@@ -43,4 +43,4 @@ struct vpd_device_attribute{
 #    define VPD_DEBUG(fmt, args...)
 #endif
 
-#endif /* NET_VPD_H */
+#endif /* NB_VPD_H */

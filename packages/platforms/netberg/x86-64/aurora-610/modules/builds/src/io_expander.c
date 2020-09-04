@@ -5,119 +5,51 @@
 /* For build single module using (Ex: ONL platform) */
 #include <linux/module.h>
 
+
 static struct ioexp_obj_s *ioexp_head_p = NULL;
 static struct ioexp_obj_s *ioexp_tail_p = NULL;
+
 
 /* ========== Register IOEXP layout ==========
  */
 
-struct ioexp_map_s ioexp_map_lavender_p65 = {
+struct ioexp_map_s cpld_map_cottonwood = {
 
-    .chip_amount    = 1,
-    .data_width     = 1,
+    .chip_amount = 1,
+    .data_width  = 4,
 
-    .map_present    = { {0, 0, 4}, }, /* map_present[0] = MOD_ABS_PORT(X)      */
-    .map_reset      = { {0, 0, 1}, }, /* map_reset[0]   = QRESET_QSFP28_N_P(X) */
-    .map_lpmod      = { {0, 0, 2}, }, /* map_lpmod[0]   = LPMODE_QSFP28_P(X)   */
-    .map_modsel     = { {0, 0, 0}, }, /* map_modsel[0]  = MODSEL_QSFP28_N_P(X) */
-};
-
-struct ioexp_map_s ioexp_map_aurora_610_ga_nabc = {
-
-    .chip_amount = 3,
-    .data_width  = 2,
-
-    .map_present    = { {0, 0, 4}, /* map_present[0] = MOD_ABS_PORT(X)   */
-                        {0, 0, 5}, /* map_present[1] = MOD_ABS_PORT(X+1) */
-                        {0, 1, 4}, /* map_present[2] = MOD_ABS_PORT(X+2) */
-                        {0, 1, 5}, /* map_present[3] = MOD_ABS_PORT(X+3) */
-                        {1, 0, 4}, /* map_present[4] = MOD_ABS_PORT(X+4) */
-                        {1, 0, 5}, /* map_present[5] = MOD_ABS_PORT(X+5) */
-                        {1, 1, 4}, /* map_present[6] = MOD_ABS_PORT(X+6) */
-                        {1, 1, 5}, /* map_present[7] = MOD_ABS_PORT(X+7) */
+    .map_present    = { {0, 2, 0}, /* map_present[0] = MOD_ABS_PORT(X)   */
+                        {0, 2, 4}, /* map_present[1] = MOD_ABS_PORT(X+1) */
+                        {0, 3, 0}, /* map_present[2] = MOD_ABS_PORT(X+2) */
+                        {0, 3, 4}, /* map_present[3] = MOD_ABS_PORT(X+3) */
     },
-    .map_tx_disable = { {0, 0, 2}, /* map_tx_disable[0] = TXDISABLE_SFP+_P(X)   */
-                        {0, 0, 3}, /* map_tx_disable[1] = TXDISABLE_SFP+_P(X+1) */
-                        {0, 1, 2}, /* map_tx_disable[2] = TXDISABLE_SFP+_P(X+2) */
-                        {0, 1, 3}, /* map_tx_disable[3] = TXDISABLE_SFP+_P(X+3) */
-                        {1, 0, 2}, /* map_tx_disable[4] = TXDISABLE_SFP+_P(X+4) */
-                        {1, 0, 3}, /* map_tx_disable[5] = TXDISABLE_SFP+_P(X+5) */
-                        {1, 1, 2}, /* map_tx_disable[6] = TXDISABLE_SFP+_P(X+6) */
-                        {1, 1, 3}, /* map_tx_disable[7] = TXDISABLE_SFP+_P(X+7) */
+    .map_tx_disable = { {0, 0, 0}, /* map_tx_disable[0] = TXDISABLE_SFP+_P(X)   */
+                        {0, 0, 4}, /* map_tx_disable[1] = TXDISABLE_SFP+_P(X+1) */
+                        {0, 1, 0}, /* map_tx_disable[2] = TXDISABLE_SFP+_P(X+2) */
+                        {0, 1, 4}, /* map_tx_disable[3] = TXDISABLE_SFP+_P(X+3) */
     },
-    .map_tx_fault   = { {0, 0, 0}, /* map_tx_fault[0] = TXFAULT_SFP+_P(X)   */
-                        {0, 0, 1}, /* map_tx_fault[1] = TXFAULT_SFP+_P(X+1) */
-                        {0, 1, 0}, /* map_tx_fault[2] = TXFAULT_SFP+_P(X+2) */
-                        {0, 1, 1}, /* map_tx_fault[3] = TXFAULT_SFP+_P(X+3) */
-                        {1, 0, 0}, /* map_tx_fault[4] = TXFAULT_SFP+_P(X+4) */
-                        {1, 0, 1}, /* map_tx_fault[5] = TXFAULT_SFP+_P(X+5) */
-                        {1, 1, 0}, /* map_tx_fault[6] = TXFAULT_SFP+_P(X+6) */
-                        {1, 1, 1}, /* map_tx_fault[7] = TXFAULT_SFP+_P(X+7) */
+    .map_tx_fault   = { {0, 2, 2}, /* map_tx_fault[0] = TXFAULT_SFP+_P(X)   */
+                        {0, 2, 6}, /* map_tx_fault[1] = TXFAULT_SFP+_P(X+1) */
+                        {0, 3, 2}, /* map_tx_fault[2] = TXFAULT_SFP+_P(X+2) */
+                        {0, 3, 6}, /* map_tx_fault[3] = TXFAULT_SFP+_P(X+3) */
     },
-    .map_rxlos      = { {0, 0, 6}, /* map_rxlos[0] = OPRXLOS_PORT(X)   */
-                        {0, 0, 7}, /* map_rxlos[1] = OPRXLOS_PORT(X+1) */
-                        {0, 1, 6}, /* map_rxlos[2] = OPRXLOS_PORT(X+2) */
-                        {0, 1, 7}, /* map_rxlos[3] = OPRXLOS_PORT(X+3) */
-                        {1, 0, 6}, /* map_rxlos[4] = OPRXLOS_PORT(X+4) */
-                        {1, 0, 7}, /* map_rxlos[5] = OPRXLOS_PORT(X+5) */
-                        {1, 1, 6}, /* map_rxlos[6] = OPRXLOS_PORT(X+6) */
-                        {1, 1, 7}, /* map_rxlos[7] = OPRXLOS_PORT(X+7) */
+    .map_rxlos      = { {0, 2, 1}, /* map_rxlos[0] = OPRXLOS_PORT(X)   */
+                        {0, 2, 5}, /* map_rxlos[1] = OPRXLOS_PORT(X+1) */
+                        {0, 3, 1}, /* map_rxlos[2] = OPRXLOS_PORT(X+2) */
+                        {0, 3, 5}, /* map_rxlos[3] = OPRXLOS_PORT(X+3) */
     },
-    .map_hard_rs0   = { {2, 0, 0}, /* map_hard_rs0[0] = RS0_SFP28_P(X)   */
-                        {2, 0, 2}, /* map_hard_rs0[1] = RS0_SFP28_P(X+1) */
-                        {2, 0, 4}, /* map_hard_rs0[2] = RS0_SFP28_P(X+2) */
-                        {2, 0, 6}, /* map_hard_rs0[3] = RS0_SFP28_P(X+3) */
-                        {2, 1, 0}, /* map_hard_rs0[4] = RS0_SFP28_P(X+4) */
-                        {2, 1, 2}, /* map_hard_rs0[5] = RS0_SFP28_P(X+5) */
-                        {2, 1, 4}, /* map_hard_rs0[6] = RS0_SFP28_P(X+6) */
-                        {2, 1, 6}, /* map_hard_rs0[7] = RS0_SFP28_P(X+7) */
+    .map_hard_rs0   = { {0, 0, 2}, /* map_hard_rs0[0] = RS0_SFP28_P(X)   */
+                        {0, 0, 6}, /* map_hard_rs0[1] = RS0_SFP28_P(X+1) */
+                        {0, 1, 2}, /* map_hard_rs0[2] = RS0_SFP28_P(X+2) */
+                        {0, 1, 6}, /* map_hard_rs0[3] = RS0_SFP28_P(X+3) */
     },
-    .map_hard_rs1   = { {2, 0, 1}, /* map_hard_rs1[0] = RS1_SFP28_P(X)   */
-                        {2, 0, 3}, /* map_hard_rs1[1] = RS1_SFP28_P(X+1) */
-                        {2, 0, 5}, /* map_hard_rs1[2] = RS1_SFP28_P(X+2) */
-                        {2, 0, 7}, /* map_hard_rs1[3] = RS1_SFP28_P(X+3) */
-                        {2, 1, 1}, /* map_hard_rs1[4] = RS1_SFP28_P(X+4) */
-                        {2, 1, 3}, /* map_hard_rs1[5] = RS1_SFP28_P(X+5) */
-                        {2, 1, 5}, /* map_hard_rs1[6] = RS1_SFP28_P(X+6) */
-                        {2, 1, 7}, /* map_hard_rs1[7] = RS1_SFP28_P(X+7) */
+    .map_hard_rs1   = { {0, 0, 2}, /* map_hard_rs1[0] = RS1_SFP28_P(X)   */
+                        {0, 0, 6}, /* map_hard_rs1[1] = RS1_SFP28_P(X+1) */
+                        {0, 1, 2}, /* map_hard_rs1[2] = RS1_SFP28_P(X+2) */
+                        {0, 1, 6}, /* map_hard_rs1[3] = RS1_SFP28_P(X+3) */
     },
 };
 
-
-struct ioexp_map_s ioexp_map_aurora_610_ga_7abc = {
-
-    .chip_amount    = 3,
-    .data_width     = 2,
-
-    .map_present    = { {2, 1, 0}, /* map_present[0] = MOD_ABS_PORT(X)   */
-                        {2, 1, 1}, /* map_present[1] = MOD_ABS_PORT(X+1) */
-                        {2, 1, 2}, /* map_present[2] = MOD_ABS_PORT(X+2) */
-                        {2, 1, 3}, /* map_present[3] = MOD_ABS_PORT(X+3) */
-                        {2, 1, 4}, /* map_present[4] = MOD_ABS_PORT(X+4) */
-                        {2, 1, 5}, /* map_present[5] = MOD_ABS_PORT(X+5) */
-    },
-    .map_reset      = { {0, 1, 0}, /* map_reset[0] = QRESET_QSFP_N_P(X)   */
-                        {0, 1, 1}, /* map_reset[1] = QRESET_QSFP_N_P(X+1) */
-                        {0, 1, 2}, /* map_reset[2] = QRESET_QSFP_N_P(X+2) */
-                        {0, 1, 3}, /* map_reset[3] = QRESET_QSFP_N_P(X+3) */
-                        {0, 1, 4}, /* map_reset[4] = QRESET_QSFP_N_P(X+4) */
-                        {0, 1, 5}, /* map_reset[5] = QRESET_QSFP_N_P(X+5) */
-    },
-    .map_lpmod      = { {1, 0, 0}, /* map_lpmod[0] = LPMODE_QSFP_P(X)   */
-                        {1, 0, 1}, /* map_lpmod[1] = LPMODE_QSFP_P(X+1) */
-                        {1, 0, 2}, /* map_lpmod[2] = LPMODE_QSFP_P(X+2) */
-                        {1, 0, 3}, /* map_lpmod[3] = LPMODE_QSFP_P(X+3) */
-                        {1, 0, 4}, /* map_lpmod[4] = LPMODE_QSFP_P(X+4) */
-                        {1, 0, 5}, /* map_lpmod[5] = LPMODE_QSFP_P(X+5) */
-    },
-    .map_modsel     = { {0, 0, 0}, /* map_modsel[0] = MODSEL_QSFP_N_P(X)   */
-                        {0, 0, 1}, /* map_modsel[1] = MODSEL_QSFP_N_P(X+1) */
-                        {0, 0, 2}, /* map_modsel[2] = MODSEL_QSFP_N_P(X+2) */
-                        {0, 0, 3}, /* map_modsel[3] = MODSEL_QSFP_N_P(X+3) */
-                        {0, 0, 4}, /* map_modsel[4] = MODSEL_QSFP_N_P(X+4) */
-                        {0, 0, 5}, /* map_modsel[5] = MODSEL_QSFP_N_P(X+5) */
-    },
-};
 
 
 struct ioexp_map_s ioexp_map_aurora_610_nabc = {
@@ -349,6 +281,7 @@ struct ioexp_map_s ioexp_map_aurora_610_7abc = {
                         {2, 0, 5}, /* map_modsel[7] = MODSEL_QSFP_N_P(X+7) */
     },
 };
+
 
 
 /* ========== Private functions ==========
@@ -1088,10 +1021,6 @@ common_ioexp_check(struct ioexp_obj_s *self){
 static struct ioexp_map_s *
 get_ioexp_map(int ioexp_type){
     switch (ioexp_type){
-        case IOEXP_TYPE_AURORA_610_GA_NABC:
-            return &ioexp_map_aurora_610_ga_nabc;
-        case IOEXP_TYPE_AURORA_610_GA_7ABC:
-            return &ioexp_map_aurora_610_ga_7abc;
         case IOEXP_TYPE_AURORA_610_NABC:
             return &ioexp_map_aurora_610_nabc;
         case IOEXP_TYPE_AURORA_610_1ABC:
@@ -1165,25 +1094,6 @@ setup_ioexp_public_cb(struct ioexp_obj_s *self,
                       int ioexp_type){
 
     switch (ioexp_type){
-        case CPLD_TYPE_COTTONWOOD:
-            self->get_present    = common_get_present;
-            self->get_tx_fault   = common_get_tx_fault;
-            self->get_rxlos      = common_get_rxlos;
-            self->get_tx_disable = common_get_tx_disable;
-            self->get_reset      = ioexp_get_not_support;
-            self->get_lpmod      = ioexp_get_not_support;
-            self->get_modsel     = ioexp_get_not_support;
-            self->get_hard_rs0   = ioexp_get_not_support;
-            self->get_hard_rs1   = ioexp_get_not_support;
-            self->set_tx_disable = common_set_tx_disable;
-            self->set_reset      = ioexp_set_not_support;
-            self->set_lpmod      = ioexp_set_not_support;
-            self->set_modsel     = ioexp_set_not_support;
-            self->set_hard_rs0   = ioexp_set_not_support;
-            self->set_hard_rs1   = ioexp_set_not_support;
-            return 0;
-
-        case IOEXP_TYPE_AURORA_610_GA_NABC:
         case IOEXP_TYPE_AURORA_610_NABC:
         case IOEXP_TYPE_AURORA_610_1ABC:
         case IOEXP_TYPE_AURORA_610_3ABC:
@@ -1204,9 +1114,7 @@ setup_ioexp_public_cb(struct ioexp_obj_s *self,
             self->set_hard_rs1   = common_set_hard_rs1;
             return 0;
 
-        case IOEXP_TYPE_AURORA_610_GA_7ABC:
         case IOEXP_TYPE_AURORA_610_7ABC:
-        case IOEXP_TYPE_QSFP_6P_LAYOUT_1:
             self->get_present    = common_get_present;
             self->get_tx_fault   = ioexp_get_not_support;
             self->get_rxlos      = ioexp_get_not_support;
@@ -1237,13 +1145,10 @@ setup_ioexp_private_cb(struct ioexp_obj_s *self,
                        int ioexp_type){
 
     switch (ioexp_type){
-        case IOEXP_TYPE_AURORA_610_GA_NABC:
-        case IOEXP_TYPE_AURORA_610_GA_7ABC:
         case IOEXP_TYPE_AURORA_610_NABC:
         case IOEXP_TYPE_AURORA_610_1ABC:
         case IOEXP_TYPE_AURORA_610_3ABC:
         case IOEXP_TYPE_AURORA_610_7ABC:
-        case IOEXP_TYPE_QSFP_6P_LAYOUT_1:
             self->init           = common_ioexp_init;
             self->check          = common_ioexp_check;
             self->update_all     = common_ioexp_update_all;
