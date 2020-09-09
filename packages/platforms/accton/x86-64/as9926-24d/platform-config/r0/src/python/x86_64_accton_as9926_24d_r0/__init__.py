@@ -44,9 +44,10 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
                 ('lm75', 0x49, 18),
                 ('lm75', 0x4a, 18),
                 ('lm75', 0x4b, 18),
-                ('lm75', 0x4c, 18),
+                ('lm75', 0x4d, 18),
                 ('lm75', 0x4e, 18),
                 ('lm75', 0x4f, 18),
+                ('tmp432', 0x4c, 18),
 
                 # initiate IDPROM
                 ('24c02', 0x57, 0),
