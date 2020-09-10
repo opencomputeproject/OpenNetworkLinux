@@ -72,7 +72,7 @@ struct ym2651y_data {
     u16  i_out;       /* Register value */
     u16  p_out;       /* Register value */
     u8   vout_mode;     /* Register value */
-    u16  temp;         /* Register value */
+    u16  temp[3];         /* Register value */
     u16  fan_speed;   /* Register value */
     u16  fan_duty_cycle[2];  /* Register value */
     u8   fan_dir[5];     /* Register value */
@@ -124,6 +124,8 @@ enum ym2651y_sysfs_attributes {
     PSU_I_OUT,
     PSU_P_OUT,
     PSU_TEMP1_INPUT,
+    PSU_TEMP2_INPUT,
+    PSU_TEMP3_INPUT,
     PSU_FAN1_SPEED,
     PSU_FAN1_DUTY_CYCLE,
     PSU_PMBUS_REVISION,
@@ -156,6 +158,8 @@ static SENSOR_DEVICE_ATTR(psu_v_out,        S_IRUGO, show_vout,     NULL, PSU_V_
 static SENSOR_DEVICE_ATTR(psu_i_out,        S_IRUGO, show_linear,   NULL, PSU_I_OUT);
 static SENSOR_DEVICE_ATTR(psu_p_out,        S_IRUGO, show_linear,   NULL, PSU_P_OUT);
 static SENSOR_DEVICE_ATTR(psu_temp1_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP1_INPUT);
+static SENSOR_DEVICE_ATTR(psu_temp2_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP2_INPUT);
+static SENSOR_DEVICE_ATTR(psu_temp3_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP3_INPUT);
 static SENSOR_DEVICE_ATTR(psu_fan1_speed_rpm, S_IRUGO, show_linear, NULL, PSU_FAN1_SPEED);
 static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUSR | S_IRUGO, show_linear, set_fan_duty_cycle, PSU_FAN1_DUTY_CYCLE);
 static SENSOR_DEVICE_ATTR(psu_fan_dir,       S_IRUGO, show_ascii,    NULL, PSU_FAN_DIRECTION);
@@ -187,6 +191,8 @@ static struct attribute *ym2651y_attributes[] = {
     &sensor_dev_attr_psu_i_out.dev_attr.attr,
     &sensor_dev_attr_psu_p_out.dev_attr.attr,
     &sensor_dev_attr_psu_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_psu_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_psu_temp3_input.dev_attr.attr,
     &sensor_dev_attr_psu_fan1_speed_rpm.dev_attr.attr,
     &sensor_dev_attr_psu_fan1_duty_cycle_percentage.dev_attr.attr,
     &sensor_dev_attr_psu_fan_dir.dev_attr.attr,
@@ -327,7 +333,9 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
         value = data->p_out;
         break;
     case PSU_TEMP1_INPUT:
-        value = data->temp;
+    case PSU_TEMP2_INPUT:
+    case PSU_TEMP3_INPUT:
+        value = data->temp[attr->index-PSU_TEMP1_INPUT];
         break;
     case PSU_FAN1_SPEED:
         value = data->fan_speed;
@@ -701,7 +709,9 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                                              {0x8c, &data->i_out},
                                              {0x97, &data->p_in},
                                              {0x96, &data->p_out},
-                                             {0x8d, &data->temp},
+                                             {0x8d, &(data->temp[0])},
+                                             {0x8e, &(data->temp[1])},
+                                             {0x8f, &(data->temp[2])},
                                              {0x3b, &(data->fan_duty_cycle[0])},
                                              {0x3c, &(data->fan_duty_cycle[1])},
                                              {0x90, &data->fan_speed},
