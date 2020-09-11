@@ -34,6 +34,7 @@
 #include <onlp/led.h>
 #include <onlp/psu.h>
 #include <onlp/sys.h>
+#include <onlp/module.h>
 
 #define OID_TYPE_SHOWDUMP_DEFINE(_TYPE, _type)                          \
     static void                                                         \
@@ -63,7 +64,7 @@ OID_TYPE_SHOWDUMP_DEFINE(THERMAL, thermal);
 OID_TYPE_SHOWDUMP_DEFINE(FAN, fan);
 OID_TYPE_SHOWDUMP_DEFINE(PSU, psu);
 OID_TYPE_SHOWDUMP_DEFINE(LED, led);
-OID_TYPE_SHOWDUMP_DEFINE_EMPTY(MODULE, module);
+OID_TYPE_SHOWDUMP_DEFINE(MODULE, module);
 OID_TYPE_SHOWDUMP_DEFINE_EMPTY(RTC, rtc);
 
 static void
@@ -119,9 +120,7 @@ oid_type_RTC_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 static int
 oid_type_MODULE_hdr_get__(onlp_oid_t oid, onlp_oid_hdr_t* hdr)
 {
-    /* Not implemented yet */
-    AIM_LOG_MSG("MODULE_coids_get: 0x%x", oid);
-    return ONLP_STATUS_E_INVALID;
+    return onlp_module_hdr_get(oid, hdr);
 }
 
 static void

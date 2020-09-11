@@ -77,6 +77,8 @@ onlp_sysi_platform_manage(void)
 int
 onlp_sysi_oids_get(onlp_oid_t* table, int max)
 {
+    onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
+    *e = ONLP_MODULE_ID_CREATE(1);
     return 0;
 }
