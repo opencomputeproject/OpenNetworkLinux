@@ -88,7 +88,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int ret   = ONLP_STATUS_OK;
     int pid = ONLP_OID_ID_GET(id);
     int zid = pid - 1 ;   /*Turn to 0-base*/
-    char *string = NULL;
+    char *string;
 
     VALIDATE(id);
     if (pid >= AIM_ARRAYSIZE(pinfo) || pid == 0) {
@@ -130,12 +130,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Read serial */
+    string = NULL;
     len = onlp_file_read_str(&string, PSU_SYSFS_PATH"psu_serial", bus, offset);
     if (string && len) {
         strncpy(info->serial, string, len);
+    }
+    if (string) {
         aim_free(string);
     }
-
     bus = pmbus_cfg[zid][0];
     offset = pmbus_cfg[zid][1];
 
@@ -159,11 +161,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     /* Read model */
+    string = NULL;
     len = onlp_file_read_str(&string, PSU_SYSFS_PATH"psu_mfr_model", bus, offset);
     if (string && len) {
         strncpy(info->model, string, len);
-        aim_free(string);
         info->caps |= get_DCorAC_cap (info->model);
+    }
+    if (string) {
+        aim_free(string);
     }
 
     /* Set the associated oid_table */
