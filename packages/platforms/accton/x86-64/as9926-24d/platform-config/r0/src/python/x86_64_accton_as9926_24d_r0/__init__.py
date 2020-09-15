@@ -50,7 +50,7 @@ class OnlPlatform_x86_64_accton_as9926_24d_r0(OnlPlatformAccton,
                 ('tmp432', 0x4c, 18),
 
                 # initiate IDPROM
-                ('24c02', 0x57, 0),
+                ('as9926_24d_sys', 0x55, 23),
                 ]
             )
 
