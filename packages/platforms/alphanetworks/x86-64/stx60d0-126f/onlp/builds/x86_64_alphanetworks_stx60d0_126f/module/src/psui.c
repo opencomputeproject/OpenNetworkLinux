@@ -51,6 +51,7 @@
 #define PSUI_PRODUCT_SER_NO_REG         0x35
 #define PSUI_RPS_STATUS_REG0        0x03 /* PSU Status Register for PSU#1 */ //from DCGS_TYPE1_ Power_CPLD_Spec_v02_20190611.docx
 #define PSUI_RPS_STATUS_REG1        0x04 /* PSU Status Register for PSU#2 */
+#define CPLD_REVISION_OFFSET        0x0 /*CPLD Revision*/
 
 #define PSUI_PRODUCT_SER_NO_SIZE    19
 #define PSUI_PRODUCT_SER_NO_LEN     (PSUI_PRODUCT_SER_NO_SIZE + 1)
@@ -171,6 +172,76 @@ psu_info_get_status(int id, char *data)
 
 }
 
+/* Front panel PSU-1 and PSU-2 are swapped.  
+ *
+ * Original: PSU0 at PCA9548#0 channel4
+ *              PSU1 at PCA9548#0 channel5
+ * New     : PSU0 at PCA9548#0 channel5
+ *              PSU1 at PCA9548#0 channel4
+ *
+ *Solution: According to CPLD verion to distinguish the which front panel desigen is used.
+*/
+
+static int
+psu_info_get_cpld_revision(char *data)
+{
+    int ret = 0;
+
+    ret = bmc_i2c_read_byte(BMC_CPLD_I2C_BUS_ID, BMC_CPLD_I2C_ADDR, CPLD_REVISION_OFFSET, data);
+    if (ret < 0)
+        printf("I2C command 0x%X Read Fail, BMC_CPLD_I2C_BUS_ID=%d\n", CPLD_REVISION_OFFSET, BMC_CPLD_I2C_BUS_ID);
+
+    return ret;
+
+}
+
+static int
+index_to_psu_busid(int index)
+{
+    int ret = 0;
+    char version;
+
+    if (psu_info_get_cpld_revision(&version) < 0)
+    {
+        printf("Unable to read CPLD revision\r\n");
+        return ONLP_STATUS_OK;
+    }
+
+    if (version==1)
+    {
+        switch (index)
+        {
+            case PSU1_ID:
+            case PSU2_ID:
+                ret = index + PSUI_BUS_ID_OFFSET;
+                break;
+               
+            default:
+                break;        
+        }           
+    }
+    else
+    {
+        switch (index)
+        {
+            case PSU1_ID:
+                ret = PSU2_ID + PSUI_BUS_ID_OFFSET;
+                break;
+
+            case PSU2_ID:
+                ret = PSU1_ID + PSUI_BUS_ID_OFFSET;
+                break;
+               
+            default:
+                break;        
+        }           
+    }
+    
+    DIAG_PRINT("%s, psu_index:%d, psu_busid:%d ", __FUNCTION__, index, ret);
+    return ret;
+}
+
+/* END of Front panel PSU-1 and PSU-2 are swapped.  */
 
 static int
 psu_stx60d0_info_get(int id, onlp_psu_info_t *info)
@@ -290,6 +361,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
     UI8_T product_ser[PSUI_PRODUCT_SER_NO_LEN];
 
     UI8_T rps_status = 0, power_ok = 0, power_on = 0, power_present = 0;
+    int psu_busid=0; 
 
     VALIDATE(id);
 
@@ -342,6 +414,25 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
         return ONLP_STATUS_OK;
     }
 
+    psu_busid = index_to_psu_busid(index);
+
+    /* Get PSU type and product name, bus ID=index+10*/
+    psu_type = get_psu_type(psu_busid, info->model, sizeof(info->model));
+   
+    //debug
+    DIAG_PRINT("%s, id:%d, index:%d, psu_type:%d\n", __FUNCTION__, id, index, psu_type);
+
+    ret = psu_stx60d0_info_get(psu_busid, info); /* Get PSU electric info from PMBus */
+
+    /* Get the product serial number, bus ID=index+10 */
+    if (psu_info_get_product_ser(psu_type, psu_busid, product_ser) < 0)
+    {
+        printf("Unable to read PSU(%d) item(serial number)\r\n", index);
+    }
+    else
+    {
+        memcpy(info->serial, product_ser, sizeof(product_ser));
+    }
     /* Get PSU type and product name, bus ID=index+10*/
     psu_type = get_psu_type(index + PSUI_BUS_ID_OFFSET, info->model, sizeof(info->model));
    
