@@ -433,23 +433,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t *info)
     {
         memcpy(info->serial, product_ser, sizeof(product_ser));
     }
-    /* Get PSU type and product name, bus ID=index+10*/
-    psu_type = get_psu_type(index + PSUI_BUS_ID_OFFSET, info->model, sizeof(info->model));
-   
-    //debug
-    DIAG_PRINT("%s, id:%d, index:%d, psu_type:%d\n", __FUNCTION__, id, index, psu_type);
-
-    ret = psu_stx60d0_info_get(index + PSUI_BUS_ID_OFFSET, info); /* Get PSU electric info from PMBus */
-
-    /* Get the product serial number, bus ID=index+10 */
-    if (psu_info_get_product_ser(psu_type, index + PSUI_BUS_ID_OFFSET, product_ser) < 0)
-    {
-        printf("Unable to read PSU(%d) item(serial number)\r\n", index);
-    }
-    else
-    {
-        memcpy(info->serial, product_ser, sizeof(product_ser));
-    }
 
     return ret;
 }
