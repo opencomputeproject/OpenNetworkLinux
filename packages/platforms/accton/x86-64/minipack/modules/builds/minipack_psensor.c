@@ -45,14 +45,6 @@
 #define DEBUG_LEX(args...) \
     debug_print(__func__, __LINE__,2, args)
 
-static unsigned int verbose = 0;
-module_param(verbose, uint, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(verbose, "Print more information for debugging. Default is disabled.");
-
-static unsigned int poll_interval = 9;
-module_param(poll_interval, uint, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of second.");
-
 
 #define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
@@ -95,6 +87,18 @@ MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of seco
 #define MIN_PSU_VOUT            (12000*995/1000)    /*12 - 0.5%*/
 
 #define ATTR_TYPE_INDEX_GAP     (100)
+
+static unsigned int verbose = 0;
+module_param(verbose, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(verbose, "Print more information for debugging. Default is disabled.");
+
+static unsigned int poll_interval = 9;
+module_param(poll_interval, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of second.");
+
+static char *passwd = TTY_PASSWORD;
+module_param(passwd, charp, 0444);
+MODULE_PARM_DESC(passwd, "Password to log into BMC");
 
 enum sensor_type_e {
     SENSOR_TYPE_THERMAL,
@@ -575,7 +579,9 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
             DEBUG_INTR("tty_buf:%s\n", buf);
             if (strstr(buf, "Password:") != NULL) {
                 DEBUG_INTR("tty_buf:%s\n", buf);
-                ret = _tty_writeNread(tty_fd, TTY_PASSWORD"\r\n", buf, max_size, 0);
+                char cmd[TTY_CMD_MAX_LEN+3];
+                snprintf(cmd, sizeof(cmd), "%s\r\n", passwd);
+                ret = _tty_writeNread(tty_fd, cmd, buf, max_size, 0);
                 if (ret < 0) {
                     DEBUG_INTR("failed ret:%d\n", ret);
                     continue;
@@ -1086,7 +1092,8 @@ static int minipack_probe(struct platform_device *pdev)
         goto exit_kfree;
     }
 
-    mp_data->hwmon_dev = hwmon_device_register(&pdev->dev);
+    mp_data->hwmon_dev = hwmon_device_register_with_info(&pdev->dev, DRVNAME,
+                         NULL, NULL, NULL);
     if (IS_ERR(mp_data->hwmon_dev)) {
         status = PTR_ERR(mp_data->hwmon_dev);
         goto exit_remove;
