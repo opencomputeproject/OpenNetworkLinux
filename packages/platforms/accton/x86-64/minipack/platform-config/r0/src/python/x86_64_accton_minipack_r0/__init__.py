@@ -9,8 +9,16 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
 
     def baseconfig(self):
         self.insmod('optoe')
-        self.insmod_platform()
-        
+
+        ########### load driver with defined password if any ###########
+        try:
+            with open('/etc/bmcpwd', "r") as f:
+                pw = f.readline(128)
+                pms = {'passwd':pw}
+                self.insmod("minipack_psensor", params=pms)
+        except IOError:
+                self.insmod('minipack_psensor')
+
         ########### initialize I2C bus 1 ###########
         # initialize level 1 multiplexer (PCA9548)
         self.new_i2c_devices([
