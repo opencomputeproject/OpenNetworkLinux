@@ -162,6 +162,30 @@ static bool is_logged_in(int fd, char *resp, int max_size)
     }
 }
 
+static int get_passwd(char *buf, int buf_size)
+{
+    char *file_pw = "/etc/bmcpwd";
+
+    /*check if file exists */
+    if( access( file_pw, F_OK ) != -1 ){
+        char *pw = NULL;
+        int len = onlp_file_read_str(&pw, file_pw);
+        if (!pw || len <= 0) {
+            aim_free(pw);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        AIM_MEMCPY(buf, pw, buf_size);
+        buf[len] = '\0';
+        aim_free(pw);
+    } else {
+        char *pw = "0penBmc";
+        int len = strlen(pw);
+        AIM_MEMCPY(buf, pw, buf_size);
+        buf[len] = '\0';
+    }
+    return ONLP_STATUS_OK;
+}
+
 static int tty_login(int fd, char *buf, int buf_size)
 {
     int i;
@@ -175,8 +199,11 @@ static int tty_login(int fd, char *buf, int buf_size)
         DEBUG_PRINT("Try to login, @%d!\n", i);
         if (strstr(buf, " login:") != NULL)
         {
+            char pw[128+2];
+            get_passwd(pw, 128);
+            AIM_STRCAT(pw, "\r");
             if (!tty_access_and_match(fd, TTY_USER"\r",TTY_BMC_LOGIN_TIMEOUT, "Password:")) {
-                if (!tty_access_and_match(fd, "0penBmc\r", TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
+                if (!tty_access_and_match(fd, pw, TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
                     return ONLP_STATUS_OK;
                 }
 

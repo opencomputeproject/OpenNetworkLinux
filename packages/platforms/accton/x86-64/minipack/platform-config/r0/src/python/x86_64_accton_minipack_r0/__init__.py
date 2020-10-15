@@ -13,7 +13,9 @@ class OnlPlatform_x86_64_accton_minipack_r0(OnlPlatformAccton,
         ########### load driver with defined password if any ###########
         try:
             with open('/etc/bmcpwd', "r") as f:
-                pw = f.readline(128)
+                pw = f.readline(128).strip()
+                ss = '\''
+                pw = ss + pw + ss
                 pms = {'passwd':pw}
                 self.insmod("minipack_psensor", params=pms)
         except IOError:
