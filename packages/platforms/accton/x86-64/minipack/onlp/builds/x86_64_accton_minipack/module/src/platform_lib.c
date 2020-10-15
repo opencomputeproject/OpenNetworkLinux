@@ -167,7 +167,7 @@ static int get_passwd(char *buf, int buf_size)
     char *file_pw = "/etc/bmcpwd";
 
     /*check if file exists */
-    if( access( file_pw, F_OK ) != -1 ){
+    if( access( file_pw, F_OK ) != -1 ) {
         char *pw = NULL;
         int len = onlp_file_read_str(&pw, file_pw);
         if (!pw || len <= 0) {
@@ -175,12 +175,14 @@ static int get_passwd(char *buf, int buf_size)
             return ONLP_STATUS_E_INTERNAL;
         }
         AIM_MEMCPY(buf, pw, buf_size);
+        len = (len < buf_size) ? len : (buf_size - 1);
         buf[len] = '\0';
         aim_free(pw);
     } else {
         char *pw = "0penBmc";
         int len = strlen(pw);
         AIM_MEMCPY(buf, pw, buf_size);
+        len = (len < buf_size) ? len : (buf_size - 1);
         buf[len] = '\0';
     }
     return ONLP_STATUS_OK;
