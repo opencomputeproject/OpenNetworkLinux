@@ -649,7 +649,7 @@ def init_prototypes():
 
     onlp_config_init_prototypes()
 
-    strMax = int(libonlp.onlp_config_lookup("ONLP_CONFIG_INFO_STR_MAX"))
+    strMax = int(libonlp.onlp_config_lookup("ONLP_CONFIG_INFO_STR_MAX".encode()))
     if ONLP_CONFIG_INFO_STR_MAX != strMax:
         raise AssertionError("ONLP_CONFIG_INFO_STR_MAX changed from %d to %d"
                              % (ONLP_CONFIG_INFO_STR_MAX, strMax,))

@@ -50,3 +50,17 @@ packages:
       ${ONL}/sm/bigcode/modules/IOF/module/inc/IOF: /usr/local/include/IOF
       ${ONL}/packages/base/any/onlp/src/onlp/module/inc/onlp: /usr/local/include/onlp
       ${ONL}/packages/base/any/onlp/src/onlplib/module/inc/onlplib: /usr/local/include/onlplib
+
+  - name: onlp-py3
+    version: 1.0.0
+    summary: ONLP Python3 wrapper
+
+    depends:
+    - onlp:$ARCH
+
+    files:
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/__init__.py: ${PY3_INSTALL}/onlp/
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/onlp: ${PY3_INSTALL}/onlp/onlp
+      ${ONL}/packages/base/any/onlp/src/onlp/module/python/onlp/test: ${PY3_INSTALL}/onlp/test
+      ${ONL}/packages/base/any/onlp/src/onlplib/module/python/onlp/onlplib: ${PY3_INSTALL}/onlp/onlplib
+      ${ONL}/sm/bigcode/modules/sff/module/python/sff: ${PY3_INSTALL}/onlp/sff
