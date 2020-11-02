@@ -11,7 +11,8 @@ class OnlPlatform_x86_64_accton_as5915_18x_r0(OnlPlatformAccton,
     def baseconfig(self):
         self.insmod('optoe')
         self.insmod("ym2651y")
-        os.system('modprobe ucd9000')
+        os.system("modprobe pmbus_core")
+        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/ucd9000.ko")
         for m in [ 'fpga', 'cpld', 'sys', 'fan', 'leds' ]:
             self.insmod("x86-64-accton-as5915-18x-%s" % m)
 
@@ -43,7 +44,7 @@ class OnlPlatform_x86_64_accton_as5915_18x_r0(OnlPlatformAccton,
                 ('pca9548', 0x74, 27), # i2c 34-41
 
                 # initialize UCD90160
-                #('ucd90160', 0x34, 35),
+                ('ucd90160', 0x34, 35),
 
                 # initialize CPLD
                 ('as5915_18x_fpga', 0x64, 31), # i2c 42-45
