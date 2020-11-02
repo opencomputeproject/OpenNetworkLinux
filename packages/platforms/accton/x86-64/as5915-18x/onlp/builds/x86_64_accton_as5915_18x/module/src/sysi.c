@@ -122,3 +122,31 @@ onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 {
     aim_free(pi->cpld_versions);
 }
+
+int onlp_sysi_platform_manage_leds(void)
+{
+    int i, rc;
+    onlp_fan_info_t fi[CHASSIS_FAN_COUNT];
+
+    memset(fi, 0, sizeof(fi));
+
+    /* Get fan status
+     */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        rc = onlp_fani_info_get(ONLP_FAN_ID_CREATE(i+1), &fi[i]);
+
+        if (rc != ONLP_STATUS_OK) {
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if (!(fi[i].status & ONLP_FAN_STATUS_FAILED)) {
+            continue;
+        }
+
+        /* Set System-Fan LED as orange if any fan failed
+         */
+        return onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_ORANGE);
+    }
+
+    return onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN);
+}

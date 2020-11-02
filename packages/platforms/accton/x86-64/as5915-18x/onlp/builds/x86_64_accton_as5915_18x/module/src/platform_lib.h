@@ -58,6 +58,17 @@ enum onlp_thermal_id
     THERMAL_1_ON_PSU2,
 };
 
+enum onlp_led_id
+{
+    LED_LOC = 1,
+    LED_DIAG,
+    LED_PSU1,
+    LED_PSU2,
+    LED_FAN,
+    LED_ALARM,
+    LED_7SEGMENT
+};
+
 #endif  /* __PLATFORM_LIB_H__ */
 
 

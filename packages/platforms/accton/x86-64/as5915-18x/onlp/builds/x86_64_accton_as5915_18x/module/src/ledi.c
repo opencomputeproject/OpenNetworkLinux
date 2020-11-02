@@ -52,17 +52,6 @@ enum led_light_mode { /*must be the same with the definition @ kernel driver */
     LED_MODE_UNKNOWN
 };
 
-enum onlp_led_id
-{
-	LED_LOC = 1,
-	LED_DIAG,
-    LED_PSU1,
-    LED_PSU2,
-    LED_FAN,
-    LED_ALARM,
-    LED_7SEGMENT
-};
-
 typedef struct led_light_mode_map {
     enum onlp_led_id id;
     enum led_light_mode driver_led_mode;
