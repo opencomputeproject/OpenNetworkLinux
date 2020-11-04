@@ -604,7 +604,7 @@ int
 fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int rc, temp_id;
-    int fan_tray_id, offset;
+    int offset;
     int and_mask, or_mask;
 
     if ( bmc_enable ) {
@@ -614,7 +614,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
     temp_id = ONLP_OID_ID_GET(id);
     switch (temp_id) {
         case 5:
-            fan_tray_id = 1;
+            // fan tray 1
             offset = 3;
             if (mode == ONLP_LED_MODE_GREEN) {
                 and_mask = 0xCF;
@@ -625,7 +625,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case 6:
-            fan_tray_id = 2;
+            // fan tray 2
             offset = 3;
             if (mode == ONLP_LED_MODE_GREEN) {
                 and_mask = 0xFC;
@@ -636,7 +636,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case 7:
-            fan_tray_id = 3;
+            // fan tray 3
             offset = 2;
             if (mode == ONLP_LED_MODE_GREEN) {
                 and_mask = 0xCF;
@@ -647,7 +647,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
             }
             break;
         case 8:
-            fan_tray_id = 4;
+            // fan tray 4
             offset = 2;
             if (mode == ONLP_LED_MODE_GREEN) {
                 and_mask = 0xFC;
