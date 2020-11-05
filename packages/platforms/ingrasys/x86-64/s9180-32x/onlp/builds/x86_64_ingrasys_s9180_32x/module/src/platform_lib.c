@@ -631,7 +631,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
                 and_mask = 0xFC;
                 or_mask = 0x02;
             } else if (mode == ONLP_LED_MODE_ORANGE) {
-                and_mask = 0xF3;
+                and_mask = 0xFC;
                 or_mask = 0x01;
             }
             break;
@@ -653,7 +653,7 @@ fan_tray_led_set(onlp_oid_t id, onlp_led_mode_t mode)
                 and_mask = 0xFC;
                 or_mask = 0x02;
             } else if (mode == ONLP_LED_MODE_ORANGE) {
-                and_mask = 0xF3;
+                and_mask = 0xFC;
                 or_mask = 0x01;
             }
             break;
