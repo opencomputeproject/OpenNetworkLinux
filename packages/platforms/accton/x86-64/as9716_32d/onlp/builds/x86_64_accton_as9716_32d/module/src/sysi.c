@@ -468,7 +468,7 @@ int onlp_sysi_platform_manage_fans(void)
     {
         if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal[k]) != ONLP_STATUS_OK  )
         {
-            AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
+            AIM_LOG_ERROR("Unable to read thermal status, set fans to full speed");
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
             return ONLP_STATUS_E_INTERNAL;
        }
@@ -478,7 +478,7 @@ int onlp_sysi_platform_manage_fans(void)
     {
         if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i), &thermal[k]) != ONLP_STATUS_OK  )
         {
-            AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
+            AIM_LOG_ERROR("Unable to read thermal status, set fans to full speed");
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
             return ONLP_STATUS_E_INTERNAL;
         }
@@ -486,13 +486,13 @@ int onlp_sysi_platform_manage_fans(void)
     }
     if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(1), &thermal[6]) != ONLP_STATUS_OK  )
     {
-        AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
+        AIM_LOG_ERROR("Unable to read thermal status, set fans to full speed");
         onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
         return ONLP_STATUS_E_INTERNAL;
     }
     if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(5), &thermal[7]) != ONLP_STATUS_OK  )
     {
-        AIM_LOG_ERROR("Unable to read thermal status, set fans to 100% speed");
+        AIM_LOG_ERROR("Unable to read thermal status, set fans to  full speed");
         onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), 100);
         return ONLP_STATUS_E_INTERNAL;
     }
