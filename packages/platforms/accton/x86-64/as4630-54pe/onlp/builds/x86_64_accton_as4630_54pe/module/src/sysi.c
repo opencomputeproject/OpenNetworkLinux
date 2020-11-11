@@ -173,7 +173,7 @@ int onlp_sysi_platform_manage_fans(void)
     {
         if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i+2), &thermali[i]) != ONLP_STATUS_OK  )
         {   
-            AIM_LOG_ERROR("Unable to read thermal status, set fans to 87% speed");
+            AIM_LOG_ERROR("Unable to read thermal status, set fans to 87 %% speed");
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fan_thermal_policy[LEVEL_FAN_HIGH].duty_cycle);
             return ONLP_STATUS_E_INTERNAL;
         }
