@@ -54,8 +54,13 @@
 #define CPU_CPLD_ADDR           0x65
 #define FAN_CPLD_ADDR           0x66
 
+#define IPMI_CPLD_WRITE_CMD     0x23
+
 /* CPU CPLD offset */
 #define CPU_CPLD_WDT_STATUS_1    0x02
+
+/* MAINBOARD CPLD1 offset */
+#define MAINBOARD_CPLD1_SYS_RESET_5     0x50
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static int as5916_54xl_sys_probe(struct platform_device *pdev);
@@ -404,20 +409,63 @@ static ssize_t mac_reset(struct device *dev, struct device_attribute *da,
 {
     long reset;
     int status = 0;
+    int mac_reset_bit = 0x80;
+    int set_data = 0;
 
 	status = kstrtol(buf, 10, &reset);
 	if (status) {
 		return status;
 	}
 
-    if (!reset) {
-        return count;
+    if((reset != 0) && (reset != 1) && (reset != 2))
+    {
+        status = -EINVAL;
+        return status;
     }
 
     mutex_lock(&data->update_lock);
 
-    status = ipmi_send_message(&data->ipmi, IPMI_MAC_RESET_CMD, NULL, 0, NULL, 0);
+    if((reset == 0) || (reset == 1))
+    {  
+        /* ipmitool raw 0x34 0x22 0x60 0x50 */
+        data->ipmi_tx_data[0] = MAINBOARD_CPLD1_ADDR;
+        data->ipmi_tx_data[1] = MAINBOARD_CPLD1_SYS_RESET_5;
+        status = ipmi_send_message(&data->ipmi, IPMI_GET_CPLD_CMD, data->ipmi_tx_data, 2,
+                                   &data->ipmi_resp_cpld, sizeof(data->ipmi_resp_cpld));
+        if (unlikely(status != 0)) {
+            status = -EIO;
+            goto exit;
+        }
+
+        if (unlikely(data->ipmi.rx_result != 0)) {
+            status = -EIO;
+            goto exit;
+        }
+
+        if(reset == 0)
+        {
+            set_data = (data->ipmi_resp_cpld & (~(mac_reset_bit)));
+        }
+
+        if(reset == 1)
+        {
+            set_data = (data->ipmi_resp_cpld | (mac_reset_bit));
+        }
+        /* ipmitool raw 0x34 0x23 0x60 0x50 <set data> */
+        data->ipmi_tx_data[0] = MAINBOARD_CPLD1_ADDR;
+        data->ipmi_tx_data[1] = MAINBOARD_CPLD1_SYS_RESET_5;
+        data->ipmi_tx_data[2] = set_data;
+        status = ipmi_send_message(&data->ipmi, IPMI_CPLD_WRITE_CMD, data->ipmi_tx_data, 3, NULL, 0);
+    }
+
+    if(reset == 2)
+    {
+        /* ipmitool raw 0x34 0x2b */
+        status = ipmi_send_message(&data->ipmi, IPMI_MAC_RESET_CMD, NULL, 0, NULL, 0);
+    }
+
     if (unlikely(status != 0)) {
+        status = -EIO;
         goto exit;
     }
 
