@@ -43,6 +43,8 @@ static char* devfiles__[] =  /* must map with onlp_thermal_id */
     "/sys/bus/i2c/devices/18-004a*temp1_input",
     "/sys/bus/i2c/devices/18-004b*temp1_input",
     "/sys/bus/i2c/devices/18-004c*temp1_input",
+    "/sys/bus/i2c/devices/18-004c*temp2_input",
+    "/sys/bus/i2c/devices/18-004d*temp1_input",
     "/sys/bus/i2c/devices/18-004e*temp1_input",
     "/sys/bus/i2c/devices/18-004f*temp1_input",
     "/sys/bus/i2c/devices/10-0059*psu_temp1_input",
@@ -85,15 +87,23 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {66000, 71000, 76000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BROAD), "LM75-2-4C", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_5_ON_MAIN_BROAD), "TMP43-INT(MAC)-4C", 0},
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, {64000, 74000, 84000}
+        },
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_6_ON_MAIN_BROAD), "TMP43-EXT(MAC)-4C", 0},
+            ONLP_THERMAL_STATUS_PRESENT,
+            ONLP_THERMAL_CAPS_ALL, 0, {90000, 100000, 110000}
+        },
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_7_ON_MAIN_BROAD), "LM75-2-4D", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {66000, 71000, 76000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_6_ON_MAIN_BROAD), "LM75-3-4E", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_8_ON_MAIN_BROAD), "LM75-3-4E", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {56000, 61000, 66000}
         },
-	{ { ONLP_THERMAL_ID_CREATE(THERMAL_7_ON_MAIN_BROAD), "LM75-3-4F", 0}, 
+	{ { ONLP_THERMAL_ID_CREATE(THERMAL_9_ON_MAIN_BROAD), "LM75-3-4F", 0},
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, {59000, 64000, 69000}
         },

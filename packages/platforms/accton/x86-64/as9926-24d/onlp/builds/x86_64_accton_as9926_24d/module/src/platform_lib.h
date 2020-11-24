@@ -29,7 +29,7 @@
 #include "x86_64_accton_as9926_24d_log.h"
 
 #define CHASSIS_FAN_COUNT		6
-#define CHASSIS_THERMAL_COUNT	8
+#define CHASSIS_THERMAL_COUNT	10
 #define CHASSIS_PSU_COUNT		2
 #define CHASSIS_LED_COUNT		5
 
@@ -49,7 +49,7 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/17-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-0/0-0057/eeprom"
+#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-23/23-0055/eeprom"
 
 int psu_acbel_pmbus_info_get(int id, char *node, int *value);
 int psu_acbel_pmbus_info_set(int id, char *node, int value);
@@ -65,6 +65,8 @@ enum onlp_thermal_id
     THERMAL_5_ON_MAIN_BROAD,
     THERMAL_6_ON_MAIN_BROAD,
     THERMAL_7_ON_MAIN_BROAD,
+    THERMAL_8_ON_MAIN_BROAD,
+    THERMAL_9_ON_MAIN_BROAD,
     THERMAL_1_ON_PSU1,
     THERMAL_2_ON_PSU1,
     THERMAL_3_ON_PSU1,
