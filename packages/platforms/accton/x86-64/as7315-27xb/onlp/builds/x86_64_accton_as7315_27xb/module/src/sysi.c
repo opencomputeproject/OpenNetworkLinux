@@ -198,7 +198,7 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                          onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                          int *adjusted)
 {
-    int duty, curr_duty, thermal;
+    int duty, thermal;
     enum {E_DOWN, E_UP, E_THRESHS};
     enum {_LOW, _NORMAL, _MID, _HIGH, _MAX} static stage = _MID;
     const int duties[] = {20, 30, 60, FAN_DUTY_MAX};
@@ -206,11 +206,6 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                                {10000, 47000, 62000, INT_MAX}};
 
     thermal = get_ambient_thermal(ti);
-    /*Take fan 1 only.*/
-    if( fani_get_fan_duty(1, &curr_duty) != ONLP_STATUS_OK) {
-        *adjusted = 1;
-        return _set_all_fans_pwm(FAN_DUTY_MAX);
-    }
 
     switch(stage) {
     case _LOW:
@@ -227,12 +222,8 @@ sysi_fanctrl_main_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
         stage = _HIGH;
     }
     duty = duties[stage];
-    if (curr_duty != duty) {
-        *adjusted = 1;
-        return _set_all_fans_pwm(duty);
-    }
-
-    return ONLP_STATUS_OK;
+    *adjusted = 1;
+    return _set_all_fans_pwm(duty);
 }
 
 static int
