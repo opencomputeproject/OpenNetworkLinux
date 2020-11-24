@@ -126,20 +126,6 @@ static int tty_write_and_read( int fd, const char *cmd,
     return ret;
 }
 
-static int tty_access_and_match( int fd, const char *cmd,
-                                 uint32_t udelay, const char *keywd)
-{
-    int num;
-    char resp[MAX_TTY_CMD_LENGTH] = {0};
-
-    num = tty_write_and_read(fd, cmd, udelay, resp, sizeof(resp));
-    if (num <= 0) {
-        return ONLP_STATUS_E_GENERIC;
-    }
-    return (strstr(resp, keywd) != NULL) ?
-           ONLP_STATUS_OK : ONLP_STATUS_E_GENERIC;
-}
-
 static bool is_logged_in(int fd, char *resp, int max_size)
 {
     int num;
@@ -162,6 +148,17 @@ static bool is_logged_in(int fd, char *resp, int max_size)
     }
 }
 
+static int do_tty_login(void)
+{
+    char *dev = "/sys/bus/platform/devices/minipack_psensor/logon";
+    DEBUG_PRINT("write 1 > %s\n", dev);
+    if (onlp_file_write_int(1, dev) < 0) {
+        AIM_LOG_ERROR("Unable to set logon to %s\r\n", dev);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    return ONLP_STATUS_OK;
+}
+
 static int tty_login(int fd, char *buf, int buf_size)
 {
     int i;
@@ -175,12 +172,7 @@ static int tty_login(int fd, char *buf, int buf_size)
         DEBUG_PRINT("Try to login, @%d!\n", i);
         if (strstr(buf, " login:") != NULL)
         {
-            if (!tty_access_and_match(fd, TTY_USER"\r",TTY_BMC_LOGIN_TIMEOUT, "Password:")) {
-                if (!tty_access_and_match(fd, "0penBmc\r", TTY_BMC_LOGIN_TIMEOUT, TTY_PROMPT)) {
-                    return ONLP_STATUS_OK;
-                }
-
-            }
+            do_tty_login();
         }
         usleep(TTY_BMC_LOGIN_INTERVAL*i);
     }
@@ -394,7 +386,6 @@ bmc_command_read_int(int *value, char *cmd, int base)
     }
     return 0;
 }
-
 
 int
 bmc_file_read_int(int* value, char *file, int base)
