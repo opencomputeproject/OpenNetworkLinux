@@ -11,7 +11,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.     See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -37,6 +37,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/tty.h>
+#include <linux/crypto.h>
 #include <asm/uaccess.h>
 
 #define DEBUG_INTR(args...) \
@@ -44,15 +45,6 @@
 
 #define DEBUG_LEX(args...) \
     debug_print(__func__, __LINE__,2, args)
-
-static unsigned int verbose = 0;
-module_param(verbose, uint, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(verbose, "Print more information for debugging. Default is disabled.");
-
-static unsigned int poll_interval = 9;
-module_param(poll_interval, uint, S_IRUGO|S_IWUSR);
-MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of second.");
-
 
 #define DRVNAME "minipack_psensor"     /*Platform Sensor*/
 
@@ -65,11 +57,10 @@ MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of seco
 #define CHASSIS_PSU_VOUT_COUNT      (1)    /*V output only.*/
 #define CHASSIS_PSU_VOUT_INDEX      (1)    /*V output start index.*/
 
-
-#define ATTR_ALLOC_EXTRA	        1   /*For last attribute which is NUll.*/
-#define ATTR_NAME_SIZE		        24
-#define ATTR_NAME_OUTFIT_SIZE		12
-#define ATTR_MAX_LIST   		8
+#define ATTR_ALLOC_EXTRA            1   /*For last attribute which is NUll.*/
+#define ATTR_NAME_SIZE                24
+#define ATTR_NAME_OUTFIT_SIZE        12
+#define ATTR_MAX_LIST           8
 
 #define TTY_DEVICE                      "/dev/ttyACM0"
 #define TTY_PROMPT                      "root@"
@@ -95,6 +86,14 @@ MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of seco
 #define MIN_PSU_VOUT            (12000*995/1000)    /*12 - 0.5%*/
 
 #define ATTR_TYPE_INDEX_GAP     (100)
+
+static unsigned int verbose = 0;
+module_param(verbose, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(verbose, "Print more information for debugging. Default is disabled.");
+
+static unsigned int poll_interval = 9;
+module_param(poll_interval, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(poll_interval, "Time interval for data polling, in unit of second.");
 
 enum sensor_type_e {
     SENSOR_TYPE_THERMAL,
@@ -123,12 +122,12 @@ enum sysfs_attributes_index {
 };
 
 /* Pmbus reg defines are copied from drivers/hwmon/pmbus/pmbus.h*/
-#define PMBUS_READ_VIN			0x88
-#define PMBUS_READ_IIN			0x89
-#define PMBUS_READ_VOUT			0x8B
-#define PMBUS_READ_IOUT			0x8C
-#define PMBUS_READ_POUT			0x96
-#define PMBUS_READ_PIN			0x97
+#define PMBUS_READ_VIN            0x88
+#define PMBUS_READ_IIN            0x89
+#define PMBUS_READ_VOUT            0x8B
+#define PMBUS_READ_IOUT            0x8C
+#define PMBUS_READ_POUT            0x96
+#define PMBUS_READ_PIN            0x97
 
 #define PMBUS_REG_START  PMBUS_READ_VIN
 #define PMBUS_REG_END    PMBUS_READ_PIN
@@ -167,20 +166,21 @@ struct sensor_data {
 
 struct psensor {
     struct psensor *next;
-    char name[ATTR_NAME_SIZE+1];	/* sysfs sensor name */
+    char name[ATTR_NAME_SIZE+1];    /* sysfs sensor name */
     struct sensor_device_attribute sensor_dev_attr;
 };
 
 struct minipack_data {
     struct platform_device *pdev;
-    struct device	    *dev;
-    struct device	    *hwmon_dev;
-    struct mutex	    update_lock;
+    struct device        *dev;
+    struct device        *hwmon_dev;
+    struct mutex        update_lock;
     struct tty_struct   *tty;
     struct ktermios     old_ktermios;
-    bool			 logged_in;
-    bool			 valid[SENSOR_TYPE_MAX];
-    unsigned long	 last_updated[SENSOR_TYPE_MAX];	  /* In jiffies */
+    u8           logged_in;
+    bool         valid[SENSOR_TYPE_MAX];
+    unsigned long     last_updated[SENSOR_TYPE_MAX];      /* In jiffies */
+    char     p2c[TTY_CMD_MAX_LEN];    /*plaintext to ciphertext*/
     struct sensor_data sdata;
     int num_attributes;
     struct attribute_group group;
@@ -193,6 +193,14 @@ typedef ssize_t (*store_func)(struct device *dev,
                               size_t count);
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
                          char *buf);
+static ssize_t show_cipher(struct device *dev, struct device_attribute *da,
+                           char *buf);
+static ssize_t set_plain(struct device *dev, struct device_attribute *devattr,
+                         const char *buf, size_t count);
+static ssize_t show_logon(struct device *dev, struct device_attribute *da,
+                          char *buf);
+static ssize_t do_logon(struct device *dev, struct device_attribute *devattr,
+                        const char *buf, size_t count);
 static ssize_t _attr_show(struct device *dev, struct device_attribute *da,
                           char *buf);
 static ssize_t show_fan_min(struct device *dev, struct device_attribute *da,
@@ -429,7 +437,6 @@ static int _tty_tx(struct file *tty_fd, const char *str)
         pr_err( "failed to write(%d)\n", rc);
         return -EBUSY;
     }
-    DEBUG_INTR("[TX]%d BYTES, write:\n\"%s\"\n",rc, str);
     return rc;
 }
 
@@ -525,8 +532,9 @@ exit:
 static bool _is_logged_in(struct file *tty_fd, char* buf, size_t max_size)
 {
     int i, ret;
+    struct minipack_data *data = mp_data;
 
-    if (mp_data->logged_in) {
+    if (data->logged_in == true) {
         return true;
     }
 
@@ -541,20 +549,128 @@ static bool _is_logged_in(struct file *tty_fd, char* buf, size_t max_size)
         DEBUG_INTR("tty_buf:%s\n", buf);
         /*Check if logined by comparing BMC's cmd prompt.*/
         if (strstr(buf, TTY_PROMPT) != NULL) {
-            mp_data->logged_in = true;
+            data->logged_in = true;
             return true;
         } else {
             return false;
         }
     }
     return false;
+}
 
+static int fileRead(char* path, char *out, size_t max)
+{
+    loff_t pos = 0;
+    int ret = 0;
+    struct file *filp = filp_open(path, O_RDONLY, 0);
+    if (IS_ERR(filp)) {
+        DEBUG_INTR("Cannot open file:%s\n", path);
+        return -ENOENT;
+    }
+    ret = kernel_read(filp, out, max, &pos);
+    if (ret <= 0) {
+        DEBUG_INTR("Cannot read file:%s\n", path);
+        ret = -EIO;
+        goto exit;
+    }
+exit:
+    filp_close(filp, NULL);
+    return ret;
+}
+
+static int getCipherText(u8 *out, size_t len)
+{
+    int ret = fileRead("/etc/bmcpwd", out, len);
+    if (ret >= 0 && (ret % 16)) {
+        DEBUG_INTR("Cipher text must be multiple of 16 bytes(%ld)\n", ret);
+        return -EFAULT;
+    }
+    return ret;
+}
+
+static int getKey(u8 *out, size_t len)
+{
+    int ret = fileRead("/etc/.bmcpwd.key", out, len);
+    /*check if file size < len*/
+    if (ret >= 0 && ret < len) {
+        DEBUG_INTR("Key too short: %d < %ld\n", ret, len);
+        return -EILSEQ;
+    }
+    return ret;
+}
+
+/***************************************************************
+ * caller have to ensure allocated size of plain is bigger than max
+ */
+static int aes256_decrypt(u8* plain, size_t max)
+{
+    u8 *cipher = NULL;
+    struct crypto_cipher    *tfm;
+    u8 key[64] = {0};
+    int i, cipher_len,ret = 0;
+
+    /*Get key*/
+    ret = getKey(key, sizeof(key));
+    if (ret < 0) {
+        return ret;
+    }
+
+    /*Get cipher text*/
+    cipher = kmalloc(max, GFP_KERNEL);
+    if (cipher == NULL) {
+        pr_err("Failed to allocate buffer");
+        return -ENOMEM;
+    }
+
+    ret = getCipherText(cipher, max);
+    if (ret < 0) {
+        goto exit_free;
+    }
+    cipher_len = ret;
+
+    /*Decrypting*/
+    tfm = crypto_alloc_cipher("aes", 0, CRYPTO_ALG_ASYNC);
+    crypto_cipher_setkey(tfm, key, 32);
+    for (i=0; i <cipher_len; i+=16) {
+        crypto_cipher_decrypt_one(tfm, plain+i, cipher+i);
+    }
+    ret = i;
+
+exit_free:
+    kfree(cipher);
+    return ret;
+}
+
+static int get_passwd(char* buf, size_t max)
+{
+    u8 *plain = NULL;
+    int ret, Cmax;
+
+    /*Cipher's in unit of 16-bytes block, it's >= size of plaintext*/
+    Cmax = ((max+127)/128*128);
+    plain = kzalloc(Cmax, GFP_KERNEL);
+    if (plain == NULL) {
+        pr_err("Failed to allocate buffer");
+        return -ENOMEM;
+    }
+    ret = aes256_decrypt(plain, Cmax);
+    if (ret < 0) { /*Use the default password*/
+        strncpy(buf, TTY_PASSWORD, max);
+        buf[max - 1] = '\0';
+    } else {
+        strncpy(buf, plain, max);
+        buf[max - 1] = '\0';
+    }
+
+    kfree(plain);
+    return 0;
 }
 
 static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
 {
     int i;
     int ret = -EINVAL;
+    struct minipack_data *data = mp_data;
 
     if(!tty_fd)
         return -EINVAL;
@@ -574,13 +690,16 @@ static int _tty_login(struct file *tty_fd, char* buf, size_t max_size)
             }
             DEBUG_INTR("tty_buf:%s\n", buf);
             if (strstr(buf, "Password:") != NULL) {
-                DEBUG_INTR("tty_buf:%s\n", buf);
-                ret = _tty_writeNread(tty_fd, TTY_PASSWORD"\r\n", buf, max_size, 0);
+                char cmd[TTY_CMD_MAX_LEN+3];
+                get_passwd(cmd, sizeof(cmd)-3);
+                strncat(cmd, "\r\n", 2);
+                ret = _tty_writeNread(tty_fd, cmd, buf, max_size, 0);
                 if (ret < 0) {
                     DEBUG_INTR("failed ret:%d\n", ret);
                     continue;
                 }
                 if (strstr(buf, TTY_PROMPT) != NULL) {
+                    data->logged_in = true;
                     DEBUG_INTR("tty_buf:%s\n",buf);
                     return 0;
                 }
@@ -703,6 +822,32 @@ static int attributs_init(struct minipack_data *data)
     if (ret)
         return ret;
 
+    /*cipher*/
+    sensor = devm_kzalloc(data->dev, sizeof(*sensor), GFP_KERNEL);
+    if (!sensor)
+        return -ENOENT;
+    sensor_dattr = &sensor->sensor_dev_attr;
+    dev_attr = &sensor_dattr->dev_attr;
+    snprintf(sensor->name, sizeof(sensor->name), "cipher");
+    dev_attr_init(dev_attr, sensor->name, S_IRUGO|S_IWUSR, show_cipher, set_plain);
+    sensor_dattr->index = INDEX_NAME+1;
+    ret = add_attr2group(data, &dev_attr->attr);
+    if (ret)
+        return ret;
+
+    /*logOn*/
+    sensor = devm_kzalloc(data->dev, sizeof(*sensor), GFP_KERNEL);
+    if (!sensor)
+        return -ENOENT;
+    sensor_dattr = &sensor->sensor_dev_attr;
+    dev_attr = &sensor_dattr->dev_attr;
+    snprintf(sensor->name, sizeof(sensor->name), "logon");
+    dev_attr_init(dev_attr, sensor->name, S_IRUGO|S_IWUSR, show_logon, do_logon);
+    sensor_dattr->index = INDEX_NAME+2;
+    ret = add_attr2group(data, &dev_attr->attr);
+    if (ret)
+        return ret;
+
     /*types*/
     for (si = 0; si < SENSOR_TYPE_MAX; si++) {
         struct sensor_set *ss = model+si;
@@ -744,7 +889,9 @@ static int attributs_init(struct minipack_data *data)
 
 static void mp_data_init(struct minipack_data *data)
 {
-
+    if (data) {
+        data->logged_in = -1;
+    }
 }
 
 static int extract_numbers(char *buf, int *out, int out_cnt)
@@ -870,7 +1017,6 @@ static int get_pmbus_regs_partial(int *in, int in_cnt, int *out, int *out_cnt)
     return 0;
 }
 
-
 static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
 {
     char cmd[TTY_CMD_MAX_LEN], resp[TTY_READ_MAX_LEN];
@@ -894,7 +1040,6 @@ static int comm2BMC(enum sensor_type_e type, int *out, int out_cnt)
     } else {
         ptr = resp;
     }
-
 
     switch (type) {
     case SENSOR_TYPE_THERMAL:
@@ -961,7 +1106,7 @@ static int get_type_data (
 static struct sensor_data*
 update_data(struct device *dev, enum sensor_type_e type) {
     struct minipack_data *data = mp_data;
-    bool			*valid = &data->valid[type];
+    bool   *valid = &data->valid[type];
     unsigned long   *last_updated = &data->last_updated[type];
     struct sensor_data* ret = NULL;
     int *data_ptr = NULL;
@@ -1002,6 +1147,117 @@ static ssize_t show_name(struct device *dev, struct device_attribute *da,
                          char *buf)
 {
     return sprintf(buf, "%s\n", DRVNAME);
+}
+
+static ssize_t show_logon(struct device *dev, struct device_attribute *da,
+                          char *buf)
+{
+    struct minipack_data *data = mp_data;
+    u8 is_in;
+    mutex_lock(&data->update_lock);
+    is_in = mp_data->logged_in;
+    mutex_unlock(&data->update_lock);
+    return sprintf(buf, "%u\n", is_in);
+}
+
+static ssize_t do_logon(struct device *dev, struct device_attribute *devattr,
+                        const char *buf, size_t count)
+{
+    struct minipack_data *data = mp_data;
+    long doLogIn;
+    char cmd[TTY_CMD_MAX_LEN], resp[TTY_READ_MAX_LEN];
+    int  ret;
+
+    ret = kstrtol(buf, 10, &doLogIn);
+    if (unlikely(ret < 0)) {
+        return ret;
+    }
+
+    /*If log in/out has been done, do nothing. */
+    if ((!!doLogIn) == data->logged_in) {
+        return count;
+    }
+
+    if (doLogIn) {
+        snprintf(cmd, sizeof(cmd), "\r\n");  /*Run any cmd will make it login*/
+    } else {
+        snprintf(cmd, sizeof(cmd), "\r\nexit\r\n");
+    }
+
+    mutex_lock(&data->update_lock);
+    ret = bmc_transaction(cmd, resp, sizeof(resp)-1, TTY_RESPONSE_INTERVAL);
+    if (ret < 0) {
+        mutex_unlock(&data->update_lock);
+        return ret;
+    }
+    mp_data->logged_in = !!doLogIn;
+    mutex_unlock(&data->update_lock);
+    return count;
+}
+
+static ssize_t show_cipher(struct device *dev, struct device_attribute *da,
+                           char *buf)
+{
+    u8 key[64] = {0};
+    struct minipack_data *data = mp_data;
+    struct crypto_cipher *tfm = NULL;
+    char *pt;
+    int i, ret;
+
+    mutex_lock(&data->update_lock);
+    pt = data->p2c;
+    if(!strlen(pt)) {
+        return 0;
+    }
+    ret = getKey(key, sizeof(key));
+    if (ret < 0) {
+        goto exit;
+    }
+    tfm = crypto_alloc_cipher("aes", 0, CRYPTO_ALG_ASYNC);
+    crypto_cipher_setkey(tfm, key, 32);  /*32 bytes for AES256*/
+    for (i=0; i<strlen(pt); i+=16) { /*AES block sized 16Bytes*/
+        crypto_cipher_encrypt_one(tfm, &buf[i], &pt[i]);
+    }
+    crypto_free_cipher(tfm);
+    ret = i;
+exit:
+    mutex_unlock(&data->update_lock);
+    return ret;
+}
+
+static ssize_t set_plain(struct device *dev, struct device_attribute *devattr,
+                         const char *buf, size_t count)
+{
+    int ret = count;
+    struct minipack_data *data = mp_data;
+    ssize_t max = sizeof(data->p2c);
+    char *pt;
+
+    mutex_lock(&data->update_lock);
+    pt = data->p2c;
+    if (strlen(buf) > (max - 1)) {
+        ret = -EOVERFLOW;
+        goto exit;
+    }
+
+    ret = snprintf(pt, max, "%s", buf);
+    if (ret < 0) {
+        goto exit;
+    }
+
+    /*strip off tailing '\n'*/
+    do {
+        size_t sl = strlen(pt);
+        if(sl > 0 && pt[sl - 1] == '\n') {
+            pt[sl - 1] = '\0';
+        } else {
+            break;
+        }
+    } while (1);
+
+exit:
+    mutex_unlock(&data->update_lock);
+    return ret;
 }
 
 static ssize_t _attr_show(struct device *dev, struct device_attribute *da,
@@ -1086,7 +1342,8 @@ static int minipack_probe(struct platform_device *pdev)
         goto exit_kfree;
     }
 
-    mp_data->hwmon_dev = hwmon_device_register(&pdev->dev);
+    mp_data->hwmon_dev = hwmon_device_register_with_info(&pdev->dev, DRVNAME,
+                         NULL, NULL, NULL);
     if (IS_ERR(mp_data->hwmon_dev)) {
         status = PTR_ERR(mp_data->hwmon_dev);
         goto exit_remove;
@@ -1111,11 +1368,11 @@ static int minipack_remove(struct platform_device *pdev)
 }
 
 static struct platform_driver minipack_driver = {
-    .probe		= minipack_probe,
-    .remove		= minipack_remove,
-    .driver		= {
-        .name	= DRVNAME,
-        .owner	= THIS_MODULE,
+    .probe      = minipack_probe,
+    .remove     = minipack_remove,
+    .driver     = {
+        .name       = DRVNAME,
+        .owner      = THIS_MODULE,
     },
 };
 

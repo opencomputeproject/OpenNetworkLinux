@@ -279,9 +279,221 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     return rv;
 }
 
+#define SFP_PAGE_OFFSET      383
+#define QSFP_PAGE_OFFSET     127
+#define SFF_A0_ADDR          0x50
+#define SFF_A2_ADDR          0x51
+#define SFF_A0_DATA_SIZE     256
+#define SFF_A2_NON_PAGE_SIZE 128
+#define SFF_PAGE_DATA_SIZE   128
+#define SFP_PORT_IDX_END     23
+#define QSFP_PORT_IDX_BEGIN  24
+#define QSFP_PORT_IDX_END    25
+
+static int onlp_sfpi_dev_get_sysfs_off(int port, uint8_t devaddr, uint8_t addr, uint8_t page)
+{
+    if (port <= SFP_PORT_IDX_END) {
+        if (devaddr == SFF_A0_ADDR) {
+            return addr;
+        }
+
+        // SFF_A2_ADDR
+        if (addr < SFF_A2_NON_PAGE_SIZE) {
+            return SFF_A0_DATA_SIZE + addr;
+        }
+
+        return SFF_A0_DATA_SIZE + (page * SFF_PAGE_DATA_SIZE) + addr;
+    }
+
+    // QSFP
+    return (addr < SFF_A2_NON_PAGE_SIZE) ? (addr) : (page * SFF_PAGE_DATA_SIZE) + addr;
+}
+
+static int onlp_sfpi_dev_read_write(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size, int write_access)
+{
+    FILE* fp;
+    char file[64] = {0};
+    int  seek_off = 0;
+    uint8_t page = 0;
+
+    if (port < 0 || port > QSFP_PORT_IDX_END) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if ((port <= SFP_PORT_IDX_END) && (devaddr != 0x50 && devaddr != 0x51)) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if ((port >= QSFP_PORT_IDX_BEGIN) && (devaddr != 0x50)) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    if ((addr + size) > 256) {
+        return ONLP_STATUS_E_PARAM;
+    }
+
+    sprintf(file, PORT_EEPROM_FORMAT, (port+1));
+    fp = fopen(file, "r+");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    // Disable buffering
+	setvbuf(fp, NULL, _IONBF, 0);
+
+    // Read out current page to decide the target offset
+    seek_off = (port <= SFP_PORT_IDX_END) ? SFP_PAGE_OFFSET : QSFP_PAGE_OFFSET;
+    if (fseek(fp, seek_off, SEEK_SET) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    int ret = fread(&page, 1, 1, fp);
+    if (ret != 1) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    seek_off = onlp_sfpi_dev_get_sysfs_off(port, devaddr, addr, page);
+    if (fseek(fp, seek_off, SEEK_SET) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the file position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (write_access) {
+        int ret = fwrite(data, 1, size, fp);
+
+        fclose(fp);
+        if (ret != size) {
+            AIM_LOG_ERROR("Unable to write the module_eeprom device file of port(%d)", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+    else {
+        int ret = fread(data, 1, size, fp);
+
+        fclose(fp);
+        if (ret != size) {
+            AIM_LOG_ERROR("Unable to read the module_eeprom device file of port(%d)", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+int onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
+{
+    uint8_t data;
+    int ret = onlp_sfpi_dev_read_write(port, devaddr, addr, &data, 1, 0);
+    return (ret < 0) ? ret : data;
+}
+
+int onlp_sfpi_dev_writeb(int port, uint8_t devaddr, uint8_t addr, uint8_t value)
+{
+    return onlp_sfpi_dev_read_write(port, devaddr, addr, &value, 1, 1);
+}
+
+int onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
+{
+    uint8_t data[2];
+    int ret = 0;
+
+    // Split into two byte operation if data cross the boundary
+    if (addr == 0x7F) {
+        int i = 0;
+
+        for (i = 0; i < 2; i++) {
+            ret = onlp_sfpi_dev_readb(port, devaddr, addr+i);
+            if (ret < 0) {
+                break;
+            }
+
+            data[i] = ret;
+        }
+    }
+    else {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 0);
+    }
+
+    return (ret < 0) ? ret : (data[0] | (data[1] << 8));
+}
+
+int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
+{
+    int ret = 0;
+    uint8_t data[2] = {value & 0xFF, (value >> 8) & 0xFF};
+
+    // Split into two byte operation if data cross the boundary
+    if (addr == 0x7F) {
+        int i = 0;
+
+        for (i = 0; i < 2; i++) {
+            ret = onlp_sfpi_dev_writeb(port, devaddr, addr+i, data[i]);
+            if (ret < 0) {
+                break;
+            }
+        }
+    }
+    else {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 0);
+    }
+
+    return ret;
+}
+
+int onlp_sfpi_dev_read(int port, uint8_t devaddr, uint8_t addr, uint8_t* rdata, int size)
+{
+    int ret = 0;
+
+    // Split into two byte operation if data cross the boundary
+    if ((addr+size) > SFF_PAGE_DATA_SIZE) {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, rdata, SFF_PAGE_DATA_SIZE-addr, 0);
+        if (ret < 0) {
+            return ret;
+        }
+
+        ret = onlp_sfpi_dev_read_write(port, devaddr, SFF_PAGE_DATA_SIZE, rdata + (SFF_PAGE_DATA_SIZE-addr), (addr+size-SFF_PAGE_DATA_SIZE), 0);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+    else {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, rdata, size, 0);
+    }
+
+    return ret;
+}
+
+int onlp_sfpi_dev_write(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size)
+{
+    int ret = 0;
+
+    // Split into two byte operation if data cross the boundary
+    if ((addr+size) > SFF_PAGE_DATA_SIZE) {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, SFF_PAGE_DATA_SIZE-addr, 1);
+        if (ret < 0) {
+            return ret;
+        }
+
+        ret = onlp_sfpi_dev_read_write(port, devaddr, SFF_PAGE_DATA_SIZE, data + (SFF_PAGE_DATA_SIZE-addr), (addr+size-SFF_PAGE_DATA_SIZE), 1);
+        if (ret < 0) {
+            return ret;
+        }
+    }
+    else {
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, size, 1);
+    }
+
+    return ret;
+}
+
 int
 onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-

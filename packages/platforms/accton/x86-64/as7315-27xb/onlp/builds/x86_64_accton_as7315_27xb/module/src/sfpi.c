@@ -39,13 +39,11 @@ enum port_type {
 #define NUM_SFP     24
 #define NUM_QSFP    3
 #define NUM_PORT    (NUM_SFP+NUM_QSFP)
-
-
 #define SIDE_BAND_PATH                  "/sys/bus/i2c/devices/%d-00%02x/"
 #define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
 
-int PORT_NUM[PORT_TYPE_MAX] = {NUM_SFP, NUM_QSFP};
-int SB_CFG[PORT_TYPE_MAX][2] = {{8, 0x63}, {7, 0x64}};
+const int PORT_NUM[PORT_TYPE_MAX] = {NUM_SFP, NUM_QSFP};
+const int SB_CFG[PORT_TYPE_MAX][2] = {{8, 0x63}, {7, 0x64}};
 
 /************************************************************
  *
@@ -131,15 +129,19 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     uint64_t bmp[PORT_TYPE_MAX] = {0};
 
 
-    char *string = NULL;
     for (i = 0; i < PORT_TYPE_MAX; i++) {
+        char *string = NULL;
         bus = SB_CFG[i][0];
         offset = SB_CFG[i][1];
         if (onlp_file_read_str(&string, SIDE_BAND_PATH"module_present_all", bus, offset) < 0) {
+            if ( string ) {
+                aim_free( string );
+            }
             AIM_LOG_ERROR("Unable to read presence_bitmap\r\n");
             return ONLP_STATUS_E_INTERNAL;
         }
         bmp[i] = strtoul(string, NULL, 16);
+        aim_free( string );
     }
 
     presence_all = start = 0;
@@ -171,16 +173,19 @@ onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
     uint64_t    all_bmp;
     uint64_t bmp[PORT_TYPE_MAX] = {0};
 
-
-    char *string = NULL;
     for (i = 0; i < PORT_TYPE_MAX; i++) {
+        char *string = NULL;
         bus = SB_CFG[i][0];
         offset = SB_CFG[i][1];
         if (onlp_file_read_str(&string, SIDE_BAND_PATH"rx_los_all", bus, offset) < 0) {
+            if (string) {
+                aim_free(string);
+            }
             AIM_LOG_ERROR("Unable to read presence_bitmap\r\n");
             return ONLP_STATUS_E_INTERNAL;
         }
         bmp[i] = strtoul(string, NULL, 16);
+        aim_free(string);
     }
 
     all_bmp = start = 0;
@@ -347,7 +352,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         attr = "low_power_mode";
         break;
     default:
-        return ONLP_STATUS_E_UNSUPPORTED;    
+        return ONLP_STATUS_E_UNSUPPORTED;
     }
 
     bus = SB_CFG[type][0];
