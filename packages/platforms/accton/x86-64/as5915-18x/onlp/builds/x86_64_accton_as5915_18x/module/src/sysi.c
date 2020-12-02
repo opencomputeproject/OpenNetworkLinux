@@ -150,3 +150,217 @@ int onlp_sysi_platform_manage_leds(void)
 
     return onlp_ledi_mode_set(ONLP_LED_ID_CREATE(LED_FAN), ONLP_LED_MODE_GREEN);
 }
+
+enum fan_duty {
+    FAN_DUTY_MAX = 100,    /* high speed */
+    FAN_DUTY_MID = 60,     /* middle speed */
+    FAN_DUTY_NOR = 30,     /* normal speed */
+    FAN_DUTY_LOW_1_3 = 0,  /* low speed for fan1 and fan3*/
+    FAN_DUTY_LOW_2_4 = 40  /* low speed for fan2 and fan4 */
+};
+
+enum thermal_threshold {
+    Tc = 78000,
+    Tm = 57000,
+    Tn = 50000,
+    Tb = 39000,
+    Ta = 32000,
+    T0 = 6000,
+    Te = 0,
+};
+
+static int
+sysi_fanctrl_fan_set_duty(int p)
+{
+    int i;
+    int status = 0;
+
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++) {
+        int ret = 0;
+
+        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), p);
+        if (ret < 0) {
+            status = ret;
+        }
+    }
+
+    return status;
+}
+
+static int
+sysi_fanctrl_fan_set_duty_low(void)
+{
+    int i;
+    int status = 0;
+    int duty[CHASSIS_FAN_COUNT] = {FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4, FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4};
+
+    for (i = 1; i <= CHASSIS_FAN_COUNT; i++) {
+        int ret = 0;
+
+        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), duty[i-1]);
+        if (ret < 0) {
+            status = ret;
+        }
+    }
+
+    return status;
+}
+
+static int
+sysi_fanctrl_fan_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                               onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                               int *adjusted)
+{
+    int i;
+    *adjusted = 0;
+
+    /* Bring fan speed to FAN_DUTY_MAX if any fan is not operational */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        if (!(fi[i].status & ONLP_FAN_STATUS_FAILED)) {
+            continue;
+        }
+
+        *adjusted = 1;
+        return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+    }
+
+    /* Bring fan speed to FAN_DUTY_MAX if fan is not present */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        if (fi[i].status & ONLP_FAN_STATUS_PRESENT) {
+            continue;
+        }
+
+        *adjusted = 1;
+        return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+    }
+
+    return ONLP_STATUS_OK;
+}
+
+static int
+sysi_fanctrl_thermal_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                                   onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                                   int *adjusted)
+{
+    int fanduty;
+    int Tsensor = ti[THERMAL_3_ON_MAIN_BROAD-1].mcelsius;
+
+    *adjusted = 0;
+
+    if (onlp_file_read_int(&fanduty, "%s%s", FAN_BOARD_PATH, "fan1_duty_percentage") < 0) {
+        *adjusted = 1;
+        return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+    }
+
+    switch (fanduty) {
+    case FAN_DUTY_MAX:
+    {
+        if (Tsensor >= Tc) { /* reboot threshold */
+            AIM_SYSLOG_CRIT("Temperature critical", "Temperature critical", "Alarm for temperature critical is detected, reboot DUT");
+            system("sync;sync;sync");
+            system("reboot");
+        } else if (Tsensor < Tn) { /* down adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_MID);
+        }
+
+        break;
+    }
+    case FAN_DUTY_MID:
+    {
+        if (Tsensor > Tm) { /* up adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+        } else if (Tsensor < Ta) { /* down adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_NOR);
+        }
+
+        break;
+    }
+    case FAN_DUTY_NOR:
+    {
+        if (Tsensor > Tb) { /* up adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_MID);
+        } else if (Tsensor < Te) { /* down adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty_low();
+        }
+
+        break;
+    }
+    case FAN_DUTY_LOW_1_3:
+    {
+        if (Tsensor > T0) { /* up adjust threshold */
+            *adjusted = 1;
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_NOR);
+        }
+
+        break;
+    }
+    default:
+        *adjusted = 1;
+        return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+    }
+
+    return sysi_fanctrl_fan_set_duty(fanduty);
+}
+
+typedef int (*fan_control_policy)(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
+                                  onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
+                                  int *adjusted);
+
+fan_control_policy fan_control_policies[] = {
+sysi_fanctrl_fan_status_policy,
+sysi_fanctrl_thermal_status_policy,
+};
+
+int
+onlp_sysi_platform_manage_fans(void)
+{
+    int i, rc;
+    onlp_fan_info_t fi[CHASSIS_FAN_COUNT];
+    onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT];
+
+    memset(fi, 0, sizeof(fi));
+    memset(ti, 0, sizeof(ti));
+
+    /* Get fan status
+     */
+    for (i = 0; i < CHASSIS_FAN_COUNT; i++) {
+        rc = onlp_fani_info_get(ONLP_FAN_ID_CREATE(i+1), &fi[i]);
+
+        if (rc != ONLP_STATUS_OK) {
+            sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    /* Get thermal sensor status
+     */
+    for (i = 0; i < CHASSIS_THERMAL_COUNT; i++) {
+        rc = onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(i+1), &ti[i]);
+
+        if (rc != ONLP_STATUS_OK) {
+            sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    /* Apply thermal policy according the policy list,
+     * If fan duty is adjusted by one of the policies, skip the others
+     */
+    for (i = 0; i < AIM_ARRAYSIZE(fan_control_policies); i++) {
+        int adjusted = 0;
+
+        rc = fan_control_policies[i](fi, ti, &adjusted);
+        if (!adjusted) {
+            continue;
+        }
+
+        return rc;
+    }
+
+    return ONLP_STATUS_OK;
+}

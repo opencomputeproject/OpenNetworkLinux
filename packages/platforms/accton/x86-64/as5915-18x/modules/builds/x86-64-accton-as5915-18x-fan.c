@@ -202,6 +202,21 @@ static int as5915_18x_fan_write_value(struct i2c_client *client, u8 reg, u8 valu
 static u32 reg_val_to_duty_cycle(u8 reg_val)
 {
     reg_val &= FAN_DUTY_CYCLE_REG_MASK;
+
+    /* Fix the calculation error */
+    switch (reg_val) {
+        case 0x0D: return 20;
+        case 0x13: return 30;
+        case 0x1A: return 40;
+        case 0x1F: return 50;
+        case 0x25: return 60;
+        case 0x2C: return 70;
+        case 0x32: return 80;
+        case 0x39: return 90;
+        default:
+            break;
+    }
+
     return (u32)reg_val * 100 / FAN_DUTY_CYCLE_REG_MASK;
 }
 
@@ -210,9 +225,23 @@ static u8 duty_cycle_to_reg_val(u8 duty_cycle)
     if (duty_cycle == 0) {
         return 0;
     }
-	else if (duty_cycle >= FAN_MAX_DUTY_CYCLE) {
-		return FAN_DUTY_CYCLE_REG_MASK;
-	}
+    else if (duty_cycle >= FAN_MAX_DUTY_CYCLE) {
+        return FAN_DUTY_CYCLE_REG_MASK;
+    }
+
+    /* Fix the calculation error */
+    switch (duty_cycle) {
+        case 20: return 0x0D;
+        case 30: return 0x13;
+        case 40: return 0x1A;
+        case 50: return 0x1F;
+        case 60: return 0x25;
+        case 70: return 0x2C;
+        case 80: return 0x32;
+        case 90: return 0x39;
+        default:
+            break;
+    }
 
     return ((u32)duty_cycle * 63 / 100) + 1;
 }
@@ -227,9 +256,9 @@ static u8 reg_val_to_is_present(u8 reg_val)
     return !(reg_val & BIT(0));
 }
 
-static u8 reg_val_to_is_fan_fault(u8 reg_val)
+static u8 reg_val_to_is_fan_fault(u8 status_reg_val, u8 pwm_reg_val)
 {
-    return !!(reg_val & BIT(1));
+    return (status_reg_val & BIT(1)) && (pwm_reg_val & 0x3F);
 }
 
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
@@ -310,7 +339,8 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
             case FAN3_FAULT:
             case FAN4_FAULT:
                 ret = sprintf(buf, "%d\n",
-                      reg_val_to_is_fan_fault(data->reg_val[FAN1_STATUS_REG + attr->index - FAN1_FAULT]));
+                      reg_val_to_is_fan_fault(data->reg_val[FAN1_STATUS_REG + attr->index - FAN1_FAULT],
+                                              data->reg_val[FAN1_PWM_REG + attr->index - FAN1_FAULT]));
                 break;
 			case FAN_MAX_RPM:
 				ret = sprintf(buf, "%d\n", MAX_FAN_SPEED_RPM);

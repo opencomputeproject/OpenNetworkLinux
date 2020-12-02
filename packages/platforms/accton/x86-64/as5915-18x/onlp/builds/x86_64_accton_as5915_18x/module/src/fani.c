@@ -165,11 +165,6 @@ onlp_fani_percentage_set(onlp_oid_t id, int p)
 
     fid = ONLP_OID_ID_GET(id);
 
-    /* reject p=0 (p=0, stop fan) */
-    if (p == 0){
-        return ONLP_STATUS_E_INVALID;
-    }
-
     if (onlp_file_write_int(p, "%s""fan%d_duty_percentage", FAN_BOARD_PATH, fid) != 0) {
         AIM_LOG_ERROR("Unable to change duty cycle of fan (%d)\r\n", fid);
         return ONLP_STATUS_E_INTERNAL;
