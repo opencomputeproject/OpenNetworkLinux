@@ -80,11 +80,11 @@ static onlp_thermal_info_t linfo[] = {
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID)}, 
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, {100000, 100000, 105000}
+            ONLP_THERMAL_CAPS_ALL, 0, {48000, 61000, 66000}
         },
 	{ { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)}, 
             ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, {100000, 100000, 105000}
+            ONLP_THERMAL_CAPS_ALL, 0, {48000, 61000, 66000}
         }
 };
 
