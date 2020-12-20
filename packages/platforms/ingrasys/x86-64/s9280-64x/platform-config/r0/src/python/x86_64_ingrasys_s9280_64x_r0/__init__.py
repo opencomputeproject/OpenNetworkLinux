@@ -13,6 +13,8 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
     PLATFORM='x86-64-ingrasys-s9280-64x-r0'
     MODEL="S9280-64X"
     SYS_OBJECT_ID=".9280.64"
+    PORT_COUNT=64
+    PORT_CONFIG="64x100"
 
     def baseconfig(self):
 
@@ -90,16 +92,16 @@ class OnlPlatform_x86_64_ingrasys_s9280_64x_r0(OnlPlatformIngrasys):
         os.system("i2cset -y -r 0 0x24 5 0x00")
 
         # Init BMC PSU status IO Expander
-        os.system("i2cset -y -r 0 0x25 2 0x00")
-        os.system("i2cset -y -r 0 0x25 3 0x00")
-        os.system("i2cset -y -r 0 0x25 6 0xDB")
-        os.system("i2cset -y -r 0 0x25 7 0xE3")
+        os.system("i2cset -y -r 0 0x25 6 0xFF")
+        os.system("i2cset -y -r 0 0x25 7 0xFF")
         os.system("i2cset -y -r 0 0x25 4 0x00")
         os.system("i2cset -y -r 0 0x25 5 0x00")
        
         # Init BMC RST and SEL IO Expander
-        os.system("i2cset -y -r 0 0x26 6 0xFF")
-        os.system("i2cset -y -r 0 0x26 7 0xFF")
+        os.system("i2cset -y -r 0 0x26 2 0x3F")
+        os.system("i2cset -y -r 0 0x26 3 0x1F")
+        os.system("i2cset -y -r 0 0x26 6 0xD0")
+        os.system("i2cset -y -r 0 0x26 7 0x00")
         os.system("i2cset -y -r 0 0x26 4 0x00")
         os.system("i2cset -y -r 0 0x26 5 0x00")
 
