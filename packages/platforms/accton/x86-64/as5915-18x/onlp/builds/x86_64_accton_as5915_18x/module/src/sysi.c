@@ -297,7 +297,7 @@ sysi_fanctrl_thermal_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
             return sysi_fanctrl_fan_set_duty(FAN_DUTY_NOR);
         }
 
-        break;
+        return sysi_fanctrl_fan_set_duty_low();
     }
     default:
         *adjusted = 1;
