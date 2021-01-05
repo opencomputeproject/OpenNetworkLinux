@@ -66,7 +66,7 @@ static onlp_psu_info_t pinfo[] =
 int
 onlp_psui_init(void)
 {
-    return ONLP_STATUS_OK;
+    return bmc_tty_init();
 }
 
 static int
