@@ -10,5 +10,3 @@
 
 /* <--auto.start.xenum(ALL).define> */
 /* <auto.end.xenum(ALL).define> */
-
-

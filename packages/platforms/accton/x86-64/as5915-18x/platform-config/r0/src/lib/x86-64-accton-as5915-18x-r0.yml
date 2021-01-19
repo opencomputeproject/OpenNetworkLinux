@@ -18,12 +18,11 @@ x86-64-accton-as5915-18x-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-4-14
+      <<: *kernel-4-19
 
     args: >-
-      nopat
       console=ttyS0,115200n8
-      intel_iommu=off
+      intel_iommu=pt
 
   ##network
   ##  interfaces:

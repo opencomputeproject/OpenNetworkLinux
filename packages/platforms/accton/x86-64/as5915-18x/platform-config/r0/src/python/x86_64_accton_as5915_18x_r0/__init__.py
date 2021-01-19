@@ -9,10 +9,11 @@ class OnlPlatform_x86_64_accton_as5915_18x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".5915.18"
 
     def baseconfig(self):
+        os.system("modprobe i2c-ismt")
+        os.system("modprobe pmbus_core")
         self.insmod('optoe')
         self.insmod("ym2651y")
-        os.system("modprobe pmbus_core")
-        os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/ucd9000.ko")
+        #os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/ucd9000.ko")
         for m in [ 'fpga', 'cpld', 'sys', 'fan', 'leds' ]:
             self.insmod("x86-64-accton-as5915-18x-%s" % m)
 

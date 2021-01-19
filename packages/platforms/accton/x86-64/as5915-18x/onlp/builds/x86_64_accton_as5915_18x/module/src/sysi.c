@@ -174,30 +174,14 @@ sysi_fanctrl_fan_set_duty(int p)
 {
     int i;
     int status = 0;
+    int duties_nor[CHASSIS_FAN_COUNT] = {[0 ... CHASSIS_FAN_COUNT-1] = p};
+    int duties_low[CHASSIS_FAN_COUNT] = {FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4, FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4};
+    int *duties = (p == FAN_DUTY_LOW_1_3) ? duties_low : duties_nor;
 
     for (i = 1; i <= CHASSIS_FAN_COUNT; i++) {
         int ret = 0;
 
-        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), p);
-        if (ret < 0) {
-            status = ret;
-        }
-    }
-
-    return status;
-}
-
-static int
-sysi_fanctrl_fan_set_duty_low(void)
-{
-    int i;
-    int status = 0;
-    int duty[CHASSIS_FAN_COUNT] = {FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4, FAN_DUTY_LOW_1_3, FAN_DUTY_LOW_2_4};
-
-    for (i = 1; i <= CHASSIS_FAN_COUNT; i++) {
-        int ret = 0;
-
-        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), duty[i-1]);
+        ret = onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(i), duties[i-1]);
         if (ret < 0) {
             status = ret;
         }
@@ -242,13 +226,16 @@ sysi_fanctrl_thermal_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
                                    onlp_thermal_info_t ti[CHASSIS_THERMAL_COUNT],
                                    int *adjusted)
 {
+    int rc;
     int fanduty;
     int Tsensor = ti[THERMAL_3_ON_MAIN_BROAD-1].mcelsius;
 
     *adjusted = 0;
 
-    if (onlp_file_read_int(&fanduty, "%s%s", FAN_BOARD_PATH, "fan1_duty_percentage") < 0) {
+    rc = onlp_file_read_int(&fanduty, "%s%s", FAN_BOARD_PATH, "fan1_duty_percentage");
+    if (rc < 0) {
         *adjusted = 1;
+        AIM_LOG_ERROR("Unable to get fan pwm, ret:%d\r\n", rc);
         return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
     }
 
@@ -285,7 +272,7 @@ sysi_fanctrl_thermal_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
             return sysi_fanctrl_fan_set_duty(FAN_DUTY_MID);
         } else if (Tsensor < Te) { /* down adjust threshold */
             *adjusted = 1;
-            return sysi_fanctrl_fan_set_duty_low();
+            return sysi_fanctrl_fan_set_duty(FAN_DUTY_LOW_1_3);
         }
 
         break;
@@ -296,12 +283,10 @@ sysi_fanctrl_thermal_status_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT],
             *adjusted = 1;
             return sysi_fanctrl_fan_set_duty(FAN_DUTY_NOR);
         }
-
-        return sysi_fanctrl_fan_set_duty_low();
     }
     default:
         *adjusted = 1;
-        return sysi_fanctrl_fan_set_duty(FAN_DUTY_MAX);
+        return sysi_fanctrl_fan_set_duty(FAN_DUTY_NOR);
     }
 
     return sysi_fanctrl_fan_set_duty(fanduty);
