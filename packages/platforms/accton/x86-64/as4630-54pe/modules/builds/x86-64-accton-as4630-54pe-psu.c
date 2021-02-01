@@ -35,7 +35,7 @@
 #include <linux/dmi.h>
 
 #define MAX_MODEL_NAME          20
-#define MAX_SERIAL_NUMBER       18
+#define MAX_SERIAL_NUMBER       19
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
@@ -295,18 +295,35 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
                 data->model_name[0] = '\0';
                 dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
             }
-            else {
-                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
-                
+            else if(!strncmp(data->model_name, "YPEB1200", strlen("YPEB1200")))
+            {                
+                    if (data->model_name[9]=='A' && data->model_name[10]=='M')
+                    {
+                       data->model_name[8]='A';
+                       data->model_name[9]='M';
+                       data->model_name[strlen("YPEB1200AM")]='\0';
+                    }
+                    else  
+                        data->model_name[strlen("YPEB1200")]='\0';
             }
-             /* Read from offset 0x2e ~ 0x3d (16 bytes) */
+            else
+            {
+                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
+            }
+             /* Read from offset 0x35 ~ 0x46 (18 bytes) */
             status = as4630_54pe_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
             if (status < 0)
             {
                 data->serial_number[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x2e)\n", client->addr);
+                dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x35)\n", client->addr);
             }
-            data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
+            if (!strncmp(data->model_name, "YPEB1200AM", strlen("YPEB1200AM"))) /*for YPEB1200AM, SN length=18*/
+            {
+                data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
+            }
+            else
+                data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
+            
         }
 
         data->last_updated = jiffies;
