@@ -24,7 +24,7 @@
  *
  ***********************************************************/
 #include <onlp/platformi/psui.h>
-#include <onlplib/mmap.h>
+#include <onlplib/file.h>
 #include <stdio.h>
 #include <string.h>
 #include "platform_lib.h"
@@ -45,8 +45,6 @@
 static int 
 psu_status_info_get(int id, char *node, int *value)
 {
-    int ret = 0;
-    char buf[PSU_NODE_MAX_INT_LEN + 1] = {0};
     char node_path[PSU_NODE_MAX_PATH_LEN] = {0};
     
     *value = 0;
@@ -57,14 +55,8 @@ psu_status_info_get(int id, char *node, int *value)
     else if (PSU2_ID == id) {
         sprintf(node_path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
     }
-    
-    ret = deviceNodeReadString(node_path, buf, sizeof(buf), 0);
 
-    if (ret == 0) {
-        *value = atoi(buf);
-    }
-
-    return ret;
+    return onlp_file_read_int(value, node_path);
 }
 
 static int
@@ -110,7 +102,9 @@ psu_ym2651_info_get(onlp_psu_info_t* info)
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 1);
+    info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 2);
+    info->hdr.coids[3] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 3);
 
     /* Read voltage, current and power */
     if (psu_pmbus_info_get(index, "psu_v_out", &val) == 0) {
@@ -145,7 +139,9 @@ psu_acbel_info_get(onlp_psu_info_t* info)
 
     /* Set the associated oid_table */
     info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 1);
+    info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 2);
+    info->hdr.coids[3] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT + (index-1)*NUM_OF_THERMAL_PER_PSU + 3);
 
     /* Read voltage, current and power */
     if (psu_pmbus_info_get(index, "psu_v_out", &val) == 0) {
@@ -272,18 +268,18 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     psu_type = get_psu_type(index, info->model, sizeof(info->model));
 
     switch (psu_type) {
-        case PSU_TYPE_AC_F2B_3YPOWER:
-        case PSU_TYPE_AC_B2F_3YPOWER:
+        case PSU_TYPE_AC_YM2651Y_F2B:
+        case PSU_TYPE_AC_YM2651Y_B2F:
             info->caps = ONLP_PSU_CAPS_AC;
             ret = psu_ym2651_info_get(info);
             break;
-        case PSU_TYPE_AC_F2B_ACBEL:
-        case PSU_TYPE_AC_B2F_ACBEL:
+        case PSU_TYPE_AC_FSF019_610G_F2B:
+        case PSU_TYPE_AC_FSF019_612G_F2B:
             info->caps = ONLP_PSU_CAPS_AC;
             ret = psu_acbel_info_get(info);
             break;
-        case PSU_TYPE_DC_48V_F2B:
-        case PSU_TYPE_DC_48V_B2F:
+        case PSU_TYPE_DC48_YM2651V_F2B:
+        case PSU_TYPE_DC48_YM2651V_B2F:
             info->caps = ONLP_PSU_CAPS_DC48;
             ret = psu_ym2651_info_get(info);
             break;
