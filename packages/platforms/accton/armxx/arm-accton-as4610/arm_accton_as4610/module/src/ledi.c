@@ -25,6 +25,7 @@
  ***********************************************************/
 #include <onlp/platformi/ledi.h>
 #include <sys/mman.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -250,7 +251,7 @@ int onlp_ledi_char_set(onlp_oid_t id, char c)
 {
     int  fd, len, nbytes=1;
     char data[2]      = {0};
-    char fullpath[50] = {0};		
+    char fullpath[PATH_MAX] = {0};		
     int lid = ONLP_OID_ID_GET(id);
 
     VALIDATE(id);
@@ -284,7 +285,7 @@ int onlp_ledi_char_get(onlp_oid_t id, char* c)
 {
     int  fd, len; 
     char data = 0;
-    char fullpath[50] = {0};
+    char fullpath[PATH_MAX] = {0};
     int lid = ONLP_OID_ID_GET(id);
 
     VALIDATE(id);
@@ -343,7 +344,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
 {
     int  fd, len, nbytes=1;
     char data[2]      = {0};
-    char fullpath[50] = {0};
+    char fullpath[53] = {0};
     int lid = onlp_ledi_oid_to_internal_id(id);
 
     VALIDATE(id);
@@ -355,7 +356,7 @@ onlp_ledi_info_get(onlp_oid_t id, onlp_led_info_t* info)
         return onlp_ledi_char_get(id, &info->character);
     }
     else {
-        sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[lid], led_filename);
+        snprintf(fullpath, sizeof(fullpath), "%s%s/%s", led_prefix_path, onlp_led_node_subname[lid], led_filename);
 
         /* Set current mode */
         if ((fd = open(fullpath, O_RDONLY)) == -1) {
@@ -414,8 +415,8 @@ int
 onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
 {
     int  fd, len, driver_mode, nbytes=1;
-    char data[2]      = {0};	
-    char fullpath[50] = {0};		
+    char data[2]            = {0};	
+    char fullpath[PATH_MAX] = {0};		
     int lid = onlp_ledi_oid_to_internal_id(id);
     
     VALIDATE(id);
@@ -427,7 +428,7 @@ onlp_ledi_mode_set(onlp_oid_t id, onlp_led_mode_t mode)
     sprintf(fullpath, "%s%s/%s", led_prefix_path, onlp_led_node_subname[lid], led_filename);		
 
     driver_mode = conver_onlp_led_light_mode_to_driver(lid, mode);
-    sprintf(data, "%d", driver_mode);
+    snprintf(data, sizeof(data), "%d", driver_mode);
 	
     /* Create output file descriptor */
     fd = open(fullpath, O_WRONLY | O_CREAT, 0644);
