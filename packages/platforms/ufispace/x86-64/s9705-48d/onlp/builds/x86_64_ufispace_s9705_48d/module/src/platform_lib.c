@@ -170,13 +170,11 @@ int check_file_exist(char *file_path, long *file_time)
     if(stat(file_path, &file_info) == 0) {
         if(file_info.st_size == 0) {
             return 0;
-        }
-        else {
+        } else {
             *file_time = file_info.st_mtime;
             return 1;
         }
-    }
-    else {
+    } else {
        return 0;
     }
 }
@@ -212,7 +210,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
 {
     struct timeval new_tv;
     FILE *fp = NULL;
-    char ipmi_cmd[400] = {0};
+    char ipmi_cmd[1024] = {0};
     char get_data_cmd[120] = {0};
     char buf[20];
     int rv = ONLP_STATUS_OK;
@@ -261,7 +259,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
     {
         ONLP_LOCK();
         if(bmc_cache_expired_check(file_last_time, bmc_cache_time, cache_time)) {
-            sprintf(ipmi_cmd, CMD_BMC_SENSOR_CACHE);
+            snprintf(ipmi_cmd, sizeof(ipmi_cmd), CMD_BMC_SENSOR_CACHE);
             for (retry = 0; retry < retry_max; ++retry) {
                 if ((rv=system(ipmi_cmd)) != ONLP_STATUS_OK) {
                     if (retry == retry_max-1) {                        
@@ -281,8 +279,8 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
         {
             memset(buf, 0, sizeof(buf));
 
-            if( dev_num >= 15 && dev_num <=18 ) {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
+            if( dev_num >= 15 && dev_num <=18 ) {
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 5);
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
                 {
@@ -298,7 +296,7 @@ int bmc_sensor_read(int bmc_cache_index, int sensor_type, float *data)
                 }
                 pclose(fp);
             } else {                
-                sprintf(get_data_cmd, CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
+                snprintf(get_data_cmd, sizeof(get_data_cmd), CMD_BMC_CACHE_GET, bmc_cache[dev_num].name, 2);
                 
                 fp = popen(get_data_cmd, "r");
                 if(fp != NULL)
@@ -655,7 +653,7 @@ int
 psu_fru_get(onlp_psu_info_t* info, int id)
 {
     char cmd[100];
-    char cmd_out[150];
+    char cmd_out[64];
     char fru_model[] = "Product Name";  //only Product Name can identify AC/DC
     char fru_serial[] = "Product Serial";
 
@@ -675,7 +673,7 @@ psu_fru_get(onlp_psu_info_t* info, int id)
 
     //Check output is correct    
     if (strnlen(cmd_out, sizeof(cmd_out))==0){
-        AIM_LOG_ERROR("unable to read fru info from BMC, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
+        AIM_LOG_ERROR("unable to read fru info from BMC, cmd_out is empty, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
         return ONLP_STATUS_E_INTERNAL; 
     }
     
@@ -697,11 +695,11 @@ psu_fru_get(onlp_psu_info_t* info, int id)
 
     //Check output is correct
     if (strnlen(cmd_out, sizeof(cmd_out))==0){
-        AIM_LOG_ERROR("unable to read fru info from BMC, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
+        AIM_LOG_ERROR("unable to read fru info from BMC, cmd_out is empty, fru id=%d, cmd=%s, out=%s\n", id, cmd, cmd_out);
         return ONLP_STATUS_E_INTERNAL; 
     }
     
-    snprintf(info->serial, sizeof(info->model), "%s", cmd_out);
+    snprintf(info->serial, sizeof(info->serial), "%s", cmd_out);
     
     return ONLP_STATUS_OK;
 }
