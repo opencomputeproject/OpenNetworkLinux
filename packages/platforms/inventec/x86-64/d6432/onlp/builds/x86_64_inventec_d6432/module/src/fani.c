@@ -29,8 +29,8 @@ typedef enum hwmon_fan_state_e {
     HWMON_FAN_UNPLUGGED2 = 3
 } hwmon_fan_state_t;
 
-#define SLOW_PWM 100
-#define NORMAL_PWM 175
+#define SLOW_PWM 50
+#define NORMAL_PWM 205
 #define MAX_PWM 255
 #define PSU_I2C_ADDR_VER2  "005a"
 #define STEP_SIZE 100
@@ -95,7 +95,7 @@ onlp_fani_init(void)
             for(i=0;i<=ONLP_FAN_MAX;i++){
                 info = &__onlp_fan_info[i];
                 snprintf(info->serial,ONLP_CONFIG_INFO_STR_MAX,"UNSUPPORTED");
-                snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"UNSUPPORTED");                
+                snprintf(info->model,ONLP_CONFIG_INFO_STR_MAX,"FR Fans module");                
             }
         }
     }else{
@@ -106,60 +106,20 @@ onlp_fani_init(void)
 
 static int _inv_get_fan_fru(char* ret_str,int attr_type, int fan_id)
 {
-    int ret=ONLP_STATUS_OK;
-    uint8_t* rdata;
-    char file_path[ONLP_CONFIG_INFO_STR_MAX];
-    char s;
-    int rdata_size=0,target_offset=
-    0,attr_idx=0,attr_length=0;
-    int i=0;
-    int offset=BLADE_TO_FAN_ID(fan_id);
+    // Slave address of FAN VPD is conflict in SMBus version.
+    // And it will only SMBus version exist in the future.
+    // Therefore cancel the FAN VPD r/w features.
 
-    snprintf(file_path,ONLP_CONFIG_INFO_STR_MAX,"/sys/bus/i2c/devices/%d-00%d/eeprom",FAN_I2C_CHANNEL,(FAN_I2C_ADDR_BASE+offset-1) );
+    int ret = ONLP_STATUS_E_UNSUPPORTED;
+    char FAN_MODEL_TYPE[16] = "FR Fans module";
     
-    FILE* fp  = fopen(file_path, "rb");
-    if(fp){
-        fseek(fp, 0L, SEEK_END);
-        rdata_size = ftell(fp);
-        rewind(fp);
-        rdata = aim_malloc(rdata_size);
-        fread(rdata, 1, rdata_size, fp);
-        fclose(fp);
-    }else{
-        ret=ONLP_STATUS_E_INTERNAL;
-    }
-
-    if(ret==ONLP_STATUS_OK) {
-        target_offset=rdata[TLV_PRODUCT_INFO_OFFSET_IDX-1];
-        target_offset*=8; /*spec defined: offset are in multiples of 8 bytes*/
-        attr_idx=target_offset+TLV_PRODUCT_INFO_AREA_START;
-
-        for(i=1; i<attr_type; i++) {
-            if(attr_idx>rdata_size){
-                ret=ONLP_STATUS_E_INTERNAL;
-                break;
-            }
-            attr_length=rdata[attr_idx]&(0x3F);    /*spec defined: length are set in last 6 bits*/
-            attr_idx+=(attr_length+1);
-        }
-        if(ret==ONLP_STATUS_OK){
-            if(attr_length<rdata_size){
-                attr_length=rdata[attr_idx]&(0x3F); 
-            }else{
-                ret=ONLP_STATUS_E_INTERNAL;
-            }
-            if(attr_idx+attr_length<rdata_size){
-                for(i=0; i<attr_length; i++) {
-                    s=(char)rdata[attr_idx+i+1];
-                    ret_str[i]=s;
-                }
-            }else{
-                ret=ONLP_STATUS_E_INTERNAL;
-            }          
-        }
+    if (attr_type == TLV_ATTR_TYPE_MODEL){
+        snprintf(ret_str, ONLP_CONFIG_INFO_STR_MAX, FAN_MODEL_TYPE);
+        ret = ONLP_STATUS_OK;
     }
     return ret;
 }
+
 
 int
 onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* info)
@@ -517,4 +477,5 @@ onlp_fani_ioctl(onlp_oid_t id, va_list vargs)
 {
     return ONLP_STATUS_E_UNSUPPORTED;
 }
+
 

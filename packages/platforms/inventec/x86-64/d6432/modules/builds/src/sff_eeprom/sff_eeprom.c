@@ -18,8 +18,8 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include "sff_eeprom.h"
-#include "inv_def.h"
-#include "inv_swps.h"
+#include "../inv_def.h"
+#include "../inv_swps.h"
 #include "eeprom_config/eeprom_config.h"
 
 /*
@@ -55,7 +55,6 @@
     } while (0)
 
 #define QSFP_ID_OFFSET (0)
-extern u32 logLevel;
 
 struct sff_eeprom_t {
     int port;
@@ -73,49 +72,21 @@ int sff_eeprom_read_lc( int lc_id,
                         size_t len);
 
 int sff_eeprom_write_lc( int lc_id,
-                        int port,
-                        u8 slave_addr,
-                        u8 offset,
-                        const u8 *buf,
-                        size_t len);
+                         int port,
+                         u8 slave_addr,
+                         u8 offset,
+                         const u8 *buf,
+                         size_t len);
 
 static int lcMaxPortNum = 0;
-static struct sff_eeprom_driver_t sffEepromDrvFunc = {
-    .eeprom_read = sff_eeprom_read_lc,
-    .eeprom_write = sff_eeprom_write_lc,
+
+struct sff_eeprom_driver_t sff_eeprom_drv_func = {
+    .read = sff_eeprom_read_lc,
+    .write = sff_eeprom_write_lc,
 };
-struct sff_eeprom_driver_t *sff_eeprom_drv_get(void)
-{
-    return &sffEepromDrvFunc;
-}    
-
 
 #if 0
-static int i2c_smbus_read_i2c_block_data_retry(struct i2c_client *client, u8 offset, int len, u8 *buf)
-{
-    int ret = 0;
-    int i = 0;
-
-    for (i = 0; i < RETRY_COUNT; i++) {
-
-        ret = i2c_smbus_read_i2c_block_data(client, offset, len, buf);
-        if (ret < 0) {
-            msleep(RETRY_DELAY_MS);
-            continue;
-        }
-        break;
-    }
-
-    if (i >= RETRY_COUNT) {
-        EEPROM_LOG_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
-    }
-
-    return ret;
-
-}
-#endif
-#if 0
-#if defined V1
+/*reserved the method no branching in the loop*/
 static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offset, int len, u8 *buf)
 {
     int ret = 0;
@@ -139,60 +110,6 @@ static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offse
     return ret;
 
 }
-#else 
-
-static int inv_i2c_smbus_read_i2c_block_data(struct i2c_client *client, u8 offset, int len, u8 *buf)
-{
-    int ret = 0;
-    int i = 0;
-    int cnt = len;
-    int block_size = 0;
-    
-    while (i < len) {
-        block_size = ((cnt > I2C_SMBUS_BLOCK_MAX) ? I2C_SMBUS_BLOCK_MAX : cnt);
-        ret = i2c_smbus_read_i2c_block_data_retry(client, offset+i, block_size, buf+i);
-        
-        if (ret < 0) {
-            break;
-        }
-        
-        i += block_size;
-        cnt = len - i;
-    }
-    
-    if (ret < 0) {
-        return ret;
-    }
-    return 0;
-}
-
-
-
-#endif
-#endif
-#if 0
-static int inv_i2c_smbus_write_block_data(struct i2c_client *client, u8 offset, int len, const u8 *buf)
-{
-    int ret = 0;
-    int i = 0;
-
-    for (i = 0; i < RETRY_COUNT; i++) {
-
-        ret = i2c_smbus_write_i2c_block_data(client, offset, len, buf);
-        if (ret < 0) {
-            msleep(RETRY_DELAY_MS);
-            continue;
-        }
-        break;
-    }
-
-    if (i >= RETRY_COUNT) {
-        EEPROM_LOG_INFO("%s fail:offset:0x%x try %d/%d! Error Code: %d\n", __func__, offset, i, RETRY_COUNT, ret);
-    }
-
-    return ret;
-
-}
 #endif
 #if defined (I2C_BLOCK_READ_SUPPORT)
 
@@ -207,7 +124,7 @@ static int _sff_eeprom_block_read(struct sff_eeprom_t *eeprom,
     int ret = 0;
 
     if(!eeprom ||
-       !buf) {
+            !buf) {
         return -EINVAL;
     }
     lock = &(eeprom->lock);
@@ -239,7 +156,7 @@ static int _sff_eeprom_read(struct sff_eeprom_t *eeprom,
     u8 *ptr = NULL;
 
     if(!eeprom ||
-       !buf) {
+            !buf) {
         return -EINVAL;
     }
     ptr = buf;
@@ -249,7 +166,7 @@ static int _sff_eeprom_read(struct sff_eeprom_t *eeprom,
     if(!client) {
         return -EBADRQC;
     }
-    
+
     mutex_lock(lock);
     client->addr = slave_addr;
     for(count = 0; count < len; count++) {
@@ -283,11 +200,9 @@ static int _sff_eeprom_write(struct sff_eeprom_t *eeprom,
     struct i2c_client *client = NULL;
     struct mutex *lock = NULL;
     int ret = 0;
-    int count = 0;
-    const u8 *ptr = buf;
 
     if(!eeprom ||
-       !buf) {
+            !buf) {
         return -EINVAL;
     }
 
@@ -300,44 +215,36 @@ static int _sff_eeprom_write(struct sff_eeprom_t *eeprom,
 
     mutex_lock(lock);
     client->addr = slave_addr;
-    for(count = 0; count < len; count++) {
-        ret = i2c_smbus_write_byte_data_retry(client, offset+count, ptr[count]);
-        if (ret < 0) {
-            EEPROM_LOG_ERR("i2c_write fail ret:%d\n", ret);
-            mutex_unlock(lock);
-            return ret;
-        }
-    }
-
+    ret = i2c_smbus_write_i2c_block_data_retry(client, offset, len, buf);
     mutex_unlock(lock);
-    return 0;
+    return ret;
 
 }
 void sff_eeprom_port_num_set(int port_num)
 {
     lcMaxPortNum = port_num;
-}    
+}
 static int port_to_new_port(int lc_id, int port)
 {
     int new_port = 0;
 #if 1 /*enable it while bring up*/
     new_port = (lcMaxPortNum * lc_id) + port;
-#else 
+#else
     new_port = port;
-#endif    
+#endif
     return new_port;
-}   
+}
 static bool port_range_valid(int new_port)
 {
     int port_num = eepromI2cTbl->size;
     return ((new_port >= 0 && new_port < port_num) ? true : false);
-}    
+}
 void sff_eeprom_read_no_retry(int lc_id, int port)
 {
     struct sff_eeprom_t *eeprom = NULL;
     int new_port = 0;
     /*remapping*/
-    new_port = port_to_new_port(lc_id, port); 
+    new_port = port_to_new_port(lc_id, port);
     /*check port range here*/
     if (!port_range_valid(new_port)) {
         EEPROM_LOG_ERR("port out of range: new port:%d \n", new_port);
@@ -348,7 +255,7 @@ void sff_eeprom_read_no_retry(int lc_id, int port)
     mutex_lock(&eeprom->lock);
     i2c_smbus_read_byte_data(eeprom->i2c_client, QSFP_ID_OFFSET);
     mutex_unlock(&eeprom->lock);
-}   
+}
 
 int sff_eeprom_read_lc( int lc_id,
                         int port,
@@ -359,7 +266,7 @@ int sff_eeprom_read_lc( int lc_id,
 {
     int new_port = 0;
     /*remapping*/
-    new_port = port_to_new_port(lc_id, port); 
+    new_port = port_to_new_port(lc_id, port);
     /*check port range here*/
     if (!port_range_valid(new_port)) {
         EEPROM_LOG_ERR("port out of range: new port:%d \n", new_port);
@@ -372,18 +279,18 @@ int sff_eeprom_read_lc( int lc_id,
     return _sff_eeprom_read(&sffEEprom[new_port], slave_addr, offset, buf, len);
 
 #endif
-}    
+}
 
 int sff_eeprom_write_lc( int lc_id,
-                        int port,
-                        u8 slave_addr,
-                        u8 offset,
-                        const u8 *buf,
-                        size_t len)
+                         int port,
+                         u8 slave_addr,
+                         u8 offset,
+                         const u8 *buf,
+                         size_t len)
 {
     int new_port = 0;
     /*remapping*/
-    new_port = port_to_new_port(lc_id, port); 
+    new_port = port_to_new_port(lc_id, port);
     /*check port range here*/
     if (!port_range_valid(new_port)) {
         EEPROM_LOG_ERR("port out of range: new port:%d \n", new_port);
@@ -391,42 +298,12 @@ int sff_eeprom_write_lc( int lc_id,
     }
 
     return _sff_eeprom_write(&sffEEprom[new_port], slave_addr, offset, buf, len);
-}    
-#if 0
-int sff_eeprom_read_internal(int port,
-                    u8 slave_addr,
-                    u8 offset,
-                    u8 *buf,
-                    size_t len)
-{
-
-    if (!port_range_valid(port)) {
-        EEPROM_LOG_ERR("port out of range: new port:%d \n", port);
-        return -EBADRQC;
-    }
-
-#if defined (I2C_BLOCK_READ_SUPPORT)
-
-    return _sff_eeprom_block_read(&sffEEprom[port], slave_addr, offset, buf, len);
-#else
-    return _sff_eeprom_read(&sffEEprom[port], slave_addr, offset, buf, len);
-
-#endif
-
 }
-int sff_eeprom_write_internal(int port,
-                     u8 slave_addr,
-                     u8 offset,
-                     const u8 *buf,
-                     size_t len)
-{
-    return _sff_eeprom_write(&sffEEprom[port], slave_addr, offset, buf, len);
-}
-#endif
+
 static void sff_eeprom_clients_destroy(int size)
 {
     int port = 0;
-    
+
     if (p_valid(sffEepromI2cClient)) {
         kfree(sffEepromI2cClient);
     }
@@ -438,18 +315,18 @@ static int sff_eeprom_clients_create(int size)
 {
     struct i2c_client *client = NULL;
     int port = 0;
-    
+
     client = kzalloc(sizeof(struct i2c_client) * size, GFP_KERNEL);
 
     if (!p_valid(client)) {
         return -ENOMEM;
     }
     sffEepromI2cClient = client;
-    
+
     for (port = 0; port < size; port++) {
         sffEEprom[port].i2c_client = &sffEepromI2cClient[port];
     }
-    
+
     return 0;
 }
 /*init i2c adapter*/
@@ -459,7 +336,7 @@ static int _sff_eeprom_client_init(struct sff_eeprom_t *eeprom,  struct eeprom_c
     struct i2c_client *client = NULL;
 
     if (!eeprom ||
-        !config) {
+            !config) {
         return -EBADRQC;
     }
     client = eeprom->i2c_client;
@@ -554,7 +431,7 @@ static struct eeprom_i2c_tbl_t *_platform_eeprom_info_load(int platform_id)
 static int eeprom_i2c_table_load(int platform_id)
 {
     struct eeprom_i2c_tbl_t *tbl = NULL;
-    
+
     tbl = _platform_eeprom_info_load(platform_id);
     if (!tbl) {
         return -EBADRQC;

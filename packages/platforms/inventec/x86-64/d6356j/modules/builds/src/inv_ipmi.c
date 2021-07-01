@@ -245,7 +245,7 @@ static int inv_ipmi_wdt_get(u8 *buf, size_t buf_len)
 	return ret;
 }
 
-
+#if 0
 static int inv_ipmi_oem_read(u8 *buf, u8 offset, size_t count)
 {
 	uint8_t data[2];
@@ -279,6 +279,7 @@ static int inv_ipmi_oem_write(char *buf, unsigned offset, size_t count)
 	}
 	return count;
 }
+#endif
 
 static int _inv_ipmi_init(void)
 {

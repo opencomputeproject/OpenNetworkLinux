@@ -1,5 +1,7 @@
-obj-m := inv_sff.o
-inv_sff-objs := inv_swps.o io_dev.o lc_dev.o sff_eeprom.o sfp.o qsfp.o qsfp_dd.o 
+obj-m := swps.o
+swps-y := inv_swps.o sff_eeprom/sff_eeprom.o
+swps-y += module/sfp.o module/qsfp.o module/qsfp_dd.o module/sfp_dd.o
+swps-y += sku/sku_common.o sku/ioexp_sku.o sku/banyan4u_sku.o sku/banyan8T_sku1.o sku/banyan8T_sku2.o
 
 obj-m += i2c-gpio.o
 obj-m += inv_platform.o

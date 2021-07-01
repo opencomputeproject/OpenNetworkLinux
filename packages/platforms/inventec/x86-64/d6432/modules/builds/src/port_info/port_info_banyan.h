@@ -1,6 +1,3 @@
-//port info
-
-//i2c_eeprom_config_cypress
 #ifndef __PORT_INFO_CONFIG_BANYAN
 #define __PORT_INFO_CONFIG_BANYAN
 
