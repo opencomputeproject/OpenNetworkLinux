@@ -171,6 +171,27 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         aim_free(string);
     }
 
+    /* Read voltage, current and power for AC */
+    if(info->caps & ONLP_PSU_CAPS_AC) {
+        val = 0;
+        if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_v_in", bus, offset) == 0 && val) {
+            info->mvin = val;
+            info->caps |= ONLP_PSU_CAPS_VIN;
+        }
+
+        val = 0;
+        if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_i_in", bus, offset) == 0 && val) {
+            info->miin = val;
+            info->caps |= ONLP_PSU_CAPS_IIN;
+        }
+
+        val = 0;
+        if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_p_in", bus, offset) == 0 && val) {
+            info->mpin = val;
+            info->caps |= ONLP_PSU_CAPS_PIN;
+        }
+    }
+
     /* Set the associated oid_table */
     val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
