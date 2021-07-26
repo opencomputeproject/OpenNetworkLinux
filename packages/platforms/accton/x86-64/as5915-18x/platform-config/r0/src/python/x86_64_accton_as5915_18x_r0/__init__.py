@@ -14,7 +14,7 @@ class OnlPlatform_x86_64_accton_as5915_18x_r0(OnlPlatformAccton,
         self.insmod('optoe')
         self.insmod("ym2651y")
         #os.system("insmod /lib/modules/`uname -r`/kernel/drivers/hwmon/pmbus/ucd9000.ko")
-        for m in [ 'fpga', 'cpld', 'sys', 'fan', 'leds' ]:
+        for m in [ 'fpga', 'cpld', 'sys', 'fan', 'leds' , 'psu' ]:
             self.insmod("x86-64-accton-as5915-18x-%s" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -52,10 +52,13 @@ class OnlPlatform_x86_64_accton_as5915_18x_r0(OnlPlatformAccton,
                 ('as5915_18x_cpld', 0x63, 32),
                 ('as5915_18x_fan',  0x66, 32),
 
-                # initiate PSU-1 DC Power
+                # initiate PSU eeprom
+                ('as5915_18x_psu', 0x50, 36),
+
+                # initiate PSU-1 Power
                 ('ym2401',  0x5a, 36),
 
-                # initiate PSU-2 DC Power
+                # initiate PSU-2 Power
                 ('ym2401',  0x5b, 36),
 
                 # initiate IDPROM

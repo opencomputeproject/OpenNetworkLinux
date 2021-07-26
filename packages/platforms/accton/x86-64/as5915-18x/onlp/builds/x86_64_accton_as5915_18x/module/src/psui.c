@@ -80,6 +80,30 @@ int get_psu_model(int id, char *model, int model_len)
     return ONLP_STATUS_OK;
 }
 
+int get_psu_serial(int id, char *serial, int serial_len)
+{
+    int   len    = 0;
+	char *path   = NULL;
+    char *string = NULL;
+
+    /* Read serial number */
+    path = PSU_AC_EEPROM_NODE(psu_serial);
+
+    len = onlp_file_read_str(&string, path);
+    if (!string || !len) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (len > serial_len) {
+        aim_free(string);
+        return ONLP_STATUS_E_INVALID;
+    }
+
+    strncpy(serial, string, len);
+    aim_free(string);
+    return ONLP_STATUS_OK;
+}
+
 int
 onlp_psui_init(void)
 {
@@ -99,6 +123,22 @@ static onlp_psu_info_t pinfo[] =
         { ONLP_PSU_ID_CREATE(PSU2_ID), "PSU-2", 0 },
     }
 };
+
+static int
+get_DCorAC_cap(char *model)
+{
+    const char *ac_models[] = {"SPAACTN-04", NULL };
+    int i;
+
+    i = 0;
+    while(ac_models[i]) {
+        if (!strncasecmp(model, ac_models[i], strlen(ac_models[i]))) {
+            return ONLP_PSU_CAPS_AC;
+        }
+        i++;
+    }
+    return ONLP_PSU_CAPS_DC12;
+}
 
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
@@ -126,7 +166,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_DC12;
+    get_psu_model(index, info->model, AIM_ARRAYSIZE(info->model));
+    get_psu_serial(index, info->serial, AIM_ARRAYSIZE(info->serial));
+    info->caps |= get_DCorAC_cap(info->model);;
 
 	if (info->status & ONLP_PSU_STATUS_FAILED) {
 	    return ONLP_STATUS_OK;
@@ -136,9 +178,19 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
 
     /* Read voltage, current and power */
+    if (psu_pmbus_info_get(index, "psu_v_in", &val) == 0 && val) {
+        info->mvin = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+    }
+
     if (psu_pmbus_info_get(index, "psu_v_out", &val) == 0) {
         info->mvout = val;
         info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    if (psu_pmbus_info_get(index, "psu_i_in", &val) == 0 && val) {
+        info->miin = val;
+        info->caps |= ONLP_PSU_CAPS_IIN;
     }
 
     if (psu_pmbus_info_get(index, "psu_i_out", &val) == 0) {
@@ -146,11 +198,15 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
 
+    if (psu_pmbus_info_get(index, "psu_p_in", &val) == 0 && val) {
+        info->mpin = val;
+        info->caps |= ONLP_PSU_CAPS_PIN;
+    }
+
     if (psu_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
 
-    get_psu_model(index, info->model, AIM_ARRAYSIZE(info->model));
     return ret;
 }
