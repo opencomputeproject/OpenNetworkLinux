@@ -781,6 +781,85 @@ static ssize_t qsfp_set_tx_disable(struct device *dev,
 	return count;
 }
 
+static ssize_t qsfp_show_lp_mode(struct device *dev,
+				 struct device_attribute *da, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sfp_port_data *data = i2c_get_clientdata(client);
+
+	int present = 0;
+	int status = 0;
+	u8 reg = 0x27;
+
+	present = sfp_is_port_present(client, data->port);
+	if (IS_ERR_VALUE(present))
+		return present;
+
+	if (present == 0) /* port is not present */
+		return -ENXIO;
+
+	mutex_lock(&data->update_lock);
+
+	status = asxvolt16_cpld_read(0x62, reg);
+
+	if (unlikely(status < 0))
+		goto exit;	    
+
+	mutex_unlock(&data->update_lock);
+	    
+	return sprintf(buf, "%d\n", !!(status & BIT_INDEX(data->port - 
+							  asxvolt16_sfp17)));
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;	
+
+}
+
+static ssize_t qsfp_set_lp_mode(struct device *dev,
+				struct device_attribute *da,
+				const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sfp_port_data *data = i2c_get_clientdata(client);
+	int status = 0;
+	u8 cpld_reg = 0x27; /*cpld_bit = 0,*/
+	long lp_mode = 0;
+
+	status = sfp_is_port_present(client, data->port);
+	if (IS_ERR_VALUE(status))
+		return status;
+
+	if (!status) /* port is not present */
+		return -ENXIO;	
+
+	status = kstrtol(buf, 10, &lp_mode);
+
+	if (status)
+		return status;
+
+	mutex_lock(&data->update_lock);
+	
+	/* Read current status */
+	status = asxvolt16_cpld_read(0x62, cpld_reg);
+
+	if(status < 0) {
+		mutex_unlock(&data->update_lock);
+		return status;
+	}
+    
+	/* Update lpmode status */
+	if (lp_mode) {
+		status |= BIT_INDEX(data->port - asxvolt16_sfp17);
+	} else {
+		status &= ~BIT_INDEX(data->port - asxvolt16_sfp17);
+	}
+
+	asxvolt16_cpld_write(0x62, cpld_reg, status);
+	mutex_unlock(&data->update_lock);
+	return count;
+}
+
 /* Platform dependent +++ */
 static ssize_t sfp_show_tx_rx_status(struct device *dev,
 				     struct device_attribute *da, char *buf)
