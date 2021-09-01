@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/onlp-platform-any.yml PLATFORM=x86-64-alphanetworks-scg60d0-484t ARCH=amd64 TOOLCHAIN=x86_64-linux-gnu
