@@ -113,8 +113,14 @@ K_DTBS_DIR := $(K_SOURCE_DIR)-dtbs
 #
 # The kernel source archive. Download if not present.
 #
+ifeq ($(ONL_DEBIAN_SUITE),jessie)
+# The certificates for kernel.org are expired in the jessie container.
+# Until that can be fixed we skip cert checks here:
+EXTRA_WGET_OPTIONS := --no-check-certificate
+endif
+
 $(K_ARCHIVE_PATH):
-	cd $(ONL_KERNELS)/archives && wget $(K_ARCHIVE_URL)
+	cd $(ONL_KERNELS)/archives && wget $(EXTRA_WGET_OPTIONS) $(K_ARCHIVE_URL)
 
 
 .PHONY : ksource kpatched
