@@ -498,6 +498,9 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
     if (data->chip == YM2401) {
         return show_vout_by_mode(dev, da, buf);
     }
+    else if (data->chip == YM1921 && data->vout_mode != 0xff) {
+        return show_vout_by_mode(dev, da, buf);
+    }
     else if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
         return show_vout_by_mode(dev, da, buf);

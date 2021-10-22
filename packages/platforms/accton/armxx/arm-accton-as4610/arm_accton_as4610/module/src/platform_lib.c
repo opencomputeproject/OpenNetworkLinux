@@ -23,6 +23,8 @@
  *
  *
  ***********************************************************/
+#include <onlp/onlp.h>
+#include <onlplib/file.h>
 #include <sys/mman.h>
 #include <errno.h>
 #include <string.h>
@@ -117,26 +119,60 @@ int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_le
 
 #define I2C_PSU_MODEL_NAME_LEN 8
 
-psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
+psu_type_t get_psu_type(int id, char *data_buf, int data_len)
 {
-    char *node = NULL;
-    char model_name[I2C_PSU_MODEL_NAME_LEN + 1] = {0};
+    int   len    = 0;
+    char *path[] = { PSU1_AC_EEPROM_PREFIX, PSU2_AC_EEPROM_PREFIX };
+    char *str = NULL;
+
+    /* Read attribute */
+    len = onlp_file_read_str(&str, "%s%s", path[id-1], "psu_model_name");
+    if (!str || len <= 0) {
+        AIM_FREE_IF_PTR(str);
+        return PSU_TYPE_UNKNOWN;
+    }
+
+    if (len > data_len) {
+        AIM_FREE_IF_PTR(str);
+        return PSU_TYPE_UNKNOWN;
+    }
+
+    aim_strlcpy(data_buf, str, len+1);
+    AIM_FREE_IF_PTR(str);
 
     /* Check AC model name */
-    node = (id == PSU1_ID) ? PSU1_AC_EEPROM_NODE(psu_model_name) : PSU2_AC_EEPROM_NODE(psu_model_name);
+    if (strncmp(data_buf, "YM-1921A", strlen("YM-1921A")) == 0 ||
+        strncmp(data_buf, "YM-1151D", strlen("YM-1151D")) == 0 ||
+        strncmp(data_buf, "YM-1601A", strlen("YM-1601A")) == 0 ||
+        strncmp(data_buf, "DPS-920AB B", strlen("DPS-920AB B")) == 0) {
 
-    if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
-        if (strncmp(model_name, "YM-1921A", strlen("YM-1921A")) == 0 ||
-            strncmp(model_name, "YM-1151D", strlen("YM-1151D")) == 0 ||
-            strncmp(model_name, "YM-1601A", strlen("YM-1601A")) == 0) {
-            if (modelname) {
-                aim_strlcpy(modelname, model_name, modelname_len-1);
-            }
-            return PSU_TYPE_AC_F2B;
-        }
+        return PSU_TYPE_AC_F2B;
     }
 
     return PSU_TYPE_UNKNOWN;
+}
+
+int get_psu_serial(int id, char *data_buf, int data_len)
+{
+    int   len    = 0;
+    char *path[] = { PSU1_AC_EEPROM_PREFIX, PSU2_AC_EEPROM_PREFIX };
+    char *str = NULL;
+
+    /* Read attribute */
+    len = onlp_file_read_str(&str, "%s%s", path[id-1], "psu_serial_number");
+    if (!str || len <= 0) {
+        AIM_FREE_IF_PTR(str);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (len > data_len) {
+        AIM_FREE_IF_PTR(str);
+        return ONLP_STATUS_E_INVALID;
+    }
+
+    aim_strlcpy(data_buf, str, len+1);
+    AIM_FREE_IF_PTR(str);
+    return ONLP_STATUS_OK;
 }
 
 enum as4610_product_id get_product_id(void)
