@@ -554,7 +554,7 @@ static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 
 static u8 reg_val_to_direction(u8 reg_val, enum fan_id id)
 {
-    u8 mask = (1 << id);
+    u8 mask = (1 << (id+4));
 
     reg_val &= mask;
 
