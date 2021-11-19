@@ -248,7 +248,7 @@ typedef struct _threshold{
 threshold_t up_th_f2b[NUM_FAN_LEVEL] = {
     {{57000,60000,40000,39000,36000,38000}, FAN_LEVEL7}, //LEVEL5
     {{62000,64000,46000,45000,43000,44000}, FAN_LEVELB}, //LEVEL7
-    {{ NA_L, NA_L, NA_L, NA_L, NA_L, NA_L}, FAN_LEVELF}, //LEVEL9, NA, force to change level.
+    {{ NA_L, NA_L, NA_L, NA_L, NA_L, NA_L}, FAN_LEVELB}, //LEVEL9, NA, force to change level.
     {{ NA_H, NA_H,51000,49000,48000,49000}, FAN_LEVELD}, //LEVELB
     {{67000,70000,55000,54000,53000,54000}, FAN_LEVELF}, //LEVELD
     {{ NA_H, NA_H, NA_H, NA_H, NA_H, NA_H}, FAN_LEVELF}  //LEVELF, Won't go any higher.
@@ -257,7 +257,7 @@ threshold_t up_th_f2b[NUM_FAN_LEVEL] = {
 threshold_t down_th_f2b[NUM_FAN_LEVEL] = {
     {{ NA_L, NA_L, NA_L, NA_L, NA_L, NA_L}, FAN_LEVEL5}, //LEVEL5, Won't go any lower.
     {{55000,58000,38000,37000,34000,36000}, FAN_LEVEL5}, //LEVEL7
-    {{ NA_H, NA_H, NA_H, NA_H, NA_H, NA_H}, FAN_LEVELF}, //LEVEL9, NA, force to change level.
+    {{ NA_H, NA_H, NA_H, NA_H, NA_H, NA_H}, FAN_LEVEL7}, //LEVEL9, NA, force to change level.
     {{60000,62000,43000,42000,40000,41000}, FAN_LEVEL7}, //LEVELB
     {{65000,68000,49000,47000,46000,47000}, FAN_LEVELB}, //LEVELD
     {{ NA_H, NA_H,53000,52000,51000,52000}, FAN_LEVELD}  //LEVELF
