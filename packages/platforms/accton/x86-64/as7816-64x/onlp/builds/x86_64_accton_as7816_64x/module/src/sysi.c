@@ -308,7 +308,7 @@ sysi_fanctrl_overall_thermal_sensor_policy(onlp_fan_info_t fi[CHASSIS_FAN_COUNT]
         high = up_th[fanlevel].val[i-THERMAL_1_ON_MAIN_BROAD];
         low = down_th[fanlevel].val[i-THERMAL_1_ON_MAIN_BROAD];
         // perform level up if anyone is higher than high_th.
-        if(ti[i-1].mcelsius > high) {
+        if(ti[i-1].mcelsius >= high) {
             can_level_up = true;
             break;
         }
