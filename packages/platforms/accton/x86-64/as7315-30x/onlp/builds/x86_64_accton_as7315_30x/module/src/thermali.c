@@ -59,36 +59,94 @@ static onlp_thermal_info_t tinfo[] = {
     { }, /* Not used */
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0, {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {80000, 100000, 110000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_MAIN_BROAD), "LM75-49", 0, {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {75000, 80000, 85000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_MAIN_BROAD), "LM75-4A", 0, {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {75000, 80000, 85000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_MAIN_BROAD), "LM75-4C", 0, {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {75000, 80000, 85000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU1), "PSU-1 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU1_ID), {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {73000, 78000, 83000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID), {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {73000, 78000, 83000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID), {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {73000, 78000, 83000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU2), "PSU-2 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU2_ID), {0} },
         ONLP_THERMAL_STATUS_PRESENT,
-        ONLP_THERMAL_CAPS_ALL, 0, {73000, 78000, 83000}
+        ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
     }
+};
+
+typedef struct threshold_t {
+    int warning;
+    int error;
+    int shutdown;
+} threshold_t;
+
+threshold_t threshold[FAN_DIR_COUNT][THERMAL_COUNT] = {
+    [FAN_DIR_L2R][THERMAL_CPU_CORE].warning  = 78000,
+    [FAN_DIR_L2R][THERMAL_CPU_CORE].error    = 95000,
+    [FAN_DIR_L2R][THERMAL_CPU_CORE].shutdown = 105000,
+    [FAN_DIR_L2R][THERMAL_1_ON_MAIN_BROAD].warning  = 80000,
+    [FAN_DIR_L2R][THERMAL_1_ON_MAIN_BROAD].error    = 85000,
+    [FAN_DIR_L2R][THERMAL_1_ON_MAIN_BROAD].shutdown = 90000,
+    [FAN_DIR_L2R][THERMAL_2_ON_MAIN_BROAD].warning  = 76000,
+    [FAN_DIR_L2R][THERMAL_2_ON_MAIN_BROAD].error    = 81000,
+    [FAN_DIR_L2R][THERMAL_2_ON_MAIN_BROAD].shutdown = 86000,
+    [FAN_DIR_L2R][THERMAL_3_ON_MAIN_BROAD].warning  = 74000,
+    [FAN_DIR_L2R][THERMAL_3_ON_MAIN_BROAD].error    = 79000,
+    [FAN_DIR_L2R][THERMAL_3_ON_MAIN_BROAD].shutdown = 84000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU1].warning  = 78000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU1].error    = 83000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU1].shutdown = 88000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU1].warning  = 80000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU1].error    = 85000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU1].shutdown = 90000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU2].warning  = 78000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU2].error    = 83000,
+    [FAN_DIR_L2R][THERMAL_1_ON_PSU2].shutdown = 88000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU2].warning  = 80000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU2].error    = 85000,
+    [FAN_DIR_L2R][THERMAL_2_ON_PSU2].shutdown = 90000,
+
+    [FAN_DIR_R2L][THERMAL_CPU_CORE].warning  = 77000,
+    [FAN_DIR_R2L][THERMAL_CPU_CORE].error    = 95000,
+    [FAN_DIR_R2L][THERMAL_CPU_CORE].shutdown = 105000,
+    [FAN_DIR_R2L][THERMAL_1_ON_MAIN_BROAD].warning  = 78000,
+    [FAN_DIR_R2L][THERMAL_1_ON_MAIN_BROAD].error    = 83000,
+    [FAN_DIR_R2L][THERMAL_1_ON_MAIN_BROAD].shutdown = 88000,
+    [FAN_DIR_R2L][THERMAL_2_ON_MAIN_BROAD].warning  = 74000,
+    [FAN_DIR_R2L][THERMAL_2_ON_MAIN_BROAD].error    = 79000,
+    [FAN_DIR_R2L][THERMAL_2_ON_MAIN_BROAD].shutdown = 84000,
+    [FAN_DIR_R2L][THERMAL_3_ON_MAIN_BROAD].warning  = 77000,
+    [FAN_DIR_R2L][THERMAL_3_ON_MAIN_BROAD].error    = 82000,
+    [FAN_DIR_R2L][THERMAL_3_ON_MAIN_BROAD].shutdown = 87000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU1].warning  = 81000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU1].error    = 86000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU1].shutdown = 91000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU1].warning  = 81000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU1].error    = 86000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU1].shutdown = 91000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU2].warning  = 81000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU2].error    = 86000,
+    [FAN_DIR_R2L][THERMAL_1_ON_PSU2].shutdown = 91000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU2].warning  = 81000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU2].error    = 86000,
+    [FAN_DIR_R2L][THERMAL_2_ON_PSU2].shutdown = 91000,
 };
 
 /*
@@ -113,15 +171,20 @@ onlp_thermali_init(void)
 int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
-    int   tid;
+    int tid;
+    enum onlp_fan_dir dir;
     VALIDATE(id);
 
     tid = ONLP_OID_ID_GET(id);
+    dir = onlp_get_fan_dir();
 
     /* Set the onlp_oid_hdr_t and capabilities */
     *info = tinfo[tid];
+    info->thresholds.warning  = threshold[dir][tid].warning;
+    info->thresholds.error    = threshold[dir][tid].error;
+    info->thresholds.shutdown = threshold[dir][tid].shutdown;
 
-    if(tid == THERMAL_CPU_CORE) {
+    if (tid == THERMAL_CPU_CORE) {
         return onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
     }
 

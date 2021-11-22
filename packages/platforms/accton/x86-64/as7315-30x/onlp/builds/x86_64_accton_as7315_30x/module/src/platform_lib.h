@@ -43,6 +43,7 @@
 #define PSU2_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/44-0050/"
 
 #define FAN_BOARD_PATH "/sys/bus/i2c/devices/41-0066/"
+#define FAN_EEPROM_PATH "/sys/bus/i2c/devices/41-0050/"
 
 #define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0056/eeprom"
 
@@ -56,6 +57,7 @@ enum onlp_thermal_id {
     THERMAL_2_ON_PSU1,
     THERMAL_1_ON_PSU2,
     THERMAL_2_ON_PSU2,
+    THERMAL_COUNT
 };
 
 enum onlp_led_id {
@@ -66,5 +68,22 @@ enum onlp_led_id {
     LED_FAN,
     LED_ALARM
 };
+
+enum onlp_fan_dir {
+    FAN_DIR_L2R,
+    FAN_DIR_R2L,
+    FAN_DIR_COUNT
+};
+
+enum onlp_fan_dir onlp_get_fan_dir(void);
+
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
 
 #endif  /* __PLATFORM_LIB_H__ */

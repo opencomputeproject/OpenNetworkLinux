@@ -294,26 +294,38 @@ static u8 reg_val_to_is_fan_fault(u8 status_reg_val, u8 pwm_reg_val)
 static ssize_t set_duty_cycle(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count)
 {
-	int error, value;
+	int status, value;
 	struct i2c_client *client = to_i2c_client(dev);
 	struct as7315_30x_fan_data *data = i2c_get_clientdata(client);
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 
-	error = kstrtoint(buf, 10, &value);
-	if (error)
-		return error;
+	status = kstrtoint(buf, 10, &value);
+	if (status)
+		return status;
 
 	if (value < 0 || value > FAN_MAX_DUTY_CYCLE)
 		return -EINVAL;
 
 	mutex_lock(&data->update_lock);
 
-	/* Enable the fan power
+	/* Enable/disable the fan power
 	 */
-	error = as7315_30x_fan_write_value(client, 0x10, 0x1F);
-	if (error != 0) {
+	status = as7315_30x_fan_read_value(client, 0x10);
+	if (status < 0) {
+		dev_dbg(&client->dev, "Unable to read the fan power\n");
+		count = status;
+		goto exit;
+	}
+
+	if (!value)
+		status &= ~BIT(attr->index - FAN1_PWM);
+	else
+		status |= BIT(attr->index - FAN1_PWM);
+
+	status = as7315_30x_fan_write_value(client, 0x10, status);
+	if (status != 0) {
 		dev_dbg(&client->dev, "Unable to enable the fan power\n");
-		count = error;
+		count = status;
 		goto exit;
 	}
 

@@ -13,7 +13,7 @@ class OnlPlatform_x86_64_accton_as7315_30x_r0(OnlPlatformAccton,
         os.system("modprobe pmbus_core")
         self.insmod('optoe')
         self.insmod("dps850")
-        for m in [ 'fpga', 'cpld', 'sys', 'fan', 'psu', 'leds' ]:
+        for m in [ 'fpga', 'cpld', 'sys', 'fan', 'fan-eeprom', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as7315-30x-%s" % m)
 
         ########### initialize I2C bus 0 ###########
@@ -51,6 +51,7 @@ class OnlPlatform_x86_64_accton_as7315_30x_r0(OnlPlatformAccton,
                 ('as7315_30x_fpga', 0x64, 39), # i2c 50-53
                 ('as7315_30x_cpld', 0x63, 40),
                 ('as7315_30x_fan',  0x66, 41),
+                ('as7315_fan_eeprom', 0x50, 41),
 
                 # initiate PSU-1 AC Power
                 ('as7315_30x_psu1',  0x53, 45),
