@@ -1861,7 +1861,6 @@ get_platform_type(void){
                     platform_p->name);
             goto err_get_platform_type_2;
 
-        case PLATFORM_TYPE_AURORA_610_GA:
         case PLATFORM_TYPE_AURORA_610:
             platform_p->id = PLATFORM_SETTINGS;
             goto map_platform_name;
@@ -1905,15 +1904,6 @@ static int
 get_layout_info(void){
 
     switch (platform_p->id) {
-#ifdef SWPS_AURORA_610_GA
-        case PLATFORM_TYPE_AURORA_610_GA:
-            gpio_rest_mux = aurora_610_ga_gpio_rest_mux;
-            ioexp_layout  = aurora_610_ga_ioexp_layout;
-            port_layout   = aurora_610_ga_port_layout;
-            ioexp_total   = ARRAY_SIZE(aurora_610_ga_ioexp_layout);
-            port_total    = ARRAY_SIZE(aurora_610_ga_port_layout);
-            break;
-#endif
 #ifdef SWPS_AURORA_610
         case PLATFORM_TYPE_AURORA_610:
             gpio_rest_mux = aurora_610_gpio_rest_mux;
@@ -2647,7 +2637,6 @@ register_ioexp_attr(struct device *device_p,
 
     switch (transvr_obj->ioexp_obj_p->ioexp_type){
 
-        case IOEXP_TYPE_AURORA_610_GA_NABC:
         case IOEXP_TYPE_AURORA_610_NABC:
         case IOEXP_TYPE_AURORA_610_1ABC:
         case IOEXP_TYPE_AURORA_610_3ABC:
@@ -2657,9 +2646,7 @@ register_ioexp_attr(struct device *device_p,
             }
             break;
 
-        case IOEXP_TYPE_AURORA_610_GA_7ABC:
         case IOEXP_TYPE_AURORA_610_7ABC:
-        case IOEXP_TYPE_QSFP_6P_LAYOUT_1:
             if (register_ioexp_attr_qsfp_1(device_p) < 0){
                 err_msg = "register_ioexp_attr_qsfp_1 fail";
                 goto err_reg_ioexp_attr;
@@ -3061,14 +3048,3 @@ MODULE_SOFTDEP("pre: net_platform");
 
 module_init(swp_module_init);
 module_exit(swp_module_exit);
-
-
-
-
-
-
-
-
-
-
-
