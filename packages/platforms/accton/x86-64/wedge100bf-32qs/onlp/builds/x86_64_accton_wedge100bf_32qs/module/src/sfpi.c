@@ -27,7 +27,6 @@
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/file.h>
 #include "platform_lib.h"
-
 #include "x86_64_accton_wedge100bf_32qs_log.h"
 
 #define BIT(i)          (1 << (i))
@@ -41,6 +40,19 @@ static const int sfp_bus_index[] = {
  27, 26, 29, 28, 31, 30, 33, 32
 };
 
+typedef struct qsfp_config_s {
+    uint8_t bus;
+    uint8_t addr;
+    uint8_t offset;
+} qsfp_config_t;
+
+static qsfp_config_t qsfp_addr[4] =
+{
+    {34, 0x20, 0x6},
+    {34, 0x20, 0x7},
+    {35, 0x21, 0x6},
+    {35, 0x21, 0x7},
+};
 /************************************************************
  *
  * SFPI Entry Points
@@ -49,7 +61,18 @@ static const int sfp_bus_index[] = {
 int
 onlp_sfpi_init(void)
 {
-    /* Called at initialization time */    
+    int i;
+    /* configure gpio pin to output according to pca9535 datasheet*/
+    /* Config bus 34 address 0x20 to output pin : 0000 0000 0000 0000 */
+    /* Config bus 35 address 0x21 to output pin : 0000 0000 0000 0000 */
+    for(i=0 ; i<4 ; i++)
+    {
+        if (onlp_i2c_writeb(qsfp_addr[i].bus, qsfp_addr[i].addr, qsfp_addr[i].offset, 0x0, ONLP_I2C_F_FORCE) < 0)
+        {
+             return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
     return ONLP_STATUS_OK;
 }
 
@@ -113,6 +136,7 @@ onlp_sfpi_is_present(int port)
     }
 
     present = onlp_sfpi_reg_val_to_port_sequence(present, 0);
+
     return !(present & BIT(port % 8));
 }
 
@@ -155,6 +179,8 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 int
 onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
+    AIM_BITMAP_CLR_ALL(dst);
+
     return ONLP_STATUS_OK;
 }
 
@@ -212,13 +238,238 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int rv;
+    if (port < 0 || port >= NUM_OF_SFP_PORT) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    switch(control)
+    {
+        case ONLP_SFP_CONTROL_LP_MODE:
+        {
+            /*
+             * Return 1 : Low Power.
+             * Return 0 : High Power.
+             * Return < 0 if error.
+             */
+            int power_mode_val = 0;
+            int bus = (port < 16) ? 34 : 35;
+            int addr = (port < 16) ? 0x20 : 0x21; /* pca9535 slave address */
+            int read_offset;
+            int write_offset;
+            int wirte_val;
+            static int reg_port_lp_map[32] = {1, 0 , 3, 2, 5, 4, 7, 6,
+                                                9, 8, 11, 10, 13, 12, 15, 14,
+                                                1, 0 , 3, 2, 5, 4, 7, 6, 9,
+                                                8, 11, 10, 13, 12, 15, 14};
+
+            if (port < 8 || (port >= 16 && port <= 23)) {
+                read_offset = 0;
+                write_offset = 2;
+            }
+            else {
+                read_offset = 1;
+                write_offset = 3;
+            }
+
+            power_mode_val = onlp_i2c_readb(bus, addr, read_offset, ONLP_I2C_F_FORCE);
+            if (power_mode_val < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            if (port < 8 || (port >= 16 && port <= 23)) {
+                /* Low byte data : no need shift */
+                if(value == 1)
+                    wirte_val = power_mode_val | BIT(reg_port_lp_map[port]);
+                else
+                    wirte_val = power_mode_val & ~(BIT(reg_port_lp_map[port]));
+            }
+            else {
+                power_mode_val = power_mode_val << 8;
+
+                if(value == 1)
+                    wirte_val = power_mode_val | BIT(reg_port_lp_map[port]);
+                else
+                    wirte_val = power_mode_val & ~(BIT(reg_port_lp_map[port]));
+
+                wirte_val = wirte_val >> 8;
+            }
+
+            if (onlp_i2c_writeb(bus, addr, write_offset, wirte_val, ONLP_I2C_F_FORCE) < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            power_mode_val = onlp_i2c_readb(bus, addr, read_offset, ONLP_I2C_F_FORCE);
+            if (power_mode_val < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            rv = ONLP_STATUS_OK;
+
+            break;
+        }
+
+        case ONLP_SFP_CONTROL_RESET:
+        {
+            int rst_cpld_val;
+            int rst_cpld_val_write;
+            int bus = 1;
+            int reg = 0x32;
+            int offset;
+            int bit;
+
+            if (port < 8)
+            {
+                offset = 0x34;
+                bit = port;
+            }
+            else if (port >= 8 && port < 16)
+            {
+                offset = 0x35;
+                bit = port-8;
+            }
+            else if (port >= 16 && port < 24)
+            {
+                offset = 0x36;
+                bit = port-16;
+            }
+            else if (port >= 24 && port < 32)
+            {
+                offset = 0x37;
+                bit = port-24;
+            }
+            else
+            {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            rst_cpld_val = onlp_i2c_readb(bus, reg, offset, ONLP_I2C_F_FORCE);
+            if (rst_cpld_val < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            if(value == 1)
+                rst_cpld_val_write = rst_cpld_val & ~(BIT(bit));
+            else
+                rst_cpld_val_write = rst_cpld_val | BIT(bit);
+
+            if (onlp_i2c_writeb(bus, reg, offset, rst_cpld_val_write, ONLP_I2C_F_FORCE) < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            rv = ONLP_STATUS_OK;
+            break;
+        }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+    }
+
+    return rv;
 }
 
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
-{
-    return ONLP_STATUS_E_UNSUPPORTED;
+{   
+    int rv;
+
+    if (port < 0 || port >= NUM_OF_SFP_PORT) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    switch(control){
+        case ONLP_SFP_CONTROL_LP_MODE:
+        {
+            /*
+             * Return 1 : Low Power.
+             * Return 0 : High Power.
+             * Return < 0 if error.
+             */
+            int power_mode_val = 0;
+            int bus = (port < 16) ? 34 : 35;
+            int addr = (port < 16) ? 0x20 : 0x21; /* pca9535 slave address */
+            int offset;
+            static int reg_port_lp_map[32] = {1, 0 , 3, 2, 5, 4, 7, 6,
+                                                9, 8, 11, 10, 13, 12, 15, 14,
+                                                1, 0 , 3, 2, 5, 4, 7, 6, 9,
+                                                8, 11, 10, 13, 12, 15, 14};
+
+            if (port < 8 || (port >= 16 && port <= 23)) {
+                offset = 0;
+            }
+            else {
+                offset = 1;
+            }
+
+            power_mode_val = onlp_i2c_readb(bus, addr, offset, ONLP_I2C_F_FORCE);
+            if (power_mode_val < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            if (port < 8 || (port >= 16 && port <= 23)) {
+                /* Low byte data : no need shift */
+            }
+            else {
+                power_mode_val = power_mode_val << 8;
+            }
+
+            *value = (power_mode_val & BIT(reg_port_lp_map[port]));
+
+            rv = ONLP_STATUS_OK;
+
+            break;
+        }
+        case ONLP_SFP_CONTROL_RESET:
+        {
+            int offset;
+            int bit;
+            int rst_cpld_val;
+
+            if (port < 8)
+            {
+                offset = 0x34;
+                bit = port;
+            }
+            else if (port >= 8 && port < 16)
+            {
+                offset = 0x35;
+                bit = port-8;
+            }
+            else if (port >= 16 && port < 24)
+            {
+                offset = 0x36;
+                bit = port-16;
+            }
+            else if (port >= 24 && port < 32)
+            {
+                offset = 0x37;
+                bit = port-24;
+            }
+            else
+            {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            rst_cpld_val = onlp_i2c_readb(1, 0x32, offset, ONLP_I2C_F_FORCE);
+            if (rst_cpld_val < 0) {
+                return ONLP_STATUS_E_INTERNAL;
+            }
+
+            *value = !((rst_cpld_val & BIT(bit)) >> bit);
+
+            rv = ONLP_STATUS_OK;
+
+            break;
+        }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+
+            break;
+    }
+
+    return rv;
 }
 
 int
@@ -226,4 +477,3 @@ onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-
