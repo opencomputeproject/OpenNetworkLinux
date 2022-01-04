@@ -90,9 +90,29 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     return 0;
 }
 
+#define SYS_CPLD_VERSION_PATH "/sys/bus/i2c/devices/12-0031/cpld_rev"
+#define FAN_CPLD_VERSION_PATH "/sys/bus/i2c/devices/8-0033/cpld_rev"
+
 int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
+    int sys_cpld;
+    int fan_cpld;
+
+    bmc_tty_init();
+
+    if (bmc_file_read_int(&sys_cpld, SYS_CPLD_VERSION_PATH, 16) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", SYS_CPLD_VERSION_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (bmc_file_read_int(&fan_cpld, FAN_CPLD_VERSION_PATH, 16) < 0) {
+        AIM_LOG_ERROR("Unable to read status from file (%s)\r\n", FAN_CPLD_VERSION_PATH);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    pi->cpld_versions = aim_fstrdup("System CPLD : %d, FAN CPLD : %d", sys_cpld, fan_cpld);
+
     return ONLP_STATUS_OK;
 }
 
