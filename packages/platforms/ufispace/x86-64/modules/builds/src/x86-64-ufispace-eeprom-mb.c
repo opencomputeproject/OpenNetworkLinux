@@ -262,6 +262,6 @@ static struct i2c_driver mb_eeprom_driver = {
 
 module_i2c_driver(mb_eeprom_driver);
 
-MODULE_AUTHOR("Jeff <jeff.ch.yen@ufispace.com>");
+MODULE_AUTHOR("Wade <wade.ce.he@ufispace.com>");
 MODULE_DESCRIPTION("UfiSpace Mother Borad EEPROM driver");
 MODULE_LICENSE("GPL");

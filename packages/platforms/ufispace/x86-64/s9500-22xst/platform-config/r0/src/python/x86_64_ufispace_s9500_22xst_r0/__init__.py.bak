@@ -94,21 +94,7 @@ class OnlPlatform_x86_64_ufispace_s9500_22xst_r0(OnlPlatformUfiSpace):
             ]
         )
 
-        # Config MUX as MUX_IDLE_DISCONNECT mode
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0075/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0075/idle_state")
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0076/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0076/idle_state")
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0070/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0070/idle_state")
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0072/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0072/idle_state")
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0073/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0073/idle_state")
-        os.system("ls /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0074/idle_state > /dev/null 2>&1 &&"
-                  "echo -2 > /sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-8/8-0074/idle_state")
-        
-        self.insmod("x86-64-ufispace-eeprom-mb")
+        self.insmod("eeprom_mb")
         self.insmod("optoe")
 
         # init SYS EEPROM devices
@@ -121,23 +107,15 @@ class OnlPlatform_x86_64_ufispace_s9500_22xst_r0(OnlPlatformUfiSpace):
         )
 
         # init SFP+ EEPROM
-        msg("Insert SFP+ EEPROM\n")
-        for port in range(9, 17):
+        msg("Insert SFP EEPROM\n")
+        for port in range(9, 33):
             self.new_i2c_device('optoe2', 0x50, port)
-            subprocess.call("echo {} > /sys/bus/i2c/devices/{}-0050/port_name".format(port-5, port), shell=True)
-
-        # init SFP28 EEPROM
-        msg("Insert SFP28 EEPROM\n")
-        for port in range(21, 29):
-            self.new_i2c_device('optoe2', 0x50, port)
-            subprocess.call("echo {} > /sys/bus/i2c/devices/{}-0050/port_name".format(port-9, port), shell=True)
 
         # init QSFP28 EEPROM
         msg("Insert QSFP EEPROM\n")
         for port in range(35, 37):
             self.new_i2c_device('optoe1', 0x50, port)
             #self.new_i2c_device('sff8436', 0x50, port)
-            subprocess.call("echo {} > /sys/bus/i2c/devices/{}-0050/port_name".format(56-port, port), shell=True)
            
         # init Temperature
         msg("Insert CPU TMP75\n")
