@@ -185,13 +185,13 @@ onlp_sysi_platform_manage_fans(void)
      */
     if (onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(3), &thermal_3) != ONLP_STATUS_OK  )
     {
-        AIM_LOG_ERROR("Unable to read thermal status, set fans to 75% speed");
+        AIM_LOG_ERROR("Unable to read thermal status, set fans to 75 %% speed");
         onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fan_thermal_policy[LEVEL_FAN_MID].duty_cycle);
         return ONLP_STATUS_E_INTERNAL;
     }
     if(onlp_thermali_info_get(ONLP_THERMAL_ID_CREATE(5), &thermal_5) != ONLP_STATUS_OK)
     {
-        AIM_LOG_ERROR("Unable to read thermal status, set fans to 75% speed");
+        AIM_LOG_ERROR("Unable to read thermal status, set fans to 75 %% speed");
         onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), fan_thermal_policy[LEVEL_FAN_MID].duty_cycle);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -242,6 +242,13 @@ onlp_sysi_platform_manage_fans(void)
         if (onlp_fani_info_get(ONLP_FAN_ID_CREATE(i), &fan_info) != ONLP_STATUS_OK) {
             AIM_LOG_ERROR("Unable to get fan(%d) status, try to set the other fans as full speed\r\n", i);
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            if (fan_state < LEVEL_FAN_MAX)
+            {
+                fan_state=LEVEL_FAN_MAX;
+                current_state=fan_state;
+            }
+            if(current_state <LEVEL_FAN_MAX )
+                current_state=LEVEL_FAN_MAX;
             break;
         }
         /* Decision 1: Set fan as full speed if any fan is failed.
@@ -249,6 +256,13 @@ onlp_sysi_platform_manage_fans(void)
         if (fan_info.status & ONLP_FAN_STATUS_FAILED || !(fan_info.status & ONLP_FAN_STATUS_PRESENT)) {
             AIM_LOG_ERROR("Fan(%d) is not working, set the other fans as full speed\r\n", i);
             onlp_fani_percentage_set(ONLP_FAN_ID_CREATE(1), FAN_DUTY_CYCLE_MAX);
+            if (fan_state < LEVEL_FAN_MAX)
+            {
+                fan_state=LEVEL_FAN_MAX;
+                current_state=fan_state;
+            }
+            if(current_state <LEVEL_FAN_MAX )
+                current_state=LEVEL_FAN_MAX;
             break;
         }
     }

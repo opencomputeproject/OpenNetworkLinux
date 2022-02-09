@@ -31,6 +31,8 @@
 #define CHASSIS_FAN_COUNT     6
 #define CHASSIS_THERMAL_COUNT 5
 
+#define NUM_OF_PSU             2
+#define NUM_OF_THERMAL_PER_PSU 3
 #define PSU1_ID 1
 #define PSU2_ID 2
 
@@ -53,16 +55,17 @@ int deviceNodeReadBinary(char *filename, char *buffer, int buf_size, int data_le
 int deviceNodeReadString(char *filename, char *buffer, int buf_size, int data_len);
 
 typedef enum psu_type {
-    PSU_TYPE_UNKNOWN,
-    PSU_TYPE_AC_F2B_3YPOWER,
-    PSU_TYPE_AC_B2F_3YPOWER,
-    PSU_TYPE_AC_F2B_ACBEL,
-    PSU_TYPE_AC_B2F_ACBEL,
-    PSU_TYPE_DC_48V_F2B,
-    PSU_TYPE_DC_48V_B2F,
+    PSU_TYPE_AC_YM2651Y_F2B,
+    PSU_TYPE_AC_YM2651Y_B2F,
+    PSU_TYPE_AC_FSF019_610G_F2B,
+    PSU_TYPE_AC_FSF019_612G_F2B,
+    PSU_TYPE_DC48_YM2651V_F2B,
+    PSU_TYPE_DC48_YM2651V_B2F,
     PSU_TYPE_DC_12V_FANLESS,
     PSU_TYPE_DC_12V_F2B,
-    PSU_TYPE_DC_12V_B2F
+    PSU_TYPE_DC_12V_B2F,
+    NUM_OF_PSU_TYPE,
+    PSU_TYPE_UNKNOWN,
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);

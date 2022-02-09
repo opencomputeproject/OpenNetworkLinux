@@ -148,11 +148,11 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_AC_F2B_3YPOWER;
+	        return PSU_TYPE_AC_YM2651Y_F2B; /* YM-2651Y-BR */
 	    }
 
 	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_AC_B2F_3YPOWER;
+	        return PSU_TYPE_AC_YM2651Y_B2F; /* YM-2651Y-CR */
 	    }
     }
 
@@ -167,11 +167,11 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 	    }
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_DC_48V_F2B;
+	        return PSU_TYPE_DC48_YM2651V_F2B; /* YM-2651V-BR */
 	    }
 
 	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_DC_48V_B2F;
+	        return PSU_TYPE_DC48_YM2651V_B2F; /* YM-2651V-CR */
 	    }
     }
 
@@ -200,7 +200,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
     if (strncmp(model_name, "FSF019", 6) == 0) {
 	    if (modelname) {
-			aim_strlcpy(modelname, model_name, 11); /* Copy full model name */
+			aim_strlcpy(modelname, model_name, 11+1); /* Copy full model name */
 	    }
 
         /* Read model */
@@ -215,12 +215,12 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         aim_free(string);
 
 	    if (strncmp(fan_dir, "F2B", strlen("F2B")) == 0) {
-	        return PSU_TYPE_AC_F2B_ACBEL;
+            if (strncmp(model_name, "FSF019-612G", 11) == 0) {
+                return PSU_TYPE_AC_FSF019_612G_F2B;
+            }
 	    }
 
-	    if (strncmp(fan_dir, "B2F", strlen("B2F")) == 0) {
-	        return PSU_TYPE_AC_B2F_ACBEL;
-	    }
+        return PSU_TYPE_AC_FSF019_610G_F2B;
     }
 
     return PSU_TYPE_UNKNOWN;
