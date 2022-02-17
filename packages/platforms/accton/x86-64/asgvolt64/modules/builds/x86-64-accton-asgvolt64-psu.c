@@ -37,6 +37,8 @@
 #define IPMI_PSU_SERIAL_NUM_CMD 0x11
 #define IPMI_TIMEOUT		(20 * HZ)
 
+#define VOUT_MODE_3YPOWER 0x17
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_linear(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_psu(struct device *dev, struct device_attribute *attr, char *buf);
@@ -385,6 +387,8 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
     int error = 0;
 	int exponent = 0, mantissa = 0;
 	int multiplier = 1000;
+	int vout_mode = 0;
+	char *ptr = NULL;
 
     mutex_lock(&data->update_lock);
 
@@ -406,6 +410,10 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
             VALIDATE_PRESENT_RETURN(pid);
 			value = ((u16)data->ipmi_resp[pid].status[PSU_VOUT0] |
                      (u16)data->ipmi_resp[pid].status[PSU_VOUT1] << 8);
+			ptr = data->ipmi_resp[pid].model;
+			if (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0) {
+					vout_mode = VOUT_MODE_3YPOWER;
+			}
 			break;
 		case PSU1_IOUT:
 		case PSU2_IOUT:
@@ -432,8 +440,13 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
 
     mutex_unlock(&data->update_lock);
 
-	exponent = two_complement_to_int(value >> 11, 5, 0x1f);
-	mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+	if(vout_mode) {
+		exponent = two_complement_to_int(vout_mode & 0x1f, 5, 0x1f);
+		mantissa = value;
+	} else {
+		exponent = two_complement_to_int(value >> 11, 5, 0x1f);
+		mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+	}
 
 	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
 							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));

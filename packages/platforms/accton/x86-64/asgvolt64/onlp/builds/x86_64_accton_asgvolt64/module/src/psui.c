@@ -95,6 +95,30 @@ is_pmbus_status_word_fail(int status)
     return i;
 }
 
+static int
+get_DCorAC_cap(char *model)
+{
+    const char *ac_models[] = {"FSF019", NULL };
+    const char *dc_models[] = {"YM-2851J", NULL };
+    int i;
+
+    i = 0;
+    while(ac_models[i]) {
+        if (!strncasecmp(model, ac_models[i], strlen(ac_models[i]))) {
+            return ONLP_PSU_CAPS_AC;
+        }
+        i++;
+    }
+    i = 0;
+    while(dc_models[i]) {
+        if (!strncasecmp(model, dc_models[i], strlen(dc_models[i]))) {
+            return ONLP_PSU_CAPS_DC48;
+        }
+        i++;
+    }
+    return 0;
+}
+
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
@@ -184,14 +208,15 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->model, string, len);
+        aim_strlcpy(info->model, string, len+1);
         aim_free(string);
     }
+    info->caps |= get_DCorAC_cap(info->model);
 
     /* Read serial */
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->serial, string, len);
+        aim_strlcpy(info->serial, string, len+1);
         aim_free(string);
     }
 
