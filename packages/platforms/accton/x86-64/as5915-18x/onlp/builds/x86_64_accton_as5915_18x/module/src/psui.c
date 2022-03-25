@@ -59,7 +59,7 @@ psu_pmbus_info_get(int id, char *node, int *value)
 int get_psu_model(int id, char *model, int model_len)
 {
     int   len    = 0;
-	char *path   = NULL;
+    char *path   = NULL;
     char *string = NULL;
 
     /* Read model name */
@@ -83,7 +83,7 @@ int get_psu_model(int id, char *model, int model_len)
 int get_psu_serial(int id, char *serial, int serial_len)
 {
     int   len    = 0;
-	char *path   = NULL;
+    char *path   = NULL;
     char *string = NULL;
 
     /* Read serial number */
@@ -167,12 +167,14 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Set capability
      */
     get_psu_model(index, info->model, AIM_ARRAYSIZE(info->model));
-    get_psu_serial(index, info->serial, AIM_ARRAYSIZE(info->serial));
+    if(info->caps == ONLP_PSU_CAPS_AC) {
+        get_psu_serial(index, info->serial, AIM_ARRAYSIZE(info->serial));
+    }
     info->caps |= get_DCorAC_cap(info->model);;
 
-	if (info->status & ONLP_PSU_STATUS_FAILED) {
-	    return ONLP_STATUS_OK;
-	}
+    if (info->status & ONLP_PSU_STATUS_FAILED) {
+        return ONLP_STATUS_OK;
+    }
 
     /* Set the associated oid_table */
     info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
