@@ -128,6 +128,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
         if (strncmp(model_name, "YM-1921A", strlen("YM-1921A")) == 0 ||
             strncmp(model_name, "YM-1151D", strlen("YM-1151D")) == 0 ||
+            strncmp(model_name, "YM-1151F", strlen("YM-1151F")) == 0 ||
             strncmp(model_name, "YM-1601A", strlen("YM-1601A")) == 0) {
             if (modelname) {
                 aim_strlcpy(modelname, model_name, modelname_len-1);
