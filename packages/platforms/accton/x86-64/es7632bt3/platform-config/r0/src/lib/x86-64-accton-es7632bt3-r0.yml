@@ -1,0 +1,31 @@
+---
+
+######################################################################
+#
+# platform-config for IXR7220-D3L
+#
+######################################################################
+
+x86-64-accton-es7632bt3-r0:
+
+  grub:
+
+    serial: >-
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-4-19
+
+    args: >-
+      console=ttyS0,115200n8
+      intel_iommu=pt
+
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
