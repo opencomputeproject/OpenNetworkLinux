@@ -621,6 +621,10 @@ class OnlPlatformPortConfig_10x400_18x100_2x10(object):
     PORT_COUNT=30
     PORT_CONFIG="10x400 + 18x100 + 2x10"
 
+class OnlPlatformPortConfig_2x100_2x400_24x25(object):
+    PORT_COUNT=28
+    PORT_CONFIG="2x100 + 2x400 + 24x25"
+    
 class OnlPlatformPortConfig_2x100_8x25_16x10_4x1(object):
     PORT_COUNT=30
     PORT_CONFIG="2x100 + 8x25 + 16x10 + 4x1"
@@ -628,4 +632,3 @@ class OnlPlatformPortConfig_2x100_8x25_16x10_4x1(object):
 class OnlPlatformPortConfig_48x1_4x25_2x100(object):
     PORT_COUNT=54
     PORT_CONFIG="48x1 + 4x25 + 2x100"
-
