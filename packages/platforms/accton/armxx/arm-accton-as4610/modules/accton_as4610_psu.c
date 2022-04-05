@@ -34,6 +34,10 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
+#define MAX_MODEL_NAME 11
+#define MAX_SERIAL_NUMBER 18
+
+static ssize_t show_serial(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_model_name(struct device *dev, struct device_attribute *da, char *buf);
 static int as4610_psu_read_data(struct i2c_client *client, u8 command, u8 *data,int data_len);
@@ -43,6 +47,13 @@ extern int as4610_54_cpld_read(unsigned short cpld_addr, u8 reg);
  */
 static const unsigned short normal_i2c[] = { 0x50, 0x53, I2C_CLIENT_END };
 
+enum psu_type {
+	PSU_TYPE_YM1921A,
+	PSU_TYPE_YM1151D,
+	PSU_TYPE_YM1601A,
+	PSU_TYPE_DPS_920ABB,
+};
+
 /* Each client has this additional data
  */
 struct as4610_psu_data {
@@ -50,9 +61,11 @@ struct as4610_psu_data {
 	struct mutex		update_lock;
 	char				valid;			 /* !=0 if registers are valid */
 	unsigned long		last_updated;	 /* In jiffies */
+	enum psu_type type;
 	u8	index;			 /* PSU index */
 	u8	status;			 /* Status(present/power_good) register read from CPLD */
-	char model_name[9]; /* Model name, read from eeprom */
+	char model_name[MAX_MODEL_NAME+1]; /* Model name, read from eeprom */
+	char serial[MAX_SERIAL_NUMBER+1]; /* Serial number, read from eeprom */
 };
 
 static struct as4610_psu_data *as4610_psu_update_device(struct device *dev);
@@ -60,7 +73,8 @@ static struct as4610_psu_data *as4610_psu_update_device(struct device *dev);
 enum as4610_psu_sysfs_attributes {
 	PSU_PRESENT,
 	PSU_MODEL_NAME,
-	PSU_POWER_GOOD
+	PSU_POWER_GOOD,
+	PSU_SERIAL_NUMBER
 };
 
 /* sysfs attributes for hwmon
@@ -68,11 +82,13 @@ enum as4610_psu_sysfs_attributes {
 static SENSOR_DEVICE_ATTR(psu_present,	  S_IRUGO, show_status,	   NULL, PSU_PRESENT);
 static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_model_name,NULL, PSU_MODEL_NAME);
 static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,	   NULL, PSU_POWER_GOOD);
+static SENSOR_DEVICE_ATTR(psu_serial_number, S_IRUGO, show_serial,NULL, PSU_SERIAL_NUMBER);
 
 static struct attribute *as4610_psu_attributes[] = {
 	&sensor_dev_attr_psu_present.dev_attr.attr,
 	&sensor_dev_attr_psu_model_name.dev_attr.attr,
 	&sensor_dev_attr_psu_power_good.dev_attr.attr,
+	&sensor_dev_attr_psu_serial_number.dev_attr.attr,
 	NULL
 };
 
@@ -99,6 +115,14 @@ static ssize_t show_model_name(struct device *dev, struct device_attribute *da,
 	struct as4610_psu_data *data = as4610_psu_update_device(dev);
 
 	return sprintf(buf, "%s\n", data->model_name);
+}
+
+static ssize_t show_serial(struct device *dev, struct device_attribute *da,
+			 char *buf)
+{
+	struct as4610_psu_data *data = as4610_psu_update_device(dev);
+
+	return sprintf(buf, "%s\n", data->serial);
 }
 
 static const struct attribute_group as4610_psu_group = {
@@ -211,6 +235,91 @@ static int as4610_psu_read_data(struct i2c_client *client, u8 command, u8 *data,
 	return status;
 }
 
+struct model_name_info {
+    enum psu_type type;
+    u8 offset;
+    u8 length;
+    char* model_name;
+};
+
+struct model_name_info models[] = {
+	{ PSU_TYPE_YM1921A, 0x20, 8,  "YM-1921A" },
+	{ PSU_TYPE_YM1151D, 0x20, 8,  "YM-1151D" },
+	{ PSU_TYPE_YM1601A, 0x20, 8,  "YM-1601A" },
+	{ PSU_TYPE_DPS_920ABB, 0x18, 11, "DPS-920AB B" },
+};
+
+static int as4610_psu_model_name_get(struct device *dev)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as4610_psu_data *data = i2c_get_clientdata(client);
+    int i, status;
+
+    for (i = 0; i < ARRAY_SIZE(models); i++) {
+        memset(data->model_name, 0, sizeof(data->model_name));
+
+        status = as4610_psu_read_data(client, models[i].offset,
+                                      data->model_name, models[i].length);
+        if (status < 0) {
+            data->model_name[0] = '\0';
+            dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x%x)\n",
+                                  client->addr, models[i].offset);
+            return status;
+        }
+        else {
+            data->model_name[models[i].length] = '\0';
+        }
+
+        /* Determine if the model name is known, if not, read next index
+         */
+        if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
+            data->type = models[i].type;
+            return 0;
+        }
+        else {
+            data->model_name[0] = '\0';
+        }
+    }
+
+    return -ENODATA;
+}
+
+static int as4610_psu_serial_get(struct device *dev)
+{
+    struct i2c_client *client = to_i2c_client(dev);
+    struct as4610_psu_data *data = i2c_get_clientdata(client);
+    u8 offset, length;
+    int status;
+
+    switch (data->type) {
+    case PSU_TYPE_YM1921A:
+    case PSU_TYPE_YM1151D:
+    case PSU_TYPE_YM1601A:
+        offset = 0x2E;
+        length = 18;
+        break;
+    case PSU_TYPE_DPS_920ABB:
+        offset = 0x2E;
+        length = 14;
+        break;
+    default:
+        return -ENODATA;
+    }
+
+    status = as4610_psu_read_data(client, offset, data->serial, length);
+    if (status < 0) {
+        data->serial[0] = '\0';
+        dev_dbg(&client->dev, "unable to read serial from (0x%x) offset(0x%x)\n",
+                                client->addr, offset);
+        return status;
+    }
+    else {
+        data->serial[length] = '\0';
+    }
+
+    return 0;
+}
+
 static struct as4610_psu_data *as4610_psu_update_device(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -221,7 +330,7 @@ static struct as4610_psu_data *as4610_psu_update_device(struct device *dev)
 	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
 		|| !data->valid) {
 		int status;
-		int present = 0;
+		int powergood = 0;
 
 		data->valid	 = 0;
 		data->status = 0;
@@ -240,21 +349,16 @@ static struct as4610_psu_data *as4610_psu_update_device(struct device *dev)
 
 		/* Read model name */
 		memset(data->model_name, 0, sizeof(data->model_name));
-		present = (data->status >> (data->index*2) & 0x1);
+		memset(data->serial, 0, sizeof(data->serial));
+		powergood = (data->status >> (data->index*2 + 1) & 0x1);
 
-		if (present) {
-			int len = ARRAY_SIZE(data->model_name)-1;
-
-			status = as4610_psu_read_data(client, 0x20, data->model_name,
-											   ARRAY_SIZE(data->model_name)-1);
-
-			if (status < 0) {
-				data->model_name[0] = '\0';
-				dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+		if (powergood) {
+			if (as4610_psu_model_name_get(dev) < 0) {
 				goto exit;
 			}
-			else {
-				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
+
+			if (as4610_psu_serial_get(dev) < 0) {
+				goto exit;
 			}
 		}
 
@@ -284,4 +388,3 @@ module_exit(as4610_psu_exit);
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as4610_psu driver");
 MODULE_LICENSE("GPL");
-
