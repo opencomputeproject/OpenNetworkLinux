@@ -49,7 +49,7 @@ int get_psu_serial_number(int id, char *serial, int serial_len)
 	char *node = NULL;
     char *sn = NULL;
 
-    if (!sn) {
+    if (!serial) {
         return ONLP_STATUS_E_INTERNAL;
     }
     
@@ -90,6 +90,9 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     
     if (strncmp(mn, "FSH082-610G", PSU_MODEL_NAME_LEN) == 0) {
         ptype = PSU_TYPE_AC_F2B;
+    }
+    else if (strncmp(mn, "FSJ033-610G", PSU_MODEL_NAME_LEN) == 0) {
+        ptype = PSU_TYPE_DC_48V_F2B;
     }
 
     AIM_FREE_IF_PTR(mn);
