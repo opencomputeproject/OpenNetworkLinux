@@ -210,5 +210,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
 
+    get_psu_model(index, info->model, AIM_ARRAYSIZE(info->model));
     return ret;
 }

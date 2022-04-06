@@ -308,21 +308,24 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     case PSU_V_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
-            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)) {
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->v_in;
         }
         break;
     case PSU_I_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
-            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)) {
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->i_in;
         }
         break;
     case PSU_P_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
-            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)) {
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->p_in;
         }
         break;
@@ -499,6 +502,9 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
 
     ptr = data->mfr_model + 1; /* The first byte is the count byte of string. */
     if (data->chip == YM2401) {
+        return show_vout_by_mode(dev, da, buf);
+    }
+    else if (data->chip == YM1921 && data->vout_mode != 0xff) {
         return show_vout_by_mode(dev, da, buf);
     }
     else if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||

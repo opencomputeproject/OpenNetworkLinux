@@ -135,13 +135,21 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     if (string && len) {
         strncpy(info->serial, string, len);
     }
+
     if (string) {
         aim_free(string);
+        string = NULL;
     }
     bus = pmbus_cfg[zid][0];
     offset = pmbus_cfg[zid][1];
 
     /* Read voltage, current and power */
+    val = 0;
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_v_in", bus, offset) == 0 && val) {
+        info->mvin = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+    }
+
     val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_v_out", bus, offset) == 0 && val) {
         info->mvout = val;
@@ -149,9 +157,21 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     val = 0;
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_i_in", bus, offset) == 0 && val) {
+        info->miin = val;
+        info->caps |= ONLP_PSU_CAPS_IIN;
+    }
+
+    val = 0;
     if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_i_out", bus, offset) == 0 && val) {
         info->miout = val;
         info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    val = 0;
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_p_in", bus, offset) == 0 && val) {
+        info->mpin = val;
+        info->caps |= ONLP_PSU_CAPS_PIN;
     }
 
     val = 0;
@@ -167,8 +187,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         strncpy(info->model, string, len);
         info->caps |= get_DCorAC_cap (info->model);
     }
+
     if (string) {
         aim_free(string);
+        string = NULL;
     }
 
     /* Set the associated oid_table */
