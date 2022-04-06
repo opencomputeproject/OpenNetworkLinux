@@ -77,7 +77,6 @@ psu_acbel_info_get(onlp_psu_info_t* info)
     
     /* Set capability
      */
-    info->caps = ONLP_PSU_CAPS_AC;
     get_psu_serial_number(index, info->serial, sizeof(info->serial));
     
 	if (info->status & ONLP_PSU_STATUS_FAILED) {
@@ -180,6 +179,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
+            info->caps = ONLP_PSU_CAPS_AC;
+            ret = psu_acbel_info_get(info);
+            break;
+        case PSU_TYPE_DC_48V_F2B:
+            info->caps = ONLP_PSU_CAPS_DC48;
             ret = psu_acbel_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/

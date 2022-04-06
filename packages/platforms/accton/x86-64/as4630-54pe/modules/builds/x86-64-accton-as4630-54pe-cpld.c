@@ -389,7 +389,6 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 	if (status) {
 		return status;
 	}
-    reg  = 0x9;
     switch (attr->index)
     {
          case MODULE_TXDISABLE_49 ... MODULE_TXDISABLE_50:

@@ -233,15 +233,17 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
     {
         case ONLP_SFP_CONTROL_TX_DISABLE:
         {
-            if(port>=48 && port<=51) {
-                if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
-                    AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
-                    return ONLP_STATUS_E_INTERNAL;
-                }
-                return  ONLP_STATUS_OK;
-            }
-            return ONLP_STATUS_E_UNSUPPORTED;
-               
+            case ONLP_SFP_CONTROL_TX_DISABLE:
+            {
+                if(port>=48 && port<=51) {
+                    if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
+                        AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                        return ONLP_STATUS_E_INTERNAL;
+                     }
+                     return  ONLP_STATUS_OK;
+                 }
+                 return ONLP_STATUS_E_UNSUPPORTED;               
+            }               
         }
         case ONLP_SFP_CONTROL_RESET:
         {
