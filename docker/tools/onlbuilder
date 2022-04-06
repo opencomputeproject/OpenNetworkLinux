@@ -22,7 +22,7 @@ g_builders = {
    'builders' : {
       7  : ('wheezy', 'opennetworklinux/builder7:1.2'),
       8  : ('jessie',  'opennetworklinux/builder8:1.11'),
-      9  : ('stretch', 'opennetworklinux/builder9:1.6' ),
+      9  : ('stretch', 'dentproject/builder9:1.8' ),
       10 : ('buster',  'opennetworklinux/builder10:1.2'),
       },
 }
