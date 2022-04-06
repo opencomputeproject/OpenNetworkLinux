@@ -209,7 +209,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
     if (string && len) {
         aim_strlcpy(info->model, string, len+1);
+    }
+
+    if (string) {
         aim_free(string);
+        string = NULL;
     }
     info->caps |= get_DCorAC_cap(info->model);
 
@@ -217,7 +221,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
         aim_strlcpy(info->serial, string, len+1);
+    }
+
+    if (string) {
         aim_free(string);
+        string = NULL;
     }
 
     return ret;

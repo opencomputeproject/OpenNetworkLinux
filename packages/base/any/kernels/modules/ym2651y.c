@@ -72,7 +72,7 @@ struct ym2651y_data {
     u16  i_out;       /* Register value */
     u16  p_out;       /* Register value */
     u8   vout_mode;     /* Register value */
-    u16  temp;         /* Register value */
+    u16  temp[3];         /* Register value */
     u16  fan_speed;   /* Register value */
     u16  fan_duty_cycle[2];  /* Register value */
     u8   fan_dir[5];     /* Register value */
@@ -124,6 +124,8 @@ enum ym2651y_sysfs_attributes {
     PSU_I_OUT,
     PSU_P_OUT,
     PSU_TEMP1_INPUT,
+    PSU_TEMP2_INPUT,
+    PSU_TEMP3_INPUT,
     PSU_FAN1_SPEED,
     PSU_FAN1_DUTY_CYCLE,
     PSU_PMBUS_REVISION,
@@ -156,6 +158,8 @@ static SENSOR_DEVICE_ATTR(psu_v_out,        S_IRUGO, show_vout,     NULL, PSU_V_
 static SENSOR_DEVICE_ATTR(psu_i_out,        S_IRUGO, show_linear,   NULL, PSU_I_OUT);
 static SENSOR_DEVICE_ATTR(psu_p_out,        S_IRUGO, show_linear,   NULL, PSU_P_OUT);
 static SENSOR_DEVICE_ATTR(psu_temp1_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP1_INPUT);
+static SENSOR_DEVICE_ATTR(psu_temp2_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP2_INPUT);
+static SENSOR_DEVICE_ATTR(psu_temp3_input,  S_IRUGO, show_linear,   NULL, PSU_TEMP3_INPUT);
 static SENSOR_DEVICE_ATTR(psu_fan1_speed_rpm, S_IRUGO, show_linear, NULL, PSU_FAN1_SPEED);
 static SENSOR_DEVICE_ATTR(psu_fan1_duty_cycle_percentage, S_IWUSR | S_IRUGO, show_linear, set_fan_duty_cycle, PSU_FAN1_DUTY_CYCLE);
 static SENSOR_DEVICE_ATTR(psu_fan_dir,       S_IRUGO, show_ascii,    NULL, PSU_FAN_DIRECTION);
@@ -187,6 +191,8 @@ static struct attribute *ym2651y_attributes[] = {
     &sensor_dev_attr_psu_i_out.dev_attr.attr,
     &sensor_dev_attr_psu_p_out.dev_attr.attr,
     &sensor_dev_attr_psu_temp1_input.dev_attr.attr,
+    &sensor_dev_attr_psu_temp2_input.dev_attr.attr,
+    &sensor_dev_attr_psu_temp3_input.dev_attr.attr,
     &sensor_dev_attr_psu_fan1_speed_rpm.dev_attr.attr,
     &sensor_dev_attr_psu_fan1_duty_cycle_percentage.dev_attr.attr,
     &sensor_dev_attr_psu_fan_dir.dev_attr.attr,
@@ -301,19 +307,22 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     switch (attr->index) {
     case PSU_V_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
-            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
+            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->v_in;
         }
         break;
     case PSU_I_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
-            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
+            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->i_in;
         }
         break;
     case PSU_P_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
-            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
+            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->p_in;
         }
         break;
@@ -327,7 +336,9 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
         value = data->p_out;
         break;
     case PSU_TEMP1_INPUT:
-        value = data->temp;
+    case PSU_TEMP2_INPUT:
+    case PSU_TEMP3_INPUT:
+        value = data->temp[attr->index-PSU_TEMP1_INPUT];
         break;
     case PSU_FAN1_SPEED:
         value = data->fan_speed;
@@ -488,6 +499,9 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
 
     ptr = data->mfr_model + 1; /* The first byte is the count byte of string. */
     if (data->chip == YM2401) {
+        return show_vout_by_mode(dev, da, buf);
+    }
+    else if (data->chip == YM1921 && data->vout_mode != 0xff) {
         return show_vout_by_mode(dev, da, buf);
     }
     else if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
@@ -701,7 +715,9 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                                              {0x8c, &data->i_out},
                                              {0x97, &data->p_in},
                                              {0x96, &data->p_out},
-                                             {0x8d, &data->temp},
+                                             {0x8d, &(data->temp[0])},
+                                             {0x8e, &(data->temp[1])},
+                                             {0x8f, &(data->temp[2])},
                                              {0x3b, &(data->fan_duty_cycle[0])},
                                              {0x3c, &(data->fan_duty_cycle[1])},
                                              {0x90, &data->fan_speed},
@@ -751,7 +767,12 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
             command = 0xC3;
             status = ym2651y_read_block(client, command, data->fan_dir,
                                          ARRAY_SIZE(data->fan_dir)-1);
-            data->fan_dir[ARRAY_SIZE(data->fan_dir)-1] = '\0';
+            if (data->fan_dir[0] < ARRAY_SIZE(data->fan_dir)-2) {
+                data->fan_dir[data->fan_dir[0]+1] = '\0';
+            }
+            else {
+                data->fan_dir[ARRAY_SIZE(data->fan_dir)-1] = '\0';
+            }
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
@@ -762,7 +783,12 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
             command = 0x99;
             status = ym2651y_read_block(client, command, data->mfr_id,
                                             ARRAY_SIZE(data->mfr_id)-1);
-            data->mfr_id[ARRAY_SIZE(data->mfr_id)-1] = '\0';
+            if (data->mfr_id[0] < ARRAY_SIZE(data->mfr_id)-2) {
+                data->mfr_id[data->mfr_id[0]+1] = '\0';
+            }
+            else {
+                data->mfr_id[ARRAY_SIZE(data->mfr_id)-1] = '\0';
+            }
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
@@ -811,7 +837,12 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
             command = 0x9b;
             status = ym2651y_read_block(client, command, data->mfr_revsion,
                                             ARRAY_SIZE(data->mfr_revsion)-1);
-            data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
+            if (data->mfr_revsion[0] < ARRAY_SIZE(data->mfr_revsion)-2) {
+                data->mfr_revsion[data->mfr_revsion[0] + 1] = '\0';
+            }
+            else{
+                data->mfr_revsion[ARRAY_SIZE(data->mfr_revsion)-1] = '\0';
+            }
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
@@ -830,7 +861,12 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
             }
 
             status = ym2651y_read_block(client, command, data->mfr_serial, buf+1);
-            data->mfr_serial[buf+1] = '\0';
+            if (data->mfr_serial[0] < ARRAY_SIZE(data->mfr_serial)-2) {
+                data->mfr_serial[data->mfr_serial[0] + 1] = '\0';
+            }
+            else {
+                data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
+            }
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);

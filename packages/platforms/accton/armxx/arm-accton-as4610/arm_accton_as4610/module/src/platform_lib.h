@@ -59,6 +59,7 @@ typedef enum psu_type {
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
+int get_psu_serial(int id, char *data_buf, int data_len);
 
 #define DEBUG_MODE 0
 
@@ -67,6 +68,15 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 #else
     #define DEBUG_PRINT(format, ...)
 #endif
+
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
 
 enum onlp_fan_duty_cycle_percentage
 {
