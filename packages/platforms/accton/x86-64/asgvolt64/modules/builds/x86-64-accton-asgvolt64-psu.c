@@ -37,6 +37,8 @@
 #define IPMI_PSU_SERIAL_NUM_CMD 0x11
 #define IPMI_TIMEOUT		(20 * HZ)
 
+#define VOUT_MODE_3YPOWER 0x17
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_linear(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t show_psu(struct device *dev, struct device_attribute *attr, char *buf);
@@ -70,6 +72,8 @@ enum psu_data_index {
     PSU_FAN1,
     PSU_POUT0,
     PSU_POUT1,
+    PSU_STATUS_WORD0,
+    PSU_STATUS_WORD1,
     PSU_STATUS_COUNT,
     PSU_MODEL = 0,
     PSU_SERIAL = 0
@@ -93,9 +97,9 @@ struct ipmi_data {
 };
 
 struct ipmi_psu_resp_data {
-    unsigned char   status[19];
-    char   serial[19];
-    char   model[9];
+    unsigned char   status[21];
+    char   serial[32];
+    char   model[32];
 };
 
 struct asgvolt64_psu_data {
@@ -121,9 +125,11 @@ static struct platform_driver asgvolt64_psu_driver = {
 
 #define PSU_PRESENT_ATTR_ID(index)		PSU##index##_PRESENT
 #define PSU_POWERGOOD_ATTR_ID(index)  	PSU##index##_POWER_GOOD
+#define PSU_VIN_ATTR_ID(index)          PSU##index##_VIN
 #define PSU_VOUT_ATTR_ID(index)         PSU##index##_VOUT
 #define PSU_IOUT_ATTR_ID(index)         PSU##index##_IOUT
 #define PSU_POUT_ATTR_ID(index)         PSU##index##_POUT
+#define PSU_STATUS_WORD_ATTR_ID(index)  PSU##index##_STATUS_WORD
 #define PSU_MODEL_ATTR_ID(index)        PSU##index##_MODEL
 #define PSU_SERIAL_ATTR_ID(index)       PSU##index##_SERIAL
 #define PSU_TEMP_INPUT_ATTR_ID(index)   PSU##index##_TEMP_INPUT
@@ -132,9 +138,11 @@ static struct platform_driver asgvolt64_psu_driver = {
 #define PSU_ATTR(psu_id) \
     PSU_PRESENT_ATTR_ID(psu_id),    \
     PSU_POWERGOOD_ATTR_ID(psu_id),  \
+    PSU_VIN_ATTR_ID(psu_id),        \
     PSU_VOUT_ATTR_ID(psu_id),       \
     PSU_IOUT_ATTR_ID(psu_id),       \
     PSU_POUT_ATTR_ID(psu_id),       \
+    PSU_STATUS_WORD_ATTR_ID(psu_id),\
     PSU_MODEL_ATTR_ID(psu_id),      \
     PSU_SERIAL_ATTR_ID(psu_id),     \
     PSU_TEMP_INPUT_ATTR_ID(psu_id), \
@@ -152,9 +160,11 @@ enum asgvolt64_psu_sysfs_attrs {
 #define DECLARE_PSU_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(psu##index##_present,    S_IRUGO, show_psu, NULL, PSU##index##_PRESENT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_power_good, S_IRUGO, show_psu, NULL, PSU##index##_POWER_GOOD); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vin, S_IRUGO, show_linear,  NULL, PSU##index##_VIN); \
 	static SENSOR_DEVICE_ATTR(psu##index##_vout, S_IRUGO, show_linear,  NULL, PSU##index##_VOUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_iout, S_IRUGO, show_linear,  NULL, PSU##index##_IOUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_pout, S_IRUGO, show_linear,  NULL, PSU##index##_POUT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_status_word, S_IRUGO, show_psu,  NULL, PSU##index##_STATUS_WORD); \
 	static SENSOR_DEVICE_ATTR(psu##index##_model, S_IRUGO, show_string,  NULL, PSU##index##_MODEL); \
 	static SENSOR_DEVICE_ATTR(psu##index##_serial, S_IRUGO, show_string,  NULL, PSU##index##_SERIAL);\
 	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input, S_IRUGO, show_linear,  NULL, PSU##index##_TEMP_INPUT); \
@@ -162,9 +172,11 @@ enum asgvolt64_psu_sysfs_attrs {
 #define DECLARE_PSU_ATTR(index) \
     &sensor_dev_attr_psu##index##_present.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_power_good.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_vin.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_vout.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_iout.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_pout.dev_attr.attr, \
+    &sensor_dev_attr_psu##index##_status_word.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_model.dev_attr.attr, \
     &sensor_dev_attr_psu##index##_serial.dev_attr.attr,\
     &sensor_dev_attr_psu##index##_temp1_input.dev_attr.attr, \
@@ -353,7 +365,7 @@ exit:
 
 #define VALIDATE_PRESENT_RETURN(id) \
 { \
-    if (data->ipmi_resp[id].status[PSU_PRESENT] != 0) { \
+    if (data->ipmi_resp[id].status[PSU_PRESENT] == 0) { \
         mutex_unlock(&data->update_lock);   \
         return -ENXIO; \
     } \
@@ -375,6 +387,8 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
     int error = 0;
 	int exponent = 0, mantissa = 0;
 	int multiplier = 1000;
+	int vout_mode = 0;
+	char *ptr = NULL;
 
     mutex_lock(&data->update_lock);
 
@@ -385,11 +399,21 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
     }
 
 	switch (attr->index) {
+		case PSU1_VIN:
+		case PSU2_VIN:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((u16)data->ipmi_resp[pid].status[PSU_VIN0] |
+                     (u16)data->ipmi_resp[pid].status[PSU_VIN1] << 8);
+			break;
 		case PSU1_VOUT:
 		case PSU2_VOUT:
             VALIDATE_PRESENT_RETURN(pid);
 			value = ((u16)data->ipmi_resp[pid].status[PSU_VOUT0] |
                      (u16)data->ipmi_resp[pid].status[PSU_VOUT1] << 8);
+			ptr = data->ipmi_resp[pid].model;
+			if (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0) {
+					vout_mode = VOUT_MODE_3YPOWER;
+			}
 			break;
 		case PSU1_IOUT:
 		case PSU2_IOUT:
@@ -416,8 +440,13 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da, char
 
     mutex_unlock(&data->update_lock);
 
-	exponent = two_complement_to_int(value >> 11, 5, 0x1f);
-	mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+	if(vout_mode) {
+		exponent = two_complement_to_int(vout_mode & 0x1f, 5, 0x1f);
+		mantissa = value;
+	} else {
+		exponent = two_complement_to_int(value >> 11, 5, 0x1f);
+		mantissa = two_complement_to_int(value & 0x7ff, 11, 0x7ff);
+	}
 
 	return (exponent >= 0) ? sprintf(buf, "%d\n", (mantissa << exponent) * multiplier) :
 							 sprintf(buf, "%d\n", (mantissa * multiplier) / (1 << -exponent));
@@ -445,13 +474,19 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da, char *b
 	switch (attr->index) {
 		case PSU1_PRESENT:
 		case PSU2_PRESENT:
-            value = !(data->ipmi_resp[pid].status[PSU_PRESENT]);
+            value = data->ipmi_resp[pid].status[PSU_PRESENT];
 			break;
 		case PSU1_POWER_GOOD:
 		case PSU2_POWER_GOOD:
             VALIDATE_PRESENT_RETURN(pid);
 			value = data->ipmi_resp[pid].status[PSU_POWER_GOOD_CPLD];
 			break;
+		case PSU1_STATUS_WORD:
+		case PSU2_STATUS_WORD:
+            VALIDATE_PRESENT_RETURN(pid);
+			value = ((u16)data->ipmi_resp[pid].status[PSU_STATUS_WORD0] |
+                     (u16)data->ipmi_resp[pid].status[PSU_STATUS_WORD1] << 8);
+			break; 
 		case PSU1_FAN_INPUT:
 		case PSU2_FAN_INPUT:
             VALIDATE_PRESENT_RETURN(pid);
@@ -471,16 +506,12 @@ exit:
     return error;
 }
 
-#define MODEL_NAME_LEN				8
-#define SERIAL_NUM_LEN				18
-
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf)
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
     char *str = NULL;
     int error = 0;
-    int len=0;
     mutex_lock(&data->update_lock);
 
     data = asgvolt64_psu_update_device(da);
@@ -494,13 +525,11 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
 		case PSU2_MODEL:
             VALIDATE_PRESENT_RETURN(pid);
             str = data->ipmi_resp[pid].model;
-            len=MODEL_NAME_LEN;
 			break;
 		case PSU1_SERIAL:
 		case PSU2_SERIAL:
             VALIDATE_PRESENT_RETURN(pid);
             str = data->ipmi_resp[pid].serial;
-            len=SERIAL_NUM_LEN;
 			break;
 		default:
 			error = -EINVAL;
@@ -508,7 +537,7 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da, char
     }
 
     mutex_unlock(&data->update_lock);
-	return snprintf(buf,len, "%s\n", str);
+	return sprintf(buf, "%s\n", str);
 
 exit:
     mutex_unlock(&data->update_lock);

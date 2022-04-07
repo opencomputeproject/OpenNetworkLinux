@@ -36,8 +36,10 @@
 #define PSU1_ID 1
 #define PSU2_ID 2
 
+#define PSU_AC_EEPROM_PREFIX "/sys/bus/i2c/devices/36-0050/"
 #define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/36-005a/"
 #define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/36-005b/"
+#define PSU_AC_EEPROM_NODE(node) PSU_AC_EEPROM_PREFIX#node
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
 
