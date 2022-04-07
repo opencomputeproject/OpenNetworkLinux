@@ -29,6 +29,25 @@
 
 #define PSU_STATUS_PRESENT     1
 #define PSU_STATUS_POWER_GOOD  1
+#define PSU_PMBUS_STATUS_GOOD  0
+
+/* PMBUS_STATUS_WORD */
+#define STATUS_WORD_NONE_OF_THE_ABOVE (1 <<  0)
+#define STATUS_WORD_CML               (1 <<  1)
+#define STATUS_WORD_TEMPERATURE       (1 <<  2)
+#define STATUS_WORD_VIN_UV_FAULT      (1 <<  3)
+#define STATUS_WORD_IOUT_OC_FAULT     (1 <<  4)
+#define STATUS_WORD_VOUT_OV_FAULT     (1 <<  5)
+#define STATUS_WORD_OFF               (1 <<  6)
+#define STATUS_WORD_BUSY              (1 <<  7)
+#define STATUS_WORD_UNKNOWN           (1 <<  8)
+#define STATUS_WORD_OTHER             (1 <<  9)
+#define STATUS_WORD_FANS              (1 << 10)
+#define STATUS_WORD_PG_STATUS         (1 << 11)
+#define STATUS_WORD_MFRSPECIFIC       (1 << 12)
+#define STATUS_WORD_INPUT             (1 << 13)
+#define STATUS_WORD_IOUT_POUT         (1 << 14)
+#define STATUS_WORD_VOUT              (1 << 15)
 
 #define VALIDATE(_id)                           \
     do {                                        \
@@ -58,6 +77,49 @@ static onlp_psu_info_t pinfo[] =
 };
 
 int
+is_pmbus_status_word_fail(int status)
+{
+    int i = 0;
+    if (status & STATUS_WORD_FANS) {
+        i |= STATUS_WORD_FANS;
+    }
+    if (status & STATUS_WORD_IOUT_POUT) {
+        i |= STATUS_WORD_IOUT_POUT;
+    }
+    if (status & STATUS_WORD_VOUT) {
+        i |= STATUS_WORD_VOUT;
+    }
+    if (status & STATUS_WORD_TEMPERATURE) {
+        i |= STATUS_WORD_TEMPERATURE;
+    }
+    return i;
+}
+
+static int
+get_DCorAC_cap(char *model)
+{
+    const char *ac_models[] = {"FSF019", NULL };
+    const char *dc_models[] = {"YM-2851J", NULL };
+    int i;
+
+    i = 0;
+    while(ac_models[i]) {
+        if (!strncasecmp(model, ac_models[i], strlen(ac_models[i]))) {
+            return ONLP_PSU_CAPS_AC;
+        }
+        i++;
+    }
+    i = 0;
+    while(dc_models[i]) {
+        if (!strncasecmp(model, dc_models[i], strlen(dc_models[i]))) {
+            return ONLP_PSU_CAPS_DC48;
+        }
+        i++;
+    }
+    return 0;
+}
+
+int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
     int val   = 0;
@@ -82,7 +144,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     info->status |= ONLP_PSU_STATUS_PRESENT;
 
-
     /* Get power good status */
     ret = onlp_file_read_int(&val, "%s""psu%d_power_good", PSU_SYSFS_PATH, pid);
     if (ret < 0) {
@@ -91,12 +152,22 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
+        info->status |=  ONLP_PSU_STATUS_UNPLUGGED;
+        return ONLP_STATUS_OK;
     }
 
-	if (info->status & ONLP_PSU_STATUS_FAILED) {
-	    return ONLP_STATUS_OK;
-	}
+    /* Get the pmbus status word */
+    ret = onlp_file_read_int(&val, "%s""psu%d_status_word", PSU_SYSFS_PATH, pid);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from (%s""psu%d_status_word)\r\n", PSU_SYSFS_PATH, pid);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (is_pmbus_status_word_fail(val) != PSU_PMBUS_STATUS_GOOD){
+        info->status |=  ONLP_PSU_STATUS_FAILED;
+        return ONLP_STATUS_OK;
+    }
+
     /* Read voltage, current and power */
     val = 0;
     if (onlp_file_read_int(&val, "%s""psu%d_vin", PSU_SYSFS_PATH, pid) == 0 && val) {
@@ -137,15 +208,24 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     char *string = NULL;
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->model, string, len);
-        aim_free(string);
+        aim_strlcpy(info->model, string, len+1);
     }
+
+    if (string) {
+        aim_free(string);
+        string = NULL;
+    }
+    info->caps |= get_DCorAC_cap(info->model);
 
     /* Read serial */
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
-        aim_strlcpy(info->serial, string, len);
+        aim_strlcpy(info->serial, string, len+1);
+    }
+
+    if (string) {
         aim_free(string);
+        string = NULL;
     }
 
     return ret;

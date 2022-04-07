@@ -23,6 +23,7 @@
  *
  *
  ***********************************************************/
+#include <onlplib/file.h>
 #include <onlp/platformi/psui.h>
 #include <onlplib/mmap.h>
 #include <stdio.h>
@@ -88,6 +89,45 @@ static onlp_psu_info_t pinfo[] =
     }
 };
 
+static int
+psu_pmbus_info_get(int id, char *node, int *value)
+{
+    int  ret = 0;
+    *value = 0;
+    char *path[] = { PSU1_AC_PMBUS_PREFIX, PSU2_AC_PMBUS_PREFIX };
+
+    ret = onlp_file_read_int(value, "%s%s", path[id-1], node);
+    if (ret < 0) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ret;
+}
+
+static int
+psu_caps_get(int pid, onlp_psu_info_t* info)
+{
+    int val   = 0;
+
+    /* Read voltage, current and power */
+    if (psu_pmbus_info_get(pid, "psu_v_out", &val) == 0) {
+        info->mvout = val;
+        info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    if (psu_pmbus_info_get(pid, "psu_i_out", &val) == 0) {
+        info->miout = val;
+        info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    if (psu_pmbus_info_get(pid, "psu_p_out", &val) == 0) {
+        info->mpout = val;
+        info->caps |= ONLP_PSU_CAPS_POUT;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {
@@ -125,11 +165,13 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Get PSU type
      */
     psu_type = get_psu_type(index, info->model, sizeof(info->model));
+    get_psu_serial(index, info->serial, sizeof(info->serial));
 
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
             info->caps = ONLP_PSU_CAPS_AC;
+            psu_caps_get(index, info);
             ret = ONLP_STATUS_OK;
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
