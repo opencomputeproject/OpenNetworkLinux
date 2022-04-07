@@ -147,20 +147,7 @@ psu_type_t get_psu_type(int id, char *data_buf, int data_len)
         strncmp(data_buf, "YM-1151F", strlen("YM-1151F")) == 0 ||
         strncmp(data_buf, "DPS-920AB B", strlen("DPS-920AB B")) == 0) {
 
-<<<<<<< HEAD
         return PSU_TYPE_AC_F2B;
-=======
-    if (deviceNodeReadString(node, model_name, sizeof(model_name), 0) == 0) {
-        if (strncmp(model_name, "YM-1921A", strlen("YM-1921A")) == 0 ||
-            strncmp(model_name, "YM-1151D", strlen("YM-1151D")) == 0 ||
-            strncmp(model_name, "YM-1151F", strlen("YM-1151F")) == 0 ||
-            strncmp(model_name, "YM-1601A", strlen("YM-1601A")) == 0) {
-            if (modelname) {
-                aim_strlcpy(modelname, model_name, modelname_len-1);
-            }
-            return PSU_TYPE_AC_F2B;
-        }
->>>>>>> 5b0f6e97976d5a4de1a7dd9e6f040bce47d1eba6
     }
 
     return PSU_TYPE_UNKNOWN;
