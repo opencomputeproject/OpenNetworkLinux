@@ -308,6 +308,7 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     case PSU_V_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->v_in;
         }
@@ -315,6 +316,7 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     case PSU_I_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->i_in;
         }
@@ -322,6 +324,7 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     case PSU_P_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->p_in;
         }
