@@ -144,6 +144,7 @@ psu_type_t get_psu_type(int id, char *data_buf, int data_len)
     if (strncmp(data_buf, "YM-1921A", strlen("YM-1921A")) == 0 ||
         strncmp(data_buf, "YM-1151D", strlen("YM-1151D")) == 0 ||
         strncmp(data_buf, "YM-1601A", strlen("YM-1601A")) == 0 ||
+        strncmp(data_buf, "YM-1151F", strlen("YM-1151F")) == 0 ||
         strncmp(data_buf, "DPS-920AB B", strlen("DPS-920AB B")) == 0) {
 
         return PSU_TYPE_AC_F2B;
