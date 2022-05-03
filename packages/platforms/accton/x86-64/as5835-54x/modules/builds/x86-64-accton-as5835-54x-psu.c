@@ -44,6 +44,9 @@
 #define SERIAL_NUM_LEN				18
 #define SERIAL_NUM_REG_OFFSET		0x35
 
+
+#define FAN_DIR_LEN				3
+
 #define IS_POWER_GOOD(id, value)	(!!(value & BIT(id*4 + 1)))
 #define IS_PRESENT(id, value)		(!(value & BIT(id*4)))
 
@@ -66,6 +69,7 @@ struct as5835_54x_psu_data {
 	u8  status;		  /* Status(present/power_good) register read from CPLD */
 	char model_name[MODEL_NAME_LEN+1];	/* Model name, read from eeprom */
 	char serial[SERIAL_NUM_LEN+1];		/* Serial number, read from eeprom*/
+	char fan_dir[FAN_DIR_LEN+1];		/* fan_dir, read from model_name to get F2B or B2F*/
 };
 
 static struct as5835_54x_psu_data *as5835_54x_psu_update_device(struct device *dev);			 
@@ -74,7 +78,8 @@ enum as5835_54x_psu_sysfs_attributes {
 	PSU_PRESENT,
 	PSU_MODEL_NAME,
 	PSU_POWER_GOOD,
-	PSU_SERIAL_NUMBER
+	PSU_SERIAL_NUMBER,
+	PSU_FAN_DIR
 };
 
 /* sysfs attributes for hwmon 
@@ -83,12 +88,14 @@ static SENSOR_DEVICE_ATTR(psu_present,	S_IRUGO, show_status,	NULL, PSU_PRESENT);
 static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_string,	NULL, PSU_MODEL_NAME);
 static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,	NULL, PSU_POWER_GOOD);
 static SENSOR_DEVICE_ATTR(psu_serial_numer, S_IRUGO, show_string,	NULL, PSU_SERIAL_NUMBER);
+static SENSOR_DEVICE_ATTR(psu_fan_dir, S_IRUGO, show_string,	NULL, PSU_FAN_DIR);
 
 static struct attribute *as5835_54x_psu_attributes[] = {
 	&sensor_dev_attr_psu_present.dev_attr.attr,
 	&sensor_dev_attr_psu_model_name.dev_attr.attr,
 	&sensor_dev_attr_psu_power_good.dev_attr.attr,
 	&sensor_dev_attr_psu_serial_numer.dev_attr.attr,
+	&sensor_dev_attr_psu_fan_dir.dev_attr.attr,
 	NULL
 };
 
@@ -138,9 +145,13 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da,
 	if (attr->index == PSU_MODEL_NAME) {
 		str = data->model_name;
 	}
-	else { /* PSU_SERIAL_NUBMER */
+	else if ( attr->index == PSU_SERIAL_NUMBER ) {
 		str = data->serial;
 	}
+	else {
+	    str = data->fan_dir;
+	}
+	   
 
     mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%s\n", str);
@@ -311,6 +322,7 @@ static struct as5835_54x_psu_data *as5835_54x_psu_update_device(struct device *d
 		
 		memset(data->model_name, 0, sizeof(data->model_name));
 		memset(data->serial, 0, sizeof(data->serial));
+		memset(data->fan_dir, 0, sizeof(data->fan_dir));
 		
 		if (IS_PRESENT(data->index, data->status)) {
 			/* Read model name */
@@ -339,6 +351,17 @@ static struct as5835_54x_psu_data *as5835_54x_psu_update_device(struct device *d
 			else {
 				data->serial[SERIAL_NUM_LEN] = '\0';
 			}
+			/*if model name =  YM-1401A. */
+			if (!strncmp(data->model_name, "YM-1401ABR", strlen("YM-1401ABR")) )
+			{
+			    strncpy(data->fan_dir, "F2B", FAN_DIR_LEN);
+			}
+			else if (!strncmp(data->model_name, "YM-1401ACR", strlen("YM-1401ACR")) )
+			{
+			    strncpy(data->fan_dir, "B2F", FAN_DIR_LEN); /*YM-1401ACR*/
+			}
+			else
+			    data->fan_dir[0]='\0';
 		}
 		
 		data->last_updated = jiffies;

@@ -86,7 +86,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (strncmp(mn, "YM-1401A", 8) == 0) {
         char *fd = NULL;
         
-        node = (id == PSU1_ID) ? PSU1_AC_PMBUS_NODE(psu_fan_dir) : PSU1_AC_PMBUS_NODE(psu_fan_dir);
+        node = (id == PSU1_ID) ? PSU1_AC_HWMON_NODE(psu_fan_dir) : PSU2_AC_HWMON_NODE(psu_fan_dir);
         ret = onlp_file_read_str(&fd, node);
 
         if (ret <= 0 || ret > PSU_FAN_DIR_LEN || fd == NULL) {
