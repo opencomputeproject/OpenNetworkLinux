@@ -72,6 +72,7 @@ MODULE_DEVICE_TABLE(i2c, as9726_32d_cpld_id);
 #define TRANSCEIVER_RXLOS_ATTR_ID(index)   	MODULE_RXLOS_##index
 #define TRANSCEIVER_TXFAULT_ATTR_ID(index)   	MODULE_TXFAULT_##index
 #define TRANSCEIVER_RESET_ATTR_ID(index)        MODULE_RESET_##index
+#define TRANSCEIVER_LPMODE_ATTR_ID(index)       MODULE_LPMODE_##index
 
 enum as9726_32d_cpld_sysfs_attributes {
 	CPLD_VERSION,
@@ -150,7 +151,39 @@ enum as9726_32d_cpld_sysfs_attributes {
 	TRANSCEIVER_RESET_ATTR_ID(29),
 	TRANSCEIVER_RESET_ATTR_ID(30),
 	TRANSCEIVER_RESET_ATTR_ID(31),
-	TRANSCEIVER_RESET_ATTR_ID(32),	
+	TRANSCEIVER_RESET_ATTR_ID(32),
+	TRANSCEIVER_LPMODE_ATTR_ID(1),
+	TRANSCEIVER_LPMODE_ATTR_ID(2),
+	TRANSCEIVER_LPMODE_ATTR_ID(3),
+	TRANSCEIVER_LPMODE_ATTR_ID(4),
+	TRANSCEIVER_LPMODE_ATTR_ID(5),
+	TRANSCEIVER_LPMODE_ATTR_ID(6),
+	TRANSCEIVER_LPMODE_ATTR_ID(7),
+	TRANSCEIVER_LPMODE_ATTR_ID(8),
+	TRANSCEIVER_LPMODE_ATTR_ID(9),
+	TRANSCEIVER_LPMODE_ATTR_ID(10),
+	TRANSCEIVER_LPMODE_ATTR_ID(11),
+	TRANSCEIVER_LPMODE_ATTR_ID(12),
+	TRANSCEIVER_LPMODE_ATTR_ID(13),
+	TRANSCEIVER_LPMODE_ATTR_ID(14),
+	TRANSCEIVER_LPMODE_ATTR_ID(15),
+	TRANSCEIVER_LPMODE_ATTR_ID(16),
+	TRANSCEIVER_LPMODE_ATTR_ID(17),
+	TRANSCEIVER_LPMODE_ATTR_ID(18),
+	TRANSCEIVER_LPMODE_ATTR_ID(19),
+	TRANSCEIVER_LPMODE_ATTR_ID(20),
+	TRANSCEIVER_LPMODE_ATTR_ID(21),
+	TRANSCEIVER_LPMODE_ATTR_ID(22),
+	TRANSCEIVER_LPMODE_ATTR_ID(23),
+	TRANSCEIVER_LPMODE_ATTR_ID(24),
+	TRANSCEIVER_LPMODE_ATTR_ID(25),
+	TRANSCEIVER_LPMODE_ATTR_ID(26),
+	TRANSCEIVER_LPMODE_ATTR_ID(27),
+	TRANSCEIVER_LPMODE_ATTR_ID(28),
+	TRANSCEIVER_LPMODE_ATTR_ID(29),
+	TRANSCEIVER_LPMODE_ATTR_ID(30),
+	TRANSCEIVER_LPMODE_ATTR_ID(31),
+	TRANSCEIVER_LPMODE_ATTR_ID(32),
 };
 
 /* sysfs attributes for hwmon 
@@ -164,6 +197,8 @@ static ssize_t show_rxlos_all(struct device *dev, struct device_attribute *da,
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t set_port_reset(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
+static ssize_t set_lp_mode(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t access(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
@@ -179,10 +214,14 @@ static int as9726_32d_cpld_write_internal(struct i2c_client *client, u8 reg,
 				show_status, NULL, MODULE_PRESENT_##index); \
 	static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR, \
 				show_status, set_port_reset, \
-				MODULE_RESET_##index);
+				MODULE_RESET_##index); \
+	static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
+				show_status, set_lp_mode, \
+				MODULE_LPMODE_##index);
 #define DECLARE_TRANSCEIVER_PRESENT_ATTR(index) \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
-	&sensor_dev_attr_module_reset_##index.dev_attr.attr
+	&sensor_dev_attr_module_reset_##index.dev_attr.attr, \
+	&sensor_dev_attr_module_lpmode_##index.dev_attr.attr
 
 #define DECLARE_SFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, \
@@ -193,7 +232,7 @@ static int as9726_32d_cpld_write_internal(struct i2c_client *client, u8 reg,
 	static SENSOR_DEVICE_ATTR(module_rx_los_##index, S_IRUGO, \
 				show_status, NULL, MODULE_RXLOS_##index);  \
 	static SENSOR_DEVICE_ATTR(module_tx_fault_##index, S_IRUGO, \
-				show_status, NULL, MODULE_RXLOS_##index); 
+				show_status, NULL, MODULE_TXFAULT_##index); 
 	
 #define DECLARE_SFP_TRANSCEIVER_ATTR(index)  \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
@@ -320,7 +359,7 @@ static ssize_t show_present_all(struct device *dev,
 	int i, status;
 	
 	struct i2c_client *client = to_i2c_client(dev);
-	struct  as9726_32d_cpld_data *data = i2c_get_clientdata(client);
+	struct as9726_32d_cpld_data *data = i2c_get_clientdata(client);
 
 	
 	if (data->type == as9726_32d_cpld1) {
@@ -426,6 +465,22 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		reg = 0x20;
 		mask = 0x2;
 		break;
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:
+		reg = 0x60;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_16:
+		reg = 0x61;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
+		break;
+	case MODULE_LPMODE_17 ... MODULE_LPMODE_24:
+		reg = 0x60;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_17);
+		break;
+	case MODULE_LPMODE_25 ... MODULE_LPMODE_32:
+		reg = 0x61;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_25);
+		break;
 	case MODULE_RXLOS_33:
 		reg = 0x26;
 		mask = 0x1;
@@ -441,7 +496,13 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	case MODULE_TXDISABLE_34:
 		reg = 0x21;
 		mask = 0x2;
-		break;	
+		break;
+	case MODULE_TXFAULT_33:
+		reg = 0x27;
+		mask = 0x1;
+	case MODULE_TXFAULT_34:
+		reg = 0x27;
+		mask = 0x2;
 	case MODULE_RESET_1 ... MODULE_RESET_8:
 		reg = 0x14;
 		mask = 0x1 << (attr->index - MODULE_RESET_1);
@@ -469,8 +530,10 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	if (attr->index >= MODULE_RESET_1 && attr->index <= MODULE_RESET_32)
 		revert = 1;
 
-	if (attr->index >= MODULE_RXLOS_33 &&
-		attr->index <= MODULE_RXLOS_34)
+	if (attr->index >= MODULE_RXLOS_33 && attr->index <= MODULE_RXLOS_34)
+		revert = 1;
+
+	if (attr->index >= MODULE_TXFAULT_33 && attr->index <= MODULE_TXFAULT_34)
 		revert = 1;
 
 	mutex_lock(&data->update_lock);
@@ -482,6 +545,66 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 
 	return sprintf(buf, "%d\n",
 			revert ? !(status & mask) : !!(status & mask));
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+static ssize_t set_lp_mode(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	struct i2c_client *client = to_i2c_client(dev);
+	struct as9726_32d_cpld_data *data = i2c_get_clientdata(client);
+
+	long value;
+	int status;
+    	u8 reg = 0, mask = 0;
+
+	status = kstrtol(buf, 10, &value);
+	if (status) {
+		return status;
+	}
+
+	switch (attr->index) {
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:
+		reg  = 0x60;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_16:
+		reg = 0x61;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
+		break;
+	case MODULE_LPMODE_17 ... MODULE_LPMODE_24:
+		reg = 0x60;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_17);
+		break;
+	case MODULE_LPMODE_25 ... MODULE_LPMODE_32:
+		reg = 0x61;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_25);
+		break;
+	default:
+		return 0;
+	}
+
+	/* Read current status */
+	mutex_lock(&data->update_lock);
+	status = as9726_32d_cpld_read_internal(client, reg);
+	if (unlikely(status < 0))
+		goto exit;
+
+	if (value)
+		status |= mask;
+	else
+		status &= ~mask;
+
+	status = as9726_32d_cpld_write_internal(client, reg, status);
+	if (unlikely(status < 0))
+		goto exit;
+    
+	mutex_unlock(&data->update_lock);
+	return count;
 
 exit:
 	mutex_unlock(&data->update_lock);

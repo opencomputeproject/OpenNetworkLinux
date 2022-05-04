@@ -1,5 +1,5 @@
 /*
- * A hwmon driver for the Accton as7726 32x fan
+ * A hwmon driver for the Accton as9726 32d fan
  *
  * Copyright (C) 2014 Accton Technology Corporation.
  * Alex Lai <alex_lai@edge-core.com>
@@ -414,7 +414,6 @@ static struct as9726_32d_fan_data *as9726_32d_fan_update_device(struct
 								fan_reg[i]);
 			if (status < 0) {
 				data->valid = 0;
-				mutex_unlock(&data->update_lock);
 				dev_dbg(&client->dev, "reg %d, err %d\n", 
 					fan_reg[i], status);
 				return data;

@@ -21,8 +21,14 @@ x86-64-accton-as9726-32d-r0:
       <<: *kernel-4-19
 
     args: >-
-      console=ttyS0,115200n8
-      intel_iommu=pt
+      console=tty0
+      console=ttyS0,115200n8 quiet nopat
+      intel_iommu=off 
+      pcie_aspm=off
+      intremap=off 
+      pci=nomsi
+      libata.force=noncq irqpoll
+      hpet=disable 
 
   ##network:
   ##  interfaces:

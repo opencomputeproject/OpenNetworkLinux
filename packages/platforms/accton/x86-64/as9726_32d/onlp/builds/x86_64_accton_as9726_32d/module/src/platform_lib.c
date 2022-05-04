@@ -35,75 +35,38 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 		return PSU_TYPE_UNKNOWN;
 	}
 
-	if (!strncmp(mn, "FSH082", strlen("FSH082"))) {
-		if (modelname)
-			aim_strlcpy(modelname, mn, strlen("FSH082") < 
-				(modelname_len-1) ? (strlen("FSH082")+1) : 
-				(modelname_len-1));
-	
-		return PSU_TYPE_ACBEL;
-	}
-
-	if (!strncmp(mn, "YESM1300AM", strlen("YESM1300AM"))) {
-		if (modelname)
-			aim_strlcpy(modelname, mn, 
-				strlen("YESM1300AM") <
-				(modelname_len-1) ? (strlen("YESM1300AM")+1) : 
-				(modelname_len-1));
-
-		return PSU_TYPE_YESM1300;
-	}
-
-	if (!strncmp(mn, "YM-2651Y", strlen("YM-2651Y"))) {
-		if (modelname)
-			aim_strlcpy(modelname, mn, modelname_len-1);
-
-		return PSU_TYPE_YM2651Y;
-	}
-
-	if (!strncmp(mn, "FSF019", strlen("FSF019"))) {
-		if (modelname)
-			aim_strlcpy(modelname, mn, strlen("FSF019") < 
-				(modelname_len-1) ? (strlen("FSF019")+1) : 
-				(modelname_len-1));
-	
-		return PSU_TYPE_ACBEL;
-	}
-
 	if (!strncmp(mn, "FSJ001", strlen("FSJ001"))) {
 		if (modelname)
 			aim_strlcpy(modelname, mn, strlen("FSJ001") < 
 				(modelname_len-1) ? (strlen("FSJ001")+1) : 
 				(modelname_len-1));
-	
+		AIM_FREE_IF_PTR(mn);
 		return PSU_TYPE_ACBEL;
 	}
 
+	if (!strncmp(mn, "FSJ004", strlen("FSJ004"))) {
+		if (modelname)
+			aim_strlcpy(modelname, mn, strlen("FSJ004") < 
+				(modelname_len-1) ? (strlen("FSJ004")+1) : 
+				(modelname_len-1));
+		AIM_FREE_IF_PTR(mn);
+		return PSU_TYPE_ACBEL;
+	}
+
+	if (!strncmp(mn, "SPAACTN", strlen("SPAACTN"))) {
+		if (modelname)
+			aim_strlcpy(modelname, mn, strlen("SPAACTN") < 
+				(modelname_len-1) ? (strlen("SPAACTN")+1) : 
+				(modelname_len-1));
+		AIM_FREE_IF_PTR(mn);
+		return PSU_TYPE_BELPOWER;
+	}
+
+	AIM_FREE_IF_PTR(mn);
 	return PSU_TYPE_UNKNOWN;
 }
 
 int psu_pmbus_info_get(int id, char *node, int *value)
-{
-	int  ret = 0;
-	char path[PSU_NODE_MAX_PATH_LEN] = {0};
-
-	*value = 0;
-
-	if (PSU1_ID == id) {
-		sprintf(path, "%s%s", PSU1_AC_PMBUS_PREFIX, node);
-	} else {
-		sprintf(path, "%s%s", PSU2_AC_PMBUS_PREFIX, node);
-	}
-
-	if (onlp_file_read_int(value, path) < 0) {
-		AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
-		return ONLP_STATUS_E_INTERNAL;
-	}
-
-	return ret;
-}
-
-int psu_ym2651y_pmbus_info_get(int id, char *node, int *value)
 {
 	int  ret = 0;
 	char path[PSU_NODE_MAX_PATH_LEN] = {0};
@@ -171,4 +134,25 @@ int psu_serial_number_get(int id, char *serial, int serial_len)
 
 	serial[PSU_SERIAL_NUMBER_LEN] = '\0';
 	return ONLP_STATUS_OK;
+}
+
+enum onlp_fan_dir onlp_get_fan_dir(void)
+{
+	int value = FAN_DIR_F2B;
+	int i = 0;
+	char  path[64] = {0};
+	enum onlp_fan_dir dir = FAN_DIR_F2B;
+
+	for(i = 0; i < CHASSIS_FAN_COUNT; i++) {
+		sprintf(path, "%s""fan%d_direction", FAN_BOARD_PATH, i+1);
+		if (onlp_file_read_int(&value, path) < 0)
+			continue;
+
+		if (value == FAN_DIR_F2B || value == FAN_DIR_B2F) {
+			dir = value;
+			break;
+		}
+	}
+
+	return dir;
 }

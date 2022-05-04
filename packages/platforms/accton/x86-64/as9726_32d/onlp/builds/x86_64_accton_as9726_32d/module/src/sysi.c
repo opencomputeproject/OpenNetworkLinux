@@ -156,19 +156,19 @@ enum
 };
 
 fan_ctrl_policy_t  fan_thermal_policy_f2b[] = {
-	{38,  0x4, 0,     38000,   LEVEL_FAN_DEF},
-	{63,  0x8, 38000, 46000,   LEVEL_FAN_MID},
-	{100, 0xE, 46000, 58000,   LEVEL_FAN_MAX},
-	{100, 0xE, 58000, 66000,   LEVEL_TEMP_HIGH},
-	{100, 0xE, 66000, 200000,  LEVEL_TEMP_CRITICAL}
+	{50,  0x7, 0,     39000,   LEVEL_FAN_DEF},
+	{75,  0xB, 39000, 46000,   LEVEL_FAN_MID},
+	{100, 0xF, 46000, 50000,   LEVEL_FAN_MAX},
+	{100, 0xF, 50000, 55000,   LEVEL_TEMP_HIGH},
+	{100, 0xF, 55000, 200000,  LEVEL_TEMP_CRITICAL}
 };
 
 fan_ctrl_policy_t  fan_thermal_policy_b2f[] = {
-	{38,  0x4, 0,     34000,   LEVEL_FAN_DEF},
-	{63,  0x8, 34000, 44000,   LEVEL_FAN_MID},
-	{100, 0xE, 44000, 59000,   LEVEL_FAN_MAX},
-	{100, 0xE, 59000, 67000,   LEVEL_TEMP_HIGH},
-	{100, 0xE, 67000, 200000,  LEVEL_TEMP_CRITICAL}
+	{75,  0xB, 0,     32000,   LEVEL_FAN_DEF},
+	{100, 0xF, 32000, 35000,   LEVEL_FAN_MID},
+	{100, 0xF, 35000, 40000,   LEVEL_FAN_MAX},
+	{100, 0xF, 40000, 45000,   LEVEL_TEMP_HIGH},
+	{100, 0xF, 45000, 200000,  LEVEL_TEMP_CRITICAL}
 };
 
 #define FAN_SPEED_CTRL_PATH \
@@ -194,7 +194,7 @@ int onlp_sysi_platform_manage_fans(void)
 		AIM_LOG_ERROR("Unable to read status from file (%s)\r\n",
 			      FAN_DIRECTION_PATH);
 
-	if (value==1)
+	if (value == 0)
 		fan_thermal_policy=fan_thermal_policy_f2b;
 	else
 		fan_thermal_policy=fan_thermal_policy_b2f;
@@ -217,7 +217,7 @@ int onlp_sysi_platform_manage_fans(void)
 		return ONLP_STATUS_E_INTERNAL;
 	}
 
-	temp = (thermal_4.mcelsius + thermal_5.mcelsius)/2;
+	temp = (thermal_4.mcelsius + thermal_5.mcelsius) / 2;
 	/* Get current fan pwm percent
 	 */
 	fd = open(FAN_SPEED_CTRL_PATH, O_RDONLY);
@@ -240,7 +240,7 @@ int onlp_sysi_platform_manage_fans(void)
 	    i++) {
 		if (temp > fan_thermal_policy[i].temp_down) {
 			if (temp <= fan_thermal_policy[i].temp_up)
-				current_state =i;
+				current_state = i;
 		}
 	}
 
@@ -292,8 +292,8 @@ int onlp_sysi_platform_manage_fans(void)
 		}
 	}
 
-	if (current_state!=ori_state) {
-		fan_state=current_state;
+	if (current_state != ori_state) {
+		fan_state = current_state;
 
 		switch (ori_state) {
 		case LEVEL_FAN_DEF:

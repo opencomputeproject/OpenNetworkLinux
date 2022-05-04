@@ -48,11 +48,10 @@ static int psu_status_info_get(int id, char *node, int *value)
 
 	*value = 0;
 
-	if (PSU1_ID == id) {
+	if (PSU1_ID == id)
 		sprintf(path, "%s%s", PSU1_AC_HWMON_PREFIX, node);
-	} else if (PSU2_ID == id) {
+	else if (PSU2_ID == id)
 		sprintf(path, "%s%s", PSU2_AC_HWMON_PREFIX, node);
-	}
 
 	if (onlp_file_read_int(value, path) < 0) {
 		AIM_LOG_ERROR("Unable to read status from file(%s)\r\n", path);
@@ -64,44 +63,6 @@ static int psu_status_info_get(int id, char *node, int *value)
 
 int onlp_psui_init(void)
 {
-	return ONLP_STATUS_OK;
-}
-
-static int psu_ym2651y_info_get(onlp_psu_info_t* info)
-{
-	int val   = 0;
-	int index = ONLP_OID_ID_GET(info->hdr.id);
-
-	/* Set capability
-	 */
-	info->caps = ONLP_PSU_CAPS_AC;
-
-	if (info->status & ONLP_PSU_STATUS_FAILED)
-		return ONLP_STATUS_OK;
-
-	/* Set the associated oid_table */
-	info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
-	info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + 
-						    CHASSIS_THERMAL_COUNT);
-
-	/* Read voltage, current and power */
-	if (psu_ym2651y_pmbus_info_get(index, "psu_v_out", &val) == 0) {
-		info->mvout = val;
-		info->caps |= ONLP_PSU_CAPS_VOUT;
-	}
-
-	if (psu_ym2651y_pmbus_info_get(index, "psu_i_out", &val) == 0) {
-		info->miout = val;
-		info->caps |= ONLP_PSU_CAPS_IOUT;
-	}
-
-	if (psu_ym2651y_pmbus_info_get(index, "psu_p_out", &val) == 0) {
-		info->mpout = val;
-		info->caps |= ONLP_PSU_CAPS_POUT;
-	}
-
-	psu_serial_number_get(index, info->serial, sizeof(info->serial));
-
 	return ONLP_STATUS_OK;
 }
 
@@ -210,11 +171,8 @@ int onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
 	switch (psu_type) {
 	case PSU_TYPE_ACBEL:
-	case PSU_TYPE_YESM1300:
+	case PSU_TYPE_BELPOWER:
 		ret = psu_data_info_get(info);
-		break;
-	case PSU_TYPE_YM2651Y:
-		ret = psu_ym2651y_info_get(info);
 		break;
 	case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
 		info->status |= ONLP_PSU_STATUS_UNPLUGGED;

@@ -97,11 +97,10 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		return sprintf(buf, "0\n");
 	}
 
-	if (attr->index == PSU_PRESENT) {
+	if (attr->index == PSU_PRESENT)
 		status = !(data->status >> (1-data->index) & 0x1);
-	} else { /* PSU_POWER_GOOD */
+	else /* PSU_POWER_GOOD */
 		status = (data->status >> (3-data->index) & 0x1);
-	}
 
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", status);
@@ -245,12 +244,10 @@ static struct as9726_32d_psu_data *as9726_32d_psu_update_device(
 		/* Read psu status */
 		status = as9726_32d_cpld_read(0x60, 0x3);
 
-		if (status < 0) {
-			dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", 
-				status);
-		} else {
+		if (status < 0)
+			dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
+		else
 			data->status = status;
-		}
 
 		data->last_updated = jiffies;
 		data->valid = 1;

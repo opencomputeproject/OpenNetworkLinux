@@ -209,13 +209,13 @@ static int _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 
 	/* get fan fault status
  	 */
-	if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_fault", &val) == 
+	if (psu_pmbus_info_get(pid, "psu_fan1_fault", &val) == 
 	    ONLP_STATUS_OK)
 		info->status |= (val > 0) ? ONLP_FAN_STATUS_FAILED : 0;
 
 	/* get fan speed
 	 */
-	if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == 
+	if (psu_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == 
 	    ONLP_STATUS_OK) {
 		info->rpm = val;
 		info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;

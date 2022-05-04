@@ -60,17 +60,23 @@
 #define IDPROM_PATH "/sys/bus/i2c/devices/0-0057/eeprom"
 
 int psu_pmbus_info_get(int id, char *node, int *value);
-int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 
 typedef enum psu_type {
 	PSU_TYPE_UNKNOWN,
 	PSU_TYPE_ACBEL,
-	PSU_TYPE_YESM1300,    
-	PSU_TYPE_YM2651Y,
+	PSU_TYPE_BELPOWER,
 	PSU_TYPE_AC_F2B,
 	PSU_TYPE_AC_B2F
 } psu_type_t;
+
+enum onlp_fan_dir {
+        FAN_DIR_F2B,
+        FAN_DIR_B2F,
+        FAN_DIR_COUNT,
+};
+
+enum onlp_fan_dir onlp_get_fan_dir(void);
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
 int psu_serial_number_get(int id, char *serial, int serial_len);
