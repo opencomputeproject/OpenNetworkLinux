@@ -135,25 +135,25 @@ typedef struct fan_ctrl_policy {
    int temp_up_adjust;   /* The boundary temperature to up adjust fan speed */
 } fan_ctrl_policy_t;
 
-fan_ctrl_policy_t  fan_ctrl_policy_f2b[] = {
-{32,      0, 174000},
-{38, 170000, 182000},
-{50, 178000, 190000},
-{63, 186000,      0}
+fan_ctrl_policy_t fan_ctrl_policy_b2f[] = {
+    { 32,      0, 174000 },
+    { 38, 170000, 182000 },
+    { 50, 178000, 190000 },
+    { 63, 186000,      0 }
 };
 
-fan_ctrl_policy_t  fan_ctrl_policy_b2f[] = {
-{32,     0,  140000},
-{38, 135000, 150000},
-{50, 145000, 160000},
-{69, 155000,      0}
+fan_ctrl_policy_t fan_ctrl_policy_f2b[] = {
+    { 32,      0, 140000 },
+    { 38, 135000, 150000 },
+    { 50, 145000, 160000 },
+    { 69, 155000,      0 }
 };
 
 #define FAN_DUTY_CYCLE_MAX  100
 #define FAN_SPEED_CTRL_PATH "/sys/bus/i2c/devices/2-0066/fan_duty_cycle_percentage"
 
 /*
- * For AC power Front to Back :
+ * For  AC power Back to Front :
  *	* If any fan fail, please fan speed register to 15
  *	* The max value of Fan speed register is 9
  *		[LM75(48) + LM75(49) + LM75(4A)] > 174  => set Fan speed value from 4 to 5
@@ -165,7 +165,7 @@ fan_ctrl_policy_t  fan_ctrl_policy_b2f[] = {
  *		[LM75(48) + LM75(49) + LM75(4A)] < 186  => set Fan speed value from 9 to 7
  *
  *
- * For  AC power Back to Front :
+ * For AC power Front to Back :
  *	* If any fan fail, please fan speed register to 15
  *	* The max value of Fan speed register is 10
  *		[LM75(48) + LM75(49) + LM75(4A)] > 140  => set Fan speed value from 4 to 5
