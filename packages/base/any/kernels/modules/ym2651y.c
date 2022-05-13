@@ -828,12 +828,17 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 goto exit;
             }
 
-            status = ym2651y_read_block(client, command, data->mfr_model_opt, buf+1);
-            data->mfr_model_opt[buf+1] = '\0';
+            /* Register may not be implemented, in that case it returns 0xff */
+            if (buf == 0xff) {
+                dev_dbg(&client->dev, "reg %d not available\n", command);
+            } else {
+                status = ym2651y_read_block(client, command, data->mfr_model_opt, buf+1);
+                data->mfr_model_opt[buf+1] = '\0';
 
-            if (status < 0) {
-                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
-                goto exit;
+                if (status < 0) {
+                    dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                    goto exit;
+                }
             }
 
             /* Read mfr_revsion */
