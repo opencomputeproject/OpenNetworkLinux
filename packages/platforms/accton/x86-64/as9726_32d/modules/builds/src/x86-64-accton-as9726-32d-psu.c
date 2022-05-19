@@ -210,13 +210,11 @@ static int as9726_32d_psu_read_block(struct i2c_client *client, u8 command,
 						       data_len, data);
 
 		if (unlikely(result < 0)) {
-			msleep(10);
 			continue;
 		}
 
 		if (unlikely(result != data_len)) {
 			result = -EIO;
-			msleep(10);
 			continue;
 		}
 
