@@ -108,8 +108,11 @@ class OnieBootContext:
         def _g(d):
             pat = os.path.join(d, "onie/initrd.img*")
             l = glob.glob(pat)
-            if l: return l[0]
-            return None
+            if l: return l[0], False
+            pat = os.path.join(d, "onie.itb")
+            l = glob.glob(pat)
+            if l: return l[0], True
+            return None, False
 
         # try to find a mounted, labeled partition
         try:
@@ -122,30 +125,48 @@ class OnieBootContext:
             parts = [p for p in self.pm.mounts if p.device == dev]
             if parts:
                 self.log.debug("found ONIE boot mounted at %s", parts[0].dir)
-                initrd = _g(parts[0].dir)
+                initrd, uboot = _g(parts[0].dir)
                 if initrd is None:
                     raise ValueError("cannot find ONIE initrd on %s" % parts[0].dir)
                 self.onieDir = parts[0].dir
                 self.log.debug("found ONIE initrd at %s", initrd)
-                with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
-                    self.initrd = initrd
-                    self.initrdDir = self.ictx.dir
-                    self.ictx.detach()
-                    return self
+                if uboot:
+                    with UbootInitrdContext(initrd, log=self.log) as self.fctx:
+                        with InitrdContext(initrd=self.fctx.initrd, log=self.log) as self.ictx:
+                            self.initrd = self.fctx.initrd
+                            self.fctx.detach()
+                            self.initrdDir = self.ictx.dir
+                            self.ictx.detach()
+                            return self
+                else:
+                    with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
+                        self.initrd = initrd
+                        self.initrdDir = self.ictx.dir
+                        self.ictx.detach()
+                        return self
 
             # else, try to mount the directory containing the initrd
             with MountContext(dev, log=self.log) as self.dctx:
-                initrd = _g(self.dctx.dir)
+                initrd, uboot = _g(self.dctx.dir)
                 if initrd is None:
                     raise ValueError("cannot find ONIE initrd on %s" % dev)
                 self.onieDir = self.dctx.dir
                 self.dctx.detach()
                 self.log.debug("found ONIE initrd at %s", initrd)
-                with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
-                    self.initrd = initrd
-                    self.initrdDir = self.ictx.dir
-                    self.ictx.detach()
-                    return self
+                if uboot:
+                    with UbootInitrdContext(initrd, log=self.log) as self.fctx:
+                        with InitrdContext(initrd=self.fctx.initrd, log=self.log) as self.ictx:
+                            self.initrd = self.fctx.initrd
+                            self.fctx.detach()
+                            self.initrdDir = self.ictx.dir
+                            self.ictx.detach()
+                            return self
+                else:
+                    with InitrdContext(initrd=initrd, log=self.log) as self.ictx:
+                        self.initrd = initrd
+                        self.initrdDir = self.ictx.dir
+                        self.ictx.detach()
+                        return self
 
             raise ValueError("cannot find an ONIE initrd")
 
