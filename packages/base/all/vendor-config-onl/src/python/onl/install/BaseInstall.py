@@ -1074,6 +1074,11 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
             dev = loader.get('device', None)
             return dev
 
+        def getLabel(self):
+            loader = self.platformConf.get('loader', {})
+            label = loader.get('label', 'msdos')
+            return label
+
         def str_bootcmd(self):
             cmds = []
             cmds.append("setenv onl_loadaddr 0x%x"
@@ -1095,22 +1100,24 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
     def __init__(self, *args, **kwargs):
         UBIfsCreater.__init__(self, *args, **kwargs)
         self.device = self.im.getDevice()
+        self.label = self.im.getLabel()
 
         self.rawLoaderDevice = None
         # set to a partition device for raw loader install,
         # default to None for FS-based install
 
     def maybeCreateLabel(self):
-        """Set up an msdos label."""
+        """Set up a label."""
 
         self.partedDevice = parted.getDevice(self.device)
         try:
             self.partedDisk = parted.newDisk(self.partedDevice)
-            if self.partedDisk.type == 'msdos':
-                self.log.info("disk %s is already msdos", self.device)
+            if self.partedDisk.type == self.label:
+                self.log.info("disk %s is already %s", self.device, self.label)
                 return 0
-            self.log.warn("disk %s has wrong label %s",
+            self.log.error("disk %s has wrong label %s",
                           self.device, self.partedDisk.type)
+            return 1
         except (DiskException, PartedException) as ex:
             self.log.error("cannot get partition table from %s: %s",
                            self.device, str(ex))
@@ -1121,8 +1128,8 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
         self.log.info("clobbering disk label on %s", self.device)
         self.partedDevice.clobber()
 
-        self.log.info("creating msdos label on %s", self.device)
-        self.partedDisk = parted.freshDisk(self.partedDevice, 'msdos')
+        self.log.info("creating %s label on %s", self.label, self.device)
+        self.partedDisk = parted.freshDisk(self.partedDevice, self.label)
 
         return 0
 
@@ -1146,6 +1153,46 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
         # default, delete all partitions
         # XXX roth -- tweak this if we intent to save e.g.
         # a diag partition from the vendor
+
+        return 0
+
+    def findGpt(self):
+
+        # optionally back up a config partition
+        # if it's on the boot device
+        for part in self.blkidParts:
+            dev, partno = part.splitDev()
+            if dev == self.device and part.label == 'ONL-CONFIG':
+                self.backupConfig(part.device)
+
+        # enumerate the partitions that will stay and go
+        minpart = -1
+        for part in self.partedDisk.partitions:
+
+            if part.getFlag(parted.PARTITION_HIDDEN):
+                minpart = max(minpart, part.number+1)
+                continue
+
+            # else, the partition should exist
+            blkidParts = [x for x in self.blkidParts if x.device == part.path]
+            if not blkidParts:
+                self.log.warn("cannot identify partition %s", part)
+                continue
+
+            blkidPart = blkidParts[0]
+            if not blkidPart.isOnieReserved(): continue
+
+            # else, check the GPT label for reserved-ness
+            if (part.name
+                and ('GRUB' in part.name
+                     or 'ONIE-BOOT' in part.name
+                     or 'DIAG' in part.name)):
+                minpart = max(minpart, part.number+1)
+
+        if minpart < 0:
+            self.log.error("cannot find an install partition")
+            return 1
+        self.minpart = minpart
 
         return 0
 
@@ -1227,7 +1274,7 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
 
         code = self.assertUnmounted()
         if code: return code
-        
+
         if "mtdblock" in self.device:
             code = self.ubifsinit()
             if code: return code
@@ -1255,8 +1302,8 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
                       self.partedDisk.type,
                       self.partedDevice.sectorSize,
                       self.partedDevice.physicalSectorSize)
-        if self.partedDisk.type != 'msdos':
-            self.log.error("not an MSDOS partition table")
+        if self.partedDisk.type != self.label:
+            self.log.error("not an %s partition table", self.label)
             return 1
         if self.partedDevice.sectorSize != 512:
             self.log.warn("invalid logical block size, expected 512")
@@ -1267,7 +1314,15 @@ class UbootInstaller(SubprocessMixin, UBIfsCreater):
                       self.partedDevice.getLength())
 
         self.blkidParts = BlkidParser(log=self.log.getChild("blkid"))
-        code = self.findMsdos()
+
+        if self.label == 'msdos':
+            code = self.findMsdos()
+        elif self.label == 'gpt':
+            code = self.findGpt()
+        else:
+            self.log.error("unknown label: %s", self.label)
+            return 1
+
         if code: return code
 
         code = self.deletePartitions()
