@@ -590,9 +590,9 @@ fi
 trap - 0 1
 installer_umount
 
-if test "${onie_platform}"; then
-  installer_reboot $installer_wait
-fi
+#if test "${onie_platform}"; then
+#  installer_reboot $installer_wait
+#fi
 
 exit
 
