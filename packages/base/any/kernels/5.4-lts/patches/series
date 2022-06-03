@@ -3,3 +3,5 @@
 #0003-drivers-net-ethernet-broadcom-tg3.patch
 #driver-ixgbe-external-phy.patch
 #driver-hwmon-max6620.patch
+WIP-temporal-hack-for-ploomtech.patch
+at24_SMBus_16bitaddress_rw.patch

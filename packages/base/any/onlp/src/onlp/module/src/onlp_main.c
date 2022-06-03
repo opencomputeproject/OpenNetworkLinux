@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <onlp/sys.h>
 #include <onlp/sfp.h>
+#include <onlp/module.h>
 #include <sff/sff.h>
 #include <sff/sff_db.h>
 #include <AIM/aim_log_handler.h>
@@ -374,13 +375,45 @@ onlpdump_main(int argc, char* argv[])
         onlp_sfp_bitmap_t presence;
         onlp_sfp_bitmap_t_init(&presence);
         int rv = onlp_sfp_presence_bitmap_get(&presence);
-        aim_printf(&aim_pvs_stdout, "Presence: ");
+        aim_printf(&aim_pvs_stdout, " Transceiver Presence: ");
         if(rv < 0) {
             aim_printf(&aim_pvs_stdout, "Error %{onlp_status}\n", rv);
         }
         else {
             aim_printf(&aim_pvs_stdout, "%{aim_bitmap}\n", &presence);
         }
+      /* Temperory code to show the status of PIU + CFP2 modules */
+      /* #define values are identical to the ones defined in
+       * packages/platforms/wistron/x86-64/ploomtech/onlp/builds/x86_64_wistron_ploomtech/module/src/platform_lib.h */
+        #define  ONLP_MODULE_STATUS_UNPLUGGED          0
+        #define  ONLP_MODULE_STATUS_ACO_PRESENT       (1 << 0)
+        #define  ONLP_MODULE_STATUS_DCO_PRESENT       (1 << 1)
+        #define  ONLP_MODULE_STATUS_QSFP_PRESENT      (1 << 2)
+        #define  ONLP_MODULE_CFP2_STATUS_UNPLUGGED    (1 << 3)
+        #define  ONLP_MODULE_CFP2_STATUS_PRESENT      (1 << 4)
+
+        onlp_sys_info_t si;
+        onlp_oid_t* oidp;
+        uint32_t status;
+
+        onlp_sys_hdr_get(&si.hdr);
+
+        ONLP_OID_TABLE_ITER_TYPE(si.hdr.coids, oidp, MODULE) {
+           onlp_module_status_get (*oidp, &status);
+           aim_printf(&aim_pvs_stdout, "SLOT-%d Status \n", ONLP_OID_ID_GET(*oidp));
+           aim_printf(&aim_pvs_stdout, " PIU Presence  : %d\n",
+                                           status != ONLP_MODULE_STATUS_UNPLUGGED ? 1 : 0);
+           if (status != ONLP_MODULE_STATUS_UNPLUGGED) {
+               aim_printf(&aim_pvs_stdout, " PIU type      : %s\n",
+                          (status & ONLP_MODULE_STATUS_ACO_PRESENT)? "ACO" :
+                          (status & ONLP_MODULE_STATUS_DCO_PRESENT)? "DCO" :
+                          (status & ONLP_MODULE_STATUS_QSFP_PRESENT)? "QSFP28" : "Unknown");
+               aim_printf(&aim_pvs_stdout, " CFP2 Presence : %d\n",
+                                         (status & ONLP_MODULE_CFP2_STATUS_PRESENT)? 1 : 0);
+
+           }
+        }
+
     }
 
     return 0;

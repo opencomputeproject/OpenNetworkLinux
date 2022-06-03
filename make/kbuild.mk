@@ -105,23 +105,40 @@ K_ARCHIVE_PATH := $(ONL_KERNELS)/archives/$(K_ARCHIVE_NAME)
 ifndef K_ARCHIVE_URL
 K_ARCHIVE_URL := https://www.kernel.org/pub/linux/kernel/v$(K_MAJOR_VERSION).x/$(K_ARCHIVE_NAME)
 endif
-K_SOURCE_DIR := $(K_TARGET_DIR)/$(K_NAME)
-K_MBUILD_DIR := $(K_SOURCE_DIR)-mbuild
-K_INSTALL_MOD_PATH := $(K_TARGET_DIR)
-K_DTBS_DIR := $(K_SOURCE_DIR)-dtbs
 
+ifndef K_SOURCE_DIR
+K_SOURCE_DIR := $(K_TARGET_DIR)/$(K_NAME)
+endif
+
+ifndef K_MBUILD_DIR
+K_MBUILD_DIR := $(K_SOURCE_DIR)-mbuild
+endif
+
+
+K_INSTALL_MOD_PATH := $(K_TARGET_DIR)
+
+ifndef K_DTBS_DIR
+K_DTBS_DIR := $(K_SOURCE_DIR)-dtbs
+endif
+
+ifndef K_SKIP_DOWNLOAD
+K_SKIP_DOWNLOAD := 0
+endif
+
+ifndef K_SKIP_EXTRACT
+K_SKIP_EXTRACT := 0
+endif
 #
 # The kernel source archive. Download if not present.
 #
-ifeq ($(ONL_DEBIAN_SUITE),jessie)
+
 # The certificates for kernel.org are expired in the jessie container.
 # Until that can be fixed we skip cert checks here:
 EXTRA_WGET_OPTIONS := --no-check-certificate
-endif
 
 $(K_ARCHIVE_PATH):
-	cd $(ONL_KERNELS)/archives && wget $(EXTRA_WGET_OPTIONS) $(K_ARCHIVE_URL)
-
+	if [ $(K_SKIP_DOWNLOAD) -eq 0 ]; then cd $(ONL_KERNELS)/archives && wget $(EXTRA_WGET_OPTIONS) $(K_ARCHIVE_URL); fi
+	touch $@
 
 .PHONY : ksource kpatched
 

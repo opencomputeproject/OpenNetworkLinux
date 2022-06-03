@@ -132,11 +132,11 @@ def AIM_BITMAP_HDR_WORD_GET(hdr, word):
 
 def AIM_BITMAP_HDR_BIT_WORD_GET(hdr, bit):
     """Return the ctypes word holding this bit."""
-    return hdr.words[bit/AIM_BITMAP_BITS_PER_WORD]
+    return hdr.words[bit//AIM_BITMAP_BITS_PER_WORD]
 
 def AIM_BITMAP_HDR_BIT_WORD_SET(hdr, bit, word):
     """Return the ctypes word holding this bit."""
-    hdr.words[bit/AIM_BITMAP_BITS_PER_WORD] = word
+    hdr.words[bit//AIM_BITMAP_BITS_PER_WORD] = word
 
 def AIM_BITMAP_BIT_POS(bit):
     return (1<<(bit % AIM_BITMAP_BITS_PER_WORD))
@@ -636,6 +636,31 @@ def onlp_sfp_init_prototypes():
     libonlp.onlp_sfp_control_flags_get.restype = ctypes.c_int
     libonlp.onlp_sfp_control_flags_get.argtyeps = (ctypes.c_int, ctypes.POINTER(ctypes.c_uint32),)
 
+# onlp/module.h
+
+class onlp_module_info(ctypes.Structure):
+    _fields_ = [("hdr", onlp_oid_hdr,),
+                ("status", ctypes.c_uint32,),]
+
+def onlp_module_init_prototypes():
+
+    libonlp.onlp_module_init.restype = ctypes.c_int
+
+    libonlp.onlp_module_info_get.restype = ctypes.c_int
+    libonlp.onlp_module_info_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_module_info),)
+
+    libonlp.onlp_module_status_get.restype = ctypes.c_int
+    libonlp.onlp_module_status_get.argtypes = (onlp_oid, ctypes.POINTER(ctypes.c_uint32),)
+
+    libonlp.onlp_module_hdr_get.restype = ctypes.c_int
+    libonlp.onlp_module_hdr_get.argtypes = (onlp_oid, ctypes.POINTER(onlp_oid_hdr),)
+
+    libonlp.onlp_module_dump.restype = None
+    libonlp.onlp_module_dump.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+
+    libonlp.onlp_module_show.restype = None
+    libonlp.onlp_module_show.argtypes = (onlp_oid, ctypes.POINTER(aim_pvs), ctypes.c_uint32,)
+
 # onlp/onlp.h
 
 def init_prototypes():
@@ -646,6 +671,7 @@ def init_prototypes():
     onlp_sys_init_prototypes()
     onlp_fan_init_prototypes()
     onlp_led_init_prototypes()
+    onlp_module_init_prototypes()
 
     onlp_config_init_prototypes()
 

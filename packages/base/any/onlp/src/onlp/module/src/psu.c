@@ -188,14 +188,15 @@ onlp_psu_show(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         if(pi.status & 0x1) {
             /* Present */
             iof_iprintf(&iof, "State: Present");
-            if(pi.status & ONLP_PSU_STATUS_UNPLUGGED) {
-                iof_iprintf(&iof, "Status: Unplugged");
-            }
-            else if(pi.status & ONLP_PSU_STATUS_FAILED) {
+            if(pi.status & ONLP_PSU_STATUS_FAILED) {
                 iof_iprintf(&iof, "Status: Unplugged or Failed");
             }
             else {
-                iof_iprintf(&iof, "Status: Running");
+                if(pi.status & ONLP_PSU_STATUS_UNPLUGGED) {
+                   iof_iprintf(&iof, "Status: Unplugged");
+                }
+		else
+                   iof_iprintf(&iof, "Status: Running");
                 if(pi.model[0]) iof_iprintf(&iof, "Model: %{pstr}", pi.model, '?');
                 if(pi.serial[0]) iof_iprintf(&iof, "SN: %{pstr}", pi.serial, '?');
                 if(pi.caps & ONLP_PSU_CAPS_AC) {
