@@ -88,7 +88,7 @@ onlp_module_dump(onlp_oid_t id, aim_pvs_t* pvs, uint32_t flags)
         onlp_oid_info_get_error(&iof, rv);
     } else {
         iof_iprintf(&iof, "Description: %s", info.hdr.description);
-        if(info.status & 1) {
+        if(info.status) {
             iof_iprintf(&iof, "Present.");
             if(flags & ONLP_OID_DUMP_RECURSE) {
                 onlp_oid_table_dump(info.hdr.coids, &iof.inherit, flags);

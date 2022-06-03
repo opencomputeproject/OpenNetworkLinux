@@ -382,16 +382,6 @@ onlpdump_main(int argc, char* argv[])
         else {
             aim_printf(&aim_pvs_stdout, "%{aim_bitmap}\n", &presence);
         }
-      /* Temperory code to show the status of PIU + CFP2 modules */
-      /* #define values are identical to the ones defined in
-       * packages/platforms/wistron/x86-64/ploomtech/onlp/builds/x86_64_wistron_ploomtech/module/src/platform_lib.h */
-        #define  ONLP_MODULE_STATUS_UNPLUGGED          0
-        #define  ONLP_MODULE_STATUS_ACO_PRESENT       (1 << 0)
-        #define  ONLP_MODULE_STATUS_DCO_PRESENT       (1 << 1)
-        #define  ONLP_MODULE_STATUS_QSFP_PRESENT      (1 << 2)
-        #define  ONLP_MODULE_CFP2_STATUS_UNPLUGGED    (1 << 3)
-        #define  ONLP_MODULE_CFP2_STATUS_PRESENT      (1 << 4)
-
         onlp_sys_info_t si;
         onlp_oid_t* oidp;
         uint32_t status;
@@ -404,12 +394,27 @@ onlpdump_main(int argc, char* argv[])
            aim_printf(&aim_pvs_stdout, " PIU Presence  : %d\n",
                                            status != ONLP_MODULE_STATUS_UNPLUGGED ? 1 : 0);
            if (status != ONLP_MODULE_STATUS_UNPLUGGED) {
-               aim_printf(&aim_pvs_stdout, " PIU type      : %s\n",
-                          (status & ONLP_MODULE_STATUS_ACO_PRESENT)? "ACO" :
-                          (status & ONLP_MODULE_STATUS_DCO_PRESENT)? "DCO" :
-                          (status & ONLP_MODULE_STATUS_QSFP_PRESENT)? "QSFP28" : "Unknown");
-               aim_printf(&aim_pvs_stdout, " CFP2 Presence : %d\n",
-                                         (status & ONLP_MODULE_CFP2_STATUS_PRESENT)? 1 : 0);
+               char type[16];
+               if ( status & ONLP_MODULE_STATUS_PIU_ACO_PRESENT ) {
+                   snprintf(type, 16, "ACO");
+               } else if ( status & ONLP_MODULE_STATUS_PIU_DCO_PRESENT ) {
+                   snprintf(type, 16, "DCO");
+               } else if (  status & ONLP_MODULE_STATUS_PIU_QSFP28_PRESENT ) {
+                   snprintf(type, 16, "QSFP28");
+               } else {
+                   snprintf(type, 16, "Unknown");
+               }
+               aim_printf(&aim_pvs_stdout, " PIU type      : %s\n", type);
+
+               if ( status & (ONLP_MODULE_STATUS_PIU_ACO_PRESENT | ONLP_MODULE_STATUS_PIU_DCO_PRESENT) ) {
+                   aim_printf(&aim_pvs_stdout, " CFP2 Presence : %d\n",
+                                             (status & ONLP_MODULE_STATUS_PIU_CFP2_PRESENT)? 1 : 0);
+               } else if ( status & ONLP_MODULE_STATUS_PIU_QSFP28_PRESENT ) {
+                   aim_printf(&aim_pvs_stdout, " QSFP28 1 Presence : %d\n",
+                                              (status & ONLP_MODULE_STATUS_PIU_QSFP28_1_PRESENT) ? 1 : 0);
+                   aim_printf(&aim_pvs_stdout, " QSFP28 2 Presence : %d\n",
+                                              (status & ONLP_MODULE_STATUS_PIU_QSFP28_2_PRESENT) ? 1 : 0);
+               }
 
            }
         }

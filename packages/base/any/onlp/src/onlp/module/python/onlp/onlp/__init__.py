@@ -230,7 +230,7 @@ ONLP_OID_SYS = (ONLP_OID_TYPE.SYS<<24) | 1
 # XXX not a config option
 
 ONLP_OID_DESC_SIZE = 128
-ONLP_OID_TABLE_SIZE = 32
+ONLP_OID_TABLE_SIZE = 128
 # XXX not a config option
 
 class OidTableIterator(object):

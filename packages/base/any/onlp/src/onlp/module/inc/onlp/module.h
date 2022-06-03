@@ -4,6 +4,14 @@
 #include <onlp/onlp.h>
 #include <onlp/oids.h>
 
+#define  ONLP_MODULE_STATUS_UNPLUGGED                     0
+#define  ONLP_MODULE_STATUS_PIU_ACO_PRESENT              (1 << 0)
+#define  ONLP_MODULE_STATUS_PIU_DCO_PRESENT              (1 << 1)
+#define  ONLP_MODULE_STATUS_PIU_QSFP28_PRESENT           (1 << 2)
+#define  ONLP_MODULE_STATUS_PIU_CFP2_PRESENT             (1 << 3)
+#define  ONLP_MODULE_STATUS_PIU_QSFP28_1_PRESENT         (1 << 4)
+#define  ONLP_MODULE_STATUS_PIU_QSFP28_2_PRESENT         (1 << 5)
+
 typedef struct onlp_module_info_t {
     /** OID Header */
     onlp_oid_hdr_t hdr;
