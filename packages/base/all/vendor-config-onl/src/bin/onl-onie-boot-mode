@@ -1,13 +1,9 @@
 #!/usr/bin/python
 ############################################################
 import sys
-import platform
 import argparse
 import onl.grub
-
-if platform.machine() != 'x86_64':
-   sys.stderr.write("This command can only be used on GRUB-based X86_64 architectures.")
-   sys.exit(1)
+from onl.platform.current import OnlPlatform
 
 ap = argparse.ArgumentParser("onl-onie-boot-mode")
 
@@ -16,10 +12,12 @@ ap.add_argument("--onie-only", action='store_true', help="Do not set ONIE boot m
 
 ops = ap.parse_args()
 
-onl.grub.onie_boot_mode_set(ops.mode)
+platform = OnlPlatform()
+
+platform.onie_boot_mode_set(ops.mode)
 
 if not ops.onie_only:
-   onl.grub.boot_onie()
+   platform.boot_onie()
    print "The system will boot into ONIE %s mode at the next restart." % ops.mode
 else:
    print "Mode %s will be selected the next time the system boots into ONIE." % ops.mode

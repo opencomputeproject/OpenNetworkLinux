@@ -18,6 +18,7 @@ import onl.YamlUtils
 import subprocess
 import platform
 import ast
+import onl.grub
 
 class OnlInfoObject(object):
     DEFAULT_INDENT="    "
@@ -433,6 +434,16 @@ class OnlPlatformBase(object):
         # The default assumption for any platform
         # is ma1 and lo
         return 2
+
+    def onie_boot_mode_set(self, mode):
+        if platform.machine() != 'x86_64':
+            raise RuntimeError("This command can only be used on GRUB-based X86_64 architectures.")
+        onl.grub.onie_boot_mode_set(mode)
+
+    def boot_onie(self):
+        if platform.machine() != 'x86_64':
+            raise RuntimeError("This command can only be used on GRUB-based X86_64 architectures.")
+        onl.grub.boot_onie()
 
     def environment(self, fmt='user'):
         if fmt not in [ 'user', 'yaml', 'dict', 'json' ]:
