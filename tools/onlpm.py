@@ -1372,7 +1372,13 @@ if __name__ == '__main__':
             if not ops.arch:
                 logger.error("missing --arch with --list-platforms")
                 sys.exit(1)
-            platforms = pm.list_platforms(ops.arch)
+
+            platforms = os.getenv('ONLPM_OPTION_PLATFORMS_' + ops.arch.upper(), None)
+            if platforms:
+                platforms = [v.strip() for v in platforms.split(' ')]
+            else:
+                platforms = pm.list_platforms(ops.arch)
+
             if ops.csv:
                 print ','.join(platforms)
             else:

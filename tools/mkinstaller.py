@@ -67,7 +67,7 @@ class InstallerShar(object):
         sys.exit(1)
 
     def find_file(self, package, filename):
-        return subprocess.check_output("onlpm --find-file %s %s" % (package, filename), shell=True).strip()
+        return subprocess.check_output("onlpm --find-file %s %s" % (package, filename), shell=True).split()[-1].strip()
 
     def setvar(self, name, value):
         self.template = self.template.replace("@%s@" % name, value)

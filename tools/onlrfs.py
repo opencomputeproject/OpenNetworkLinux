@@ -51,6 +51,10 @@ hash -r # clear cache of commands
 mount -t proc none /proc
 mount -t sysfs none /sys
 mount -t devtmpfs none /dev
+mkdir -p /dev/shm
+mount -t tmpfs none /dev/shm
+mkdir -p /run
+mount -t tmpfs none /run
 
 $2
 """)

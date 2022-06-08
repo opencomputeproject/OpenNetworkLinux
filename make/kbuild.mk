@@ -146,7 +146,7 @@ $(K_ARCHIVE_PATH):
 # The extracted kernel sources
 #
 $(K_SOURCE_DIR)/Makefile: $(K_ARCHIVE_PATH)
-	mkdir -p $(K_TARGET_DIR) && cd $(K_TARGET_DIR) && tar kxf $(K_ARCHIVE_PATH)
+	if [ $(K_SKIP_EXTRACT) -eq 0 ]; then mkdir -p $(K_TARGET_DIR) && cd $(K_TARGET_DIR) && tar kxf $(K_ARCHIVE_PATH); fi
 	touch -c $(K_SOURCE_DIR)/Makefile
 	$(K_MAKE) mrproper
 
@@ -201,8 +201,12 @@ MODSYNCLIST_DEFAULT := .config System.map Module.symvers Makefile include script
 
 MODSYNCLIST := $(MODSYNCLIST_DEFAULT) $(MODSYNCLIST_EXTRA) $(K_MODSYNCLIST)
 
+MODSYNCKEEP := $(K_MODSYNCKEEP)
+
+ifeq ($(ARCH), powerpc)
 # This file must be preserved for PPC module builds.
-MODSYNCKEEP := arch/powerpc/lib/crtsavres.o
+MODSYNCKEEP += arch/powerpc/lib/crtsavres.o
+endif
 
 mbuild: build
 	rm -rf $(K_MBUILD_DIR)
@@ -211,18 +215,16 @@ mbuild: build
 	find $(K_MBUILD_DIR) -name "*.o*" -delete
 	find $(K_MBUILD_DIR) -name "*.c" -delete
 	find $(K_MBUILD_DIR) -name "*.ko" -delete
-ifeq ($(ARCH), powerpc)
-	$(foreach f,$(MODSYNCKEEP), cp $(K_SOURCE_DIR)/$(f) $(K_MBUILD_DIR)/$(f) || true;)
-endif
+	$(foreach f,$(MODSYNCKEEP),$(ONL)/tools/scripts/tree-copy.sh $(K_SOURCE_DIR) $(f) $(K_MBUILD_DIR);)
 
 dtbs: mbuild
 ifdef DTS_LIST
 	rm -rf $(K_DTBS_DIR)
 	mkdir -p $(K_DTBS_DIR)
-ifeq ($(ARCH),arm64)
+ifeq ($(ARCH) $(DTS_LIST),arm64 fsl)
 	cp $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/freescale/*.dtb $(K_DTBS_DIR)
 else
-	$(foreach name,$(DTS_LIST),$(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
+	$(foreach name,$(DTS_LIST),mkdir -p $(dir $(K_DTBS_DIR)/$(name).dtb) && $(K_SOURCE_DIR)/scripts/dtc/dtc -I dts -O dtb -o $(K_DTBS_DIR)/$(name).dtb $(K_SOURCE_DIR)/arch/$(ARCH)/boot/dts/$(name).dts; )
 endif
 endif
 
