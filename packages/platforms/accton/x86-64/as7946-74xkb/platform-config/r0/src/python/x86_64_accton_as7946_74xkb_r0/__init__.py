@@ -43,6 +43,8 @@ class OnlPlatform_x86_64_accton_as7946_74xkb_r0(OnlPlatformAccton,
                 ('as7946_74xkb_cpld3', 0x63, 16),
                 ])
 
+        # initialize pca9548 idle_state in kernel 5.4.40 version
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
         # initialize QSFP port(0-1), QSFP28 port(2-10), SFP port(11-74)
         port_i2c_bus = [ 33,  34,  35,  36,  37,  38,  39,  40,  41,  42,
                          43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
