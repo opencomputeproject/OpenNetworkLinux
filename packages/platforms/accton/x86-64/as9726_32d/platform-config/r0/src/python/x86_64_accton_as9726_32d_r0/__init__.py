@@ -63,6 +63,9 @@ class OnlPlatform_x86_64_accton_as9726_32d_r0(OnlPlatformAccton,
             ('acbel_fsh082', 0x58, 9),
          ])
 
+        # initialize pca9548 idle_state in kernel 5.4.40 version
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
+
         # initialize QSFP port 1~32. SFP port 33~34
         for port in range(1, 35):
             if port <= 32 :
