@@ -22,7 +22,7 @@ x86-64-accton-as4630-54te-r0:
 
     args: >-
       console=ttyS0,115200n8
-      intel_iommu=pt
+      intel_iommu=off
 
   network:
     interfaces:
