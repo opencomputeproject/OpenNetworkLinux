@@ -37,8 +37,8 @@
 static char* devfiles__[] =  /* must map with onlp_thermal_id */
 {
     "reserved",
-	NULL,                  /* CPU_CORE files */	
-	"/sys/bus/i2c/devices/10-0048*temp1_input",
+    NULL,                  /* CPU_CORE files */	
+    "/sys/bus/i2c/devices/10-0048*temp1_input",
     "/sys/bus/i2c/devices/10-0049*temp1_input",
     "/sys/bus/i2c/devices/10-004a*temp1_input",
     "/sys/bus/i2c/devices/10-004c*temp1_input",
@@ -108,6 +108,61 @@ onlp_thermali_init(void)
     return ONLP_STATUS_OK;
 }
 
+typedef struct threshold_t {
+    int warning;
+    int error;
+    int shutdown;
+} threshold_t;
+
+threshold_t psu_threshold[NUM_OF_PSU_TYPE] = {
+[PSU_TYPE_AC_DPS850_F2B].warning  = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+[PSU_TYPE_AC_DPS850_F2B].error    = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
+[PSU_TYPE_AC_DPS850_F2B].shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
+[PSU_TYPE_AC_DPS850_B2F].warning  = ONLP_THERMAL_THRESHOLD_WARNING_DEFAULT,
+[PSU_TYPE_AC_DPS850_B2F].error    = ONLP_THERMAL_THRESHOLD_ERROR_DEFAULT,
+[PSU_TYPE_AC_DPS850_B2F].shutdown = ONLP_THERMAL_THRESHOLD_SHUTDOWN_DEFAULT,
+[PSU_TYPE_AC_R1CA2122A].warning  = 53000,
+[PSU_TYPE_AC_R1CA2122A].error    = 58000,
+[PSU_TYPE_AC_R1CA2122A].shutdown = 63000,
+[PSU_TYPE_DC_R1CD2122A].warning  = 95000,
+[PSU_TYPE_DC_R1CD2122A].error    = 98000,
+[PSU_TYPE_DC_R1CD2122A].shutdown = 101000,
+};
+
+static int
+onlp_thermali_psu_threshold_get(onlp_oid_t id, onlp_thermal_info_t* info)
+{
+    int ret = ONLP_STATUS_OK;
+    int thermal_id;
+    int psu_id;
+    psu_type_t psu_type;
+    VALIDATE(id);
+
+    thermal_id = ONLP_OID_ID_GET(id);
+    psu_id = (thermal_id - THERMAL_1_ON_PSU1) + 1;
+
+    /* Get PSU type
+     */
+    psu_type = get_psu_type(psu_id, NULL, 0);
+
+    switch (psu_type) {
+    case PSU_TYPE_AC_DPS850_F2B:
+    case PSU_TYPE_AC_DPS850_B2F:
+    case PSU_TYPE_AC_R1CA2122A:
+    case PSU_TYPE_DC_R1CD2122A:
+        info->thresholds.warning  = psu_threshold[psu_type].warning;
+        info->thresholds.error    = psu_threshold[psu_type].error;
+        info->thresholds.shutdown = psu_threshold[psu_type].shutdown;
+        break;
+    default:
+        ret = ONLP_STATUS_E_UNSUPPORTED;
+        break;
+    }
+
+    return ret;
+}
+
+
 /*
  * Retrieve the information structure for the given thermal OID.
  *
@@ -128,6 +183,10 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 	
     /* Set the onlp_oid_hdr_t and capabilities */		
     *info = linfo[tid];
+
+    if ((tid >= THERMAL_1_ON_PSU1) && (tid <= THERMAL_1_ON_PSU2)) {
+        onlp_thermali_psu_threshold_get(id, info);
+    }
 
     if(tid == THERMAL_CPU_CORE) {
         int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);

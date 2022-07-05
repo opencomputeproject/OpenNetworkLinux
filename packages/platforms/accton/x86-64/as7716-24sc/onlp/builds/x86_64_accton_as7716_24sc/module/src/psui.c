@@ -65,11 +65,7 @@ psu_dps850_info_get(onlp_psu_info_t* info)
 {
     int val   = 0;
     int index = ONLP_OID_ID_GET(info->hdr.id);
-    
-    /* Set capability
-     */
-    info->caps = ONLP_PSU_CAPS_AC;
-    
+
 	if (info->status & ONLP_PSU_STATUS_FAILED) {
 	    return ONLP_STATUS_OK;
 	}
@@ -170,8 +166,18 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     switch (psu_type) {
         case PSU_TYPE_AC_DPS850_F2B:
         case PSU_TYPE_AC_DPS850_B2F:
+        case PSU_TYPE_AC_R1CA2122A:
+            /* Set capability
+             */
+            info->caps = ONLP_PSU_CAPS_AC;
             ret = psu_dps850_info_get(info);
             break;
+        case PSU_TYPE_DC_R1CD2122A:
+            /* Set capability
+             */
+            info->caps = ONLP_PSU_CAPS_DC48;
+            ret = psu_dps850_info_get(info);
+            break;    
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
             info->status |= ONLP_PSU_STATUS_UNPLUGGED;
             info->status &= ~ONLP_PSU_STATUS_FAILED;
