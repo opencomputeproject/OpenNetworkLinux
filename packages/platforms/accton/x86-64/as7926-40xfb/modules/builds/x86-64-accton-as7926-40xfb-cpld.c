@@ -574,9 +574,9 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		and CPLD slave address 0x63 */
 	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_read(13, 0x63, reg);
 		break;
-	/* Port 41-53 plug-unplug read from i2c bus number '76'
+	/* Port 41-53 plug-unplug read from i2c bus number '20'
 		and CPLD slave address 0x64 */
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(76, 0x64, reg);
+	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(20, 0x64, reg);
 		break;
 	default: status = -ENXIO;
 		break;
@@ -605,7 +605,7 @@ static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
 	u8 *regs[] = { NULL, regs_cpld2, regs_cpld3, regs_cpld4 };
 	u8  size[] = { 0, ARRAY_SIZE(regs_cpld2),
 					ARRAY_SIZE(regs_cpld3),ARRAY_SIZE(regs_cpld3) };
-	u8 bus[] = { 0, 12, 13, 76 };
+	u8 bus[] = { 0, 12, 13, 20 };
 	u8 addr[] = { 0, 0x62, 0x63, 0x64 };
 	struct i2c_client *client = to_i2c_client(dev);
 	struct as7926_40xfb_cpld_data *data = i2c_get_clientdata(client);
@@ -769,10 +769,10 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 		bus  = 13;
 		addr = 0x63;
 		break;
-	/* Port 41-53 plug-unplug read from i2c bus number '76'
+	/* Port 41-53 plug-unplug read from i2c bus number '20'
 		and CPLD slave address 0x64 */
 	case as7926_40xfb_cpld4:
-		bus  = 76;
+		bus  = 20;
 		addr = 0x64;
 		break;
 	default: status = -ENXIO;
@@ -866,7 +866,7 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
 		break;
 	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_write(13,0x63, reg, val);
 		break;
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_write(76,0x64, reg, val);
+	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_write(20,0x64, reg, val);
 		break;
 	default: status = -ENXIO;
 			break;
@@ -896,7 +896,7 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr,
 		break;
 	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_read(13,0x63, 0x1);
 		break;
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(76,0x64, 0x1);
+	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(20,0x64, 0x1);
 		break;
 	default: status = -1;
 			break;

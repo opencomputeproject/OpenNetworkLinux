@@ -36,6 +36,7 @@
 #define ACCTON_IPMI_NETFN   0x34
 #define IPMI_FAN_READ_CMD   0x14
 #define IPMI_FAN_WRITE_CMD  0x15
+#define IPMI_FAN_READ_RPM_CMD 0x20
 #define IPMI_TIMEOUT		(5 * HZ)
 #define IPMI_ERR_RETRY_TIMES 1
 #define IPMI_FAN_REG_READ_CMD  0x20
@@ -49,6 +50,8 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *attr,
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
 			char *buf);
 static ssize_t show_dir(struct device *dev, struct device_attribute *da,
+			char *buf);
+static ssize_t show_threshold(struct device *dev, struct device_attribute *da,
 			char *buf);
 static int as7926_40xfb_fan_probe(struct platform_device *pdev);
 static int as7926_40xfb_fan_remove(struct platform_device *pdev);
@@ -73,13 +76,18 @@ enum fan_data_index {
 	FAN_PWM,
 	FAN_SPEED0,
 	FAN_SPEED1,
-	FAN_DATA_COUNT
+	FAN_DATA_COUNT,
+
+	FAN_TARGET_SPEED0 = 0,
+	FAN_TARGET_SPEED1,
+	FAN_SPEED_TOLERANCE,
+	FAN_SPEED_DATA_COUNT
 };
 
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	ipmi_user_t user;
+	struct ipmi_user* user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -101,6 +109,7 @@ struct as7926_40xfb_fan_data {
 	/* 4 bytes for each fan, the last 2 bytes is fan dir */
 	unsigned char ipmi_resp[NUM_OF_FAN * FAN_DATA_COUNT + 2];
 	unsigned char ipmi_resp_cpld;
+	unsigned char ipmi_resp_speed[NUM_OF_FAN * FAN_SPEED_DATA_COUNT];
 	struct ipmi_data ipmi;
 	unsigned char ipmi_tx_data[3];  /* 0: FAN id, 1: 0x02, 2: PWM */
 };
@@ -120,12 +129,18 @@ static struct platform_driver as7926_40xfb_fan_driver = {
 #define FAN_PWM_ATTR_ID(index) FAN##index##_PWM
 #define FAN_RPM_ATTR_ID(index) FAN##index##_INPUT
 #define FAN_DIR_ATTR_ID(index) FAN##index##_DIR
+#define FAN_RPM_TARGET_ATTR_ID(index) FAN##index##_TARGET
+#define FAN_RPM_TOLERANCE_ATTR_ID(index) FAN##index##_TOLERANCE
 
 #define FAN_ATTR(fan_id) \
 	FAN_PRESENT_ATTR_ID(fan_id), \
 	FAN_PWM_ATTR_ID(fan_id), \
 	FAN_RPM_ATTR_ID(fan_id), \
 	FAN_DIR_ATTR_ID(fan_id)
+
+#define FAN_RPM_THRESHOLD_ATTR(fan_id) \
+	FAN_RPM_TARGET_ATTR_ID(fan_id), \
+	FAN_RPM_TOLERANCE_ATTR_ID(fan_id)
 
 enum as7926_40xfb_fan_sysfs_attrs {
 	FAN_ATTR(1),
@@ -141,6 +156,16 @@ enum as7926_40xfb_fan_sysfs_attrs {
 	NUM_OF_FAN_ATTR,
 	FAN_VERSION,
 	NUM_OF_PER_FAN_ATTR = (NUM_OF_FAN_ATTR/NUM_OF_FAN),
+	FAN_RPM_THRESHOLD_ATTR(1),
+	FAN_RPM_THRESHOLD_ATTR(2),
+	FAN_RPM_THRESHOLD_ATTR(3),
+	FAN_RPM_THRESHOLD_ATTR(4),
+	FAN_RPM_THRESHOLD_ATTR(5),
+	FAN_RPM_THRESHOLD_ATTR(6),
+	FAN_RPM_THRESHOLD_ATTR(7),
+	FAN_RPM_THRESHOLD_ATTR(8),
+	FAN_RPM_THRESHOLD_ATTR(9),
+	FAN_RPM_THRESHOLD_ATTR(10),
 };
 
 /* fan attributes */
@@ -157,12 +182,19 @@ enum as7926_40xfb_fan_sysfs_attrs {
 	static SENSOR_DEVICE_ATTR(fan##index##_input, S_IRUGO, show_fan, NULL, \
 								FAN##index##_INPUT); \
 	static SENSOR_DEVICE_ATTR(fan##index##_dir, S_IRUGO, show_dir, NULL, \
-								FAN##index##_DIR)
+								FAN##index##_DIR); \
+	static SENSOR_DEVICE_ATTR(fan##index##_target, S_IRUGO, show_threshold, \
+								NULL, FAN##index##_TARGET); \
+	static SENSOR_DEVICE_ATTR(fan##index##_tolerance, S_IRUGO, show_threshold, \
+								NULL, FAN##index##_TOLERANCE)
+
 #define DECLARE_FAN_ATTR(index) \
 	&sensor_dev_attr_fan##index##_present.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_pwm.dev_attr.attr, \
 	&sensor_dev_attr_fan##index##_input.dev_attr.attr, \
-	&sensor_dev_attr_fan##index##_dir.dev_attr.attr
+	&sensor_dev_attr_fan##index##_dir.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_target.dev_attr.attr, \
+	&sensor_dev_attr_fan##index##_tolerance.dev_attr.attr
 
 DECLARE_FAN_SENSOR_DEVICE_ATTR(1);
 DECLARE_FAN_SENSOR_DEVICE_ATTR(2);
@@ -349,6 +381,12 @@ static struct as7926_40xfb_fan_data *as7926_40xfb_fan_update_device(void)
 		status = -EIO;
 		goto exit;
 	}
+
+	data->ipmi_tx_data[0] = IPMI_FAN_READ_RPM_CMD;
+	status = ipmi_send_message(&data->ipmi, IPMI_FAN_READ_CMD,
+								data->ipmi_tx_data, 1,
+								data->ipmi_resp_speed,
+								sizeof(data->ipmi_resp_speed));
 
 	data->last_updated = jiffies;
 	data->valid = 1;
@@ -547,6 +585,68 @@ static ssize_t show_dir(struct device *dev, struct device_attribute *da,
 	else
 		return sprintf(buf, "%s\n",
 						(value & BIT(fid % NUM_OF_FAN_MODULE)) ? "B2F" : "F2B");
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return error;
+}
+
+static ssize_t show_threshold(struct device *dev, struct device_attribute *da,
+			char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	int value = 0;
+	int index = 0;
+	int error = 0;
+
+	mutex_lock(&data->update_lock);
+
+	data = as7926_40xfb_fan_update_device();
+	if (!data->valid) {
+		error = -EIO;
+		goto exit;
+	}
+
+	switch (attr->index) {
+    case FAN1_TARGET:
+    case FAN2_TARGET:
+    case FAN3_TARGET:
+    case FAN4_TARGET:
+    case FAN5_TARGET:
+        value = (int)data->ipmi_resp_speed[FAN_TARGET_SPEED0] |
+                (int)data->ipmi_resp_speed[FAN_TARGET_SPEED1] << 8;
+        break;
+    case FAN6_TARGET:
+    case FAN7_TARGET:
+    case FAN8_TARGET:
+    case FAN9_TARGET:
+    case FAN10_TARGET:
+        index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
+        value = (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED0] |
+                (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED1] << 8;
+        break;
+    case FAN1_TOLERANCE:
+    case FAN2_TOLERANCE:
+    case FAN3_TOLERANCE:
+    case FAN4_TOLERANCE:
+    case FAN5_TOLERANCE:
+        value = (int)data->ipmi_resp_speed[FAN_SPEED_TOLERANCE];
+        break;
+    case FAN6_TOLERANCE:
+    case FAN7_TOLERANCE:
+    case FAN8_TOLERANCE:
+    case FAN9_TOLERANCE:
+    case FAN10_TOLERANCE:
+        index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
+        value = (int)data->ipmi_resp_speed[index + FAN_SPEED_TOLERANCE];
+        break;
+    default:
+        error = -EINVAL;
+        goto exit;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return sprintf(buf, "%d\n", value);
 
 exit:
 	mutex_unlock(&data->update_lock);
