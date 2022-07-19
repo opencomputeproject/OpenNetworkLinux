@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * A hwmon driver for the as7926_40xfb_cpld
  *
  * Copyright (C) 2019  Edgecore Networks Corporation.
- * Jostar Yang <brandon_chuang@edge-core.com>
+ * Brandon Chuang <brandon_chuang@edge-core.com>
  *
  * Based on ad7414.c
  * Copyright 2006 Stefan Roese <sr at denx.de>, DENX Software Engineering
@@ -37,11 +38,11 @@
 #define DRVNAME "as7926_40xfb_cpld"
 
 static LIST_HEAD(cpld_client_list);
-static struct mutex	 list_lock;
+static struct mutex list_lock;
 
 struct cpld_client_node {
 	struct i2c_client *client;
-	struct list_head   list;
+	struct list_head list;
 };
 
 enum cpld_type {
@@ -51,25 +52,25 @@ enum cpld_type {
 };
 
 #define I2C_RW_RETRY_COUNT    10
-#define I2C_RW_RETRY_INTERVAL 60 /* ms */
+#define I2C_RW_RETRY_INTERVAL 60	/* ms */
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
-			 char *buf);
+			   char *buf);
 static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
-			 char *buf);
+				char *buf);
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
+			      const char *buf, size_t count);
 static ssize_t set_control(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
+			   const char *buf, size_t count);
 static ssize_t access(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
+		      const char *buf, size_t count);
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
-			char *buf);
+			    char *buf);
 
 struct as7926_40xfb_cpld_data {
 	struct device *hwmon_dev;
-	struct mutex   update_lock;
-	u8  index; /* CPLD index */
+	struct mutex update_lock;
+	u8 index;		/* CPLD index */
 };
 
 /* Addresses scanned for as7926_40xfb_cpld
@@ -239,8 +240,8 @@ enum as7926_40xfb_cpld_sysfs_attributes {
 
 static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
-static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_present_all, \
-							NULL, MODULE_PRESENT_ALL);
+static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_present_all,
+			  NULL, MODULE_PRESENT_ALL);
 
 /* transceiver attributes */
 DECLARE_QSFP28_TRANSCEIVER_SENSOR_DEVICE_ATTR(1);
@@ -388,7 +389,7 @@ static const struct attribute_group as7926_40xfb_cpld4_group = {
 	.attrs = as7926_40xfb_cpld4_attributes,
 };
 
-static const struct attribute_group* cpld_groups[] = {
+static const struct attribute_group *cpld_groups[] = {
 	&as7926_40xfb_cpld2_group,
 	&as7926_40xfb_cpld3_group,
 	&as7926_40xfb_cpld4_group,
@@ -396,18 +397,18 @@ static const struct attribute_group* cpld_groups[] = {
 
 int as7926_40xfb_cpld_read(int bus_num, unsigned short cpld_addr, u8 reg)
 {
-	struct list_head   *list_node = NULL;
+	struct list_head *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
 	int ret = -EPERM;
 
 	mutex_lock(&list_lock);
 
-	list_for_each(list_node, &cpld_client_list)
-	{
-		cpld_node = list_entry(list_node, struct cpld_client_node, list);
+	list_for_each(list_node, &cpld_client_list) {
+		cpld_node =
+		    list_entry(list_node, struct cpld_client_node, list);
 
 		if (cpld_node->client->addr == cpld_addr
-			&& cpld_node->client->adapter->nr == bus_num) {
+		    && cpld_node->client->adapter->nr == bus_num) {
 			ret = i2c_smbus_read_byte_data(cpld_node->client, reg);
 			break;
 		}
@@ -417,9 +418,11 @@ int as7926_40xfb_cpld_read(int bus_num, unsigned short cpld_addr, u8 reg)
 
 	return ret;
 }
+
 EXPORT_SYMBOL(as7926_40xfb_cpld_read);
 
-int as7926_40xfb_cpld_write(int bus_num, unsigned short cpld_addr, u8 reg, u8 value)
+int as7926_40xfb_cpld_write(int bus_num, unsigned short cpld_addr, u8 reg,
+			    u8 value)
 {
 	struct list_head *list_node = NULL;
 	struct cpld_client_node *cpld_node = NULL;
@@ -427,12 +430,11 @@ int as7926_40xfb_cpld_write(int bus_num, unsigned short cpld_addr, u8 reg, u8 va
 
 	mutex_lock(&list_lock);
 
-	list_for_each(list_node, &cpld_client_list)
-	{
+	list_for_each(list_node, &cpld_client_list) {
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
 		if (cpld_node->client->addr == cpld_addr
-			&& cpld_node->client->adapter->nr == bus_num) {
+		    && cpld_node->client->adapter->nr == bus_num) {
 			ret = i2c_smbus_write_byte_data(cpld_node->client, reg, value);
 			break;
 		}
@@ -442,10 +444,11 @@ int as7926_40xfb_cpld_write(int bus_num, unsigned short cpld_addr, u8 reg, u8 va
 
 	return ret;
 }
+
 EXPORT_SYMBOL(as7926_40xfb_cpld_write);
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
-			 char *buf)
+			   char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
@@ -458,127 +461,131 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 	case MODULE_PRESENT_3 ... MODULE_PRESENT_4:
 	case MODULE_PRESENT_21 ... MODULE_PRESENT_22:
 	case MODULE_PRESENT_23 ... MODULE_PRESENT_24:
-		reg  = 0x10;
+		reg = 0x10;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_1);
 		break;
 	case MODULE_PRESENT_5 ... MODULE_PRESENT_6:
 	case MODULE_PRESENT_7 ... MODULE_PRESENT_8:
 	case MODULE_PRESENT_25 ... MODULE_PRESENT_26:
 	case MODULE_PRESENT_27 ... MODULE_PRESENT_28:
-		reg  = 0x11;
+		reg = 0x11;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_5);
 		break;
 	case MODULE_PRESENT_9 ... MODULE_PRESENT_10:
 	case MODULE_PRESENT_29 ... MODULE_PRESENT_30:
-		reg  = 0x12;
+		reg = 0x12;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_9);
 		break;
 	case MODULE_PRESENT_11 ... MODULE_PRESENT_12:
 	case MODULE_PRESENT_13 ... MODULE_PRESENT_14:
 	case MODULE_PRESENT_31 ... MODULE_PRESENT_32:
 	case MODULE_PRESENT_33 ... MODULE_PRESENT_34:
-		reg  = 0x10;
+		reg = 0x10;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_11);
 		break;
 	case MODULE_PRESENT_15 ... MODULE_PRESENT_16:
 	case MODULE_PRESENT_17 ... MODULE_PRESENT_18:
 	case MODULE_PRESENT_35 ... MODULE_PRESENT_36:
 	case MODULE_PRESENT_37 ... MODULE_PRESENT_38:
-		reg  = 0x11;
+		reg = 0x11;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_15);
 		break;
 	case MODULE_PRESENT_19 ... MODULE_PRESENT_20:
 	case MODULE_PRESENT_39 ... MODULE_PRESENT_40:
-		reg  = 0x12;
+		reg = 0x12;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_19);
 		break;
-	case MODULE_PRESENT_41 ... MODULE_PRESENT_48: /*QSFP-DD*/
-		reg  = 0x50;
+	case MODULE_PRESENT_41 ... MODULE_PRESENT_48:	/*QSFP-DD */
+		reg = 0x50;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_41);
 		break;
-	case MODULE_PRESENT_49 ... MODULE_PRESENT_53: /*QSFP-DD*/
-		reg  = 0x51;
+	case MODULE_PRESENT_49 ... MODULE_PRESENT_53:	/*QSFP-DD */
+		reg = 0x51;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_49);
 		break;
 	case MODULE_RESET_1 ... MODULE_RESET_2:
 	case MODULE_RESET_3 ... MODULE_RESET_4:
 	case MODULE_RESET_21 ... MODULE_RESET_22:
 	case MODULE_RESET_23 ... MODULE_RESET_24:
-		reg  = 0x8;
+		reg = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_1);
 		break;
 	case MODULE_RESET_5 ... MODULE_RESET_6:
 	case MODULE_RESET_7 ... MODULE_RESET_8:
 	case MODULE_RESET_25 ... MODULE_RESET_26:
 	case MODULE_RESET_27 ... MODULE_RESET_28:
-		reg  = 0x9;
+		reg = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_5);
 		break;
 	case MODULE_RESET_9 ... MODULE_RESET_10:
 	case MODULE_RESET_29 ... MODULE_RESET_30:
-		reg  = 0xA;
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_9);
 		break;
 	case MODULE_RESET_11 ... MODULE_RESET_12:
 	case MODULE_RESET_13 ... MODULE_RESET_14:
 	case MODULE_RESET_31 ... MODULE_RESET_32:
 	case MODULE_RESET_33 ... MODULE_RESET_34:
-		reg  = 0x8;
+		reg = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_11);
 		break;
 	case MODULE_RESET_15 ... MODULE_RESET_16:
 	case MODULE_RESET_17 ... MODULE_RESET_18:
 	case MODULE_RESET_35 ... MODULE_RESET_36:
 	case MODULE_RESET_37 ... MODULE_RESET_38:
-		reg  = 0x9;
+		reg = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_15);
 		break;
 	case MODULE_RESET_19 ... MODULE_RESET_20:
 	case MODULE_RESET_39 ... MODULE_RESET_40:
-		reg  = 0xA;
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_19);
 		break;
-	case MODULE_RESET_41 ... MODULE_RESET_48: /*QSFP-DD*/
-		reg  = 0xA;
+	case MODULE_RESET_41 ... MODULE_RESET_48:	/*QSFP-DD */
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_41);
 		break;
-	case MODULE_RESET_49 ... MODULE_RESET_53: /*QSFP-DD*/
-		reg  = 0xB;
+	case MODULE_RESET_49 ... MODULE_RESET_53:	/*QSFP-DD */
+		reg = 0xB;
 		mask = 0x1 << (attr->index - MODULE_RESET_49);
 		break;
 	case MODULE_PRESENT_54 ... MODULE_PRESENT_55:
-		reg  = 0x13;
+		reg = 0x13;
 		mask = 0x1 << (attr->index - MODULE_PRESENT_54);
 		break;
 	case MODULE_TXDISABLE_54 ... MODULE_TXDISABLE_55:
-		reg  = 0xB;
+		reg = 0xB;
 		mask = 0x1 << (attr->index - MODULE_TXDISABLE_54);
-		invert=0;
+		invert = 0;
 		break;
 	case MODULE_RXLOS_54 ... MODULE_RXLOS_55:
-		reg  = 0x23;
+		reg = 0x23;
 		mask = 0x1 << (attr->index - MODULE_RXLOS_54);
-		invert=0;
+		invert = 0;
 		break;
- 	default:
+	default:
 		return -ENXIO;
 	}
 
 	mutex_lock(&data->update_lock);
-	switch(data->index) {
-	/* Port 1-20, 41-42 present statuus: read from i2c bus number '12'
-		and CPLD slave address 0x62 */
-	case as7926_40xfb_cpld2: status = as7926_40xfb_cpld_read(12, 0x62, reg);
+	switch (data->index) {
+		/* Port 1-20, 41-42 present statuus: read from i2c bus number '12'
+		   and CPLD slave address 0x62 */
+	case as7926_40xfb_cpld2:
+		status = as7926_40xfb_cpld_read(12, 0x62, reg);
 		break;
-	/* Port 21-40 present statuus: read from i2c bus number '13'
-		and CPLD slave address 0x63 */
-	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_read(13, 0x63, reg);
+		/* Port 21-40 present statuus: read from i2c bus number '13'
+		   and CPLD slave address 0x63 */
+	case as7926_40xfb_cpld3:
+		status = as7926_40xfb_cpld_read(13, 0x63, reg);
 		break;
-	/* Port 41-53 plug-unplug read from i2c bus number '20'
-		and CPLD slave address 0x64 */
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(20, 0x64, reg);
+		/* Port 41-53 plug-unplug read from i2c bus number '20'
+		   and CPLD slave address 0x64 */
+	case as7926_40xfb_cpld4:
+		status = as7926_40xfb_cpld_read(20, 0x64, reg);
 		break;
-	default: status = -ENXIO;
+	default:
+		status = -ENXIO;
 		break;
 	}
 
@@ -587,18 +594,19 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 
 	mutex_unlock(&data->update_lock);
 
-	return sprintf(buf, "%d\n", invert? !(status & mask): !!(status & mask));
+	return sprintf(buf, "%d\n",
+		       invert ? !(status & mask) : ! !(status & mask));
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
 
 static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
-			 char *buf)
+				char *buf)
 {
 	int i, status;
-	u8 values[4]  = { 0 };
+	u8 values[4] = { 0 };
 	u8 regs_cpld2[] = { 0x10, 0x11, 0x12, 0x13 };
 	u8 regs_cpld3[] = { 0x10, 0x11, 0x12 };
 	u8 regs_cpld4[] = { 0x50, 0x51 };
@@ -614,35 +622,38 @@ static ssize_t show_present_all(struct device *dev, struct device_attribute *da,
 
 	for (i = 0; i < size[data->index]; i++) {
 		status = as7926_40xfb_cpld_read(bus[data->index],
-									addr[data->index], regs[data->index][i]);
+						addr[data->index],
+						regs[data->index][i]);
 		if (status < 0)
 			goto exit;
 
-		values[i] = ~(u8)status;
+		values[i] = ~(u8) status;
 	}
 
 	mutex_unlock(&data->update_lock);
 
-	switch(data->index) {
+	switch (data->index) {
 	case as7926_40xfb_cpld2:
 		return sprintf(buf, "%.2x %.2x %.2x %.2x\n",
-						values[0], values[1], values[2]&0xF, values[3] & 0x3);
+			       values[0], values[1], values[2] & 0xF,
+			       values[3] & 0x3);
 	case as7926_40xfb_cpld3:
 		return sprintf(buf, "%.2x %.2x %.2x\n",
-						values[0], values[1], (values[2] & 0xF));
+			       values[0], values[1], (values[2] & 0xF));
 	case as7926_40xfb_cpld4:
-		return sprintf(buf, "%.2x %.2x\n", values[0], (values[1] & 0x1F));
+		return sprintf(buf, "%.2x %.2x\n", values[0],
+			       (values[1] & 0x1F));
 	default:
 		return -EINVAL;
 	}
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
 
 static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+			      const char *buf, size_t count)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
@@ -655,7 +666,7 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 	if (status)
 		return status;
 
-	reg  = 0xB;
+	reg = 0xB;
 	switch (attr->index) {
 	case MODULE_TXDISABLE_54:
 		mask = 0x1;
@@ -685,13 +696,13 @@ static ssize_t set_tx_disable(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return count;
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
 
 static ssize_t set_control(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+			   const char *buf, size_t count)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
@@ -709,46 +720,46 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	case MODULE_RESET_3 ... MODULE_RESET_4:
 	case MODULE_RESET_21 ... MODULE_RESET_22:
 	case MODULE_RESET_23 ... MODULE_RESET_24:
-		reg  = 0x8;
+		reg = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_1);
 		break;
 	case MODULE_RESET_5 ... MODULE_RESET_6:
 	case MODULE_RESET_7 ... MODULE_RESET_8:
 	case MODULE_RESET_25 ... MODULE_RESET_26:
 	case MODULE_RESET_27 ... MODULE_RESET_28:
-		reg  = 0x9;
+		reg = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_5);
 		break;
 	case MODULE_RESET_9 ... MODULE_RESET_10:
 	case MODULE_RESET_29 ... MODULE_RESET_30:
-		reg  = 0xA;
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_9);
 		break;
 	case MODULE_RESET_11 ... MODULE_RESET_12:
 	case MODULE_RESET_13 ... MODULE_RESET_14:
 	case MODULE_RESET_31 ... MODULE_RESET_32:
 	case MODULE_RESET_33 ... MODULE_RESET_34:
-		reg  = 0x8;
+		reg = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_11);
 		break;
 	case MODULE_RESET_15 ... MODULE_RESET_16:
 	case MODULE_RESET_17 ... MODULE_RESET_18:
 	case MODULE_RESET_35 ... MODULE_RESET_36:
 	case MODULE_RESET_37 ... MODULE_RESET_38:
-		reg  = 0x9;
+		reg = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_15);
 		break;
 	case MODULE_RESET_19 ... MODULE_RESET_20:
 	case MODULE_RESET_39 ... MODULE_RESET_40:
-		reg  = 0xA;
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_19);
 		break;
-	case MODULE_RESET_41 ... MODULE_RESET_48: /*QSFP-DD*/
-		reg  = 0xA;
+	case MODULE_RESET_41 ... MODULE_RESET_48:	/*QSFP-DD */
+		reg = 0xA;
 		mask = 0x1 << (attr->index - MODULE_RESET_41);
 		break;
-	case MODULE_RESET_49 ... MODULE_RESET_53: /*QSFP-DD*/
-		reg  = 0xB;
+	case MODULE_RESET_49 ... MODULE_RESET_53:	/*QSFP-DD */
+		reg = 0xB;
 		mask = 0x1 << (attr->index - MODULE_RESET_49);
 		break;
 	default:
@@ -756,26 +767,27 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	}
 
 	mutex_lock(&data->update_lock);
-	switch(data->index) {
-	/* Port 1-20, 41-42 present statuus: read from i2c bus number '12'
-		and CPLD slave address 0x62 */
+	switch (data->index) {
+		/* Port 1-20, 41-42 present statuus: read from i2c bus number '12'
+		   and CPLD slave address 0x62 */
 	case as7926_40xfb_cpld2:
-		bus  = 12;
+		bus = 12;
 		addr = 0x62;
 		break;
-	/* Port 21-40 present statuus: read from i2c bus number '13'
-		and CPLD slave address 0x63 */
+		/* Port 21-40 present statuus: read from i2c bus number '13'
+		   and CPLD slave address 0x63 */
 	case as7926_40xfb_cpld3:
-		bus  = 13;
+		bus = 13;
 		addr = 0x63;
 		break;
-	/* Port 41-53 plug-unplug read from i2c bus number '20'
-		and CPLD slave address 0x64 */
+		/* Port 41-53 plug-unplug read from i2c bus number '20'
+		   and CPLD slave address 0x64 */
 	case as7926_40xfb_cpld4:
-		bus  = 20;
+		bus = 20;
 		addr = 0x64;
 		break;
-	default: status = -ENXIO;
+	default:
+		status = -ENXIO;
 		goto exit;
 	}
 
@@ -797,7 +809,7 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return count;
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
@@ -805,11 +817,12 @@ exit:
 static void as7926_40xfb_cpld_add_client(struct i2c_client *client)
 {
 	struct cpld_client_node *node = kzalloc(sizeof(struct cpld_client_node),
-											GFP_KERNEL);
+						GFP_KERNEL);
 
 	if (!node) {
-		dev_dbg(&client->dev, "Can't allocate cpld_client_node (0x%x)\n",
-								client->addr);
+		dev_dbg(&client->dev,
+			"Can't allocate cpld_client_node (0x%x)\n",
+			client->addr);
 		return;
 	}
 
@@ -828,8 +841,7 @@ static void as7926_40xfb_cpld_remove_client(struct i2c_client *client)
 
 	mutex_lock(&list_lock);
 
-	list_for_each(list_node, &cpld_client_list)
-	{
+	list_for_each(list_node, &cpld_client_list) {
 		cpld_node = list_entry(list_node, struct cpld_client_node, list);
 
 		if (cpld_node->client == client) {
@@ -847,7 +859,7 @@ static void as7926_40xfb_cpld_remove_client(struct i2c_client *client)
 }
 
 static ssize_t access(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+		      const char *buf, size_t count)
 {
 	int status;
 	u32 reg, val;
@@ -861,15 +873,19 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 
 	mutex_lock(&data->update_lock);
-	switch(data->index) {
-	case as7926_40xfb_cpld2: status = as7926_40xfb_cpld_write(12,0x62, reg, val);
+	switch (data->index) {
+	case as7926_40xfb_cpld2:
+		status = as7926_40xfb_cpld_write(12, 0x62, reg, val);
 		break;
-	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_write(13,0x63, reg, val);
+	case as7926_40xfb_cpld3:
+		status = as7926_40xfb_cpld_write(13, 0x63, reg, val);
 		break;
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_write(20,0x64, reg, val);
+	case as7926_40xfb_cpld4:
+		status = as7926_40xfb_cpld_write(20, 0x64, reg, val);
 		break;
-	default: status = -ENXIO;
-			break;
+	default:
+		status = -ENXIO;
+		break;
 	}
 
 	if (unlikely(status < 0))
@@ -878,28 +894,32 @@ static ssize_t access(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return count;
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
 
 static ssize_t show_version(struct device *dev, struct device_attribute *attr,
-							char *buf)
+			    char *buf)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct as7926_40xfb_cpld_data *data = i2c_get_clientdata(client);
 	int status = 0;
 
 	mutex_lock(&data->update_lock);
-	switch(data->index) {
-	case as7926_40xfb_cpld2: status = as7926_40xfb_cpld_read(12,0x62, 0x1);
+	switch (data->index) {
+	case as7926_40xfb_cpld2:
+		status = as7926_40xfb_cpld_read(12, 0x62, 0x1);
 		break;
-	case as7926_40xfb_cpld3: status = as7926_40xfb_cpld_read(13,0x63, 0x1);
+	case as7926_40xfb_cpld3:
+		status = as7926_40xfb_cpld_read(13, 0x63, 0x1);
 		break;
-	case as7926_40xfb_cpld4: status = as7926_40xfb_cpld_read(20,0x64, 0x1);
+	case as7926_40xfb_cpld4:
+		status = as7926_40xfb_cpld_read(20, 0x64, 0x1);
 		break;
-	default: status = -1;
-			break;
+	default:
+		status = -1;
+		break;
 	}
 
 	if (unlikely(status < 0)) {
@@ -910,20 +930,19 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr,
 	mutex_unlock(&data->update_lock);
 
 	return sprintf(buf, "%d\n", status);
-exit:
+ exit:
 	return status;
 }
 
-
 static int as7926_40xfb_cpld_probe(struct i2c_client *client,
-			const struct i2c_device_id *dev_id)
+				   const struct i2c_device_id *dev_id)
 {
 	int status;
 	struct as7926_40xfb_cpld_data *data = NULL;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_dbg(&client->dev, "i2c_check_functionality failed (0x%x)\n",
-								client->addr);
+			client->addr);
 		status = -EIO;
 		goto exit;
 	}
@@ -944,7 +963,9 @@ static int as7926_40xfb_cpld_probe(struct i2c_client *client,
 	if (status)
 		goto exit_free;
 
-	data->hwmon_dev = hwmon_device_register_with_info(&client->dev, DRVNAME, NULL, NULL, NULL);
+	data->hwmon_dev =
+	    hwmon_device_register_with_info(&client->dev, DRVNAME, NULL, NULL,
+					    NULL);
 	if (IS_ERR(data->hwmon_dev)) {
 		status = PTR_ERR(data->hwmon_dev);
 		goto exit_remove;
@@ -953,15 +974,15 @@ static int as7926_40xfb_cpld_probe(struct i2c_client *client,
 	as7926_40xfb_cpld_add_client(client);
 
 	dev_info(&client->dev, "%s: cpld '%s'\n",
-							dev_name(data->hwmon_dev), client->name);
+		 dev_name(data->hwmon_dev), client->name);
 
 	return 0;
 
-exit_remove:
+ exit_remove:
 	sysfs_remove_group(&client->dev.kobj, cpld_groups[data->index]);
-exit_free:
+ exit_free:
 	kfree(data);
-exit:
+ exit:
 
 	return status;
 }
@@ -979,9 +1000,9 @@ static int as7926_40xfb_cpld_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id as7926_40xfb_cpld_id[] = {
-	{ "as7926_40xfb_cpld2", as7926_40xfb_cpld2 },
-	{ "as7926_40xfb_cpld3", as7926_40xfb_cpld3 },
-	{ "as7926_40xfb_cpld4", as7926_40xfb_cpld4 },
+	{"as7926_40xfb_cpld2", as7926_40xfb_cpld2},
+	{"as7926_40xfb_cpld3", as7926_40xfb_cpld3},
+	{"as7926_40xfb_cpld4", as7926_40xfb_cpld4},
 	{}
 };
 
@@ -990,8 +1011,8 @@ MODULE_DEVICE_TABLE(i2c, as7926_40xfb_cpld_id);
 static struct i2c_driver as7926_40xfb_cpld_driver = {
 	.class = I2C_CLASS_HWMON,
 	.driver = {
-		.name = DRVNAME,
-	},
+		   .name = DRVNAME,
+		   },
 	.probe = as7926_40xfb_cpld_probe,
 	.remove = as7926_40xfb_cpld_remove,
 	.id_table = as7926_40xfb_cpld_id,

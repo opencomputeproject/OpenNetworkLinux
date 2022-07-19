@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A hwmon driver for the as7926_40xfb_fan
  *
+ * Copyright (C) 2019  Edgecore Networks Corporation.
+ * Brandon Chuang <brandon_chuang@edge-core.com>
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -44,15 +47,15 @@
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
+		       const char *buf, size_t count);
 static ssize_t show_fan(struct device *dev, struct device_attribute *attr,
 			char *buf);
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
-			char *buf);
+			    char *buf);
 static ssize_t show_dir(struct device *dev, struct device_attribute *da,
 			char *buf);
 static ssize_t show_threshold(struct device *dev, struct device_attribute *da,
-			char *buf);
+			      char *buf);
 static int as7926_40xfb_fan_probe(struct platform_device *pdev);
 static int as7926_40xfb_fan_remove(struct platform_device *pdev);
 
@@ -68,7 +71,7 @@ enum fan_id {
 	FAN_9,
 	FAN_10,
 	NUM_OF_FAN,
-	NUM_OF_FAN_MODULE = NUM_OF_FAN/2
+	NUM_OF_FAN_MODULE = NUM_OF_FAN / 2
 };
 
 enum fan_data_index {
@@ -87,7 +90,7 @@ enum fan_data_index {
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	struct ipmi_user* user;
+	struct ipmi_user *user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -95,7 +98,7 @@ struct ipmi_data {
 
 	void *rx_msg_data;
 	unsigned short rx_msg_len;
-	unsigned char  rx_result;
+	unsigned char rx_result;
 	int rx_recv_type;
 
 	struct ipmi_user_hndl ipmi_hndlrs;
@@ -104,14 +107,14 @@ struct ipmi_data {
 struct as7926_40xfb_fan_data {
 	struct platform_device *pdev;
 	struct mutex update_lock;
-	char valid; /* != 0 if registers are valid */
+	char valid;		/* != 0 if registers are valid */
 	unsigned long last_updated;	/* In jiffies */
 	/* 4 bytes for each fan, the last 2 bytes is fan dir */
 	unsigned char ipmi_resp[NUM_OF_FAN * FAN_DATA_COUNT + 2];
 	unsigned char ipmi_resp_cpld;
 	unsigned char ipmi_resp_speed[NUM_OF_FAN * FAN_SPEED_DATA_COUNT];
 	struct ipmi_data ipmi;
-	unsigned char ipmi_tx_data[3];  /* 0: FAN id, 1: 0x02, 2: PWM */
+	unsigned char ipmi_tx_data[3];	/* 0: FAN id, 1: 0x02, 2: PWM */
 };
 
 struct as7926_40xfb_fan_data *data = NULL;
@@ -120,9 +123,9 @@ static struct platform_driver as7926_40xfb_fan_driver = {
 	.probe = as7926_40xfb_fan_probe,
 	.remove = as7926_40xfb_fan_remove,
 	.driver = {
-		.name = DRVNAME,
-		.owner = THIS_MODULE,
-	},
+		   .name = DRVNAME,
+		   .owner = THIS_MODULE,
+		   },
 };
 
 #define FAN_PRESENT_ATTR_ID(index) FAN##index##_PRESENT
@@ -155,7 +158,7 @@ enum as7926_40xfb_fan_sysfs_attrs {
 	FAN_ATTR(10),
 	NUM_OF_FAN_ATTR,
 	FAN_VERSION,
-	NUM_OF_PER_FAN_ATTR = (NUM_OF_FAN_ATTR/NUM_OF_FAN),
+	NUM_OF_PER_FAN_ATTR = (NUM_OF_FAN_ATTR / NUM_OF_FAN),
 	FAN_RPM_THRESHOLD_ATTR(1),
 	FAN_RPM_THRESHOLD_ATTR(2),
 	FAN_RPM_THRESHOLD_ATTR(3),
@@ -231,8 +234,7 @@ static const struct attribute_group as7926_40xfb_fan_group = {
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-				  struct device *dev)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev)
 {
 	int err;
 
@@ -252,7 +254,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-				   ipmi, &ipmi->user);
+			       ipmi, &ipmi->user);
 	if (err < 0) {
 		dev_err(dev, "Unable to register user with IPMI "
 			"interface %d\n", ipmi->interface);
@@ -264,16 +266,16 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			      unsigned char *tx_data, unsigned short tx_len,
+			      unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
-	ipmi->tx_message.cmd	  = cmd;
-	ipmi->tx_message.data	 = tx_data;
+	ipmi->tx_message.cmd = cmd;
+	ipmi->tx_message.data = tx_data;
 	ipmi->tx_message.data_len = tx_len;
-	ipmi->rx_msg_data		 = rx_data;
-	ipmi->rx_msg_len		  = rx_len;
+	ipmi->rx_msg_data = rx_data;
+	ipmi->rx_msg_len = rx_len;
 
 	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
 	if (err)
@@ -291,36 +293,40 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 	return 0;
 
-ipmi_timeout_err:
+ ipmi_timeout_err:
 	err = -ETIMEDOUT;
 	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
 	return err;
-ipmi_req_err:
+ ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
-addr_err:
+ addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-									 unsigned char *tx_data, unsigned short tx_len,
-									 unsigned char *rx_data, unsigned short rx_len)
+			     unsigned char *tx_data, unsigned short tx_len,
+			     unsigned char *rx_data, unsigned short rx_len)
 {
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+		status =
+		    _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data,
+				       rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n",
-										retry, status);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err status(%d)\r\n",
+				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err result(%d)\r\n",
-										retry, ipmi->rx_result);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err result(%d)\r\n",
+				retry, ipmi->rx_result);
 			continue;
 		}
 
@@ -339,8 +345,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	if (msg->msgid != ipmi->tx_msgid) {
 		dev_err(&data->pdev->dev, "Mismatch between received msgid "
 			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
+			(int)msg->msgid, (int)ipmi->tx_msgid);
 		ipmi_free_recv_msg(msg);
 		return;
 	}
@@ -373,7 +378,7 @@ static struct as7926_40xfb_fan_data *as7926_40xfb_fan_update_device(void)
 
 	data->valid = 0;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_READ_CMD, NULL, 0,
-								data->ipmi_resp, sizeof(data->ipmi_resp));
+				   data->ipmi_resp, sizeof(data->ipmi_resp));
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -384,19 +389,19 @@ static struct as7926_40xfb_fan_data *as7926_40xfb_fan_update_device(void)
 
 	data->ipmi_tx_data[0] = IPMI_FAN_READ_RPM_CMD;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_READ_CMD,
-								data->ipmi_tx_data, 1,
-								data->ipmi_resp_speed,
-								sizeof(data->ipmi_resp_speed));
+				   data->ipmi_tx_data, 1,
+				   data->ipmi_resp_speed,
+				   sizeof(data->ipmi_resp_speed));
 
 	data->last_updated = jiffies;
 	data->valid = 1;
 
-exit:
+ exit:
 	return data;
 }
 
 static ssize_t show_fan(struct device *dev, struct device_attribute *da,
-							char *buf)
+			char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char fid = attr->index / NUM_OF_PER_FAN_ATTR;
@@ -413,63 +418,63 @@ static ssize_t show_fan(struct device *dev, struct device_attribute *da,
 		goto exit;
 	}
 
-	index = fid * FAN_DATA_COUNT; /* base index */
-	present = !!data->ipmi_resp[index + FAN_PRESENT];
+	index = fid * FAN_DATA_COUNT;	/* base index */
+	present = ! !data->ipmi_resp[index + FAN_PRESENT];
 
 	switch (attr->index) {
-    case FAN1_PRESENT:
-    case FAN2_PRESENT:
-    case FAN3_PRESENT:
-    case FAN4_PRESENT:
-    case FAN5_PRESENT:
-    case FAN6_PRESENT:
-    case FAN7_PRESENT:
-    case FAN8_PRESENT:
-    case FAN9_PRESENT:
-    case FAN10_PRESENT:
-        value = present;
-        break;
-    case FAN1_PWM:
-    case FAN2_PWM:
-    case FAN3_PWM:
-    case FAN4_PWM:
-    case FAN5_PWM:
-    case FAN6_PWM:
-    case FAN7_PWM:
-    case FAN8_PWM:
-    case FAN9_PWM:
-    case FAN10_PWM:
-        index = (fid % NUM_OF_FAN_MODULE) * FAN_DATA_COUNT;
-        value = (data->ipmi_resp[index + FAN_PWM] + 1) * 625 / 100;
-        break;
-    case FAN1_INPUT:
-    case FAN2_INPUT:
-    case FAN3_INPUT:
-    case FAN4_INPUT:
-    case FAN5_INPUT:
-    case FAN6_INPUT:
-    case FAN7_INPUT:
-    case FAN8_INPUT:
-    case FAN9_INPUT:
-    case FAN10_INPUT:
-        value = (int)data->ipmi_resp[index + FAN_SPEED0] |
-                (int)data->ipmi_resp[index + FAN_SPEED1] << 8;
-        break;
-    default:
-        error = -EINVAL;
-        goto exit;
+	case FAN1_PRESENT:
+	case FAN2_PRESENT:
+	case FAN3_PRESENT:
+	case FAN4_PRESENT:
+	case FAN5_PRESENT:
+	case FAN6_PRESENT:
+	case FAN7_PRESENT:
+	case FAN8_PRESENT:
+	case FAN9_PRESENT:
+	case FAN10_PRESENT:
+		value = present;
+		break;
+	case FAN1_PWM:
+	case FAN2_PWM:
+	case FAN3_PWM:
+	case FAN4_PWM:
+	case FAN5_PWM:
+	case FAN6_PWM:
+	case FAN7_PWM:
+	case FAN8_PWM:
+	case FAN9_PWM:
+	case FAN10_PWM:
+		index = (fid % NUM_OF_FAN_MODULE) * FAN_DATA_COUNT;
+		value = (data->ipmi_resp[index + FAN_PWM] + 1) * 625 / 100;
+		break;
+	case FAN1_INPUT:
+	case FAN2_INPUT:
+	case FAN3_INPUT:
+	case FAN4_INPUT:
+	case FAN5_INPUT:
+	case FAN6_INPUT:
+	case FAN7_INPUT:
+	case FAN8_INPUT:
+	case FAN9_INPUT:
+	case FAN10_INPUT:
+		value = (int)data->ipmi_resp[index + FAN_SPEED0] |
+		    (int)data->ipmi_resp[index + FAN_SPEED1] << 8;
+		break;
+	default:
+		error = -EINVAL;
+		goto exit;
 	}
 
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", present ? value : 0);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
 
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+		       const char *buf, size_t count)
 {
 	long pwm;
 	int status;
@@ -480,7 +485,7 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 	if (status)
 		return status;
 
-	pwm = (pwm * 100) / 625 - 1; /* Convert pwm to register value */
+	pwm = (pwm * 100) / 625 - 1;	/* Convert pwm to register value */
 
 	mutex_lock(&data->update_lock);
 
@@ -489,8 +494,8 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 	data->ipmi_tx_data[1] = 0x02;
 	data->ipmi_tx_data[2] = pwm;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_WRITE_CMD,
-								data->ipmi_tx_data, sizeof(data->ipmi_tx_data),
-								NULL, 0);
+				   data->ipmi_tx_data,
+				   sizeof(data->ipmi_tx_data), NULL, 0);
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -503,7 +508,7 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 	data->ipmi_resp[fid * FAN_DATA_COUNT + FAN_PWM] = pwm;
 	status = count;
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
@@ -515,9 +520,9 @@ static struct as7926_40xfb_fan_data *as7926_40xfb_fan_update_cpld_ver(void)
 	data->valid = 0;
 	data->ipmi_tx_data[0] = 0x66;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_REG_READ_CMD,
-								data->ipmi_tx_data, 1,
-								&data->ipmi_resp_cpld,
-								sizeof(data->ipmi_resp_cpld));
+				   data->ipmi_tx_data, 1,
+				   &data->ipmi_resp_cpld,
+				   sizeof(data->ipmi_resp_cpld));
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -529,12 +534,12 @@ static struct as7926_40xfb_fan_data *as7926_40xfb_fan_update_cpld_ver(void)
 	data->last_updated = jiffies;
 	data->valid = 1;
 
-exit:
+ exit:
 	return data;
 }
 
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
-								char *buf)
+			    char *buf)
 {
 	unsigned char value = 0;
 	int error = 0;
@@ -551,13 +556,13 @@ static ssize_t show_version(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
 
 static ssize_t show_dir(struct device *dev, struct device_attribute *da,
-							char *buf)
+			char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char fid = (attr->index / NUM_OF_PER_FAN_ATTR);
@@ -574,8 +579,8 @@ static ssize_t show_dir(struct device *dev, struct device_attribute *da,
 		goto exit;
 	}
 
-	index = fid * FAN_DATA_COUNT; /* base index */
-	present = !!data->ipmi_resp[index + FAN_PRESENT];
+	index = fid * FAN_DATA_COUNT;	/* base index */
+	present = ! !data->ipmi_resp[index + FAN_PRESENT];
 
 	value = data->ipmi_resp[40] | (data->ipmi_resp[41] << 8);
 	mutex_unlock(&data->update_lock);
@@ -584,15 +589,16 @@ static ssize_t show_dir(struct device *dev, struct device_attribute *da,
 		return sprintf(buf, "0\n");
 	else
 		return sprintf(buf, "%s\n",
-						(value & BIT(fid % NUM_OF_FAN_MODULE)) ? "B2F" : "F2B");
+			       (value & BIT(fid % NUM_OF_FAN_MODULE)) ? "B2F" :
+			       "F2B");
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
 
 static ssize_t show_threshold(struct device *dev, struct device_attribute *da,
-			char *buf)
+			      char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	int value = 0;
@@ -608,47 +614,47 @@ static ssize_t show_threshold(struct device *dev, struct device_attribute *da,
 	}
 
 	switch (attr->index) {
-    case FAN1_TARGET:
-    case FAN2_TARGET:
-    case FAN3_TARGET:
-    case FAN4_TARGET:
-    case FAN5_TARGET:
-        value = (int)data->ipmi_resp_speed[FAN_TARGET_SPEED0] |
-                (int)data->ipmi_resp_speed[FAN_TARGET_SPEED1] << 8;
-        break;
-    case FAN6_TARGET:
-    case FAN7_TARGET:
-    case FAN8_TARGET:
-    case FAN9_TARGET:
-    case FAN10_TARGET:
-        index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
-        value = (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED0] |
-                (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED1] << 8;
-        break;
-    case FAN1_TOLERANCE:
-    case FAN2_TOLERANCE:
-    case FAN3_TOLERANCE:
-    case FAN4_TOLERANCE:
-    case FAN5_TOLERANCE:
-        value = (int)data->ipmi_resp_speed[FAN_SPEED_TOLERANCE];
-        break;
-    case FAN6_TOLERANCE:
-    case FAN7_TOLERANCE:
-    case FAN8_TOLERANCE:
-    case FAN9_TOLERANCE:
-    case FAN10_TOLERANCE:
-        index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
-        value = (int)data->ipmi_resp_speed[index + FAN_SPEED_TOLERANCE];
-        break;
-    default:
-        error = -EINVAL;
-        goto exit;
+	case FAN1_TARGET:
+	case FAN2_TARGET:
+	case FAN3_TARGET:
+	case FAN4_TARGET:
+	case FAN5_TARGET:
+		value = (int)data->ipmi_resp_speed[FAN_TARGET_SPEED0] |
+		    (int)data->ipmi_resp_speed[FAN_TARGET_SPEED1] << 8;
+		break;
+	case FAN6_TARGET:
+	case FAN7_TARGET:
+	case FAN8_TARGET:
+	case FAN9_TARGET:
+	case FAN10_TARGET:
+		index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
+		value = (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED0] |
+		    (int)data->ipmi_resp_speed[index + FAN_TARGET_SPEED1] << 8;
+		break;
+	case FAN1_TOLERANCE:
+	case FAN2_TOLERANCE:
+	case FAN3_TOLERANCE:
+	case FAN4_TOLERANCE:
+	case FAN5_TOLERANCE:
+		value = (int)data->ipmi_resp_speed[FAN_SPEED_TOLERANCE];
+		break;
+	case FAN6_TOLERANCE:
+	case FAN7_TOLERANCE:
+	case FAN8_TOLERANCE:
+	case FAN9_TOLERANCE:
+	case FAN10_TOLERANCE:
+		index = NUM_OF_FAN_MODULE * FAN_SPEED_DATA_COUNT;
+		value = (int)data->ipmi_resp_speed[index + FAN_SPEED_TOLERANCE];
+		break;
+	default:
+		error = -EINVAL;
+		goto exit;
 	}
 
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
@@ -666,7 +672,7 @@ static int as7926_40xfb_fan_probe(struct platform_device *pdev)
 
 	return 0;
 
-exit:
+ exit:
 	return status;
 }
 
@@ -707,13 +713,13 @@ static int __init as7926_40xfb_fan_init(void)
 
 	return 0;
 
-ipmi_err:
+ ipmi_err:
 	platform_device_unregister(data->pdev);
-dev_reg_err:
+ dev_reg_err:
 	platform_driver_unregister(&as7926_40xfb_fan_driver);
-dri_reg_err:
+ dri_reg_err:
 	kfree(data);
-alloc_err:
+ alloc_err:
 	return ret;
 }
 

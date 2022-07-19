@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A hwmon driver for the as7926_40xfb_led
+ *
+ * Copyright (C) 2019  Edgecore Networks Corporation.
+ * Brandon Chuang <brandon_chuang@edge-core.com>
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -40,7 +44,7 @@
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_led(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count);
+		       const char *buf, size_t count);
 static ssize_t show_led(struct device *dev, struct device_attribute *attr,
 			char *buf);
 static int as7926_40xfb_led_probe(struct platform_device *pdev);
@@ -49,7 +53,7 @@ static int as7926_40xfb_led_remove(struct platform_device *pdev);
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	struct ipmi_user* user;
+	struct ipmi_user *user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -66,9 +70,9 @@ struct ipmi_data {
 struct as7926_40xfb_led_data {
 	struct platform_device *pdev;
 	struct mutex update_lock;
-	char valid;		   /* != 0 if registers are valid */
+	char valid;		/* != 0 if registers are valid */
 	unsigned long last_updated;	/* In jiffies */
-	unsigned char ipmi_resp[4]; /* 0:PSU 1:FAN 2:DIAG 3:LOC */
+	unsigned char ipmi_resp[4];	/* 0:PSU 1:FAN 2:DIAG 3:LOC */
 	struct ipmi_data ipmi;
 };
 
@@ -78,9 +82,9 @@ static struct platform_driver as7926_40xfb_led_driver = {
 	.probe = as7926_40xfb_led_probe,
 	.remove = as7926_40xfb_led_remove,
 	.driver = {
-		.name = DRVNAME,
-		.owner = THIS_MODULE,
-	},
+		   .name = DRVNAME,
+		   .owner = THIS_MODULE,
+		   },
 };
 
 enum ipmi_led_light_mode {
@@ -124,9 +128,9 @@ enum as7926_40xfb_led_sysfs_attrs {
 };
 
 static SENSOR_DEVICE_ATTR(led_loc, S_IWUSR | S_IRUGO, show_led, set_led,
-							LED_LOC);
+			  LED_LOC);
 static SENSOR_DEVICE_ATTR(led_diag, S_IWUSR | S_IRUGO, show_led, set_led,
-							LED_DIAG);
+			  LED_DIAG);
 static SENSOR_DEVICE_ATTR(led_psu, S_IRUGO, show_led, NULL, LED_PSU);
 static SENSOR_DEVICE_ATTR(led_fan, S_IRUGO, show_led, NULL, LED_FAN);
 
@@ -145,8 +149,7 @@ static const struct attribute_group as7926_40xfb_led_group = {
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-				  struct device *dev)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev)
 {
 	int err;
 
@@ -166,7 +169,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-				   ipmi, &ipmi->user);
+			       ipmi, &ipmi->user);
 	if (err < 0) {
 		dev_err(dev, "Unable to register user with IPMI "
 			"interface %d\n", ipmi->interface);
@@ -178,16 +181,16 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			      unsigned char *tx_data, unsigned short tx_len,
+			      unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
-	ipmi->tx_message.cmd	  = cmd;
-	ipmi->tx_message.data	 = tx_data;
+	ipmi->tx_message.cmd = cmd;
+	ipmi->tx_message.data = tx_data;
 	ipmi->tx_message.data_len = tx_len;
-	ipmi->rx_msg_data		 = rx_data;
-	ipmi->rx_msg_len		  = rx_len;
+	ipmi->rx_msg_data = rx_data;
+	ipmi->rx_msg_len = rx_len;
 
 	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
 	if (err)
@@ -205,36 +208,40 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 	return 0;
 
-ipmi_timeout_err:
+ ipmi_timeout_err:
 	err = -ETIMEDOUT;
 	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
 	return err;
-ipmi_req_err:
+ ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
-addr_err:
+ addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			     unsigned char *tx_data, unsigned short tx_len,
+			     unsigned char *rx_data, unsigned short rx_len)
 {
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+		status =
+		    _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data,
+				       rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n",
-										retry, status);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err status(%d)\r\n",
+				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err result(%d)\r\n",
-										retry, ipmi->rx_result);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err result(%d)\r\n",
+				retry, ipmi->rx_result);
 			continue;
 		}
 
@@ -253,8 +260,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	if (msg->msgid != ipmi->tx_msgid) {
 		dev_err(&data->pdev->dev, "Mismatch between received msgid "
 			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
+			(int)msg->msgid, (int)ipmi->tx_msgid);
 		ipmi_free_recv_msg(msg);
 		return;
 	}
@@ -288,7 +294,7 @@ static struct as7926_40xfb_led_data *as7926_40xfb_led_update_device(void)
 
 	data->valid = 0;
 	status = ipmi_send_message(&data->ipmi, IPMI_LED_READ_CMD, NULL, 0,
-								data->ipmi_resp, sizeof(data->ipmi_resp));
+				   data->ipmi_resp, sizeof(data->ipmi_resp));
 	if (unlikely(status != 0)) {
 		goto exit;
 	}
@@ -301,12 +307,12 @@ static struct as7926_40xfb_led_data *as7926_40xfb_led_update_device(void)
 	data->last_updated = jiffies;
 	data->valid = 1;
 
-exit:
+ exit:
 	return data;
 }
 
 static ssize_t show_led(struct device *dev, struct device_attribute *da,
-							char *buf)
+			char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	int value = 0;
@@ -353,13 +359,13 @@ static ssize_t show_led(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
 
 static ssize_t set_led(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+		       const char *buf, size_t count)
 {
 	long mode;
 	int status;
@@ -408,7 +414,7 @@ static ssize_t set_led(struct device *dev, struct device_attribute *da,
 
 	/* Send IPMI write command */
 	status = ipmi_send_message(&data->ipmi, IPMI_LED_WRITE_CMD,
-								data->ipmi_resp, 2, NULL, 0);
+				   data->ipmi_resp, 2, NULL, 0);
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -419,7 +425,7 @@ static ssize_t set_led(struct device *dev, struct device_attribute *da,
 
 	status = count;
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
@@ -437,7 +443,7 @@ static int as7926_40xfb_led_probe(struct platform_device *pdev)
 
 	return 0;
 
-exit:
+ exit:
 	return status;
 }
 
@@ -478,13 +484,13 @@ static int __init as7926_40xfb_led_init(void)
 
 	return 0;
 
-ipmi_err:
+ ipmi_err:
 	platform_device_unregister(data->pdev);
-dev_reg_err:
+ dev_reg_err:
 	platform_driver_unregister(&as7926_40xfb_led_driver);
-dri_reg_err:
+ dri_reg_err:
 	kfree(data);
-alloc_err:
+ alloc_err:
 	return ret;
 }
 

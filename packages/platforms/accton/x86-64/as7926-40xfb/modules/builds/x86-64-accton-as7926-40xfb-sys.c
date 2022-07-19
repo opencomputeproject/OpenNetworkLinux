@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A hwmon driver for the as7926_40xfb_sys
+ *
+ * Copyright (C) 2019  Edgecore Networks Corporation.
+ * Brandon Chuang <brandon_chuang@edge-core.com>
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -40,56 +44,55 @@
 #define IPMI_READ_MAX_LEN       128
 
 #define EEPROM_NAME				"eeprom"
-#define EEPROM_SIZE				256	/*	256 byte eeprom */
+#define EEPROM_SIZE				256	/*      256 byte eeprom */
 
 static int as7926_40xfb_sys_probe(struct platform_device *pdev);
 static int as7926_40xfb_sys_remove(struct platform_device *pdev);
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 
 struct ipmi_data {
-	struct completion   read_complete;
-	struct ipmi_addr	address;
-	struct ipmi_user    *user;
-	int                 interface;
+	struct completion read_complete;
+	struct ipmi_addr address;
+	struct ipmi_user *user;
+	int interface;
 
 	struct kernel_ipmi_msg tx_message;
-	long                   tx_msgid;
+	long tx_msgid;
 
-	void            *rx_msg_data;
-	unsigned short   rx_msg_len;
-	unsigned char    rx_result;
-	int              rx_recv_type;
+	void *rx_msg_data;
+	unsigned short rx_msg_len;
+	unsigned char rx_result;
+	int rx_recv_type;
 
 	struct ipmi_user_hndl ipmi_hndlrs;
 };
 
 struct as7926_40xfb_sys_data {
-    struct platform_device *pdev;
-    struct mutex     update_lock;
-    char             valid;           /* != 0 if registers are valid */
-    unsigned long    last_updated;    /* In jiffies */
-    struct ipmi_data ipmi;
-    unsigned char    ipmi_resp_eeprom[EEPROM_SIZE];
-    unsigned char    ipmi_tx_data[2];
-    struct bin_attribute eeprom;      /* eeprom data */
+	struct platform_device *pdev;
+	struct mutex update_lock;
+	char valid;		/* != 0 if registers are valid */
+	unsigned long last_updated;	/* In jiffies */
+	struct ipmi_data ipmi;
+	unsigned char ipmi_resp_eeprom[EEPROM_SIZE];
+	unsigned char ipmi_tx_data[2];
+	struct bin_attribute eeprom;	/* eeprom data */
 };
 
 struct as7926_40xfb_sys_data *data = NULL;
 
 static struct platform_driver as7926_40xfb_sys_driver = {
-    .probe      = as7926_40xfb_sys_probe,
-    .remove     = as7926_40xfb_sys_remove,
-    .driver     = {
-        .name   = DRVNAME,
-        .owner  = THIS_MODULE,
-    },
+	.probe = as7926_40xfb_sys_probe,
+	.remove = as7926_40xfb_sys_remove,
+	.driver = {
+		   .name = DRVNAME,
+		   .owner = THIS_MODULE,
+		   },
 };
 
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-			      struct device *dev)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev)
 {
 	int err;
 
@@ -105,7 +108,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 	ipmi->tx_msgid = 0;
 	ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
 
-    ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
+	ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
@@ -121,16 +124,16 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-                                     unsigned char *tx_data, unsigned short tx_len,
-                                     unsigned char *rx_data, unsigned short rx_len)
+			      unsigned char *tx_data, unsigned short tx_len,
+			      unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
-    ipmi->tx_message.cmd      = cmd;
-    ipmi->tx_message.data     = tx_data;
-    ipmi->tx_message.data_len = tx_len;
-    ipmi->rx_msg_data         = rx_data;
-    ipmi->rx_msg_len          = rx_len;
+	ipmi->tx_message.cmd = cmd;
+	ipmi->tx_message.data = tx_data;
+	ipmi->tx_message.data_len = tx_len;
+	ipmi->rx_msg_data = rx_data;
+	ipmi->rx_msg_len = rx_len;
 
 	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
 	if (err)
@@ -142,47 +145,51 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	if (err)
 		goto ipmi_req_err;
 
-    err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
+	err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
 	if (!err)
 		goto ipmi_timeout_err;
 
 	return 0;
 
-ipmi_timeout_err:
-    err = -ETIMEDOUT;
-    dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
-    return err;
-ipmi_req_err:
+ ipmi_timeout_err:
+	err = -ETIMEDOUT;
+	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
+	return err;
+ ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
-addr_err:
+ addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-                                     unsigned char *tx_data, unsigned short tx_len,
-                                     unsigned char *rx_data, unsigned short rx_len)
+			     unsigned char *tx_data, unsigned short tx_len,
+			     unsigned char *rx_data, unsigned short rx_len)
 {
-    int status = 0, retry = 0;
+	int status = 0, retry = 0;
 
-    for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
-        if (unlikely(status != 0)) {
-            dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n", retry, status);
-            continue;
-        }
+	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,rx_data, rx_len);
+		if (unlikely(status != 0)) {
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err status(%d)\r\n",
+				retry, status);
+			continue;
+		}
 
-        if (unlikely(ipmi->rx_result != 0)) {
-            dev_err(&data->pdev->dev, "ipmi_send_message_%d err rx_result(%d)\r\n", retry, ipmi->rx_result);
-            continue;
-        }
+		if (unlikely(ipmi->rx_result != 0)) {
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err rx_result(%d)\r\n",
+				retry, ipmi->rx_result);
+			continue;
+		}
 
-        break;
-    }
+		break;
+	}
 
-    return status;
+	return status;
 }
 
 /* Dispatch IPMI messages to callers */
@@ -194,8 +201,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	if (msg->msgid != ipmi->tx_msgid) {
 		dev_err(&data->pdev->dev, "Mismatch between received msgid "
 			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
+			(int)msg->msgid, (int)ipmi->tx_msgid);
 		ipmi_free_recv_msg(msg);
 		return;
 	}
@@ -221,38 +227,39 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 
 static ssize_t sys_eeprom_read(loff_t off, char *buf, size_t count)
 {
-    int status = 0;
-    unsigned char length = 0;
+	int status = 0;
+	unsigned char length = 0;
 
-    if ((off + count) > EEPROM_SIZE) {
-        return -EINVAL;
-    }
+	if ((off + count) > EEPROM_SIZE) {
+		return -EINVAL;
+	}
 
-    length = (count >= IPMI_READ_MAX_LEN) ? IPMI_READ_MAX_LEN : count;
-    data->ipmi_tx_data[0] = (off & 0xff);
-    data->ipmi_tx_data[1] = length;
-    status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD,
-                                data->ipmi_tx_data, sizeof(data->ipmi_tx_data),
-                                data->ipmi_resp_eeprom + off, length);
-    if (unlikely(status != 0)) {
-        goto exit;
-    }
+	length = (count >= IPMI_READ_MAX_LEN) ? IPMI_READ_MAX_LEN : count;
+	data->ipmi_tx_data[0] = (off & 0xff);
+	data->ipmi_tx_data[1] = length;
+	status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD,
+				   data->ipmi_tx_data,
+				   sizeof(data->ipmi_tx_data),
+				   data->ipmi_resp_eeprom + off, length);
+	if (unlikely(status != 0)) {
+		goto exit;
+	}
 
-    if (unlikely(data->ipmi.rx_result != 0)) {
-        status = -EIO;
-        goto exit;
-    }
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
 
-    status = length; /* Read length */
-    memcpy(buf, data->ipmi_resp_eeprom + off, length);
+	status = length;	/* Read length */
+	memcpy(buf, data->ipmi_resp_eeprom + off, length);
 
-exit:
-    return status;
+ exit:
+	return status;
 }
 
 static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
-		struct bin_attribute *attr,
-		char *buf, loff_t off, size_t count)
+			      struct bin_attribute *attr,
+			      char *buf, loff_t off, size_t count)
 {
 	ssize_t retval = 0;
 
@@ -290,18 +297,19 @@ static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
 
 static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
 {
-    sysfs_bin_attr_init(eeprom);
+	sysfs_bin_attr_init(eeprom);
 	eeprom->attr.name = EEPROM_NAME;
 	eeprom->attr.mode = S_IRUGO;
-	eeprom->read	  = sysfs_bin_read;
-	eeprom->write	  = NULL;
-	eeprom->size	  = EEPROM_SIZE;
+	eeprom->read = sysfs_bin_read;
+	eeprom->write = NULL;
+	eeprom->size = EEPROM_SIZE;
 
 	/* Create eeprom file */
 	return sysfs_create_bin_file(kobj, eeprom);
 }
 
-static int sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eeprom)
+static int sysfs_eeprom_cleanup(struct kobject *kobj,
+				struct bin_attribute *eeprom)
 {
 	sysfs_remove_bin_file(kobj, eeprom);
 	return 0;
@@ -309,75 +317,75 @@ static int sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eepr
 
 static int as7926_40xfb_sys_probe(struct platform_device *pdev)
 {
-    int status = -1;
+	int status = -1;
 
-    /* Register sysfs hooks */
+	/* Register sysfs hooks */
 	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom);
 	if (status) {
 		goto exit;
 	}
 
-    dev_info(&pdev->dev, "device created\n");
+	dev_info(&pdev->dev, "device created\n");
 
-    return 0;
+	return 0;
 
-exit:
-    return status;
+ exit:
+	return status;
 }
 
 static int as7926_40xfb_sys_remove(struct platform_device *pdev)
 {
-    sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
+	sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
 
-    return 0;
+	return 0;
 }
 
 static int __init as7926_40xfb_sys_init(void)
 {
-    int ret;
+	int ret;
 
-    data = kzalloc(sizeof(struct as7926_40xfb_sys_data), GFP_KERNEL);
-    if (!data) {
-        ret = -ENOMEM;
-        goto alloc_err;
-    }
+	data = kzalloc(sizeof(struct as7926_40xfb_sys_data), GFP_KERNEL);
+	if (!data) {
+		ret = -ENOMEM;
+		goto alloc_err;
+	}
 
 	mutex_init(&data->update_lock);
 
-    ret = platform_driver_register(&as7926_40xfb_sys_driver);
-    if (ret < 0) {
-        goto dri_reg_err;
-    }
+	ret = platform_driver_register(&as7926_40xfb_sys_driver);
+	if (ret < 0) {
+		goto dri_reg_err;
+	}
 
-    data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-    if (IS_ERR(data->pdev)) {
-        ret = PTR_ERR(data->pdev);
-        goto dev_reg_err;
-    }
+	data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+	if (IS_ERR(data->pdev)) {
+		ret = PTR_ERR(data->pdev);
+		goto dev_reg_err;
+	}
 
 	/* Set up IPMI interface */
 	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
 	if (ret)
 		goto ipmi_err;
 
-    return 0;
+	return 0;
 
-ipmi_err:
-    platform_device_unregister(data->pdev);
-dev_reg_err:
-    platform_driver_unregister(&as7926_40xfb_sys_driver);
-dri_reg_err:
-    kfree(data);
-alloc_err:
-    return ret;
+ ipmi_err:
+	platform_device_unregister(data->pdev);
+ dev_reg_err:
+	platform_driver_unregister(&as7926_40xfb_sys_driver);
+ dri_reg_err:
+	kfree(data);
+ alloc_err:
+	return ret;
 }
 
 static void __exit as7926_40xfb_sys_exit(void)
 {
-    ipmi_destroy_user(data->ipmi.user);
-    platform_device_unregister(data->pdev);
-    platform_driver_unregister(&as7926_40xfb_sys_driver);
-    kfree(data);
+	ipmi_destroy_user(data->ipmi.user);
+	platform_device_unregister(data->pdev);
+	platform_driver_unregister(&as7926_40xfb_sys_driver);
+	kfree(data);
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
