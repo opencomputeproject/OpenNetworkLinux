@@ -106,3 +106,4 @@ class OnlPlatform_x86_64_accton_as9926_24db_r0(OnlPlatformAccton,
 
 
         return True
+
