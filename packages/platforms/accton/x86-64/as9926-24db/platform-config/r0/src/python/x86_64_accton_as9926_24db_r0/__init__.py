@@ -6,8 +6,12 @@ from onl.platform.accton import *
 
 init_ipmi_dev = [
     'echo "remove,kcs,i/o,0xca2" > /sys/module/ipmi_si/parameters/hotmod',
-    'echo "add,kcs,i/o,0xca2" > /sys/module/ipmi_si/parameters/hotmod']
+    'echo "add,kcs,i/o,0xca2" > /sys/module/ipmi_si/parameters/hotmod'
+]
 
+# ONL may boot more faster than BMC, so retries are needed.
+# But if the waiting time runs out, there may be something wrong with BMC,
+# then ONL gives up waiting.
 ATTEMPTS = 5
 INTERVAL = 3
 
@@ -32,6 +36,7 @@ def init_ipmi_oem_cmd():
     interval = INTERVAL
 
     while attempts:
+        # to see if BMC is scanning 
         status, output = commands.getstatusoutput('ipmitool raw 0x34 0x95')
         if status:
             attempts -= 1
@@ -106,3 +111,4 @@ class OnlPlatform_x86_64_accton_as9926_24db_r0(OnlPlatformAccton,
 
 
         return True
+
