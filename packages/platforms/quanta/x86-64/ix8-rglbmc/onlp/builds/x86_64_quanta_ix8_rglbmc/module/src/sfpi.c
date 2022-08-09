@@ -32,6 +32,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define GPIO_SYS_PATH "/sys/class/gpio/gpio%d/"
+#define GPIO_DIR_NAME "direction"
+
 /**
  * This table maps the presence gpio, reset gpio, and eeprom file
  * for each SFP port.
@@ -117,8 +120,8 @@ static qsfpmap_t qsfpmap__[] =
         { 56, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_PRSNT_N, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_RESET_N, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_LPMOD_P, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-26/i2c-87/87-0050/%s", NULL },
   };
 
-#define SFP_GET(_port) (sfpmap__ + _port - 1)
-#define QSFP_GET(_port) (qsfpmap__ + _port - 49)
+#define SFP_GET(_port) (sfpmap__ + (_port - 1))
+#define QSFP_GET(_port) (qsfpmap__ + (_port - 49))
 #define MAX_SFP_PATH 	128
 static char sfp_node_path[MAX_SFP_PATH] = {0};
 
@@ -136,7 +139,7 @@ static char*
 sfp_get_port_info_path(int port, char *node_name)
 {
     memset(sfp_node_path, 0x00, MAX_SFP_PATH);
-    if(port > 48){
+	if(port > 48){
         qsfpmap_t* qsfp = QSFP_GET(port);
         sprintf(sfp_node_path, qsfp->port_path,
                                node_name);
@@ -151,24 +154,62 @@ sfp_get_port_info_path(int port, char *node_name)
 }
 
 int
-onlp_sfpi_init(void)
+onlp_gpioi_init(int gpio_pin, int gpio_dir)
 {
-    int ret, i;
-    qsfpmap_t* qsfp;
+    int   ret = ONLP_STATUS_OK;
 
-    onlp_gpio_export(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
-    ret = onlp_gpio_set(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
-    sleep(1);
+    char  gpio_folder_path[64] = {0};
+    char* real_file_path = NULL;
 
-    for(i = 49; i < 57 ; i ++) {
-        qsfp = QSFP_GET(i);
-        onlp_gpio_export(qsfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
-        onlp_gpio_export(qsfp->reset_gpio, ONLP_GPIO_DIRECTION_OUT);
-        onlp_gpio_set(qsfp->reset_gpio, 1);
-        onlp_gpio_export(qsfp->lplmod_gpio, ONLP_GPIO_DIRECTION_OUT);
-        onlp_gpio_set(qsfp->lplmod_gpio, 0);
+    /* check GPIO pin */
+    sprintf(gpio_folder_path, GPIO_SYS_PATH, gpio_pin);
+    ret = onlp_file_find(gpio_folder_path, GPIO_DIR_NAME, &real_file_path);
+    if (real_file_path) {
+        free(real_file_path);
+        real_file_path = NULL;
     }
 
+    /* if GPIO pin not exist, then export */
+    if (ret != ONLP_STATUS_OK) {
+        ret = onlp_gpio_export(gpio_pin, gpio_dir);
+        if (ret != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("##### %s: export gpio[%d], dir[%d] fail \n", __FUNCTION__, gpio_pin, gpio_dir);
+        }
+    }
+
+    return ret;
+}
+
+int
+onlp_sfpi_init(void)
+{
+    int i = 0;
+    int ret = ONLP_STATUS_OK;
+
+    qsfpmap_t* qsfp;
+
+    /* check & init QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN */
+    ret = onlp_gpioi_init(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_HIGH);
+    if (ret != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("##### %s: init QSFP_EN_GPIO_P3V3_PW_EN fail \n", __FUNCTION__);
+        goto init_fail_label;
+    }
+
+    sleep(1);
+
+    /* check & init QSFP reset/lpmod */
+    for(i = 49; i < 57 ; i++) {
+        qsfp = QSFP_GET(i);
+        ret += onlp_gpioi_init(qsfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
+        ret += onlp_gpioi_init(qsfp->reset_gpio, ONLP_GPIO_DIRECTION_HIGH);
+        ret += onlp_gpioi_init(qsfp->lplmod_gpio, ONLP_GPIO_DIRECTION_LOW);
+        if (ret) {
+            AIM_LOG_ERROR("##### %s: set QSFP port:[%d] gpio fail \n", __FUNCTION__, i);
+            goto init_fail_label;
+        }
+    }
+
+init_fail_label:
     return ret;
 }
 
@@ -232,7 +273,12 @@ onlp_sfpi_is_present(int port)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    return onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
+    int rv = 0;
+    rv = onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
+
+    /* wait for i2c recover time 255 + 50 ms */
+    if (rv) usleep(305 * 1000);
+    return rv;
 }
 
 int
