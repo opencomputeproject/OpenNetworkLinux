@@ -32,6 +32,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define GPIO_SYS_PATH "/sys/class/gpio/gpio%d/"
+#define GPIO_DIR_NAME "direction"
+
 /**
  * This table maps the presence gpio, reset gpio, and eeprom file
  * for each SFP port.
@@ -80,7 +83,7 @@ static sfpmap_t sfpmap__[] =
         { 32, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-17/17-0038/cpld-qsfp28/port-32/%s", NULL, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-23/i2c-63/63-0050/%s", NULL },
   };
 
-#define SFP_GET(_port) (sfpmap__ + _port - 1)
+#define SFP_GET(_port) (sfpmap__ + (_port - 1))
 #define MAX_SFP_PATH 	128
 static char sfp_node_path[MAX_SFP_PATH] = {0};
 
@@ -107,12 +110,43 @@ sfp_get_port_info_path(int port, char *node_name)
 }
 
 int
+onlp_gpioi_init(int gpio_pin, int gpio_dir)
+{
+    int   ret = ONLP_STATUS_OK;
+
+    char  gpio_folder_path[64] = {0};
+    char* real_file_path = NULL;
+
+    /* check GPIO pin */
+    sprintf(gpio_folder_path, GPIO_SYS_PATH, gpio_pin);
+    ret = onlp_file_find(gpio_folder_path, GPIO_DIR_NAME, &real_file_path);
+    if (real_file_path) {
+        free(real_file_path);
+        real_file_path = NULL;
+    }
+
+    /* if GPIO pin not exist, then export */
+    if (ret != ONLP_STATUS_OK) {
+        ret = onlp_gpio_export(gpio_pin, gpio_dir);
+        if (ret != ONLP_STATUS_OK) {
+            AIM_LOG_ERROR("##### %s: export gpio[%d], dir[%d] fail \n", __FUNCTION__, gpio_pin, gpio_dir);
+        }
+    }
+
+    return ret;
+}
+
+int
 onlp_sfpi_init(void)
 {
     int ret;
 
-    onlp_gpio_export(QUANTA_IX7_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
-    ret = onlp_gpio_set(QUANTA_IX7_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
+    /* check & init QUANTA_IX7_ZQSFP_EN_GPIO_P3V3_PW_EN */
+    ret = onlp_gpioi_init(QUANTA_IX7_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_HIGH);
+    if (ret != ONLP_STATUS_OK) {
+        AIM_LOG_ERROR("##### %s: init QSFP_EN_GPIO_P3V3_PW_EN fail \n", __FUNCTION__);
+    }
+
     sleep(1);
 
     return ret;
@@ -141,7 +175,12 @@ onlp_sfpi_is_present(int port)
 int
 onlp_sfpi_eeprom_read(int port, uint8_t data[256])
 {
-    return onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
+    int rv = 0;
+    rv = onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
+
+    /* wait for i2c recover time 255 + 50 ms */
+    if (rv) usleep(305 * 1000);
+    return rv;
 }
 
 int

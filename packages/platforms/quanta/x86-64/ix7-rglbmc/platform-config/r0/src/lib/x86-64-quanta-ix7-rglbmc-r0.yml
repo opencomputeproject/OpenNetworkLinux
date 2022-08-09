@@ -18,7 +18,7 @@ x86-64-quanta-ix7-rglbmc-r0:
       --stop=1
 
     kernel:
-      <<: *kernel-3-16
+      <<: *kernel-4-19
 
     args: >-
       console=ttyS1,115200n8

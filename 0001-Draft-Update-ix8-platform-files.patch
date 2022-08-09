@@ -1,0 +1,3461 @@
+From cd63f962a033013af9a31bf1a7379dc50085e406 Mon Sep 17 00:00:00 2001
+From: Jonathan Tsai <jonathan.tsai@quantatw.com>
+Date: Tue, 9 Aug 2022 14:31:20 +0800
+Subject: [PATCH] [Draft] Update ix8 platform files
+
+---
+ .../quanta/x86-64/ix8-rglbmc/modules/PKG.yml  |    2 +-
+ .../x86-64/ix8-rglbmc/modules/builds/Makefile |    2 +-
+ .../ix8-rglbmc/modules/builds/qci_cpld_led.c  |  278 +++
+ .../modules/builds/qci_cpld_sfp28.c           |  421 ++++
+ .../modules/builds/qci_platform_ix8.c         |   76 +-
+ .../modules/builds/quanta_hwmon_ipmi.c        | 1760 +++++++++++++++++
+ .../module/auto/x86_64_quanta_ix8_rglbmc.yml  |    2 +-
+ .../x86_64_quanta_ix8_rglbmc_porting.h        |   10 +
+ .../module/src/fani.c                         |   83 +-
+ .../module/src/psui.c                         |  125 +-
+ .../module/src/sfpi.c                         |   72 +-
+ .../module/src/sysi.c                         |   43 +
+ .../module/src/thermali.c                     |   67 +-
+ .../module/src/x86_64_quanta_ix8_rglbmc_int.h |  144 +-
+ .../src/lib/x86-64-quanta-ix8-rglbmc-r0.yml   |    2 +-
+ .../x86_64_quanta_ix8_rglbmc_r0/__init__.py   |    2 +-
+ 16 files changed, 2987 insertions(+), 102 deletions(-)
+ create mode 100644 packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_led.c
+ create mode 100644 packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_sfp28.c
+ create mode 100644 packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/quanta_hwmon_ipmi.c
+
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/PKG.yml b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/PKG.yml
+index 9b4098f3..0c3ba686 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/PKG.yml
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/PKG.yml
+@@ -1 +1 @@
+-!include $ONL_TEMPLATES/platform-modules.yml ARCH=amd64 VENDOR=quanta BASENAME=x86-64-quanta-ix8-rglbmc KERNELS="onl-kernel-3.16-lts-x86-64-all:amd64"
++!include $ONL_TEMPLATES/platform-modules.yml ARCH=amd64 VENDOR=quanta BASENAME=x86-64-quanta-ix8-rglbmc KERNELS="onl-kernel-4.19-lts-x86-64-all:amd64"
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/Makefile b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/Makefile
+index 29395ebb..1cc3e387 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/Makefile
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/Makefile
+@@ -1,4 +1,4 @@
+-KERNELS := onl-kernel-3.16-lts-x86-64-all:amd64
++KERNELS := onl-kernel-4.19-lts-x86-64-all:amd64
+ KMODULES := $(wildcard *.c)
+ VENDOR := quanta
+ BASENAME := x86-64-quanta-ix8-rglbmc
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_led.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_led.c
+new file mode 100644
+index 00000000..5eedc5d3
+--- /dev/null
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_led.c
+@@ -0,0 +1,278 @@
++/*
++ * A LED CPLD driver for Quanta Switch Platform
++ *
++ * The CPLD is customize by Quanta for decode led bit stream,
++ * This driver modify from Quanta CPLD I/O driver.
++ *
++ * Copyright (C) 2015 Quanta Inc.
++ *
++ * Author: Luffy Cheng <luffy.cheng@quantatw.com>
++ * Author: Roger Chang <Roger.Chang@quantatw.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/delay.h>
++#include <linux/log2.h>
++#include <linux/slab.h>
++#include <linux/kdev_t.h>
++#include <linux/idr.h>
++
++static DEFINE_IDA(cpld_led_ida);
++
++enum platform_type {
++	IX8 = 0,
++	NONE
++};
++
++static struct class *cpld_class = NULL;
++
++struct cpld_data {
++	struct i2c_client *cpld_client;
++	char name[16];
++	u8 cpld_id;
++};
++
++struct cpld_led_data {
++	struct mutex lock;
++	struct device *port_dev;
++	struct cpld_data *cpld_data;
++};
++
++static int cpld_led_probe(struct i2c_client *client,
++			 const struct i2c_device_id *id);
++static int cpld_led_remove(struct i2c_client *client);
++
++static const struct i2c_device_id cpld_led_id[] = {
++	{ "CPLDLED_IX8", IX8 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, cpld_led_id);
++
++static struct i2c_driver cpld_led_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name	= "qci_cpld_led",
++	},
++	.probe		= cpld_led_probe,
++	.remove		= cpld_led_remove,
++	.id_table	= cpld_led_id,
++//	.address_list	= normal_i2c,
++};
++
++#define CPLD_LED_ID_PREFIX "CPLDLED-"
++#define CPLD_LED_ID_FORMAT CPLD_LED_ID_PREFIX "%d"
++
++#define	CPLD_DECODER_OFFSET	0x4
++#define	CPLD_DECODER_MASK	0x1
++#define CPLD_USERCODE_START_OFFSET	0x0
++
++static ssize_t get_led_decode(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct cpld_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 offset = (u8)(CPLD_DECODER_OFFSET);
++	s32 value;
++
++	value = i2c_smbus_read_byte_data(client, offset);
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read led decode value= %x\n", value);
++
++	value &= CPLD_DECODER_MASK;
++
++	return sprintf(buf, "%d\n", (value == 0) ? 1 : 0);
++}
++
++static ssize_t get_usercode(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct cpld_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 i = 0;
++	s32 value = 0, reading = 0;
++
++	for (i = 0; i < 4; i++)
++	{
++		reading = i2c_smbus_read_byte_data(client, CPLD_USERCODE_START_OFFSET + i);
++		if (reading < 0)
++			return -ENODEV;
++
++		dev_dbg(&client->dev, "read led usercode reg %d value= %x\n", i, reading);
++
++		value |= reading << (24 - 8 * i);
++	}
++
++	return sprintf(buf, "%X\n", value);
++}
++
++static ssize_t set_led_decode(struct device *dev,
++			    struct device_attribute *devattr,
++			    const char *buf,
++			    size_t count)
++{
++	struct cpld_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	s32 value;
++	long enable;
++
++	if (kstrtol(buf, 0, &enable))
++		return -EINVAL;
++
++	if ((enable != 1) && (enable != 0))
++		return -EINVAL;
++
++//	mutex_lock(&data->lock);
++	value = i2c_smbus_read_byte_data(client, CPLD_DECODER_OFFSET);
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read led decode value= %x\n", value);
++
++	value |= CPLD_DECODER_MASK;
++	if (enable)
++		value &= ~CPLD_DECODER_MASK;
++
++	dev_dbg(&client->dev, "write led decode value= %x\n", value);
++
++	i2c_smbus_write_byte_data(client, CPLD_DECODER_OFFSET, (u8)value);
++//	mutex_unlock(&data->lock);
++
++	return count;
++}
++
++static DEVICE_ATTR(led_decode, S_IWUSR | S_IRUGO, get_led_decode, set_led_decode);
++static DEVICE_ATTR(usercode, S_IRUGO, get_usercode, NULL);
++
++static const struct attribute *led_attrs[] = {
++	&dev_attr_usercode.attr,
++	&dev_attr_led_decode.attr,
++	NULL,
++};
++
++static const struct attribute_group led_attr_group = {
++	.attrs = (struct attribute **) led_attrs,
++};
++
++static int cpld_led_probe(struct i2c_client *client,
++			 const struct i2c_device_id *id)
++{
++	struct cpld_led_data *data;
++	struct cpld_data *led_data;
++	struct device *port_dev;
++	int nr, err;
++
++	if (!cpld_class)
++	{
++		cpld_class = class_create(THIS_MODULE, "cpld-led");
++		if (IS_ERR(cpld_class)) {
++			pr_err("couldn't create sysfs class\n");
++			return PTR_ERR(cpld_class);
++		}
++	}
++
++	data = devm_kzalloc(&client->dev, sizeof(struct cpld_led_data),
++			    GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++
++	/* Test */
++	nr = ida_simple_get(&cpld_led_ida, 1, 99, GFP_KERNEL);
++	if (nr < 0)
++		return ERR_PTR(nr);
++
++	led_data = kzalloc(sizeof(struct cpld_led_data), GFP_KERNEL);
++
++	port_dev = device_create(cpld_class, &client->dev, MKDEV(0,0), led_data, CPLD_LED_ID_FORMAT, nr);
++	if (IS_ERR(port_dev)) {
++		err = PTR_ERR(port_dev);
++		// printk("err_status\n");
++	}
++
++	data->port_dev = port_dev;
++	data->cpld_data = led_data;
++
++	dev_info(&client->dev, "Register CPLDLED %d\n", nr);
++
++	sprintf(led_data->name, "LED%d-data", nr);
++	led_data->cpld_id = nr;
++	dev_set_drvdata(port_dev, led_data);
++	port_dev->init_name = led_data->name;
++	led_data->cpld_client = client;
++
++	err = sysfs_create_group(&port_dev->kobj, &led_attr_group);
++	// if (status)	printk("err status\n");
++	/* end */
++
++	i2c_set_clientdata(client, data);
++	mutex_init(&data->lock);
++
++	dev_info(&client->dev, "%s device found\n", client->name);
++
++
++	return 0;
++
++//FIXME: implement error check
++exit_remove:
++//	sysfs_remove_group(&client->dev.kobj, &data->attrs);
++	return err;
++}
++
++/* FIXME: for older kernel doesn't with idr_is_empty function, implement here */
++static int idr_has_entry(int id, void *p, void *data)
++{
++	return 1;
++}
++
++static bool cpld_idr_is_empty(struct ida *ida)
++{
++	return radix_tree_empty(&ida->ida_rt);
++}
++
++static int cpld_led_remove(struct i2c_client *client)
++{
++	struct cpld_led_data *data = i2c_get_clientdata(client);
++
++	dev_info(data->port_dev, "Remove CPLDLED-%d\n", data->cpld_data->cpld_id);
++	device_unregister(data->port_dev);
++	ida_simple_remove(&cpld_led_ida, data->cpld_data->cpld_id);
++	kfree(data->cpld_data);
++
++	if (cpld_idr_is_empty(&cpld_led_ida))
++	{
++		class_destroy(cpld_class);
++		cpld_class = NULL;
++	}
++
++	return 0;
++}
++
++module_i2c_driver(cpld_led_driver);
++
++MODULE_AUTHOR("Luffy Cheng <luffy.cheng@quantatw.com>");
++MODULE_AUTHOR("Roger Chang <Roger.Chang@quantatw.com>");
++MODULE_DESCRIPTION("Quanta Switch LED CPLD driver");
++MODULE_LICENSE("GPL");
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_sfp28.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_sfp28.c
+new file mode 100644
+index 00000000..2bc3a981
+--- /dev/null
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_cpld_sfp28.c
+@@ -0,0 +1,421 @@
++/*
++ * A CPLD driver for monitor SFP28 module I/O
++ *
++ * The CPLD is customize by Quanta for controlling SFP28 module signals,
++ * they are TX_FAULT , TX_DIS , PRE_N , RX_LOS
++ * Each CPLD control 16 modules, each module use 4 bits in register.
++ *
++ * Copyright (C) 2015 Quanta Inc.
++ *
++ * Author: Luffy Cheng <luffy.cheng@quantatw.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include <linux/module.h>
++#include <linux/jiffies.h>
++#include <linux/i2c.h>
++#include <linux/err.h>
++#include <linux/mutex.h>
++#include <linux/delay.h>
++#include <linux/log2.h>
++#include <linux/slab.h>
++#include <linux/kdev_t.h>
++#include <linux/idr.h>
++#include <linux/ctype.h>
++#include <linux/string.h>
++
++static DEFINE_IDA(cpld_ida);
++
++enum platform_type {
++	SFP = 0,
++	SFP28,
++	NONE
++};
++
++static struct class *cpld_class = NULL;
++
++struct sfp_data {
++	struct i2c_client *cpld_client;
++	char name[8];
++	char type[8];
++	u8 port_id;
++	u8 cpld_port;
++};
++
++struct cpld_data {
++	struct mutex lock;
++	struct device *port_dev[16];
++	struct sfp_data *port_data[16];
++};
++
++static int cpld_probe(struct i2c_client *client,
++			 const struct i2c_device_id *id);
++static int cpld_remove(struct i2c_client *client);
++
++#define TYPE_SFP            "sfp"
++#define TYPE_SFP28          "sfp28"
++#define CLASS_CPLD_SFP      "cpld-sfp"
++#define CLASS_CPLD_SFP28    "cpld-sfp28"
++
++static const struct i2c_device_id cpld_id[] = {
++	{ "CPLD-SFP", SFP },
++	{ "CPLD-SFP28", SFP28 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, cpld_id);
++
++static struct i2c_driver cpld_driver = {
++	.class		= I2C_CLASS_HWMON,
++	.driver = {
++		.name	= "qci_cpld_sfp28",
++	},
++	.probe		= cpld_probe,
++	.remove		= cpld_remove,
++	.id_table	= cpld_id,
++//	.address_list	= normal_i2c,
++};
++
++#define CPLD_ID_PREFIX "port-"
++#define CPLD_ID_FORMAT CPLD_ID_PREFIX "%d"
++
++//SFP28
++#define TX_FAULT_MASK 			0x08
++#define TX_DIS_MASK	 			0x04
++#define PRE_N_MASK 				0x02
++#define RX_LOS_MASK 			0x01
++
++static inline u8 get_group_cmd(u8 group)
++{
++	//FIXME: if group cmd change
++	return (group + 1);
++}
++
++static inline u8 port_remapping(u8 phy_port)
++{
++	/* FIXME: implement by hardware design */
++	/* The CPLD register port mapping is weird :
++	 * MSB -------- LSB		(word data)
++	 * P3	P4	P1	P2		(per port 4 bits)
++	 * For easy coding bit shift, we treat it as hw port swap
++	 */
++	return (phy_port % 2) ? (phy_port - 1) : (phy_port + 1);
++}
++
++//SFP
++static ssize_t get_tx_fault(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct sfp_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 group = (u8)(data->cpld_port / 4);
++	u8 group_port = data->cpld_port % 4;
++	s32 value;
++
++	dev_dbg(&client->dev, "port_id %d => cpld_port %d, group %d(%d)\n", data->port_id,
++				data->cpld_port + 1, group + 1, group_port + 1);
++
++	value = i2c_smbus_read_word_data(client, get_group_cmd(group));
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read group%d value= %x\n", group + 1, value);
++
++	value >>= (group_port * 4);
++	value &= TX_FAULT_MASK;
++
++	return sprintf(buf, "%d\n", value ? 1 : 0);
++}
++
++static ssize_t get_tx_dis(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct sfp_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 group = (u8)(data->cpld_port / 4);
++	u8 group_port = data->cpld_port % 4;
++	s32 value;
++
++	dev_dbg(&client->dev, "port_id %d => cpld_port %d, group %d(%d)\n", data->port_id,
++				data->cpld_port + 1, group + 1, group_port + 1);
++
++	value = i2c_smbus_read_word_data(client, get_group_cmd(group));
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read group%d value= %x\n", group + 1, value);
++
++	value >>= (group_port * 4);
++	value &= TX_DIS_MASK;
++
++	return sprintf(buf, "%d\n", value ? 1 : 0);
++}
++
++static ssize_t get_pre_n(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct sfp_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 group = (u8)(data->cpld_port / 4);
++	u8 group_port = data->cpld_port % 4;
++	s32 value;
++
++	dev_dbg(&client->dev, "port_id %d => cpld_port %d, group %d(%d)\n", data->port_id,
++				data->cpld_port + 1, group + 1, group_port + 1);
++
++	value = i2c_smbus_read_word_data(client, get_group_cmd(group));
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read group%d value= %x\n", group + 1, value);
++
++	value >>= (group_port * 4);
++	value &= PRE_N_MASK;
++
++	//FIXME: if present is not low active
++	return sprintf(buf, "%d\n", value ? 0 : 1);
++}
++
++static ssize_t get_rx_los(struct device *dev,
++			     struct device_attribute *devattr,
++			     char *buf)
++{
++	struct sfp_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 group = (u8)(data->cpld_port / 4);
++	u8 group_port = data->cpld_port % 4;
++	s32 value;
++
++	dev_dbg(&client->dev, "port_id %d => cpld_port %d, group %d(%d)\n", data->port_id,
++				data->cpld_port + 1, group + 1, group_port + 1);
++
++	value = i2c_smbus_read_word_data(client, get_group_cmd(group));
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read group%d value= %x\n", group + 1, value);
++
++	value >>= (group_port * 4);
++	value &= RX_LOS_MASK;
++
++	return sprintf(buf, "%d\n", value ? 1 : 0);
++}
++static ssize_t set_tx_dis(struct device *dev,
++			    struct device_attribute *devattr,
++			    const char *buf,
++			    size_t count)
++{
++	struct sfp_data *data = dev_get_drvdata(dev);
++	struct i2c_client *client = data->cpld_client;
++	u8 group = (u8)(data->cpld_port / 4);
++	u8 group_port = data->cpld_port % 4;
++	s32 value;
++	long disable;
++
++	dev_dbg(&client->dev, "port_id %d => cpld_port %d, group %d(%d)\n", data->port_id,
++				data->cpld_port + 1, group + 1, group_port + 1);
++
++	if (kstrtol(buf, 0, &disable))
++		return -EINVAL;
++
++	if ((disable != 1) && (disable != 0))
++		return -EINVAL;
++
++//	mutex_lock(&data->lock);
++	value = i2c_smbus_read_word_data(client, get_group_cmd(group));
++	if (value < 0)
++		return -ENODEV;
++
++	dev_dbg(&client->dev, "read group%d value= %x\n", group + 1, value);
++
++	value &= ~(TX_DIS_MASK << (group_port * 4));
++	if (disable)
++		value |= (TX_DIS_MASK << (group_port * 4));
++
++	dev_dbg(&client->dev, "write group%d value= %x\n", group + 1, value);
++
++	i2c_smbus_write_word_data(client, get_group_cmd(group), (u16)value);
++//	mutex_unlock(&data->lock);
++
++	return count;
++}
++//SFP
++
++//static DEVICE_ATTR(led_enable, S_IWUSR | S_IRUGO, get_led_enable, set_led_enable);
++//static DEVICE_ATTR(monitor_enable, S_IWUSR | S_IRUGO, get_monitor_enable, set_monitor_enable);
++//SFP
++static DEVICE_ATTR(tx_fault, S_IRUGO, get_tx_fault, NULL);
++static DEVICE_ATTR(tx_dis, S_IWUSR | S_IRUGO, get_tx_dis, set_tx_dis);
++static DEVICE_ATTR(pre_n, S_IRUGO, get_pre_n, NULL);
++static DEVICE_ATTR(rx_los, S_IRUGO, get_rx_los, NULL);
++
++static const struct attribute *sfp_attrs[] = {
++//	&dev_attr_led_enable.attr,
++	&dev_attr_tx_fault.attr,
++	&dev_attr_tx_dis.attr,
++	&dev_attr_pre_n.attr,
++	&dev_attr_rx_los.attr,
++	NULL,
++};
++
++static const struct attribute_group sfp_attr_group = {
++	.attrs = (struct attribute **) sfp_attrs,
++};
++
++static int cpld_probe(struct i2c_client *client,
++			 const struct i2c_device_id *id)
++{
++	struct cpld_data *data;
++	struct sfp_data *port_data;
++//	struct i2c_monitor_data *monitor_data;
++	struct device *port_dev;
++//	struct device *i2c_dev;
++	int port_nr, i=0, err;
++
++	printk("cpld cpld_probe\n");
++
++	if (!cpld_class)
++	{
++		switch(id->driver_data)
++		{
++			case SFP:
++				cpld_class = class_create(THIS_MODULE, CLASS_CPLD_SFP);
++				break;
++
++			case SFP28:
++				cpld_class = class_create(THIS_MODULE, CLASS_CPLD_SFP28);
++				break;
++
++			default:
++				pr_err("cpld id not defined\n");
++				return -EINVAL;
++				break;
++		}
++
++		if (IS_ERR(cpld_class)) {
++			pr_err("couldn't create sysfs class\n");
++			return PTR_ERR(cpld_class);
++		}
++	}
++
++	data = devm_kzalloc(&client->dev, sizeof(struct cpld_data),
++			    GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++
++	/* register sfp port data to sysfs */
++	for (i = 0; i < 16; i++)
++	{
++		port_nr = ida_simple_get(&cpld_ida, 1, 99, GFP_KERNEL);
++		if (port_nr < 0)
++			return ERR_PTR(port_nr);
++
++		port_data = kzalloc(sizeof(struct sfp_data), GFP_KERNEL);
++
++		port_dev = device_create(cpld_class, &client->dev, MKDEV(0,0), port_data, CPLD_ID_FORMAT, port_nr);
++		if (IS_ERR(port_dev)) {
++			err = PTR_ERR(port_dev);
++			printk("err_status\n");
++		}
++
++		data->port_dev[i] = port_dev;
++		data->port_data[i] = port_data;
++
++		if (SFP == id->driver_data)
++		{
++			strcpy(port_data->type, TYPE_SFP);
++		}
++		else if (SFP28 == id->driver_data)
++		{
++			strcpy(port_data->type, TYPE_SFP28);
++		}
++
++		dev_info(&client->dev, "Register %s port-%d\n", port_data->type , port_nr);
++
++		/* FIXME: implement Logical/Physical port remapping */
++		//port_data->cpld_port = i;
++		port_data->cpld_port = port_remapping(i);
++		sprintf(port_data->name, "port-%d", port_nr);
++		port_data->port_id = port_nr;
++		dev_set_drvdata(port_dev, port_data);
++		port_dev->init_name = port_data->name;
++		port_data->cpld_client = client;
++
++		err = sysfs_create_group(&port_dev->kobj, &sfp_attr_group);
++		// if (status)	printk("err status\n");
++	}
++
++	i2c_set_clientdata(client, data);
++	mutex_init(&data->lock);
++
++	dev_info(&client->dev, "%s device found\n", client->name);
++
++
++	return 0;
++
++//FIXME: implement error check
++//exit_remove:
++//	sysfs_remove_group(&client->dev.kobj, &data->attrs);
++	return err;
++}
++
++/* FIXME: for older kernel doesn't with idr_is_empty function, implement here */
++#if 1
++static int idr_has_entry(int id, void *p, void *data)
++{
++	return 1;
++}
++
++static inline bool cpld_idr_is_empty(struct ida *ida)
++{
++	return radix_tree_empty(&ida->ida_rt);
++}
++
++#endif
++
++static int cpld_remove(struct i2c_client *client)
++{
++	struct cpld_data *data = i2c_get_clientdata(client);
++	int i;
++//	int id;
++
++	for (i = 15; i >= 0; i--)
++	{
++		dev_info(data->port_dev[i], "Remove %s port-%d\n", data->port_data[i]->type , data->port_data[i]->port_id);
++		device_unregister(data->port_dev[i]);
++		ida_simple_remove(&cpld_ida, data->port_data[i]->port_id);
++		kfree(data->port_data[i]);
++	}
++
++	if (cpld_idr_is_empty(&cpld_ida))
++	{
++		class_destroy(cpld_class);
++		cpld_class = NULL;
++	}
++
++	return 0;
++}
++
++module_i2c_driver(cpld_driver);
++
++MODULE_AUTHOR("Jonathan Tsai <jonathan.tsai@quantatw.com>");
++MODULE_VERSION("1.0");
++MODULE_DESCRIPTION("Quanta Switch SFP28 CPLD driver");
++MODULE_LICENSE("GPL");
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_platform_ix8.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_platform_ix8.c
+index ff862c33..898174af 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_platform_ix8.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/qci_platform_ix8.c
+@@ -39,7 +39,7 @@
+ #include <linux/input-polldev.h>
+ #include <linux/rfkill.h>
+ #include <linux/slab.h>
+-#include <linux/i2c/pca954x.h>
++#include <linux/platform_data/pca954x.h>
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,16,0))
+ #include <linux/i2c/pca953x.h>
+ #else
+@@ -273,7 +273,7 @@ static struct i2c_board_info ix8_i2c_devices[] = {
+ 		.platform_data = &pca9698_2_data,
+ 	},
+ 	{
+-		I2C_BOARD_INFO("optoe1", 0x50),          // 15 0x50 QSFP EEPROM
++		I2C_BOARD_INFO("optoe1", 0x50),			// 15 0x50 QSFP EEPROM
+ 	},
+ 	{
+ 		I2C_BOARD_INFO("pca9546", 0x71),		// 16
+@@ -290,7 +290,7 @@ static struct i2c_board_info ix8_i2c_devices[] = {
+ 		I2C_BOARD_INFO("CPLDLED_IX8", 0x39),	// 19 0x72 ch0 CPLD6 LED function of SFP28 & QSFP28 (Port1~26)
+ 	},
+ 	{
+-		I2C_BOARD_INFO("optoe2", 0x50),          // 20 0x50 SFP EEPROM
++		I2C_BOARD_INFO("optoe2", 0x50),			// 20 0x50 SFP EEPROM
+ 	},
+ };
+ 
+@@ -303,9 +303,13 @@ static struct platform_driver ix8_platform_driver = {
+ 
+ static struct platform_device *ix8_device;
+ 
++static struct i2c_client **g_client;
++static struct i2c_client **g_client_port;
++int numof_ix8_i2c_devices = 19;
++int numof_ix8_port = 56;
++
+ static int __init ix8_platform_init(void)
+ {
+-	struct i2c_client *client;
+ 	struct i2c_adapter *adapter;
+ 	int ret, i;
+ 
+@@ -324,72 +328,78 @@ static int __init ix8_platform_init(void)
+ 	if (ret)
+ 		goto fail_platform_device;
+ 
++	g_client = kmalloc(sizeof(*g_client) * numof_ix8_i2c_devices, GFP_KERNEL);
++	for (i = 0; i < numof_ix8_i2c_devices; i++) g_client[i] = NULL;
++
++	g_client_port = kmalloc(sizeof(*g_client_port) * numof_ix8_port, GFP_KERNEL);
++	for (i = 0; i < numof_ix8_port; i++) g_client_port[i] = NULL;
++
+ 	adapter = i2c_get_adapter(0);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[0]);		// pca9546
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[1]);		// pca9548
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[16]);		// pca9546cpu
++	g_client[0] = i2c_new_device(adapter, &ix8_i2c_devices[0]);		// pca9546
++	g_client[1] = i2c_new_device(adapter, &ix8_i2c_devices[1]);		// pca9548
++	g_client[2] = i2c_new_device(adapter, &ix8_i2c_devices[16]);		// pca9546cpu
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x02);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[17]);		// CPU Board Data
++	g_client[3] = i2c_new_device(adapter, &ix8_i2c_devices[17]);		// CPU Board Data
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x10);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[10]);		// CPLD_1
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[18]);		// CPLD_4
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[19]);		// CPLD_6
++	g_client[4] = i2c_new_device(adapter, &ix8_i2c_devices[10]);		// CPLD_1
++	g_client[5] = i2c_new_device(adapter, &ix8_i2c_devices[18]);		// CPLD_4
++	g_client[6] = i2c_new_device(adapter, &ix8_i2c_devices[19]);		// CPLD_6
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x11);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[11]);		// CPLD_2
++	g_client[7] = i2c_new_device(adapter, &ix8_i2c_devices[11]);		// CPLD_2
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x12);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[12]);		// CPLD_3
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[2]);		// MB_BOARDINFO_EEPROM
++	g_client[8] = i2c_new_device(adapter, &ix8_i2c_devices[12]);		// CPLD_3
++	g_client[9] = i2c_new_device(adapter, &ix8_i2c_devices[2]);		// MB_BOARDINFO_EEPROM
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x13);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[13]);		// MB Board Data
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[14]);		// QSFP:49~52
++	g_client[10] = i2c_new_device(adapter, &ix8_i2c_devices[13]);		// MB Board Data
++	g_client[11] = i2c_new_device(adapter, &ix8_i2c_devices[14]);		// QSFP:49~52
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x14);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[3]);		// pca9548_1 SFP
++	g_client[12] = i2c_new_device(adapter, &ix8_i2c_devices[3]);		// pca9548_1 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x15);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[4]);		// pca9548_2 SFP
++	g_client[13] = i2c_new_device(adapter, &ix8_i2c_devices[4]);		// pca9548_2 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x16);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[5]);		// pca9548_3 SFP
++	g_client[14] = i2c_new_device(adapter, &ix8_i2c_devices[5]);		// pca9548_3 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x17);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[6]);		// pca9548_4 SFP
++	g_client[15] = i2c_new_device(adapter, &ix8_i2c_devices[6]);		// pca9548_4 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x18);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[7]);		// pca9548_5 SFP
++	g_client[16] = i2c_new_device(adapter, &ix8_i2c_devices[7]);		// pca9548_5 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x19);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[8]);		// pca9548_6 SFP
++	g_client[17] = i2c_new_device(adapter, &ix8_i2c_devices[8]);		// pca9548_6 SFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	adapter = i2c_get_adapter(0x1a);
+-	client = i2c_new_device(adapter, &ix8_i2c_devices[9]);		// pca9548_7 QSFP
++	g_client[18] = i2c_new_device(adapter, &ix8_i2c_devices[9]);		// pca9548_7 QSFP
+ 	i2c_put_adapter(adapter);
+ 
+ 	for(i = 32; i < 88; i ++){									// SFP28 1~48 & QSFP 49~56 EEPROM
+ 		adapter = i2c_get_adapter(i);
+ 
+ 		if (i < 80) {
+-			client = i2c_new_device(adapter, &ix8_i2c_devices[20]);
++			g_client_port[i - 32] = i2c_new_device(adapter, &ix8_i2c_devices[20]);
+ 		}
+ 		else {
+-			client = i2c_new_device(adapter, &ix8_i2c_devices[15]);
++			g_client_port[i - 32] = i2c_new_device(adapter, &ix8_i2c_devices[15]);
+ 		}
+ 
+ 		i2c_put_adapter(adapter);
+@@ -407,6 +417,22 @@ fail_platform_driver:
+ 
+ static void __exit ix8_platform_exit(void)
+ {
++	int i = 0;
++
++	for (i = numof_ix8_port - 1; i >= 0; i--) {
++		if (g_client_port[i]) {
++			i2c_unregister_device(g_client_port[i]);
++			g_client_port[i] = NULL;
++		}
++	}
++
++	for (i = numof_ix8_i2c_devices - 1; i >= 0; i--) {
++		if (g_client[i]) {
++			i2c_unregister_device(g_client[i]);
++			g_client[i] = NULL;
++		}
++	}
++
+ 	platform_device_unregister(ix8_device);
+ 	platform_driver_unregister(&ix8_platform_driver);
+ }
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/quanta_hwmon_ipmi.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/quanta_hwmon_ipmi.c
+new file mode 100644
+index 00000000..060ee8d0
+--- /dev/null
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/modules/builds/quanta_hwmon_ipmi.c
+@@ -0,0 +1,1760 @@
++﻿/*
++*
++* A hwmon driver for the Quanta switch BMC hwmon
++*
++*/
++
++#include <linux/err.h>
++#include <linux/hwmon.h>
++#include <linux/hwmon-sysfs.h>
++#include <linux/ipmi.h>
++#include <linux/kthread.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/string.h>
++#include <linux/completion.h>
++
++#define enable_debug_msg	0
++#define DEBUGUSE_SHIFT		0
++
++#define DRVNAME		"quanta_hwmon_ipmi"
++#define CLASSNAME		"quanta"
++#define CLASS_SYSNAME	"sys_control"
++
++#define tos32(val, bits)    ((val & ((1<<((bits)-1)))) ? (-((val) & (1<<((bits)-1))) | (val)) : (val))
++#define BSWAP_16(x)			((((x) & 0xff00) >> 8) | (((x) & 0x00ff) << 8))
++#define BSWAP_32(x)			((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >> 8) | (((x) & 0x0000ff00) << 8) | (((x) & 0x000000ff) << 24))
++#define __TO_M(mtol)		(int16_t)(tos32((((BSWAP_16(mtol) & 0xff00) >> 8) | ((BSWAP_16(mtol) & 0xc0) << 2)), 10))
++#define __TO_B(bacc)		(int32_t)(tos32((((BSWAP_32(bacc) & 0xff000000) >> 24) | ((BSWAP_32(bacc) & 0xc00000) >> 14)), 10))
++#define __TO_R_EXP(bacc)	(int32_t)(tos32(((BSWAP_32(bacc) & 0xf0) >> 4), 4))
++#define __TO_B_EXP(bacc)	(int32_t)(tos32((BSWAP_32(bacc) & 0xf), 4))
++
++#define SENSOR_ATTR_MAX			16
++#define SENSOR_ATTR_NAME_LENGTH	20
++
++#define SENSOR_GET_CAP_LABEL	0x001
++#define SENSOR_GET_CAP_ALARM	0x002
++#define SENSOR_GET_CAP_INPUT	0x004
++
++#define SENSOR_GET_CAP_LNC		0x008
++#define SENSOR_GET_CAP_LCR		0x010
++#define SENSOR_GET_CAP_LNR		0x020
++
++#define SENSOR_GET_CAP_UNC		0x040
++#define SENSOR_GET_CAP_UCR		0x080
++#define SENSOR_GET_CAP_UNR		0x100
++
++#define SENSOR_GET_CAP_MODEL	0x200
++#define SENSOR_GET_CAP_SN		0x400
++#define SENSOR_GET_CAP_PWM		0x800
++
++#define SENSOR_GET_CAP_CONMODE		0x1000
++#define SENSOR_GET_CAP_DIRECTION	0x2000
++#define SENSOR_GET_CAP_FAN_PRESENT	0x4000
++#define SENSOR_GET_CAP_PSU_PRESENT	0x8000
++
++#define SDR_SENSOR_TYPE_TEMP	0x01
++#define SDR_SENSOR_TYPE_VOLT	0x02
++#define SDR_SENSOR_TYPE_CURR	0x03
++#define SDR_SENSOR_TYPE_FAN		0x04
++#define SDR_SENSOR_TYPE_PS		0x08
++#define SDR_SENSOR_TYPE_OTHER	0x0b
++
++#define BMC_GET_DEVICE_ID		0x01
++
++#define IPMI_NETFN_SE			0x04
++#define IPMI_NETFN_APP			0x06
++#define IPMI_NETFN_STORAGE		0x0a
++#define IPMI_NETFN_TSOL			0x30
++
++#define GET_SDR_REPO_INFO		0x20
++#define GET_DEVICE_SDR			0x21
++#define GET_SDR_RESERVE_REPO	0x22
++#define GET_SDR					0x23
++#define GET_SENSOR_THRESHOLDS	0x27
++#define GET_SENSOR_EVENT_ENABLE 0x29
++#define GET_SENSOR_EVENT_STATUS	0x2b
++#define GET_SENSOR_READING		0x2d
++#define GET_PSU_READING			0x52
++#define GET_FAN_INFO			0xd6
++#define GET_FRU_INFO			0x11
++
++#define IPM_DEV_DEVICE_ID_SDR_MASK		(0x80)	/* 1 = provides SDRs      */
++#define IPMI_TIMEOUT			(4 * HZ)
++
++struct quanta_hwmon_ipmi_data {
++	struct platform_device	*ipmi_platform_dev;
++	struct device			*ipmi_hwmon_dev;
++	//struct mutex			ipmi_lock;
++
++	int32_t					total_sensor_id;
++	int32_t					total_suport_sensor;
++	int32_t					total_create_sysfs;
++} *data;
++
++struct class *quanta_class = NULL;
++struct quanta_sys_data {};
++struct device *quanta_drv_dev = NULL;
++struct quanta_sys_data *quanta_drv_data = NULL;
++
++static struct mutex ipmi_lock;
++static struct completion g_read_complete;
++
++static ipmi_user_t ipmi_mh_user = NULL;
++
++static int8_t g_fan_control_mode = 3;
++static int32_t g_ipmi_sync_flag = 0;
++static int32_t g_use_built_in = 0;
++
++static bool g_bmc_alive_flag = true;
++
++struct ipmi_sensor_data {
++	uint8_t addr;
++	uint8_t sensor_type;
++	uint8_t sensor_idstring[SENSOR_ATTR_NAME_LENGTH];
++
++	uint16_t capability;
++
++	struct header_info {
++		uint8_t header_type;
++		uint8_t header_byte;
++	} headerinfo;
++
++	struct record_info {
++		uint8_t record_analog;
++		uint8_t record_linearization;
++
++		int32_t record_m;
++		int32_t record_b;
++		int32_t record_k1;
++		int32_t record_k2;
++	} recordinfo;
++
++	struct threshold_upper_info {
++		uint8_t unr;
++		uint8_t ucr;
++		uint8_t unc;
++	} upperinfo;
++
++	struct threshold_lower_info {
++		uint8_t lnr;
++		uint8_t lcr;
++		uint8_t lnc;
++	} lowerinfo;
++
++	struct attr_info
++	{
++		bool attr_exist;
++		char attr_name[SENSOR_ATTR_MAX][SENSOR_ATTR_NAME_LENGTH];
++		char attr_type_str[SENSOR_ATTR_NAME_LENGTH];
++
++		struct attribute *attrs[SENSOR_ATTR_MAX + 1];
++		struct attribute_group	attr_group;
++		struct sensor_device_attribute sd_attrs[SENSOR_ATTR_MAX + 1];
++	} attrinfo;
++
++} *g_sensor_data;
++
++struct ipmi_sdr_iterator {
++	uint16_t reservation;
++	int32_t total;
++	int32_t next;
++};
++
++struct ipm_devid_rsp {
++	uint8_t device_id;
++	uint8_t device_revision;
++	uint8_t fw_rev1;
++	uint8_t fw_rev2;
++	uint8_t ipmi_version;
++	uint8_t adtl_device_support;
++	uint8_t manufacturer_id[3];
++	uint8_t product_id[2];
++	uint8_t aux_fw_rev[4];
++} __attribute__((packed));
++
++struct sdr_repo_info_rs {
++	uint8_t version;	/* SDR version (51h) */
++	uint16_t count;		/* number of records */
++	uint16_t free;		/* free space in SDR */
++	uint32_t add_stamp;	/* last add timestamp */
++	uint32_t erase_stamp;	/* last del timestamp */
++	uint8_t op_support;	/* supported operations */
++} __attribute__((packed));
++
++struct sdr_device_info_rs {
++	uint8_t count;	/* number of records */
++	uint8_t flags;	/* flags */
++	uint8_t popChangeInd[3];	/* free space in SDR */
++} __attribute__((packed));
++
++struct sdr_get_rs {
++	uint16_t next;		/* next record id */
++	uint16_t id;		/* record ID */
++	uint8_t version;	/* SDR version (51h) */
++#define SDR_RECORD_TYPE_FULL_SENSOR			0x01
++#define SDR_RECORD_TYPE_COMPACT_SENSOR		0x02
++#define SDR_RECORD_TYPE_EVENTONLY_SENSOR	0x03
++#define SDR_RECORD_TYPE_ENTITY_ASSOC		0x08
++#define SDR_RECORD_TYPE_DEVICE_ENTITY_ASSOC	0x09
++#define SDR_RECORD_TYPE_GENERIC_DEVICE_LOCATOR	0x10
++#define SDR_RECORD_TYPE_FRU_DEVICE_LOCATOR	0x11
++#define SDR_RECORD_TYPE_MC_DEVICE_LOCATOR	0x12
++#define SDR_RECORD_TYPE_MC_CONFIRMATION		0x13
++#define SDR_RECORD_TYPE_BMC_MSG_CHANNEL_INFO	0x14
++#define SDR_RECORD_TYPE_OEM			0xc0
++	uint8_t type;		/* record type */
++	uint8_t length;		/* remaining record bytes */
++} __attribute__((packed));
++
++struct sdr_get_rq {
++	uint16_t reserve_id;	/* reservation ID */
++	uint16_t id;		/* record ID */
++	uint8_t offset;		/* offset into SDR */
++#define GET_SDR_ENTIRE_RECORD	0xff
++	uint8_t length;		/* length to read */
++} __attribute__((packed));
++
++struct entity_id {
++	uint8_t	id;			/* physical entity id */
++#ifdef WORDS_BIGENDIAN
++	uint8_t	logical : 1;	/* physical/logical */
++	uint8_t	instance : 7;	/* instance number */
++#else
++	uint8_t	instance : 7;	/* instance number */
++	uint8_t	logical : 1;	/* physical/logical */
++#endif
++} __attribute__((packed));
++
++struct sdr_record_mask {
++	union {
++		struct {
++			uint16_t assert_event;	/* assertion event mask */
++			uint16_t deassert_event;	/* de-assertion event mask */
++			uint16_t read;	/* discrete reading mask */
++		} discrete;
++		struct {
++#ifdef WORDS_BIGENDIAN
++			uint16_t reserved : 1;
++			uint16_t status_lnr : 1;
++			uint16_t status_lcr : 1;
++			uint16_t status_lnc : 1;
++			uint16_t assert_unr_high : 1;
++			uint16_t assert_unr_low : 1;
++			uint16_t assert_ucr_high : 1;
++			uint16_t assert_ucr_low : 1;
++			uint16_t assert_unc_high : 1;
++			uint16_t assert_unc_low : 1;
++			uint16_t assert_lnr_high : 1;
++			uint16_t assert_lnr_low : 1;
++			uint16_t assert_lcr_high : 1;
++			uint16_t assert_lcr_low : 1;
++			uint16_t assert_lnc_high : 1;
++			uint16_t assert_lnc_low : 1;
++#else
++			uint16_t assert_lnc_low : 1;
++			uint16_t assert_lnc_high : 1;
++			uint16_t assert_lcr_low : 1;
++			uint16_t assert_lcr_high : 1;
++			uint16_t assert_lnr_low : 1;
++			uint16_t assert_lnr_high : 1;
++			uint16_t assert_unc_low : 1;
++			uint16_t assert_unc_high : 1;
++			uint16_t assert_ucr_low : 1;
++			uint16_t assert_ucr_high : 1;
++			uint16_t assert_unr_low : 1;
++			uint16_t assert_unr_high : 1;
++			uint16_t status_lnc : 1;
++			uint16_t status_lcr : 1;
++			uint16_t status_lnr : 1;
++			uint16_t reserved : 1;
++#endif
++#ifdef WORDS_BIGENDIAN
++			uint16_t reserved_2 : 1;
++			uint16_t status_unr : 1;
++			uint16_t status_ucr : 1;
++			uint16_t status_unc : 1;
++			uint16_t deassert_unr_high : 1;
++			uint16_t deassert_unr_low : 1;
++			uint16_t deassert_ucr_high : 1;
++			uint16_t deassert_ucr_low : 1;
++			uint16_t deassert_unc_high : 1;
++			uint16_t deassert_unc_low : 1;
++			uint16_t deassert_lnr_high : 1;
++			uint16_t deassert_lnr_low : 1;
++			uint16_t deassert_lcr_high : 1;
++			uint16_t deassert_lcr_low : 1;
++			uint16_t deassert_lnc_high : 1;
++			uint16_t deassert_lnc_low : 1;
++#else
++			uint16_t deassert_lnc_low : 1;
++			uint16_t deassert_lnc_high : 1;
++			uint16_t deassert_lcr_low : 1;
++			uint16_t deassert_lcr_high : 1;
++			uint16_t deassert_lnr_low : 1;
++			uint16_t deassert_lnr_high : 1;
++			uint16_t deassert_unc_low : 1;
++			uint16_t deassert_unc_high : 1;
++			uint16_t deassert_ucr_low : 1;
++			uint16_t deassert_ucr_high : 1;
++			uint16_t deassert_unr_low : 1;
++			uint16_t deassert_unr_high : 1;
++			uint16_t status_unc : 1;
++			uint16_t status_ucr : 1;
++			uint16_t status_unr : 1;
++			uint16_t reserved_2 : 1;
++#endif
++			union {
++				struct {
++#ifdef WORDS_BIGENDIAN			/* settable threshold mask */
++					uint16_t reserved : 2;
++					uint16_t unr : 1;
++					uint16_t ucr : 1;
++					uint16_t unc : 1;
++					uint16_t lnr : 1;
++					uint16_t lcr : 1;
++					uint16_t lnc : 1;
++					/* padding lower 8 bits */
++					uint16_t readable : 8;
++#else
++					uint16_t readable : 8;
++					uint16_t lnc : 1;
++					uint16_t lcr : 1;
++					uint16_t lnr : 1;
++					uint16_t unc : 1;
++					uint16_t ucr : 1;
++					uint16_t unr : 1;
++					uint16_t reserved : 2;
++#endif
++				} set;
++				struct {
++#ifdef WORDS_BIGENDIAN			/* readable threshold mask */
++					/* padding upper 8 bits */
++					uint16_t settable : 8;
++					uint16_t reserved : 2;
++					uint16_t unr : 1;
++					uint16_t ucr : 1;
++					uint16_t unc : 1;
++					uint16_t lnr : 1;
++					uint16_t lcr : 1;
++					uint16_t lnc : 1;
++#else
++					uint16_t lnc : 1;
++					uint16_t lcr : 1;
++					uint16_t lnr : 1;
++					uint16_t unc : 1;
++					uint16_t ucr : 1;
++					uint16_t unr : 1;
++					uint16_t reserved : 2;
++					uint16_t settable : 8;
++#endif
++				} read;
++			};
++		} threshold;
++	} type;
++} __attribute__((packed));
++
++struct sdr_record_full_sensor {
++	struct {
++		uint8_t owner_id;
++#ifdef WORDS_BIGENDIAN
++		uint8_t channel : 4;	/* channel number */
++		uint8_t __reserved : 2;
++		uint8_t lun : 2;	/* sensor owner lun */
++#else
++		uint8_t lun : 2;	/* sensor owner lun */
++		uint8_t __reserved : 2;
++		uint8_t channel : 4;	/* channel number */
++#endif
++		uint8_t sensor_num;	/* unique sensor number */
++	} keys;
++
++	struct entity_id entity;
++
++	struct {
++		struct {
++#ifdef WORDS_BIGENDIAN
++			uint8_t __reserved : 1;
++			uint8_t scanning : 1;
++			uint8_t events : 1;
++			uint8_t thresholds : 1;
++			uint8_t hysteresis : 1;
++			uint8_t type : 1;
++			uint8_t event_gen : 1;
++			uint8_t sensor_scan : 1;
++#else
++			uint8_t sensor_scan : 1;
++			uint8_t event_gen : 1;
++			uint8_t type : 1;
++			uint8_t hysteresis : 1;
++			uint8_t thresholds : 1;
++			uint8_t events : 1;
++			uint8_t scanning : 1;
++			uint8_t __reserved : 1;
++#endif
++		} init;
++		struct {
++#ifdef WORDS_BIGENDIAN
++			uint8_t ignore : 1;
++			uint8_t rearm : 1;
++			uint8_t hysteresis : 2;
++			uint8_t threshold : 2;
++			uint8_t event_msg : 2;
++#else
++			uint8_t event_msg : 2;
++			uint8_t threshold : 2;
++			uint8_t hysteresis : 2;
++			uint8_t rearm : 1;
++			uint8_t ignore : 1;
++#endif
++		} capabilities;
++		uint8_t type;
++	} sensor;
++
++	uint8_t event_type;	/* event/reading type code */
++
++	struct sdr_record_mask mask;
++
++	struct {
++#ifdef WORDS_BIGENDIAN
++		uint8_t analog : 2;
++		uint8_t rate : 3;
++		uint8_t modifier : 2;
++		uint8_t pct : 1;
++#else
++		uint8_t pct : 1;
++		uint8_t modifier : 2;
++		uint8_t rate : 3;
++		uint8_t analog : 2;
++#endif
++		struct {
++			uint8_t base;
++			uint8_t modifier;
++		} type;
++	} unit;
++
++#define SDR_SENSOR_L_LINEAR     0x00
++#define SDR_SENSOR_L_LN         0x01
++#define SDR_SENSOR_L_LOG10      0x02
++#define SDR_SENSOR_L_LOG2       0x03
++#define SDR_SENSOR_L_E          0x04
++#define SDR_SENSOR_L_EXP10      0x05
++#define SDR_SENSOR_L_EXP2       0x06
++#define SDR_SENSOR_L_1_X        0x07
++#define SDR_SENSOR_L_SQR        0x08
++#define SDR_SENSOR_L_CUBE       0x09
++#define SDR_SENSOR_L_SQRT       0x0a
++#define SDR_SENSOR_L_CUBERT     0x0b
++#define SDR_SENSOR_L_NONLINEAR  0x70
++
++	uint8_t linearization;	/* 70h=non linear, 71h-7Fh=non linear, OEM */
++	uint16_t mtol;		/* M, tolerance */
++	uint32_t bacc;		/* accuracy, B, Bexp, Rexp */
++
++	struct {
++#ifdef WORDS_BIGENDIAN
++		uint8_t __reserved : 5;
++		uint8_t normal_min : 1;	/* normal min field specified */
++		uint8_t normal_max : 1;	/* normal max field specified */
++		uint8_t nominal_read : 1;	/* nominal reading field specified */
++#else
++		uint8_t nominal_read : 1;	/* nominal reading field specified */
++		uint8_t normal_max : 1;	/* normal max field specified */
++		uint8_t normal_min : 1;	/* normal min field specified */
++		uint8_t __reserved : 5;
++#endif
++	} analog_flag;
++
++	uint8_t nominal_read;	/* nominal reading, raw value */
++	uint8_t normal_max;	/* normal maximum, raw value */
++	uint8_t normal_min;	/* normal minimum, raw value */
++	uint8_t sensor_max;	/* sensor maximum, raw value */
++	uint8_t sensor_min;	/* sensor minimum, raw value */
++
++	struct {
++		struct {
++			uint8_t non_recover;
++			uint8_t critical;
++			uint8_t non_critical;
++		} upper;
++		struct {
++			uint8_t non_recover;
++			uint8_t critical;
++			uint8_t non_critical;
++		} lower;
++		struct {
++			uint8_t positive;
++			uint8_t negative;
++		} hysteresis;
++	} threshold;
++	uint8_t __reserved[2];
++	uint8_t oem;		/* reserved for OEM use */
++	uint8_t id_code;	/* sensor ID string type/length code */
++	uint8_t id_string[16];	/* sensor ID string bytes, only if id_code != 0 */
++} __attribute__((packed));
++
++int32_t pow_convert(int32_t *a, int32_t b)
++{
++	/* function input parameter (a * 10 ^ b) */
++	int32_t i = 0, r = 1, temp_b = 0;
++
++	temp_b = (b > 0) ? b : -b;
++
++	for (i = 0; i < temp_b; i++) r = r * 10;
++
++	if (b > 0)
++	{
++		*a = (*a) * r;
++		r = 1;
++	}
++	/* function return parameter calc_result = *a, decimal_point = r */
++	return r;
++}
++
++void simple_atoi(const char *buf, int8_t *output_val)
++{
++	while (*buf >= '0' && *buf <= '9')
++	{
++		*output_val = *output_val * 10 + *buf - '0';
++		buf++;
++	}
++}
++
++int32_t ipmi_send_system_cmd(struct kernel_ipmi_msg msg, void *user_msg_data)
++{
++	int32_t rv = 0;
++	int32_t msgid = 0;
++	int32_t escape_time = 0;
++
++	struct ipmi_addr addr;
++	struct ipmi_system_interface_addr bmc_addr = {
++	addr_type:
++		IPMI_SYSTEM_INTERFACE_ADDR_TYPE,
++			channel :
++			IPMI_BMC_CHANNEL,
++	};
++
++	if (!g_bmc_alive_flag) return -1;
++
++	bmc_addr.lun = 0;
++	msgid = ++g_ipmi_sync_flag;
++	memcpy(&addr, &bmc_addr, sizeof(bmc_addr));
++
++#if enable_debug_msg
++	{
++		int32_t i = 0;
++		printk("%s: type = 0x%x, channel = 0x%x, msgid = %d, netfn = 0x%x, cmd = 0x%x, data_len %d\n", __func__, addr.addr_type, addr.channel, msgid, msg.netfn, msg.cmd, msg.data_len);
++		for (i = 0; i < msg.data_len; i++)
++		{
++			printk("%02x ", msg.data[i]);
++		}
++		printk("\n");
++	}
++#endif
++
++	ipmi_request_settime(ipmi_mh_user, &addr, msgid, &msg, user_msg_data, 0, -1, 0);
++	escape_time = wait_for_completion_timeout(&g_read_complete, IPMI_TIMEOUT);
++
++	if (escape_time == 0)
++	{
++		g_bmc_alive_flag = false;
++
++		printk("BMC not response (%d)\n", escape_time);
++		rv = -1;
++	}
++	else {
++#if enable_debug_msg
++		printk("BMC response!!!! (%d)\n", escape_time);
++#endif
++		rv = 0;
++	}
++
++	return rv;
++
++}
++
++static void msg_handler(struct ipmi_recv_msg *msg, void *handler_data)
++{
++	int32_t data_len = 0;
++
++	data_len = msg->msg.data_len - 1;
++
++	if (data_len > 0)
++	{
++		memcpy(msg->user_msg_data, msg->msg.data + 1, data_len);
++	}
++	else
++	{
++		if (msg->user_msg_data != NULL) memset(msg->user_msg_data, 0xff, 1);
++	}
++
++	if (g_ipmi_sync_flag == msg->msgid)
++	{
++		g_ipmi_sync_flag = 0;
++		ipmi_free_recv_msg(msg);
++
++		if (g_bmc_alive_flag)	complete(&g_read_complete);
++		else					g_bmc_alive_flag = true;
++	}
++	else
++	{
++		printk("unexpect flow (%d, %ld)\n", g_ipmi_sync_flag, msg->msgid);
++	}
++}
++static struct ipmi_user_hndl ipmi_hndlrs = { .ipmi_recv_hndl = msg_handler, };
++
++int32_t ipmi_sdr_get_reservation(uint16_t * reserve_id)
++{
++	int32_t rv = 0;
++	struct kernel_ipmi_msg msg;
++
++	/* obtain reservation ID */
++	memset(&msg, 0, sizeof(msg));
++
++	if (g_use_built_in == 0)	msg.netfn = IPMI_NETFN_STORAGE;
++	else						msg.netfn = IPMI_NETFN_SE;
++
++	msg.cmd = GET_SDR_RESERVE_REPO;
++	rv = ipmi_send_system_cmd(msg, reserve_id);
++	if (rv) printk("BMC down at (%d)!!\n", __LINE__);
++
++#if enable_debug_msg
++	printk("SDR reservation ID %04x\n", *reserve_id);
++#endif
++
++	return rv;
++}
++
++int32_t ipmi_sdr_start(struct ipmi_sdr_iterator *itr)
++{
++	int32_t rv = 0;
++	struct kernel_ipmi_msg msg;
++	struct ipm_devid_rsp devid;
++
++	/* check SDRR capability */
++	memset(&msg, 0, sizeof(msg));
++	msg.netfn = IPMI_NETFN_APP;
++	msg.cmd = BMC_GET_DEVICE_ID;
++	msg.data_len = 0;
++
++	rv = ipmi_send_system_cmd(msg, &devid);
++	if (rv)
++	{
++		printk("BMC down at (%d)!!\n", __LINE__);
++		return rv;
++	}
++
++	if (devid.device_revision & IPM_DEV_DEVICE_ID_SDR_MASK)
++	{
++		if ((devid.adtl_device_support & 0x02) == 0)
++		{
++			if ((devid.adtl_device_support & 0x01))
++			{
++				printk("Using Device SDRs\n");
++				g_use_built_in = 1;
++			}
++			else
++			{
++				printk("Error obtaining SDR info\n");
++			}
++		}
++	}
++
++	memset(&msg, 0, sizeof(msg));
++	if (g_use_built_in == 0)
++	{
++		struct sdr_repo_info_rs sdr_info;
++		/* get sdr repository info */
++		msg.netfn = IPMI_NETFN_STORAGE;
++		msg.cmd = GET_SDR_REPO_INFO;
++		rv = ipmi_send_system_cmd(msg, &sdr_info);
++		itr->total = sdr_info.count;
++	}
++	else
++	{
++		struct sdr_device_info_rs sdr_info;
++		/* get device sdr info */
++		msg.netfn = IPMI_NETFN_SE;
++		msg.cmd = GET_SDR_REPO_INFO;
++		rv = ipmi_send_system_cmd(msg, &sdr_info);
++		itr->total = sdr_info.count;
++	}
++
++	if (rv)
++	{
++		printk("BMC down at (%d)!!\n", __LINE__);
++		return rv;
++	}
++
++	itr->next = 0;
++
++#if enable_debug_msg
++	printk("SDR version: 0x%x\n", sdr_info.version);
++	printk("SDR free space: %d\n", sdr_info.free);
++	printk("SDR records   : %d\n", sdr_info.count);
++#endif
++
++	rv = ipmi_sdr_get_reservation(&(itr->reservation));
++
++	return rv;
++}
++
++static struct sdr_get_rs* ipmi_sdr_get_header(struct ipmi_sdr_iterator *itr)
++{
++	int32_t rv = 0;
++	struct sdr_get_rq sdr_rq;
++	static struct sdr_get_rs sdr_rs;
++	struct kernel_ipmi_msg msg;
++
++	memset(&sdr_rq, 0, sizeof(sdr_rq));
++	memset(&sdr_rs, 0, sizeof(sdr_rs));
++
++	sdr_rq.reserve_id = itr->reservation;
++	sdr_rq.id = itr->next;
++	sdr_rq.offset = 0;
++	sdr_rq.length = 5;	/* only get the header */
++
++	memset(&msg, 0, sizeof(msg));
++	if (g_use_built_in == 0)
++	{
++		msg.netfn = IPMI_NETFN_STORAGE;
++		msg.cmd = GET_SDR;
++	}
++	else
++	{
++		msg.netfn = IPMI_NETFN_SE;
++		msg.cmd = GET_DEVICE_SDR;
++	}
++
++	msg.data = (uint8_t *)&sdr_rq;
++	msg.data_len = sizeof(sdr_rq);
++	rv = ipmi_send_system_cmd(msg, &sdr_rs);
++	if ((rv) || (sdr_rs.length == 0))
++	{
++		printk("SDR record id 0x%04x: invalid length %d", itr->next, sdr_rs.length);
++		return NULL;
++	}
++
++	if (sdr_rs.id != itr->next)
++	{
++		printk("SDR record id mismatch: 0x%04x\n", sdr_rs.id);
++		sdr_rs.id = itr->next;
++	}
++#if enable_debug_msg
++	printk("\nSDR record ID   : 0x%04x", itr->next);
++	printk("SDR record type : 0x%02x\n", sdr_rs.type);
++	printk("SDR record next : 0x%04x\n", sdr_rs.next);
++	printk("SDR record bytes: %d\n", sdr_rs.length);
++#endif
++
++	return &sdr_rs;
++}
++
++int32_t ipmi_sdr_get_record(struct sdr_get_rs * header, struct ipmi_sdr_iterator * itr, uint8_t *ret_data)
++{
++	int32_t rv = 0, len = 0;
++	uint8_t buff[128] = "";
++
++	struct sdr_get_rq sdr_rq;
++	struct kernel_ipmi_msg msg;
++
++	len = header->length;
++	if (len > 0)
++	{
++		memset(&sdr_rq, 0, sizeof(sdr_rq));
++		sdr_rq.reserve_id = itr->reservation;
++		sdr_rq.id = header->id;
++		sdr_rq.offset = 5;
++		sdr_rq.length = len;
++
++		memset(&msg, 0, sizeof(msg));
++		if (g_use_built_in == 0)
++		{
++			msg.netfn = IPMI_NETFN_STORAGE;
++			msg.cmd = GET_SDR;
++		}
++		else
++		{
++			msg.netfn = IPMI_NETFN_SE;
++			msg.cmd = GET_DEVICE_SDR;
++		}
++
++		msg.data = (uint8_t *)&sdr_rq;
++		msg.data_len = sizeof(sdr_rq);
++		rv = ipmi_send_system_cmd(msg, ret_data);
++		if (rv)
++		{
++			printk("BMC down at (%d)!!\n", __LINE__);
++			return rv;
++		}
++
++		memset(buff, 0, sizeof(buff));
++		memcpy(buff, ret_data + 2, sdr_rq.length);
++		memcpy(ret_data, buff, sdr_rq.length + 2);
++	}
++
++	return rv;
++}
++
++void ipmi_sdr_set_sensor_threshold(uint8_t idx, struct sdr_record_full_sensor *sensor)
++{
++
++	/*refer to Table 35-, Get Sensor Event Enable*/
++	/*
++	// change detect threshold method, keep it for record detail format
++	// in this version function input is 
++		"void ipmi_sdr_set_sensor_threshold(uint8_t idx, uint8_t *rec)"
++		#define offset_threshold_enable	9
++		#define offset_threshold_data	31
++	if (rec[offset_threshold_enable + 1] & 0x08)	g_sensor_data[idx].upperinfo.unr_high = 1;
++	if (rec[offset_threshold_enable + 1] & 0x04)	g_sensor_data[idx].upperinfo.unr_low = 1;
++	if (rec[offset_threshold_enable + 1] & 0x02)	g_sensor_data[idx].upperinfo.ucr_high = 1;
++	if (rec[offset_threshold_enable + 1] & 0x01)	g_sensor_data[idx].upperinfo.ucr_low = 1;
++	if (rec[offset_threshold_enable] & 0x80)		g_sensor_data[idx].upperinfo.unc_high = 1;
++	if (rec[offset_threshold_enable] & 0x40)		g_sensor_data[idx].upperinfo.unc_low = 1;
++
++	if (rec[offset_threshold_enable] & 0x20)		g_sensor_data[idx].lowerinfo.lnr_high = 1;
++	if (rec[offset_threshold_enable] & 0x10)		g_sensor_data[idx].lowerinfo.lnr_low = 1;
++	if (rec[offset_threshold_enable] & 0x08)		g_sensor_data[idx].lowerinfo.lcr_high = 1;
++	if (rec[offset_threshold_enable] & 0x04)		g_sensor_data[idx].lowerinfo.lcr_low = 1;
++	if (rec[offset_threshold_enable] & 0x02)		g_sensor_data[idx].lowerinfo.lnc_high = 1;
++	if (rec[offset_threshold_enable] & 0x01)		g_sensor_data[idx].lowerinfo.lnc_low = 1;
++	//*/
++
++	/* lower threshold info */
++	if (sensor->mask.type.threshold.read.lnc) g_sensor_data[idx].capability |= SENSOR_GET_CAP_LNC;
++	if (sensor->mask.type.threshold.read.lcr) g_sensor_data[idx].capability |= SENSOR_GET_CAP_LCR;
++	if (sensor->mask.type.threshold.read.lnr) g_sensor_data[idx].capability |= SENSOR_GET_CAP_LNR;
++	g_sensor_data[idx].lowerinfo.lnc = sensor->threshold.lower.non_critical;
++	g_sensor_data[idx].lowerinfo.lcr = sensor->threshold.lower.critical;
++	g_sensor_data[idx].lowerinfo.lnr = sensor->threshold.lower.non_recover;
++
++	/* upper threshold info */
++	if (sensor->mask.type.threshold.read.unc) g_sensor_data[idx].capability |= SENSOR_GET_CAP_UNC;
++	if (sensor->mask.type.threshold.read.ucr) g_sensor_data[idx].capability |= SENSOR_GET_CAP_UCR;
++	if (sensor->mask.type.threshold.read.unr) g_sensor_data[idx].capability |= SENSOR_GET_CAP_UNR;
++	g_sensor_data[idx].upperinfo.unc = sensor->threshold.upper.non_critical;
++	g_sensor_data[idx].upperinfo.ucr = sensor->threshold.upper.critical;
++	g_sensor_data[idx].upperinfo.unr = sensor->threshold.upper.non_recover;
++}
++
++void ipmi_sdr_set_sensor_factor(uint8_t idx, struct sdr_record_full_sensor *sensor)
++{
++	char *loc = NULL;
++
++	g_sensor_data[idx].sensor_type = sensor->sensor.type;
++	sprintf(g_sensor_data[idx].sensor_idstring, "%s", sensor->id_string);
++
++	g_sensor_data[idx].recordinfo.record_m = __TO_M(sensor->mtol);
++	g_sensor_data[idx].recordinfo.record_b = __TO_B(sensor->bacc);
++	g_sensor_data[idx].recordinfo.record_k1 = __TO_B_EXP(sensor->bacc);
++	g_sensor_data[idx].recordinfo.record_k2 = __TO_R_EXP(sensor->bacc);
++
++	g_sensor_data[idx].recordinfo.record_analog = sensor->unit.analog;
++	g_sensor_data[idx].recordinfo.record_linearization = sensor->linearization;
++
++	memset(g_sensor_data[idx].attrinfo.attr_type_str, 0x00, SENSOR_ATTR_NAME_LENGTH);
++
++	switch (g_sensor_data[idx].sensor_type)
++	{
++	case SDR_SENSOR_TYPE_TEMP:
++		sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "temp");
++		break;
++	case SDR_SENSOR_TYPE_VOLT:
++		sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "in");
++		break;
++	case SDR_SENSOR_TYPE_FAN:
++		g_sensor_data[idx].capability |= SENSOR_GET_CAP_PWM;
++		g_sensor_data[idx].capability |= SENSOR_GET_CAP_CONMODE;
++		g_sensor_data[idx].capability |= SENSOR_GET_CAP_DIRECTION;
++		sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "fan");
++		break;
++	case SDR_SENSOR_TYPE_PS:
++		loc = strstr(g_sensor_data[idx].sensor_idstring, "POWER");
++		if (loc) {
++			if ((strncmp(g_sensor_data[idx].sensor_idstring + 11, "OUT", 3)) == 0)
++			{
++				g_sensor_data[idx].capability |= SENSOR_GET_CAP_MODEL;
++				g_sensor_data[idx].capability |= SENSOR_GET_CAP_SN;
++				g_sensor_data[idx].capability |= SENSOR_GET_CAP_PSU_PRESENT;
++			}
++			sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "power");
++		}
++
++		loc = strstr(g_sensor_data[idx].sensor_idstring, "VOLTAGE");
++		if (loc) sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "in");
++
++		loc = strstr(g_sensor_data[idx].sensor_idstring, "CURRENT");
++		if (loc) sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "curr");
++
++		break;
++	case SDR_SENSOR_TYPE_CURR:
++		sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "curr");
++		break;
++	case SDR_SENSOR_TYPE_OTHER:
++		sprintf(g_sensor_data[idx].attrinfo.attr_type_str, "other");
++		break;
++	default:
++		printk("not support sensor type !! [%d]\n", g_sensor_data[idx].sensor_type);
++		break;
++	}
++
++	if ((strncmp(g_sensor_data[idx].sensor_idstring, "Fan", 3)) == 0)
++	{
++		g_sensor_data[idx].capability |= SENSOR_GET_CAP_FAN_PRESENT;
++	}
++
++#if enable_debug_msg
++	{
++		printk("\n********************\n");
++
++		printk("m[%d], b[%d], k1[%d], k2[%d]\n", g_sensor_data[idx].recordinfo.record_m, g_sensor_data[idx].recordinfo.record_b
++			, g_sensor_data[idx].recordinfo.record_k1, g_sensor_data[idx].recordinfo.record_k2);
++
++		printk("sensor [%s] type[%d], analog[%d], linearization[%d]\n", g_sensor_data[idx].sensor_idstring, g_sensor_data[idx].sensor_type
++			, g_sensor_data[idx].recordinfo.record_analog, g_sensor_data[idx].recordinfo.record_linearization);
++
++		printk("\n********************\n");
++	}
++#endif
++
++}
++
++void sdr_convert_sensor_reading(uint8_t idx, uint8_t val, uint32_t *ret1, uint32_t *ret2)
++{
++	int32_t m = g_sensor_data[idx].recordinfo.record_m;
++	int32_t b = g_sensor_data[idx].recordinfo.record_b;
++	int32_t k1 = g_sensor_data[idx].recordinfo.record_k1;
++	int32_t k2 = g_sensor_data[idx].recordinfo.record_k2;
++	int32_t result = 0;
++
++	int32_t point_b = 0, point_k2 = 0, point_result = 0;
++
++	point_b = pow_convert(&b, k1);
++
++	switch (g_sensor_data[idx].recordinfo.record_analog)
++	{
++	case 0:
++		result = m * val * point_b + b;
++		break;
++	case 1:
++		if (val & 0x80) val++;
++	case 2:
++		result = (m * (int16_t)val) * point_b + b;
++		break;
++	default:
++		return;
++	}
++
++	point_k2 = pow_convert(&result, k2);
++
++	point_result = point_b * point_k2;
++
++	if (g_sensor_data[idx].sensor_type != SDR_SENSOR_TYPE_FAN)
++	{
++		result = result * 1000; //shift for lm-sensors
++	}
++
++	*ret1 = result / point_result;
++	*ret2 = result % point_result;
++}
++
++uint8_t ipmi_check_psu_present(uint8_t psu_slot)
++{
++	uint8_t slot_mask = 0x0;
++
++	uint8_t returnData[128] = { 0 };
++
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(4, GFP_KERNEL);
++	memset(msg.data, 0, 4);
++
++	msg.netfn = IPMI_NETFN_APP;
++	msg.cmd = GET_PSU_READING;
++	msg.data[0] = 0x1b;
++	msg.data[1] = 0x4c;
++	msg.data[2] = 0x01;
++	msg.data[3] = 0x00;
++	msg.data_len = 4;
++
++	ipmi_send_system_cmd(msg, returnData);
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	if (psu_slot == 1)	slot_mask = 0x01;
++	else				slot_mask = 0x10;
++
++	if (returnData[0] & slot_mask)	return 0; //no detect
++	else							return 1; //detected!!
++}
++
++void ipmi_get_psu_info(uint8_t idx, uint8_t cmd, uint8_t *retbuf)
++{
++	uint8_t psu_slot = 0;
++
++	uint8_t returnData[128] = { 0 };
++
++	if (strstr(g_sensor_data[idx].sensor_idstring, "PSU1"))	psu_slot = 1;
++	else													psu_slot = 2;
++
++	if (ipmi_check_psu_present(psu_slot))
++	{
++		struct kernel_ipmi_msg msg;
++
++		memset(&msg, 0, sizeof(msg));
++		mutex_lock(&ipmi_lock);
++
++		msg.data = kmalloc(4, GFP_KERNEL);
++		memset(msg.data, 0, 4);
++
++		msg.netfn = IPMI_NETFN_APP;
++		msg.cmd = GET_PSU_READING;
++		msg.data[0] = 0x0f;
++		msg.data[1] = (psu_slot == 1) ? 0xb0 : 0xb2;
++		msg.data[2] = 0x80;
++		msg.data[3] = cmd;
++		msg.data_len = 4;
++
++		ipmi_send_system_cmd(msg, returnData);
++		kfree(msg.data);
++		mutex_unlock(&ipmi_lock);
++
++		snprintf(retbuf, returnData[0] + 1, "%s\n", returnData + 1);
++	}
++	else
++	{
++		//printk("Error ! cannot detect PSU%d\n", psu_slot);
++	}
++}
++
++void ipmi_fan_control(uint8_t cmd_data1, uint8_t cmd_data2, uint8_t *retbuf)
++{
++	uint8_t returnData[10] = { 0 };
++
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(2, GFP_KERNEL);
++	memset(msg.data, 0, 2);
++
++	msg.netfn = IPMI_NETFN_TSOL;
++	msg.cmd = GET_FAN_INFO;
++	msg.data[0] = cmd_data1;
++	msg.data[1] = cmd_data2;
++	msg.data_len = 2;
++
++	ipmi_send_system_cmd(msg, returnData);
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	sprintf(retbuf, "%s", returnData);
++}
++
++static ssize_t show_label(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	return sprintf(buf, "%s\n", g_sensor_data[attr->index + DEBUGUSE_SHIFT].sensor_idstring);
++}
++
++static ssize_t show_crit_alarm(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	return sprintf(buf, "%d\n", attr->index);
++}
++
++static ssize_t show_input(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	uint32_t val1 = 0, val2 = 0;
++
++	uint8_t returnData[4] = { 0 };
++
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(1, GFP_KERNEL);
++	memset(msg.data, 0, 1);
++
++	msg.netfn = IPMI_NETFN_SE;
++	msg.cmd = GET_SENSOR_READING;
++	msg.data[0] = g_sensor_data[attr->index + DEBUGUSE_SHIFT].addr;
++	msg.data_len = 1;
++
++	ipmi_send_system_cmd(msg, returnData);
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, returnData[0], &val1, &val2);
++
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_lnr(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].lowerinfo.lnr, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_lcr(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].lowerinfo.lcr, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_lnc(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].lowerinfo.lnc, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_unr(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].upperinfo.unr, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_ucr(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].upperinfo.ucr, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_unc(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint32_t val1 = 0, val2 = 0;
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	sdr_convert_sensor_reading(attr->index + DEBUGUSE_SHIFT, g_sensor_data[attr->index + DEBUGUSE_SHIFT].upperinfo.unc, &val1, &val2);
++	return sprintf(buf, "%u.%u\n", val1, val2);
++}
++
++static ssize_t show_model(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	uint8_t returnData[128] = { 0 };
++	ipmi_get_psu_info(attr->index + DEBUGUSE_SHIFT, 0x9a, returnData);
++	return sprintf(buf, "%s\n", returnData);
++}
++
++static ssize_t show_sn(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	uint8_t returnData[128] = { 0 };
++	ipmi_get_psu_info(attr->index + DEBUGUSE_SHIFT, 0x9e, returnData);
++	return sprintf(buf, "%s\n", returnData);
++}
++
++static ssize_t show_pwm(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint8_t returnData[1] = { 0 };
++	ipmi_fan_control(0x00, 0x00, returnData);
++	return sprintf(buf, "%d\n", returnData[0]);
++}
++
++static ssize_t store_pwm(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
++{
++	uint8_t store_input = 0;
++	uint8_t returnData[10] = { 0 };
++	simple_atoi(buf, &store_input);
++	if (g_fan_control_mode == 1) ipmi_fan_control(0x01, store_input, returnData);
++
++	return count;
++}
++
++static ssize_t show_controlmode(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	return sprintf(buf, "%d\n", g_fan_control_mode);
++}
++
++static ssize_t store_controlmode(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
++{
++	uint8_t store_input = 0;
++	uint8_t returnData[10] = { 0 };
++	simple_atoi(buf, &store_input);
++	g_fan_control_mode = store_input;
++	if (g_fan_control_mode == 3) ipmi_fan_control(0x7f, 0xff, returnData);
++
++	return count;
++}
++
++static ssize_t show_direction(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	uint8_t returnData[10] = { 0 };
++
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(4, GFP_KERNEL);
++	memset(msg.data, 0, 4);
++
++	msg.netfn = IPMI_NETFN_STORAGE;
++	msg.cmd = GET_FRU_INFO;
++	msg.data[0] = 0x0;
++	msg.data[1] = 0x19;
++	msg.data[2] = 0x0;
++	msg.data[3] = 0x1;
++	msg.data_len = 4;
++
++	ipmi_send_system_cmd(msg, returnData);
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	return sprintf(buf, "%c\n", returnData[1]);
++}
++
++static ssize_t show_fanpresent(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	int32_t fan_idx = 0, fan_present = 0;
++
++	uint8_t returnData[10] = { 0 };
++
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++	struct kernel_ipmi_msg msg;
++
++	fan_idx = (g_sensor_data[attr->index].sensor_idstring[8] - '0') - 1;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(4, GFP_KERNEL);
++	memset(msg.data, 0, 4);
++
++	msg.netfn = 0x36;
++	msg.cmd = 0xB9;
++	msg.data[0] = 0x4C;
++	msg.data[1] = 0x1C;
++	msg.data[2] = 0x00;
++	msg.data[3] = 0x02;
++	msg.data_len = 4;
++
++	ipmi_send_system_cmd(msg, returnData);
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	fan_present = ((returnData[0] >> fan_idx) & 0x1) ? 0 : 1;
++
++	return sprintf(buf, "%d\n", fan_present);
++}
++
++static ssize_t show_psupresent(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	int32_t psu_idx = 0;
++
++	struct sensor_device_attribute *attr = to_sensor_dev_attr(devattr);
++
++	psu_idx = g_sensor_data[attr->index].sensor_idstring[3] - '0';
++
++	return sprintf(buf, "%d\n", ipmi_check_psu_present(psu_idx));
++}
++
++static ssize_t(*const attr_show_func_ptr[SENSOR_ATTR_MAX]) (struct device *dev, struct device_attribute *devattr, char *buf) =
++{
++	show_label, show_crit_alarm, show_input
++	, show_lnc, show_lcr, show_lnr
++	, show_unc, show_ucr, show_unr
++	, show_model, show_sn, show_pwm
++	, show_controlmode, show_direction, show_fanpresent
++	, show_psupresent
++};
++
++static ssize_t(*const attr_store_func_ptr[SENSOR_ATTR_MAX]) (struct device *dev, struct device_attribute *devattr, const char *buf, size_t count) =
++{
++	NULL, NULL, NULL
++	, NULL, NULL, NULL
++	, NULL, NULL, NULL
++	, NULL, NULL, store_pwm
++	, store_controlmode, NULL, NULL
++	, NULL
++};
++
++static const char *const sensor_attrnames[SENSOR_ATTR_MAX] =
++{
++	"%s%d_label", "%s%d_crit_alarm", "%s%d_input"
++	, "%s%d_lncrit", "%s%d_lcrit", "%s%d_min"
++	, "%s%d_ncrit", "%s%d_crit", "%s%d_max"
++	, "%s%d_model", "%s%d_sn", "%s%d_pwm"
++	, "%s%d_controlmode", "%s%d_direction", "%s%d_present"
++	, "%s%d_present"
++};
++
++static int32_t create_sensor_attrs(int32_t attr_no)
++{
++	int32_t i = 0, j = 0;
++
++	struct attr_info *attrdata = &g_sensor_data[attr_no].attrinfo;
++
++#if enable_debug_msg
++	printk("##### %s:%d attr_no %d\n", __FUNCTION__, __LINE__, attr_no);
++#endif
++
++	for (i = 0; i < SENSOR_ATTR_MAX; i++)
++	{
++		if ((g_sensor_data[attr_no].capability >> i) & 0x01)
++		{
++			snprintf(attrdata->attr_name[j], SENSOR_ATTR_NAME_LENGTH, sensor_attrnames[i], attrdata->attr_type_str, attr_no - DEBUGUSE_SHIFT);
++
++			sysfs_attr_init(&attrdata->sd_attrs[j].dev_attr.attr);
++			attrdata->sd_attrs[j].dev_attr.attr.name = attrdata->attr_name[j];
++			attrdata->sd_attrs[j].dev_attr.show = attr_show_func_ptr[i];
++			attrdata->sd_attrs[j].dev_attr.store = attr_store_func_ptr[i];
++
++			attrdata->sd_attrs[j].dev_attr.attr.mode = S_IRUGO;
++			if (attrdata->sd_attrs[j].dev_attr.store)	attrdata->sd_attrs[j].dev_attr.attr.mode |= S_IWUSR;
++
++			attrdata->sd_attrs[j].index = attr_no - DEBUGUSE_SHIFT;
++			attrdata->attrs[j] = &attrdata->sd_attrs[j].dev_attr.attr;
++			j++;
++
++			data->total_create_sysfs++;
++		}
++	}
++
++	attrdata->attrs[j] = NULL;
++	attrdata->attr_group.attrs = attrdata->attrs;
++
++	return sysfs_create_group(&data->ipmi_hwmon_dev->kobj, &attrdata->attr_group);
++}
++
++static int32_t remove_sensor_attrs(void)
++{
++	int32_t i = 0;
++
++	for (i = 0; i < data->total_sensor_id; i++)
++	{
++		if (g_sensor_data[i].attrinfo.attr_exist)
++		{
++			sysfs_remove_group(&data->ipmi_hwmon_dev->kobj, &g_sensor_data[i].attrinfo.attr_group);
++		}
++	}
++	return 0;
++}
++
++int32_t ipmi_init_sdr_sensors_data(void)
++{
++	int32_t sdr_idx = 0;
++	int32_t err = 0;
++
++	struct ipmi_sdr_iterator *itr = NULL;
++	struct sdr_get_rs *header = NULL;
++
++	uint8_t *rec = NULL;
++
++	mutex_lock(&ipmi_lock);
++
++	itr = kmalloc(sizeof(struct ipmi_sdr_iterator), GFP_KERNEL);
++	if (itr == NULL)
++	{
++		printk("%s(%d): kmalloc failure.\n", __func__, __LINE__);
++		goto itr_malloc_fail;
++	}
++
++	err = ipmi_sdr_start(itr);
++	if (err)
++	{
++		printk("%s(%d): ipmi_sdr_start fail.\n", __func__, __LINE__);
++		goto ipmi_sdr_start_fail;
++	}
++
++	data->total_sensor_id = itr->total;
++	rec = kmalloc(GET_SDR_ENTIRE_RECORD, GFP_KERNEL);
++	if (rec == NULL)
++	{
++		printk("%s(%d): kmalloc failure\n", __func__, __LINE__);
++		goto rec_malloc_fail;
++	}
++
++	g_sensor_data = kmalloc(itr->total * sizeof(struct ipmi_sensor_data), GFP_KERNEL);
++	if (g_sensor_data == NULL)
++	{
++		printk("%s(%d): malloc failure", __func__, __LINE__);
++		goto g_sensor_data_malloc_fail;
++	}
++
++	memset(g_sensor_data, 0x0, itr->total * sizeof(struct ipmi_sensor_data));
++
++	for (sdr_idx = 0; sdr_idx < itr->total; sdr_idx++)
++	{
++		header = ipmi_sdr_get_header(itr);
++		if (header == NULL) continue;
++
++		itr->next = header->next;
++
++		memset(rec, 0, GET_SDR_ENTIRE_RECORD);
++
++		err = ipmi_sdr_get_record(header, itr, rec);
++		if ((err) || (rec[0] == 0xFF))
++		{
++			printk("\nipmi: Get SDR error,so break this request\n");
++			goto ipmi_sdr_get_record_fail;
++		}
++
++		switch (header->type)
++		{
++		case SDR_RECORD_TYPE_FULL_SENSOR:
++			/* prepare (threshold, factor)data whilie init, for reduce reading step and improve operate speed */
++			g_sensor_data[sdr_idx].addr = rec[2];
++			g_sensor_data[sdr_idx].capability = SENSOR_GET_CAP_LABEL /*| SENSOR_GET_CAP_ALARM */| SENSOR_GET_CAP_INPUT;
++			g_sensor_data[sdr_idx].headerinfo.header_type = header->type;
++			g_sensor_data[sdr_idx].headerinfo.header_byte = header->length;
++
++			ipmi_sdr_set_sensor_threshold(sdr_idx, (struct sdr_record_full_sensor*) rec);
++			ipmi_sdr_set_sensor_factor(sdr_idx, (struct sdr_record_full_sensor*) rec);
++
++			if (sdr_idx >= DEBUGUSE_SHIFT)
++			{
++				err = create_sensor_attrs(sdr_idx);
++				if (err)
++				{
++					printk("[err : %d]sysfs_create_group fail in [%d] %s\n", err, sdr_idx, g_sensor_data[sdr_idx].sensor_idstring);
++					return err;
++				}
++				g_sensor_data[sdr_idx].attrinfo.attr_exist = 1;
++			}
++
++			data->total_suport_sensor++;
++
++			break;
++		case SDR_RECORD_TYPE_COMPACT_SENSOR: /* not supporrt now */
++		case SDR_RECORD_TYPE_EVENTONLY_SENSOR: /* not supporrt now */
++		case SDR_RECORD_TYPE_MC_DEVICE_LOCATOR: /* not supporrt now */
++		default:
++			g_sensor_data[sdr_idx].attrinfo.attr_exist = 0;
++#if enable_debug_msg
++			printk("ID[%d] : not support type [%d]\n", sdr_idx, header->type);
++#endif
++			break;
++		}
++	}
++
++	printk("quanta_hwmon_ipmi : detected [%d] sensor, create [%d] sysfs\n", data->total_suport_sensor, data->total_create_sysfs);
++
++ipmi_sdr_get_record_fail:
++g_sensor_data_malloc_fail:
++	if (rec) {
++		kfree(rec);
++		rec = NULL;
++	}
++
++rec_malloc_fail:
++ipmi_sdr_start_fail:
++	if (itr) {
++		kfree(itr);
++		itr = NULL;
++	}
++
++itr_malloc_fail:
++	mutex_unlock(&ipmi_lock);
++
++	return err;
++}
++
++static ssize_t set_i2c_monitor_enable(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
++{
++	int32_t store_input = 0;
++	uint8_t returnData[10] = { 0 };
++
++	struct kernel_ipmi_msg msg;
++
++	simple_atoi(buf, &store_input);
++	if ((store_input != 0) && (store_input != 1)) return -1;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(5, GFP_KERNEL);
++	memset(msg.data, 0, 5);
++
++	msg.netfn = 0x06;
++	msg.cmd = 0x52;
++	msg.data[0] = 0x11;
++	msg.data[1] = 0x40;
++	msg.data[2] = 0x00;
++	msg.data[3] = 0x03;
++	msg.data[4] = (store_input)? 0xff : 0xf7;
++	msg.data_len = 5;
++
++	ipmi_send_system_cmd(msg, returnData);
++
++	/* set p13 i2c_monitor_en direction output */
++	msg.data[3] = 0x07;
++	msg.data[4] = 0xf7;
++	ipmi_send_system_cmd(msg, returnData);
++
++	/* always set i2c_watchdog_en in system cpld */
++	msg.data[0] = 0x1b;
++	msg.data[1] = 0x80;
++	msg.data[2] = 0x00;
++	msg.data[3] = 0x04; /* i2c_watchdog_en */
++	msg.data[4] = 0x01; /* enable */
++
++	ipmi_send_system_cmd(msg, returnData);
++
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	return count;
++}
++
++int32_t get_i2c_monitor_ipmi(void)
++{
++	uint8_t returnData[10] = { 0 };
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(4, GFP_KERNEL);
++	memset(msg.data, 0, 4);
++
++	msg.netfn = 0x06;
++	msg.cmd = 0x52;
++	msg.data[0] = 0x11;
++	msg.data[1] = 0x40;
++	msg.data[2] = 0x01;
++	msg.data[3] = 0x01;
++	msg.data_len = 4;
++	ipmi_send_system_cmd(msg, returnData);
++
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	return returnData[0];
++}
++
++static ssize_t get_i2c_monitor_enable(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	int rv = 0;
++	rv = get_i2c_monitor_ipmi();
++	return sprintf(buf, "%d\n", (rv & 0x08)? 1 : 0);
++}
++
++static DEVICE_ATTR(i2c_monitor_enable, S_IRUGO | S_IWUSR, get_i2c_monitor_enable, set_i2c_monitor_enable);
++
++int32_t rw_i2c_monitor_interval(int32_t input_interval)
++{
++	uint8_t returnData[10] = { 0 };
++	struct kernel_ipmi_msg msg;
++
++	memset(&msg, 0, sizeof(msg));
++	mutex_lock(&ipmi_lock);
++
++	msg.data = kmalloc(5, GFP_KERNEL);
++	memset(msg.data, 0, 5);
++
++	msg.netfn = 0x06;
++	msg.cmd = 0x52;
++	msg.data[0] = 0x1b;
++	msg.data[1] = 0x80;
++	msg.data[2] = (input_interval)? 0x00 : 0x01;
++	msg.data[3] = 0x05;
++	msg.data[4] = input_interval;
++	msg.data_len = (input_interval)? 5 : 4;;
++	ipmi_send_system_cmd(msg, returnData);
++
++	kfree(msg.data);
++	mutex_unlock(&ipmi_lock);
++
++	return returnData[0];
++}
++
++static ssize_t set_i2c_monitor_interval(struct device *dev, struct device_attribute *devattr, const char *buf, size_t count)
++{
++	int32_t store_input = 0;
++	simple_atoi(buf, &store_input);
++
++	if ((store_input < 0) || (store_input > 0xff)) return -1;
++	rw_i2c_monitor_interval(store_input);
++
++	return count;
++}
++static ssize_t get_i2c_monitor_interval(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	return sprintf(buf, "%d\n", rw_i2c_monitor_interval(0));
++}
++
++static DEVICE_ATTR(i2c_monitor_interval, S_IRUGO | S_IWUSR, get_i2c_monitor_interval, set_i2c_monitor_interval);
++
++static ssize_t get_i2c_monitor_alert(struct device *dev, struct device_attribute *devattr, char *buf)
++{
++	int rv = 0;
++	rv = get_i2c_monitor_ipmi();
++	return sprintf(buf, "%d\n", (rv & 0x10)? 0 : 1);
++}
++
++static DEVICE_ATTR(i2c_monitor_alert, S_IRUGO, get_i2c_monitor_alert, NULL);
++
++static const struct attribute *sys_attrs[] = {
++	&dev_attr_i2c_monitor_enable.attr,
++	&dev_attr_i2c_monitor_interval.attr,
++	&dev_attr_i2c_monitor_alert.attr,
++	NULL,
++};
++static const struct attribute_group sys_attr_group = {
++	.attrs = (struct attribute **) sys_attrs,
++};
++
++
++int32_t create_sys_control_attr(void)
++{
++	int32_t rv = 0;
++
++	quanta_class = class_create(THIS_MODULE, CLASSNAME);
++	if (IS_ERR(quanta_class)) {
++		rv = PTR_ERR(quanta_class);
++		printk("error : class_create failed!\n");
++		goto err_cls_create;
++	}
++
++	quanta_drv_data = kzalloc(sizeof(struct quanta_sys_data), GFP_KERNEL);
++	if (quanta_drv_data == NULL)
++	{
++		rv = -ENOMEM;
++		goto err_alloc_mem;
++	}
++
++	quanta_drv_dev = device_create(quanta_class, NULL, MKDEV(0, 0), quanta_drv_data, CLASS_SYSNAME);
++	if (IS_ERR(quanta_drv_dev)) {
++		rv = PTR_ERR(quanta_drv_dev);
++		printk("error : quanta_drv_dev device_create failed!\n");
++		goto err_dev_create;
++	}
++
++	dev_set_drvdata(quanta_drv_dev, quanta_drv_data);
++
++	rv = sysfs_create_group(&quanta_drv_dev->kobj, &sys_attr_group);
++	if (rv) {
++		printk("error : sysfs_create_group failed!\n");
++		goto err_sysfs_create;
++	}
++
++	printk("init sys attr done\n");
++
++	return rv;
++
++err_sysfs_create:
++	device_unregister(quanta_drv_dev);
++
++err_dev_create:
++	if (quanta_drv_data) kfree(quanta_drv_data);
++
++err_alloc_mem:
++	class_destroy(quanta_class);
++
++err_cls_create:
++
++	return rv;
++}
++
++
++static int32_t __init quanta_hwmon_ipmi_init(void)
++{
++	int32_t err = 0;
++
++	init_completion(&g_read_complete);
++
++	data = kzalloc(sizeof(struct quanta_hwmon_ipmi_data), GFP_KERNEL);
++	if (NULL == data)
++	{
++		printk("alloc data fail\n");
++		goto alloc_err;
++	}
++
++	data->ipmi_platform_dev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
++	err = IS_ERR(data->ipmi_platform_dev);
++	if (err) {
++		printk("platform device register fail (err : %d)\n", err);
++		goto device_reg_err;
++	}
++
++	data->ipmi_hwmon_dev = hwmon_device_register_with_groups(NULL, DRVNAME, NULL, NULL);
++	err = IS_ERR(data->ipmi_hwmon_dev);
++	if (err)
++	{
++		printk("hwmon register fail\n");
++		goto hwmon_register_err;
++	}
++
++	err = ipmi_create_user(0, &ipmi_hndlrs, NULL, &ipmi_mh_user);
++	if (err)
++	{
++		printk("warning: create user fail, watchdog broken (err : %d)\n", err);
++		goto ipmi_create_err;
++	}
++
++	mutex_init(&ipmi_lock);
++	err = ipmi_init_sdr_sensors_data();
++	if (err)
++	{
++		printk("init sensor data fail (err : %d)\n", err);
++		goto init_sensor_err;
++	}
++
++	err = create_sys_control_attr();
++	if (err)
++	{
++		printk("init sys data fail (err : %d)\n", err);
++		goto init_sensor_err;
++	}
++
++	return 0;
++
++init_sensor_err:
++	kfree(g_sensor_data);
++ipmi_create_err:
++	hwmon_device_unregister(data->ipmi_hwmon_dev);
++hwmon_register_err:
++	platform_device_unregister(data->ipmi_platform_dev);
++device_reg_err:
++	kfree(data);
++alloc_err:
++	return err;
++}
++
++static int32_t __exit quanta_hwmon_ipmi_exit(void)
++{
++	remove_sensor_attrs();
++	hwmon_device_unregister(data->ipmi_hwmon_dev);
++	platform_device_unregister(data->ipmi_platform_dev);
++
++	mutex_lock(&ipmi_lock);
++	ipmi_destroy_user(ipmi_mh_user);
++	mutex_unlock(&ipmi_lock);
++
++	kfree(g_sensor_data);
++	kfree(data);
++
++	device_unregister(quanta_drv_dev);
++	if (quanta_drv_data) kfree(quanta_drv_data);
++	class_destroy(quanta_class);
++
++	return 0;
++}
++
++module_init(quanta_hwmon_ipmi_init);
++module_exit(quanta_hwmon_ipmi_exit);
++
++MODULE_AUTHOR("Charlie Hsu");
++MODULE_VERSION("1.1");
++MODULE_DESCRIPTION("Quanta BMC hardware monitor driver");
++MODULE_LICENSE("GPL");
+\ No newline at end of file
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/auto/x86_64_quanta_ix8_rglbmc.yml b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/auto/x86_64_quanta_ix8_rglbmc.yml
+index 64688189..36f1796c 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/auto/x86_64_quanta_ix8_rglbmc.yml
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/auto/x86_64_quanta_ix8_rglbmc.yml
+@@ -128,7 +128,7 @@ definitions:
+       macros:
+         - memset
+         - memcpy
+-        
++        - strncpy
+         - vsnprintf
+         - snprintf
+         - strlen
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/inc/x86_64_quanta_ix8_rglbmc/x86_64_quanta_ix8_rglbmc_porting.h b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/inc/x86_64_quanta_ix8_rglbmc/x86_64_quanta_ix8_rglbmc_porting.h
+index 3494316e..509b038a 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/inc/x86_64_quanta_ix8_rglbmc/x86_64_quanta_ix8_rglbmc_porting.h
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/inc/x86_64_quanta_ix8_rglbmc/x86_64_quanta_ix8_rglbmc_porting.h
+@@ -40,6 +40,16 @@
+     #endif
+ #endif
+ 
++#ifndef X86_64_QUANTA_IX8_RGLBMC_STRNCPY
++    #if defined(GLOBAL_STRNCPY)
++        #define X86_64_QUANTA_IX8_RGLBMC_STRNCPY GLOBAL_STRNCPY
++    #elif X86_64_QUANTA_IX8_RGLBMC_CONFIG_PORTING_STDLIB == 1
++        #define X86_64_QUANTA_IX8_RGLBMC_STRNCPY strncpy
++    #else
++        #error The macro X86_64_QUANTA_IX8_RGLBMC_STRNCPY is required but cannot be defined.
++    #endif
++#endif
++
+ #ifndef X86_64_QUANTA_IX8_RGLBMC_VSNPRINTF
+     #if defined(GLOBAL_VSNPRINTF)
+         #define X86_64_QUANTA_IX8_RGLBMC_VSNPRINTF GLOBAL_VSNPRINTF
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/fani.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/fani.c
+index 7594b0ca..ed3f5939 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/fani.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/fani.c
+@@ -23,9 +23,90 @@
+  *
+  ***********************************************************/
+ #include <onlp/platformi/fani.h>
++#include <onlplib/file.h>
++#include "x86_64_quanta_ix8_rglbmc_int.h"
++#include "x86_64_quanta_ix8_rglbmc_log.h"
+ 
+ int
+ onlp_fani_init(void)
+ {
+-    return ONLP_STATUS_E_UNSUPPORTED;
++    return ONLP_STATUS_OK;
++}
++
++static int
++sys_fan_info_get__(onlp_fan_info_t* info, int id)
++{
++	int err = 0, strlen = 0;
++	int fan_present = 0, direction = 0;
++	int tid = ONLP_OID_ID_GET(id);
++
++	char *tempstr = NULL;
++
++	if (tid == 0) return ONLP_FAN_STATUS_FAILED;
++
++	/* get present */
++	if (tid < QUANTA_IX8_PSU1_FAN_ID)
++	{
++		err = onlp_file_read_int(&fan_present, SYS_HWMON_PREFIX "/fan%d_present", tid);
++		if (fan_present == 0)
++		{
++			info->status = ONLP_FAN_STATUS_FAILED;
++			return ONLP_STATUS_OK;
++		}
++	}
++
++	/* get id label */
++	strlen = onlp_file_read_str(&tempstr, SYS_HWMON_PREFIX "/fan%d_label", tid);
++	if (strlen <= ONLP_STATUS_OK)
++	{
++		info->status = ONLP_FAN_STATUS_FAILED;
++		printf("Error[%d] : read [%d] label fail\n", err, tid);
++		return err;
++	}
++	else
++	{
++		memcpy(info->hdr.description, tempstr, strlen);
++		aim_free(tempstr);
++		info->hdr.id = id;
++		info->status = ONLP_FAN_STATUS_PRESENT;
++	}
++
++	/* get id input */
++	err = onlp_file_read_int(&info->rpm, SYS_HWMON_PREFIX "/fan%d_input", tid);
++	if (err != ONLP_STATUS_OK)
++	{
++		info->status = ONLP_FAN_STATUS_FAILED;
++		printf("Error[%d] : read [%d] input failn", err, tid);
++		return err;
++	}
++	info->caps |= ONLP_FAN_CAPS_GET_RPM;
++
++	/* get pwm */
++	err = onlp_file_read_int(&info->percentage, SYS_HWMON_PREFIX "/fan%d_pwm", tid);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_FAN_CAPS_GET_PERCENTAGE;
++
++	/* get direction */
++	err = onlp_file_read_int(&direction, SYS_HWMON_PREFIX "/fan%d_direction", tid);
++	if (err == ONLP_STATUS_OK)
++	{
++		if(direction == 1) info->caps |= ONLP_FAN_CAPS_F2B;
++		else if (direction == 2) info->caps |= ONLP_FAN_CAPS_B2F;
++	}
++
++	return ONLP_STATUS_OK;
++}
++
++int
++onlp_fani_info_get(onlp_oid_t id, onlp_fan_info_t* rv)
++{
++	onlp_fan_info_t fan__ =
++	{
++		{ 0, "", 0,{ 0, } },
++		0,0,0,0,0,
++		"",""
++	};
++
++	*rv = fan__;
++
++	return sys_fan_info_get__(rv, id);
+ }
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/psui.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/psui.c
+index b5cedce1..8b47b24c 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/psui.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/psui.c
+@@ -7,9 +7,132 @@
+  *
+  ***********************************************************/
+ #include <onlp/platformi/psui.h>
++#include <onlplib/file.h>
++#include "x86_64_quanta_ix8_rglbmc_int.h"
++#include "x86_64_quanta_ix8_rglbmc_log.h"
+ 
+ int
+ onlp_psui_init(void)
+ {
+-    return ONLP_STATUS_E_UNSUPPORTED;
++    return ONLP_STATUS_OK;
++}
++
++int asctoint(int in)
++{
++	if (in < 58) return (in - 48);
++	else return (in - 87);
++}
++
++static int
++sys_psu_info_get__(onlp_psu_info_t* info, int id)
++{
++	int psu_present = 0;
++	int err = 0, strlen = 0;
++	char *tempstr = NULL;
++
++	int fan_id = 0;
++	int pin_id = 0, pout_id = 0;
++	int vin_id = 0, vout_id = 0;
++	int cin_id = 0, cout_id = 0;
++	int temp1_id = 0, temp2_id = 0, temp3_id = 0;
++
++	if (id == PSU_OID_PSU101)
++	{
++		sprintf(info->hdr.description, "Quanta IX8 RPSU-1");
++
++		fan_id = QUANTA_IX8_PSU1_FAN_ID;
++		pin_id = QUANTA_IX8_PSU1_PIN_ID, pout_id = QUANTA_IX8_PSU1_POUT_ID;
++		vin_id = QUANTA_IX8_PSU1_VIN_ID, vout_id = QUANTA_IX8_PSU1_VOUT_ID;
++		cin_id = QUANTA_IX8_PSU1_CIN_ID, cout_id = QUANTA_IX8_PSU1_COUT_ID;
++		temp1_id = QUANTA_IX8_PSU1_TEMP1_ID, temp2_id = QUANTA_IX8_PSU1_TEMP2_ID, temp3_id = QUANTA_IX8_PSU1_TEMP3_ID;
++	}
++	else if (id == PSU_OID_PSU102)
++	{
++		sprintf(info->hdr.description, "Quanta IX8 RPSU-2");
++
++		fan_id = QUANTA_IX8_PSU2_FAN_ID;
++		pin_id = QUANTA_IX8_PSU2_PIN_ID, pout_id = QUANTA_IX8_PSU2_POUT_ID;
++		vin_id = QUANTA_IX8_PSU2_VIN_ID, vout_id = QUANTA_IX8_PSU2_VOUT_ID;
++		cin_id = QUANTA_IX8_PSU2_CIN_ID, cout_id = QUANTA_IX8_PSU2_COUT_ID;
++		temp1_id = QUANTA_IX8_PSU2_TEMP1_ID, temp2_id = QUANTA_IX8_PSU2_TEMP2_ID, temp3_id = QUANTA_IX8_PSU2_TEMP3_ID;
++	}
++	else
++	{
++		return ONLP_STATUS_E_INVALID;
++	}
++
++	info->hdr.id = id;
++	info->hdr.poid = 0;
++	info->hdr.coids[0] = ONLP_FAN_ID_CREATE(fan_id);
++	info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(temp1_id);
++	info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(temp2_id);
++	info->hdr.coids[3] = ONLP_THERMAL_ID_CREATE(temp3_id);
++	info->status = ONLP_PSU_STATUS_PRESENT;
++
++	/* get present */
++	err = onlp_file_read_int(&psu_present, SYS_HWMON_PREFIX "/power%d_present", pout_id);
++	if ((err != ONLP_STATUS_OK) || (psu_present == 0)) {
++		info->status = ONLP_PSU_STATUS_UNPLUGGED;
++		return ONLP_STATUS_OK;
++	}
++
++	/* get pin */
++	err = onlp_file_read_int(&info->mpin, SYS_HWMON_PREFIX "/power%d_input", pin_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_PIN;
++
++	/* get pout */
++	err = onlp_file_read_int(&info->mpout, SYS_HWMON_PREFIX "/power%d_input", pout_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_POUT;
++
++	if (info->mpout == 0) info->status = ONLP_PSU_STATUS_FAILED;
++
++	/* get vin */
++	err = onlp_file_read_int(&info->mvin, SYS_HWMON_PREFIX "/in%d_input", vin_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_VIN;
++
++	/* get vout */
++	err = onlp_file_read_int(&info->mvout, SYS_HWMON_PREFIX "/in%d_input", vout_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_VOUT;
++
++	/* get cin */
++	err = onlp_file_read_int(&info->miin, SYS_HWMON_PREFIX "/curr%d_input", cin_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_IIN;
++
++	/* get cout */
++	err = onlp_file_read_int(&info->miout, SYS_HWMON_PREFIX "/curr%d_input", cout_id);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_PSU_CAPS_IOUT;
++
++	/* get model */
++	strlen = onlp_file_read_str(&tempstr, SYS_HWMON_PREFIX "/power%d_model", pout_id);
++	if ((strlen > ONLP_STATUS_OK) && (strlen < ONLP_CONFIG_INFO_STR_MAX)) memcpy(&info->model, tempstr, strlen);
++	if (tempstr) {
++		aim_free(tempstr);
++		tempstr = NULL;
++	}
++
++	/* get sn */
++	strlen = onlp_file_read_str(&tempstr, SYS_HWMON_PREFIX "/power%d_sn", pout_id);
++	if ((strlen > ONLP_STATUS_OK) && (strlen < ONLP_CONFIG_INFO_STR_MAX)) memcpy(&info->serial, tempstr, strlen);
++	if (tempstr) {
++		aim_free(tempstr);
++		tempstr = NULL;
++	}
++
++	return ONLP_STATUS_OK;
++}
++
++int
++onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* rv)
++{
++	/* init info */
++	onlp_psu_info_t psu__ =
++	{
++		{ 0, "", 0, { 0, } },
++		"","",
++		0,0,0,0,0,0,0,0
++	};
++
++	*rv = psu__;
++
++	return sys_psu_info_get__(rv, id);
+ }
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sfpi.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sfpi.c
+index 328bf457..4cb461ca 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sfpi.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sfpi.c
+@@ -32,6 +32,9 @@
+ #include <unistd.h>
+ #include <fcntl.h>
+ 
++#define GPIO_SYS_PATH "/sys/class/gpio/gpio%d/"
++#define GPIO_DIR_NAME "direction"
++
+ /**
+  * This table maps the presence gpio, reset gpio, and eeprom file
+  * for each SFP port.
+@@ -117,8 +120,8 @@ static qsfpmap_t qsfpmap__[] =
+         { 56, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_PRSNT_N, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_RESET_N, QUANTA_IX8_PCA9698_2_GPIO_QSFP_56_LPMOD_P, "/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/i2c-26/i2c-87/87-0050/%s", NULL },
+   };
+ 
+-#define SFP_GET(_port) (sfpmap__ + _port - 1)
+-#define QSFP_GET(_port) (qsfpmap__ + _port - 49)
++#define SFP_GET(_port) (sfpmap__ + (_port - 1))
++#define QSFP_GET(_port) (qsfpmap__ + (_port - 49))
+ #define MAX_SFP_PATH 	128
+ static char sfp_node_path[MAX_SFP_PATH] = {0};
+ 
+@@ -136,7 +139,7 @@ static char*
+ sfp_get_port_info_path(int port, char *node_name)
+ {
+     memset(sfp_node_path, 0x00, MAX_SFP_PATH);
+-    if(port > 48){
++	if(port > 48){
+         qsfpmap_t* qsfp = QSFP_GET(port);
+         sprintf(sfp_node_path, qsfp->port_path,
+                                node_name);
+@@ -150,25 +153,63 @@ sfp_get_port_info_path(int port, char *node_name)
+     return sfp_node_path;
+ }
+ 
++int
++onlp_gpioi_init(int gpio_pin, int gpio_dir)
++{
++    int   ret = ONLP_STATUS_OK;
++
++    char  gpio_folder_path[64] = {0};
++    char* real_file_path = NULL;
++
++    /* check GPIO pin */
++    sprintf(gpio_folder_path, GPIO_SYS_PATH, gpio_pin);
++    ret = onlp_file_find(gpio_folder_path, GPIO_DIR_NAME, &real_file_path);
++    if (real_file_path) {
++        free(real_file_path);
++        real_file_path = NULL;
++    }
++
++    /* if GPIO pin not exist, then export */
++    if (ret != ONLP_STATUS_OK) {
++        ret = onlp_gpio_export(gpio_pin, gpio_dir);
++        if (ret != ONLP_STATUS_OK) {
++            AIM_LOG_ERROR("##### %s: export gpio[%d], dir[%d] fail \n", __FUNCTION__, gpio_pin, gpio_dir);
++        }
++    }
++
++    return ret;
++}
++
+ int
+ onlp_sfpi_init(void)
+ {
+-    int ret, i;
++    int i = 0;
++    int ret = ONLP_STATUS_OK;
++
+     qsfpmap_t* qsfp;
+ 
+-    onlp_gpio_export(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_OUT);
+-    ret = onlp_gpio_set(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, 1);
++    /* check & init QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN */
++    ret = onlp_gpioi_init(QUANTA_IX8_ZQSFP_EN_GPIO_P3V3_PW_EN, ONLP_GPIO_DIRECTION_HIGH);
++    if (ret != ONLP_STATUS_OK) {
++        AIM_LOG_ERROR("##### %s: init QSFP_EN_GPIO_P3V3_PW_EN fail \n", __FUNCTION__);
++        goto init_fail_label;
++    }
++
+     sleep(1);
+ 
+-    for(i = 49; i < 57 ; i ++) {
++    /* check & init QSFP reset/lpmod */
++    for(i = 49; i < 57 ; i++) {
+         qsfp = QSFP_GET(i);
+-        onlp_gpio_export(qsfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
+-        onlp_gpio_export(qsfp->reset_gpio, ONLP_GPIO_DIRECTION_OUT);
+-        onlp_gpio_set(qsfp->reset_gpio, 1);
+-        onlp_gpio_export(qsfp->lplmod_gpio, ONLP_GPIO_DIRECTION_OUT);
+-        onlp_gpio_set(qsfp->lplmod_gpio, 0);
++        ret += onlp_gpioi_init(qsfp->present_gpio, ONLP_GPIO_DIRECTION_IN);
++        ret += onlp_gpioi_init(qsfp->reset_gpio, ONLP_GPIO_DIRECTION_HIGH);
++        ret += onlp_gpioi_init(qsfp->lplmod_gpio, ONLP_GPIO_DIRECTION_LOW);
++        if (ret) {
++            AIM_LOG_ERROR("##### %s: set QSFP port:[%d] gpio fail \n", __FUNCTION__, i);
++            goto init_fail_label;
++        }
+     }
+ 
++init_fail_label:
+     return ret;
+ }
+ 
+@@ -232,7 +273,12 @@ onlp_sfpi_is_present(int port)
+ int
+ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
+ {
+-    return onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
++    int rv = 0;
++    rv = onlplib_sfp_eeprom_read_file(sfp_get_port_info_path(port, "eeprom"), data);
++
++    /* wait for i2c recover time 255 + 50 ms */
++    if (rv) usleep(305 * 1000);
++    return rv;
+ }
+ 
+ int
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sysi.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sysi.c
+index 81b54da5..1410d116 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sysi.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/sysi.c
+@@ -13,8 +13,12 @@
+ #include <x86_64_quanta_ix8_rglbmc/x86_64_quanta_ix8_rglbmc_gpio_table.h>
+ #include <onlplib/gpio.h>
+ #include <onlplib/i2c.h>
++#include <onlplib/file.h>
+ #include <onlp/platformi/ledi.h>
+ 
++#define I2C_MONITOR_ENABLE_PATH   "/sys/class/quanta/sys_control/i2c_monitor_enable"
++#define I2C_MONITOR_INTERVAL_PATH "/sys/class/quanta/sys_control/i2c_monitor_interval"
++
+ const char*
+ onlp_sysi_platform_get(void)
+ {
+@@ -32,6 +36,10 @@ onlp_sysi_init(void)
+     /* Set LED to green */
+     onlp_ledi_mode_set(LED_OID_SYSTEM, ONLP_LED_MODE_GREEN);
+ 
++    /* Set I2C monitor enable */
++    onlp_file_write_int(1, I2C_MONITOR_ENABLE_PATH);
++    onlp_file_write_int(255, I2C_MONITOR_INTERVAL_PATH);
++
+     return ONLP_STATUS_OK;
+ }
+ 
+@@ -57,6 +65,41 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
+     onlp_oid_t* e = table;
+     memset(table, 0, max*sizeof(onlp_oid_t));
+ 
++    /*
++    * 9 THERMAL
++    */
++    *e++ = THERMAL_OID_THERMAL70;
++    *e++ = THERMAL_OID_THERMAL71;
++    *e++ = THERMAL_OID_THERMAL72;
++    *e++ = THERMAL_OID_THERMAL73;
++    *e++ = THERMAL_OID_THERMAL74;
++    *e++ = THERMAL_OID_THERMAL75;
++    *e++ = THERMAL_OID_THERMAL76;
++    *e++ = THERMAL_OID_THERMAL77;
++    *e++ = THERMAL_OID_THERMAL78;
++
++    /*
++    * 12 FAN
++    */
++    *e++ = FAN_OID_FAN21;
++    *e++ = FAN_OID_FAN22;
++    *e++ = FAN_OID_FAN23;
++    *e++ = FAN_OID_FAN24;
++    *e++ = FAN_OID_FAN25;
++    *e++ = FAN_OID_FAN26;
++    *e++ = FAN_OID_FAN27;
++    *e++ = FAN_OID_FAN28;
++    *e++ = FAN_OID_FAN29;
++    *e++ = FAN_OID_FAN30;
++    *e++ = FAN_OID_FAN31;
++    *e++ = FAN_OID_FAN32;
++
++    /*
++    * 2 PSU
++    */
++    *e++ = PSU_OID_PSU101;
++    *e++ = PSU_OID_PSU102;
++
+     /*
+      * 1 LEDs
+      */
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/thermali.c b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/thermali.c
+index 2a84c017..8a4af1a8 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/thermali.c
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/thermali.c
+@@ -23,9 +23,74 @@
+  *
+  ***********************************************************/
+ #include <onlp/platformi/thermali.h>
++#include <onlplib/file.h>
++#include "x86_64_quanta_ix8_rglbmc_int.h"
++#include "x86_64_quanta_ix8_rglbmc_log.h"
+ 
+ int
+ onlp_thermali_init(void)
+ {
+-    return ONLP_STATUS_E_UNSUPPORTED;
++    return ONLP_STATUS_OK;
++}
++
++static int
++sys_thermal_info_get__(onlp_thermal_info_t* info, int id)
++{
++    int err = 0, strlen = 0;
++	int tid = ONLP_OID_ID_GET(id);
++
++	char *tempstr = NULL;
++
++	/* get id label */
++	strlen = onlp_file_read_str(&tempstr, SYS_HWMON_PREFIX "/temp%d_label", tid);
++	if (strlen <= ONLP_STATUS_OK)
++	{
++		info->status = ONLP_THERMAL_STATUS_FAILED;
++		printf("Error[%d] : read [%d] label fail\n", err, tid);
++		return err;
++	}
++	else
++	{
++		memcpy(info->hdr.description, tempstr, strlen);
++		aim_free(tempstr);
++		info->hdr.id = id;
++		info->status = ONLP_THERMAL_STATUS_PRESENT;
++	}
++
++	/* get id input */
++	err = onlp_file_read_int(&info->mcelsius, SYS_HWMON_PREFIX "/temp%d_input", tid);
++	if (err != ONLP_STATUS_OK)
++	{
++		info->status = info->status & ~0x01;
++		printf("Error[%d] : read [%d] input failn", err, tid);
++		return err;
++	}
++	info->caps |= ONLP_THERMAL_CAPS_GET_TEMPERATURE;
++
++	/* get id cap and thresholds */
++	err = onlp_file_read_int(&info->thresholds.warning, SYS_HWMON_PREFIX "/temp%d_ncrit", tid);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_THERMAL_CAPS_GET_WARNING_THRESHOLD;
++
++	err = onlp_file_read_int(&info->thresholds.error, SYS_HWMON_PREFIX "/temp%d_crit", tid);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_THERMAL_CAPS_GET_ERROR_THRESHOLD;
++
++	err = onlp_file_read_int(&info->thresholds.shutdown, SYS_HWMON_PREFIX "/temp%d_max", tid);
++	if (err == ONLP_STATUS_OK) info->caps |= ONLP_THERMAL_CAPS_GET_SHUTDOWN_THRESHOLD;
++
++	return ONLP_STATUS_OK;
++}
++
++int
++onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* rv)
++{
++	onlp_thermal_info_t thermal__ =
++	{
++		{ 0, "", 0,{ 0, } },
++		0,0,0,
++		{ 0, 0, 0}
++	};
++
++	*rv = thermal__;
++
++    return sys_thermal_info_get__(rv, id);
+ }
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/x86_64_quanta_ix8_rglbmc_int.h b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/x86_64_quanta_ix8_rglbmc_int.h
+index 98593b9d..2f44ef33 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/x86_64_quanta_ix8_rglbmc_int.h
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/onlp/builds/x86_64_quanta_ix8_rglbmc/module/src/x86_64_quanta_ix8_rglbmc_int.h
+@@ -12,16 +12,21 @@
+ /* <auto.start.enum(ALL).header> */
+ /** fan_id */
+ typedef enum fan_id_e {
+-    FAN_ID_FAN1 = 1,
+-    FAN_ID_FAN2 = 2,
+-    FAN_ID_FAN3 = 3,
+-    FAN_ID_FAN4 = 4,
+-    FAN_ID_FAN5 = 5,
+-    FAN_ID_FAN6 = 6,
+-    FAN_ID_FAN7 = 7,
+-    FAN_ID_FAN8 = 8,
+-    FAN_ID_FAN9 = 9,
+-    FAN_ID_FAN10 = 10,
++    FAN_ID_FAN1 = 21,
++    FAN_ID_FAN2 = 22,
++    FAN_ID_FAN3 = 23,
++    FAN_ID_FAN4 = 24,
++    FAN_ID_FAN5 = 25,
++    FAN_ID_FAN6 = 26,
++    FAN_ID_FAN7 = 27,
++    FAN_ID_FAN8 = 28,
++    FAN_ID_FAN9 = 29,
++    FAN_ID_FAN10 = 30,
++    FAN_ID_FAN11 = 31,
++    FAN_ID_FAN12 = 32,
++
++    FAN_ID_FAN13 = 41,
++    FAN_ID_FAN14 = 52,
+ } fan_id_t;
+ 
+ /** Enum names. */
+@@ -47,16 +52,21 @@ extern aim_map_si_t fan_id_desc_map[];
+ 
+ /** fan_oid */
+ typedef enum fan_oid_e {
+-    FAN_OID_FAN1 = ONLP_FAN_ID_CREATE(1),
+-    FAN_OID_FAN2 = ONLP_FAN_ID_CREATE(2),
+-    FAN_OID_FAN3 = ONLP_FAN_ID_CREATE(3),
+-    FAN_OID_FAN4 = ONLP_FAN_ID_CREATE(4),
+-    FAN_OID_FAN5 = ONLP_FAN_ID_CREATE(5),
+-    FAN_OID_FAN6 = ONLP_FAN_ID_CREATE(6),
+-    FAN_OID_FAN7 = ONLP_FAN_ID_CREATE(7),
+-    FAN_OID_FAN8 = ONLP_FAN_ID_CREATE(8),
+-    FAN_OID_FAN9 = ONLP_FAN_ID_CREATE(9),
+-    FAN_OID_FAN10 = ONLP_FAN_ID_CREATE(10),
++	FAN_OID_FAN21 = ONLP_FAN_ID_CREATE(21),
++	FAN_OID_FAN22 = ONLP_FAN_ID_CREATE(22),
++	FAN_OID_FAN23 = ONLP_FAN_ID_CREATE(23),
++	FAN_OID_FAN24 = ONLP_FAN_ID_CREATE(24),
++	FAN_OID_FAN25 = ONLP_FAN_ID_CREATE(25),
++	FAN_OID_FAN26 = ONLP_FAN_ID_CREATE(26),
++	FAN_OID_FAN27 = ONLP_FAN_ID_CREATE(27),
++	FAN_OID_FAN28 = ONLP_FAN_ID_CREATE(28),
++	FAN_OID_FAN29 = ONLP_FAN_ID_CREATE(29),
++	FAN_OID_FAN30 = ONLP_FAN_ID_CREATE(30),
++	FAN_OID_FAN31 = ONLP_FAN_ID_CREATE(31),
++	FAN_OID_FAN32 = ONLP_FAN_ID_CREATE(32),
++
++	FAN_OID_FAN40 = ONLP_FAN_ID_CREATE(41),
++	FAN_OID_FAN50 = ONLP_FAN_ID_CREATE(52),
+ } fan_oid_t;
+ 
+ /** Enum names. */
+@@ -82,8 +92,8 @@ extern aim_map_si_t fan_oid_desc_map[];
+ 
+ /** psu_id */
+ typedef enum psu_id_e {
+-    PSU_ID_PSU1 = 1,
+-    PSU_ID_PSU2 = 2,
++    PSU_ID_PSU1 = 101,
++    PSU_ID_PSU2 = 102,
+ } psu_id_t;
+ 
+ /** Enum names. */
+@@ -107,10 +117,31 @@ extern aim_map_si_t psu_id_map[];
+ /** psu_id_desc_map table. */
+ extern aim_map_si_t psu_id_desc_map[];
+ 
++#define QUANTA_IX8_PSU1_PIN_ID		42
++#define QUANTA_IX8_PSU2_PIN_ID		53
++#define QUANTA_IX8_PSU1_POUT_ID		43
++#define QUANTA_IX8_PSU2_POUT_ID		54
++#define QUANTA_IX8_PSU1_TEMP1_ID	44
++#define QUANTA_IX8_PSU1_TEMP2_ID	45
++#define QUANTA_IX8_PSU1_TEMP3_ID	46
++#define QUANTA_IX8_PSU2_TEMP1_ID	55
++#define QUANTA_IX8_PSU2_TEMP2_ID	56
++#define QUANTA_IX8_PSU2_TEMP3_ID	57
++#define QUANTA_IX8_PSU1_FAN_ID		41
++#define QUANTA_IX8_PSU2_FAN_ID		52
++#define QUANTA_IX8_PSU1_VIN_ID		47
++#define QUANTA_IX8_PSU2_VIN_ID		58
++#define QUANTA_IX8_PSU1_VOUT_ID		48
++#define QUANTA_IX8_PSU2_VOUT_ID		59
++#define QUANTA_IX8_PSU1_CIN_ID 		39
++#define QUANTA_IX8_PSU2_CIN_ID 		50
++#define QUANTA_IX8_PSU1_COUT_ID		40
++#define QUANTA_IX8_PSU2_COUT_ID		51
++
+ /** psu_oid */
+ typedef enum psu_oid_e {
+-    PSU_OID_PSU1 = ONLP_PSU_ID_CREATE(1),
+-    PSU_OID_PSU2 = ONLP_PSU_ID_CREATE(2),
++    PSU_OID_PSU101 = ONLP_PSU_ID_CREATE(101),
++    PSU_OID_PSU102 = ONLP_PSU_ID_CREATE(102),
+ } psu_oid_t;
+ 
+ /** Enum names. */
+@@ -136,22 +167,22 @@ extern aim_map_si_t psu_oid_desc_map[];
+ 
+ /** thermal_id */
+ typedef enum thermal_id_e {
+-    THERMAL_ID_THERMAL1 = 1,
+-    THERMAL_ID_THERMAL2 = 2,
+-    THERMAL_ID_THERMAL3 = 3,
+-    THERMAL_ID_THERMAL4 = 4,
+-    THERMAL_ID_THERMAL5 = 5,
+-    THERMAL_ID_THERMAL6 = 6,
+-    THERMAL_ID_THERMAL7 = 7,
+-    THERMAL_ID_THERMAL8 = 8,
+-    THERMAL_ID_THERMAL9 = 9,
+-    THERMAL_ID_THERMAL10 = 10,
+-    THERMAL_ID_THERMAL11 = 11,
+-    THERMAL_ID_THERMAL12 = 12,
+-    THERMAL_ID_THERMAL13 = 13,
+-    THERMAL_ID_THERMAL14 = 14,
+-    THERMAL_ID_THERMAL15 = 15,
+-    THERMAL_ID_THERMAL16 = 16,
++    THERMAL_ID_THERMAL1 = 70,
++    THERMAL_ID_THERMAL2 = 71,
++    THERMAL_ID_THERMAL3 = 72,
++    THERMAL_ID_THERMAL4 = 73,
++    THERMAL_ID_THERMAL5 = 74,
++    THERMAL_ID_THERMAL6 = 75,
++    THERMAL_ID_THERMAL7 = 76,
++    THERMAL_ID_THERMAL8 = 77,
++    THERMAL_ID_THERMAL9 = 78,
++
++    THERMAL_ID_THERMAL10 = 44,
++    THERMAL_ID_THERMAL11 = 45,
++    THERMAL_ID_THERMAL12 = 46,
++    THERMAL_ID_THERMAL13 = 55,
++    THERMAL_ID_THERMAL14 = 56,
++    THERMAL_ID_THERMAL15 = 57,
+ } thermal_id_t;
+ 
+ /** Enum names. */
+@@ -177,22 +208,22 @@ extern aim_map_si_t thermal_id_desc_map[];
+ 
+ /** thermal_oid */
+ typedef enum thermal_oid_e {
+-    THERMAL_OID_THERMAL1 = ONLP_THERMAL_ID_CREATE(1),
+-    THERMAL_OID_THERMAL2 = ONLP_THERMAL_ID_CREATE(2),
+-    THERMAL_OID_THERMAL3 = ONLP_THERMAL_ID_CREATE(3),
+-    THERMAL_OID_THERMAL4 = ONLP_THERMAL_ID_CREATE(4),
+-    THERMAL_OID_THERMAL5 = ONLP_THERMAL_ID_CREATE(5),
+-    THERMAL_OID_THERMAL6 = ONLP_THERMAL_ID_CREATE(6),
+-    THERMAL_OID_THERMAL7 = ONLP_THERMAL_ID_CREATE(7),
+-    THERMAL_OID_THERMAL8 = ONLP_THERMAL_ID_CREATE(8),
+-    THERMAL_OID_THERMAL9 = ONLP_THERMAL_ID_CREATE(9),
+-    THERMAL_OID_THERMAL10 = ONLP_THERMAL_ID_CREATE(10),
+-    THERMAL_OID_THERMAL11 = ONLP_THERMAL_ID_CREATE(11),
+-    THERMAL_OID_THERMAL12 = ONLP_THERMAL_ID_CREATE(12),
+-    THERMAL_OID_THERMAL13 = ONLP_THERMAL_ID_CREATE(13),
+-    THERMAL_OID_THERMAL14 = ONLP_THERMAL_ID_CREATE(14),
+-    THERMAL_OID_THERMAL15 = ONLP_THERMAL_ID_CREATE(15),
+-    THERMAL_OID_THERMAL16 = ONLP_THERMAL_ID_CREATE(16),
++    THERMAL_OID_THERMAL70 = ONLP_THERMAL_ID_CREATE(70),
++    THERMAL_OID_THERMAL71 = ONLP_THERMAL_ID_CREATE(71),
++    THERMAL_OID_THERMAL72 = ONLP_THERMAL_ID_CREATE(72),
++    THERMAL_OID_THERMAL73 = ONLP_THERMAL_ID_CREATE(73),
++    THERMAL_OID_THERMAL74 = ONLP_THERMAL_ID_CREATE(74),
++    THERMAL_OID_THERMAL75 = ONLP_THERMAL_ID_CREATE(75),
++    THERMAL_OID_THERMAL76 = ONLP_THERMAL_ID_CREATE(76),
++    THERMAL_OID_THERMAL77 = ONLP_THERMAL_ID_CREATE(77),
++    THERMAL_OID_THERMAL78 = ONLP_THERMAL_ID_CREATE(78),
++
++    THERMAL_OID_THERMAL43 = ONLP_THERMAL_ID_CREATE(44),
++    THERMAL_OID_THERMAL44 = ONLP_THERMAL_ID_CREATE(45),
++    THERMAL_OID_THERMAL45 = ONLP_THERMAL_ID_CREATE(46),
++    THERMAL_OID_THERMAL53 = ONLP_THERMAL_ID_CREATE(55),
++    THERMAL_OID_THERMAL54 = ONLP_THERMAL_ID_CREATE(56),
++    THERMAL_OID_THERMAL55 = ONLP_THERMAL_ID_CREATE(57),
+ } thermal_oid_t;
+ 
+ /** Enum names. */
+@@ -278,4 +309,5 @@ extern aim_map_si_t led_oid_map[];
+ extern aim_map_si_t led_oid_desc_map[];
+ /* <auto.end.enum(ALL).header> */
+ 
++#define SYS_HWMON_PREFIX "/sys/class/hwmon/hwmon1"
+ #endif /* __X86_64_QUANTA_IX8_RGLBMC_INT_H__ */
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/lib/x86-64-quanta-ix8-rglbmc-r0.yml b/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/lib/x86-64-quanta-ix8-rglbmc-r0.yml
+index 2115b155..bc2e6017 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/lib/x86-64-quanta-ix8-rglbmc-r0.yml
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/lib/x86-64-quanta-ix8-rglbmc-r0.yml
+@@ -18,7 +18,7 @@ x86-64-quanta-ix8-rglbmc-r0:
+       --stop=1
+ 
+     kernel:
+-      <<: *kernel-3-16
++      <<: *kernel-4-19
+ 
+     args: >-
+       console=ttyS1,115200n8
+diff --git a/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/python/x86_64_quanta_ix8_rglbmc_r0/__init__.py b/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/python/x86_64_quanta_ix8_rglbmc_r0/__init__.py
+index 9f979a21..436ad6ec 100644
+--- a/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/python/x86_64_quanta_ix8_rglbmc_r0/__init__.py
++++ b/packages/platforms/quanta/x86-64/ix8-rglbmc/platform-config/r0/src/python/x86_64_quanta_ix8_rglbmc_r0/__init__.py
+@@ -20,6 +20,7 @@ class OnlPlatform_x86_64_quanta_ix8_rglbmc_r0(OnlPlatformQuanta,
+         self.insmod("qci_cpld_sfp28")
+         self.insmod("qci_cpld_led")
+         self.insmod("qci_platform_ix8")
++        self.insmod("quanta_hwmon_ipmi")
+ 
+         #SFP for 1~48 port
+         #QSFP for 49~56 port
+@@ -27,5 +28,4 @@ class OnlPlatform_x86_64_quanta_ix8_rglbmc_r0(OnlPlatformQuanta,
+             bus_number = port_number + 31
+             os.system("echo %d >/sys/bus/i2c/devices/%d-0050/port_name" % (port_number, bus_number))
+ 
+-
+         return True
+-- 
+2.20.1
+

@@ -20,6 +20,7 @@ class OnlPlatform_x86_64_quanta_ix7_rglbmc_r0(OnlPlatformQuanta,
         self.insmod("qci_cpld")
         self.insmod("qci_cpld_led")
         self.insmod("quanta_platform_ix7")
+        self.insmod("quanta_hwmon_ipmi")
 
         for port_number in range(1,33):
             bus_number = port_number + 31
