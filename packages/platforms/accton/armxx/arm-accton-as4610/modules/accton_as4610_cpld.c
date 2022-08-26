@@ -66,6 +66,7 @@ struct as4610_54_cpld_data {
     enum cpld_type   type;
     struct device   *hwmon_dev;
     struct platform_device *fan_pdev;
+    struct platform_device *led_pdev;
     struct mutex     update_lock;
 };
 
@@ -454,6 +455,7 @@ static int as4610_54_cpld_probe(struct i2c_client *client,
 	struct i2c_adapter *adap = to_i2c_adapter(client->dev.parent);
 	struct as4610_54_cpld_data *data;
 	int ret = -ENODEV;
+	int pid;
 
 	if (!i2c_check_functionality(adap, I2C_FUNC_SMBUS_BYTE))
 		goto exit;
@@ -477,7 +479,9 @@ static int as4610_54_cpld_probe(struct i2c_client *client,
 
     as4610_54_cpld_add_client(client);
 
-    switch (as4610_product_id()) {
+    pid = as4610_product_id();
+
+    switch (pid) {
     case PID_AS4610_30P:
     case PID_AS4610_54P:
     case PID_AS4610_54T_B:
@@ -492,7 +496,18 @@ static int as4610_54_cpld_probe(struct i2c_client *client,
 	    break;
     }
 
+    if (pid != PID_UNKNOWN) {
+	data->led_pdev = platform_device_register_simple("as4610_led", -1, NULL, 0);
+	    if (IS_ERR(data->led_pdev)) {
+		    ret = PTR_ERR(data->led_pdev);
+		    goto exit_unregister_fan;
+	    }
+    }
+
     return 0;
+
+exit_unregister_fan:
+    platform_device_unregister(data->fan_pdev);
 
 exit_unregister:
     as4610_54_cpld_remove_client(client);
@@ -507,6 +522,9 @@ exit:
 static int as4610_54_cpld_remove(struct i2c_client *client)
 {
     struct as4610_54_cpld_data *data = i2c_get_clientdata(client);
+
+    if (data->led_pdev)
+	    platform_device_unregister(data->led_pdev);
 
     if (data->fan_pdev)
 	    platform_device_unregister(data->fan_pdev);
