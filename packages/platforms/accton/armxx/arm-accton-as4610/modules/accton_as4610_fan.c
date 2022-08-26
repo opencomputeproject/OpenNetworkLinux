@@ -299,15 +299,16 @@ static int as4610_fan_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct i2c_device_id as4610_fan_id[] = {
+static const struct platform_device_id as4610_fan_id[] = {
 	{ "as4610_fan", 0 },
 	{}
 };
-MODULE_DEVICE_TABLE(i2c, as4610_fan_id);
+MODULE_DEVICE_TABLE(platform, as4610_fan_id);
 
 static struct platform_driver as4610_fan_driver = {
 	.probe		= as4610_fan_probe,
 	.remove		= as4610_fan_remove,
+	.id_table	= as4610_fan_id,
 	.driver		= {
 		.name	= DRVNAME,
 		.owner	= THIS_MODULE,
