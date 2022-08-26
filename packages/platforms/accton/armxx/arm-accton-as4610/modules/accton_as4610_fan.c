@@ -255,11 +255,19 @@ static int as4610_fan_probe(struct platform_device *pdev)
 {
 	int status = -1;
 
+	fan_data = kzalloc(sizeof(struct as4610_fan_data), GFP_KERNEL);
+	if (!fan_data) {
+		status = -ENOMEM;
+		goto exit;
+	}
+
+	mutex_init(&fan_data->update_lock);
+	fan_data->valid = 0;
+
 	/* Register sysfs hooks */
 	status = sysfs_create_group(&pdev->dev.kobj, &as4610_fan_group);
 	if (status) {
-		goto exit;
-
+		goto exit_free;
 	}
 
 	fan_data->hwmon_dev = hwmon_device_register_with_info(&pdev->dev, "as4610_fan",
@@ -275,6 +283,8 @@ static int as4610_fan_probe(struct platform_device *pdev)
 
 exit_remove:
 	sysfs_remove_group(&pdev->dev.kobj, &as4610_fan_group);
+exit_free:
+	kfree(fan_data);
 exit:
 	return status;
 }
@@ -283,6 +293,8 @@ static int as4610_fan_remove(struct platform_device *pdev)
 {
 	hwmon_device_unregister(fan_data->hwmon_dev);
 	sysfs_remove_group(&pdev->dev.kobj, &as4610_fan_group);
+
+	kfree(fan_data);
 
 	return 0;
 }
@@ -302,75 +314,7 @@ static struct platform_driver as4610_fan_driver = {
 	},
 };
 
-static int as4610_number_of_system_fan(void)
-{
-	int nFan = 0;
-	int pid = as4610_product_id();
-
-	switch (pid) {
-	case PID_AS4610_30P:
-	case PID_AS4610_54P:
-		nFan = 1;
-		break;
-	case PID_AS4610_54T_B:
-		nFan = 2;
-		break;
-	default:
-		nFan = 0;
-		break;
-	}
-
-	return nFan;
-}
-
-static int __init as4610_fan_init(void)
-{
-	int ret;
-
-	if (as4610_number_of_system_fan() == 0) {
-		return 0;
-	}
-
-	ret = platform_driver_register(&as4610_fan_driver);
-	if (ret < 0) {
-		goto exit;
-	}
-
-	fan_data = kzalloc(sizeof(struct as4610_fan_data), GFP_KERNEL);
-	if (!fan_data) {
-		ret = -ENOMEM;
-		platform_driver_unregister(&as4610_fan_driver);
-		goto exit;
-	}
-
-	mutex_init(&fan_data->update_lock);
-	fan_data->valid = 0;
-
-	fan_data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-	if (IS_ERR(fan_data->pdev)) {
-		ret = PTR_ERR(fan_data->pdev);
-		platform_driver_unregister(&as4610_fan_driver);
-		kfree(fan_data);
-		goto exit;
-	}
-
-exit:
-	return ret;
-}
-
-static void __exit as4610_fan_exit(void)
-{
-	if (!fan_data) {
-		return;
-	}
-
-	platform_device_unregister(fan_data->pdev);
-	platform_driver_unregister(&as4610_fan_driver);
-	kfree(fan_data);
-}
-
-late_initcall(as4610_fan_init);
-module_exit(as4610_fan_exit);
+module_platform_driver(as4610_fan_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as4610_fan driver");

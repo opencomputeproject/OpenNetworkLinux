@@ -33,6 +33,7 @@
 #include <linux/stat.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 
 #define I2C_RW_RETRY_COUNT				10
 #define I2C_RW_RETRY_INTERVAL			60 /* ms */
@@ -64,6 +65,7 @@ enum as4610_product_id_e {
 struct as4610_54_cpld_data {
     enum cpld_type   type;
     struct device   *hwmon_dev;
+    struct platform_device *fan_pdev;
     struct mutex     update_lock;
 };
 
@@ -443,6 +445,8 @@ static ssize_t show_version(struct device *dev, struct device_attribute *attr, c
     return sprintf(buf, "%d", val);
 }
 
+int as4610_product_id(void);
+
 /* I2C init/probing/exit functions */
 static int as4610_54_cpld_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
@@ -472,8 +476,28 @@ static int as4610_54_cpld_probe(struct i2c_client *client,
     }
 
     as4610_54_cpld_add_client(client);
+
+    switch (as4610_product_id()) {
+    case PID_AS4610_30P:
+    case PID_AS4610_54P:
+    case PID_AS4610_54T_B:
+	    data->fan_pdev = platform_device_register_simple("as4610_fan", -1, NULL, 0);
+	    if (IS_ERR(data->fan_pdev)) {
+		    ret = PTR_ERR(data->fan_pdev);
+		    goto exit_unregister;
+	    }
+	    break;
+    default:
+	    /* no fan */
+	    break;
+    }
+
     return 0;
 
+exit_unregister:
+    as4610_54_cpld_remove_client(client);
+    /* Remove sysfs hooks */
+    sysfs_remove_group(&client->dev.kobj, &as4610_54_cpld_group);
 exit_free:
     kfree(data);
 exit:
@@ -483,6 +507,9 @@ exit:
 static int as4610_54_cpld_remove(struct i2c_client *client)
 {
     struct as4610_54_cpld_data *data = i2c_get_clientdata(client);
+
+    if (data->fan_pdev)
+	    platform_device_unregister(data->fan_pdev);
 
     as4610_54_cpld_remove_client(client);
 
