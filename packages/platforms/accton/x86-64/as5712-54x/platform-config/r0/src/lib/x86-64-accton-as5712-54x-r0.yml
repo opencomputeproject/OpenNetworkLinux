@@ -23,6 +23,7 @@ x86-64-accton-as5712-54x-r0:
     args: >-
       nopat
       console=ttyS1,115200n8
+      pcie_aspm=off
 
   ##network
   ##  interfaces:

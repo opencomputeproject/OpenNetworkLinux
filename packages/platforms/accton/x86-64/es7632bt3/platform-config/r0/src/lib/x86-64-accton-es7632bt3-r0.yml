@@ -22,6 +22,7 @@ x86-64-accton-es7632bt3-r0:
     args: >-
       console=ttyS0,115200n8
       intel_iommu=pt
+      pcie_aspm=off
 
 
   ##network

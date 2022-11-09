@@ -24,6 +24,7 @@ x86-64-accton-as5835-54t-r0:
       nopat
       console=ttyS0,115200n8
       intel_iommu=off
+      pcie_aspm=off
 
   ##network
   ##  interfaces:
