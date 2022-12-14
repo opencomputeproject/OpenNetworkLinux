@@ -50,7 +50,8 @@ enum psu_type {
     PSU_TYPE_AC_110V,
     PSU_TYPE_DC_48V,
     PSU_TYPE_DC_12V,
-    PSU_TYPE_AC_ACBEL_FSF019
+    PSU_TYPE_AC_ACBEL_FSF019,
+    PSU_TYPE_AC_ACBEL_FSF045
 };
 
 /* Each client has this additional data
@@ -305,10 +306,11 @@ static int acbel_psu_serial_number_get(struct device *dev)
 }
 
 struct model_name_info models[] = {
-{PSU_TYPE_AC_110V, 0x20, 8, 8,  "YM-2651Y"},
-{PSU_TYPE_DC_48V,  0x20, 8, 8,  "YM-2651V"},
-{PSU_TYPE_DC_12V,  0x00, 11, 11, "PSU-12V-750"},
-{PSU_TYPE_AC_ACBEL_FSF019, 0x15, 10, 7, "FSF019-"}
+    {PSU_TYPE_AC_110V, 0x20, 8, 8,  "YM-2651Y"},
+    {PSU_TYPE_DC_48V,  0x20, 8, 8,  "YM-2651V"},
+    {PSU_TYPE_DC_12V,  0x00, 11, 11, "PSU-12V-750"},
+    {PSU_TYPE_AC_ACBEL_FSF019, 0x15, 10, 7, "FSF019-"},
+    {PSU_TYPE_AC_ACBEL_FSF045, 0x15, 10, 7, "FSF045-"}
 };
 
 static int as7326_56x_psu_model_name_get(struct device *dev)
@@ -379,6 +381,11 @@ static struct as7326_56x_psu_data *as7326_56x_psu_update_device(struct device *d
                 goto exit;
             }
             if (data->type == PSU_TYPE_AC_ACBEL_FSF019 &&
+                acbel_psu_serial_number_get(dev) < 0) {
+                goto exit;
+            }
+
+            if (data->type == PSU_TYPE_AC_ACBEL_FSF045 &&
                 acbel_psu_serial_number_get(dev) < 0) {
                 goto exit;
             }
