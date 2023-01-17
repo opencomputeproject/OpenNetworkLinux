@@ -31,6 +31,8 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
+#include "netberg_aurora_750_i2c_cpld.h"
+
 /* header file for i2c cpld driver of Netberg Aurora 750
  *
  * Copyright (C) 2019 Netberg Ltd.
