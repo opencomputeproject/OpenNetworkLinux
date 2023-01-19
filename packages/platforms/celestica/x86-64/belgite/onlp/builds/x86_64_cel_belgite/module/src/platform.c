@@ -17,8 +17,6 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <linux/i2c-dev.h>
-#include <linux/i2c.h>
 #include <onlplib/i2c.h>
 #include "platform.h"
 
