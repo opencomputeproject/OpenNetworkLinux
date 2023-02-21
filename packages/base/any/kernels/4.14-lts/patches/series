@@ -9,3 +9,4 @@ driver-hwmon-max6620.patch
 driver-hwmon-max6620-fix-rpm-calc.patch
 driver-hwmon-max6620-update.patch
 HID-cp2112-Fix-I2C_BLOCK_DATA-transactions.patch
+at24-supporting-16bits-addr-smbus.patch
