@@ -2128,6 +2128,7 @@ check_transvr_obj_one(char *dev_name){
     return -1;
 }
 
+#ifdef DEBUG_SWPS
 static int
 check_transvr_obj_one_with_measuring(char *dev_name){
     struct timeval begin, end;
@@ -2146,6 +2147,7 @@ check_transvr_obj_one_with_measuring(char *dev_name){
 
     return err_code;
 }
+#endif
 
 static int
 check_transvr_objs(void){
@@ -2160,7 +2162,11 @@ check_transvr_objs(void){
         memset(dev_name, 0, sizeof(dev_name));
         snprintf(dev_name, sizeof(dev_name), "%s%d", SWP_DEV_PORT, port_id);
         /* Handle current status */
+#ifdef DEBUG_SWPS
         err_code = check_transvr_obj_one_with_measuring(dev_name);
+#else
+	err_code = check_transvr_obj_one(dev_name);
+#endif
         switch (err_code) {
             case  0:
             case -1:
