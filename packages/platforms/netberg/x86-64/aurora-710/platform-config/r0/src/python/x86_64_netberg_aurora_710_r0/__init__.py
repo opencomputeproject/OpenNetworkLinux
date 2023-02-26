@@ -344,10 +344,10 @@ class OnlPlatform_x86_64_netberg_aurora_710_r0(OnlPlatformNetberg):
             'echo port31 > /sys/bus/i2c/devices/40-0050/port_name', shell=True)
 
         # init SFP(0/1) EEPROM
-        self.new_i2c_device('optoe1', 0x50, 45)
+        self.new_i2c_device('optoe2', 0x50, 45)
         subprocess.call(
             'echo e1-33 > /sys/bus/i2c/devices/45-0050/port_name', shell=True)
-        self.new_i2c_device('optoe1', 0x50, 46)
+        self.new_i2c_device('optoe2', 0x50, 46)
         subprocess.call(
             'echo e2-34 > /sys/bus/i2c/devices/46-0050/port_name', shell=True)
 
