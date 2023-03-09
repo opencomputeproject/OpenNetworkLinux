@@ -318,9 +318,14 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 
                         onlp_sfpi_dev_writeb(port, PORT_EEPROM_DEVADDR, QSFP_EEPROM_OFFSET_TXDIS, value);
 
+                        rv = ONLP_STATUS_OK;
+
+                    }
+                    else
+                    {
+                        rv = ONLP_STATUS_E_INTERNAL;
                     }
 
-                    rv = ONLP_STATUS_OK;
                 }
                 else
                 {
@@ -404,9 +409,13 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
                         *value = tx_dis;
 
-                    }
+                        rv = ONLP_STATUS_OK;
 
-                    rv = ONLP_STATUS_OK;
+                    }
+                    else
+                    {
+                        rv = ONLP_STATUS_E_INTERNAL;
+                    }
                 }
                 else
                 {
