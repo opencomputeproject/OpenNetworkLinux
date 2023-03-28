@@ -1,6 +1,8 @@
 Open Network Linux
 ==================
 
+The OCP Open Network Linux Project has been moved to maintenance mode, pending archival.
+
 Check out the main/offical website at http://opennetlinux.org .
 
 Open Network Linux (ONL) is a Linux distribution for bare metal switches.  ONL
