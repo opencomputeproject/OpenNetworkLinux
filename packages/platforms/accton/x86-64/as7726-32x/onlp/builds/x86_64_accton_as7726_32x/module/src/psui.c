@@ -125,14 +125,29 @@ psu_acbel_info_get(onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_VOUT;
     }
 
+    if (psu_pmbus_info_get(index, "psu_v_in", &val) == 0) {
+        info->mvin = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+    }
+
     if (psu_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
         info->caps |= ONLP_PSU_CAPS_IOUT;
     }
 
+    if (psu_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+        info->miin = val;
+        info->caps |= ONLP_PSU_CAPS_IIN;
+    }
+
     if (psu_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
+    }
+
+    if (psu_pmbus_info_get(index, "psu_p_in", &val) == 0) {
+        info->mpin = val;
+        info->caps |= ONLP_PSU_CAPS_PIN;
     }
 
     psu_acbel_serial_number_get(index, info->serial, sizeof(info->serial));
