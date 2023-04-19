@@ -397,7 +397,7 @@ static struct as7946_74xkb_psu_data *as7946_74xkb_psu_update_device(struct devic
 	data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff;
 
 	/* Get status from ipmi */
-	data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
+	data->ipmi_tx_data[0] = pid; /* PSU ID base id for ipmi start from 0 */
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
 								data->ipmi_tx_data, 1,
 								data->ipmi_resp[pid].status,
