@@ -447,7 +447,7 @@ static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 	mutex_lock(&data->update_lock);
 
 	/* Send IPMI write command */
-	data->ipmi_tx_data[0] = (fid % NUM_OF_FAN_MODULE) + 1;
+	data->ipmi_tx_data[0] = (fid % NUM_OF_FAN_MODULE);
 	data->ipmi_tx_data[1] = 0x02;
 	data->ipmi_tx_data[2] = pwm;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_WRITE_CMD,
