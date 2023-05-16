@@ -88,3 +88,5 @@
 - tree
 - memtester
 - ipmitool
+- curl
+- libcurl3-nss
