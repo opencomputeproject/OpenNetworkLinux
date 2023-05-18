@@ -193,22 +193,22 @@ class OnlPlatform_x86_64_netberg_aurora_710_r0(OnlPlatformNetberg):
         self.new_i2c_devices(
             [
                 # ASIC Coretemp and Front MAC
-                ('lm86', 0x4C, 41),
+                ('lm86', 0x4C, 53),
 
                 # CPU Board
                 ('tmp75', 0x4F, 0),
 
                 # Near PSU1
-                ('tmp75', 0x48, 41),
+                ('tmp75', 0x48, 53),
 
                 # Rear MAC
-                ('tmp75', 0x4A, 41),
+                ('tmp75', 0x4A, 53),
 
                 # Near Port 32
-                ('tmp75', 0x4B, 41),
+                ('tmp75', 0x4B, 53),
 
                 # Near PSU2
-                ('tmp75', 0x4D, 41),
+                ('tmp75', 0x4D, 53),
             ]
         )
 
