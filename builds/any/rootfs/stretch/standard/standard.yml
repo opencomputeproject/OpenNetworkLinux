@@ -24,8 +24,8 @@ Multistrap:
     noauth: true
     explicitsuite: false
     unpack: true
-    debootstrap: Debian-Local Local-All Local-Arch ONL-Local
-    aptsources: Debian ONL
+    debootstrap: Debian-Local Local-All Local-Arch ONL-Local Security-Local FRR-Local
+    aptsources: Debian ONL Security
 
   Debian:
     packages: *Packages
@@ -55,6 +55,20 @@ Multistrap:
     omitdebsrc: true
     arches: amd64, arm64, armel
 
+  Security:
+    packages: *Packages
+    source: http://archive.debian.org/debian-security
+    suite: stretch/updates
+    omitdebsrc: true
+    arches: amd64, arm64, armel
+
+  Security-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}archive.debian.org/debian-security
+    suite: stretch/updates
+    omitdebsrc: true
+    arches: amd64, arm64, armel
+
   Local-All:
     source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-all
     omitdebsrc: true
@@ -62,6 +76,20 @@ Multistrap:
   Local-Arch:
     source: ${ONLPM_OPTION_REPO}/${ONL_DEBIAN_SUITE}/packages/binary-${ARCH}
     omitdebsrc: true
+
+  FRR:
+    packages: *Packages
+    source: http://deb.frrouting.org/frr
+    suite: stretch frr-stable
+    omitdebsrc: true
+    arches: amd64, arm64
+
+  FRR-Local:
+    packages: *Packages
+    source: http://${APT_CACHE}deb.frrouting.org/frr
+    suite: stretch frr-stable
+    omitdebsrc: true
+    arches: amd64, arm64
 
 Configure:
   overlays:
@@ -92,12 +120,23 @@ Configure:
     - 'watchdog defaults'
     - 'wd_keepalive remove'
 
+  sytctl:
+    - 'disable rpcbind'
+
   options:
     clean: True
     securetty: False
     ttys: False
     console: True
     PermitRootLogin: 'yes'
+
+  modules:
+    - 'cls_basic'
+    - 'cls_flower'
+    - 'cls_u32'
+    - 'sch_ingress'
+    - 'act_police'
+    - 'act_gact'
 
   users:
     root:

@@ -321,6 +321,12 @@ class OnlRfsBuilder(object):
         # This will need a cleaner fix.
         if arch == 'powerpc':
             self.DEFAULTS['DEBIAN_MIRROR'] = 'archive.debian.org/debian/'
+        else:
+            cmd = ('lsb_release', '-c', '-s',)
+            codename = subprocess.check_output(cmd,
+                                               universal_newlines=True).strip()
+            if codename == 'stretch':
+                self.DEFAULTS['DEBIAN_MIRROR'] = 'archive.debian.org/debian/'
 
         self.kwargs.update(self.DEFAULTS)
         self.__load(config)
