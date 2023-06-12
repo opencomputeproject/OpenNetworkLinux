@@ -29,14 +29,14 @@ Multistrap:
 
   Debian:
     packages: *Packages
-    source: http://${DEBIAN_MIRROR}
+    source: http://archive.debian.org/debian/
     suite: ${ONL_DEBIAN_SUITE}
     keyring: debian-archive-keyring
     omitdebsrc: true
 
   Debian-Local:
     packages: *Packages
-    source: http://${APT_CACHE}${DEBIAN_MIRROR}
+    source: http://${APT_CACHE}archive.debian.org/debian/
     suite: ${ONL_DEBIAN_SUITE}
     keyring: debian-archive-keyring
     omitdebsrc: true
