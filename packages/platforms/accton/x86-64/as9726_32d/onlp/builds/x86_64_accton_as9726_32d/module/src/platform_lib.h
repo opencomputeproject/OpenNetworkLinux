@@ -63,11 +63,13 @@ int psu_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 
 typedef enum psu_type {
-	PSU_TYPE_UNKNOWN,
-	PSU_TYPE_ACBEL,
-	PSU_TYPE_BELPOWER,
-	PSU_TYPE_AC_F2B,
-	PSU_TYPE_AC_B2F
+        PSU_TYPE_UNKNOWN,
+        PSU_TYPE_AC_ACBEL_F2B,
+        PSU_TYPE_AC_ACBEL_B2F,
+        PSU_TYPE_AC_BELPOWER_F2B,
+        PSU_TYPE_AC_BELPOWER_B2F,
+        PSU_TYPE_DC_48V_ACBEL_F2B,
+        PSU_TYPE_DC_48V_ACBEL_B2F,
 } psu_type_t;
 
 enum onlp_fan_dir {

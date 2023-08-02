@@ -37,29 +37,58 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
 
 	if (!strncmp(mn, "FSJ001", strlen("FSJ001"))) {
 		if (modelname)
-			aim_strlcpy(modelname, mn, strlen("FSJ001") < 
-				(modelname_len-1) ? (strlen("FSJ001")+1) : 
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
 				(modelname_len-1));
 		AIM_FREE_IF_PTR(mn);
-		return PSU_TYPE_ACBEL;
+
+		return PSU_TYPE_AC_ACBEL_F2B;
 	}
 
 	if (!strncmp(mn, "FSJ004", strlen("FSJ004"))) {
 		if (modelname)
-			aim_strlcpy(modelname, mn, strlen("FSJ004") < 
-				(modelname_len-1) ? (strlen("FSJ004")+1) : 
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
 				(modelname_len-1));
 		AIM_FREE_IF_PTR(mn);
-		return PSU_TYPE_ACBEL;
+		return PSU_TYPE_AC_ACBEL_B2F;
 	}
 
-	if (!strncmp(mn, "SPAACTN", strlen("SPAACTN"))) {
+	if (!strncmp(mn, "FSJ035", strlen("FSJ035"))) {
 		if (modelname)
-			aim_strlcpy(modelname, mn, strlen("SPAACTN") < 
-				(modelname_len-1) ? (strlen("SPAACTN")+1) : 
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
 				(modelname_len-1));
 		AIM_FREE_IF_PTR(mn);
-		return PSU_TYPE_BELPOWER;
+		return PSU_TYPE_DC_48V_ACBEL_F2B;
+	}
+
+
+	if (!strncmp(mn, "FSJ036", strlen("FSJ036"))) {
+		if (modelname)
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
+				(modelname_len-1));
+		AIM_FREE_IF_PTR(mn);
+		return PSU_TYPE_DC_48V_ACBEL_B2F;
+	}
+
+	if (!strncmp(mn, "SPAACTN-02", strlen("SPAACTN-02"))) {
+		if (modelname)
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
+				(modelname_len-1));
+		AIM_FREE_IF_PTR(mn);
+		return PSU_TYPE_AC_BELPOWER_B2F;
+	}
+
+	if (!strncmp(mn, "SPAACTN-01", strlen("SPAACTN-01"))) {
+		if (modelname)
+			aim_strlcpy(modelname, mn, strlen(mn) < 
+				(modelname_len-1) ? (strlen(mn)+1) : 
+				(modelname_len-1));
+		AIM_FREE_IF_PTR(mn);
+		return PSU_TYPE_AC_BELPOWER_F2B;
 	}
 
 	AIM_FREE_IF_PTR(mn);

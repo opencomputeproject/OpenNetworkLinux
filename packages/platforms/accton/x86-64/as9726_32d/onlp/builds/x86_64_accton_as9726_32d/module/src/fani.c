@@ -187,7 +187,9 @@ static uint32_t _onlp_get_fan_direction_on_psu(void)
 		if (psu_type == PSU_TYPE_UNKNOWN)
 			continue;
 
-		if (PSU_TYPE_AC_F2B == psu_type) {
+		if ((PSU_TYPE_AC_ACBEL_F2B == psu_type) ||
+			(PSU_TYPE_DC_48V_ACBEL_F2B == psu_type) ||
+			(PSU_TYPE_AC_BELPOWER_F2B == psu_type)) {
 			return ONLP_FAN_STATUS_F2B;
 		} else {
 			return ONLP_FAN_STATUS_B2F;
