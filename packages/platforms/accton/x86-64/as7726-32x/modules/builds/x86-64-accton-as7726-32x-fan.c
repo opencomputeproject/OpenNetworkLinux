@@ -40,10 +40,8 @@ static ssize_t set_wdt_status(struct device *dev, struct device_attribute *da,
                               const char *buf, size_t count);
 static ssize_t set_wdt_timer(struct device *dev, struct device_attribute *da,
                               const char *buf, size_t count);
-static ssize_t show_wdt_status(struct device *dev, struct device_attribute *da,
-             char *buf);
-static ssize_t show_wdt_timer(struct device *dev, struct device_attribute *da,
-             char *buf);
+static ssize_t set_wdt_max_pwm(struct device *dev, struct device_attribute *da,
+                                const char *buf, size_t count);
 
 /* fan related data, the index should match sysfs_fan_attributes
  */
@@ -63,6 +61,9 @@ static const u8 fan_reg[] = {
     0x25,       /* rear fan 4 speed(rpm) */
     0x26,       /* rear fan 5 speed(rpm) */
     0x27,       /* rear fan 6 speed(rpm) */
+    0x31,       /* watchdog timer */
+    0x32,       /* watchdog maximum PWM value */
+    0x33,       /* watchdog disable */
 };
 
 /* Each client has this additional data */
@@ -99,6 +100,9 @@ enum sysfs_fan_attributes {
     FAN4_REAR_SPEED_RPM,
     FAN5_REAR_SPEED_RPM,
     FAN6_REAR_SPEED_RPM,
+    FAN_WDT_TIMER,
+    FAN_WDT_MAX_PWM,
+    FAN_WDT_STATUS,
     FAN1_DIRECTION,
     FAN2_DIRECTION,
     FAN3_DIRECTION,
@@ -116,9 +120,7 @@ enum sysfs_fan_attributes {
     FAN3_FAULT,
     FAN4_FAULT,
     FAN5_FAULT,
-    FAN6_FAULT,
-    FAN_WDT_STATUS,
-    FAN_WDT_TIMER
+    FAN6_FAULT
 };
 
 /* Define attributes
@@ -145,13 +147,13 @@ enum sysfs_fan_attributes {
 #define DECLARE_FAN_SPEED_RPM_ATTR(index)  &sensor_dev_attr_fan##index##_front_speed_rpm.dev_attr.attr, \
                                            &sensor_dev_attr_fan##index##_rear_speed_rpm.dev_attr.attr
 
-#define DECLARE_FAN_WDT_STATUS_SENSOR_DEV_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(fan##index##_wdt_status, S_IWUSR | S_IRUGO, show_wdt_status, set_wdt_status, FAN##index##_WDT_STATUS)
-#define DECLARE_FAN_WDT_STATUS_ATTR(index) &sensor_dev_attr_fan##index##_wdt_status.dev_attr.attr
-
-#define DECLARE_FAN_WDT_TIMER_SENSOR_DEV_ATTR(index) \
-    static SENSOR_DEVICE_ATTR(fan##index##_wdt_timer, S_IWUSR | S_IRUGO, show_wdt_timer, set_wdt_timer, FAN##index##_WDT_TIMER)
-#define DECLARE_FAN_WDT_TIMER_ATTR(index) &sensor_dev_attr_fan##index##_wdt_timer.dev_attr.attr
+#define DECLARE_FAN_WDT_SENSOR_DEV_ATTR() \
+    static SENSOR_DEVICE_ATTR(fan_wdt_timer, S_IWUSR | S_IRUGO, fan_show_value, set_wdt_timer, FAN_WDT_TIMER);\
+    static SENSOR_DEVICE_ATTR(fan_wdt_max_pwm, S_IWUSR | S_IRUGO, fan_show_value, set_wdt_max_pwm, FAN_WDT_MAX_PWM);\
+    static SENSOR_DEVICE_ATTR(fan_wdt_status, S_IWUSR | S_IRUGO, fan_show_value, set_wdt_status, FAN_WDT_STATUS)
+#define DECLARE_FAN_WDT_TIMER_ATTR() &sensor_dev_attr_fan_wdt_timer.dev_attr.attr
+#define DECLARE_FAN_WDT_MAX_PWM_ATTR() &sensor_dev_attr_fan_wdt_max_pwm.dev_attr.attr
+#define DECLARE_FAN_WDT_STATUS_ATTR() &sensor_dev_attr_fan_wdt_status.dev_attr.attr
 
 /* 6 fan fault attributes in this platform */
 DECLARE_FAN_FAULT_SENSOR_DEV_ATTR(1);
@@ -183,10 +185,8 @@ DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(5);
 DECLARE_FAN_DIRECTION_SENSOR_DEV_ATTR(6);
 /* 1 fan duty cycle attribute in this platform */
 DECLARE_FAN_DUTY_CYCLE_SENSOR_DEV_ATTR();
-/* 1 fan wdt status attribute in this platform  */
-DECLARE_FAN_WDT_STATUS_SENSOR_DEV_ATTR();
-/* 1 fan wdt timer attribute in this platform  */
-DECLARE_FAN_WDT_TIMER_SENSOR_DEV_ATTR();
+/* 3 fan wdt attribute in this platform  */
+DECLARE_FAN_WDT_SENSOR_DEV_ATTR();
 
 static struct attribute *as7726_32x_fan_attributes[] = {
     /* fan related attributes */
@@ -215,8 +215,9 @@ static struct attribute *as7726_32x_fan_attributes[] = {
     DECLARE_FAN_DIRECTION_ATTR(5),
     DECLARE_FAN_DIRECTION_ATTR(6),
     DECLARE_FAN_DUTY_CYCLE_ATTR(),
-    DECLARE_FAN_WDT_STATUS_ATTR(),
     DECLARE_FAN_WDT_TIMER_ATTR(),
+    DECLARE_FAN_WDT_MAX_PWM_ATTR(),
+    DECLARE_FAN_WDT_STATUS_ATTR(),
     NULL
 };
 
@@ -333,7 +334,7 @@ static ssize_t set_wdt_status(struct device *dev, struct device_attribute *da,
         return error;
     }
 
-    if (value < 0) {
+    if (value < 0 || value > 1) {
         return -EINVAL;
     }
 
@@ -354,6 +355,7 @@ static ssize_t set_wdt_status(struct device *dev, struct device_attribute *da,
 
     return count;
 }
+
 static ssize_t set_wdt_timer(struct device *dev, struct device_attribute *da,
                               const char *buf, size_t count)
 {
@@ -367,7 +369,7 @@ static ssize_t set_wdt_timer(struct device *dev, struct device_attribute *da,
         return error;
     }
 
-    if (value < 0) {
+    if (value < 0 || value > 255) {
         return -EINVAL;
     }
 
@@ -389,58 +391,39 @@ static ssize_t set_wdt_timer(struct device *dev, struct device_attribute *da,
     return count;
 }
 
-static ssize_t show_wdt_status(struct device *dev, struct device_attribute *da,
-             char *buf)
+static ssize_t set_wdt_max_pwm(struct device *dev, struct device_attribute *da,
+                              const char *buf, size_t count)
 {
-    int i, status;
-    u8 value=0;
-    u8 reg = 0x33;
+    int error, value;
     struct i2c_client *client = to_i2c_client(dev);
     struct as7726_32x_fan_data *data = i2c_get_clientdata(client);
+    int reg = 0x32;
+
+    error = kstrtoint(buf, 10, &value);
+    if (error) {
+        return error;
+    }
+
+    if (value < 0 || value > 15) {
+        return -EINVAL;
+    }
 
     mutex_lock(&data->update_lock);
 
-    status = as7726_32x_fan_read_value(client, reg);
+    /* set the watchdog timer */
+    error = as7726_32x_fan_write_value(client, reg, value);
 
-    if (status < 0)
-        goto exit;
+    if (error != 0) {
+        dev_dbg(&client->dev, "Unable to set time to watchdog timer\n");
+        mutex_unlock(&data->update_lock);
+        return error;
+    }
 
-    value = (u8)status;
-
-    mutex_unlock(&data->update_lock);
-
-    return sprintf(buf, "%u\n", value);
-
-exit:
-    mutex_unlock(&data->update_lock);
-    return status;
-}
-
-static ssize_t show_wdt_timer(struct device *dev, struct device_attribute *da,
-             char *buf)
-{
-    int i, status;
-    u8 value=0;
-    u8 reg = 0x31;
-    struct i2c_client *client = to_i2c_client(dev);
-    struct as7726_32x_fan_data *data = i2c_get_clientdata(client);
-
-    mutex_lock(&data->update_lock);
-
-    status = as7726_32x_fan_read_value(client, reg);
-
-    if (status < 0)
-        goto exit;
-
-    value = (u8)status;
+    data->valid = 0;
 
     mutex_unlock(&data->update_lock);
 
-    return sprintf(buf, "%u\n", value);
-
-exit:
-    mutex_unlock(&data->update_lock);
-    return status;
+    return count;
 }
 
 static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
@@ -503,6 +486,11 @@ static ssize_t fan_show_value(struct device *dev, struct device_attribute *da,
             ret = sprintf(buf, "%d\n",
                           reg_val_to_direction(data->reg_val[FAN_DIRECTION_REG],
                                                attr->index - FAN1_DIRECTION));
+            break;
+        case FAN_WDT_TIMER:
+        case FAN_WDT_MAX_PWM:
+        case FAN_WDT_STATUS:
+            ret = sprintf(buf, "%u\n", data->reg_val[attr->index]);
             break;
         default:
             break;
