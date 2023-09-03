@@ -24,7 +24,9 @@ psu_type_t get_psu_type(int id, char *data_buf, int data_len)
     }
 
     /* Check AC model name */
-    if (strncmp(str, "YM-1151D-A03R", strlen("YM-1151D-A03R")) == 0)
+    if (strncmp(str, "YM-1151F-A01R", strlen("YM-1151F-A01R")) == 0)
+        ptype = PSU_TYPE_YM1151F_F2B;
+    else if (strncmp(str, "YM-1151D-A03R", strlen("YM-1151D-A03R")) == 0)
         ptype = PSU_TYPE_YM1151D_F2B;
     else
         ptype = PSU_TYPE_YM1151D_B2F;
