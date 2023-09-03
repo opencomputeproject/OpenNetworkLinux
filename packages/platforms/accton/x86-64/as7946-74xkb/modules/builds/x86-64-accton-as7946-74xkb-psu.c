@@ -100,7 +100,7 @@ enum psu_data_index {
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	ipmi_user_t user;
+	struct ipmi_user *user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -397,7 +397,7 @@ static struct as7946_74xkb_psu_data *as7946_74xkb_psu_update_device(struct devic
 	data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff;
 
 	/* Get status from ipmi */
-	data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
+	data->ipmi_tx_data[0] = pid; /* PSU ID base id for ipmi start from 0 */
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
 								data->ipmi_tx_data, 1,
 								data->ipmi_resp[pid].status,
