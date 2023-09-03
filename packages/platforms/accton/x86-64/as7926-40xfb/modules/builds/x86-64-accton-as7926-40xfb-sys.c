@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * A hwmon driver for the as7926_40xfb_led
+ * A hwmon driver for the as7926_40xfb_sys
  *
  * Copyright (C) 2019  Edgecore Networks Corporation.
  * Brandon Chuang <brandon_chuang@edge-core.com>
@@ -35,20 +35,20 @@
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
 
-#define DRVNAME "as7926_40xfb_led"
-#define ACCTON_IPMI_NETFN 0x34
-#define IPMI_LED_READ_CMD 0x1A
-#define IPMI_LED_WRITE_CMD 0x1B
-#define IPMI_TIMEOUT (5 * HZ)
-#define IPMI_ERR_RETRY_TIMES 1
+#define DRVNAME "as7926_40xfb_sys"
+#define ACCTON_IPMI_NETFN       0x34
 
+#define IPMI_SYSEEPROM_READ_CMD 0x18
+#define IPMI_TIMEOUT		    (5 * HZ)
+#define IPMI_ERR_RETRY_TIMES    1
+#define IPMI_READ_MAX_LEN       128
+
+#define EEPROM_NAME				"eeprom"
+#define EEPROM_SIZE				256	/*      256 byte eeprom */
+
+static int as7926_40xfb_sys_probe(struct platform_device *pdev);
+static int as7926_40xfb_sys_remove(struct platform_device *pdev);
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
-static ssize_t set_led(struct device *dev, struct device_attribute *da,
-		       const char *buf, size_t count);
-static ssize_t show_led(struct device *dev, struct device_attribute *attr,
-			char *buf);
-static int as7926_40xfb_led_probe(struct platform_device *pdev);
-static int as7926_40xfb_led_remove(struct platform_device *pdev);
 
 struct ipmi_data {
 	struct completion read_complete;
@@ -67,83 +67,26 @@ struct ipmi_data {
 	struct ipmi_user_hndl ipmi_hndlrs;
 };
 
-struct as7926_40xfb_led_data {
+struct as7926_40xfb_sys_data {
 	struct platform_device *pdev;
 	struct mutex update_lock;
 	char valid;		/* != 0 if registers are valid */
 	unsigned long last_updated;	/* In jiffies */
-	unsigned char ipmi_resp[4];	/* 0:PSU 1:FAN 2:DIAG 3:LOC */
 	struct ipmi_data ipmi;
+	unsigned char ipmi_resp_eeprom[EEPROM_SIZE];
+	unsigned char ipmi_tx_data[2];
+	struct bin_attribute eeprom;	/* eeprom data */
 };
 
-struct as7926_40xfb_led_data *data = NULL;
+struct as7926_40xfb_sys_data *data = NULL;
 
-static struct platform_driver as7926_40xfb_led_driver = {
-	.probe = as7926_40xfb_led_probe,
-	.remove = as7926_40xfb_led_remove,
+static struct platform_driver as7926_40xfb_sys_driver = {
+	.probe = as7926_40xfb_sys_probe,
+	.remove = as7926_40xfb_sys_remove,
 	.driver = {
 		   .name = DRVNAME,
 		   .owner = THIS_MODULE,
 		   },
-};
-
-enum ipmi_led_light_mode {
-	IPMI_LED_MODE_OFF,
-	IPMI_LED_MODE_RED = 2,
-	IPMI_LED_MODE_RED_BLINKING = 3,
-	IPMI_LED_MODE_GREEN = 4,
-	IPMI_LED_MODE_GREEN_BLINKING = 5,
-	IPMI_LED_MODE_BLUE = 8,
-	IPMI_LED_MODE_BLUE_BLINKING = 9,
-};
-
-enum led_light_mode {
-	LED_MODE_OFF,
-	LED_MODE_RED = 10,
-	LED_MODE_RED_BLINKING = 11,
-	LED_MODE_ORANGE = 12,
-	LED_MODE_ORANGE_BLINKING = 13,
-	LED_MODE_YELLOW = 14,
-	LED_MODE_YELLOW_BLINKING = 15,
-	LED_MODE_GREEN = 16,
-	LED_MODE_GREEN_BLINKING = 17,
-	LED_MODE_BLUE = 18,
-	LED_MODE_BLUE_BLINKING = 19,
-	LED_MODE_PURPLE = 20,
-	LED_MODE_PURPLE_BLINKING = 21,
-	LED_MODE_AUTO = 22,
-	LED_MODE_AUTO_BLINKING = 23,
-	LED_MODE_WHITE = 24,
-	LED_MODE_WHITE_BLINKING = 25,
-	LED_MODE_CYAN = 26,
-	LED_MODE_CYAN_BLINKING = 27,
-	LED_MODE_UNKNOWN = 99
-};
-
-enum as7926_40xfb_led_sysfs_attrs {
-	LED_PSU,
-	LED_LOC,
-	LED_DIAG,
-	LED_FAN
-};
-
-static SENSOR_DEVICE_ATTR(led_loc, S_IWUSR | S_IRUGO, show_led, set_led,
-			  LED_LOC);
-static SENSOR_DEVICE_ATTR(led_diag, S_IWUSR | S_IRUGO, show_led, set_led,
-			  LED_DIAG);
-static SENSOR_DEVICE_ATTR(led_psu, S_IRUGO, show_led, NULL, LED_PSU);
-static SENSOR_DEVICE_ATTR(led_fan, S_IRUGO, show_led, NULL, LED_FAN);
-
-static struct attribute *as7926_40xfb_led_attributes[] = {
-	&sensor_dev_attr_led_loc.dev_attr.attr,
-	&sensor_dev_attr_led_diag.dev_attr.attr,
-	&sensor_dev_attr_led_psu.dev_attr.attr,
-	&sensor_dev_attr_led_fan.dev_attr.attr,
-	NULL
-};
-
-static const struct attribute_group as7926_40xfb_led_group = {
-	.attrs = as7926_40xfb_led_attributes,
 };
 
 /* Functions to talk to the IPMI layer */
@@ -228,9 +171,7 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status =
-		    _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data,
-				       rx_len);
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,rx_data, rx_len);
 		if (unlikely(status != 0)) {
 			dev_err(&data->pdev->dev,
 				"ipmi_send_message_%d err status(%d)\r\n",
@@ -240,7 +181,7 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 		if (unlikely(ipmi->rx_result != 0)) {
 			dev_err(&data->pdev->dev,
-				"ipmi_send_message_%d err result(%d)\r\n",
+				"ipmi_send_message_%d err rx_result(%d)\r\n",
 				retry, ipmi->rx_result);
 			continue;
 		}
@@ -284,17 +225,22 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
-static struct as7926_40xfb_led_data *as7926_40xfb_led_update_device(void)
+static ssize_t sys_eeprom_read(loff_t off, char *buf, size_t count)
 {
 	int status = 0;
+	unsigned char length = 0;
 
-	if (time_before(jiffies, data->last_updated + HZ * 5) && data->valid) {
-		return data;
+	if ((off + count) > EEPROM_SIZE) {
+		return -EINVAL;
 	}
 
-	data->valid = 0;
-	status = ipmi_send_message(&data->ipmi, IPMI_LED_READ_CMD, NULL, 0,
-				   data->ipmi_resp, sizeof(data->ipmi_resp));
+	length = (count >= IPMI_READ_MAX_LEN) ? IPMI_READ_MAX_LEN : count;
+	data->ipmi_tx_data[0] = (off & 0xff);
+	data->ipmi_tx_data[1] = length;
+	status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD,
+				   data->ipmi_tx_data,
+				   sizeof(data->ipmi_tx_data),
+				   data->ipmi_resp_eeprom + off, length);
 	if (unlikely(status != 0)) {
 		goto exit;
 	}
@@ -304,140 +250,80 @@ static struct as7926_40xfb_led_data *as7926_40xfb_led_update_device(void)
 		goto exit;
 	}
 
-	data->last_updated = jiffies;
-	data->valid = 1;
+	status = length;	/* Read length */
+	memcpy(buf, data->ipmi_resp_eeprom + off, length);
 
  exit:
-	return data;
-}
-
-static ssize_t show_led(struct device *dev, struct device_attribute *da,
-			char *buf)
-{
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	int value = 0;
-	int error = 0;
-
-	if (attr->index == LED_PSU || attr->index == LED_FAN)
-		return sprintf(buf, "%d\n", LED_MODE_AUTO);
-
-	mutex_lock(&data->update_lock);
-
-	data = as7926_40xfb_led_update_device();
-	if (!data->valid) {
-		error = -EIO;
-		goto exit;
-	}
-
-	switch (data->ipmi_resp[attr->index]) {
-	case IPMI_LED_MODE_OFF:
-		value = LED_MODE_OFF;
-		break;
-	case IPMI_LED_MODE_RED:
-		value = LED_MODE_RED;
-		break;
-	case IPMI_LED_MODE_RED_BLINKING:
-		value = LED_MODE_RED_BLINKING;
-		break;
-	case IPMI_LED_MODE_GREEN:
-		value = LED_MODE_GREEN;
-		break;
-	case IPMI_LED_MODE_GREEN_BLINKING:
-		value = LED_MODE_GREEN_BLINKING;
-		break;
-	case IPMI_LED_MODE_BLUE:
-		value = LED_MODE_BLUE;
-		break;
-	case IPMI_LED_MODE_BLUE_BLINKING:
-		value = LED_MODE_BLUE_BLINKING;
-		break;
-	default:
-		error = -EINVAL;
-		goto exit;
-	}
-
-	mutex_unlock(&data->update_lock);
-	return sprintf(buf, "%d\n", value);
-
- exit:
-	mutex_unlock(&data->update_lock);
-	return error;
-}
-
-static ssize_t set_led(struct device *dev, struct device_attribute *da,
-		       const char *buf, size_t count)
-{
-	long mode;
-	int status;
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-
-	status = kstrtol(buf, 10, &mode);
-	if (status)
-		return status;
-
-	mutex_lock(&data->update_lock);
-
-	data = as7926_40xfb_led_update_device();
-	if (!data->valid) {
-		status = -EIO;
-		goto exit;
-	}
-
-	data->ipmi_resp[0] = attr->index + 1;
-
-	switch (mode) {
-	case LED_MODE_OFF:
-		data->ipmi_resp[1] = IPMI_LED_MODE_OFF;
-		break;
-	case LED_MODE_RED:
-		data->ipmi_resp[1] = IPMI_LED_MODE_RED;
-		break;
-	case LED_MODE_RED_BLINKING:
-		data->ipmi_resp[1] = IPMI_LED_MODE_RED_BLINKING;
-		break;
-	case LED_MODE_GREEN:
-		data->ipmi_resp[1] = IPMI_LED_MODE_GREEN;
-		break;
-	case LED_MODE_GREEN_BLINKING:
-		data->ipmi_resp[1] = IPMI_LED_MODE_GREEN_BLINKING;
-		break;
-	case LED_MODE_BLUE:
-		data->ipmi_resp[1] = IPMI_LED_MODE_BLUE;
-		break;
-	case LED_MODE_BLUE_BLINKING:
-		data->ipmi_resp[1] = IPMI_LED_MODE_BLUE_BLINKING;
-		break;
-	default:
-		status = -EINVAL;
-		goto exit;
-	}
-
-	/* Send IPMI write command */
-	status = ipmi_send_message(&data->ipmi, IPMI_LED_WRITE_CMD,
-				   data->ipmi_resp, 2, NULL, 0);
-	if (unlikely(status != 0))
-		goto exit;
-
-	if (unlikely(data->ipmi.rx_result != 0)) {
-		status = -EIO;
-		goto exit;
-	}
-
-	status = count;
-
- exit:
-	mutex_unlock(&data->update_lock);
 	return status;
 }
 
-static int as7926_40xfb_led_probe(struct platform_device *pdev)
+static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
+			      struct bin_attribute *attr,
+			      char *buf, loff_t off, size_t count)
+{
+	ssize_t retval = 0;
+
+	if (unlikely(!count)) {
+		return count;
+	}
+
+	/*
+	 * Read data from chip, protecting against concurrent updates
+	 * from this host
+	 */
+	mutex_lock(&data->update_lock);
+
+	while (count) {
+		ssize_t status;
+
+		status = sys_eeprom_read(off, buf, count);
+		if (status <= 0) {
+			if (retval == 0) {
+				retval = status;
+			}
+			break;
+		}
+
+		buf += status;
+		off += status;
+		count -= status;
+		retval += status;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return retval;
+
+}
+
+static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
+{
+	sysfs_bin_attr_init(eeprom);
+	eeprom->attr.name = EEPROM_NAME;
+	eeprom->attr.mode = S_IRUGO;
+	eeprom->read = sysfs_bin_read;
+	eeprom->write = NULL;
+	eeprom->size = EEPROM_SIZE;
+
+	/* Create eeprom file */
+	return sysfs_create_bin_file(kobj, eeprom);
+}
+
+static int sysfs_eeprom_cleanup(struct kobject *kobj,
+				struct bin_attribute *eeprom)
+{
+	sysfs_remove_bin_file(kobj, eeprom);
+	return 0;
+}
+
+static int as7926_40xfb_sys_probe(struct platform_device *pdev)
 {
 	int status = -1;
 
 	/* Register sysfs hooks */
-	status = sysfs_create_group(&pdev->dev.kobj, &as7926_40xfb_led_group);
-	if (status)
+	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom);
+	if (status) {
 		goto exit;
+	}
 
 	dev_info(&pdev->dev, "device created\n");
 
@@ -447,29 +333,29 @@ static int as7926_40xfb_led_probe(struct platform_device *pdev)
 	return status;
 }
 
-static int as7926_40xfb_led_remove(struct platform_device *pdev)
+static int as7926_40xfb_sys_remove(struct platform_device *pdev)
 {
-	sysfs_remove_group(&pdev->dev.kobj, &as7926_40xfb_led_group);
+	sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
 
 	return 0;
 }
 
-static int __init as7926_40xfb_led_init(void)
+static int __init as7926_40xfb_sys_init(void)
 {
 	int ret;
 
-	data = kzalloc(sizeof(struct as7926_40xfb_led_data), GFP_KERNEL);
+	data = kzalloc(sizeof(struct as7926_40xfb_sys_data), GFP_KERNEL);
 	if (!data) {
 		ret = -ENOMEM;
 		goto alloc_err;
 	}
 
 	mutex_init(&data->update_lock);
-	data->valid = 0;
 
-	ret = platform_driver_register(&as7926_40xfb_led_driver);
-	if (ret < 0)
+	ret = platform_driver_register(&as7926_40xfb_sys_driver);
+	if (ret < 0) {
 		goto dri_reg_err;
+	}
 
 	data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
 	if (IS_ERR(data->pdev)) {
@@ -487,24 +373,24 @@ static int __init as7926_40xfb_led_init(void)
  ipmi_err:
 	platform_device_unregister(data->pdev);
  dev_reg_err:
-	platform_driver_unregister(&as7926_40xfb_led_driver);
+	platform_driver_unregister(&as7926_40xfb_sys_driver);
  dri_reg_err:
 	kfree(data);
  alloc_err:
 	return ret;
 }
 
-static void __exit as7926_40xfb_led_exit(void)
+static void __exit as7926_40xfb_sys_exit(void)
 {
 	ipmi_destroy_user(data->ipmi.user);
 	platform_device_unregister(data->pdev);
-	platform_driver_unregister(&as7926_40xfb_led_driver);
+	platform_driver_unregister(&as7926_40xfb_sys_driver);
 	kfree(data);
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
-MODULE_DESCRIPTION("AS7926 40XFB led driver");
+MODULE_DESCRIPTION("as7926_40xfb_sys driver");
 MODULE_LICENSE("GPL");
 
-module_init(as7926_40xfb_led_init);
-module_exit(as7926_40xfb_led_exit);
+module_init(as7926_40xfb_sys_init);
+module_exit(as7926_40xfb_sys_exit);
