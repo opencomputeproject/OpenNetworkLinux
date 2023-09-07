@@ -286,8 +286,12 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
         /* Read model name */
         memset(data->model_name, 0, sizeof(data->model_name));
         memset(data->serial_number, 0, sizeof(data->serial_number));
-        power_good = (data->status >> (3-data->index) & 0x1);
-       
+        
+        if(data->index==0)
+           power_good = ( (data->status >> 6) & 0x1);
+        else
+           power_good = ( (data->status >> 2) & 0x1); 
+
         if (power_good) {
             status = as4630_54pe_psu_read_block(client, 0x20, data->model_name,
                                                ARRAY_SIZE(data->model_name)-1);                                               

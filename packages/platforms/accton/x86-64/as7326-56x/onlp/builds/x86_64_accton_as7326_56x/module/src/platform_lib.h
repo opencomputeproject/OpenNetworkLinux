@@ -54,6 +54,13 @@
 
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/11-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
+#define FAN_BOARD_CPLD_BUS              11
+#define FAN_BOARD_CPLD_REG              0x66
+#define FAN_BOARD_CPLD_OFFSET_WDT_ENDIS 0x33
+#define FAN_BOARD_CPLD_OFFSET_WDT_TIMER 0x31
+#define FAN_BOARD_CPLD_WDT_ENABLE       0x1
+#define FAN_BOARD_CPLD_WDT_DISABLE      0x0
+#define FAN_BOARD_CPLD_WDT_MAX_PWM      0xF
 
 #define IDPROM_PATH_1 "/sys/bus/i2c/devices/0-0056/eeprom"
 #define IDPROM_PATH_2 "/sys/bus/i2c/devices/0-0057/eeprom"

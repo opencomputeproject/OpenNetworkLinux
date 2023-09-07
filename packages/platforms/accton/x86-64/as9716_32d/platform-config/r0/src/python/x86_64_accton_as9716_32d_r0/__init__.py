@@ -34,6 +34,25 @@ def ir3570_check():
         return -1
     return ret
 
+def config_sfp_retimer():
+    cmd_list = [
+        "i2cset -f -y 22 {} 0x7 0x3",   # Set Mux (retimer) to 2x10G XFI
+        "i2cset -f -y 22 {} 0xff 0x05", # Set channel B
+        "i2cset -f -y 22 {} 0x2d 0x82", # Write output voltage to 800mV
+        "i2cset -f -y 22 {} 0x15 0x12", # Write de-emphasis to -3.5dB
+        "i2cset -f -y 22 {} 0x1f 0xd5", # Invert the polarity of the driver
+        "i2cset -f -y 22 {} 0xff 0x00"  # Clear channel B
+    ]
+
+    for cmd in cmd_list:
+        retimer_chips = [ "0x18", "0x19", "0x1a", "0x1b" ]
+        for chip in retimer_chips:
+            status, output = commands.getstatusoutput(cmd.format(chip))
+            if status != 0:
+                return False
+
+    return True
+
 class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
                                               OnlPlatformPortConfig_48x25_6x100):
 
@@ -117,5 +136,6 @@ class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
         else:
             ir3570_check()
             self.new_i2c_device('24c02', 0x56, 0)
-      
+
+        config_sfp_retimer()
         return True

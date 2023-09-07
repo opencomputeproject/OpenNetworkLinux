@@ -42,7 +42,7 @@
 static char* cpld_path[NUM_OF_CPLD] = {
     "/sys/bus/i2c/devices/12-0062/version",
     "/sys/bus/i2c/devices/13-0063/version",
-    "/sys/bus/i2c/devices/76-0064/version"
+    "/sys/bus/i2c/devices/20-0064/version"
 };
 
 const char*
@@ -111,7 +111,7 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
         }
     }
 
-    pi->cpld_versions = aim_fstrdup("%d.%d.%d.%d.%d", v[0], v[1], v[2], v[3], v[4]);
+    pi->cpld_versions = aim_fstrdup("%d.%d.%d", v[0], v[1], v[2]);
     return ONLP_STATUS_OK;
 }
 
