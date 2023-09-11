@@ -59,7 +59,8 @@ int psu_pmbus_info_get(int id, char *node, int *value);
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
     PSU_TYPE_YM1151D_F2B,
-    PSU_TYPE_YM1151D_B2F
+    PSU_TYPE_YM1151D_B2F,
+    PSU_TYPE_YM1151F_F2B
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);

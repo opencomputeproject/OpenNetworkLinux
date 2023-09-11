@@ -1,5 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A hwmon driver for the as7926_40xfb_psu
+ *
+ * Copyright (C) 2019  Edgecore Networks Corporation.
+ * Brandon Chuang <brandon_chuang@edge-core.com>
+ *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
  * Copyright (C) 2006
@@ -36,6 +41,7 @@
 #define IPMI_PSU_MODEL_NAME_CMD 0x10
 #define IPMI_PSU_SERIAL_NUM_CMD 0x11
 #define IPMI_PSU_FAN_DIR_CMD	0x13
+#define IPMI_PSU_INFO_CMD       0x20
 #define IPMI_TIMEOUT			(5 * HZ)
 #define IPMI_ERR_RETRY_TIMES	1
 #define IPMI_MODEL_SERIAL_LEN   32
@@ -43,11 +49,11 @@
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_psu(struct device *dev, struct device_attribute *attr,
-							char *buf);
-static ssize_t show_psu(struct device *dev, struct device_attribute *attr,
-							char *buf);
+			char *buf);
+static ssize_t show_psu_info(struct device *dev, struct device_attribute *attr,
+			     char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *attr,
-							char *buf);
+			   char *buf);
 static int as7926_40xfb_psu_probe(struct platform_device *pdev);
 static int as7926_40xfb_psu_remove(struct platform_device *pdev);
 
@@ -92,13 +98,49 @@ enum psu_data_index {
 	PSU_VOUT_MODE,
 	PSU_STATUS_COUNT,
 	PSU_MODEL = 0,
-	PSU_SERIAL = 0
+	PSU_SERIAL = 0,
+	PSU_TEMP_MAX0 = 2,
+	PSU_TEMP_MAX1,
+	PSU_TEMP_MIN0,
+	PSU_TEMP_MIN1,
+	PSU_VIN_UPPER_CRIT0,
+	PSU_VIN_UPPER_CRIT1,
+	PSU_VIN_UPPER_CRIT2,
+	PSU_VIN_MAX0,
+	PSU_VIN_MAX1,
+	PSU_VIN_MAX2,
+	PSU_VIN_MIN0,
+	PSU_VIN_MIN1,
+	PSU_VIN_MIN2,
+	PSU_VIN_LOWER_CRIT0,
+	PSU_VIN_LOWER_CRIT1,
+	PSU_VIN_LOWER_CRIT2,
+	PSU_VOUT_MAX0,
+	PSU_VOUT_MAX1,
+	PSU_VOUT_MAX2,
+	PSU_VOUT_MIN0,
+	PSU_VOUT_MIN1,
+	PSU_VOUT_MIN2,
+	PSU_IIN_MAX0,
+	PSU_IIN_MAX1,
+	PSU_IIN_MAX2,
+	PSU_IOUT_MAX0,
+	PSU_IOUT_MAX1,
+	PSU_IOUT_MAX2,
+	PSU_PIN_MAX0,
+	PSU_PIN_MAX1,
+	PSU_PIN_MAX2,
+	PSU_PIN_MAX3,
+	PSU_POUT_MAX0,
+	PSU_POUT_MAX1,
+	PSU_POUT_MAX2,
+	PSU_POUT_MAX3,
 };
 
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	ipmi_user_t user;
+	struct ipmi_user *user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -113,19 +155,20 @@ struct ipmi_data {
 };
 
 struct ipmi_psu_resp_data {
-	unsigned char   status[32];
-	char   serial[IPMI_MODEL_SERIAL_LEN+1];
-	char   model[IPMI_MODEL_SERIAL_LEN+1];
-	char   fandir[IPMI_FAN_DIR_LEN+1];
+	unsigned char status[32];
+	unsigned char info[38];
+	char serial[IPMI_MODEL_SERIAL_LEN + 1];
+	char model[IPMI_MODEL_SERIAL_LEN + 1];
+	char fandir[IPMI_FAN_DIR_LEN + 1];
 };
 
 struct as7926_40xfb_psu_data {
 	struct platform_device *pdev;
 	struct mutex update_lock;
-	char valid[3]; /* != 0 if registers are valid, 0: PSU1, 1: PSU2 */
+	char valid[3];		/* != 0 if registers are valid, 0: PSU1, 1: PSU2 */
 	unsigned long last_updated[3];	/* In jiffies, 0: PSU1, 1: PSU2 */
 	struct ipmi_data ipmi;
-	struct ipmi_psu_resp_data ipmi_resp[3]; /* 0: PSU1, 1: PSU2 */
+	struct ipmi_psu_resp_data ipmi_resp[3];	/* 0: PSU1, 1: PSU2 */
 	unsigned char ipmi_tx_data[2];
 };
 
@@ -135,9 +178,9 @@ static struct platform_driver as7926_40xfb_psu_driver = {
 	.probe = as7926_40xfb_psu_probe,
 	.remove = as7926_40xfb_psu_remove,
 	.driver = {
-		.name = DRVNAME,
-		.owner = THIS_MODULE,
-	},
+		   .name = DRVNAME,
+		   .owner = THIS_MODULE,
+		   },
 };
 
 #define PSU_PRESENT_ATTR_ID(index) PSU##index##_PRESENT
@@ -154,6 +197,19 @@ static struct platform_driver as7926_40xfb_psu_driver = {
 #define PSU_FAN_INPUT_ATTR_ID(index) PSU##index##_FAN_INPUT
 #define PSU_FAN_DIR_ATTR_ID(index) PSU##index##_FAN_DIR
 
+#define PSU_TEMP_INPUT_MAX_ATTR_ID(index) PSU##index##_TEMP_INPUT_MAX
+#define PSU_TEMP_INPUT_MIN_ATTR_ID(index) PSU##index##_TEMP_INPUT_MIN
+#define PSU_VIN_MAX_ATTR_ID(index) PSU##index##_VIN_MAX
+#define PSU_VIN_MIN_ATTR_ID(index) PSU##index##_VIN_MIN
+#define PSU_VIN_UPPER_CRIT_ATTR_ID(index) PSU##index##_VIN_UPPER_CRIT
+#define PSU_VIN_LOWER_CRIT_ATTR_ID(index) PSU##index##_VIN_LOWER_CRIT
+#define PSU_VOUT_MAX_ATTR_ID(index) PSU##index##_VOUT_MAX
+#define PSU_VOUT_MIN_ATTR_ID(index) PSU##index##_VOUT_MIN
+#define PSU_IIN_MAX_ATTR_ID(index) PSU##index##_IIN_MAX
+#define PSU_IOUT_MAX_ATTR_ID(index) PSU##index##_IOUT_MAX
+#define PSU_PIN_MAX_ATTR_ID(index) PSU##index##_PIN_MAX
+#define PSU_POUT_MAX_ATTR_ID(index) PSU##index##_POUT_MAX
+
 #define PSU_ATTR(psu_id) \
 	PSU_PRESENT_ATTR_ID(psu_id), \
 	PSU_POWERGOOD_ATTR_ID(psu_id), \
@@ -167,14 +223,26 @@ static struct platform_driver as7926_40xfb_psu_driver = {
 	PSU_SERIAL_ATTR_ID(psu_id), \
 	PSU_TEMP_INPUT_ATTR_ID(psu_id), \
 	PSU_FAN_INPUT_ATTR_ID(psu_id), \
-	PSU_FAN_DIR_ATTR_ID(psu_id)
+	PSU_FAN_DIR_ATTR_ID(psu_id), \
+	PSU_TEMP_INPUT_MAX_ATTR_ID(psu_id), \
+	PSU_TEMP_INPUT_MIN_ATTR_ID(psu_id), \
+	PSU_VIN_MAX_ATTR_ID(psu_id), \
+	PSU_VIN_MIN_ATTR_ID(psu_id), \
+	PSU_VIN_UPPER_CRIT_ATTR_ID(psu_id), \
+	PSU_VIN_LOWER_CRIT_ATTR_ID(psu_id), \
+	PSU_VOUT_MAX_ATTR_ID(psu_id), \
+	PSU_VOUT_MIN_ATTR_ID(psu_id), \
+	PSU_IIN_MAX_ATTR_ID(psu_id), \
+	PSU_IOUT_MAX_ATTR_ID(psu_id), \
+	PSU_PIN_MAX_ATTR_ID(psu_id), \
+	PSU_POUT_MAX_ATTR_ID(psu_id)
 
 enum as7926_40xfb_psu_sysfs_attrs {
 	/* psu attributes */
 	PSU_ATTR(1),
 	PSU_ATTR(2),
 	NUM_OF_PSU_ATTR,
-	NUM_OF_PER_PSU_ATTR = (NUM_OF_PSU_ATTR/NUM_OF_PSU)
+	NUM_OF_PER_PSU_ATTR = (NUM_OF_PSU_ATTR / NUM_OF_PSU)
 };
 
 /* psu attributes */
@@ -204,7 +272,31 @@ enum as7926_40xfb_psu_sysfs_attrs {
 	static SENSOR_DEVICE_ATTR(psu##index##_fan1_input, S_IRUGO, show_psu, NULL,\
 								PSU##index##_FAN_INPUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_fan_dir, S_IRUGO, show_string, NULL,\
-								PSU##index##_FAN_DIR)
+								PSU##index##_FAN_DIR); \
+	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input_max, S_IRUGO, \
+						show_psu_info, NULL, PSU##index##_TEMP_INPUT_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input_min, S_IRUGO, \
+						show_psu_info, NULL, PSU##index##_TEMP_INPUT_MIN); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vin_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VIN_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vin_min, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VIN_MIN); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vin_upper_crit, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VIN_UPPER_CRIT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vin_lower_crit, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VIN_LOWER_CRIT); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vout_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VOUT_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_vout_min, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_VOUT_MIN); \
+	static SENSOR_DEVICE_ATTR(psu##index##_iin_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_IIN_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_iout_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_IOUT_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_pin_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_PIN_MAX); \
+	static SENSOR_DEVICE_ATTR(psu##index##_pout_max, S_IRUGO, \
+						show_psu_info, NULL,  PSU##index##_POUT_MAX)
 
 #define DECLARE_PSU_ATTR(index) \
 	&sensor_dev_attr_psu##index##_present.dev_attr.attr, \
@@ -219,7 +311,19 @@ enum as7926_40xfb_psu_sysfs_attrs {
 	&sensor_dev_attr_psu##index##_serial.dev_attr.attr,\
 	&sensor_dev_attr_psu##index##_temp1_input.dev_attr.attr, \
 	&sensor_dev_attr_psu##index##_fan1_input.dev_attr.attr, \
-	&sensor_dev_attr_psu##index##_fan_dir.dev_attr.attr
+	&sensor_dev_attr_psu##index##_fan_dir.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_temp1_input_max.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_temp1_input_min.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_vin_max.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_vin_min.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_vin_upper_crit.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_vin_lower_crit.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_vout_max.dev_attr.attr,\
+	&sensor_dev_attr_psu##index##_vout_min.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_iin_max.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_iout_max.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_pin_max.dev_attr.attr, \
+	&sensor_dev_attr_psu##index##_pout_max.dev_attr.attr
 
 DECLARE_PSU_SENSOR_DEVICE_ATTR(1);
 DECLARE_PSU_SENSOR_DEVICE_ATTR(2);
@@ -238,8 +342,7 @@ static const struct attribute_group as7926_40xfb_psu_group = {
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-				  struct device *dev)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev)
 {
 	int err;
 
@@ -259,7 +362,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-				   ipmi, &ipmi->user);
+			       ipmi, &ipmi->user);
 	if (err < 0) {
 		dev_err(dev, "Unable to register user with IPMI "
 			"interface %d\n", ipmi->interface);
@@ -271,8 +374,8 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			      unsigned char *tx_data, unsigned short tx_len,
+			      unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
@@ -298,36 +401,40 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 	return 0;
 
-ipmi_timeout_err:
+ ipmi_timeout_err:
 	err = -ETIMEDOUT;
 	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
 	return err;
-ipmi_req_err:
+ ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
-addr_err:
+ addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			     unsigned char *tx_data, unsigned short tx_len,
+			     unsigned char *rx_data, unsigned short rx_len)
 {
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+		status =
+		    _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data,
+				       rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n",
-										retry, status);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err status(%d)\r\n",
+				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err result(%d)\r\n",
-										retry, ipmi->rx_result);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err result(%d)\r\n",
+				retry, ipmi->rx_result);
 			continue;
 		}
 
@@ -346,8 +453,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	if (msg->msgid != ipmi->tx_msgid) {
 		dev_err(&data->pdev->dev, "Mismatch between received msgid "
 			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
+			(int)msg->msgid, (int)ipmi->tx_msgid);
 		ipmi_free_recv_msg(msg);
 		return;
 	}
@@ -371,13 +477,16 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
-static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct device_attribute *da)
+static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct
+								    device_attribute
+								    *da)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
 	int status = 0;
 
-	if (time_before(jiffies, data->last_updated[pid] + HZ * 5) && data->valid[pid])
+	if (time_before(jiffies, data->last_updated[pid] + HZ * 5)
+	    && data->valid[pid])
 		return data;
 
 	data->valid[pid] = 0;
@@ -385,11 +494,11 @@ static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct devic
 	data->ipmi_resp[pid].status[PSU_VOUT_MODE] = 0xff;
 
 	/* Get status from ipmi */
-	data->ipmi_tx_data[0] = pid + 1; /* PSU ID base id for ipmi start from 1 */
+	data->ipmi_tx_data[0] = pid + 1;	/* PSU ID base id for ipmi start from 1 */
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
-								data->ipmi_tx_data, 1,
-								data->ipmi_resp[pid].status,
-								sizeof(data->ipmi_resp[pid].status));
+				   data->ipmi_tx_data, 1,
+				   data->ipmi_resp[pid].status,
+				   sizeof(data->ipmi_resp[pid].status));
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -401,9 +510,9 @@ static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct devic
 	/* Get model name from ipmi */
 	data->ipmi_tx_data[1] = IPMI_PSU_MODEL_NAME_CMD;
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
-								data->ipmi_tx_data, 2,
-								data->ipmi_resp[pid].model,
-								sizeof(data->ipmi_resp[pid].model) - 1);
+				   data->ipmi_tx_data, 2,
+				   data->ipmi_resp[pid].model,
+				   sizeof(data->ipmi_resp[pid].model) - 1);
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -415,9 +524,9 @@ static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct devic
 	/* Get serial number from ipmi */
 	data->ipmi_tx_data[1] = IPMI_PSU_SERIAL_NUM_CMD;
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
-								data->ipmi_tx_data, 2,
-								data->ipmi_resp[pid].serial,
-								sizeof(data->ipmi_resp[pid].serial) - 1);
+				   data->ipmi_tx_data, 2,
+				   data->ipmi_resp[pid].serial,
+				   sizeof(data->ipmi_resp[pid].serial) - 1);
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -429,9 +538,23 @@ static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct devic
 	/* Get fan direction from ipmi */
 	data->ipmi_tx_data[1] = IPMI_PSU_FAN_DIR_CMD;
 	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
-								data->ipmi_tx_data, 2,
-								data->ipmi_resp[pid].fandir,
-								sizeof(data->ipmi_resp[pid].fandir) - 1);
+				   data->ipmi_tx_data, 2,
+				   data->ipmi_resp[pid].fandir,
+				   sizeof(data->ipmi_resp[pid].fandir) - 1);
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	/* Get capability from ipmi */
+	data->ipmi_tx_data[1] = IPMI_PSU_INFO_CMD;
+	status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
+				   data->ipmi_tx_data, 2,
+				   data->ipmi_resp[pid].info,
+				   sizeof(data->ipmi_resp[pid].info));
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -443,7 +566,7 @@ static struct as7926_40xfb_psu_data *as7926_40xfb_psu_update_device(struct devic
 	data->last_updated[pid] = jiffies;
 	data->valid[pid] = 1;
 
-exit:
+ exit:
 	return data;
 }
 
@@ -456,14 +579,13 @@ do { \
 } while (0)
 
 static ssize_t show_psu(struct device *dev, struct device_attribute *da,
-							char *buf)
+			char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
 	u32 value = 0;
 	int present = 0;
 	int error = 0;
-	int multiplier = 1000;
 
 	mutex_lock(&data->update_lock);
 
@@ -473,7 +595,7 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 		goto exit;
 	}
 
-	present = !!(data->ipmi_resp[pid].status[PSU_PRESENT]);
+	present = ! !(data->ipmi_resp[pid].status[PSU_PRESENT]);
 
 	switch (attr->index) {
 	case PSU1_PRESENT:
@@ -488,61 +610,60 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 	case PSU1_IIN:
 	case PSU2_IIN:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_IIN0] |
-					(u32)data->ipmi_resp[pid].status[PSU_IIN1] << 8 |
-					(u32)data->ipmi_resp[pid].status[PSU_IIN2] << 16);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_IIN0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_IIN1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_IIN2] << 16);
 		break;
 	case PSU1_IOUT:
 	case PSU2_IOUT:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_IOUT0] |
-					(u32)data->ipmi_resp[pid].status[PSU_IOUT1] << 8 |
-					(u32)data->ipmi_resp[pid].status[PSU_IOUT2] << 16);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_IOUT0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_IOUT1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_IOUT2] << 16);
 		break;
 	case PSU1_VIN:
 	case PSU2_VIN:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_VIN0] |
-					(u32)data->ipmi_resp[pid].status[PSU_VIN1] << 8 |
-					(u32)data->ipmi_resp[pid].status[PSU_VIN2] << 16);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_VIN0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_VIN1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_VIN2] << 16);
 		break;
 	case PSU1_VOUT:
 	case PSU2_VOUT:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_VOUT0] |
-					(u32)data->ipmi_resp[pid].status[PSU_VOUT1] << 8 |
-					(u32)data->ipmi_resp[pid].status[PSU_VOUT2] << 16);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_VOUT0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_VOUT1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_VOUT2] << 16);
 		break;
 	case PSU1_PIN:
 	case PSU2_PIN:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_PIN0] |
-					(u32)data->ipmi_resp[pid].status[PSU_PIN1] << 8  |
-					(u32)data->ipmi_resp[pid].status[PSU_PIN2] << 16 |
-					(u32)data->ipmi_resp[pid].status[PSU_PIN3] << 24);
-		value /= 1000; // Convert to milliwatt
+		value = ((u32) data->ipmi_resp[pid].status[PSU_PIN0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_PIN1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_PIN2] << 16 |
+			 (u32) data->ipmi_resp[pid].status[PSU_PIN3] << 24);
+		value /= 1000;	// Convert to milliwatt
 		break;
 	case PSU1_POUT:
 	case PSU2_POUT:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_POUT0] |
-					(u32)data->ipmi_resp[pid].status[PSU_POUT1] << 8  |
-					(u32)data->ipmi_resp[pid].status[PSU_POUT2] << 16 |
-					(u32)data->ipmi_resp[pid].status[PSU_POUT3] << 24);
-		value /= 1000; // Convert to milliwatt
+		value = ((u32) data->ipmi_resp[pid].status[PSU_POUT0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_POUT1] << 8 |
+			 (u32) data->ipmi_resp[pid].status[PSU_POUT2] << 16 |
+			 (u32) data->ipmi_resp[pid].status[PSU_POUT3] << 24);
+		value /= 1000;	// Convert to milliwatt
 		break;
 	case PSU1_TEMP_INPUT:
 	case PSU2_TEMP_INPUT:
 		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP0] |
-					(u32)data->ipmi_resp[pid].status[PSU_TEMP1] << 8);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_TEMP0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_TEMP1] << 8);
 		break;
 	case PSU1_FAN_INPUT:
 	case PSU2_FAN_INPUT:
 		VALIDATE_PRESENT_RETURN(pid);
-		multiplier = 1;
-		value = ((u32)data->ipmi_resp[pid].status[PSU_FAN0] |
-					(u32)data->ipmi_resp[pid].status[PSU_FAN1] << 8);
+		value = ((u32) data->ipmi_resp[pid].status[PSU_FAN0] |
+			 (u32) data->ipmi_resp[pid].status[PSU_FAN1] << 8);
 		break;
 	default:
 		error = -EINVAL;
@@ -553,13 +674,133 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 
 	return sprintf(buf, "%d\n", present ? value : 0);
 
-exit:
+ exit:
+	mutex_unlock(&data->update_lock);
+	return error;
+}
+
+static ssize_t show_psu_info(struct device *dev, struct device_attribute *da,
+			     char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
+	u32 value = 0;
+	int present = 0;
+	int error = 0;
+
+	mutex_lock(&data->update_lock);
+
+	data = as7926_40xfb_psu_update_device(da);
+	if (!data->valid[pid]) {
+		error = -EIO;
+		goto exit;
+	}
+
+	present = ! !(data->ipmi_resp[pid].status[PSU_PRESENT]);
+
+	switch (attr->index) {
+	case PSU1_TEMP_INPUT_MAX:
+	case PSU2_TEMP_INPUT_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_TEMP_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_TEMP_MAX1] << 8);
+		break;
+	case PSU1_TEMP_INPUT_MIN:
+	case PSU2_TEMP_INPUT_MIN:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_TEMP_MIN0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_TEMP_MIN1] << 8);
+		break;
+	case PSU1_VIN_UPPER_CRIT:
+	case PSU2_VIN_UPPER_CRIT:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32)data->ipmi_resp[pid].info[PSU_VIN_UPPER_CRIT0] |
+				(u32)data->ipmi_resp[pid].info[PSU_VIN_UPPER_CRIT1] << 8 |
+				(u32)data->ipmi_resp[pid].info[PSU_VIN_UPPER_CRIT2] << 16);
+		break;
+	case PSU1_VIN_LOWER_CRIT:
+	case PSU2_VIN_LOWER_CRIT:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32)data->ipmi_resp[pid].info[PSU_VIN_LOWER_CRIT0] |
+				(u32)data->ipmi_resp[pid].info[PSU_VIN_LOWER_CRIT1] << 8 |
+				(u32)data->ipmi_resp[pid].info[PSU_VIN_LOWER_CRIT2] << 16);
+		break;
+	case PSU1_VIN_MAX:
+	case PSU2_VIN_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_VIN_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_VIN_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_VIN_MAX2] << 16);
+		break;
+	case PSU1_VIN_MIN:
+	case PSU2_VIN_MIN:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_VIN_MIN0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_VIN_MIN1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_VIN_MIN2] << 16);
+		break;
+	case PSU1_VOUT_MAX:
+	case PSU2_VOUT_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_VOUT_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_VOUT_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_VOUT_MAX2] << 16);
+		break;
+	case PSU1_VOUT_MIN:
+	case PSU2_VOUT_MIN:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_VOUT_MIN0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_VOUT_MIN1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_VOUT_MIN2] << 16);
+		break;
+	case PSU1_IIN_MAX:
+	case PSU2_IIN_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_IIN_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_IIN_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_IIN_MAX2] << 16);
+		break;
+	case PSU1_IOUT_MAX:
+	case PSU2_IOUT_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_IOUT_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_IOUT_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_IOUT_MAX2] << 16);
+		break;
+	case PSU1_PIN_MAX:
+	case PSU2_PIN_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_PIN_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_PIN_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_PIN_MAX2] << 16 |
+			 (u32) data->ipmi_resp[pid].info[PSU_PIN_MAX3] << 24);
+		value /= 1000;	// Convert to milliwatt
+		break;
+	case PSU1_POUT_MAX:
+	case PSU2_POUT_MAX:
+		VALIDATE_PRESENT_RETURN(pid);
+		value = ((u32) data->ipmi_resp[pid].info[PSU_POUT_MAX0] |
+			 (u32) data->ipmi_resp[pid].info[PSU_POUT_MAX1] << 8 |
+			 (u32) data->ipmi_resp[pid].info[PSU_POUT_MAX2] << 16 |
+			 (u32) data->ipmi_resp[pid].info[PSU_POUT_MAX3] << 24);
+		value /= 1000;	// Convert to milliwatt
+		break;
+	default:
+		error = -EINVAL;
+		goto exit;
+	}
+
+	mutex_unlock(&data->update_lock);
+
+	return sprintf(buf, "%d\n", present ? value : 0);
+
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
 
 static ssize_t show_string(struct device *dev, struct device_attribute *da,
-								char *buf)
+			   char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char pid = attr->index / NUM_OF_PER_PSU_ATTR;
@@ -598,7 +839,7 @@ static ssize_t show_string(struct device *dev, struct device_attribute *da,
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%s\n", str);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return error;
 }
@@ -616,7 +857,7 @@ static int as7926_40xfb_psu_probe(struct platform_device *pdev)
 
 	return 0;
 
-exit:
+ exit:
 	return status;
 }
 
@@ -655,13 +896,13 @@ static int __init as7926_40xfb_psu_init(void)
 
 	return 0;
 
-ipmi_err:
+ ipmi_err:
 	platform_device_unregister(data->pdev);
-dev_reg_err:
+ dev_reg_err:
 	platform_driver_unregister(&as7926_40xfb_psu_driver);
-dri_reg_err:
+ dri_reg_err:
 	kfree(data);
-alloc_err:
+ alloc_err:
 	return ret;
 }
 

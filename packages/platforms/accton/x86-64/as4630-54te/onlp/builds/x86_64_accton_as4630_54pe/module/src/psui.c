@@ -146,6 +146,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     psu_type = get_psu_type(index, info->model, sizeof(info->model));
 
     switch (psu_type) {
+        case PSU_TYPE_YM1151F_F2B:
         case PSU_TYPE_YM1151D_F2B:
         case PSU_TYPE_YM1151D_B2F:
             ret = psu_ym2651y_info_get(info);

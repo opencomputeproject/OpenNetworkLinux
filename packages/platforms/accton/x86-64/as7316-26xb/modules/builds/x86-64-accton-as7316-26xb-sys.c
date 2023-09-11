@@ -45,9 +45,19 @@
 #define EEPROM_NAME				"eeprom"
 #define EEPROM_SIZE				256	/*	256 byte eeprom */
 
+#define IPMI_GET_CPLD_VER_CMD   0x20
+#define MAINBOARD_CPLD_ADDR     0x63
+#define CPU_CPLD_ADDR           0x65
+#define FAN_CPLD_ADDR           0x66
+#define IPMI_GET_FPGA_REG_CMD   0x2A
+#define FPGA_VER_REG_OFFSET     0x1
+
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static int as7316_26xb_sys_probe(struct platform_device *pdev);
 static int as7316_26xb_sys_remove(struct platform_device *pdev);
+
+static ssize_t show_cpld_fpga_version(struct device *dev, 
+				struct device_attribute *da, char *buf);
 
 struct ipmi_data {
 	struct completion   read_complete;
@@ -67,25 +77,53 @@ struct ipmi_data {
 };
 
 struct as7316_26xb_sys_data {
-    struct platform_device *pdev;
-    struct mutex     update_lock;
-    char             valid;           /* != 0 if registers are valid */
-    unsigned long    last_updated;    /* In jiffies */
-    unsigned char    ipmi_resp[256];
-    struct ipmi_data ipmi;
-    unsigned char ipmi_tx_data[2];
-    struct bin_attribute eeprom;      /* eeprom data */
+	struct platform_device *pdev;
+	struct mutex     update_lock;
+	char             valid;           /* != 0 if registers are valid */
+	unsigned char    ipmi_resp[256];
+	struct ipmi_data ipmi;
+	unsigned char    ipmi_resp_cpld_fpga;
+	unsigned char ipmi_tx_data[2];
+	struct bin_attribute eeprom;      /* eeprom data */
 };
 
 struct as7316_26xb_sys_data *data = NULL;
 
 static struct platform_driver as7316_26xb_sys_driver = {
-    .probe      = as7316_26xb_sys_probe,
-    .remove     = as7316_26xb_sys_remove,
-    .driver     = {
-        .name   = DRVNAME,
-        .owner  = THIS_MODULE,
-    },
+	.probe      = as7316_26xb_sys_probe,
+	.remove     = as7316_26xb_sys_remove,
+	.driver     = {
+		.name   = DRVNAME,
+		.owner  = THIS_MODULE,
+	},
+};
+
+enum as7316_26xb_sys_sysfs_attrs {
+	MB_CPLD_VER, /* mainboard cpld version */
+	CPU_CPLD_VER, /* CPU board CPLD version */
+	FAN_CPLD_VER, /* FAN CPLD version */
+	FPGA_VER, /* FPGA version */
+};
+
+static SENSOR_DEVICE_ATTR(mb_cpld_ver, S_IRUGO, show_cpld_fpga_version, NULL, 
+			MB_CPLD_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_ver, S_IRUGO, show_cpld_fpga_version, NULL, 
+			CPU_CPLD_VER);
+static SENSOR_DEVICE_ATTR(fan_cpld_ver, S_IRUGO, show_cpld_fpga_version, NULL, 
+			FAN_CPLD_VER);
+static SENSOR_DEVICE_ATTR(fpga_ver, S_IRUGO, show_cpld_fpga_version, NULL, 
+			FPGA_VER);
+
+static struct attribute *as7316_26xb_sys_attributes[] = {
+	&sensor_dev_attr_mb_cpld_ver.dev_attr.attr,
+	&sensor_dev_attr_cpu_cpld_ver.dev_attr.attr,
+	&sensor_dev_attr_fan_cpld_ver.dev_attr.attr,
+	&sensor_dev_attr_fpga_ver.dev_attr.attr,
+	NULL
+};
+
+static const struct attribute_group as7316_26xb_sys_group = {
+	.attrs = as7316_26xb_sys_attributes,
 };
 
 /* Functions to talk to the IPMI layer */
@@ -108,7 +146,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 	ipmi->tx_msgid = 0;
 	ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
 
-    ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
+	ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
@@ -124,16 +162,16 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-                                     unsigned char *tx_data, unsigned short tx_len,
-                                     unsigned char *rx_data, unsigned short rx_len)
+                                unsigned char *tx_data, unsigned short tx_len,
+                                unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
-    ipmi->tx_message.cmd      = cmd;
-    ipmi->tx_message.data     = tx_data;
-    ipmi->tx_message.data_len = tx_len;
-    ipmi->rx_msg_data         = rx_data;
-    ipmi->rx_msg_len          = rx_len;
+	ipmi->tx_message.cmd      = cmd;
+	ipmi->tx_message.data     = tx_data;
+	ipmi->tx_message.data_len = tx_len;
+	ipmi->rx_msg_data         = rx_data;
+	ipmi->rx_msg_len          = rx_len;
 
 	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
 	if (err)
@@ -145,16 +183,16 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 	if (err)
 		goto ipmi_req_err;
 
-    err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
+	err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
 	if (!err)
 		goto ipmi_timeout_err;
 
 	return 0;
 
 ipmi_timeout_err:
-    err = -ETIMEDOUT;
-    dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
-    return err;
+	err = -ETIMEDOUT;
+	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
+	return err;
 ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
@@ -190,8 +228,9 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 			rx_len = ipmi->rx_msg_len;
 		ipmi->rx_msg_len = rx_len;
 		memcpy(ipmi->rx_msg_data, msg->msg.data + 1, ipmi->rx_msg_len);
-	} else
+	} else {
 		ipmi->rx_msg_len = 0;
+	}
 
 	ipmi_free_recv_msg(msg);
 	complete(&ipmi->read_complete);
@@ -199,33 +238,34 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 
 static ssize_t sys_eeprom_read(loff_t off, char *buf, size_t count)
 {
-    int status = 0;
+	int status = 0;
 
-    if ((off + count) > EEPROM_SIZE) {
-        return -EINVAL;
-    }
+	if ((off + count) > EEPROM_SIZE)
+		return -EINVAL;
 
-    data->ipmi_tx_data[0] = off;
-    data->ipmi_tx_data[1] = (count >= IPMI_READ_MAX_LEN) ? IPMI_READ_MAX_LEN : count;
-    data->ipmi.rx_msg_data = data->ipmi_resp + off;
-    data->ipmi.rx_msg_len  = data->ipmi_tx_data[1];
+	data->ipmi_tx_data[0] = off;
+	data->ipmi_tx_data[1] = (count >= IPMI_READ_MAX_LEN) ? 
+				 IPMI_READ_MAX_LEN : count;
+	data->ipmi.rx_msg_data = data->ipmi_resp + off;
+	data->ipmi.rx_msg_len  = data->ipmi_tx_data[1];
 
-    status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD, data->ipmi_tx_data, sizeof(data->ipmi_tx_data),
-                                data->ipmi_resp + off, data->ipmi_tx_data[1]);
-    if (unlikely(status != 0)) {
-        goto exit;
-    }
+	status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD, 
+				data->ipmi_tx_data, sizeof(data->ipmi_tx_data),
+				data->ipmi_resp + off, data->ipmi_tx_data[1]);
 
-    if (unlikely(data->ipmi.rx_result != 0)) {
-        status = -EIO;
-        goto exit;
-    }
+	if (unlikely(status != 0))
+		goto exit;
 
-    status = data->ipmi_tx_data[1];
-    memcpy(buf, data->ipmi_resp + off, data->ipmi_tx_data[1]);
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	status = data->ipmi_tx_data[1];
+	memcpy(buf, data->ipmi_resp + off, data->ipmi_tx_data[1]);
 
 exit:
-    return status;
+	return status;
 }
 
 static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
@@ -234,9 +274,8 @@ static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
 {
 	ssize_t retval = 0;
 
-	if (unlikely(!count)) {
+	if (unlikely(!count))
 		return count;
-	}
 
 	/*
 	 * Read data from chip, protecting against concurrent updates
@@ -249,9 +288,9 @@ static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
 
 		status = sys_eeprom_read(off, buf, count);
 		if (status <= 0) {
-			if (retval == 0) {
+			if (retval == 0)
 				retval = status;
-			}
+
 			break;
 		}
 
@@ -266,9 +305,10 @@ static ssize_t sysfs_bin_read(struct file *filp, struct kobject *kobj,
 
 }
 
-static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
+static int sysfs_eeprom_init(struct kobject *kobj, 
+				struct bin_attribute *eeprom)
 {
-    sysfs_bin_attr_init(eeprom);
+	sysfs_bin_attr_init(eeprom);
 	eeprom->attr.name = EEPROM_NAME;
 	eeprom->attr.mode = S_IRUGO;
 	eeprom->read	  = sysfs_bin_read;
@@ -279,84 +319,168 @@ static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
 	return sysfs_create_bin_file(kobj, eeprom);
 }
 
-static int sysfs_eeprom_cleanup(struct kobject *kobj, struct bin_attribute *eeprom)
+static int sysfs_eeprom_cleanup(struct kobject *kobj, 
+				struct bin_attribute *eeprom)
 {
 	sysfs_remove_bin_file(kobj, eeprom);
 	return 0;
 }
 
-static int as7316_26xb_sys_probe(struct platform_device *pdev)
+static struct as7316_26xb_sys_data *as7316_26xb_sys_update_cpld_fpga_ver(
+						unsigned char cpld_fpga_addr)
 {
-    int status = -1;
+	int status = 0;
+	uint8_t ver_cmd = 0;
 
-    /* Register sysfs hooks */
-	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom);
-	if (status) {
+	data->valid = 0;
+
+	if((cpld_fpga_addr == MAINBOARD_CPLD_ADDR) ||
+	   (cpld_fpga_addr == CPU_CPLD_ADDR) ||
+	   (cpld_fpga_addr == FAN_CPLD_ADDR))
+		ver_cmd = IPMI_GET_CPLD_VER_CMD;
+	else if(cpld_fpga_addr == FPGA_VER_REG_OFFSET)
+		ver_cmd = IPMI_GET_FPGA_REG_CMD;
+	else
+		goto exit;
+
+	data->ipmi_tx_data[0] = cpld_fpga_addr;
+	status = ipmi_send_message(&data->ipmi, ver_cmd,
+					data->ipmi_tx_data, 1,
+					&data->ipmi_resp_cpld_fpga, 
+					sizeof(data->ipmi_resp_cpld_fpga));
+
+	if(unlikely(status != 0))
+		goto exit;
+
+	if(unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
 		goto exit;
 	}
 
-    dev_info(&pdev->dev, "device created\n");
-
-    return 0;
+	data->valid = 1;
 
 exit:
-    return status;
+	return data;
+}
+
+static ssize_t show_cpld_fpga_version(struct device *dev, 
+			struct device_attribute *da, char *buf)
+{
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char cpld_fpga_addr = 0, value = 0;
+	int error = 0;
+
+	switch(attr->index) {
+	case MB_CPLD_VER:
+		cpld_fpga_addr = MAINBOARD_CPLD_ADDR;
+		break;
+	case CPU_CPLD_VER:
+		cpld_fpga_addr = CPU_CPLD_ADDR;
+		break;
+	case FAN_CPLD_VER:
+		cpld_fpga_addr = FAN_CPLD_ADDR;
+		break;
+	case FPGA_VER:
+		cpld_fpga_addr = FPGA_VER_REG_OFFSET;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	mutex_lock(&data->update_lock);
+
+	data = as7316_26xb_sys_update_cpld_fpga_ver(cpld_fpga_addr);
+	if (!data->valid) {
+		error = -EIO;
+		goto exit;
+	}
+
+	value = data->ipmi_resp_cpld_fpga;
+	mutex_unlock(&data->update_lock);
+	return sprintf(buf, "%d\n", value);
+
+exit:
+	mutex_unlock(&data->update_lock);
+	return error;
+}
+
+static int as7316_26xb_sys_probe(struct platform_device *pdev)
+{
+	int status = -1;
+
+	/* Register sysfs hooks */
+	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom);
+	if (status)
+		goto exit;
+
+	/* Register sysfs hooks */
+	status = sysfs_create_group(&pdev->dev.kobj, &as7316_26xb_sys_group);
+	if (status)
+		goto exit;
+
+	dev_info(&pdev->dev, "device created\n");
+
+	return 0;
+
+exit:
+	return status;
 }
 
 static int as7316_26xb_sys_remove(struct platform_device *pdev)
 {
-    sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
+	sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
 
-    return 0;
+	return 0;
 }
 
 static int __init as7316_26xb_sys_init(void)
 {
-    int ret;
+	int ret;
 
-    data = kzalloc(sizeof(struct as7316_26xb_sys_data), GFP_KERNEL);
-    if (!data) {
-        ret = -ENOMEM;
-        goto alloc_err;
-    }
+	data = kzalloc(sizeof(struct as7316_26xb_sys_data), GFP_KERNEL);
+
+	if (!data) {
+		ret = -ENOMEM;
+		goto alloc_err;
+	}
 
 	mutex_init(&data->update_lock);
-    data->valid = 0;
+	data->valid = 0;
 
-    ret = platform_driver_register(&as7316_26xb_sys_driver);
-    if (ret < 0) {
-        goto dri_reg_err;
-    }
+	ret = platform_driver_register(&as7316_26xb_sys_driver);
 
-    data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-    if (IS_ERR(data->pdev)) {
-        ret = PTR_ERR(data->pdev);
-        goto dev_reg_err;
-    }
+	if (ret < 0)
+		goto dri_reg_err;
+
+	data->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
+	if (IS_ERR(data->pdev)) {
+		ret = PTR_ERR(data->pdev);
+		goto dev_reg_err;
+	}
 
 	/* Set up IPMI interface */
 	ret = init_ipmi_data(&data->ipmi, 0, &data->pdev->dev);
 	if (ret)
 		goto ipmi_err;
 
-    return 0;
+	return 0;
 
 ipmi_err:
-    platform_device_unregister(data->pdev);
+	platform_device_unregister(data->pdev);
 dev_reg_err:
-    platform_driver_unregister(&as7316_26xb_sys_driver);
+	platform_driver_unregister(&as7316_26xb_sys_driver);
 dri_reg_err:
-    kfree(data);
+	kfree(data);
 alloc_err:
-    return ret;
+	return ret;
 }
 
 static void __exit as7316_26xb_sys_exit(void)
 {
-    ipmi_destroy_user(data->ipmi.user);
-    platform_device_unregister(data->pdev);
-    platform_driver_unregister(&as7316_26xb_sys_driver);
-    kfree(data);
+	ipmi_destroy_user(data->ipmi.user);
+	platform_device_unregister(data->pdev);
+	platform_driver_unregister(&as7316_26xb_sys_driver);
+	kfree(data);
 }
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
@@ -365,4 +489,3 @@ MODULE_LICENSE("GPL");
 
 module_init(as7316_26xb_sys_init);
 module_exit(as7316_26xb_sys_exit);
-

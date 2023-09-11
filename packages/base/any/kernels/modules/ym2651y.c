@@ -307,7 +307,10 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
     switch (attr->index) {
     case PSU_V_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
+            (strncmp(ptr, "DPS-650AB-11 C", strlen("DPS-650AB-11 C")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "FSF019", strlen("FSF019")) == 0)||
+            (strncmp(ptr, "FSF045", strlen("FSF045")) == 0)||
             (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->v_in;
@@ -315,7 +318,10 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
         break;
     case PSU_I_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
+            (strncmp(ptr, "DPS-650AB-11 C", strlen("DPS-650AB-11 C")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "FSF019", strlen("FSF019")) == 0)||
+            (strncmp(ptr, "FSF045", strlen("FSF045")) == 0)||
             (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->i_in;
@@ -323,7 +329,10 @@ static ssize_t show_linear(struct device *dev, struct device_attribute *da,
         break;
     case PSU_P_IN:
         if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
+            (strncmp(ptr, "DPS-650AB-11 C", strlen("DPS-650AB-11 C")) == 0)||
             (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)||
+            (strncmp(ptr, "FSF019", strlen("FSF019")) == 0)||
+            (strncmp(ptr, "FSF045", strlen("FSF045")) == 0)||
             (strncmp(ptr, "SPAACTN-04", strlen("SPAACTN-04")) == 0)||
             (strncmp(ptr, "SPAACTN-03", strlen("SPAACTN-03")) == 0)) {
             value = data->p_in;
@@ -430,7 +439,8 @@ static ssize_t show_ascii(struct device *dev, struct device_attribute *da,
         ptr = data->fan_dir + 1;  /* Skip the first byte since it is the length of string. */
         /* FAN direction for PTT1600's PSU, depends on 
         4th and 3rd bit of return value of 0xC3 command */
-        if (strncmp((data->mfr_model + 1),"PTT1600", strlen("PTT1600")) == 0) {
+        if ((strncmp((data->mfr_model + 1),"PTT1600", strlen("PTT1600")) == 0) ||
+            (strncmp((data->mfr_model + 1),"DPS-650AB-11 C", strlen("DPS-650AB-11 C")) == 0)){
             /* Check if 4th bit is '1' and 3rd bit is '0' for "F2B (AFO)" FAN direction */
             if((((data->fan_dir[0] >> 3) & 1) == 0) && (((data->fan_dir[0] >> 4) & 1) == 1)) {
                 strcpy(ptr,"AFO");

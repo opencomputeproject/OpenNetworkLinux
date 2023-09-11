@@ -35,6 +35,7 @@
 #include "platform_lib.h"
 #include "x86_64_accton_as7726_32x_int.h"
 #include "x86_64_accton_as7726_32x_log.h"
+#include <onlplib/i2c.h>
 
 #define NUM_OF_FAN_ON_MAIN_BROAD      6
 #define PREFIX_PATH_ON_CPLD_DEV          "/sys/bus/i2c/devices/"
@@ -193,7 +194,61 @@ int onlp_sysi_platform_manage_fans(void)
     onlp_thermal_info_t thermal_4, thermal_5;
     char  buf[10] = {0};
     fan_ctrl_policy_t *fan_thermal_policy;
+    int wdt_status = 0;
+    int wdt_timer = 0;
+    char wdt_status_path[64] = {0};
+    char wdt_timer_path[64] = {0};
+    /* set wdt timer 240s */
+    wdt_timer = 0xf0;
+    static int failed_cnt = 0;
+    static int failed_first_log = 0;
 
+    sprintf(wdt_status_path, "%s""fan_wdt_status", FAN_BOARD_PATH);
+    sprintf(wdt_timer_path, "%s""fan_wdt_timer", FAN_BOARD_PATH);
+    /*  Check WDT state, if WDT disable, Enable WDT and kick */
+    if (onlp_file_read_int(&wdt_status, wdt_status_path) < 0) {
+        failed_cnt++;
+    }
+    else
+    {
+        if (wdt_status == FAN_BOARD_CPLD_WDT_DISABLE)
+        {
+            AIM_SYSLOG_WARN("Fan-WDT Disable", "Fan-WDT Disable","Alarm for Fan-WDT Disable is detected");
+            /* Enable WDT */
+            if (onlp_file_write_integer(wdt_status_path, FAN_BOARD_CPLD_WDT_ENABLE) < 0) {
+                failed_cnt++;
+            }
+            else
+            {
+                /* kicks */
+                if (onlp_file_write_integer(wdt_timer_path, wdt_timer) < 0) {
+                    failed_cnt++;
+                }
+            }
+        }
+        else
+        {
+            /* kicks */
+            if (onlp_file_write_integer(wdt_timer_path, wdt_timer) < 0) {
+                failed_cnt++;
+            }
+        }
+    }
+    /* To ensure generate log message for first failed */
+    if((failed_first_log == 0) && (failed_cnt > 0))
+    {
+        failed_first_log = 1;
+        AIM_LOG_ERROR("Unable to read status from file (%s) or (%s)\r\n", wdt_status_path, wdt_timer_path);
+    }
+    /* Print the error log if the total falied counts equal or over 360 counts.
+       It can decrese number of log message.
+       polling every 10 sec. Polling 360 counts for one hour if it is failed to access fan cpld watchdog.
+    */
+    if(failed_cnt >= 360)
+    {
+        failed_cnt = 0;
+        AIM_LOG_ERROR("Unable to read status from file (%s) or (%s)\r\n", wdt_status_path, wdt_timer_path);
+    }
     /* Get fan direction
      */
     if (onlp_file_read_int(&value, FAN_DIRECTION_PATH) < 0) {

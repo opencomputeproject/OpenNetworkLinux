@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C)  Brandon Chuang <brandon_chuang@accton.com.tw>
+ * A hwmon driver for the as7926_40xfb_thermal
+ *
+ * Copyright (C) 2019  Edgecore Networks Corporation.
+ * Brandon Chuang <brandon_chuang@edge-core.com>
  *
  * Based on:
  *	pca954x.c from Kumar Gala <galak@kernel.crashing.org>
@@ -32,6 +36,7 @@
 #include <linux/platform_device.h>
 
 #define DRVNAME "as7926_40xfb_thermal"
+#define THERMAL_COUNT 10
 #define ACCTON_IPMI_NETFN 0x34
 #define IPMI_THERMAL_READ_CMD 0x12
 #define IPMI_THERMAL_WRITE_CMD 0x13
@@ -41,9 +46,9 @@
 
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t show_temp(struct device *dev, struct device_attribute *attr,
-	char *buf);
-static ssize_t set_temp(struct device *dev, struct device_attribute *da,
-	const char *buf, size_t count);
+			 char *buf);
+static ssize_t set_max(struct device *dev, struct device_attribute *da,
+		       const char *buf, size_t count);
 static int as7926_40xfb_thermal_probe(struct platform_device *pdev);
 static int as7926_40xfb_thermal_remove(struct platform_device *pdev);
 
@@ -57,7 +62,7 @@ enum temp_data_index {
 struct ipmi_data {
 	struct completion read_complete;
 	struct ipmi_addr address;
-	ipmi_user_t user;
+	struct ipmi_user *user;
 	int interface;
 
 	struct kernel_ipmi_msg tx_message;
@@ -74,11 +79,12 @@ struct ipmi_data {
 struct as7926_40xfb_thermal_data {
 	struct platform_device *pdev;
 	struct mutex update_lock;
-	char valid;		   /* != 0 if registers are valid */
+	char valid;		/* != 0 if registers are valid */
 	unsigned long last_updated;	/* In jiffies */
-	char   ipmi_resp[36]; /* 3 bytes for each thermal */
+	char ipmi_resp[THERMAL_COUNT * TEMP_DATA_COUNT];	/* 3 bytes for each thermal */
 	struct ipmi_data ipmi;
-	unsigned char ipmi_tx_data[2];  /* 0: thermal id, 1: temp */
+	unsigned char ipmi_tx_data[2];	/* 0: thermal id, 1: temp */
+	char temp_max[THERMAL_COUNT];
 };
 
 struct as7926_40xfb_thermal_data *data = NULL;
@@ -87,9 +93,9 @@ static struct platform_driver as7926_40xfb_thermal_driver = {
 	.probe = as7926_40xfb_thermal_probe,
 	.remove = as7926_40xfb_thermal_remove,
 	.driver = {
-		.name = DRVNAME,
-		.owner = THIS_MODULE,
-	},
+		   .name = DRVNAME,
+		   .owner = THIS_MODULE,
+		   },
 };
 
 enum as7926_40xfb_thermal_sysfs_attrs {
@@ -103,38 +109,50 @@ enum as7926_40xfb_thermal_sysfs_attrs {
 	TEMP8_INPUT,
 	TEMP9_INPUT,
 	TEMP10_INPUT,
-	TEMP11_INPUT,
-	TEMP12_INPUT,
+	TEMP1_MAX,
+	TEMP2_MAX,
+	TEMP3_MAX,
+	TEMP4_MAX,
+	TEMP5_MAX,
+	TEMP6_MAX,
+	TEMP7_MAX,
+	TEMP8_MAX,
+	TEMP9_MAX,
+	TEMP10_MAX,
 };
 
-static SENSOR_DEVICE_ATTR(temp1_input, S_IWUSR | S_IRUGO, show_temp, set_temp,
-							TEMP1_INPUT);
-static SENSOR_DEVICE_ATTR(temp2_input, S_IWUSR | S_IRUGO, show_temp, set_temp,
-							TEMP2_INPUT);
-static SENSOR_DEVICE_ATTR(temp3_input, S_IRUGO, show_temp, NULL, TEMP3_INPUT);
-static SENSOR_DEVICE_ATTR(temp4_input, S_IRUGO, show_temp, NULL, TEMP4_INPUT);
-static SENSOR_DEVICE_ATTR(temp5_input, S_IRUGO, show_temp, NULL, TEMP5_INPUT);
-static SENSOR_DEVICE_ATTR(temp6_input, S_IRUGO, show_temp, NULL, TEMP6_INPUT);
-static SENSOR_DEVICE_ATTR(temp7_input, S_IRUGO, show_temp, NULL, TEMP7_INPUT);
-static SENSOR_DEVICE_ATTR(temp8_input, S_IRUGO, show_temp, NULL, TEMP8_INPUT);
-static SENSOR_DEVICE_ATTR(temp9_input, S_IRUGO, show_temp, NULL, TEMP9_INPUT);
-static SENSOR_DEVICE_ATTR(temp10_input, S_IRUGO, show_temp, NULL, TEMP10_INPUT);
-static SENSOR_DEVICE_ATTR(temp11_input, S_IRUGO, show_temp, NULL, TEMP11_INPUT);
-static SENSOR_DEVICE_ATTR(temp12_input, S_IRUGO, show_temp, NULL, TEMP12_INPUT);
+#define DECLARE_THERMAL_SENSOR_DEVICE_ATTR(index) \
+	static SENSOR_DEVICE_ATTR(temp##index##_input, S_IRUGO, show_temp, \
+					NULL, TEMP##index##_INPUT); \
+	static SENSOR_DEVICE_ATTR(temp##index##_max, S_IWUSR | S_IRUGO, show_temp,\
+					set_max, TEMP##index##_MAX)
+
+#define DECLARE_THERMAL_ATTR(index) \
+	&sensor_dev_attr_temp##index##_input.dev_attr.attr, \
+	&sensor_dev_attr_temp##index##_max.dev_attr.attr
+
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(1);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(2);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(3);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(4);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(5);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(6);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(7);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(8);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(9);
+DECLARE_THERMAL_SENSOR_DEVICE_ATTR(10);
 
 static struct attribute *as7926_40xfb_thermal_attributes[] = {
-	&sensor_dev_attr_temp1_input.dev_attr.attr,
-	&sensor_dev_attr_temp2_input.dev_attr.attr,
-	&sensor_dev_attr_temp3_input.dev_attr.attr,
-	&sensor_dev_attr_temp4_input.dev_attr.attr,
-	&sensor_dev_attr_temp5_input.dev_attr.attr,
-	&sensor_dev_attr_temp6_input.dev_attr.attr,
-	&sensor_dev_attr_temp7_input.dev_attr.attr,
-	&sensor_dev_attr_temp8_input.dev_attr.attr,
-	&sensor_dev_attr_temp9_input.dev_attr.attr,
-	&sensor_dev_attr_temp10_input.dev_attr.attr,
-	&sensor_dev_attr_temp11_input.dev_attr.attr,
-	&sensor_dev_attr_temp12_input.dev_attr.attr,
+	DECLARE_THERMAL_ATTR(1),
+	DECLARE_THERMAL_ATTR(2),
+	DECLARE_THERMAL_ATTR(3),
+	DECLARE_THERMAL_ATTR(4),
+	DECLARE_THERMAL_ATTR(5),
+	DECLARE_THERMAL_ATTR(6),
+	DECLARE_THERMAL_ATTR(7),
+	DECLARE_THERMAL_ATTR(8),
+	DECLARE_THERMAL_ATTR(9),
+	DECLARE_THERMAL_ATTR(10),
 	NULL
 };
 
@@ -145,8 +163,7 @@ static const struct attribute_group as7926_40xfb_thermal_group = {
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-				  struct device *dev)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev)
 {
 	int err;
 
@@ -166,7 +183,7 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 	/* Create IPMI messaging interface user */
 	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-				   ipmi, &ipmi->user);
+			       ipmi, &ipmi->user);
 	if (err < 0) {
 		dev_err(dev, "Unable to register user with IPMI "
 			"interface %d\n", ipmi->interface);
@@ -178,8 +195,8 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			      unsigned char *tx_data, unsigned short tx_len,
+			      unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
@@ -205,36 +222,38 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 	return 0;
 
-ipmi_timeout_err:
+ ipmi_timeout_err:
 	err = -ETIMEDOUT;
 	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
 	return err;
-ipmi_req_err:
+ ipmi_req_err:
 	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
 	return err;
-addr_err:
+ addr_err:
 	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
 	return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
+			     unsigned char *tx_data, unsigned short tx_len,
+			     unsigned char *rx_data, unsigned short rx_len)
 {
 	int status = 0, retry = 0;
 
 	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len,rx_data, rx_len);
 		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n",
-										retry, status);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err status(%d)\r\n",
+				retry, status);
 			continue;
 		}
 
 		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err result(%d)\r\n",
-										retry, ipmi->rx_result);
+			dev_err(&data->pdev->dev,
+				"ipmi_send_message_%d err result(%d)\r\n",
+				retry, ipmi->rx_result);
 			continue;
 		}
 
@@ -253,8 +272,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	if (msg->msgid != ipmi->tx_msgid) {
 		dev_err(&data->pdev->dev, "Mismatch between received msgid "
 			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
+			(int)msg->msgid, (int)ipmi->tx_msgid);
 		ipmi_free_recv_msg(msg);
 		return;
 	}
@@ -279,19 +297,26 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 }
 
 static ssize_t show_temp(struct device *dev, struct device_attribute *da,
-							char *buf)
+			 char *buf)
 {
 	int status = 0;
-	int index  = 0;
+	int index = 0;
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 
 	mutex_lock(&data->update_lock);
 
+	if (attr->index >= TEMP1_MAX && attr->index <= TEMP10_MAX) {
+		int max = data->temp_max[attr->index - TEMP1_MAX];
+		mutex_unlock(&data->update_lock);
+		return sprintf(buf, "%d\n", max * 1000);
+	}
+
 	if (time_after(jiffies, data->last_updated + HZ * 5) || !data->valid) {
 		data->valid = 0;
 
-		status = ipmi_send_message(&data->ipmi, IPMI_THERMAL_READ_CMD, NULL, 0,
-									data->ipmi_resp, sizeof(data->ipmi_resp));
+		status = ipmi_send_message(&data->ipmi, IPMI_THERMAL_READ_CMD,
+				      NULL, 0, data->ipmi_resp,
+				      sizeof(data->ipmi_resp));
 		if (unlikely(status != 0))
 			goto exit;
 
@@ -313,18 +338,18 @@ static ssize_t show_temp(struct device *dev, struct device_attribute *da,
 
 	/* Get temperature in degree celsius */
 	index = attr->index * TEMP_DATA_COUNT + TEMP_INPUT;
-	status = ((s8)data->ipmi_resp[index]) * 1000;
+	status = ((s8) data->ipmi_resp[index]) * 1000;
 
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", status);
 
-exit:
+ exit:
 	mutex_unlock(&data->update_lock);
 	return status;
 }
 
-static ssize_t set_temp(struct device *dev, struct device_attribute *da,
-			const char *buf, size_t count)
+static ssize_t set_max(struct device *dev, struct device_attribute *da,
+		       const char *buf, size_t count)
 {
 	long temp;
 	int status;
@@ -338,25 +363,10 @@ static ssize_t set_temp(struct device *dev, struct device_attribute *da,
 		return -EINVAL;
 
 	mutex_lock(&data->update_lock);
-
-	/* Send IPMI write command */
-	data->ipmi_tx_data[0] = attr->index + 1;
-	data->ipmi_tx_data[1] = (s8)temp;
-	status = ipmi_send_message(&data->ipmi, IPMI_THERMAL_WRITE_CMD,
-								data->ipmi_tx_data, sizeof(data->ipmi_tx_data), NULL, 0);
-	if (unlikely(status != 0))
-		goto exit;
-
-	if (unlikely(data->ipmi.rx_result != 0)) {
-		status = -EIO;
-		goto exit;
-	}
-
-	data->ipmi_resp[attr->index * TEMP_DATA_COUNT + TEMP_INPUT] = temp;
+	data->temp_max[attr->index - TEMP1_MAX] = temp;
 	status = count;
-
-exit:
 	mutex_unlock(&data->update_lock);
+
 	return status;
 }
 
@@ -373,7 +383,7 @@ static int as7926_40xfb_thermal_probe(struct platform_device *pdev)
 
 	return 0;
 
-exit:
+ exit:
 	return status;
 }
 
@@ -387,6 +397,7 @@ static int as7926_40xfb_thermal_remove(struct platform_device *pdev)
 static int __init as7926_40xfb_thermal_init(void)
 {
 	int ret;
+	int i = 0;
 
 	data = kzalloc(sizeof(struct as7926_40xfb_thermal_data), GFP_KERNEL);
 	if (!data) {
@@ -412,15 +423,19 @@ static int __init as7926_40xfb_thermal_init(void)
 	if (ret)
 		goto ipmi_err;
 
+	for (i = 0; i < ARRAY_SIZE(data->temp_max); i++) {
+		data->temp_max[i] = 70;	/* default high threshold */
+	}
+
 	return 0;
 
-ipmi_err:
+ ipmi_err:
 	platform_device_unregister(data->pdev);
-dev_reg_err:
+ dev_reg_err:
 	platform_driver_unregister(&as7926_40xfb_thermal_driver);
-dri_reg_err:
+ dri_reg_err:
 	kfree(data);
-alloc_err:
+ alloc_err:
 	return ret;
 }
 

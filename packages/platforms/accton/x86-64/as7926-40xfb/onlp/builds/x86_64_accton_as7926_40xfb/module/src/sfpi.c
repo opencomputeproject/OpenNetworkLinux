@@ -37,15 +37,18 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
     53, 54, 57, 58, 61, 62, 65, 66, 69, 70,
     35, 36, 39, 40, 43, 44, 47, 48, 51, 52,
     55, 56, 59, 60, 63, 64, 67, 68, 71, 72,
-    93, 84, 83, 82, 81, 86, 85, 88, 87, 90,
-    89, 92, 91, 30, 31
+    85, 76, 75, 74, 73, 78, 77, 80, 79, 82,
+    81, 84, 83, 30, 31
 };
 
 #define PORT_BUS_INDEX(port) (port_bus_index[port])
 #define PORT_FORMAT "/sys/bus/i2c/devices/%d-0050/%s"
 #define MODULE_PRESENT_BOTTOM_BOARD_CPLD2_FORMAT "/sys/bus/i2c/devices/12-0062/module_present_%d"
 #define MODULE_PRESENT_BOTTOM_BOARD_CPLD3_FORMAT "/sys/bus/i2c/devices/13-0063/module_present_%d"
-#define MODULE_PRESENT_TOP_BOARD_CPLD4_FORMAT "/sys/bus/i2c/devices/76-0064/module_present_%d"
+#define MODULE_PRESENT_TOP_BOARD_CPLD4_FORMAT "/sys/bus/i2c/devices/20-0064/module_present_%d"
+#define MODULE_RESET_CPLD2_FORMAT "/sys/bus/i2c/devices/12-0062/module_reset_%d"
+#define MODULE_RESET_CPLD3_FORMAT "/sys/bus/i2c/devices/13-0063/module_reset_%d"
+#define MODULE_RESET_CPLD4_FORMAT "/sys/bus/i2c/devices/20-0064/module_reset_%d"
 #define MODULE_RXLOS_FORMAT "/sys/bus/i2c/devices/%d-00%d/module_rx_los_%d"
 #define MODULE_TXDISABLE_FORMAT "/sys/bus/i2c/devices/%d-00%d/module_tx_disable_%d"
 
@@ -199,7 +202,7 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    int rv;
+    int rv = ONLP_STATUS_OK;
     int addr = 62;
     int bus  = 12;
 
@@ -218,6 +221,36 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         else {
             rv = ONLP_STATUS_E_UNSUPPORTED;
         }
+        break;
+    }
+    case ONLP_SFP_CONTROL_RESET:
+    {
+        char *path = NULL;
+
+        switch (port) {
+        case 0 ... 9:
+        case 20 ... 29:
+            path = MODULE_RESET_CPLD2_FORMAT;
+            break;
+        case 10 ... 19:
+        case 30 ... 39:
+            path = MODULE_RESET_CPLD3_FORMAT;
+            break;
+        case 40 ... 52:
+            path = MODULE_RESET_CPLD4_FORMAT;
+            break;
+        default:
+            return ONLP_STATUS_E_UNSUPPORTED;
+        }
+
+        if (onlp_file_write_int(value, path, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to reset port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else {
+            rv = ONLP_STATUS_OK;
+        }
+
         break;
     }
     default:
@@ -264,6 +297,35 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         }
         else {
             rv = ONLP_STATUS_E_UNSUPPORTED;
+        }
+        break;
+    }
+    case ONLP_SFP_CONTROL_RESET:
+    {
+        char *path = NULL;
+
+        switch (port) {
+        case 0 ... 9:
+        case 20 ... 29:
+            path = MODULE_RESET_CPLD2_FORMAT;
+            break;
+        case 10 ... 19:
+        case 30 ... 39:
+            path = MODULE_RESET_CPLD3_FORMAT;
+            break;
+        case 40 ... 52:
+            path = MODULE_RESET_CPLD4_FORMAT;
+            break;
+        default:
+            return ONLP_STATUS_E_UNSUPPORTED;
+        }
+
+        if (onlp_file_read_int(value, path, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        else {
+            rv = ONLP_STATUS_OK;
         }
         break;
     }

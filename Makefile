@@ -46,7 +46,7 @@ endif
 .PHONY: docker
 
 ifndef VERSION
-VERSION := 8
+VERSION := 9
 endif
 
 docker_check:
