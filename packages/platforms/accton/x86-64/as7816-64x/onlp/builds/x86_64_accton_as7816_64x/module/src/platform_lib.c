@@ -222,4 +222,23 @@ int psu_dps850_pmbus_info_get(int id, char *node, int *value)
     return ONLP_STATUS_OK;
 }
 
+enum onlp_fan_dir onlp_get_fan_dir(void)
+{
+	int value = FAN_DIR_F2B;
+	int i = 0;
+	char  path[64] = {0};
+	enum onlp_fan_dir dir = FAN_DIR_F2B;
 
+	for(i = 0; i < CHASSIS_FAN_COUNT; i++) {
+		sprintf(path, "%s""fan%d_direction", FAN_BOARD_PATH, i+1);
+		if (onlp_file_read_int(&value, path) < 0)
+			continue;
+
+		if (value == FAN_DIR_F2B || value == FAN_DIR_B2F) {
+			dir = value;
+			break;
+		}
+	}
+
+	return dir;
+}
