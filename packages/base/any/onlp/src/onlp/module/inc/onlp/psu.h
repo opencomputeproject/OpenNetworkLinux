@@ -82,6 +82,12 @@ typedef struct onlp_psu_info_t {
     int mpin;
     int mpout;
 
+    /* product version/revision */
+    char revision[ONLP_CONFIG_INFO_STR_MAX];
+
+    /* psu capacity */
+    double capacity;
+
 } onlp_psu_info_t;
 
 /**
