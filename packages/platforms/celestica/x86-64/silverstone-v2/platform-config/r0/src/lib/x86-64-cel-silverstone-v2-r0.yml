@@ -1,0 +1,48 @@
+---
+
+######################################################################
+#
+# platform-config for Silverstone-v2
+#
+######################################################################
+
+x86-64-cel-silverstone-v2-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-5-4
+
+    args: >-
+      nopat
+      console=ttyS0,115200n8
+
+  installer:
+  - ONL-BOOT:
+      =: 64MiB
+      format: ext4
+  - ONL-CONFIG:
+      =: 8MiB
+      format: ext4
+  - ONL-IMAGES:
+      =: 256MiB
+      format: ext4
+  - ONL-DATA:
+      =: 1GiB
+      format: ext4
+  - ONL-DIAG:
+      =: 8MiB
+      format: ext4
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
