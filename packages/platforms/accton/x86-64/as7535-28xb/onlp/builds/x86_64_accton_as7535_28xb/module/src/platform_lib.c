@@ -58,3 +58,25 @@ enum onlp_fan_dir onlp_get_fan_dir(int fid)
     AIM_FREE_IF_PTR(str);
     return dir;
 }
+
+int get_pcb_id()
+{
+    FILE *pf;
+    char command[32];
+    char data[8];
+    int pcb_id = 0;
+
+    sprintf(command, "ipmitool raw 0x34 0x22 0x60 0");
+    pf = popen(command,"r");
+    fgets(data, 8 , pf);
+
+    if (pclose(pf) != 0)
+    {
+        fprintf(stderr," Error: Failed to close command stream \n");
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    /* get the pcb id to check the thermal number */
+    pcb_id = (atoi(data) >> 2) & 0xff;
+
+    return pcb_id;
+}

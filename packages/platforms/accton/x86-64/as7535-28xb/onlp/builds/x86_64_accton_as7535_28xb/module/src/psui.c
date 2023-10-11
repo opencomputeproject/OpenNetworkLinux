@@ -63,6 +63,8 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     int ret   = ONLP_STATUS_OK;
     int pid = ONLP_OID_ID_GET(id);
     VALIDATE(id);
+    int pcb_id = 0;
+    int thermal_count = 0;
 
     memset(info, 0, sizeof(onlp_psu_info_t));
     *info = pinfo[pid]; /* Set the onlp_oid_hdr_t */
@@ -102,12 +104,15 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     info->caps = ONLP_PSU_CAPS_AC;
 
     /* Set the associated oid_table */
-    info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT +
-                                       (pid-1)*NUM_OF_THERMAL_PER_PSU + 1);
-    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT +
-                                       (pid-1)*NUM_OF_THERMAL_PER_PSU + 2);
-    info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(CHASSIS_THERMAL_COUNT +
-                                       (pid-1)*NUM_OF_THERMAL_PER_PSU + 3);
+    pcb_id = get_pcb_id();
+    if (pcb_id == 1)
+        thermal_count = CHASSIS_THERMAL_COUNT_R02;
+    else
+        thermal_count = CHASSIS_THERMAL_COUNT;
+
+    info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(thermal_count + (pid-1)*NUM_OF_THERMAL_PER_PSU + 1);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(thermal_count + (pid-1)*NUM_OF_THERMAL_PER_PSU + 2);
+    info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(thermal_count + (pid-1)*NUM_OF_THERMAL_PER_PSU + 3);
     info->hdr.coids[3] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
 
     /* Read voltage, current and power */
