@@ -18,7 +18,17 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <linux/i2c-dev.h>
+
+/*
+ * linux/i2c-dev.h provided by i2c-tools contains the symbols defined in linux/i2c.h.
+ * This is not usual, but some distros like OpenSuSe does it. The i2c.h will be only
+ * included if a well-known symbol is not defined, it avoids to redefine symbols and
+ * breaks the build.(refer issue#96)
+ */
+#ifndef I2C_FUNC_I2C
 #include <linux/i2c.h>
+#endif
+
 #include <onlplib/i2c.h>
 #include "platform_nonbmc.h"
 #include "platform_common.h"
