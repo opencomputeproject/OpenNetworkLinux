@@ -1,0 +1,14 @@
+diff --git a/arch/x86/kernel/acpi/boot.c b/arch/x86/kernel/acpi/boot.c
+index f9e84a0..2334b69 100644
+--- a/arch/x86/kernel/acpi/boot.c
++++ b/arch/x86/kernel/acpi/boot.c
+@@ -1625,8 +1625,7 @@ int __init acpi_boot_init(void)
+ 	if (!acpi_noirq)
+ 		x86_init.pci.init = pci_acpi_init;
+ 
+-	/* Do not enable ACPI SPCR console by default */
+-	acpi_parse_spcr(earlycon_acpi_spcr_enable, false);
++	acpi_parse_spcr(earlycon_acpi_spcr_enable, true);
+ 	return 0;
+ }
+ 

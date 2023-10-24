@@ -106,7 +106,7 @@ class OnieBootContext:
         self.mtd = ProcMtdParser(log=self.log.getChild("mtd"))
 
         def _g(d):
-            pat = os.path.join(d, "onie/initrd.img*")
+            pat = os.path.join(d, "onie/initrd.img*-onie")
             l = glob.glob(pat)
             if l: return l[0]
             return None
