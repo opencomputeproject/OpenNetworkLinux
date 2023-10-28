@@ -23,6 +23,7 @@ x86-64-accton-as7946-74xkb-r0:
     args: >-
       console=ttyS0,115200n8
       intel_iommu=pt
+      pcie_aspm=off
 
   ##network
   ##  interfaces:
