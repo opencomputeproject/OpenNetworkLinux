@@ -173,30 +173,23 @@ static int _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 	return ONLP_STATUS_OK;
 }
 
-static uint32_t _onlp_get_fan_direction_on_psu(void)
+static uint32_t _onlp_get_fan_direction_on_psu(int pid)
 {
-	/* Try to read direction from PSU1.
-	 * If PSU1 is not valid, read from PSU2
-	 */
-	int i = 0;
+	psu_type_t psu_type;
+	psu_type = get_psu_type(pid, NULL, 0);
 
-	for (i = PSU1_ID; i <= PSU2_ID; i++) {
-		psu_type_t psu_type;
-		psu_type = get_psu_type(i, NULL, 0);
-
-		if (psu_type == PSU_TYPE_UNKNOWN)
-			continue;
-
-		if ((PSU_TYPE_AC_ACBEL_F2B == psu_type) ||
-			(PSU_TYPE_DC_48V_ACBEL_F2B == psu_type) ||
-			(PSU_TYPE_AC_BELPOWER_F2B == psu_type)) {
-			return ONLP_FAN_STATUS_F2B;
-		} else {
-			return ONLP_FAN_STATUS_B2F;
-		}
+	if((PSU_TYPE_AC_ACBEL_F2B == psu_type) ||
+	   (PSU_TYPE_DC_48V_ACBEL_F2B == psu_type) ||
+	   (PSU_TYPE_AC_BELPOWER_F2B == psu_type)){
+		return ONLP_FAN_STATUS_F2B;
+	} else if((PSU_TYPE_AC_ACBEL_B2F == psu_type) ||
+		  (PSU_TYPE_DC_48V_ACBEL_B2F == psu_type) ||
+		  (PSU_TYPE_AC_BELPOWER_B2F == psu_type)){
+		return ONLP_FAN_STATUS_B2F;
+	} else {
+		return 0;
 	}
 
-	return 0;
 }
 
 static int _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
@@ -207,7 +200,7 @@ static int _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 
 	/* get fan direction
 	 */
-	info->status |= _onlp_get_fan_direction_on_psu();
+	info->status |= _onlp_get_fan_direction_on_psu(pid);
 
 	/* get fan fault status
  	 */
