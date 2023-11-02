@@ -36,6 +36,10 @@
 #define MODULE_TXDISABLE_FORMAT         "/sys/bus/i2c/devices/%d-00%d/module_tx_disable_%d"
 #define MODULE_RESET_FORMAT             "/sys/bus/i2c/devices/%d-00%d/module_reset_%d"
 #define MODULE_LPMODE_FORMAT            "/sys/bus/i2c/devices/%d-00%d/module_lpmode_%d"
+/* QSFP device address of eeprom */
+#define PORT_EEPROM_DEVADDR             0x50
+/* QSFP tx disable offset */
+#define QSFP_EEPROM_OFFSET_TXDIS        0x56
 
 int sfp_map_bus[] ={18, 19, 20, 21, 22, 23};
 
@@ -228,19 +232,42 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int addr = 60;
     int bus  = 3;
+    int present = 0;
+    int sfp_port = 0;
 
     switch(control)
     {
         case ONLP_SFP_CONTROL_TX_DISABLE:
         {
-                if(port>=48 && port<=51) {
-                    if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
-                        AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
-                        return ONLP_STATUS_E_INTERNAL;
-                     }
-                     return  ONLP_STATUS_OK;
-                 }
-                 return ONLP_STATUS_E_UNSUPPORTED;               
+            if(port>=48 && port<=51) {
+                if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, bus, addr, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+
+                return  ONLP_STATUS_OK;
+            }
+
+            if(port>=52 && port<=53)
+            {
+                present = onlp_sfpi_is_present(port);
+
+                if(present == 1)
+                {
+                    /* txdis valid bit(bit0-bit3), xxxx 1111 */
+                    value = value&0xf;
+                    sfp_port = port - 48;
+                    onlp_sfpi_dev_writeb(sfp_port, PORT_EEPROM_DEVADDR, QSFP_EEPROM_OFFSET_TXDIS, value);
+
+                    return ONLP_STATUS_OK;
+                }
+                else
+                {
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+            }
+
+            return ONLP_STATUS_E_UNSUPPORTED;
         }
         case ONLP_SFP_CONTROL_RESET:
         {
@@ -276,6 +303,9 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int addr = 60;
     int bus  = 3;
+    int present = 0;
+    int tx_dis = 0;
+    int sfp_port = 0;
 
     switch(control)
     {
@@ -310,8 +340,31 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                     AIM_LOG_ERROR("Unable to read tx_disabled status from port(%d)\r\n", port);
                     return  ONLP_STATUS_E_INTERNAL;
                 }
+
                 return  ONLP_STATUS_OK;
             }
+
+            if(port>=52 && port<=53)
+            {
+                present = onlp_sfpi_is_present(port);
+
+                if(present == 1)
+                {
+                    sfp_port = port - 48;
+                    /* txdis valid bit(bit0-bit3), xxxx 1111 */
+                    tx_dis =onlp_sfpi_dev_readb(sfp_port, PORT_EEPROM_DEVADDR, QSFP_EEPROM_OFFSET_TXDIS);
+
+                    *value = tx_dis;
+
+                    return ONLP_STATUS_OK;
+
+                }
+                else
+                {
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+            }
+
             return  ONLP_STATUS_E_UNSUPPORTED;
         }
         case ONLP_SFP_CONTROL_RESET: 
