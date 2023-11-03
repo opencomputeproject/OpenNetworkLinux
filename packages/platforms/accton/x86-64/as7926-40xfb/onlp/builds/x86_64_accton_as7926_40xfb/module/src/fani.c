@@ -36,7 +36,8 @@ enum fan_id {
     FAN_1_ON_PSU_2,
 };
 
-#define MAX_FAN_SPEED 18000
+#define MAX_FAN_FRONT_SPEED 18225
+#define MAX_FAN_REAR_SPEED  13950
 #define MAX_PSU_FAN_SPEED 25500
 
 #define CHASSIS_FAN_INFO(fid)        \
@@ -97,6 +98,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
     char *fandir = NULL;
     int   len = 0;
     int   value;
+    int   target_speed = MAX_FAN_FRONT_SPEED;
 
     /* get fan present status
      */
@@ -142,6 +144,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
      */
     if (info->rpm > value) {
         info->rpm = value;
+        target_speed = MAX_FAN_REAR_SPEED;
     }
 
     /* get fan fault status (turn on when any one fails)
@@ -152,7 +155,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 
     /* get speed percentage from rpm
      */
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+    info->percentage = (info->rpm * 100)/target_speed;
 
     return ONLP_STATUS_OK;
 }
@@ -191,7 +194,7 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
     /* get speed percentage from rpm
      */
     info->rpm = val;
-    info->percentage = (info->rpm * 100)/MAX_FAN_SPEED;
+    info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
 
     return ONLP_STATUS_OK;
 }

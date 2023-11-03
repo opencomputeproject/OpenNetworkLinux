@@ -313,8 +313,9 @@ as4630_54te_psu_data *as4630_54te_psu_update_device(struct device *dev)
 				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
 			}
 
-			if (strncmp(data->model_name, "YM-1151D-A03R", MAX_MODEL_NAME) == 0)
-				serial_offset = 0x2E; /* YM-1151D-A03R */
+			if (strncmp(data->model_name, "YM-1151D-A03R", MAX_MODEL_NAME) == 0 ||
+				strncmp(data->model_name, "YM-1151F-A01R", MAX_MODEL_NAME) == 0)
+				serial_offset = 0x2E; /* YM-1151D-A03R or YM-1151F-A01R */
 			else
 				serial_offset = 0x35; /* YM-1151D-A02R */
 

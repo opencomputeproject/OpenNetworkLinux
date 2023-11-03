@@ -134,7 +134,7 @@ class OnlPlatform_x86_64_accton_as7326_56x_r0(OnlPlatformAccton,
             bus = sfp_map[port-1]
             self.new_i2c_device('optoe1', 0x50, bus)
 
-        for port in range(1, len(sfp_map)):
+        for port in range(1, len(sfp_map)+1):
             bus = sfp_map[port-1]
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, bus), shell=True)
 

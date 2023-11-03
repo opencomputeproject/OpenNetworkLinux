@@ -30,7 +30,7 @@
 #include "x86_64_accton_as7926_40xfb_log.h"
 
 #define CHASSIS_FAN_COUNT     5
-#define CHASSIS_THERMAL_COUNT 12
+#define CHASSIS_THERMAL_COUNT 11
 #define CHASSIS_LED_COUNT     4
 #define CHASSIS_PSU_COUNT     2
 
@@ -39,7 +39,7 @@
 
 #define PSU_SYSFS_PATH "/sys/devices/platform/as7926_40xfb_psu/"
 #define FAN_BOARD_PATH "/sys/devices/platform/as7926_40xfb_fan/"
-#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-0/0-0057/eeprom"
+#define IDPROM_PATH "/sys/devices/platform/as7926_40xfb_sys/eeprom"
 
 enum onlp_led_id
 {

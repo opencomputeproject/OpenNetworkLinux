@@ -89,15 +89,31 @@ psu_ym2651y_info_get(onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_VOUT;
     }
 
+    if (psu_ym2651y_pmbus_info_get(index, "psu_v_in", &val) == 0) {
+        info->mvin = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+    }
+
     if (psu_ym2651y_pmbus_info_get(index, "psu_i_out", &val) == 0) {
         info->miout = val;
         info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    if (psu_ym2651y_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+        info->miin = val;
+        info->caps |= ONLP_PSU_CAPS_IIN;
     }
 
     if (psu_ym2651y_pmbus_info_get(index, "psu_p_out", &val) == 0) {
         info->mpout = val;
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
+
+    if (psu_ym2651y_pmbus_info_get(index, "psu_p_in", &val) == 0) {
+        info->mpin = val;
+        info->caps |= ONLP_PSU_CAPS_PIN;
+    }
+
     psu_serial_number_get(index, info->serial, sizeof(info->serial));
 
     return ONLP_STATUS_OK;
@@ -155,11 +171,10 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     /* Get PSU type
      */
     psu_type = get_psu_type(index, info->model, sizeof(info->model));
-
     switch (psu_type) {
         case PSU_TYPE_AC_F2B:
         case PSU_TYPE_AC_B2F:
-           info->caps = ONLP_PSU_CAPS_AC;
+            info->caps = ONLP_PSU_CAPS_AC;
             ret = psu_ym2651y_info_get(info);
             break;
         case PSU_TYPE_DC_48V_F2B:

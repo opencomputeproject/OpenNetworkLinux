@@ -70,10 +70,22 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     int i;
     onlp_oid_t* e = table;
     memset(table, 0, max*sizeof(onlp_oid_t));
+    int pcb_id = 0;
 
-    /* 8 Thermal sensors on the chassis */
-    for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
-        *e++ = ONLP_THERMAL_ID_CREATE(i);
+    pcb_id = get_pcb_id();
+    if (pcb_id == 1)
+    {
+        /* 9 Thermal sensors on the chassis */
+        for (i = 1; i <= CHASSIS_THERMAL_COUNT_R02; i++) {
+            *e++ = ONLP_THERMAL_ID_CREATE(i);
+        }
+    }
+    else
+    {
+        /* 7 Thermal sensors on the chassis */
+        for (i = 1; i <= CHASSIS_THERMAL_COUNT; i++) {
+            *e++ = ONLP_THERMAL_ID_CREATE(i);
+        }
     }
 
     /* 5 LEDs on the chassis */

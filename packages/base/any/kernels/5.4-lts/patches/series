@@ -3,3 +3,6 @@
 #0003-drivers-net-ethernet-broadcom-tg3.patch
 #driver-ixgbe-external-phy.patch
 #driver-hwmon-max6620.patch
+0004-driver-regmap_i2c-support-smbus-16-bit-reg.patch
+0005-enable-kernel-spcr.patch
+driver-add-intel-imc-smbus.patch
