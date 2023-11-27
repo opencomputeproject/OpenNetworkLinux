@@ -31,7 +31,6 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
-#include "netberg_aurora_750_i2c_cpld.h"
 
 /* header file for i2c cpld driver of Netberg Aurora 750
  *
@@ -114,6 +113,8 @@ enum LED_GREEN {
 #define CPLD_QSFP_LED_BASE_REG          0x80
 #define CPLD_QSFP_LED_BLINK_BASE_REG    0x90
 #define CPLD_RTMR_RESET_REG    0x4B
+#define CPLD_ROV_STATUS_REG    0x4C
+
 
 /* bit definition for register value */
 enum CPLD_QSFP_PORT_STATUS_BITS {
