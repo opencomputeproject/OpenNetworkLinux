@@ -113,6 +113,8 @@
 #define PSU_IOUT_OFFSET         0x8C
 #define PSU_POUT_OFFSET         0x96
 #define PSU_PIN_OFFSET          0x97
+#define PSU_VIN_OFFSET          0x88
+#define PSU_IIN_OFFSET          0x89
 
 #define PSU_STATE_REG           0x25
 #define PSU1_PRESENT_OFFSET     0x04
@@ -286,6 +288,10 @@ int psu_iout_get(onlp_psu_info_t* info, int i2c_bus);
 int psu_pout_get(onlp_psu_info_t* info, int i2c_bus);
 
 int psu_pin_get(onlp_psu_info_t* info, int i2c_bus);
+
+int psu_vin_get(onlp_psu_info_t* info, int i2c_bus);
+
+int psu_iin_get(onlp_psu_info_t* info, int i2c_bus);
 
 int psu_eeprom_get(onlp_psu_info_t* info, int id);
 

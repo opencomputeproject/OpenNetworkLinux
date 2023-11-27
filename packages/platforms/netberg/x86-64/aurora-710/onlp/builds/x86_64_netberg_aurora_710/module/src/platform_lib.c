@@ -220,6 +220,49 @@ psu_vout_get(onlp_psu_info_t* info, int i2c_bus)
 }
 
 int 
+psu_vin_get(onlp_psu_info_t* info, int i2c_bus)
+{
+    int value;
+    unsigned int y_value = 0;
+    unsigned char n_value = 0;
+    unsigned int temp = 0;
+    char result[32];
+    memset(result, 0, sizeof(result));
+    double dvalue;   
+ 
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    value = onlp_i2c_readw(i2c_bus, PSU_REG, PSU_VIN_OFFSET, ONLP_I2C_F_FORCE);
+    if (value < 0) {
+        return ONLP_STATUS_E_INTERNAL; 
+    }
+    
+    y_value = (value & 0x07FF);
+    if ((value & 0x8000)&&(y_value))
+    {
+        n_value = 0xF0 + (((value) >> 11) & 0x0F);
+        n_value = (~n_value) +1;
+        temp = (unsigned int)(1<<n_value);
+        if (temp) {           
+            snprintf(result, sizeof(result), "%d.%04d", y_value/temp, ((y_value%temp)*10000)/temp);
+        }
+    } else {
+        n_value = (((value) >> 11) & 0x0F);
+        snprintf(result, sizeof(result), "%d", (y_value*(1<<n_value)));
+    }
+    
+    dvalue = atof((const char *)result);
+    if (dvalue > 0.0) {
+        info->caps |= ONLP_PSU_CAPS_VIN;
+        info->miout = (int)(dvalue * 1000);
+    }
+    
+    return ONLP_STATUS_OK;
+}
+
+int 
 psu_iout_get(onlp_psu_info_t* info, int i2c_bus)
 {
     int value;
@@ -261,6 +304,51 @@ psu_iout_get(onlp_psu_info_t* info, int i2c_bus)
     
     return ONLP_STATUS_OK;
 }
+
+int 
+psu_iin_get(onlp_psu_info_t* info, int i2c_bus)
+{
+    int value;
+    unsigned int y_value = 0;
+    unsigned char n_value = 0;
+    unsigned int temp = 0;
+    char result[32];
+    memset(result, 0, sizeof(result));
+    double dvalue;   
+ 
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    value = onlp_i2c_readw(i2c_bus, PSU_REG, PSU_IIN_OFFSET, ONLP_I2C_F_FORCE);
+    if (value < 0) {
+        return ONLP_STATUS_E_INTERNAL; 
+    }
+    
+    y_value = (value & 0x07FF);
+    if ((value & 0x8000)&&(y_value))
+    {
+        n_value = 0xF0 + (((value) >> 11) & 0x0F);
+        n_value = (~n_value) +1;
+        temp = (unsigned int)(1<<n_value);
+        if (temp) {           
+            snprintf(result, sizeof(result), "%d.%04d", y_value/temp, ((y_value%temp)*10000)/temp);
+        }
+    } else {
+        n_value = (((value) >> 11) & 0x0F);
+        snprintf(result, sizeof(result), "%d", (y_value*(1<<n_value)));
+    }
+    
+    dvalue = atof((const char *)result);
+    if (dvalue > 0.0) {
+        info->caps |= ONLP_PSU_CAPS_IIN;
+        info->miout = (int)(dvalue * 1000);
+    }
+    
+    return ONLP_STATUS_OK;
+}
+
+
 
 int 
 psu_pout_get(onlp_psu_info_t* info, int i2c_bus)

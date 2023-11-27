@@ -133,7 +133,17 @@ psu_status_info_get(int id, onlp_psu_info_t *info)
     if ((rc = psu_vout_get(info, i2c_bus)) != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    
+
+    /* Get power vin status */
+    if ((rc = psu_vin_get(info, i2c_bus)) != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+ 
+    /* Get power iin status */
+    if ((rc = psu_iin_get(info, i2c_bus)) != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+ 
     return ONLP_STATUS_OK;
 }
 
