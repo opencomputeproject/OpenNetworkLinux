@@ -256,7 +256,7 @@ psu_vin_get(onlp_psu_info_t* info, int i2c_bus)
     dvalue = atof((const char *)result);
     if (dvalue > 0.0) {
         info->caps |= ONLP_PSU_CAPS_VIN;
-        info->miout = (int)(dvalue * 1000);
+        info->mvin = (int)(dvalue * 1000);
     }
     
     return ONLP_STATUS_OK;
@@ -342,7 +342,7 @@ psu_iin_get(onlp_psu_info_t* info, int i2c_bus)
     dvalue = atof((const char *)result);
     if (dvalue > 0.0) {
         info->caps |= ONLP_PSU_CAPS_IIN;
-        info->miout = (int)(dvalue * 1000);
+        info->miin = (int)(dvalue * 1000);
     }
     
     return ONLP_STATUS_OK;
