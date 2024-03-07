@@ -77,6 +77,7 @@ static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 
 #define TRANSCEIVER_PRESENT_ATTR_ID(index) MODULE_PRESENT_##index
 #define TRANSCEIVER_RESET_ATTR_ID(index) MODULE_RESET_##index
+#define TRANSCEIVER_LPMODE_ATTR_ID(index) MODULE_LPMODE_##index
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index) MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index) MODULE_RXLOS_##index
 
@@ -138,6 +139,32 @@ enum as7946_30xb_cpld_sysfs_attributes {
 	TRANSCEIVER_RESET_ATTR_ID(24),
 	TRANSCEIVER_RESET_ATTR_ID(25),
 	TRANSCEIVER_RESET_ATTR_ID(26),
+	TRANSCEIVER_LPMODE_ATTR_ID(1),
+	TRANSCEIVER_LPMODE_ATTR_ID(2),
+	TRANSCEIVER_LPMODE_ATTR_ID(3),
+	TRANSCEIVER_LPMODE_ATTR_ID(4),
+	TRANSCEIVER_LPMODE_ATTR_ID(5),
+	TRANSCEIVER_LPMODE_ATTR_ID(6),
+	TRANSCEIVER_LPMODE_ATTR_ID(7),
+	TRANSCEIVER_LPMODE_ATTR_ID(8),
+	TRANSCEIVER_LPMODE_ATTR_ID(9),
+	TRANSCEIVER_LPMODE_ATTR_ID(10),
+	TRANSCEIVER_LPMODE_ATTR_ID(11),
+	TRANSCEIVER_LPMODE_ATTR_ID(12),
+	TRANSCEIVER_LPMODE_ATTR_ID(13),
+	TRANSCEIVER_LPMODE_ATTR_ID(14),
+	TRANSCEIVER_LPMODE_ATTR_ID(15),
+	TRANSCEIVER_LPMODE_ATTR_ID(16),
+	TRANSCEIVER_LPMODE_ATTR_ID(17),
+	TRANSCEIVER_LPMODE_ATTR_ID(18),
+	TRANSCEIVER_LPMODE_ATTR_ID(19),
+	TRANSCEIVER_LPMODE_ATTR_ID(20),
+	TRANSCEIVER_LPMODE_ATTR_ID(21),
+	TRANSCEIVER_LPMODE_ATTR_ID(22),
+	TRANSCEIVER_LPMODE_ATTR_ID(23),
+	TRANSCEIVER_LPMODE_ATTR_ID(24),
+	TRANSCEIVER_LPMODE_ATTR_ID(25),
+	TRANSCEIVER_LPMODE_ATTR_ID(26),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(27),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(28),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(29),
@@ -159,20 +186,24 @@ enum as7946_30xb_cpld_sysfs_attributes {
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, \
 								NULL, MODULE_PRESENT_##index); \
 	static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR, \
-								show_status, set_control, MODULE_RESET_##index)
+								show_status, set_control, MODULE_RESET_##index); \
+	static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
+								show_status, set_control, MODULE_LPMODE_##index);
 #define DECLARE_QSFP28_TRANSCEIVER_ATTR(index)  \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
-	&sensor_dev_attr_module_reset_##index.dev_attr.attr
-
+	&sensor_dev_attr_module_reset_##index.dev_attr.attr, \
+	&sensor_dev_attr_module_lpmode_##index.dev_attr.attr
 #define DECLARE_QSFPDD_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, \
 								show_status, NULL, MODULE_PRESENT_##index); \
 	static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR, \
-								show_status, set_control, MODULE_RESET_##index)
+								show_status, set_control, MODULE_RESET_##index); \
+	static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
+								show_status, set_control, MODULE_LPMODE_##index)
 #define DECLARE_QSFPDD_TRANSCEIVER_ATTR(index) \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
-	&sensor_dev_attr_module_reset_##index.dev_attr.attr
-
+	&sensor_dev_attr_module_reset_##index.dev_attr.attr, \
+	&sensor_dev_attr_module_lpmode_##index.dev_attr.attr
 /* sfp transceiver attributes */
 #define DECLARE_SFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, \
@@ -379,6 +410,26 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		reg  = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_25);
 		break;
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		invert=0;
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_16:
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
+		invert = 0;
+		break;
+	case MODULE_LPMODE_17 ... MODULE_LPMODE_24:
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_17);
+		invert = 0;
+		break;
+	case MODULE_LPMODE_25 ... MODULE_LPMODE_26:
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_25);
+		invert = 0;
+		break;
 	case MODULE_TXDISABLE_27 ... MODULE_TXDISABLE_30:
 		reg  = 0xA;
 		mask = 0x1 << (attr->index - MODULE_TXDISABLE_27);
@@ -533,11 +584,11 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct as7946_30xb_cpld_data *data = i2c_get_clientdata(client);
-	long reset;
+	long value;
 	int status, bus, addr;
-	u8 reg = 0, mask = 0;
+	u8 reg = 0, mask = 0, invert = 1;
 
-	status = kstrtol(buf, 10, &reset);
+	status = kstrtol(buf, 10, &value);
 	if (status)
 		return status;
 
@@ -545,18 +596,42 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	case MODULE_RESET_1 ... MODULE_RESET_8:/*QSFP*/
 		reg  = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_1);
+		invert = 1;
 		break;
 	case MODULE_RESET_9 ... MODULE_RESET_16:/*QSFP*/
 		reg  = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_9);
+		invert = 1;
 		break;
 	case MODULE_RESET_17 ... MODULE_RESET_24:/*QSFP*/
 		reg  = 0x8;
 		mask = 0x1 << (attr->index - MODULE_RESET_17);
+		invert = 1;
 		break;
 	case MODULE_RESET_25 ... MODULE_RESET_26:/*QSFP*/
 		reg  = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_25);
+		invert = 1;
+		break;
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:/*QSFP*/
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		invert = 0;
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_16:/*QSFP*/
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
+		invert = 0;
+		break;
+	case MODULE_LPMODE_17 ... MODULE_LPMODE_24:/*QSFP*/
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_17);
+		invert = 0;
+		break;
+	case MODULE_LPMODE_25 ... MODULE_LPMODE_26:/*QSFP*/
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_25);
+		invert = 0;
 		break;
 	default:
 		return -ENXIO;
@@ -564,13 +639,13 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 
 	mutex_lock(&data->update_lock);
 	switch(data->index) {
-	/* Port 1-16 reset status: read from i2c bus number '12'
+	/* Port 1-16 reset and lpmode status: read from i2c bus number '12'
 		and CPLD slave address 0x61 */
 	case as7946_30xb_cpld1:
 		bus  = 12;
 		addr = 0x61;
 		break;
-	/* Port 17-30 reset status: read from i2c bus number '13'
+	/* Port 17-30 reset and lpmode status: read from i2c bus number '13'
 		and CPLD slave address 0x62 */
 	case as7946_30xb_cpld2:
 		bus  = 13;
@@ -585,11 +660,18 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	if (unlikely(status < 0))
 		goto exit;
 
-	/* Update reset status */
-	if (reset)
-		status &= ~mask;
+	/* Update reset and lpmode status */
+	if (invert)
+		if (value)
+			status &= ~mask;
+		else
+			status |= mask;
 	else
-		status |= mask;
+		if (value)
+			status |= mask;
+		else
+			status &= ~mask;
+
 
 	status = as7946_30xb_cpld_write(bus, addr, reg, status);
 	if (unlikely(status < 0))
