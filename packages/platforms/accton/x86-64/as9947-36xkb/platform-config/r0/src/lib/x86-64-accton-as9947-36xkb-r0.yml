@@ -1,0 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for AS9947
+#
+######################################################################
+
+x86-64-accton-as9947-36xkb-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-5-4
+
+    args: >-
+      nopat
+      console=ttyS0,115200n8
+      intel_iommu=off
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
