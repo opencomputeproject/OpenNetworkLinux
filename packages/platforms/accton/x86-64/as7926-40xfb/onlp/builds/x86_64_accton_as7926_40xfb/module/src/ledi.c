@@ -78,7 +78,7 @@ led_light_mode_map_t led_map[] = {
 {LED_LOC,  LED_MODE_OFF,   ONLP_LED_MODE_OFF},
 {LED_LOC,  LED_MODE_RED,   ONLP_LED_MODE_RED},
 {LED_LOC,  LED_MODE_GREEN, ONLP_LED_MODE_GREEN},
-{LED_LOC,  LED_MODE_GREEN_BLINKING, ONLP_LED_MODE_GREEN_BLINKING},
+{LED_LOC,  LED_MODE_BLUE_BLINKING, ONLP_LED_MODE_BLUE_BLINKING},
 };
 
 static char *leds[] = { /* must map with onlp_led_id */
@@ -112,7 +112,7 @@ static onlp_led_info_t linfo[] = {
         { ONLP_LED_ID_CREATE(LED_LOC), "Chassis LED 4 (LOC LED)", 0, {0} },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_RED |
-        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_GREEN_BLINKING, 0, 0,
+        ONLP_LED_CAPS_GREEN | ONLP_LED_CAPS_BLUE_BLINKING, 0, 0,
     }
 };
 
