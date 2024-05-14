@@ -26,39 +26,39 @@
 #include <onlp/platformi/sfpi.h>
 #include <onlplib/i2c.h>
 #include <onlplib/file.h>
-#include "x86_64_accton_as7535_28xb_int.h"
-#include "x86_64_accton_as7535_28xb_log.h"
+#include "x86_64_accton_as9817_64_int.h"
+#include "x86_64_accton_as9817_64_log.h"
 
 #define VALIDATE_SFP(_port) \
     do { \
-        if (_port < 4 || _port > 27) \
+        if (_port < 65 || _port > 66) \
             return ONLP_STATUS_E_UNSUPPORTED; \
     } while(0)
 
 #define VALIDATE_QSFP(_port) \
     do { \
-        if (_port < 0 || _port > 3) \
+        if (_port < 1 || _port > 64 ) \
             return ONLP_STATUS_E_UNSUPPORTED; \
     } while(0)
 
-#define PORT_EEPROM_FORMAT         "/sys/bus/i2c/devices/%d-0050/eeprom"
-#define MODULE_PRESENT_FORMAT      "/sys/bus/i2c/devices/12-0061/module_present_%d"
-#define MODULE_RXLOS_FORMAT        "/sys/bus/i2c/devices/12-0061/module_rx_los_%d"
-#define MODULE_TXFAULT_FORMAT      "/sys/bus/i2c/devices/12-0061/module_tx_fault_%d"
-#define MODULE_TXDISABLE_FORMAT    "/sys/bus/i2c/devices/12-0061/module_tx_disable_%d"
-#define MODULE_RESET_FORMAT        "/sys/bus/i2c/devices/12-0061/module_reset_%d"
-#define MODULE_LPMODE_FORMAT       "/sys/bus/i2c/devices/11-0060/module_lpmode_%d"
-#define MODULE_PRESENT_ALL_ATTR    "/sys/bus/i2c/devices/12-0061/module_present_all"
-#define MODULE_RXLOS_ALL_ATTR      "/sys/bus/i2c/devices/12-0061/module_rx_los_all"
+#define MODULE_EEPROM_FORMAT       "/sys/bus/i2c/devices/%d-0050/eeprom"
+#define MODULE_PRESENT_FORMAT      "/sys/devices/platform/as9817_64_fpga/module_present_%d"
+#define MODULE_RXLOS_FORMAT        "/sys/devices/platform/as9817_64_fpga/module_rx_los_%d"
+#define MODULE_TXFAULT_FORMAT      "/sys/devices/platform/as9817_64_fpga/module_tx_fault_%d"
+#define MODULE_TXDISABLE_FORMAT    "/sys/devices/platform/as9817_64_fpga/module_tx_disable_%d"
+#define MODULE_RESET_FORMAT        "/sys/devices/platform/as9817_64_fpga/module_reset_%d"
+#define MODULE_LPMODE_FORMAT       "/sys/devices/platform/as9817_64_fpga/module_lp_mode_%d"
 
-#define NUM_OF_SFP_PORT 28
+#define NUM_OF_SFP_PORT 66
 static const int port_bus_index[NUM_OF_SFP_PORT] = {
-    23, 21, 24, 22, 25, 26, 27, 28, 29, 30,
-    31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48
+     1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+    33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+    49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+    65, 66
 };
 
-#define PORT_BUS_INDEX(port) (port_bus_index[port])
+#define PORT_BUS_INDEX(port) (port_bus_index[port-1])
 
 /************************************************************
  *
@@ -76,11 +76,11 @@ int
 onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 {
     /*
-     * Ports {0, 54}
+     * Ports {1, 66}
      */
     int p;
 
-    for(p = 0; p < NUM_OF_SFP_PORT; p++) {
+    for(p = 1; p <= NUM_OF_SFP_PORT; p++) {
         AIM_BITMAP_SET(bmap, p);
     }
 
@@ -97,98 +97,12 @@ onlp_sfpi_is_present(int port)
      */
     int present;
 
-    if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, (port+1)) < 0) {
+    if (onlp_file_read_int(&present, MODULE_PRESENT_FORMAT, port) < 0) {
         AIM_LOG_ERROR("Unable to read present status from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
 
     return present;
-}
-
-int
-onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
-{
-    uint32_t bytes[4];
-    FILE* fp;
-
-    /* Read present status of port 0 ~ 27 */
-    int count  = 0;
-
-    fp = fopen(MODULE_PRESENT_ALL_ATTR, "r");
-    if(fp == NULL) {
-        AIM_LOG_ERROR("Unable to open the module_present_all device file of CPLD");
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    count = fscanf(fp, "%x %x %x %x", bytes, bytes+1, bytes+2, bytes+3);
-    fclose(fp);
-
-    if(count != AIM_ARRAYSIZE(bytes)) {
-        /* Likely a CPLD read timeout. */
-        AIM_LOG_ERROR("Unable to read all fields the module_present_all device file of CPLD");
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    /* Mask out non-existant QSFP ports */
-    bytes[3] &= 0xF;
-
-
-    /* Convert to 64 bit integer in port order */
-    int i = 0;
-    uint64_t presence_all = 0 ;
-    for(i = 3; i >= 0; i--) {
-        presence_all <<= 8;
-        presence_all |= bytes[i];
-    }
-
-    /* Populate bitmap */
-    for(i = 0; presence_all; i++) {
-        AIM_BITMAP_MOD(dst, i, (presence_all & 1));
-        presence_all >>= 1;
-    }
-
-    return ONLP_STATUS_OK;
-}
-
-int
-onlp_sfpi_rx_los_bitmap_get(onlp_sfp_bitmap_t* dst)
-{
-    uint32_t bytes[4];
-    FILE* fp;
-
-    /* Read rxlos status of port 0 ~ 27 */
-    int count  = 0;
-
-    fp = fopen(MODULE_RXLOS_ALL_ATTR, "r");
-    if(fp == NULL) {
-        AIM_LOG_ERROR("Unable to open the module_rx_los_all device file of CPLD");
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    count = fscanf(fp, "%x %x %x %x", bytes, bytes+1, bytes+2, bytes+3);
-    fclose(fp);
-    if(count != AIM_ARRAYSIZE(bytes)) {
-        /* Likely a CPLD read timeout. */
-        AIM_LOG_ERROR("Unable to read all fields from the module_rx_los_all device file of CPLD");
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    /* Convert to 32 bit integer in port order */
-    AIM_BITMAP_CLR_ALL(dst);
-    int i = 0;
-    uint64_t rx_los_all = 0 ;
-    for(i = 3; i >= 0; i--) {
-        rx_los_all <<= 8;
-        rx_los_all |= bytes[i];
-    }
-
-    /* Populate bitmap */
-    for(i = 0; rx_los_all; i++) {
-        AIM_BITMAP_MOD(dst, i, (rx_los_all & 1));
-        rx_los_all >>= 1;
-    }
-
-    return ONLP_STATUS_OK;
 }
 
 int
@@ -203,7 +117,7 @@ onlp_sfpi_eeprom_read(int port, uint8_t data[256])
     int size = 0;
     memset(data, 0, 256);
 
-    if(onlp_file_read(data, 256, &size, PORT_EEPROM_FORMAT, PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) {
+    if(onlp_file_read(data, 256, &size, MODULE_EEPROM_FORMAT, PORT_BUS_INDEX(port)) != ONLP_STATUS_OK) {
         AIM_LOG_ERROR("Unable to read eeprom from port(%d)\r\n", port);
         return ONLP_STATUS_E_INTERNAL;
     }
@@ -222,7 +136,7 @@ onlp_sfpi_dom_read(int port, uint8_t data[256])
     FILE* fp;
     char file[64] = {0};
 
-    sprintf(file, PORT_EEPROM_FORMAT, PORT_BUS_INDEX(port));
+    sprintf(file, MODULE_EEPROM_FORMAT, PORT_BUS_INDEX(port));
     fp = fopen(file, "r");
     if(fp == NULL) {
         AIM_LOG_ERROR("Unable to open the eeprom device file of port(%d)", port);
@@ -280,33 +194,32 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
     case ONLP_SFP_CONTROL_TX_DISABLE: {
         VALIDATE_SFP(port);
 
-        if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, (port+1)) < 0) {
+        if (onlp_file_write_int(value, MODULE_TXDISABLE_FORMAT, port) < 0) {
             AIM_LOG_ERROR("Unable to set tx_disable status to port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
-        else {
-            return ONLP_STATUS_OK;
-        }
-        break;
+
+        return ONLP_STATUS_OK;
     }
-    case ONLP_SFP_CONTROL_RESET: {
+    case ONLP_SFP_CONTROL_RESET_STATE: {
         VALIDATE_QSFP(port);
 
-        if (onlp_file_write_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+        if (onlp_file_write_int(value, MODULE_RESET_FORMAT, port) < 0) {
             AIM_LOG_ERROR("Unable to write reset status to port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
+
+        return ONLP_STATUS_OK;
     }
     case ONLP_SFP_CONTROL_LP_MODE: {
         VALIDATE_QSFP(port);
 
-        if (onlp_file_write_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
-            AIM_LOG_ERROR("Unable to write lp mode status to port(%d)\r\n", port);
+        if (onlp_file_write_int(value, MODULE_LPMODE_FORMAT, port) < 0) {
+            AIM_LOG_ERROR("Unable to write reset status to port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
-        else {
-            return ONLP_STATUS_OK;
-        }
+
+        return ONLP_STATUS_OK;
     }
     default:
         break;
@@ -320,11 +233,12 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     switch(control) {
     case ONLP_SFP_CONTROL_RX_LOS: {
-        VALIDATE_SFP(port);
-
-        if (onlp_file_read_int(value, MODULE_RXLOS_FORMAT, (port+1)) < 0) {
-            AIM_LOG_ERROR("Unable to read rx_loss status from port(%d)\r\n", port);
-            return ONLP_STATUS_E_INTERNAL;
+        *value = 0;
+        if (port >= 65 && port <= 66) {
+            if (onlp_file_read_int(value, MODULE_RXLOS_FORMAT, port) < 0) {
+                AIM_LOG_ERROR("Unable to read rx_loss status from port(%d)\r\n", port);
+                return ONLP_STATUS_E_INTERNAL;
+            }
         }
 
         return ONLP_STATUS_OK;
@@ -333,7 +247,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     case ONLP_SFP_CONTROL_TX_FAULT: {
         VALIDATE_SFP(port);
 
-        if (onlp_file_read_int(value, MODULE_TXFAULT_FORMAT, (port+1)) < 0) {
+        if (onlp_file_read_int(value, MODULE_TXFAULT_FORMAT, port) < 0) {
             AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
@@ -344,17 +258,17 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     case ONLP_SFP_CONTROL_TX_DISABLE: {
         VALIDATE_SFP(port);
 
-        if (onlp_file_read_int(value, MODULE_TXDISABLE_FORMAT, (port+1)) < 0) {
+        if (onlp_file_read_int(value, MODULE_TXDISABLE_FORMAT, port) < 0) {
             AIM_LOG_ERROR("Unable to read tx_disabled status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
 
         return ONLP_STATUS_OK;
     }
-    case ONLP_SFP_CONTROL_RESET: {
+    case ONLP_SFP_CONTROL_RESET_STATE: {
         VALIDATE_QSFP(port);
 
-        if (onlp_file_read_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+        if (onlp_file_read_int(value, MODULE_RESET_FORMAT, port) < 0) {
             AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
@@ -364,8 +278,8 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
     case ONLP_SFP_CONTROL_LP_MODE: {
         VALIDATE_QSFP(port);
 
-        if (onlp_file_read_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
-            AIM_LOG_ERROR("Unable to read lp mode status from port(%d)\r\n", port);
+        if (onlp_file_read_int(value, MODULE_LPMODE_FORMAT, port) < 0) {
+            AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
 
@@ -377,7 +291,6 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
     return ONLP_STATUS_E_UNSUPPORTED;
 }
-
 
 int
 onlp_sfpi_denit(void)
