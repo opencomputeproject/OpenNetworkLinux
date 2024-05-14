@@ -47,6 +47,7 @@
 #define MODULE_TXFAULT_FORMAT      "/sys/bus/i2c/devices/12-0061/module_tx_fault_%d"
 #define MODULE_TXDISABLE_FORMAT    "/sys/bus/i2c/devices/12-0061/module_tx_disable_%d"
 #define MODULE_RESET_FORMAT        "/sys/bus/i2c/devices/12-0061/module_reset_%d"
+#define MODULE_LPMODE_FORMAT       "/sys/bus/i2c/devices/11-0060/module_lpmode_%d"
 #define MODULE_PRESENT_ALL_ATTR    "/sys/bus/i2c/devices/12-0061/module_present_all"
 #define MODULE_RXLOS_ALL_ATTR      "/sys/bus/i2c/devices/12-0061/module_rx_los_all"
 
@@ -296,6 +297,17 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             return ONLP_STATUS_E_INTERNAL;
         }
     }
+    case ONLP_SFP_CONTROL_LP_MODE: {
+        VALIDATE_QSFP(port);
+
+        if (onlp_file_write_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to write lp mode status to port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+        else {
+            return ONLP_STATUS_OK;
+        }
+    }
     default:
         break;
     }
@@ -349,12 +361,23 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         return ONLP_STATUS_OK;
     }
+    case ONLP_SFP_CONTROL_LP_MODE: {
+        VALIDATE_QSFP(port);
+
+        if (onlp_file_read_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to read lp mode status from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        return ONLP_STATUS_OK;
+    }
     default:
         break;
     }
 
     return ONLP_STATUS_E_UNSUPPORTED;
 }
+
 
 int
 onlp_sfpi_denit(void)
