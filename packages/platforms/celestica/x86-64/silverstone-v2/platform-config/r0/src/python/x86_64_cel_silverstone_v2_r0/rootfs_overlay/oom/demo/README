@@ -1,0 +1,33 @@
+December 3, 2017
+
+This directory contains OOM demo scripts (or at least one so far).
+
+gui.py is a Graphical demo of the capabilities of OOM.  It uses Tkinter,
+the de-facto standard GUI for python.  Since most network switches don't
+have graphical capabilities, gui.py will usually be run on a laptop or
+other graphics capable device, communicating over the network with a 
+switch to access the optical devices.  Here's a simple recipe:
+
+	Install OOM on the target switch.
+	   (mkdir <oom>; cd <oom>; git clone..; cd oom; setup.py install)
+	From the oom/apps directory, run the OOM JSON server.
+	   (cd <oom>/oom/apps; python oomjsonsvr.py)
+
+At this point your switch is ready to provide OOM data.
+
+	Install OOM on your graphical device.
+	   (same as the switch, tweak as necessary for Windows)
+	   (you will need python installed, and either git or 
+	    just copy the python files from the switch to your laptop)
+	Run the demo script
+	   cd <oom>/oom/demo; python gui.py -url <switch IP address>
+
+At this point the script will take a few seconds for OOM on the switch to
+inventory all the optical devices, then a graphical inventory of the switch
+will be presented, one row per device.  Left click on the line or lines
+of interest, right click to bring up a menu of sub-demos.  Select a line
+on the menu and that demo will be presented.
+
+Any problems - email don@thebollingers.org for help.
+
+If it works, email don@thebollingers.org to let him know!
