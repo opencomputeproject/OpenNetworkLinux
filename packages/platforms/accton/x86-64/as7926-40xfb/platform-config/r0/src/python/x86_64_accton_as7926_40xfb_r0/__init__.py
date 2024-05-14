@@ -66,7 +66,7 @@ def init_ipmi():
     return False
 
 class OnlPlatform_x86_64_accton_as7926_40xfb_r0(OnlPlatformAccton,
-                                              OnlPlatformPortConfig_48x1_4x10):
+                                              OnlPlatformPortConfig_40x100_13x400_2x10):
     PLATFORM='x86-64-accton-as7926-40xfb-r0'
     MODEL="AS7926-40XFB"
     SYS_OBJECT_ID=".7926.40"
