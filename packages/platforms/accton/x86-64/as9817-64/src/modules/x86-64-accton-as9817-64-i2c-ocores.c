@@ -110,9 +110,8 @@ do {                                                \
     spin_unlock(lock);                              \
 } while (0)
 
-#define SPI_BUSY_ADDR                       (0xb3320000 + 0x30)
-#define IOREMAP_SIZE                        (0x04)
-static void __iomem    *spi_busy_reg=NULL;
+void __iomem    *spi_busy_reg=NULL;
+EXPORT_SYMBOL(spi_busy_reg);
 int wait_spi(u32 mask, unsigned long timeout) {
     u32 data;
     u32 ri = 0;
@@ -941,24 +940,11 @@ static int __init ocores_i2c_as9817_64_init(void)
 
     spin_lock_init(&cpld_access_lock);
 
-    /*
-     * The register address of SPI Busy is 0x33.
-     * It can not only read one byte. It needs to read four bytes from 0x30.
-     * The value is obtained by '(ioread32(spi_busy_reg) >> 24) & 0xFF'.
-     */
-    spi_busy_reg = ioremap(SPI_BUSY_ADDR, IOREMAP_SIZE);
-    if (!spi_busy_reg) {
-        pr_err("could not remap spi_busy_reg memory\n");
-        return -ENOMEM;
-    }
-
     return 0;
 }
 static void __exit ocores_i2c_as9817_64_exit(void)
 {
     platform_driver_unregister(&ocores_i2c_driver);
-
-    iounmap(spi_busy_reg);
 }
 
 module_init(ocores_i2c_as9817_64_init);
