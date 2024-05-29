@@ -59,7 +59,8 @@ typedef enum onlp_sfp_control_flag_e {
     ONLP_SFP_CONTROL_FLAG_TX_DISABLE = (1 << 4),
     ONLP_SFP_CONTROL_FLAG_TX_DISABLE_CHANNEL = (1 << 5),
     ONLP_SFP_CONTROL_FLAG_LP_MODE = (1 << 6),
-    ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE = (1 << 7),
+    ONLP_SFP_CONTROL_FLAG_SOFT_RATE_SELECT = (1 << 7),
+    ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE = (1 << 8),
 } onlp_sfp_control_flag_t;
 /* <auto.end.enum(tag:sfp2).define> */
 
@@ -243,6 +244,7 @@ int onlp_sfp_control_flags_get(int port, uint32_t* flags);
     "TX_DISABLE", \
     "TX_DISABLE_CHANNEL", \
     "LP_MODE", \
+    "SOFT_RATE_SELECT", \
     "POWER_OVERRIDE", \
 }
 /** Enum names. */
