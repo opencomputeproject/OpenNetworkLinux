@@ -30,6 +30,7 @@
 #include <linux/ipmi.h>
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
+#include <linux/string_helpers.h>
 
 #define DRVNAME "as9817_64_psu"
 #define ACCTON_IPMI_NETFN 0x34
@@ -151,6 +152,7 @@ struct ipmi_data {
     struct ipmi_addr address;
     struct ipmi_user * user;
     int interface;
+    int pid;
 
     struct kernel_ipmi_msg tx_message;
     long tx_msgid;
@@ -418,7 +420,8 @@ const struct attribute_group *as9817_64_psu_groups[][2] = {
 /* Functions to talk to the IPMI layer */
 
 /* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface)
+static int init_ipmi_data(struct ipmi_data *ipmi, int iface, struct device *dev,
+                          int pid)
 {
     int err;
 
@@ -435,12 +438,13 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface)
     ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
 
     ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
+    ipmi->pid = dev->id;
 
     /* Create IPMI messaging interface user */
     err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
                    ipmi, &ipmi->user);
     if (err < 0) {
-        pr_err("Unable to register user with IPMI "
+        dev_err(dev, "Unable to register user with IPMI "
             "interface %d\n", ipmi->interface);
         return -EACCES;
     }
@@ -451,7 +455,8 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface)
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
                                 unsigned char *tx_data, unsigned short tx_len,
-                                unsigned char *rx_data, unsigned short rx_len)
+                                unsigned char *rx_data, unsigned short rx_len, 
+                                unsigned char pid)
 {
     int err;
 
@@ -479,37 +484,58 @@ static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 
 ipmi_timeout_err:
     err = -ETIMEDOUT;
-    pr_err("request_timeout=%x\n", err);
+    dev_err(&data->pdev[pid]->dev, "request_timeout=%x\n", err);
     return err;
 ipmi_req_err:
-    pr_err("request_settime=%x\n", err);
+    dev_err(&data->pdev[pid]->dev, "request_settime=%x\n", err);
     return err;
 addr_err:
-    pr_err("validate_addr=%x\n", err);
+    dev_err(&data->pdev[pid]->dev, "validate_addr=%x\n", err);
     return err;
 }
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
                                 unsigned char *tx_data, unsigned short tx_len,
-                                unsigned char *rx_data, unsigned short rx_len)
+                                unsigned char *rx_data, unsigned short rx_len,
+                                unsigned char pid)
 {
     int status = 0, retry = 0;
 
+    char *cmdline = kstrdup_quotable_cmdline(current, GFP_KERNEL);
+
+    int i = 0;
+    char raw_cmd[20] = "";
+    sprintf(raw_cmd, "0x%02x", cmd);
+    if(tx_len){
+        for(i = 0; i < tx_len; i++)
+            sprintf(raw_cmd + strlen(raw_cmd), " 0x%02x", tx_data[i]);
+    }
+
     for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len
+                                    , pid);
         if (unlikely(status != 0)) {
-            pr_err("ipmi_send_message_%d err status(%d)\r\n", retry, status);
+            dev_err(&data->pdev[pid]->dev, 
+                    "ipmi_send_message_%d err status(%d)[%s] raw_cmd=[%s] tx_msgid=(%02x)\r\n", 
+                    retry, status, cmdline ? cmdline : "", raw_cmd, 
+                    (int)ipmi->tx_msgid);
             continue;
         }
 
         if (unlikely(ipmi->rx_result != 0)) {
-            pr_err("ipmi_send_message_%d err result(%d)\r\n", retry, ipmi->rx_result);
+            dev_err(&data->pdev[pid]->dev, 
+                    "ipmi_send_message_%d err result(%d)[%s] raw_cmd=[%s] tx_msgid=(%02x)\r\n", 
+                    retry, ipmi->rx_result, cmdline ? cmdline : "", raw_cmd, 
+                    (int)ipmi->tx_msgid);
             continue;
         }
 
         break;
     }
+
+    if (cmdline) 
+        kfree(cmdline);
 
     return status;
 }
@@ -521,7 +547,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
     struct ipmi_data *ipmi = user_msg_data;
 
     if (msg->msgid != ipmi->tx_msgid) {
-        pr_err("Mismatch between received msgid "
+        dev_err(&data->pdev[ipmi->pid]->dev, "Mismatch between received msgid "
             "(%02x) and transmitted msgid (%02x)!\n",
             (int)msg->msgid,
             (int)ipmi->tx_msgid);
@@ -566,7 +592,7 @@ static struct as9817_64_psu_data *as9817_64_psu_update_device(struct device_attr
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
                                 data->ipmi_tx_data, 1,
                                 data->ipmi_resp[pid].status,
-                                sizeof(data->ipmi_resp[pid].status));
+                                sizeof(data->ipmi_resp[pid].status), pid);
     if (unlikely(status != 0))
         goto exit;
 
@@ -580,7 +606,7 @@ static struct as9817_64_psu_data *as9817_64_psu_update_device(struct device_attr
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
                                 data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].model,
-                                sizeof(data->ipmi_resp[pid].model) - 1);
+                                sizeof(data->ipmi_resp[pid].model) - 1, pid);
     if (unlikely(status != 0))
         goto exit;
 
@@ -594,7 +620,7 @@ static struct as9817_64_psu_data *as9817_64_psu_update_device(struct device_attr
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
                                 data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].serial,
-                                sizeof(data->ipmi_resp[pid].serial) - 1);
+                                sizeof(data->ipmi_resp[pid].serial) - 1, pid);
     if (unlikely(status != 0))
         goto exit;
 
@@ -608,7 +634,7 @@ static struct as9817_64_psu_data *as9817_64_psu_update_device(struct device_attr
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
                                 data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].fandir,
-                                sizeof(data->ipmi_resp[pid].fandir) - 1);
+                                sizeof(data->ipmi_resp[pid].fandir) - 1, pid);
     if (unlikely(status != 0))
         goto exit;
 
@@ -622,7 +648,7 @@ static struct as9817_64_psu_data *as9817_64_psu_update_device(struct device_attr
     status = ipmi_send_message(&data->ipmi, IPMI_PSU_READ_CMD,
                                 data->ipmi_tx_data, 2,
                                 data->ipmi_resp[pid].info,
-                                sizeof(data->ipmi_resp[pid].info));
+                                sizeof(data->ipmi_resp[pid].info), pid);
     if (unlikely(status != 0))
         goto exit;
 
@@ -1015,12 +1041,11 @@ static int __init as9817_64_psu_init(void)
             ret = PTR_ERR(data->pdev[i]);
             goto dev_reg_err;
         }
-    }
 
-    /* Set up IPMI interface */
-    ret = init_ipmi_data(&data->ipmi, 0);
-    if (ret) {
-        goto ipmi_err;
+        /* Set up IPMI interface */
+        ret = init_ipmi_data(&data->ipmi, 0, &data->pdev[i]->dev, i);
+        if (ret)
+            goto ipmi_err;
     }
 
     return 0;

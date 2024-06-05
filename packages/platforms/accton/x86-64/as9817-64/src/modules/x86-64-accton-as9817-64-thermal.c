@@ -31,6 +31,7 @@
 #include <linux/ipmi.h>
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
+#include <linux/string_helpers.h>
 
 #define DRVNAME "as9817_64_thermal"
 #define ACCTON_IPMI_NETFN 0x34
@@ -281,22 +282,40 @@ static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
 {
     int status = 0, retry = 0;
 
+    char *cmdline = kstrdup_quotable_cmdline(current, GFP_KERNEL);
+
+    int i = 0;
+    char raw_cmd[20] = "";
+    sprintf(raw_cmd, "0x%02x", cmd);
+    if(tx_len) {
+        for(i = 0; i < tx_len; i++)
+            sprintf(raw_cmd + strlen(raw_cmd), " 0x%02x", tx_data[i]);
+    }
+
     for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
+        status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, 
+                 rx_len);
         if (unlikely(status != 0)) {
-            dev_err(&data->pdev->dev, "ipmi cmd(%x) err status(%d)\r\n",
-                                        cmd, status);
+            dev_err(&data->pdev->dev, 
+                    "ipmi cmd(%x) err status(%d)[%s] raw_cmd=[%s]\r\n tx_msgid=(%02x)",
+                    cmd, status, cmdline ? cmdline : "", raw_cmd, 
+                    (int)ipmi->tx_msgid);
             continue;
         }
 
         if (unlikely(ipmi->rx_result != 0)) {
-            dev_err(&data->pdev->dev, "ipmi cmd(%x) err result(%d)\r\n",
-                                        cmd, ipmi->rx_result);
+            dev_err(&data->pdev->dev, 
+                    "ipmi cmd(%x) err result(%d)[%s] raw_cmd=[%s] tx_msgid=(%02x)\r\n",
+                    cmd, ipmi->rx_result, cmdline ? cmdline : "", raw_cmd, 
+                    (int)ipmi->tx_msgid);
             continue;
         }
 
         break;
     }
+
+    if (cmdline)
+        kfree(cmdline);
 
     return status;
 }
