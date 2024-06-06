@@ -29,11 +29,19 @@
 #include "x86_64_accton_as5916_54xl_int.h"
 #include "x86_64_accton_as5916_54xl_log.h"
 
+#define VALIDATE_QSFP(_port) \
+    do { \
+        if (_port < 48 || _port > 53 ) \
+            return ONLP_STATUS_E_UNSUPPORTED; \
+    } while(0)
+
 #define PORT_EEPROM_FORMAT              "/sys/devices/platform/as5916_54xl_sfp/module_eeprom_%d"
 #define MODULE_PRESENT_FORMAT		    "/sys/devices/platform/as5916_54xl_sfp/module_present_%d"
 #define MODULE_RXLOS_FORMAT             "/sys/devices/platform/as5916_54xl_sfp/module_rx_los_%d"
 #define MODULE_TXFAULT_FORMAT           "/sys/devices/platform/as5916_54xl_sfp/module_tx_fault_%d"
 #define MODULE_TXDISABLE_FORMAT         "/sys/devices/platform/as5916_54xl_sfp/module_tx_disable_%d"
+#define MODULE_LPMODE_FORMAT            "/sys/devices/platform/as5916_54xl_sfp/module_lpmode_%d"
+#define MODULE_RESET_FORMAT             "/sys/devices/platform/as5916_54xl_sfp/module_reset_%d"
 #define MODULE_PRESENT_ALL_ATTR	        "/sys/devices/platform/as5916_54xl_sfp/module_present_all"
 #define MODULE_RXLOS_ALL_ATTR           "/sys/devices/platform/as5916_54xl_sfp/module_rxlos_all"
 
@@ -210,7 +218,28 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
                 }
                 break;
             }
+        case ONLP_SFP_CONTROL_RESET_STATE: 
+            {
+                VALIDATE_QSFP(port);
 
+                if (onlp_file_write_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to write reset status to port(%d)\r\n", port);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+
+                return ONLP_STATUS_OK;
+            }
+        case ONLP_SFP_CONTROL_LP_MODE:
+            {
+                VALIDATE_QSFP(port);
+
+                if (onlp_file_write_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to write lpmode status to port(%d)\r\n", port);
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+
+                return ONLP_STATUS_OK;
+            }
         default:
             rv = ONLP_STATUS_E_UNSUPPORTED;
             break;
@@ -273,7 +302,32 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
                 }
                 break;
             }
+        case ONLP_SFP_CONTROL_RESET_STATE:
+            {
+                VALIDATE_QSFP(port);
 
+                if (onlp_file_read_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else {
+                    rv = ONLP_STATUS_OK;
+                }
+                break;
+            }
+        case ONLP_SFP_CONTROL_LP_MODE:
+            {
+                VALIDATE_QSFP(port);
+
+                if (onlp_file_read_int(value, MODULE_LPMODE_FORMAT, (port+1)) < 0) {
+                    AIM_LOG_ERROR("Unable to read lpmode status from port(%d)\r\n", port);
+                    rv = ONLP_STATUS_E_INTERNAL;
+                }
+                else {
+                    rv = ONLP_STATUS_OK;
+                }
+                break;
+            }
         default:
             rv = ONLP_STATUS_E_UNSUPPORTED;
         }
