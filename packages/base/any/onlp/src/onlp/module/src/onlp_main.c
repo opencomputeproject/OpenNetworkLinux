@@ -113,6 +113,9 @@ show_inventory__(aim_pvs_t* pvs, int database)
             if(status & ONLP_SFP_CONTROL_FLAG_LP_MODE) {
                 *cp++ = 'L';
             }
+            if(status & ONLP_SFP_CONTROL_FLAG_SOFT_RATE_SELECT) {
+                *cp++ = 'M';  
+            }
             aim_printf(pvs, "%4d  %-14s  %-6s  %-6.6s  %-5.5s  %-16.16s  %-16.16s  %16.16s\n",
                        port,
                        sff.info.module_type_name,
