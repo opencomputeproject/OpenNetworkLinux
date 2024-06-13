@@ -96,7 +96,12 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
     if (strncmp(model, "DPS-850AB-4", strlen("DPS-850AB-4")) == 0) {
         return PSU_TYPE_AC_DPS850_F2B;
     }
-
+    else if (strncmp(model, "R1CA2122A", strlen("R1CA2122A")) == 0) {
+        return PSU_TYPE_AC_R1CA2122A;
+    }
+    else if (strncmp(model, "R1CD2122A", strlen("R1CD2122A")) == 0) {
+        return PSU_TYPE_DC_R1CD2122A;
+    }
     return PSU_TYPE_UNKNOWN;
 }
 

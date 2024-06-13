@@ -148,6 +148,7 @@ psu_dps850_info_get(onlp_psu_info_t* info)
     }
 
     if (psu_dps850_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+        info->miin = val;
         info->caps |= ONLP_PSU_CAPS_IIN;
     }
 

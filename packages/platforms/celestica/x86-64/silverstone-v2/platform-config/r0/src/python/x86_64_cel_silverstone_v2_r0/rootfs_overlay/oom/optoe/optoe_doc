@@ -1,0 +1,23 @@
+optoe driver
+
+Author Don Bollinger (don@thebollingers.org)
+
+This file describes the content of the optoe directory on the OOM github repo.
+These files were prepared and submitted for inclusion in the upstream
+linux kernel version 5.11.  They were not accepted for architectural
+reasons.  The code correctly implements the functions it claims, but the
+linux kernel network maintainers do not want user space access to network
+devices, including SFP/QSFP/CMIS devices.
+
+optoe.c is the driver proper.  It logically belongs in drivers/misc/eeprom
+
+optoe.txt describes the device tree bindings.  It belongs in
+Documentation/misc-devices/optoe.txt
+
+optoe.rst describes the optoe driver in general.  It belongs in
+Documentation/misc-devices/optoe.rst
+
+Kconfig and Makefile add optoe support, updating the files with the same
+name in drivers/misc/eeprom
+
+I recommend reading optoe.rst first, then explore from there.

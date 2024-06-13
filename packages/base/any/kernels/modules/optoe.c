@@ -1103,19 +1103,6 @@ static int optoe_probe(struct i2c_client *client,
 		}
 	}
 
-	/* create the sysfs eeprom file */
-	err = sysfs_create_bin_file(&client->dev.kobj, &optoe->bin);
-	if (err)
-		goto err_struct;
-
-	optoe->attr_group = optoe_attr_group;
-
-	err = sysfs_create_group(&client->dev.kobj, &optoe->attr_group);
-	if (err) {
-		dev_err(&client->dev, "failed to create sysfs attribute group.\n");
-		goto err_struct;
-	}
-
 #ifdef EEPROM_CLASS
 	optoe->eeprom_dev = eeprom_device_register(&client->dev,
 							chip.eeprom_data);
@@ -1127,6 +1114,19 @@ static int optoe_probe(struct i2c_client *client,
 #endif
 
 	i2c_set_clientdata(client, optoe);
+
+	/* create the sysfs eeprom file */
+	err = sysfs_create_bin_file(&client->dev.kobj, &optoe->bin);
+	if (err)
+		goto err_eeprom_cleanup;
+
+	optoe->attr_group = optoe_attr_group;
+
+	err = sysfs_create_group(&client->dev.kobj, &optoe->attr_group);
+	if (err) {
+		dev_err(&client->dev, "failed to create sysfs attribute group.\n");
+		goto err_sysfs_cleanup;
+	}
 
 	dev_info(&client->dev, "%zu byte %s EEPROM, %s\n",
 		optoe->bin.size, client->name,
@@ -1141,10 +1141,11 @@ static int optoe_probe(struct i2c_client *client,
 
 	return 0;
 
-#ifdef EEPROM_CLASS
 err_sysfs_cleanup:
-	sysfs_remove_group(&client->dev.kobj, &optoe->attr_group);
 	sysfs_remove_bin_file(&client->dev.kobj, &optoe->bin);
+err_eeprom_cleanup:
+#ifdef EEPROM_CLASS
+	eeprom_device_unregister(optoe->eeprom_dev);
 #endif
 
 err_struct:

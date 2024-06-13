@@ -23,6 +23,7 @@ x86-64-accton-as9926-24db-r0:
     args: >-
       console=ttyS0,115200n8
       intel_iommu=pt
+      pcie_aspm=off
 
   ##network:
   ##  interfaces:

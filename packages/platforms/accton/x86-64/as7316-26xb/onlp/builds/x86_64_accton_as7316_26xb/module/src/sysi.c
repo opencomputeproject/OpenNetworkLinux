@@ -89,9 +89,42 @@ onlp_sysi_oids_get(onlp_oid_t* table, int max)
     return 0;
 }
 
+#define CPLD_FPGA_VERSION_FORMAT "/sys/devices/platform/as7316_26xb_sys/%s"
+
+typedef struct cpld_fpga_version {
+    char *attr_name;
+    int   version;
+    char *description;
+} cpld_fpga_version_t;
+
 int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
+    int i, ret;
+    cpld_fpga_version_t cplds_fpga[] = { { "mb_cpld_ver", 0, "Mainboard-CPLD"},
+                               { "cpu_cpld_ver", 0, "CPU-CPLD"},
+                               { "fan_cpld_ver", 0, "FAN-CPLD"},
+                               { "fpga_ver", 0, "FPGA"} };
+    /* Read CPLD and FPGA version
+     */
+    for (i = 0; i < AIM_ARRAYSIZE(cplds_fpga); i++) {
+        ret = onlp_file_read_int(&cplds_fpga[i].version, CPLD_FPGA_VERSION_FORMAT, cplds_fpga[i].attr_name);
+
+        if (ret < 0) {
+            AIM_LOG_ERROR("Unable to read version from (%s)\r\n", cplds_fpga[i].attr_name);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
+
+    pi->cpld_versions = aim_fstrdup("%s:%d, %s:%d, %s:%d,",
+                                    cplds_fpga[0].description, cplds_fpga[0].version,
+                                    cplds_fpga[1].description, cplds_fpga[1].version,
+                                    cplds_fpga[2].description, cplds_fpga[2].version
+                                    );
+
+    pi->other_versions = aim_fstrdup("%s:%d",
+                                     cplds_fpga[3].description, cplds_fpga[3].version);
+    
     return ONLP_STATUS_OK;
 }
 
@@ -99,5 +132,5 @@ void
 onlp_sysi_platform_info_free(onlp_platform_info_t* pi)
 {
     aim_free(pi->cpld_versions);
+    aim_free(pi->other_versions);
 }
-

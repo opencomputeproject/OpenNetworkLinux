@@ -118,7 +118,7 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         }
     }
 
-    if (strncmp(model_name, "FSF019", 6) == 0) {
+    if ((strncmp(model_name, "FSF019", 6) == 0) || (strncmp(model_name, "FSF045", 6) == 0)) {
         if (modelname) {
             aim_strlcpy(modelname, model_name, 11+1); /* Copy full model name */
         }

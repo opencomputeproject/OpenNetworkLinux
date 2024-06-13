@@ -37,6 +37,7 @@
 static char* ipmi_devfiles__[] = { /* must map with onlp_thermal_id */
     NULL,
     NULL, /* CPU_CORE files */
+    "/sys/devices/platform/as7926_40xfb_thermal/temp1_input",
     "/sys/devices/platform/as7926_40xfb_thermal/temp2_input",
     "/sys/devices/platform/as7926_40xfb_thermal/temp3_input",
     "/sys/devices/platform/as7926_40xfb_thermal/temp4_input",
@@ -46,8 +47,6 @@ static char* ipmi_devfiles__[] = { /* must map with onlp_thermal_id */
     "/sys/devices/platform/as7926_40xfb_thermal/temp8_input",
     "/sys/devices/platform/as7926_40xfb_thermal/temp9_input",
     "/sys/devices/platform/as7926_40xfb_thermal/temp10_input",
-    "/sys/devices/platform/as7926_40xfb_thermal/temp11_input",
-    "/sys/devices/platform/as7926_40xfb_thermal/temp12_input",
     "/sys/devices/platform/as7926_40xfb_psu/psu1_temp1_input",
     "/sys/devices/platform/as7926_40xfb_psu/psu2_temp1_input",
 };
@@ -68,10 +67,6 @@ static char* cpu_coretemp_files[] = {
 static onlp_thermal_info_t linfo[] = {
     { }, /* Not used */
     { { ONLP_THERMAL_ID_CREATE(THERMAL_CPU_CORE), "CPU Core", 0, {0} },
-            ONLP_THERMAL_STATUS_PRESENT,
-            ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_ASIC), "Main Board ASIC", 0, {0} },
             ONLP_THERMAL_STATUS_PRESENT,
             ONLP_THERMAL_CAPS_ALL, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },

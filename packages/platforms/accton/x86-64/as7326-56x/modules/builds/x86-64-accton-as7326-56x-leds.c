@@ -100,32 +100,33 @@ struct led_type_mode {
     enum led_light_mode mode;
     int  reg_bit_mask;
     int  mode_value;
+    int  mode_value_blinking;
 };
 
 static struct led_type_mode led_type_mode_data[] = {
     {LED_TYPE_DIAG,  LED_MODE_OFF,	        LED_TYPE_DIAG_REG_MASK,   LED_MODE_DIAG_OFF_VALUE},
-    {LED_TYPE_DIAG,  LED_MODE_RED,	        LED_TYPE_DIAG_REG_MASK,   0x06},
-    {LED_TYPE_DIAG,  LED_MODE_GREEN,	    LED_TYPE_DIAG_REG_MASK,   0x05},
-    {LED_TYPE_DIAG,  LED_MODE_BLUE,	        LED_TYPE_DIAG_REG_MASK,   0x03},
-    {LED_TYPE_DIAG,  LED_MODE_AMBER,	    LED_TYPE_DIAG_REG_MASK,   0x04},
-    {LED_TYPE_DIAG,  LED_MODE_PURPLE,       LED_TYPE_DIAG_REG_MASK,   0x02},
-    {LED_TYPE_DIAG,  LED_MODE_RED_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x0f},
-    {LED_TYPE_DIAG,  LED_MODE_GREEN_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x17},
-    {LED_TYPE_DIAG,  LED_MODE_BLUE_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x27},
-    {LED_TYPE_DIAG,  LED_MODE_AMBER_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x1f},
-    {LED_TYPE_DIAG,  LED_MODE_PURPLE_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x2f},
+    {LED_TYPE_DIAG,  LED_MODE_RED,	        LED_TYPE_DIAG_REG_MASK,   0x06,   0x06},
+    {LED_TYPE_DIAG,  LED_MODE_GREEN,	    LED_TYPE_DIAG_REG_MASK,   0x05,   0x05},
+    {LED_TYPE_DIAG,  LED_MODE_BLUE,	        LED_TYPE_DIAG_REG_MASK,   0x03,   0x03},
+    {LED_TYPE_DIAG,  LED_MODE_AMBER,	    LED_TYPE_DIAG_REG_MASK,   0x04,   0x04},
+    {LED_TYPE_DIAG,  LED_MODE_PURPLE,       LED_TYPE_DIAG_REG_MASK,   0x02,   0x02},
+    {LED_TYPE_DIAG,  LED_MODE_RED_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x0f,   0x0e},
+    {LED_TYPE_DIAG,  LED_MODE_GREEN_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x17,   0x15},
+    {LED_TYPE_DIAG,  LED_MODE_BLUE_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x27,   0x23},
+    {LED_TYPE_DIAG,  LED_MODE_AMBER_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x1f,   0x1c},
+    {LED_TYPE_DIAG,  LED_MODE_PURPLE_BLINK,	LED_TYPE_DIAG_REG_MASK,   0x2f,   0x2a},
 
     {LED_TYPE_LOC,  LED_MODE_OFF,	        LED_TYPE_LOC_REG_MASK,   LED_MODE_LOC_OFF_VALUE},
-    {LED_TYPE_LOC,  LED_MODE_RED,	        LED_TYPE_LOC_REG_MASK,   0x06},
-    {LED_TYPE_LOC,  LED_MODE_GREEN,	        LED_TYPE_LOC_REG_MASK,   0x05},
-    {LED_TYPE_LOC,  LED_MODE_BLUE,	        LED_TYPE_LOC_REG_MASK,   0x03},
-    {LED_TYPE_LOC,  LED_MODE_AMBER,	        LED_TYPE_LOC_REG_MASK,   0x04},
-    {LED_TYPE_LOC,  LED_MODE_PURPLE,        LED_TYPE_LOC_REG_MASK,   0x02},
-    {LED_TYPE_LOC,  LED_MODE_RED_BLINK,	    LED_TYPE_LOC_REG_MASK,   0x0f},
-    {LED_TYPE_LOC,  LED_MODE_GREEN_BLINK,	LED_TYPE_LOC_REG_MASK,   0x17},
-    {LED_TYPE_LOC,  LED_MODE_BLUE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x27},
-    {LED_TYPE_LOC,  LED_MODE_AMBER_BLINK,	LED_TYPE_LOC_REG_MASK,   0x1f},
-    {LED_TYPE_LOC,  LED_MODE_PURPLE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x2f},
+    {LED_TYPE_LOC,  LED_MODE_RED,	        LED_TYPE_LOC_REG_MASK,   0x06,   0x06},
+    {LED_TYPE_LOC,  LED_MODE_GREEN,	        LED_TYPE_LOC_REG_MASK,   0x05,   0x05},
+    {LED_TYPE_LOC,  LED_MODE_BLUE,	        LED_TYPE_LOC_REG_MASK,   0x03,   0x03},
+    {LED_TYPE_LOC,  LED_MODE_AMBER,	        LED_TYPE_LOC_REG_MASK,   0x04,   0x04},
+    {LED_TYPE_LOC,  LED_MODE_PURPLE,        LED_TYPE_LOC_REG_MASK,   0x02,   0x02},
+    {LED_TYPE_LOC,  LED_MODE_RED_BLINK,	    LED_TYPE_LOC_REG_MASK,   0x0f,   0x0e},
+    {LED_TYPE_LOC,  LED_MODE_GREEN_BLINK,	LED_TYPE_LOC_REG_MASK,   0x17,   0x15},
+    {LED_TYPE_LOC,  LED_MODE_BLUE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x27,   0x23},
+    {LED_TYPE_LOC,  LED_MODE_AMBER_BLINK,	LED_TYPE_LOC_REG_MASK,   0x1f,   0x1c},
+    {LED_TYPE_LOC,  LED_MODE_PURPLE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x2f,   0x2a},
 };
 
 
@@ -154,12 +155,13 @@ static int led_reg_val_to_light_mode(enum led_type type, u8 reg_val) {
     int i;
 
     for (i = 0; i < ARRAY_SIZE(led_type_mode_data); i++) {
-
         if (type != led_type_mode_data[i].type)
+        {
             continue;
+        }
 
-        if ((led_type_mode_data[i].reg_bit_mask & reg_val) ==
-                led_type_mode_data[i].mode_value)
+        if (((led_type_mode_data[i].reg_bit_mask & reg_val) == led_type_mode_data[i].mode_value)
+            || ((led_type_mode_data[i].reg_bit_mask & reg_val) == led_type_mode_data[i].mode_value_blinking))
         {
             return led_type_mode_data[i].mode;
         }
@@ -283,7 +285,7 @@ static void accton_as7326_56x_led_loc_set(struct led_classdev *led_cdev,
 static enum led_brightness accton_as7326_56x_led_loc_get(struct led_classdev *cdev)
 {
     accton_as7326_56x_led_update();
-    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[0]);
+    return led_reg_val_to_light_mode(LED_TYPE_LOC, ledctl->reg_val[1]);
 }
 
 static void accton_as7326_56x_led_auto_set(struct led_classdev *led_cdev,
