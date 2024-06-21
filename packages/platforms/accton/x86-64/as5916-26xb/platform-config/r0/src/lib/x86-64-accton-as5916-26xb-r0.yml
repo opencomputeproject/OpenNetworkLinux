@@ -25,6 +25,7 @@ x86-64-accton-as5916-26xb-r0:
       console=ttyS0,115200n8
       tg3.short_preamble=1
       tg3.bcm5718s_reset=1
+      pcie_aspm=off
 
   ##network:
   ##  interfaces:

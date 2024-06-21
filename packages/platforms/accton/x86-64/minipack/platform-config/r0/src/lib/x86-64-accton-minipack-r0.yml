@@ -27,6 +27,7 @@ x86-64-accton-minipack-r0:
       rd_NO_LUKS
       intel_iommu=off
       noapic
+      pcie_aspm=off
 
   ##network
   ##  interfaces:

@@ -24,6 +24,7 @@ x86-64-accton-as4630-54pe-r0:
       nopat
       console=ttyS0,115200n8
       intel_iommu=off
+      pcie_aspm=off
 
   network:
     interfaces:
