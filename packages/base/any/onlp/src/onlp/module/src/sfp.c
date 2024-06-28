@@ -353,7 +353,8 @@ onlp_sfp_control_flags_get(int port, uint32_t* flags)
             ONLP_SFP_CONTROL_RESET_STATE,
             ONLP_SFP_CONTROL_RX_LOS,
             ONLP_SFP_CONTROL_TX_DISABLE,
-            ONLP_SFP_CONTROL_LP_MODE
+            ONLP_SFP_CONTROL_LP_MODE,
+            ONLP_SFP_CONTROL_SOFT_RATE_SELECT
         };
 
     if(flags) {
