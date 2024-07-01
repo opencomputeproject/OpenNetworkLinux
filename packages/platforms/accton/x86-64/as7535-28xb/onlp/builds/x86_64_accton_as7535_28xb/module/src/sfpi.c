@@ -51,6 +51,14 @@
 #define MODULE_PRESENT_ALL_ATTR    "/sys/bus/i2c/devices/12-0061/module_present_all"
 #define MODULE_RXLOS_ALL_ATTR      "/sys/bus/i2c/devices/12-0061/module_rx_los_all"
 
+/* Definitions for Soft_Rate_Select*/
+#define PORT_EEPROM_DEVADDR 0X51
+#define MULTIRATE_OFFSET 0x6E
+#define MBIT_IDENTIFIER_ADDR 0x50
+#define MBIT_OFFSET 0x0d
+#define RATE_SELECT 0x02
+
+
 #define NUM_OF_SFP_PORT 28
 static const int port_bus_index[NUM_OF_SFP_PORT] = {
     23, 21, 24, 22, 25, 26, 27, 28, 29, 30,
@@ -276,6 +284,8 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
+    int present = 0;
+    int mbit_identifier = 0;
     switch(control) {
     case ONLP_SFP_CONTROL_TX_DISABLE: {
         VALIDATE_SFP(port);
@@ -308,6 +318,26 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             return ONLP_STATUS_OK;
         }
     }
+    case ONLP_SFP_CONTROL_SOFT_RATE_SELECT: {
+        VALIDATE_SFP(port);
+
+        present = onlp_sfpi_is_present(port);
+        if (present == 1) {
+            mbit_identifier = onlp_sfpi_dev_readb(port, MBIT_IDENTIFIER_ADDR, MBIT_OFFSET);
+            if(mbit_identifier == RATE_SELECT) {
+                onlp_sfpi_dev_writeb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET, value);
+                return ONLP_STATUS_OK;
+            }
+            else {
+                AIM_LOG_ERROR("Unable to write multirate status to port(%d)\r\n", port);
+                return ONLP_STATUS_E_UNSUPPORTED;
+            }
+        }
+        else {
+            AIM_LOG_ERROR("Unable to write multirate status to port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+    }
     default:
         break;
     }
@@ -318,6 +348,9 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
+    int present = 0;
+    int multirate = 0;
+    int mbit_identifier = 0;
     switch(control) {
     case ONLP_SFP_CONTROL_RX_LOS: {
         VALIDATE_SFP(port);
@@ -370,6 +403,27 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         }
 
         return ONLP_STATUS_OK;
+    }
+    case ONLP_SFP_CONTROL_SOFT_RATE_SELECT: {
+        VALIDATE_SFP(port);
+
+        present = onlp_sfpi_is_present(port);
+        if(present == 1) {
+            mbit_identifier = onlp_sfpi_dev_readb(port, MBIT_IDENTIFIER_ADDR, MBIT_OFFSET);
+            if(mbit_identifier == RATE_SELECT) {
+                multirate = onlp_sfpi_dev_readb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET);
+                *value = multirate;
+                return ONLP_STATUS_OK;
+            }
+            else {
+                AIM_LOG_ERROR("Unable to read multirate status from port(%d)\r\n", port);
+                return ONLP_STATUS_E_UNSUPPORTED;
+            }
+        }
+        else {
+            AIM_LOG_ERROR("Unable to read multirate status from port(%d)\r\n", port);
+            return ONLP_STATUS_E_INTERNAL;
+        }
     }
     default:
         break;
