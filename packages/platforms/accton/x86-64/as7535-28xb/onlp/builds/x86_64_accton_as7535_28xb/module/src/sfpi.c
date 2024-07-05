@@ -58,6 +58,9 @@
 #define MBIT_OFFSET 0x0d
 #define RATE_SELECT 0x02
 
+/* Macro for Multirate Bit*/
+#define SET_RATE_SELECT_BIT(x,RS_BIT_pos)  (x | (1<<RS_BIT_pos))
+#define RESET_RATE_SELECT_BIT(x,RS_BIT_pos)  (x & ~(1<<RS_BIT_pos))
 
 #define NUM_OF_SFP_PORT 28
 static const int port_bus_index[NUM_OF_SFP_PORT] = {
@@ -285,7 +288,8 @@ int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
     int present = 0;
-    int mbit_identifier = 0;
+    int mbit_identifier;
+    int mbit_value;
     switch(control) {
     case ONLP_SFP_CONTROL_TX_DISABLE: {
         VALIDATE_SFP(port);
@@ -324,12 +328,28 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         present = onlp_sfpi_is_present(port);
         if (present == 1) {
             mbit_identifier = onlp_sfpi_dev_readb(port, MBIT_IDENTIFIER_ADDR, MBIT_OFFSET);
-            if(mbit_identifier == RATE_SELECT) {
-                onlp_sfpi_dev_writeb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET, value);
-                return ONLP_STATUS_OK;
+            if (mbit_identifier == RATE_SELECT) {
+                mbit_value = onlp_sfpi_dev_readb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET);
+                if (value == 0x0) {
+                    mbit_value = RESET_RATE_SELECT_BIT(mbit_value,3);
+                    if (onlp_sfpi_dev_writeb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET, mbit_value) < 0){
+                        AIM_LOG_ERROR("Unable to write multirate status to port(%d)\r\n", port);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    return ONLP_STATUS_OK;
+                }
+                else if(value == 0x1) {
+                    mbit_value = SET_RATE_SELECT_BIT(mbit_value,3);
+                    if (onlp_sfpi_dev_writeb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET, mbit_value) < 0){
+                        AIM_LOG_ERROR("Unable to write multirate status to port(%d)\r\n", port);
+                        return ONLP_STATUS_E_INTERNAL;
+                    }
+                    return ONLP_STATUS_OK;
+                }
+                return ONLP_STATUS_E_INTERNAL;
             }
             else {
-                AIM_LOG_ERROR("Unable to write multirate status to port(%d)\r\n", port);
+                AIM_LOG_ERROR("Unable to support multirate for the port(%d)\r\n", port);
                 return ONLP_STATUS_E_UNSUPPORTED;
             }
         }
@@ -350,7 +370,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
     int present = 0;
     int multirate = 0;
-    int mbit_identifier = 0;
+    int mbit_identifier;
     switch(control) {
     case ONLP_SFP_CONTROL_RX_LOS: {
         VALIDATE_SFP(port);
@@ -412,8 +432,13 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             mbit_identifier = onlp_sfpi_dev_readb(port, MBIT_IDENTIFIER_ADDR, MBIT_OFFSET);
             if(mbit_identifier == RATE_SELECT) {
                 multirate = onlp_sfpi_dev_readb(port, PORT_EEPROM_DEVADDR, MULTIRATE_OFFSET);
-                *value = multirate;
-                return ONLP_STATUS_OK;
+                if (multirate < 0) {
+                    return ONLP_STATUS_E_INTERNAL;
+                }
+                else{
+                    *value = multirate;
+                    return ONLP_STATUS_OK;
+                }
             }
             else {
                 AIM_LOG_ERROR("Unable to read multirate status from port(%d)\r\n", port);
@@ -421,7 +446,6 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
             }
         }
         else {
-            AIM_LOG_ERROR("Unable to read multirate status from port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
     }
