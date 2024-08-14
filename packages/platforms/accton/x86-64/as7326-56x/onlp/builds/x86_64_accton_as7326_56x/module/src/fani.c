@@ -23,6 +23,7 @@
  * Fan Platform Implementation Defaults.
  *
  ***********************************************************/
+#include <onlplib/i2c.h>
 #include <onlp/platformi/fani.h>
 #include "platform_lib.h"
 
@@ -233,6 +234,39 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 int
 onlp_fani_init(void)
 {
+    int wdt_timer = 0;
+    char wdt_status_path[64] = {0};
+    char wdt_timer_path[64] = {0};
+    char wdt_max_pwm_path[64] = {0};
+    /* set wdt timer 240s */
+    wdt_timer = 0xf0;
+
+    sprintf(wdt_status_path, "%s""fan_wdt_status", FAN_BOARD_PATH);
+    sprintf(wdt_timer_path, "%s""fan_wdt_timer", FAN_BOARD_PATH);
+    sprintf(wdt_max_pwm_path, "%s""fan_wdt_max_pwm", FAN_BOARD_PATH);
+
+    /* Set max fan pwm to full speed */
+    if (onlp_file_write_integer(wdt_max_pwm_path, FAN_BOARD_CPLD_WDT_MAX_PWM) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", wdt_max_pwm_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    /* Disable WDT */
+    if (onlp_file_write_integer(wdt_status_path, FAN_BOARD_CPLD_WDT_DISABLE) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", wdt_status_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    /* Enable WDT */
+    if (onlp_file_write_integer(wdt_status_path, FAN_BOARD_CPLD_WDT_ENABLE) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", wdt_status_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+    /* Timer need to be set after enable.
+       if set timer is eralier than enable wdt. Speed will become to wdt speed after 6sec.*/
+    if (onlp_file_write_integer(wdt_timer_path, wdt_timer) < 0) {
+        AIM_LOG_ERROR("Unable to write data to file (%s)\r\n", wdt_timer_path);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
     return ONLP_STATUS_OK;
 }
 

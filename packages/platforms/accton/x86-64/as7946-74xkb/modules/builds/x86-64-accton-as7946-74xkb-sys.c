@@ -55,7 +55,7 @@ static ssize_t show_cpld_version(struct device *dev,
 struct ipmi_data {
 	struct completion   read_complete;
 	struct ipmi_addr	address;
-	ipmi_user_t         user;
+	struct ipmi_user    *user;
 	int                 interface;
 
 	struct kernel_ipmi_msg tx_message;

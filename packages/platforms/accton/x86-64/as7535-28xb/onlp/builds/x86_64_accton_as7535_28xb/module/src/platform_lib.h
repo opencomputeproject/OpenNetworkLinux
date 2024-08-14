@@ -30,6 +30,7 @@
 
 #define CHASSIS_FAN_COUNT      6
 #define CHASSIS_THERMAL_COUNT  7
+#define CHASSIS_THERMAL_COUNT_R02  9
 #define CHASSIS_LED_COUNT      6
 #define CHASSIS_PSU_COUNT      2
 #define NUM_OF_THERMAL_PER_PSU 3
@@ -42,6 +43,8 @@
 #define SYS_LED_PATH   "/sys/devices/platform/as7535_28xb_led/"
 #define IDPROM_PATH "/sys/devices/platform/as7535_28xb_sys/eeprom"
 
+int get_pcb_id();
+
 enum onlp_thermal_id {
     THERMAL_RESERVED = 0,
     THERMAL_CPU_CORE,
@@ -51,6 +54,8 @@ enum onlp_thermal_id {
     THERMAL_4_ON_MAIN_BROAD,
     THERMAL_5_ON_MAIN_BROAD,
     THERMAL_6_ON_MAIN_BROAD,
+    THERMAL_7_ON_MAIN_BROAD,
+    THERMAL_8_ON_MAIN_BROAD,
     THERMAL_1_ON_PSU1,
     THERMAL_2_ON_PSU1,
     THERMAL_3_ON_PSU1,
