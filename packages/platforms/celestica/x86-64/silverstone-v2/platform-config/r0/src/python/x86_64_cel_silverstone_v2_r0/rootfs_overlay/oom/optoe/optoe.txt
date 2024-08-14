@@ -1,0 +1,26 @@
+EEPROMs on SFP/QSFP/CMIS optoelectronic modules using SFF-8472, SFF-8676,
+CMIS (Common Management Interface Spec) devices.
+
+Required properties:
+- compatible: shall be one of : 
+	'optoe,optoe1' - for QSFP class devices, adhering to SFF-8636
+	'optoe,optoe2' - for SFP class devices, adhering to SFF-8472
+	'optoe,optoe3' - for CMIS devices (newer QSFP class devices)
+- reg: 0x50  The only valid value is 0x50, as all three standards specify that
+  the device is at i2c address 0x50.  (optoe allocates an i2c dummy to access
+  the data at i2c address 0x51.)
+
+Optional property:
+- port_name: can be set to any string up to 19 characters.  Note that the
+  actual mapping between i2c busses and network ports is platform dependent
+  and varies widely.  The 'port_name' property provides a way to associate
+  specific network ports with their associated hardware ports.
+
+Example:
+	#address-cells = <1>;
+	#size-cells = <0>;
+	optoe@50 {
+		compatible = "optoe,optoe2";
+		reg = <0x50>;
+		port_name = "port1";
+	};
