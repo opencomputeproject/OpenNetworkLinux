@@ -130,6 +130,7 @@ do {                                                \
  *       structure & variable declare
  * *********************************************/
 typedef struct pci_fpga_device_s {
+    void  __iomem *data_base_addr0;
     void  __iomem *data_base_addr1;
     void  __iomem *data_base_addr2;
     resource_size_t data_region1;
@@ -149,6 +150,7 @@ struct as9817_64_fpga_data {
 static struct platform_device *pdev = NULL;
 extern spinlock_t cpld_access_lock;
 extern int wait_spi(u32 mask, unsigned long timeout);
+extern void __iomem *spi_busy_reg;
 
 /***********************************************
  *       enum define
@@ -595,7 +597,7 @@ static struct attribute_mapping attribute_mappings[] = {
     [MODULE_RX_LOS_65 ... MODULE_RX_LOS_66] = {MODULE_RX_LOS_65, SFP_RXLOSS_REG, 0},
 };
 
-static inline unsigned int fpga_read(void __iomem *addr, u32 spi_mask)
+static inline unsigned int fpga_read(const void __iomem *addr, u32 spi_mask)
 {
     wait_spi(spi_mask, usecs_to_jiffies(20));
     return ioread8(addr);
@@ -714,7 +716,7 @@ static ssize_t status_read(struct device *dev, struct device_attribute *da, char
     struct as9817_64_fpga_data *fpga_ctl = dev_get_drvdata(dev);
     ssize_t ret = -EINVAL;
     u16 reg;
-    u8 major, minor, reg_val = 0;
+    u8 major, minor, reg_val;
     u8 bits_shift;
 
     switch(attr->index)
@@ -778,12 +780,12 @@ static ssize_t status_write(struct device *dev, struct device_attribute *da,
 {
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct as9817_64_fpga_data *fpga_ctl = dev_get_drvdata(dev);
-    void __iomem *addr = 0;
+    void __iomem *addr;
     int status;
     u16 reg;
     u8 input;
     u8 reg_val, bit_mask, should_set_bit;
-    u32 spi_mask = 0;
+    u32 spi_mask;
 
     status = kstrtou8(buf, 10, &input);
     if (status) {
@@ -956,7 +958,6 @@ static int as9817_64_pcie_fpga_stat_probe(struct platform_device *pdev)
     int i;
     int status = 0, err = 0;
     unsigned long bar_base;
-    void  __iomem *data_base_addr0;
     unsigned int val;
 
     fpga_ctl = devm_kzalloc(dev, sizeof(struct as9817_64_fpga_data), GFP_KERNEL);
@@ -986,14 +987,14 @@ static int as9817_64_pcie_fpga_stat_probe(struct platform_device *pdev)
     /*
      * Detect platform for changing the setting behavior of LP mode.
      */
-    data_base_addr0 = pci_iomap(pcidev, BAR0_NUM, 0);
-    if (data_base_addr0 == NULL) {
+    fpga_ctl->pci_fpga_dev.data_base_addr0 = pci_iomap(pcidev, BAR0_NUM, 0);
+    if (fpga_ctl->pci_fpga_dev.data_base_addr0 == NULL) {
         dev_err(dev, "Failed to map BAR0\n");
         status = -EIO;
         goto exit_pci_disable;
     }
 
-    val = ioread8(data_base_addr0 + FPGA_BOARD_INFO_REG);
+    val = ioread8(fpga_ctl->pci_fpga_dev.data_base_addr0 + FPGA_BOARD_INFO_REG);
     switch (val & 0x0C)
     {
         case 0x00: /* OSFP */
@@ -1013,7 +1014,15 @@ static int as9817_64_pcie_fpga_stat_probe(struct platform_device *pdev)
 	    dev_warn(dev, "Unknown platform detected\n");
             break;
     }
-    pci_iounmap(pcidev, data_base_addr0);
+
+    /*
+     * The register address of SPI Busy is 0x33.
+     * It can not only read one byte. It needs to read four bytes from 0x30.
+     * The value is obtained by '(ioread32(spi_busy_reg) >> 24) & 0xFF'.
+     */
+    spi_busy_reg = fpga_ctl->pci_fpga_dev.data_base_addr0 + 0x30;
+
+
 
     /*
      * Cannot use 'pci_request_regions(pcidev, DRVNAME)'
@@ -1024,7 +1033,7 @@ static int as9817_64_pcie_fpga_stat_probe(struct platform_device *pdev)
     if (fpga_ctl->pci_fpga_dev.data_base_addr1 == NULL) {
         dev_err(dev, "Failed to map BAR1\n");
         status = -EIO;
-        goto exit_pci_disable;
+        goto exit_pci_iounmap0;
     }
     fpga_ctl->pci_fpga_dev.data_region1 = pci_resource_start(pcidev, BAR1_NUM) + CPLD1_PCIE_START_OFFSET;
     ret = request_mem_region(fpga_ctl->pci_fpga_dev.data_region1, REGION_LEN, DRVNAME"_cpld1");
@@ -1104,6 +1113,9 @@ exit_pci_release1:
     release_mem_region(fpga_ctl->pci_fpga_dev.data_region1, REGION_LEN);
 exit_pci_iounmap1:
     pci_iounmap(fpga_ctl->pci_fpga_dev.pci_dev, fpga_ctl->pci_fpga_dev.data_base_addr1);
+exit_pci_iounmap0:
+    spi_busy_reg = NULL;
+    pci_iounmap(fpga_ctl->pci_fpga_dev.pci_dev, fpga_ctl->pci_fpga_dev.data_base_addr0);
 exit_pci_disable:
     pci_disable_device(fpga_ctl->pci_fpga_dev.pci_dev);
 
@@ -1122,6 +1134,8 @@ static int as9817_64_pcie_fpga_stat_remove(struct platform_device *pdev)
         for (i = 0; i < PORT_NUM; i++) {
             platform_device_unregister(fpga_ctl->pci_fpga_dev.fpga_i2c[i]);
         }
+        spi_busy_reg = NULL;
+        pci_iounmap(fpga_ctl->pci_fpga_dev.pci_dev, fpga_ctl->pci_fpga_dev.data_base_addr0);
         pci_iounmap(fpga_ctl->pci_fpga_dev.pci_dev, fpga_ctl->pci_fpga_dev.data_base_addr1);
         pci_iounmap(fpga_ctl->pci_fpga_dev.pci_dev, fpga_ctl->pci_fpga_dev.data_base_addr2);
         release_mem_region(fpga_ctl->pci_fpga_dev.data_region1, REGION_LEN);
