@@ -48,7 +48,7 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static int as7535_28xb_sys_probe(struct platform_device *pdev);
 static int as7535_28xb_sys_remove(struct platform_device *pdev);
 static ssize_t show_version(struct device *dev,
-								struct device_attribute *da, char *buf);
+				struct device_attribute *da, char *buf);
 
 struct ipmi_data {
 	struct completion read_complete;
@@ -92,12 +92,16 @@ static struct platform_driver as7535_28xb_sys_driver = {
 
 enum as7535_28xb_sys_sysfs_attrs {
 	FPGA_VER, /* FPGA version */
+	CPU_CPLD_VER, /* CPU CPLD version */
 };
 
 static SENSOR_DEVICE_ATTR(fpga_version, S_IRUGO, show_version, NULL, FPGA_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_version, S_IRUGO, show_version, NULL, \
+				CPU_CPLD_VER);
 
 static struct attribute *as7535_28xb_sys_attributes[] = {
 	&sensor_dev_attr_fpga_version.dev_attr.attr,
+	&sensor_dev_attr_cpu_cpld_version.dev_attr.attr,
 	NULL
 };
 
@@ -141,8 +145,8 @@ static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
 
 /* Send an IPMI command */
 static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-							unsigned char *tx_data, unsigned short tx_len,
-							unsigned char *rx_data, unsigned short rx_len)
+				unsigned char *tx_data, unsigned short tx_len,
+				unsigned char *rx_data, unsigned short rx_len)
 {
 	int err;
 
@@ -182,8 +186,8 @@ addr_err:
 
 /* Send an IPMI command with retry */
 static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-							unsigned char *tx_data, unsigned short tx_len,
-							unsigned char *rx_data, unsigned short rx_len)
+				unsigned char *tx_data, unsigned short tx_len,
+				unsigned char *rx_data, unsigned short rx_len)
 {
 	int status = 0, retry = 0;
 
@@ -257,8 +261,9 @@ static ssize_t sys_eeprom_read(loff_t off, char *buf, size_t count)
 	data->ipmi_tx_data[0] = (off & 0xff);
 	data->ipmi_tx_data[1] = length;
 	status = ipmi_send_message(&data->ipmi, IPMI_SYSEEPROM_READ_CMD,
-								data->ipmi_tx_data, sizeof(data->ipmi_tx_data),
-								data->ipmi_resp_eeprom + off, length);
+					data->ipmi_tx_data, 
+					sizeof(data->ipmi_tx_data),
+					data->ipmi_resp_eeprom + off, length);
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -323,22 +328,30 @@ static int sysfs_eeprom_init(struct kobject *kobj, struct bin_attribute *eeprom)
 }
 
 static int sysfs_eeprom_cleanup(struct kobject *kobj,
-								struct bin_attribute *eeprom)
+				struct bin_attribute *eeprom)
 {
 	sysfs_remove_bin_file(kobj, eeprom);
 	return 0;
 }
 
-static struct as7535_28xb_sys_data *as7535_28xb_sys_update_fpga_ver(void)
+static struct as7535_28xb_sys_data *as7535_28xb_sys_update_ver(
+				struct sensor_device_attribute *attr)
 {
 	int status = 0;
 
 	data->valid = 0;
-	data->ipmi_tx_data[0] = 0x60;
+
+	if(attr->index == FPGA_VER)
+		data->ipmi_tx_data[0] = 0x60;
+	else if(attr->index == CPU_CPLD_VER)
+		data->ipmi_tx_data[0] = 0x65;
+	else
+		goto exit;
+
 	status = ipmi_send_message(&data->ipmi, IPMI_CPLD_READ_CMD,
-								data->ipmi_tx_data, 1,
-								&data->ipmi_resp_cpld,
-								sizeof(data->ipmi_resp_cpld));
+					data->ipmi_tx_data, 1,
+					&data->ipmi_resp_cpld,
+					sizeof(data->ipmi_resp_cpld));
 	if (unlikely(status != 0))
 		goto exit;
 
@@ -355,14 +368,16 @@ exit:
 }
 
 static ssize_t show_version(struct device *dev,
-								struct device_attribute *da, char *buf)
+				struct device_attribute *da, char *buf)
 {
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char value = 0;
 	int error = 0;
 
 	mutex_lock(&data->update_lock);
 
-	data = as7535_28xb_sys_update_fpga_ver();
+	data = as7535_28xb_sys_update_ver(attr);
+
 	if (!data->valid) {
 		error = -EIO;
 		goto exit;
