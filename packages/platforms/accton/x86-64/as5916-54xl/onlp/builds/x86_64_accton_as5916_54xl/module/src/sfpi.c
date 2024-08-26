@@ -29,12 +29,8 @@
 #include "x86_64_accton_as5916_54xl_int.h"
 #include "x86_64_accton_as5916_54xl_log.h"
 
-#define VALIDATE_QSFP(_port) \
-    do { \
-        if (_port < 48 || _port > 53 ) \
-            return ONLP_STATUS_E_UNSUPPORTED; \
-    } while(0)
-
+#define PHY_DATA_SIZE 64
+#define PORT_PHY_REG_FORMAT              "/sys/devices/platform/as5916_54xl_sfp/module_phy_%d"
 #define PORT_EEPROM_FORMAT              "/sys/devices/platform/as5916_54xl_sfp/module_eeprom_%d"
 #define MODULE_PRESENT_FORMAT		    "/sys/devices/platform/as5916_54xl_sfp/module_present_%d"
 #define MODULE_RXLOS_FORMAT             "/sys/devices/platform/as5916_54xl_sfp/module_rx_los_%d"
@@ -44,6 +40,32 @@
 #define MODULE_RESET_FORMAT             "/sys/devices/platform/as5916_54xl_sfp/module_reset_%d"
 #define MODULE_PRESENT_ALL_ATTR	        "/sys/devices/platform/as5916_54xl_sfp/module_present_all"
 #define MODULE_RXLOS_ALL_ATTR           "/sys/devices/platform/as5916_54xl_sfp/module_rxlos_all"
+
+#define VALIDATE_QSFP(_port) \
+    do { \
+        if (_port < 48 || _port > 53 ) \
+            return ONLP_STATUS_E_UNSUPPORTED; \
+    } while(0)
+
+#define VALIDATE_SFP(_port) \
+    do { \
+        if (_port < 0 || _port > 47) \
+            return ONLP_STATUS_E_UNSUPPORTED; \
+    } while(0)
+
+#define VALIDATE_PHY(_port, _devaddr, _addr, _size) \
+    do { \
+        if (_port < 0 || _port > 47) \
+            return ONLP_STATUS_E_UNSUPPORTED; \
+        if (_devaddr != 0x56) \
+            return ONLP_STATUS_E_UNSUPPORTED; \
+        if (_addr >= 0x20) \
+            return ONLP_STATUS_E_PARAM; \
+        if ((_size % 2) || (size <= 0)) \
+            return ONLP_STATUS_E_PARAM; \
+        if ((_addr*2 + _size) > PHY_DATA_SIZE) \
+            return ONLP_STATUS_E_PARAM; \
+    } while(0)
 
 /************************************************************
  *
@@ -261,9 +283,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         {
         case ONLP_SFP_CONTROL_RX_LOS:
             {
-                if (port >= 48) {
-                    return ONLP_STATUS_E_UNSUPPORTED;
-                }
+                VALIDATE_SFP(port);
                 
             	if (onlp_file_read_int(value, MODULE_RXLOS_FORMAT, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to read rx_loss status from port(%d)\r\n", port);
@@ -277,9 +297,7 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 
         case ONLP_SFP_CONTROL_TX_FAULT:
             {
-                if (port >= 48) {
-                    return ONLP_STATUS_E_UNSUPPORTED;
-                }
+                VALIDATE_SFP(port);
                 
             	if (onlp_file_read_int(value, MODULE_TXFAULT_FORMAT, (port+1)) < 0) {
                     AIM_LOG_ERROR("Unable to read tx_fault status from port(%d)\r\n", port);
@@ -442,6 +460,41 @@ static int onlp_sfpi_dev_read_write(int port, uint8_t devaddr, uint8_t addr, uin
     return ONLP_STATUS_OK;
 }
 
+static int onlp_sfpi_phy_dev_read_write(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size, int write_access)
+{
+    int ret;
+    FILE* fp;
+    char file[64] = {0};
+    VALIDATE_PHY(port, devaddr, addr, size);
+
+    sprintf(file, PORT_PHY_REG_FORMAT, (port+1));
+    fp = fopen(file, "r+");
+    if(fp == NULL) {
+        AIM_LOG_ERROR("Unable to open the phy device file of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    setvbuf(fp, NULL, _IONBF, 0); // Disable buffering
+
+    addr *= 2;
+    if (fseek(fp, addr, SEEK_SET) != 0) {
+        fclose(fp);
+        AIM_LOG_ERROR("Unable to set the phy position indicator of port(%d)", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    ret = write_access ? fwrite(data, 1, size, fp) : fread(data, 1, size, fp);
+    fclose(fp);
+
+    if (ret != size) {
+        AIM_LOG_ERROR("Unable to %s the module_phy device file of port(%d)", 
+                      write_access ? "write" : "read", port);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    return ONLP_STATUS_OK;
+}
+
 int onlp_sfpi_dev_readb(int port, uint8_t devaddr, uint8_t addr)
 {
     uint8_t data;
@@ -459,21 +512,26 @@ int onlp_sfpi_dev_readw(int port, uint8_t devaddr, uint8_t addr)
     uint8_t data[2];
     int ret = 0;
 
-    // Split into two byte operation if data cross the boundary
-    if (addr == 0x7F) {
-        int i = 0;
-
-        for (i = 0; i < 2; i++) {
-            ret = onlp_sfpi_dev_readb(port, devaddr, addr+i);
-            if (ret < 0) {
-                break;
-            }
-
-            data[i] = ret;
-        }
+    if ((port <= SFP_PORT_IDX_END) && (devaddr == 0x56)) {
+        ret = onlp_sfpi_phy_dev_read_write(port, devaddr, addr, data, 2, 0);
     }
     else {
-        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 0);
+        // Split into two byte operation if data cross the boundary
+        if (addr == 0x7F) {
+            int i = 0;
+
+            for (i = 0; i < 2; i++) {
+                ret = onlp_sfpi_dev_readb(port, devaddr, addr+i);
+                if (ret < 0) {
+                    break;
+                }
+
+                data[i] = ret;
+            }
+        }
+        else {
+            ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 0);
+        }
     }
 
     return (ret < 0) ? ret : (data[0] | (data[1] << 8));
@@ -483,6 +541,10 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 {
     int ret = 0;
     uint8_t data[2] = {value & 0xFF, (value >> 8) & 0xFF};
+
+    if ((port <= SFP_PORT_IDX_END) && (devaddr == 0x56)) {
+        return onlp_sfpi_phy_dev_read_write(port, devaddr, addr, data, 2, 1);
+    }
 
     // Split into two byte operation if data cross the boundary
     if (addr == 0x7F) {
@@ -496,7 +558,7 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
         }
     }
     else {
-        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 0);
+        ret = onlp_sfpi_dev_read_write(port, devaddr, addr, data, 2, 1);
     }
 
     return ret;
@@ -505,6 +567,10 @@ int onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value
 int onlp_sfpi_dev_read(int port, uint8_t devaddr, uint8_t addr, uint8_t* rdata, int size)
 {
     int ret = 0;
+
+    if ((port <= SFP_PORT_IDX_END) && (devaddr == 0x56)) {
+        return onlp_sfpi_phy_dev_read_write(port, devaddr, addr, rdata, size, 0);
+    }
 
     // Split into two byte operation if data cross the boundary
     if ((addr+size) > SFF_PAGE_DATA_SIZE) {
@@ -528,6 +594,10 @@ int onlp_sfpi_dev_read(int port, uint8_t devaddr, uint8_t addr, uint8_t* rdata, 
 int onlp_sfpi_dev_write(int port, uint8_t devaddr, uint8_t addr, uint8_t* data, int size)
 {
     int ret = 0;
+
+    if ((port <= SFP_PORT_IDX_END) && (devaddr == 0x56)) {
+        return onlp_sfpi_phy_dev_read_write(port, devaddr, addr, data, size, 1);
+    }
 
     // Split into two byte operation if data cross the boundary
     if ((addr+size) > SFF_PAGE_DATA_SIZE) {
@@ -553,4 +623,3 @@ onlp_sfpi_denit(void)
 {
     return ONLP_STATUS_OK;
 }
-
