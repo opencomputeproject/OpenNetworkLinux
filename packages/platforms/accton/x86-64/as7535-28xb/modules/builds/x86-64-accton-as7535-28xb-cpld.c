@@ -190,6 +190,7 @@ enum as7535_28xb_cpld_sysfs_attributes {
 	MODULE_PRESENT_ALL,
 	MODULE_RXLOS_ALL,
 	CPLD_VERSION,
+	MINOR_VERSION,
 	ACCESS,
 };
 
@@ -225,6 +226,10 @@ enum as7535_28xb_cpld_sysfs_attributes {
 	&sensor_dev_attr_module_rx_los_##index.dev_attr.attr
 
 static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, CPLD_VERSION);
+
+static SENSOR_DEVICE_ATTR(minor_version, S_IRUGO, show_version, NULL, \
+							MINOR_VERSION);
+
 static SENSOR_DEVICE_ATTR(access, S_IWUSR, NULL, access, ACCESS);
 
 static SENSOR_DEVICE_ATTR(module_present_all, S_IRUGO, show_present_all, \
@@ -293,6 +298,7 @@ static struct attribute *as7535_28xb_cpld_attributes[] = {
 	DECLARE_SFP_TRANSCEIVER_ATTR(27),
 	DECLARE_SFP_TRANSCEIVER_ATTR(28),
 	&sensor_dev_attr_version.dev_attr.attr,
+	&sensor_dev_attr_minor_version.dev_attr.attr,
 	&sensor_dev_attr_access.dev_attr.attr,
 	&sensor_dev_attr_module_present_all.dev_attr.attr,
 	&sensor_dev_attr_module_rx_los_all.dev_attr.attr,
@@ -707,6 +713,13 @@ static ssize_t show_version(struct device *dev, struct device_attribute *da,
 		addr = 0x61;
 		reg = 0x1;
 		break;
+
+	case MINOR_VERSION:
+		bus = 12;
+		addr = 0x61;
+		reg = 0x2;
+		break;
+		
 	default:
 		return -ENXIO;
 	}

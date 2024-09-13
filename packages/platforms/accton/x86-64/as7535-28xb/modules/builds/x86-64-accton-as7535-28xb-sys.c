@@ -74,7 +74,7 @@ struct as7535_28xb_sys_data {
 	unsigned long last_updated;	/* In jiffies */
 	struct ipmi_data ipmi;
 	unsigned char ipmi_resp_eeprom[EEPROM_SIZE];
-	unsigned char ipmi_resp_cpld;
+	unsigned char ipmi_resp_cpld[2];
 	unsigned char ipmi_tx_data[2];
 	struct bin_attribute eeprom; /* eeprom data */
 };
@@ -92,12 +92,25 @@ static struct platform_driver as7535_28xb_sys_driver = {
 
 enum as7535_28xb_sys_sysfs_attrs {
 	FPGA_VER, /* FPGA version */
+	FPGA_MINOR_VER, /* FPGA minor version */
+	CPU_CPLD_VER, /* CPU CPLD version */
+	CPU_CPLD_MINOR_VER, /* CPU CPLD minor version */
 };
 
-static SENSOR_DEVICE_ATTR(fpga_version, S_IRUGO, show_version, NULL, FPGA_VER);
+static SENSOR_DEVICE_ATTR(fpga_version, S_IRUGO, show_version, NULL, \
+							FPGA_VER);
+static SENSOR_DEVICE_ATTR(fpga_minor_version, S_IRUGO, show_version, NULL, \
+							FPGA_MINOR_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_version, S_IRUGO, show_version, NULL, \
+							CPU_CPLD_VER);
+static SENSOR_DEVICE_ATTR(cpu_cpld_minor_version, S_IRUGO, show_version, NULL, \
+							CPU_CPLD_MINOR_VER);
 
 static struct attribute *as7535_28xb_sys_attributes[] = {
 	&sensor_dev_attr_fpga_version.dev_attr.attr,
+	&sensor_dev_attr_fpga_minor_version.dev_attr.attr,
+	&sensor_dev_attr_cpu_cpld_version.dev_attr.attr,
+	&sensor_dev_attr_cpu_cpld_minor_version.dev_attr.attr,
 	NULL
 };
 
@@ -329,15 +342,17 @@ static int sysfs_eeprom_cleanup(struct kobject *kobj,
 	return 0;
 }
 
-static struct as7535_28xb_sys_data *as7535_28xb_sys_update_fpga_ver(void)
+static struct as7535_28xb_sys_data *as7535_28xb_sys_update_ver(
+				unsigned char reg)
 {
 	int status = 0;
 
 	data->valid = 0;
-	data->ipmi_tx_data[0] = 0x60;
+
+	data->ipmi_tx_data[0] = reg;
 	status = ipmi_send_message(&data->ipmi, IPMI_CPLD_READ_CMD,
 								data->ipmi_tx_data, 1,
-								&data->ipmi_resp_cpld,
+								data->ipmi_resp_cpld,
 								sizeof(data->ipmi_resp_cpld));
 	if (unlikely(status != 0))
 		goto exit;
@@ -357,18 +372,31 @@ exit:
 static ssize_t show_version(struct device *dev,
 								struct device_attribute *da, char *buf)
 {
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+	unsigned char reg;
 	unsigned char value = 0;
 	int error = 0;
 
 	mutex_lock(&data->update_lock);
 
-	data = as7535_28xb_sys_update_fpga_ver();
+	if ((attr->index == FPGA_VER) || (attr->index == FPGA_MINOR_VER))
+		reg = 0x60;
+	else if ((attr->index == CPU_CPLD_VER) || 
+			(attr->index == CPU_CPLD_MINOR_VER))
+		reg = 0x65;
+
+	data = as7535_28xb_sys_update_ver(reg);
+
 	if (!data->valid) {
 		error = -EIO;
 		goto exit;
 	}
 
-	value = data->ipmi_resp_cpld;
+	if ((attr->index == FPGA_VER) || (attr->index == CPU_CPLD_VER))
+		value = data->ipmi_resp_cpld[0];
+	else if (attr->index == FPGA_MINOR_VER || attr->index == CPU_CPLD_MINOR_VER)
+		value = data->ipmi_resp_cpld[1];
+
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
