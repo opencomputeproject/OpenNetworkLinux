@@ -42,6 +42,8 @@
 #define IPMI_TIMEOUT		    (5 * HZ)
 #define IPMI_ERR_RETRY_TIMES    1
 #define IPMI_READ_MAX_LEN       128
+#define IPMI_RESET_CMD			0x65
+#define IPMI_RESET_CMD_LENGTH	6
 
 #define EEPROM_NAME				"eeprom"
 #define EEPROM_SIZE				256	/*      256 byte eeprom */
@@ -49,6 +51,10 @@
 static int as7926_40xfb_sys_probe(struct platform_device *pdev);
 static int as7926_40xfb_sys_remove(struct platform_device *pdev);
 static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
+static ssize_t get_reset(struct device *dev, struct device_attribute *da,
+			char *buf);
+static ssize_t set_reset(struct device *dev, struct device_attribute *da,
+			const char *buf, size_t count);
 
 struct ipmi_data {
 	struct completion read_complete;
@@ -75,6 +81,8 @@ struct as7926_40xfb_sys_data {
 	struct ipmi_data ipmi;
 	unsigned char ipmi_resp_eeprom[EEPROM_SIZE];
 	unsigned char ipmi_tx_data[2];
+	unsigned char ipmi_resp_rst[2];
+	unsigned char ipmi_tx_data_rst[IPMI_RESET_CMD_LENGTH];
 	struct bin_attribute eeprom;	/* eeprom data */
 };
 
@@ -87,6 +95,45 @@ static struct platform_driver as7926_40xfb_sys_driver = {
 		   .name = DRVNAME,
 		   .owner = THIS_MODULE,
 		   },
+};
+
+/* sysfs attributes */
+enum as7926_40xfb_sysfs_attrs {
+	RESET_MUX,
+	RESET_MAC,
+	RESET_JR2,
+	RESET_OP2,
+	RESET_GEARBOX
+};
+
+#define DECLARE_RESET_SENSOR_DEVICE_ATTR() \
+	static SENSOR_DEVICE_ATTR(reset_mac, S_IWUSR | S_IRUGO, \
+							get_reset, set_reset, RESET_MAC); \
+	static SENSOR_DEVICE_ATTR(reset_jr2, S_IWUSR | S_IRUGO, \
+							get_reset, set_reset, RESET_JR2); \
+	static SENSOR_DEVICE_ATTR(reset_op2, S_IWUSR | S_IRUGO, \
+							get_reset, set_reset, RESET_OP2); \
+	static SENSOR_DEVICE_ATTR(reset_gb, S_IWUSR | S_IRUGO, \
+							get_reset, set_reset, RESET_GEARBOX); \
+	static SENSOR_DEVICE_ATTR(reset_mux, S_IWUSR | S_IRUGO, \
+							get_reset, set_reset, RESET_MUX)
+#define DECLARE_RESET_ATTR() \
+	&sensor_dev_attr_reset_mac.dev_attr.attr, \
+	&sensor_dev_attr_reset_jr2.dev_attr.attr, \
+	&sensor_dev_attr_reset_op2.dev_attr.attr, \
+	&sensor_dev_attr_reset_gb.dev_attr.attr, \
+	&sensor_dev_attr_reset_mux.dev_attr.attr
+
+DECLARE_RESET_SENSOR_DEVICE_ATTR();
+
+static struct attribute *as7926_40xfb_sys_attributes[] = {
+	/* sysfs attributes */
+	DECLARE_RESET_ATTR(),
+	NULL
+};
+
+static const struct attribute_group as7926_40xfb_sys_group = {
+	.attrs = as7926_40xfb_sys_attributes,
 };
 
 /* Functions to talk to the IPMI layer */
@@ -225,6 +272,71 @@ static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
 	complete(&ipmi->read_complete);
 }
 
+static ssize_t get_reset(struct device *dev, struct device_attribute *da,
+			char *buf)
+{
+	int status = 0;
+
+	mutex_lock(&data->update_lock);
+	status = ipmi_send_message(&data->ipmi, IPMI_RESET_CMD, NULL, 0,
+				   data->ipmi_resp_rst, sizeof(data->ipmi_resp_rst));
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	mutex_unlock(&data->update_lock);
+	return sprintf(buf, "0x%x 0x%x", data->ipmi_resp_rst[0], data->ipmi_resp_rst[1]);
+
+ exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
+static ssize_t set_reset(struct device *dev, struct device_attribute *da,
+		       const char *buf, size_t count)
+{
+	u32 magic[2];
+	int status;
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+
+	if (sscanf(buf, "0x%x 0x%x", &magic[0], &magic[1]) != 2)
+		return -EINVAL;
+
+	if (magic[0] > 0xFF || magic[1] > 0xFF)
+		return -EINVAL;
+
+	mutex_lock(&data->update_lock);
+
+	/* Send IPMI write command */
+	data->ipmi_tx_data_rst[0] = 0;
+	data->ipmi_tx_data_rst[1] = 0;
+	data->ipmi_tx_data_rst[2] = (attr->index == RESET_MUX) ? 0 : (attr->index);
+	data->ipmi_tx_data_rst[3] = (attr->index == RESET_MUX) ? 2 : 1;
+	data->ipmi_tx_data_rst[4] = magic[0];
+	data->ipmi_tx_data_rst[5] = magic[1];
+
+	status = ipmi_send_message(&data->ipmi, IPMI_RESET_CMD,
+				   data->ipmi_tx_data_rst,
+				   sizeof(data->ipmi_tx_data_rst), NULL, 0);
+	if (unlikely(status != 0))
+		goto exit;
+
+	if (unlikely(data->ipmi.rx_result != 0)) {
+		status = -EIO;
+		goto exit;
+	}
+
+	status = count;
+
+ exit:
+	mutex_unlock(&data->update_lock);
+	return status;
+}
+
 static ssize_t sys_eeprom_read(loff_t off, char *buf, size_t count)
 {
 	int status = 0;
@@ -322,19 +434,27 @@ static int as7926_40xfb_sys_probe(struct platform_device *pdev)
 	/* Register sysfs hooks */
 	status = sysfs_eeprom_init(&pdev->dev.kobj, &data->eeprom);
 	if (status) {
-		goto exit;
+		goto exit_eeprom;
+	}
+
+	status = sysfs_create_group(&pdev->dev.kobj, &as7926_40xfb_sys_group);
+	if (status) {
+		goto exit_sysfs;
 	}
 
 	dev_info(&pdev->dev, "device created\n");
 
 	return 0;
 
- exit:
+exit_sysfs:
+    sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
+ exit_eeprom:
 	return status;
 }
 
 static int as7926_40xfb_sys_remove(struct platform_device *pdev)
 {
+	sysfs_remove_group(&pdev->dev.kobj, &as7926_40xfb_sys_group);
 	sysfs_eeprom_cleanup(&pdev->dev.kobj, &data->eeprom);
 
 	return 0;

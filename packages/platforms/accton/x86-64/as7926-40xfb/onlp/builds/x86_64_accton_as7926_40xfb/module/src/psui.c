@@ -37,15 +37,6 @@
         }                                       \
     } while(0)
 
-#define AIM_FREE_IF_PTR(p) \
-    do \
-    { \
-        if (p) { \
-            aim_free(p); \
-            p = NULL; \
-        } \
-    } while (0)
-
 int
 onlp_psui_init(void)
 {
