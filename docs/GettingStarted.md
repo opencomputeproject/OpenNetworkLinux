@@ -1,7 +1,7 @@
 Getting Started
 ------------------------------------------------
 To install and run ONL you need is an ONL Compatible switch (see
-http://opennetlinux.org/hcl) and the ONL installer binary.  Every
+http://opennetlinux.org/hcl.html) and the ONL installer binary.  Every
 ONL compatible switch ships with the ONIE installer environment installed
 which gives you a multitude of ways of getting ONL installed on your switch.
 
