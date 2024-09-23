@@ -64,15 +64,6 @@ enum fan_id {
         { 0 },\
     }
 
-#define AIM_FREE_IF_PTR(p) \
-    do \
-    { \
-        if (p) { \
-            aim_free(p); \
-            p = NULL; \
-        } \
-    } while (0)
-
 /* Static fan information */
 onlp_fan_info_t finfo[] = {
     { }, /* Not used */
