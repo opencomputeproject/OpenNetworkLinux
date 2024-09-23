@@ -42,6 +42,15 @@
 #define FAN_BOARD_PATH "/sys/devices/platform/as7946_30xb_fan/"
 #define IDPROM_PATH    "/sys/devices/platform/as7946_30xb_sys/eeprom"
 
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
+
 enum onlp_led_id {
     LED_LOC = 1,
     LED_DIAG,
@@ -68,6 +77,11 @@ enum onlp_thermal_id {
     THERMAL_1_ON_PSU2,
     THERMAL_2_ON_PSU2,
     THERMAL_3_ON_PSU2,
+};
+
+enum reset_dev_type {
+    WARM_RESET_MAC = 1,
+    WARM_RESET_MAX
 };
 
 #endif  /* __PLATFORM_LIB_H__ */
