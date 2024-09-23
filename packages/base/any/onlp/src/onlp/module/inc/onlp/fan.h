@@ -97,6 +97,9 @@ typedef struct onlp_fan_info_s {
     /* Serial Number (if applicable) */
     char serial[ONLP_CONFIG_INFO_STR_MAX];
 
+    /* Max rpm possible for fan */
+    int max_rpm;
+
 } onlp_fan_info_t;
 
 
