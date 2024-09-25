@@ -856,6 +856,7 @@ aim_map_si_t onlp_sfp_control_map[] =
     { "TX_DISABLE", ONLP_SFP_CONTROL_TX_DISABLE },
     { "TX_DISABLE_CHANNEL", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "LP_MODE", ONLP_SFP_CONTROL_LP_MODE },
+    { "SOFT_RATE_SELECT", ONLP_SFP_CONTROL_SOFT_RATE_SELECT},
     { "POWER_OVERRIDE", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }
 };
@@ -869,6 +870,7 @@ aim_map_si_t onlp_sfp_control_desc_map[] =
     { "None", ONLP_SFP_CONTROL_TX_DISABLE },
     { "None", ONLP_SFP_CONTROL_TX_DISABLE_CHANNEL },
     { "None", ONLP_SFP_CONTROL_LP_MODE },
+    { "None", ONLP_SFP_CONTROL_SOFT_RATE_SELECT },
     { "None", ONLP_SFP_CONTROL_POWER_OVERRIDE },
     { NULL, 0 }
 };
@@ -922,6 +924,7 @@ aim_map_si_t onlp_sfp_control_flag_map[] =
     { "TX_DISABLE", ONLP_SFP_CONTROL_FLAG_TX_DISABLE },
     { "TX_DISABLE_CHANNEL", ONLP_SFP_CONTROL_FLAG_TX_DISABLE_CHANNEL },
     { "LP_MODE", ONLP_SFP_CONTROL_FLAG_LP_MODE },
+    { "SOFT_RATE_SELECT", ONLP_SFP_CONTROL_FLAG_SOFT_RATE_SELECT},
     { "POWER_OVERRIDE", ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE },
     { NULL, 0 }
 };
@@ -935,6 +938,7 @@ aim_map_si_t onlp_sfp_control_flag_desc_map[] =
     { "None", ONLP_SFP_CONTROL_FLAG_TX_DISABLE },
     { "None", ONLP_SFP_CONTROL_FLAG_TX_DISABLE_CHANNEL },
     { "None", ONLP_SFP_CONTROL_FLAG_LP_MODE },
+    { "None", ONLP_SFP_CONTROL_FLAG_SOFT_RATE_SELECT },
     { "None", ONLP_SFP_CONTROL_FLAG_POWER_OVERRIDE },
     { NULL, 0 }
 };
@@ -1243,4 +1247,3 @@ onlp_thermal_threshold_valid(onlp_thermal_threshold_t e)
 }
 
 /* <auto.end.enum(ALL).source> */
-

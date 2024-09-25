@@ -22,6 +22,7 @@
 /*#define DEBUG*/
 
 #include <linux/module.h>
+#include <linux/mod_devicetable.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -575,6 +576,19 @@ static int as4610_led_probe(struct platform_device *pdev)
 {
 	int ret = 0, i;
 
+	int pid = as4610_product_id();
+	if (pid == PID_UNKNOWN) {
+		return -ENODEV;
+	}
+
+	ledctl = kzalloc(sizeof(struct as4610_led_data), GFP_KERNEL);
+	if (!ledctl) {
+		return -ENOMEM;
+	}
+
+	ledctl->led_map = as4610_ledmaps[pid];
+	mutex_init(&ledctl->update_lock);
+
 	for (i = 0; i < NUM_OF_LED; i++) {
 		if (!(ledctl->led_map & BIT(i))) {
 			continue;
@@ -597,6 +611,7 @@ error:
 
 		led_classdev_unregister(&as4610_leds[i]);
 	}
+	kfree(ledctl);
 
 	return ret;
 }
@@ -612,72 +627,28 @@ static int as4610_led_remove(struct platform_device *pdev)
 
 		led_classdev_unregister(&as4610_leds[i]);
 	}
+	kfree(ledctl);
 
 	return 0;
 }
 
+static const struct platform_device_id as4610_led_id[] = {
+	{ "as4610_led", 0 },
+	{}
+};
+MODULE_DEVICE_TABLE(platform, as4610_led_id);
+
 static struct platform_driver as4610_led_driver = {
 	.probe		= as4610_led_probe,
 	.remove		= as4610_led_remove,
+	.id_table	= as4610_led_id,
 	.driver		= {
 	.name	= DRVNAME,
 	.owner	= THIS_MODULE,
 	},
 };
 
-static int __init as4610_led_init(void)
-{
-	int ret, pid;
-
-	if (as4610_product_id() == PID_UNKNOWN) {
-		return -ENODEV;
-	}
-
-	ret = platform_driver_register(&as4610_led_driver);
-	if (ret < 0) {
-		goto exit;
-	}
-
-	ledctl = kzalloc(sizeof(struct as4610_led_data), GFP_KERNEL);
-	if (!ledctl) {
-		ret = -ENOMEM;
-		platform_driver_unregister(&as4610_led_driver);
-		goto exit;
-	}
-
-	pid = as4610_product_id();
-	if (pid == PID_UNKNOWN) {
-		return -ENODEV;
-	}
-
-	ledctl->led_map = as4610_ledmaps[pid];
-	mutex_init(&ledctl->update_lock);
-
-	ledctl->pdev = platform_device_register_simple(DRVNAME, -1, NULL, 0);
-	if (IS_ERR(ledctl->pdev)) {
-		ret = PTR_ERR(ledctl->pdev);
-		platform_driver_unregister(&as4610_led_driver);
-		kfree(ledctl);
-		goto exit;
-	}
-
-exit:
-	return ret;
-}
-
-static void __exit as4610_led_exit(void)
-{
-	if (!ledctl) {
-		return;
-	}
-
-	platform_device_unregister(ledctl->pdev);
-	platform_driver_unregister(&as4610_led_driver);
-	kfree(ledctl);
-}
-
-late_initcall(as4610_led_init);
-module_exit(as4610_led_exit);
+module_platform_driver(as4610_led_driver);
 
 MODULE_AUTHOR("Brandon Chuang <brandon_chuang@accton.com.tw>");
 MODULE_DESCRIPTION("as4610_led driver");
