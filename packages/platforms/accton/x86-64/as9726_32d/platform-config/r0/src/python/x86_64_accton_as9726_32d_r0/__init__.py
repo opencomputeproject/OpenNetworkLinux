@@ -75,6 +75,6 @@ class OnlPlatform_x86_64_accton_as9726_32d_r0(OnlPlatformAccton,
             
             subprocess.call('echo port%d > /sys/bus/i2c/devices/%d-0050/port_name' % (port, port+16), shell=True)
 
-        self.new_i2c_device('24c02', 0x57, 0)
+        self.new_i2c_device('24c02', 0x56, 13)
         
         return True

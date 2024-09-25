@@ -56,8 +56,7 @@
 #define FAN_BOARD_PATH	"/sys/bus/i2c/devices/14-0066/"
 #define FAN_NODE(node)	FAN_BOARD_PATH#node
 
-//#define IDPROM_PATH "/sys/class/i2c-adapter/i2c-1/1-0057/eeprom"
-#define IDPROM_PATH "/sys/bus/i2c/devices/0-0057/eeprom"
+#define IDPROM_PATH "/sys/bus/i2c/devices/13-0056/eeprom"
 
 int psu_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
