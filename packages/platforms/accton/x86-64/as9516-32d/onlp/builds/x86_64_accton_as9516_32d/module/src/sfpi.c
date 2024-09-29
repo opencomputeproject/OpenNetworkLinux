@@ -90,13 +90,7 @@ typedef struct port_info_s
     uint16_t bit;
 } port_info_t;
 
-typedef struct bitmap_info_s
-{
-    uint16_t bit;
-    int     port;
-} bitmap_info_t;
-
-static port_info_t port_presence_info[] = 
+static port_info_t port_presence_info[] =
 {
     {QSFP_1,  0x22, 0x04, BIT1},
     {QSFP_2,  0x22, 0x04, BIT0},
@@ -131,49 +125,8 @@ static port_info_t port_presence_info[] =
     {QSFP_31, 0x23, 0x08, BIT15},
     {QSFP_32, 0x23, 0x08, BIT14},
 };
-/* bit-value port mapping 0-15 */
-static bitmap_info_t bitmap_port_1_info[] = 
-{
-    {BIT0, QSFP_2},
-    {BIT1, QSFP_1},
-    {BIT2, QSFP_4},
-    {BIT3, QSFP_3},
-    {BIT4, QSFP_6},
-    {BIT5, QSFP_5},
-    {BIT6, QSFP_8},
-    {BIT7, QSFP_7},
-    {BIT8, QSFP_10},
-    {BIT9, QSFP_9},
-    {BIT10, QSFP_12},
-    {BIT11, QSFP_11},
-    {BIT12, QSFP_14},
-    {BIT13, QSFP_13},
-    {BIT14, QSFP_16},
-    {BIT15, QSFP_15},
 
-};
-/* bit-value port mapping 16-31 */
-static bitmap_info_t bitmap_port_2_info[] = 
-{
-    {BIT0, QSFP_18},
-    {BIT1, QSFP_17},
-    {BIT2, QSFP_20},
-    {BIT3, QSFP_19},
-    {BIT4, QSFP_22},
-    {BIT5, QSFP_21},
-    {BIT6, QSFP_24},
-    {BIT7, QSFP_23},
-    {BIT8, QSFP_26},
-    {BIT9, QSFP_25},
-    {BIT10, QSFP_28},
-    {BIT11, QSFP_27},
-    {BIT12, QSFP_30},
-    {BIT13, QSFP_29},
-    {BIT14, QSFP_32},
-    {BIT15, QSFP_31},
-};
-
-uint64_t g_present_port_val;
+uint32_t g_present_port_val;
 /************************************************************
  *
  * SFPI Entry Points
@@ -201,34 +154,42 @@ onlp_sfpi_bitmap_get(onlp_sfp_bitmap_t* bmap)
 }
 
 int
-onlp_sfpi_reg_val_to_port_sequence(uint64_t *presence_bit_val, uint64_t presence_reg_val)
+onlp_sfpi_reg_val_to_port_sequence(uint32_t *presence_val, uint32_t presence_reg_val)
 {
 
-    int i;
-    int reg_1_val, reg_2_val;
-    uint64_t presence_port_bit_val = 0;
-    /* port 0-15 */
-    for (i = 0; i < 16; i++)
-    {
-        reg_1_val=(~presence_reg_val) & (bitmap_port_1_info[i].bit);
-        if(reg_1_val != 0)
-        {
-            presence_port_bit_val=presence_port_bit_val | (1 << (bitmap_port_1_info[i].port));
-        }
-    }
-     /* port 16-31 */
-    presence_reg_val=(presence_reg_val >> 16);
-    for (i = 0; i < 16; i++)
-    {
-        reg_2_val=(~presence_reg_val) & (bitmap_port_2_info[i].bit);
-        if(reg_2_val != 0)
-        {
-            presence_port_bit_val=presence_port_bit_val | (1 << (bitmap_port_2_info[i].port));
-        }
-    }
+    int index;
+    uint32_t presence_port_val = 0;
+    int port_array[NUM_OF_QSFP_PORT] = {0};
+    int first_remap_port_array[NUM_OF_QSFP_PORT] = {0};
+    int second_remap_port_array[NUM_OF_QSFP_PORT] = {0};
+    int first_remap[NUM_OF_QSFP_PORT] = { 1, 0, 3, 2, 5, 4, 7, 6, 
+                                          9, 8, 11, 10, 13, 12, 15, 14, 
+                                          17, 16, 19, 18, 21, 20 ,23, 22, 
+                                          25, 24, 27, 26, 29, 28, 31, 30 };
 
-    *presence_bit_val = presence_port_bit_val;
+    int second_remap[NUM_OF_QSFP_PORT] = { 1, 0, 3, 2, 5, 4, 7, 6, 
+                                           8, 9, 10, 11, 12, 13, 14, 15, 
+                                           16, 17, 18, 19, 20, 21 ,22, 23, 
+                                           25, 24, 27, 26, 28, 29, 30, 31 };
+    /* mapping presence register value to the presence array according */
+    for (index = 0 ; index < NUM_OF_QSFP_PORT ; index++)
+    {
+        if (((presence_reg_val >> index) % 2) == 1)
+            port_array[index] = 1;
+        else 
+            port_array[index] = 0;
+    }
+    /* first remap */
+    for (index = 0 ; index < NUM_OF_QSFP_PORT ; index++)
+        first_remap_port_array[index] = port_array[first_remap[index]];
+    /* second remap */
+    for (index = 0 ; index < NUM_OF_QSFP_PORT ; index++)
+        second_remap_port_array[index] = first_remap_port_array[second_remap[index]];
+    /* To calculate presence value */
+    for (index = 0 ; index < NUM_OF_QSFP_PORT ; index++)
+        presence_port_val = presence_port_val + (second_remap_port_array[index] << index);
 
+    *presence_val = ~(presence_port_val);
     return ONLP_STATUS_OK;
 }
 
@@ -242,15 +203,7 @@ onlp_sfpi_is_present(int port)
      */
     int present=0;
 
-    if(port < 16)
-    {
-        present=((g_present_port_val >> port) & 0x1);
-    }
-
-    if((port >= 16) && (port<32))
-    {
-        present=((g_present_port_val >> (port)) & 0x1);
-    }
+    present=((g_present_port_val >> port) & 0x1);
 
     return present;
 }
@@ -258,8 +211,8 @@ onlp_sfpi_is_present(int port)
 int
 onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 {
-    uint64_t reg_presence_all = 0;
-    uint64_t presence_all = 0;
+    uint32_t reg_presence_all = 0;
+    uint32_t presence_all = 0;
     uint8_t bytes[4];
     int rd_size, i;
     uint8_t bus, i2c_addr, mux_i2c_addr, mux_chn, fpga_id, byte_buf[128];
@@ -271,6 +224,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     /* port 0-15 */
     mux_chn=port_presence_info[0].chan;
     i2c_addr=port_presence_info[0].address;
+
     for(i=0; i<2; i++)
     {
         if((fpga_proc_i2c_read(fpga_id, bus, mux_i2c_addr, mux_chn, i2c_addr
@@ -286,6 +240,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
 
     mux_chn=port_presence_info[16].chan;
     i2c_addr=port_presence_info[16].address;
+
     for(i=0; i<2; i++)
     {
         if((fpga_proc_i2c_read(fpga_id, bus, mux_i2c_addr, mux_chn, i2c_addr
@@ -305,8 +260,8 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     }
 
     onlp_sfpi_reg_val_to_port_sequence(&presence_all, reg_presence_all);
-    g_present_port_val=presence_all;
 
+    g_present_port_val=presence_all;
     /* Populate bitmap */
     for(i = 0; presence_all; i++) {
         AIM_BITMAP_MOD(dst, i, (presence_all & 1));
