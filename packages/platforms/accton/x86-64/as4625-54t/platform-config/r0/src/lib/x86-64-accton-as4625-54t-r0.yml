@@ -1,0 +1,30 @@
+---
+
+######################################################################
+#
+# platform-config for AS4625
+#
+######################################################################
+
+x86-64-accton-as4625-54t-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-4-19
+
+    args: >-
+      console=ttyS0,115200n8
+      intel_iommu=off
+
+  network:
+    interfaces:
+      ma1:
+        name: eth2
