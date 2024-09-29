@@ -872,18 +872,25 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
                 goto exit;
             }
-
-            status = ym2651y_read_block(client, command, data->mfr_serial, buf+1);
-            if (data->mfr_serial[0] < ARRAY_SIZE(data->mfr_serial)-2) {
-                data->mfr_serial[data->mfr_serial[0] + 1] = '\0';
+            if(!strncmp("YM-1401A", data->mfr_model+1, strlen("YM-1401A")))
+            {
+                data->mfr_serial[0] = '\0';
+                data->fan_dir[0] = '\0';
             }
-            else {
-                data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
-            }
+            else
+            {
+                status = ym2651y_read_block(client, command, data->mfr_serial, buf+1);
+                if (data->mfr_serial[0] < ARRAY_SIZE(data->mfr_serial)-2) {
+                    data->mfr_serial[data->mfr_serial[0] + 1] = '\0';
+                }
+                else {
+                    data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
+                }
 
-            if (status < 0) {
-                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
-                goto exit;
+                if (status < 0) {
+                    dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                    goto exit;
+                }
             }
         }
 
