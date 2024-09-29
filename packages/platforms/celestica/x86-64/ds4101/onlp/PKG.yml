@@ -1,0 +1,2 @@
+!include $ONL/packages/platforms/celestica/x86-64/ds4101/onlp/onlp-platform-revision.yml REVISION=r0 PLATFORM=x86-64-cls-ds4101 ARCH=amd64 TOOLCHAIN=x86_64-linux-gnu
+
