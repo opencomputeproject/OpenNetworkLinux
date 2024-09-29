@@ -65,6 +65,10 @@ psu_status_info_get(int id, onlp_psu_info_t *info)
     int pw_good, good_offset;
     int rc, psu_mask, i2c_bus;
 
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
     if (id == PSU_ID_PSU1) {
         i2c_bus = I2C_BUS_PSU1;
         exist_offset = PSU1_PRESENT_OFFSET;
@@ -129,7 +133,17 @@ psu_status_info_get(int id, onlp_psu_info_t *info)
     if ((rc = psu_vout_get(info, i2c_bus)) != ONLP_STATUS_OK) {
         return ONLP_STATUS_E_INTERNAL;
     }
-    
+
+    /* Get power vin status */
+    if ((rc = psu_vin_get(info, i2c_bus)) != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+ 
+    /* Get power iin status */
+    if ((rc = psu_iin_get(info, i2c_bus)) != ONLP_STATUS_OK) {
+        return ONLP_STATUS_E_INTERNAL;
+    }
+ 
     return ONLP_STATUS_OK;
 }
 
@@ -137,7 +151,11 @@ int
 onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 {        
     int pid;
-    
+
+    if ( bmc_enable ) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }   
+ 
     pid = ONLP_OID_ID_GET(id);
     memset(info, 0, sizeof(onlp_psu_info_t));
     

@@ -42,11 +42,15 @@
 #define SYS_PSU2_NEAR_TEMP_PREFIX   "/sys/class/hwmon/hwmon7/"
 #define SYS_MAC_REAR_TEMP_PREFIX    "/sys/class/hwmon/hwmon5/"
 #define SYS_QSFP_NEAR_TEMP_PREFIX   "/sys/class/hwmon/hwmon6/"
+
+#define SYS_BMC_CPU_BOARD_TEMP_PREFIX   "/sys/class/hwmon/hwmon1/"
+
 #define SYS_FAN_PREFIX              "/sys/class/hwmon/hwmon1/device/"
 #define SYS_EEPROM_PATH             "/sys/bus/i2c/devices/0-0055/eeprom"
 #define SYS_EEPROM_SIZE 512
 #define PSU1_EEPROM_PATH            "/sys/bus/i2c/devices/58-0050/eeprom"
 #define PSU2_EEPROM_PATH            "/sys/bus/i2c/devices/57-0050/eeprom"
+#define BMC_EN_FILE_PATH            "/etc/onl/bmc_en"
 #define PSU_STATUS_PRESENT          1
 #define PSU_STATUS_POWER_GOOD       1
 #define FAN_PRESENT                 0
@@ -109,6 +113,8 @@
 #define PSU_IOUT_OFFSET         0x8C
 #define PSU_POUT_OFFSET         0x96
 #define PSU_PIN_OFFSET          0x97
+#define PSU_VIN_OFFSET          0x88
+#define PSU_IIN_OFFSET          0x89
 
 #define PSU_STATE_REG           0x25
 #define PSU1_PRESENT_OFFSET     0x04
@@ -283,6 +289,10 @@ int psu_pout_get(onlp_psu_info_t* info, int i2c_bus);
 
 int psu_pin_get(onlp_psu_info_t* info, int i2c_bus);
 
+int psu_vin_get(onlp_psu_info_t* info, int i2c_bus);
+
+int psu_iin_get(onlp_psu_info_t* info, int i2c_bus);
+
 int psu_eeprom_get(onlp_psu_info_t* info, int id);
 
 int psu_present_get(int *pw_exist, int exist_offset, 
@@ -304,4 +314,7 @@ int sysi_platform_info_get(onlp_platform_info_t* pi);
 
 int qsfp_present_get(int port, int *pres_val);
 
+bool onlp_sysi_bmc_en_get(void);
+
+extern bool bmc_enable;
 #endif  /* __PLATFORM_LIB_H__ */

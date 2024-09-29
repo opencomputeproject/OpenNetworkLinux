@@ -31,6 +31,7 @@
 #include <linux/err.h>
 #include <linux/mutex.h>
 
+
 /* header file for i2c cpld driver of Netberg Aurora 750
  *
  * Copyright (C) 2019 Netberg Ltd.
@@ -112,6 +113,8 @@ enum LED_GREEN {
 #define CPLD_QSFP_LED_BASE_REG          0x80
 #define CPLD_QSFP_LED_BLINK_BASE_REG    0x90
 #define CPLD_RTMR_RESET_REG    0x4B
+#define CPLD_ROV_STATUS_REG    0x4C
+
 
 /* bit definition for register value */
 enum CPLD_QSFP_PORT_STATUS_BITS {
@@ -453,6 +456,7 @@ enum aurora_750_cpld_sysfs_attributes {
     CPLD_QSFP_LED_16,
     CPLD_QSFP_LED_BLINK,
     CPLD_RTMR_RESET,
+    CPLD_ROV_STATUS,
 
 };
 
@@ -527,6 +531,8 @@ static ssize_t read_rtmr_reset(struct device *dev,
                 struct device_attribute *da, char *buf);
 static ssize_t write_rtmr_reset(struct device *dev,
         struct device_attribute *da, const char *buf, size_t count);
+static ssize_t read_rov_status(struct device *dev,
+                struct device_attribute *da, char *buf);
 
 static LIST_HEAD(cpld_client_list);  /* client list for cpld */
 static struct mutex list_lock;  /* mutex for client list */
@@ -695,6 +701,8 @@ static SENSOR_DEVICE_ATTR(cpld_qsfp_led_blink, S_IWUSR | S_IRUGO,
                 read_qsfp_led_blink, write_qsfp_led_blink, CPLD_QSFP_LED_BLINK);
 static SENSOR_DEVICE_ATTR(cpld_rtmr_reset, S_IWUSR | S_IRUGO,
                 read_rtmr_reset, write_rtmr_reset, CPLD_RTMR_RESET);
+static SENSOR_DEVICE_ATTR(cpld_rov_status, S_IRUGO,
+                read_rov_status, NULL, CPLD_ROV_STATUS);
 
 /* define support attributes of cpldx , total 5 */
 /* cpld 1 */
@@ -742,6 +750,7 @@ static struct attribute *aurora_750_cpld1_attributes[] = {
     &sensor_dev_attr_cpld_sfp_led.dev_attr.attr,
     &sensor_dev_attr_cpld_sfp_led_blink.dev_attr.attr,
     &sensor_dev_attr_cpld_rtmr_reset.dev_attr.attr,
+    &sensor_dev_attr_cpld_rov_status.dev_attr.attr,
     NULL
 };
 
@@ -1574,6 +1583,27 @@ static ssize_t write_rtmr_reset(struct device *dev,
                     client, reg, reg_val);
     }
     return count;
+}
+
+/* get rov status register */
+static ssize_t read_rov_status(struct device *dev,
+                    struct device_attribute *da,
+                    char *buf)
+{
+    struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
+    struct i2c_client *client = to_i2c_client(dev);
+    struct cpld_data *data = i2c_get_clientdata(client);
+    u8 reg;
+    int reg_val;
+
+    if (attr->index == CPLD_ROV_STATUS) {
+        reg = CPLD_ROV_STATUS_REG;
+        I2C_READ_BYTE_DATA(reg_val, &data->access_lock, client, reg);
+        if (reg_val < 0)
+            return -1;
+        return sprintf(buf, "0x%02x\n", reg_val);
+    }
+    return -1;
 }
 
 /* add valid cpld client to list */
