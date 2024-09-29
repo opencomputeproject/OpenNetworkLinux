@@ -106,7 +106,7 @@ struct as7535_28xb_fan_data {
 	unsigned long last_updated;	/* In jiffies */
 	/* 4 bytes for each fan, the last 2 bytes is fan dir */
 	unsigned char ipmi_resp[NUM_OF_FAN * FAN_DATA_COUNT + 2];
-	unsigned char ipmi_resp_cpld;
+	unsigned char ipmi_resp_cpld[2];
 	unsigned char ipmi_resp_speed[NUM_OF_FAN * FAN_SPEED_DATA_COUNT];
 	struct ipmi_data ipmi;
 	unsigned char ipmi_tx_data[3];  /* 0: FAN id, 1: 0x02, 2: PWM */
@@ -151,6 +151,7 @@ enum as7535_28xb_fan_sysfs_attrs {
 	FAN_ATTR(6),
 	NUM_OF_FAN_ATTR,
 	FAN_VERSION,
+	FAN_MINOR_VERSION,
 	FAN_MAX_RPM,
 	NUM_OF_PER_FAN_ATTR = (NUM_OF_FAN_ATTR/NUM_OF_FAN),
 	FAN_RPM_THRESHOLD_ATTR(1),
@@ -163,9 +164,14 @@ enum as7535_28xb_fan_sysfs_attrs {
 
 /* fan attributes */
 #define DECLARE_FAN_VER_SENSOR_DEVICE_ATTR() \
-	static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, FAN_VERSION)
+	static SENSOR_DEVICE_ATTR(version, S_IRUGO, show_version, NULL, \
+								FAN_VERSION); \
+	static SENSOR_DEVICE_ATTR(minor_version, S_IRUGO, show_version, NULL, \
+								FAN_MINOR_VERSION)
+
 #define DECLARE_FAN_VER_ATTR() \
-	&sensor_dev_attr_version.dev_attr.attr
+	&sensor_dev_attr_version.dev_attr.attr, \
+	&sensor_dev_attr_minor_version.dev_attr.attr
 
 #define DECLARE_FAN_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(fan##index##_present, S_IRUGO, show_fan, NULL, \
@@ -511,7 +517,7 @@ static struct as7535_28xb_fan_data *as7535_28xb_fan_update_cpld_ver(void)
 	data->ipmi_tx_data[0] = 0x66;
 	status = ipmi_send_message(&data->ipmi, IPMI_FAN_REG_READ_CMD,
 								data->ipmi_tx_data, 1,
-								&data->ipmi_resp_cpld,
+								data->ipmi_resp_cpld,
 								sizeof(data->ipmi_resp_cpld));
 	if (unlikely(status != 0))
 		goto exit;
@@ -531,6 +537,7 @@ exit:
 static ssize_t show_version(struct device *dev, struct device_attribute *da,
 								char *buf)
 {
+	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	unsigned char value = 0;
 	int error = 0;
 
@@ -542,7 +549,11 @@ static ssize_t show_version(struct device *dev, struct device_attribute *da,
 		goto exit;
 	}
 
-	value = data->ipmi_resp_cpld;
+	if (attr->index == FAN_VERSION)
+		value = data->ipmi_resp_cpld[0];
+	else if (attr->index == FAN_MINOR_VERSION)
+		value = data->ipmi_resp_cpld[1];
+
 	mutex_unlock(&data->update_lock);
 	return sprintf(buf, "%d\n", value);
 
