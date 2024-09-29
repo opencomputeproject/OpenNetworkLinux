@@ -22,7 +22,8 @@ x86-64-accton-as4630-54te-r0:
 
     args: >-
       console=ttyS0,115200n8
-      intel_iommu=off
+      pcie_aspm_off
+      intel_iommu=pt
 
   network:
     interfaces:

@@ -26,6 +26,7 @@ x86-64-accton-asxvolt16-r0:
       tg3.short_preamble=1
       tg3.bcm5718s_reset=1
       intel_iommu=off
+      pcie_aspm=off
 
   ##network:
   ##  interfaces:
