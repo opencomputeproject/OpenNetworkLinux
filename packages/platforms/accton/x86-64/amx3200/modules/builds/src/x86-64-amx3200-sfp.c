@@ -42,6 +42,7 @@
 #define FPGA_QSFP_RESET_REG                     (FPGA_PCIE_START_OFFSET + 0x10)
 #define FPGA_QSFP_PRESENT_LPMODE_REG            (FPGA_PCIE_START_OFFSET + 0x38)
 
+#define FPGA_CFP_RESET_REG                      (FPGA_PCIE_START_OFFSET + 0x8)
 #define FPGA_CFP_PRESENT_RXLOS_REG              (FPGA_PCIE_START_OFFSET + 0x30)
 #define FPGA_CFP_TXDIS_LPMODE_REG               (FPGA_PCIE_START_OFFSET + 0x30)
 
@@ -96,6 +97,7 @@ static int amx300_sfp_remove(struct platform_device *pdev);
 #define TRANSCEIVER_ATTR_ID_CFP(index) \
      MODULE_PRESENT_##index      = (index-1), \
      MODULE_LPMODE_##index       = (index-1) + (PORT_NUM * 1), \
+     MODULE_RESET_##index        = (index-1) + (PORT_NUM * 2), \
      MODULE_TX_DISABLE_##index   = (index-1) + (PORT_NUM * 3), \
      MODULE_RX_LOS_##index       = (index-1) + (PORT_NUM * 4)
 
@@ -155,6 +157,8 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
 #define MODULE_ATTRS_CFP(index) \
      static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, \
           show_cfp, NULL, MODULE_PRESENT_##index); \
+     static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR,\
+          show_cfp, set_cfp, MODULE_RESET_##index); \
      static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
           show_cfp, set_cfp, MODULE_LPMODE_##index); \
      static SENSOR_DEVICE_ATTR(module_tx_disable_##index, S_IRUGO | S_IWUSR,\
@@ -163,6 +167,7 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
           show_cfp, NULL, MODULE_RX_LOS_##index); \
      static struct attribute *module_attributes##index[] = { \
           &sensor_dev_attr_module_present_##index.dev_attr.attr, \
+          &sensor_dev_attr_module_reset_##index.dev_attr.attr, \
           &sensor_dev_attr_module_lpmode_##index.dev_attr.attr, \
           &sensor_dev_attr_module_tx_disable_##index.dev_attr.attr, \
           &sensor_dev_attr_module_rxlos_##index.dev_attr.attr, \
@@ -235,10 +240,12 @@ static struct attribute_mapping attribute_mappings[] = {
     [MODULE_PRESENT_1 ... MODULE_PRESENT_2] = {MODULE_PRESENT_1, FPGA_CFP_PRESENT_RXLOS_REG, 1},
     [MODULE_RX_LOS_1 ... MODULE_RX_LOS_2] = {MODULE_RX_LOS_1, FPGA_CFP_PRESENT_RXLOS_REG, 0},
     [MODULE_LPMODE_1 ... MODULE_LPMODE_2] = {MODULE_LPMODE_1, FPGA_CFP_TXDIS_LPMODE_REG, 0},
+    [MODULE_RESET_1 ... MODULE_RESET_2] = {MODULE_RESET_1, FPGA_CFP_RESET_REG, 1},
     [MODULE_TX_DISABLE_1 ... MODULE_TX_DISABLE_2] = {MODULE_TX_DISABLE_1, FPGA_CFP_TXDIS_LPMODE_REG, 0},
     [MODULE_PRESENT_11 ... MODULE_PRESENT_12] = {MODULE_PRESENT_11, FPGA_CFP_PRESENT_RXLOS_REG, 1},
     [MODULE_RX_LOS_11 ... MODULE_RX_LOS_12] = {MODULE_RX_LOS_11, FPGA_CFP_PRESENT_RXLOS_REG, 0},
     [MODULE_LPMODE_11 ... MODULE_LPMODE_12] = {MODULE_LPMODE_11, FPGA_CFP_TXDIS_LPMODE_REG, 0},
+    [MODULE_RESET_11 ... MODULE_RESET_12] = {MODULE_RESET_11, FPGA_CFP_RESET_REG, 1},
     [MODULE_TX_DISABLE_11 ... MODULE_TX_DISABLE_12] = {MODULE_TX_DISABLE_11, FPGA_CFP_TXDIS_LPMODE_REG, 0},
 
     [MODULE_PRESENT_3 ... MODULE_PRESENT_10] = {MODULE_PRESENT_3, FPGA_QSFP_PRESENT_LPMODE_REG, 1},
@@ -336,7 +343,7 @@ static ssize_t show_cfp(struct device *dev, struct device_attribute *da,
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct amx300_sled_sfp_data *data = dev_get_drvdata(dev);
     u32 reg_val = 0;
-    u32 reg = 0, mask = 0, invert = 0, bit;
+    u32 reg = 0, mask = 0, invert = 0, bit, module_reset;
 
     switch (attr->index) {
     case MODULE_PRESENT_1 ... MODULE_PRESENT_2:
@@ -346,6 +353,11 @@ static ssize_t show_cfp(struct device *dev, struct device_attribute *da,
     case MODULE_RX_LOS_1 ... MODULE_RX_LOS_2:
     case MODULE_RX_LOS_11 ... MODULE_RX_LOS_12:
         bit = 2;
+        break;
+    case MODULE_RESET_1 ... MODULE_RESET_2:
+    case MODULE_RESET_11 ... MODULE_RESET_12:
+        module_reset = 1;
+        bit = 16;
         break;
     case MODULE_LPMODE_1 ... MODULE_LPMODE_2:
     case MODULE_LPMODE_11 ... MODULE_LPMODE_12:
@@ -361,7 +373,11 @@ static ssize_t show_cfp(struct device *dev, struct device_attribute *da,
 
     invert = attribute_mappings[attr->index].invert;
     reg = attribute_mappings[attr->index].reg;
-    mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 16 + bit);
+    if (module_reset == 1)
+        mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 1 + bit);
+    else
+        mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 16 + bit);
+    printk("mask %d \n", mask);
 
     mutex_lock(&data->update_lock);
     reg_val = amx3200_fpga_read32(data->sled_id, reg);
@@ -378,13 +394,17 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
     long value;
     int status;
     u32 reg_val = 0;
-    u32 reg = 0, mask = 0, invert = 0, bit;
+    u32 reg = 0, mask = 0, invert = 0, bit, module_reset;
 
     status = kstrtol(buf, 10, &value);
     if (status)
         return status;
 
     switch (attr->index) {
+    case MODULE_RESET_1 ... MODULE_RESET_2:
+    case MODULE_RESET_11 ... MODULE_RESET_12:
+        bit = 16;
+        module_reset = 1;
     case MODULE_LPMODE_1 ... MODULE_LPMODE_2:
     case MODULE_LPMODE_11 ... MODULE_LPMODE_12:
         bit = 8;
@@ -399,8 +419,11 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
 
     invert = attribute_mappings[attr->index].invert;
     reg = attribute_mappings[attr->index].reg;
-    mask = BIT(bit);
-
+    if (module_reset == 1)
+        mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 1 + bit);
+    else
+        mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 16 + bit);
+    printk("mask %d \n", mask);
     /* Read current status */
     mutex_lock(&data->update_lock);
     reg_val = amx3200_fpga_read32(data->sled_id, reg);
