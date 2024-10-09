@@ -1,0 +1,9 @@
+obj-m += x86-64-amx3200-mux.o
+obj-m += x86-64-amx3200-fpga.o
+obj-m += x86-64-amx3200-thermal.o
+obj-m += x86-64-amx3200-fan.o
+obj-m += x86-64-amx3200-leds.o
+obj-m += x86-64-amx3200-psu.o
+obj-m += x86-64-amx3200-sled.o
+obj-m += x86-64-amx3200-sfp.o
+obj-m += x86-64-amx3200-sys.o
