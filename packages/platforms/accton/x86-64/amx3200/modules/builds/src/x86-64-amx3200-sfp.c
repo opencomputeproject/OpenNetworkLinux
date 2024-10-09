@@ -343,7 +343,7 @@ static ssize_t show_cfp(struct device *dev, struct device_attribute *da,
     struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
     struct amx300_sled_sfp_data *data = dev_get_drvdata(dev);
     u32 reg_val = 0;
-    u32 reg = 0, mask = 0, invert = 0, bit, module_reset;
+    u32 reg = 0, mask = 0, invert = 0, bit, module_reset = 0;
 
     switch (attr->index) {
     case MODULE_PRESENT_1 ... MODULE_PRESENT_2:
@@ -373,11 +373,10 @@ static ssize_t show_cfp(struct device *dev, struct device_attribute *da,
 
     invert = attribute_mappings[attr->index].invert;
     reg = attribute_mappings[attr->index].reg;
-    if (module_reset == 1)
+    if (module_reset)
         mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 1 + bit);
     else
         mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 16 + bit);
-    printk("mask %d \n", mask);
 
     mutex_lock(&data->update_lock);
     reg_val = amx3200_fpga_read32(data->sled_id, reg);
@@ -394,7 +393,7 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
     long value;
     int status;
     u32 reg_val = 0;
-    u32 reg = 0, mask = 0, invert = 0, bit, module_reset;
+    u32 reg = 0, mask = 0, invert = 0, bit, module_reset = 0;
 
     status = kstrtol(buf, 10, &value);
     if (status)
@@ -405,6 +404,7 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
     case MODULE_RESET_11 ... MODULE_RESET_12:
         bit = 16;
         module_reset = 1;
+        break;
     case MODULE_LPMODE_1 ... MODULE_LPMODE_2:
     case MODULE_LPMODE_11 ... MODULE_LPMODE_12:
         bit = 8;
@@ -419,18 +419,19 @@ static ssize_t set_cfp(struct device *dev, struct device_attribute *da,
 
     invert = attribute_mappings[attr->index].invert;
     reg = attribute_mappings[attr->index].reg;
-    if (module_reset == 1)
+    if (module_reset)
+    {
         mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 1 + bit);
+    }
     else
+    {
         mask = BIT((attr->index - attribute_mappings[attr->index].attr_base) * 16 + bit);
-    printk("mask %d \n", mask);
+    }
     /* Read current status */
     mutex_lock(&data->update_lock);
     reg_val = amx3200_fpga_read32(data->sled_id, reg);
-
     /* Update status */
     value = invert ? !value : !!value;
-
     if (value)
         reg_val |= mask;
     else
