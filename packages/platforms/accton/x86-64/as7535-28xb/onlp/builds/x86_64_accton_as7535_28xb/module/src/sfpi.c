@@ -134,7 +134,7 @@ onlp_sfpi_presence_bitmap_get(onlp_sfp_bitmap_t* dst)
     count = fscanf(fp, "%x %x %x %x", bytes, bytes+1, bytes+2, bytes+3);
     fclose(fp);
 
-    if(count != AIM_ARRAYSIZE(bytes)) {
+    if(count != ARRAY_SIZE(bytes)) {
         /* Likely a CPLD read timeout. */
         AIM_LOG_ERROR("Unable to read all fields the module_present_all device file of CPLD");
         return ONLP_STATUS_E_INTERNAL;
@@ -310,6 +310,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
             AIM_LOG_ERROR("Unable to write reset status to port(%d)\r\n", port);
             return ONLP_STATUS_E_INTERNAL;
         }
+        break;
     }
     case ONLP_SFP_CONTROL_LP_MODE: {
         VALIDATE_QSFP(port);
@@ -321,6 +322,7 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         else {
             return ONLP_STATUS_OK;
         }
+        break;
     }
     case ONLP_SFP_CONTROL_SOFT_RATE_SELECT: {
         VALIDATE_SFP(port);
