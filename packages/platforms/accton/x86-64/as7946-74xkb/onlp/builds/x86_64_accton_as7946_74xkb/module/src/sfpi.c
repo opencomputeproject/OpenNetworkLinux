@@ -61,6 +61,7 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 #define MODULE_RESET_MAIN_BOARD_CPLD1_FORMAT "/sys/bus/i2c/devices/12-0061/module_reset_%d"
 #define MODULE_RESET_MAIN_BOARD_CPLD2_FORMAT "/sys/bus/i2c/devices/13-0062/module_reset_%d"
 #define MODULE_RESET_MAIN_BOARD_CPLD3_FORMAT "/sys/bus/i2c/devices/16-0063/module_reset_%d"
+#define MODULE_LPMODE_MAIN_BOARD_CPLD1_FORMAT "/sys/bus/i2c/devices/12-0061/module_lpmode_%d"
 #define MODULE_PRESENT_MAIN_BOARD_CPLD1_FORMAT "/sys/bus/i2c/devices/12-0061/module_present_%d"
 #define MODULE_PRESENT_MAIN_BOARD_CPLD2_FORMAT "/sys/bus/i2c/devices/13-0062/module_present_%d"
 #define MODULE_PRESENT_MAIN_BOARD_CPLD3_FORMAT "/sys/bus/i2c/devices/16-0063/module_present_%d"
@@ -70,7 +71,6 @@ static const int port_bus_index[NUM_OF_SFP_PORT] = {
 #define MODULE_TXDISABLE_MAIN_BOARD_CPLD1_FORMAT "/sys/bus/i2c/devices/12-0061/module_tx_disable_%d"
 #define MODULE_TXDISABLE_MAIN_BOARD_CPLD2_FORMAT "/sys/bus/i2c/devices/13-0062/module_tx_disable_%d"
 #define MODULE_TXDISABLE_MAIN_BOARD_CPLD3_FORMAT "/sys/bus/i2c/devices/16-0063/module_tx_disable_%d"
-
 
 /************************************************************
  *
@@ -308,6 +308,23 @@ onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
         }
         break;
     }
+    case ONLP_SFP_CONTROL_LP_MODE:
+    {
+        VALIDATE_QSFP(port);
+
+        switch (port) {
+        case 0 ... 9:
+            path = MODULE_LPMODE_MAIN_BOARD_CPLD1_FORMAT;
+            break;
+        default:
+            break;
+        }
+        if (onlp_file_write_int(value, path, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to write LP mode status to port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        break;
+    }
     default:
         rv = ONLP_STATUS_E_UNSUPPORTED;
         break;
@@ -389,6 +406,24 @@ onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
         }
         if (onlp_file_read_int(value, path, (port+1)) < 0) {
             AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+            rv = ONLP_STATUS_E_INTERNAL;
+        }
+        break;
+    }
+    case ONLP_SFP_CONTROL_LP_MODE:
+    {
+        VALIDATE_QSFP(port);
+
+        switch (port) {
+        case 0 ... 9:
+            path = MODULE_LPMODE_MAIN_BOARD_CPLD1_FORMAT;
+            break;
+        default:
+            break;
+        }
+
+        if (onlp_file_read_int(value, path, (port+1)) < 0) {
+            AIM_LOG_ERROR("Unable to read LP mode status from port(%d)\r\n", port);
             rv = ONLP_STATUS_E_INTERNAL;
         }
         break;

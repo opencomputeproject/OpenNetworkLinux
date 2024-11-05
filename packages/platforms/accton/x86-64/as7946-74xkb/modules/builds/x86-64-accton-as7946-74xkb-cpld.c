@@ -80,6 +80,7 @@ static const unsigned short normal_i2c[] = { I2C_CLIENT_END };
 #define TRANSCEIVER_RESET_ATTR_ID(index) MODULE_RESET_##index
 #define TRANSCEIVER_TXDISABLE_ATTR_ID(index) MODULE_TXDISABLE_##index
 #define TRANSCEIVER_RXLOS_ATTR_ID(index) MODULE_RXLOS_##index
+#define TRANSCEIVER_LPMODE_ATTR_ID(index) MODULE_LPMODE_##index
 
 enum as7946_74xkb_cpld_sysfs_attributes {
 	/* transceiver attributes */
@@ -167,6 +168,16 @@ enum as7946_74xkb_cpld_sysfs_attributes {
 	TRANSCEIVER_RESET_ATTR_ID(8),
 	TRANSCEIVER_RESET_ATTR_ID(9),
 	TRANSCEIVER_RESET_ATTR_ID(10),
+	TRANSCEIVER_LPMODE_ATTR_ID(1),
+	TRANSCEIVER_LPMODE_ATTR_ID(2),
+	TRANSCEIVER_LPMODE_ATTR_ID(3),
+	TRANSCEIVER_LPMODE_ATTR_ID(4),
+	TRANSCEIVER_LPMODE_ATTR_ID(5),
+	TRANSCEIVER_LPMODE_ATTR_ID(6),
+	TRANSCEIVER_LPMODE_ATTR_ID(7),
+	TRANSCEIVER_LPMODE_ATTR_ID(8),
+	TRANSCEIVER_LPMODE_ATTR_ID(9),
+	TRANSCEIVER_LPMODE_ATTR_ID(10),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(11),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(12),
 	TRANSCEIVER_TXDISABLE_ATTR_ID(13),
@@ -308,20 +319,25 @@ enum as7946_74xkb_cpld_sysfs_attributes {
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, \
 								NULL, MODULE_PRESENT_##index); \
 	static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR, \
-								show_status, set_control, MODULE_RESET_##index)
+								show_status, set_control, MODULE_RESET_##index); \
+	static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
+								show_status, set_control, MODULE_LPMODE_##index);
 #define DECLARE_QSFP28_TRANSCEIVER_ATTR(index)  \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
-	&sensor_dev_attr_module_reset_##index.dev_attr.attr
+	&sensor_dev_attr_module_reset_##index.dev_attr.attr, \
+	&sensor_dev_attr_module_lpmode_##index.dev_attr.attr
 
 #define DECLARE_QSFPDD_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, \
 								show_status, NULL, MODULE_PRESENT_##index); \
 	static SENSOR_DEVICE_ATTR(module_reset_##index, S_IRUGO | S_IWUSR, \
-								show_status, set_control, MODULE_RESET_##index)
+								show_status, set_control, MODULE_RESET_##index); \
+	static SENSOR_DEVICE_ATTR(module_lpmode_##index, S_IRUGO | S_IWUSR, \
+								show_status, set_control, MODULE_LPMODE_##index);
 #define DECLARE_QSFPDD_TRANSCEIVER_ATTR(index) \
 	&sensor_dev_attr_module_present_##index.dev_attr.attr, \
-	&sensor_dev_attr_module_reset_##index.dev_attr.attr
-
+	&sensor_dev_attr_module_reset_##index.dev_attr.attr, \
+	&sensor_dev_attr_module_lpmode_##index.dev_attr.attr
 /* sfp transceiver attributes */
 #define DECLARE_SFP_TRANSCEIVER_SENSOR_DEVICE_ATTR(index) \
 	static SENSOR_DEVICE_ATTR(module_present_##index, S_IRUGO, show_status, \
@@ -644,6 +660,15 @@ static ssize_t show_status(struct device *dev, struct device_attribute *da,
 		reg  = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_9);
 		break;
+		/* lpmode */
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_10:
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
+		break;
 	case MODULE_TXDISABLE_11 ... MODULE_TXDISABLE_18:
 		reg  = 0xA;
 		mask = 0x1 << (attr->index - MODULE_TXDISABLE_11);
@@ -940,6 +965,14 @@ static ssize_t set_control(struct device *dev, struct device_attribute *da,
 	case MODULE_RESET_9 ... MODULE_RESET_10:/*QSFP*/
 		reg  = 0x9;
 		mask = 0x1 << (attr->index - MODULE_RESET_9);
+		break;
+	case MODULE_LPMODE_1 ... MODULE_LPMODE_8:/*QSFP*/
+		reg  = 0xC;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_1);
+		break;
+	case MODULE_LPMODE_9 ... MODULE_LPMODE_10:/*QSFP*/
+		reg  = 0xD;
+		mask = 0x1 << (attr->index - MODULE_LPMODE_9);
 		break;
 	default:
 		return -ENXIO;
