@@ -195,8 +195,17 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
 
     /* Set the associated oid_table */
     val = 0;
-    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp1_input", bus, offset) == 0 && val) {
-        info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(pid + CHASSIS_THERMAL_COUNT);
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp2_input", 
+                            bus, offset) == 0 && val) {
+        info->hdr.coids[0] = ONLP_THERMAL_ID_CREATE(
+            (zid * NUM_OF_THERMAL_PER_PSU) + CHASSIS_THERMAL_COUNT + 1);
+    }
+
+    val = 0;
+    if (onlp_file_read_int(&val, PSU_SYSFS_PATH"psu_temp3_input", 
+                            bus, offset) == 0 && val) {
+        info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(
+            (zid * NUM_OF_THERMAL_PER_PSU) + CHASSIS_THERMAL_COUNT + 2);
     }
 
     return ret;

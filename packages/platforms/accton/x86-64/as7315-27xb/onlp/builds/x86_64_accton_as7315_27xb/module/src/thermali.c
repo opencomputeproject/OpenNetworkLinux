@@ -36,7 +36,9 @@ enum onlp_thermal_id
     THERMAL_2_ON_MAIN_BROAD,
     THERMAL_3_ON_MAIN_BROAD,
     THERMAL_1_ON_PSU1,
+    THERMAL_2_ON_PSU1,
     THERMAL_1_ON_PSU2,
+    THERMAL_2_ON_PSU2,
 };
 
 
@@ -64,8 +66,10 @@ static char* board_devfiles__[] =  /* must map with onlp_thermal_id */
     "/sys/bus/i2c/devices/51-0049*temp1_input",
     "/sys/bus/i2c/devices/52-004a*temp1_input",
     "/sys/bus/i2c/devices/53-004c*temp1_input",
-    "/sys/bus/i2c/devices/13-005b/psu_temp1_input",
-    "/sys/bus/i2c/devices/12-0058/psu_temp1_input",
+    "/sys/bus/i2c/devices/13-005b/psu_temp2_input",
+    "/sys/bus/i2c/devices/13-005b/psu_temp3_input",
+    "/sys/bus/i2c/devices/12-0058/psu_temp2_input",
+    "/sys/bus/i2c/devices/12-0058/psu_temp3_input",
 };
 
 
@@ -93,7 +97,15 @@ static onlp_thermal_info_t tinfo[] = {
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, {95000, 115000, 125000}
     },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, {95000, 115000, 125000}
+    },
     {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID)},
+        ONLP_THERMAL_STATUS_PRESENT,
+        ONLP_THERMAL_CAPS_ALL, 0, {95000, 115000, 125000}
+    },
+    {   { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU2_ID)},
         ONLP_THERMAL_STATUS_PRESENT,
         ONLP_THERMAL_CAPS_ALL, 0, {95000, 115000, 125000}
     }
