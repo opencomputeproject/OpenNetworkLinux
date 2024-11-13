@@ -85,7 +85,6 @@ static char *leds[] =  /* must map with onlp_led_id */
     "psu2",
     "fan",
     "alarm",
-    "7segment",
 };
 
 /*
@@ -123,11 +122,6 @@ static onlp_led_info_t linfo[] =
         { ONLP_LED_ID_CREATE(LED_ALARM), "Chassis LED 6 (ALARM LED)", 0 },
         ONLP_LED_STATUS_PRESENT,
         ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_GREEN_BLINKING | ONLP_LED_CAPS_RED,
-    },
-    {
-        { ONLP_LED_ID_CREATE(LED_7SEGMENT), "Chassis LED 7 (7-SEGMENT LED)", 0 },
-        ONLP_LED_STATUS_PRESENT,
-        ONLP_LED_CAPS_ON_OFF | ONLP_LED_CAPS_CHAR,
     },
 };
 
@@ -173,7 +167,6 @@ onlp_ledi_init(void)
 /*
  * Set the character
  * Set c as  0 to 9  will set the character accordingly.
- * Set c as 10 to 14 will turn off the 7-segment led
  * Set c as 15 will turn on the dot led
  * */
 int onlp_ledi_char_set(onlp_oid_t id, char c)

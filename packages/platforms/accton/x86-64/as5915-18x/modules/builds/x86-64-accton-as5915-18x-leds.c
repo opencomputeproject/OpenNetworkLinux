@@ -80,7 +80,6 @@ static struct as5915_18x_led_data  *ledctl = NULL;
 static const u8 led_reg[] = {
     0x40, /* LOC LED */
     0x41, /* ALARM / DIAG LED */
-    0xBD, /* 7-segment LED */
 };
 
 enum led_type {
@@ -90,7 +89,6 @@ enum led_type {
     LED_TYPE_FAN,
     LED_TYPE_PSU1,
     LED_TYPE_PSU2,
-    LED_TYPE_7SEGMENT
 };
 
 /* LED mode */
@@ -177,16 +175,6 @@ static int as5915_18x_led_read_value(u8 reg)
 static int as5915_18x_led_write_value(u8 reg, u8 value)
 {
     return as5915_18x_fpga_write(LED_CNTRLER_FPGA_I2C_ADDRESS, reg, value);
-}
-
-static int as5915_18x_7segment_led_read_value(void)
-{
-    return as5915_18x_cpld_read(LED_CNTRLER_CPLD_ADDRESS, 0xBD);
-}
-
-static int as5915_18x_7segment_led_write_value(u8 value)
-{
-    return as5915_18x_cpld_write(LED_CNTRLER_CPLD_ADDRESS, 0xBD, value);
 }
 
 static void as5915_18x_led_update(void)
@@ -301,32 +289,6 @@ static enum led_brightness as5915_18x_led_fan_get(struct led_classdev *cdev)
     return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[0]);
 }
 
-static void as5915_18x_led_7segment_set(struct led_classdev *led_cdev,
-                                           enum led_brightness led_light_mode)
-{
-    mutex_lock(&ledctl->update_lock);
-    if (led_light_mode > 15) {
-        goto exit;
-    }
-
-    as5915_18x_7segment_led_write_value(led_light_mode);
-    ledctl->valid = 0;
-
-exit:
-    mutex_unlock(&ledctl->update_lock);
-}
-
-static enum led_brightness as5915_18x_led_7segment_get(struct led_classdev *cdev)
-{
-    int reg_val = 0;
-
-    mutex_lock(&ledctl->update_lock);
-    reg_val = as5915_18x_7segment_led_read_value();
-    mutex_unlock(&ledctl->update_lock);
-
-    return (reg_val & 0xF);
-}
-
 static struct led_classdev as5915_18x_leds[] = {
     [LED_TYPE_ALARM] = {
         .name            = "as5915_18x_led::alarm",
@@ -369,13 +331,6 @@ static struct led_classdev as5915_18x_leds[] = {
         .brightness_set  = as5915_18x_led_fan_set,
         .brightness_get  = as5915_18x_led_fan_get,
         .max_brightness  = LED_MODE_AMBER,
-    },
-    [LED_TYPE_7SEGMENT] = {
-        .name            = "as5915_18x_led::7segment",
-        .default_trigger = "unused",
-        .brightness_set  = as5915_18x_led_7segment_set,
-        .brightness_get  = as5915_18x_led_7segment_get,
-        .max_brightness  = 15,
     },
 };
 

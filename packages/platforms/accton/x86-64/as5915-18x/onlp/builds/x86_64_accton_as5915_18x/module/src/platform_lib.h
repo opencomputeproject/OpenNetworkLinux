@@ -31,7 +31,7 @@
 #define CHASSIS_FAN_COUNT		4
 #define CHASSIS_THERMAL_COUNT	5
 #define CHASSIS_PSU_COUNT		2
-#define CHASSIS_LED_COUNT		7
+#define CHASSIS_LED_COUNT		6
 
 #define PSU1_ID 1
 #define PSU2_ID 2
@@ -67,8 +67,7 @@ enum onlp_led_id
     LED_PSU1,
     LED_PSU2,
     LED_FAN,
-    LED_ALARM,
-    LED_7SEGMENT
+    LED_ALARM
 };
 
 #endif  /* __PLATFORM_LIB_H__ */
