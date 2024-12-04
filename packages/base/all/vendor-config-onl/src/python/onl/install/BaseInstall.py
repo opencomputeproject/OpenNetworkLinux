@@ -683,7 +683,7 @@ class GrubInstaller(SubprocessMixin, Base):
 
         kernels = []
         for f in set(os.listdir(self.im.installerConf.installer_dir) + self.zf.namelist()):
-            if 'kernel' in f:
+            if f.startswith('kernel'):
                 kernels.append(f)
 
         initrd = None
@@ -705,6 +705,20 @@ class GrubInstaller(SubprocessMixin, Base):
                 self.installerCopy(b, dst, optional=True)
             [_cp(e) for e in kernels]
             _cp(initrd, "%s.cpio.gz" % self.im.installerConf.installer_platform)
+
+            d = None
+            if self.isUEFI:
+                d = 'x86_64-efi/'
+            else:
+                d = 'i386-pc/'
+            dirs = os.path.join(ctx.dir, 'onl-loader', 'grub', d)
+            if not os.path.isdir(dirs):
+                os.makedirs(dirs)
+            for f in self.zf.namelist():
+                if f.startswith(d) and f != d:
+                    dst = os.path.join(dirs, os.path.basename(f))
+                    if not os.path.exists(dst):
+                        self.installerCopy(f, dst)
 
         return 0
 

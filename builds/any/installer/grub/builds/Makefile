@@ -14,6 +14,12 @@ DEBIAN_VERSION_ID := $(shell echo $(VERSION_ID))
 include $(ONL)/make/versions/version-onl.mk
 INSTALLER_NAME=$(FNAME_PRODUCT_VERSION)_ONL-OS$(DEBIAN_VERSION_ID)_$(FNAME_BUILD_ID)_$(UARCH)_$(BOOTMODE)_INSTALLER
 
+ifeq ($(ARCH),amd64)
+MKINSTALLER_OPTS_ARCH	= \
+  --add-dir $(ONL)/builds/$(ARCH)/rootfs/builds/$(ONL_DEBIAN_SUITE)/rootfs-$(ARCH).d/usr/lib/grub/i386-pc \
+  --add-dir $(ONL)/builds/$(ARCH)/rootfs/builds/$(ONL_DEBIAN_SUITE)/rootfs-$(ARCH).d/usr/lib/grub/x86_64-efi
+endif
+
 MKINSTALLER_OPTS	= \
   --onl-version "$(VERSION_STRING)" \
   --arch $(ARCH) \
@@ -25,6 +31,7 @@ MKINSTALLER_OPTS	= \
   --postinstall-script $(ONL)/builds/any/installer/sample-postinstall.sh \
   --plugin $(ONL)/builds/any/installer/sample-preinstall.py \
   --plugin $(ONL)/builds/any/installer/sample-postinstall.py \
+  $(MKINSTALLER_OPTS_ARCH) \
   # THIS LINE INTENTIONALLY LEFT BLANK
 
 WORK_DIR := $(ONL_DEBIAN_SUITE)

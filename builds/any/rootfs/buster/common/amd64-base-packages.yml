@@ -7,6 +7,7 @@
 - parted
 - smartmontools
 - grub2
+- grub-efi-amd64-bin
 - onl-upgrade
 - onl-kernel-4.9-lts-x86-64-all-modules
 - onl-kernel-4.14-lts-x86-64-all-modules

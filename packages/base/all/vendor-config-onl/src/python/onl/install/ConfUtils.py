@@ -205,6 +205,7 @@ class GrubEnv(SubprocessMixin):
             self.check_output((self.EFIBOOTMGR, '-b', uidx, '-B',))
 
         grubOpts = []
+        directory = None
         if self.isUEFI:
             grubOpts.append('--target=x86_64-efi')
             grubOpts.append('--no-nvram')
@@ -213,14 +214,19 @@ class GrubEnv(SubprocessMixin):
             grubOpts.append('--bootloader-id=ONL')
             # All ONL-derived distros should be able to use
             # the same profile
+            directory = "--directory=%s/onl-loader/grub/x86_64-efi"
+        else:
+            directory = "--directory=%s/onl-loader/grub/i386-pc"
 
         def _install():
             if self.bootDir is not None:
+                grubOpts.append(directory % self.bootDir)
                 self.check_call([self.INSTALL, '--boot-directory=' + self.bootDir,]
                                 + grubOpts
                                 + [device,])
             elif self.bootPart is not None:
                 with self.mountCtx(self.bootPart) as ctx:
+                    grubOpts.append(directory % ctx.dir)
                     self.check_call([self.INSTALL, '--boot-directory=' + ctx.dir,]
                                     + grubOpts
                                     + [device,])
@@ -402,12 +408,16 @@ class ProxyGrubEnv(SubprocessMixin):
             cmds.append("%s -b %s -B || sts=$?" % (self.EFIBOOTMGR, bidx,))
 
         grubOpts = []
+        directory = None
         if self.isUEFI:
             grubOpts.append('--target=x86_64-efi')
             grubOpts.append('--no-nvram')
             grubOpts.append('--bootloader-id=ONL')
             grubOpts.append('--efi-directory=/boot/efi')
             grubOpts.append('--recheck')
+            directory = "--directory=%s/onl-loader/grub/x86_64-efi"
+        else:
+            directory = "--directory=%s/onl-loader/grub/i386-pc"
 
         cmds = []
 
@@ -424,17 +434,20 @@ class ProxyGrubEnv(SubprocessMixin):
         if self.bootDir and self.chroot:
             p = os.pat.join(self.installerConf.installer_chroot,
                             self.bootDir.lstrip('/'))
+            grubOpts.append(directory % p)
             cmd = ([self.INSTALL, '--boot-directory=' + p,]
                    + grubOpts
                    + [device,])
             cmds.append(" ".join(cmd) + " || sts=$?")
         elif self.bootDir:
             p = self.bootDir
+            grubOpts.append(directory % p)
             cmd = ([self.INSTALL, '--boot-directory=' + p,]
                    + grubOpts
                    + [device,])
             cmds.append(" ".join(cmd) + " || sts=$?")
         elif self.bootPart:
+            grubOpts.append(directory % "$bootMpt")
             cmd = ([self.INSTALL, '--boot-directory=\"$bootMpt\"',]
                    + grubOpts
                    + [device,])
