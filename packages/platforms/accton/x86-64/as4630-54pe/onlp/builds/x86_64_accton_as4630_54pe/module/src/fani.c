@@ -168,7 +168,10 @@ _onlp_get_fan_direction_on_psu(void)
             continue;
         }
 
-        if (PSU_TYPE_AC_F2B == psu_type) {
+        if (PSU_TYPE_ACBEL == psu_type ||
+            PSU_TYPE_YM2651Y == psu_type ||
+            PSU_TYPE_YPEB1200A == psu_type ||
+            PSU_TYPE_UP1K21R_1085G == psu_type) {
             return ONLP_FAN_STATUS_F2B;
         }
         else {

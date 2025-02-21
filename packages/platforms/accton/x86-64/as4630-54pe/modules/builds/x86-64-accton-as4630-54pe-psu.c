@@ -37,6 +37,7 @@
 #define MAX_MODEL_NAME          20
 #define MAX_SERIAL_NUMBER       19
 
+static int models_min_offset = 0;
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *da, char *buf);
 static int as4630_54pe_psu_read_block(struct i2c_client *client, u8 command, u8 *data,int data_len);
@@ -66,6 +67,37 @@ enum as4630_54pe_psu_sysfs_attributes {
     PSU_MODEL_NAME,
     PSU_POWER_GOOD,
     PSU_SERIAL_NUMBER
+};
+
+enum psu_type {
+    PSU_YPEB1200,          /* F2B */
+    PSU_YPEB1200AM,        /* F2B */
+    PSU_UP1K21R_1085G,     /* F2B */
+    UNKNOWN_PSU
+};
+
+struct model_name_info {
+    enum psu_type type;
+    u8 offset;
+    u8 length;
+    char* model_name;
+};
+
+struct model_name_info models[] = {
+    { PSU_YPEB1200,      0x20, 11, "YPEB1200" },
+    { PSU_YPEB1200AM,    0x20, 11, "YPEB1200AM" }, /* Replace YPEB1200-AM to YPEB1200AM */
+    { PSU_UP1K21R_1085G, 0x20, 13, "UP1K21R-1085G" },
+};
+
+struct serial_number_info {
+    u8 offset;
+    u8 length;
+};
+
+struct serial_number_info serials[] = {
+    [PSU_YPEB1200]   = { 0x35, 17 },
+    [PSU_YPEB1200AM] = { 0x35, 18 },
+    [PSU_UP1K21R_1085G] =  { 0x3B, 9 },
 };
 
 /* sysfs attributes for hwmon
@@ -148,6 +180,18 @@ static const struct attribute_group as4630_54pe_psu_group = {
     .attrs = as4630_54pe_psu_attributes,
 };
 
+static int find_models_min_offset(void) {
+    int i, min_offset = models[0].offset;
+
+    for(i = 1; i < ARRAY_SIZE(models); i++) {
+        if(models[i].offset < min_offset) {
+            min_offset = models[i].offset;
+        }
+    }
+
+    return min_offset;
+}
+
 static int as4630_54pe_psu_probe(struct i2c_client *client,
                                 const struct i2c_device_id *dev_id)
 {
@@ -169,6 +213,7 @@ static int as4630_54pe_psu_probe(struct i2c_client *client,
     data->valid = 0;
     data->index = dev_id->driver_data;
     mutex_init(&data->update_lock);
+    models_min_offset = find_models_min_offset();
 
     dev_info(&client->dev, "chip found\n");
 
@@ -266,11 +311,12 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
 {
     struct i2c_client *client = to_i2c_client(dev);
     struct as4630_54pe_psu_data *data = i2c_get_clientdata(client);
+    char temp_model_name[MAX_MODEL_NAME] = {0};
 
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
             || !data->valid) {
         int status;
-        int power_good = 0;
+        int i, power_good = 0;
 
         dev_dbg(&client->dev, "Starting as4630_54pe update\n");
 
@@ -293,46 +339,82 @@ static struct as4630_54pe_psu_data *as4630_54pe_psu_update_device(struct device 
            power_good = ( (data->status >> 2) & 0x1); 
 
         if (power_good) {
-            status = as4630_54pe_psu_read_block(client, 0x20, data->model_name,
-                                               ARRAY_SIZE(data->model_name)-1);                                               
+            enum psu_type type = UNKNOWN_PSU;
+
+            status = as4630_54pe_psu_read_block(client, models_min_offset, 
+                                               temp_model_name,
+                                               ARRAY_SIZE(temp_model_name));
             if (status < 0) {
-                data->model_name[0] = '\0';
                 dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+                goto exit;
             }
-            else if(!strncmp(data->model_name, "YPEB1200", strlen("YPEB1200")))
-            {                
-                    if (data->model_name[9]=='A' && data->model_name[10]=='M')
-                    {
-                       data->model_name[8]='A';
-                       data->model_name[9]='M';
-                       data->model_name[strlen("YPEB1200AM")]='\0';
-                    }
-                    else  
-                        data->model_name[strlen("YPEB1200")]='\0';
+
+            for (i = 0; i < ARRAY_SIZE(models); i++) {
+                if ((models[i].length+1) > ARRAY_SIZE(data->model_name)) {
+                    dev_dbg(&client->dev,
+                            "invalid models[%d].length(%d), should not exceed the size of data->model_name(%ld)\n",
+                            i, models[i].length, ARRAY_SIZE(data->model_name));
+                    continue;
+                }
+
+                snprintf(data->model_name, models[i].length + 1, "%s", 
+                         temp_model_name + (models[i].offset - models_min_offset));
+
+                if(!strncmp(data->model_name, "YPEB1200", strlen("YPEB1200")))
+                {
+                        if (data->model_name[9]=='A' && data->model_name[10]=='M')
+                        {
+                           data->model_name[8]='A';
+                           data->model_name[9]='M';
+                           data->model_name[strlen("YPEB1200AM")]='\0';
+                        }
+                        else
+                           data->model_name[strlen("YPEB1200")]='\0';
+                }
+
+                /* Determine if the model name is known, if not, read next index */
+                if (strcmp(data->model_name, models[i].model_name) == 0) {
+                    type = models[i].type;
+                    break;
+                }
+
+                data->model_name[0] = '\0';
             }
-            else
-            {
-                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
+
+            if (type < ARRAY_SIZE(serials)) {
+                if ((serials[type].length+1) > ARRAY_SIZE(data->serial_number)) {
+                    dev_dbg(&client->dev,
+                            "invalid serials[%d].length(%d), should not exceed the size of data->serial_number(%ld)\n",
+                            type, serials[type].length, ARRAY_SIZE(data->serial_number));
+                    goto exit;
+                }
+
+                memset(data->serial_number, 0, sizeof(data->serial_number));
+                status = as4630_54pe_psu_read_block(client, serials[type].offset,
+                                                data->serial_number,
+                                                serials[type].length);
+                if (status < 0) {
+                    dev_dbg(&client->dev,
+                            "unable to read serial from (0x%x) offset(0x%02x)\n",
+                            client->addr, serials[type].length);
+                    goto exit;
+                }
+                else {
+                    data->serial_number[serials[type].length]= '\0';
+                }
             }
-             /* Read from offset 0x35 ~ 0x46 (18 bytes) */
-            status = as4630_54pe_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
-            if (status < 0)
-            {
-                data->serial_number[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x35)\n", client->addr);
+            else {
+                dev_dbg(&client->dev, "invalid PSU type(%d)\n", type);
+                return data;
             }
-            if (!strncmp(data->model_name, "YPEB1200AM", strlen("YPEB1200AM"))) /*for YPEB1200AM, SN length=18*/
-            {
-                data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
-            }
-            else
-                data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
-            
         }
+
 
         data->last_updated = jiffies;
         data->valid = 1;
     }
+
+exit:
 
     return data;
 }

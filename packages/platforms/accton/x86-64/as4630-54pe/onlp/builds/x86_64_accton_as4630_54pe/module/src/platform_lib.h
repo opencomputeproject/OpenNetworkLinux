@@ -73,6 +73,7 @@ typedef enum psu_type {
     PSU_TYPE_ACBEL,
     PSU_TYPE_YM2651Y,
     PSU_TYPE_YPEB1200A,
+    PSU_TYPE_UP1K21R_1085G,
     PSU_TYPE_AC_F2B,
     PSU_TYPE_AC_B2F
 } psu_type_t;

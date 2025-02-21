@@ -34,12 +34,13 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
-#define MAX_MODEL_NAME 13
+#define MAX_MODEL_NAME 15
 #define MAX_SERIAL_NUMBER 18
 
 #define IS_POWER_GOOD(id, value) (!!(value >> (6-id*4) & 0x1))
 #define IS_PRESENT(id, value) (!(value >> (5-id*4) & 0x1))
 
+static int models_min_offset = 0;
 static ssize_t show_status(struct device *dev, struct device_attribute *da,
 					char *buf);
 static ssize_t show_string(struct device *dev, struct device_attribute *da,
@@ -73,6 +74,43 @@ enum as4630_54te_psu_sysfs_attributes {
 	PSU_MODEL_NAME,
 	PSU_POWER_GOOD,
 	PSU_SERIAL_NUMBER
+};
+
+enum psu_type {
+	PSU_YM_1151D_A02R,     /* B2F */
+	PSU_YM_1151D_A03R,     /* F2B */
+	PSU_YM_1151F_A01R,     /* F2B */
+	PSU_UPD1501SA_1190G,   /* F2B */
+	PSU_UPD1501SA_1290G,   /* B2F */
+	UNKNOWN_PSU
+};
+
+struct model_name_info {
+	enum psu_type type;
+	u8 offset;
+	u8 length;
+	char* model_name;
+};
+
+struct model_name_info models[] = {
+	{ PSU_YM_1151D_A02R,   0x20, 13, "YM-1151D-A02R" },
+	{ PSU_YM_1151D_A03R,   0x20, 13, "YM-1151D-A03R" },
+	{ PSU_YM_1151F_A01R,   0x20, 13, "YM-1151F-A01R" },
+	{ PSU_UPD1501SA_1190G, 0x20, 15, "UPD1501SA-1190G" },
+	{ PSU_UPD1501SA_1290G, 0x20, 15, "UPD1501SA-1290G" },
+};
+
+struct serial_number_info {
+	u8 offset;
+	u8 length;
+};
+
+struct serial_number_info serials[] = {
+	[PSU_YM_1151D_A02R] = { 0x35, 18 },
+	[PSU_YM_1151D_A03R] =  { 0x2E, 18 },
+	[PSU_YM_1151F_A01R] = { 0x2E, 18 },
+	[PSU_UPD1501SA_1190G] = { 0x3B, 9 },
+	[PSU_UPD1501SA_1290G] = { 0x3B, 9 },
 };
 
 /* sysfs attributes for hwmon
@@ -153,6 +191,18 @@ static const struct attribute_group as4630_54te_psu_group = {
 	.attrs = as4630_54te_psu_attributes,
 };
 
+static int find_models_min_offset(void) {
+	int i, min_offset = models[0].offset;
+
+	for(i = 1; i < ARRAY_SIZE(models); i++) {
+		if(models[i].offset < min_offset) {
+			min_offset = models[i].offset;
+		}
+	}
+
+	return min_offset;
+}
+
 static int as4630_54te_psu_probe(struct i2c_client *client,
 								const struct i2c_device_id *dev_id)
 {
@@ -174,6 +224,7 @@ static int as4630_54te_psu_probe(struct i2c_client *client,
 	data->valid = 0;
 	data->index = dev_id->driver_data;
 	mutex_init(&data->update_lock);
+	models_min_offset = find_models_min_offset();
 
 	dev_info(&client->dev, "chip found\n");
 
@@ -272,12 +323,12 @@ as4630_54te_psu_data *as4630_54te_psu_update_device(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct as4630_54te_psu_data *data = i2c_get_clientdata(client);
+	char temp_model_name[MAX_MODEL_NAME+1] = {0};
 
 	if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
 			|| !data->valid) {
 		int status;
-		u8 serial_offset;
-		int power_good = 0;
+		int i, power_good = 0;
 
 		dev_dbg(&client->dev, "Starting as4630_54te update\n");
 
@@ -299,43 +350,77 @@ as4630_54te_psu_data *as4630_54te_psu_update_device(struct device *dev)
 		power_good = IS_POWER_GOOD(data->index, data->status);
 
 		if (power_good) {
-			status = as4630_54te_psu_read_block(client, 0x20,
-											data->model_name,
-											ARRAY_SIZE(data->model_name)-1);
+			enum psu_type type = UNKNOWN_PSU;
+
+			status = as4630_54te_psu_read_block(client, models_min_offset,
+								temp_model_name,
+								ARRAY_SIZE(temp_model_name));
 			if (status < 0) {
-				data->model_name[0] = '\0';
 				dev_dbg(&client->dev,
-						"unable to read model name from (0x%x) offset(0x20)\n",
-						client->addr);
+						"unable to read model name from (0x%x) offset(0x%02x)\n",
+						client->addr, models_min_offset);
+				goto exit;
+			}
+
+			for (i = 0; i < ARRAY_SIZE(models); i++) {
+				if ((models[i].length+1) > ARRAY_SIZE(data->model_name)) {
+					dev_dbg(&client->dev,
+							"invalid models[%d].length(%d), should not exceed the size of data->model_name(%ld)\n",
+							i, models[i].length, ARRAY_SIZE(data->model_name));
+					continue;
+				}
+
+				snprintf(data->model_name, models[i].length + 1, "%s", 
+						temp_model_name + (models[i].offset - models_min_offset));
+
+				if (i == PSU_YM_1151D_A03R ||
+					i == PSU_YM_1151F_A01R ||
+					i == PSU_YM_1151D_A02R) {
+					data->model_name[8] = '-';
+				}
+
+				/* Determine if the model name is known, if not, read next index */
+				if (strncmp(data->model_name, models[i].model_name, models[i].length) == 0) {
+					type = models[i].type;
+					break;
+				}
+
+				data->model_name[0] = '\0';
+			}
+
+			if (type < ARRAY_SIZE(serials)) {
+				if ((serials[type].length+1) > ARRAY_SIZE(data->serial_number)) {
+					dev_dbg(&client->dev,
+							"invalid serials[%d].length(%d), should not exceed the size of data->serial_number(%ld)\n",
+							type, serials[type].length, ARRAY_SIZE(data->serial_number));
+					goto exit;
+				}
+
+				memset(data->serial_number, 0, sizeof(data->serial_number));
+				status = as4630_54te_psu_read_block(client, serials[type].offset,
+												data->serial_number,
+												serials[type].length);
+				if (status < 0) {
+					dev_dbg(&client->dev,
+							"unable to read serial from (0x%x) offset(0x%02x)\n",
+							client->addr, serials[type].length);
+					goto exit;
+				}
+				else {
+					data->serial_number[serials[type].length]= '\0';
+				}
 			}
 			else {
-				data->model_name[8] = '-';
-				data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
+				dev_dbg(&client->dev, "invalid PSU type(%d)\n", type);
+				return data;
 			}
-
-			if (strncmp(data->model_name, "YM-1151D-A03R", MAX_MODEL_NAME) == 0 ||
-				strncmp(data->model_name, "YM-1151F-A01R", MAX_MODEL_NAME) == 0)
-				serial_offset = 0x2E; /* YM-1151D-A03R or YM-1151F-A01R */
-			else
-				serial_offset = 0x35; /* YM-1151D-A02R */
-
-			/* Read from offset 0x2e or 0x35 (18 bytes) */
-			status = as4630_54te_psu_read_block(client, serial_offset,
-											data->serial_number,
-											ARRAY_SIZE(data->serial_number)-1);
-			if (status < 0) {
-				data->serial_number[0] = '\0';
-				dev_dbg(&client->dev,
-						"unable to read serial from (0x%x) offset(0x%x)\n",
-						client->addr, serial_offset);
-			}
-			data->serial_number[ARRAY_SIZE(data->serial_number)-1]= '\0';
 		}
 
 		data->last_updated = jiffies;
 		data->valid = 1;
 	}
 
+exit:
 	return data;
 }
 
