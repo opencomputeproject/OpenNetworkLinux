@@ -171,11 +171,11 @@ enum
 };
 
 fan_ctrl_policy_t  fan_thermal_policy[] = {
-{38,  0x4, 0,     39000,   LEVEL_FAN_DEF},
-{75,  0xB, 39000, 45000,   LEVEL_FAN_MID},
-{100, 0xE, 45000, 61000,   LEVEL_FAN_MAX},
-{100, 0xE, 61000, 66000,   LEVEL_TEMP_HIGH},
-{100, 0xE, 66000, 200000,  LEVEL_TEMP_CRITICAL}
+{50,  0x5, 0,     41000,   LEVEL_FAN_DEF},
+{75,  0x9, 41000, 46000,   LEVEL_FAN_MID},
+{100, 0xF, 46000, 61000,   LEVEL_FAN_MAX},
+{100, 0xF, 61000, 66000,   LEVEL_TEMP_HIGH},
+{100, 0xF, 66000, 200000,  LEVEL_TEMP_CRITICAL}
 };
 
 #define FAN_SPEED_CTRL_PATH "/sys/bus/i2c/devices/11-0066/fan_duty_cycle_percentage"
