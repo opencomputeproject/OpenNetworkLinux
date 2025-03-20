@@ -43,7 +43,15 @@
 #define SYS_LED_PATH   "/sys/devices/platform/as7535_28xb_led/"
 #define IDPROM_PATH "/sys/devices/platform/as7535_28xb_sys/eeprom"
 
+#define PSU_SYSFS_NODE(node) PSU_SYSFS_PATH#node
+
 int get_pcb_id();
+
+typedef enum psu_type {
+    PSU_TYPE_PS_2601_6R = 0,
+    PSU_TYPE_DD_2601_6R,
+    PSU_TYPE_UNKNOWN,
+} psu_type_t;
 
 enum onlp_thermal_id {
     THERMAL_RESERVED = 0,
@@ -81,6 +89,7 @@ enum onlp_fan_dir {
 };
 
 enum onlp_fan_dir onlp_get_fan_dir(int fid);
+psu_type_t get_psu_type(int tid, int psu_tid_start, char* modelname, int modelname_len);
 
 #define AIM_FREE_IF_PTR(p) \
     do \
