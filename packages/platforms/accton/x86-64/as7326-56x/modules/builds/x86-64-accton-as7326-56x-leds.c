@@ -40,7 +40,7 @@ struct accton_as7326_56x_led_data {
     struct mutex	 update_lock;
     char			 valid;		   /* != 0 if registers are valid */
     unsigned long	last_updated;	/* In jiffies */
-    u8			   reg_val[2];
+    u8			   reg_val[5];
 };
 
 static struct accton_as7326_56x_led_data  *ledctl = NULL;
@@ -59,6 +59,12 @@ static struct accton_as7326_56x_led_data  *ledctl = NULL;
 #define LED_MODE_DIAG_OFF_VALUE         (0x07)
 #define LED_TYPE_LOC_REG_MASK           (0x3F)
 #define LED_MODE_LOC_OFF_VALUE          (0x07)
+#define LED_TYPE_FAN_REG_MASK           (0x3F)
+#define LED_MODE_FAN_OFF_VALUE          (0x07)
+#define LED_TYPE_PSU1_REG_MASK          (0x3F)
+#define LED_MODE_PSU1_OFF_VALUE         (0x07)
+#define LED_TYPE_PSU2_REG_MASK          (0x3F)
+#define LED_MODE_PSU2_OFF_VALUE         (0x07)
 
 enum led_type {
     LED_TYPE_DIAG,
@@ -76,6 +82,9 @@ struct led_reg {
 static const struct led_reg led_reg_map[] = {
     {(1<<LED_TYPE_DIAG), 0x24},
     {(1<<LED_TYPE_LOC) , 0x25},
+    {(1<<LED_TYPE_FAN) , 0x23},
+    {(1<<LED_TYPE_PSU1), 0x21},
+    {(1<<LED_TYPE_PSU2), 0x22},
 };
 
 
@@ -127,6 +136,18 @@ static struct led_type_mode led_type_mode_data[] = {
     {LED_TYPE_LOC,  LED_MODE_BLUE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x27,   0x23},
     {LED_TYPE_LOC,  LED_MODE_AMBER_BLINK,	LED_TYPE_LOC_REG_MASK,   0x1f,   0x1c},
     {LED_TYPE_LOC,  LED_MODE_PURPLE_BLINK,	LED_TYPE_LOC_REG_MASK,   0x2f,   0x2a},
+
+    {LED_TYPE_FAN,  LED_MODE_OFF,           LED_TYPE_FAN_REG_MASK,   LED_MODE_FAN_OFF_VALUE},
+    {LED_TYPE_FAN,  LED_MODE_RED,           LED_TYPE_FAN_REG_MASK,   0x06,   0x06},
+    {LED_TYPE_FAN,  LED_MODE_GREEN,         LED_TYPE_FAN_REG_MASK,   0x05,   0x05},
+
+    {LED_TYPE_PSU1,  LED_MODE_OFF,          LED_TYPE_PSU1_REG_MASK,  LED_MODE_PSU1_OFF_VALUE},
+    {LED_TYPE_PSU1,  LED_MODE_RED,          LED_TYPE_PSU1_REG_MASK,  0x06,   0x06},
+    {LED_TYPE_PSU1,  LED_MODE_GREEN,        LED_TYPE_PSU1_REG_MASK,  0x05,   0x05},
+
+    {LED_TYPE_PSU2,  LED_MODE_OFF,          LED_TYPE_PSU2_REG_MASK,  LED_MODE_PSU2_OFF_VALUE},
+    {LED_TYPE_PSU2,  LED_MODE_RED,          LED_TYPE_PSU2_REG_MASK,  0x06,   0x06},
+    {LED_TYPE_PSU2,  LED_MODE_GREEN,        LED_TYPE_PSU2_REG_MASK,  0x05,   0x05},
 };
 
 
@@ -298,6 +319,24 @@ static enum led_brightness accton_as7326_56x_led_auto_get(struct led_classdev *c
     return LED_MODE_AUTO;
 }
 
+static enum led_brightness accton_as7326_56x_led_fan_get(struct led_classdev *cdev)
+{
+    accton_as7326_56x_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_FAN, ledctl->reg_val[2]);
+}
+
+static enum led_brightness accton_as7326_56x_led_psu1_get(struct led_classdev *cdev)
+{
+    accton_as7326_56x_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_PSU1, ledctl->reg_val[3]);
+}
+
+static enum led_brightness accton_as7326_56x_led_psu2_get(struct led_classdev *cdev)
+{
+    accton_as7326_56x_led_update();
+    return led_reg_val_to_light_mode(LED_TYPE_PSU2, ledctl->reg_val[4]);
+}
+
 static struct led_classdev accton_as7326_56x_leds[] = {
     [LED_TYPE_DIAG] = {
         .name			 = "accton_as7326_56x_led::diag",
@@ -319,7 +358,7 @@ static struct led_classdev accton_as7326_56x_leds[] = {
         .name			 = "accton_as7326_56x_led::fan",
         .default_trigger = "unused",
         .brightness_set	 = accton_as7326_56x_led_auto_set,
-        .brightness_get  = accton_as7326_56x_led_auto_get,
+        .brightness_get  = accton_as7326_56x_led_fan_get,
         .flags			 = LED_CORE_SUSPENDRESUME,
         .max_brightness  = LED_MODE_AUTO,
     },
@@ -327,7 +366,7 @@ static struct led_classdev accton_as7326_56x_leds[] = {
         .name			 = "accton_as7326_56x_led::psu1",
         .default_trigger = "unused",
         .brightness_set	 = accton_as7326_56x_led_auto_set,
-        .brightness_get  = accton_as7326_56x_led_auto_get,
+        .brightness_get  = accton_as7326_56x_led_psu1_get,
         .flags			 = LED_CORE_SUSPENDRESUME,
         .max_brightness  = LED_MODE_AUTO,
     },
@@ -335,7 +374,7 @@ static struct led_classdev accton_as7326_56x_leds[] = {
         .name			 = "accton_as7326_56x_led::psu2",
         .default_trigger = "unused",
         .brightness_set	 = accton_as7326_56x_led_auto_set,
-        .brightness_get  = accton_as7326_56x_led_auto_get,
+        .brightness_get  = accton_as7326_56x_led_psu2_get,
         .flags			 = LED_CORE_SUSPENDRESUME,
         .max_brightness  = LED_MODE_AUTO,
     },
