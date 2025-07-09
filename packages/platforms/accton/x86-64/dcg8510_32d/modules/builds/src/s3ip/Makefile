@@ -1,0 +1,12 @@
+obj-m += switch_s3ip_switch.o
+obj-m += switch_s3ip_syseeprom.o
+obj-m += switch_s3ip_fpga.o
+obj-m += switch_s3ip_cpld.o
+obj-m += switch_s3ip_sysled.o
+obj-m += switch_s3ip_fan.o
+obj-m += switch_s3ip_transceiver.o
+obj-m += switch_s3ip_watchdog.o
+obj-m += switch_s3ip_psu.o
+obj-m += switch_s3ip_sensor.o
+obj-m += switch_s3ip_avs.o
+obj-m += switch_s3ip_bmc.o
