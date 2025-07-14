@@ -1,0 +1,1 @@
+!include $ONL_TEMPLATES/platform-modules.yml VENDOR=accton BASENAME=x86-64-accton-as7515-24x ARCH=amd64 KERNELS="onl-kernel-5.4-lts-x86-64-all:amd64"
