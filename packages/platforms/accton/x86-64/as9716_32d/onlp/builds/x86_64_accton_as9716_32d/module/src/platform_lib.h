@@ -43,15 +43,15 @@
 #define PSU_NODE_MAX_INT_LEN  8
 #define PSU_NODE_MAX_PATH_LEN 64
 
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/10-0059/"
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/9-0058/"
+#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/9-0058/"
+#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/10-0059/"
 
 
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
 
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0051/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/9-0050/"
+#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/9-0050/"
+#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0051/"
 
 
 
@@ -76,11 +76,11 @@ int psu_status_info_get(int id, char *node, int *value);
 
 typedef enum psu_type {
     PSU_TYPE_UNKNOWN,
-    PSU_TYPE_ACBEL,
-    PSU_TYPE_YESM1300,    
-    PSU_TYPE_YM2651Y,
-    PSU_TYPE_AC_F2B,
-    PSU_TYPE_AC_B2F
+    PSU_TYPE_ACBEL_FSH082_F2B,
+    PSU_TYPE_ACBEL_FSH095_B2F,
+    PSU_TYPE_3Y_YESM1300AM_2A_F2B,
+    PSU_TYPE_3Y_YESM1300AM_2R_B2F,
+    PSU_TYPE_YM2651Y
 } psu_type_t;
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len);
@@ -93,6 +93,15 @@ int psu_serial_number_get(int id, char *serial, int serial_len, char* model_name
 #else
     #define DEBUG_PRINT(format, ...)  
 #endif
+
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
 
 #endif  /* __PLATFORM_LIB_H__ */
 

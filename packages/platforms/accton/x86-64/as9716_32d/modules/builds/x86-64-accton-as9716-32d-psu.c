@@ -34,7 +34,7 @@
 #include <linux/delay.h>
 #include <linux/dmi.h>
 
-#define MAX_MODEL_NAME          16
+#define MAX_MODEL_NAME          20
 #define MAX_SERIAL_NUMBER       20
 
 static ssize_t show_status(struct device *dev, struct device_attribute *da, char *buf);
@@ -74,7 +74,6 @@ static SENSOR_DEVICE_ATTR(psu_present,    S_IRUGO, show_status,    NULL, PSU_PRE
 static SENSOR_DEVICE_ATTR(psu_model_name, S_IRUGO, show_string,    NULL, PSU_MODEL_NAME);
 static SENSOR_DEVICE_ATTR(psu_power_good, S_IRUGO, show_status,    NULL, PSU_POWER_GOOD);
 static SENSOR_DEVICE_ATTR(psu_serial_number, S_IRUGO, show_string, NULL, PSU_SERIAL_NUMBER);
-
 
 static struct attribute *as9716_32d_psu_attributes[] = {
     &sensor_dev_attr_psu_present.dev_attr.attr,
@@ -270,72 +269,69 @@ static struct as9716_32d_psu_data *as9716_32d_psu_update_device(struct device *d
     if (time_after(jiffies, data->last_updated + HZ + HZ / 2)
             || !data->valid) {
         int status;
-        int power_good = 0;
 
         dev_dbg(&client->dev, "Starting as9716_32d update\n");
 
         /* Read psu status */
         status = as9716_32d_cpld_read(0x60, 0x3);
-
         if (status < 0) {
             dev_dbg(&client->dev, "cpld reg 0x60 err %d\n", status);
         }
         else {
             data->status = status;
         }
-
         /* Read model name */
         memset(data->model_name, 0, sizeof(data->model_name));
         memset(data->serial_number, 0, sizeof(data->serial_number));
-        power_good = (data->status >> (3-data->index) & 0x1);
-       
-        if (power_good) {
-            status = as9716_32d_psu_read_block(client, 0x20, data->model_name,
+
+        status = as9716_32d_psu_read_block(client, 0x20, data->model_name,
                                                ARRAY_SIZE(data->model_name)-1);                                               
-            if (status < 0) {
-                data->model_name[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+        if (status < 0) {
+            data->model_name[0] = '\0';
+            dev_dbg(&client->dev, "unable to read model name from (0x%x)\n", client->addr);
+        }
+        else
+        {
+            if (!strncmp(data->model_name, "FSH082", strlen("FSH082")))
+            {
+                data->model_name[strlen("FSH082")]='\0';
+            }
+            else if (!strncmp(data->model_name, "FSH095", strlen("FSH095")))
+            {
+                data->model_name[strlen("FSH095")]='\0';
+            }
+            else if (!strncmp(data->model_name, "YESM1300", strlen("YESM1300")))
+            {
+                /* Adjust model name for YESM1300AM-2A01P10 and YESM1300AM-2R01P10 */
+                memmove(&data->model_name[8], &data->model_name[9], 10);
+                if (data->model_name[8]=='A' && data->model_name[9]=='M')
+                {
+                    data->model_name[strlen("YESM1300AM-2A01P10")]='\0';
+                }
+                else
+                    data->model_name[strlen("YESM1300")]='\0';
+            }
+            else if (!strncmp(data->model_name, "YM-2651Y", strlen("YM-2651Y")))
+            {
+                data->model_name[strlen("YM-2651Y")]='\0';
             }
             else
-            {
-                if (!strncmp(data->model_name, "FSH082", strlen("FSH082")))
-                {                    
-                    data->model_name[strlen("FSH082")]='\0';
-                }    
-                else if (!strncmp(data->model_name, "YESM1300", strlen("YESM1300")))
-                {                
-                    if (data->model_name[9]=='A' && data->model_name[10]=='M')
-                    {
-                       data->model_name[8]='A';
-                       data->model_name[9]='M';
-                       data->model_name[strlen("YESM1300AM")]='\0';
-                    }
-                    else  
-                        data->model_name[strlen("YESM1300")]='\0';
-                }
-                else if (!strncmp(data->model_name, "YM-2651Y", strlen("YM-2651Y")))
-                {
-                    data->model_name[strlen("YM-2651Y")]='\0';
-                }                
-                else
-                    data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
-                
-            }
-             /* Read from offset 0x35 ~ 0x47 */
-            status = as9716_32d_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
-            if (status < 0)
-            {
-                data->serial_number[0] = '\0';
-                dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x2e)\n", client->addr);
-            }
-            if (!strncmp(data->model_name, "YESM1300AM", strlen("YESM1300AM"))) /*for YESM1300AM, SN length=19*/
-            {
-                data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
-            }           
-            else /*for FSH082, SN length=18*/
-                data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
-
+                data->model_name[ARRAY_SIZE(data->model_name)-1] = '\0';
         }
+        /* Read from offset 0x35 ~ 0x47 */
+        status = as9716_32d_psu_read_block(client, 0x35,data->serial_number, MAX_SERIAL_NUMBER);
+        if (status < 0)
+        {
+            data->serial_number[0] = '\0';
+            dev_dbg(&client->dev, "unable to read model name from (0x%x) offset(0x2e)\n", client->addr);
+        }
+        if ((!strncmp(data->model_name, "YESM1300AM-2A01P10", strlen("YESM1300AM-2A01P10"))) 
+                || (!strncmp(data->model_name, "YESM1300AM-2R01P10", strlen("YESM1300AM-2R01P10"))) ) /*for YESM1300AM, SN length=19*/
+        {
+            data->serial_number[MAX_SERIAL_NUMBER-1]='\0';
+        }
+        else /*for FSH082, SN length=18*/
+            data->serial_number[MAX_SERIAL_NUMBER-2]='\0';
 
         data->last_updated = jiffies;
         data->valid = 1;

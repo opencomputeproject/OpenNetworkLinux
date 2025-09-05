@@ -129,7 +129,7 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
         return ONLP_STATUS_E_INTERNAL;
     }
 
-	info->status |= value ? ONLP_FAN_STATUS_F2B : ONLP_FAN_STATUS_B2F;
+	info->status |= value ? ONLP_FAN_STATUS_B2F : ONLP_FAN_STATUS_F2B;
 
 
     /* get front fan speed
@@ -182,7 +182,8 @@ _onlp_get_fan_direction_on_psu(void)
             continue;
         }
 
-        if (PSU_TYPE_AC_F2B == psu_type) {
+        if ((PSU_TYPE_ACBEL_FSH082_F2B == psu_type)
+            || (PSU_TYPE_3Y_YESM1300AM_2A_F2B == psu_type)) {
             return ONLP_FAN_STATUS_F2B;
         }
         else {
@@ -193,13 +194,13 @@ _onlp_get_fan_direction_on_psu(void)
     return 0;
 }
 
+
 static int
 _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 {
-	int val = 0;
+    int val = 0;
 
-	info->status |= ONLP_FAN_STATUS_PRESENT;
-
+    info->status |= ONLP_FAN_STATUS_PRESENT;
     /* get fan direction
      */
     info->status |= _onlp_get_fan_direction_on_psu();
@@ -214,7 +215,7 @@ _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
      */
     if (psu_ym2651y_pmbus_info_get(pid, "psu_fan1_speed_rpm", &val) == ONLP_STATUS_OK) {
         info->rpm = val;
-	    info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;	    
+        info->percentage = (info->rpm * 100) / MAX_PSU_FAN_SPEED;
     }
 
     return ONLP_STATUS_OK;
