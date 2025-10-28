@@ -1,5 +1,5 @@
 KERNELS := onl-kernel-5.4-lts-x86-64-all:amd64
-KMODULES := $(wildcard *.c)
+KMODULES := src
 VENDOR := accton
 BASENAME := x86-64-accton-as7946-74xkb
 ARCH := x86_64

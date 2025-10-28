@@ -31,17 +31,14 @@
 #include <linux/ipmi.h>
 #include <linux/ipmi_smi.h>
 #include <linux/platform_device.h>
+#include "accton_ipmi_intf.h"
 
 #define DRVNAME "as7946_74xkb_fan"
-#define ACCTON_IPMI_NETFN   0x34
 #define IPMI_FAN_READ_CMD   0x14
 #define IPMI_FAN_WRITE_CMD  0x15
-#define IPMI_TIMEOUT		(5 * HZ)
-#define IPMI_ERR_RETRY_TIMES 1
 #define IPMI_FAN_REG_READ_CMD  0x20
 #define IPMI_FAN_REG_WRITE_CMD 0x21
 
-static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data);
 static ssize_t set_fan(struct device *dev, struct device_attribute *da,
 			const char *buf, size_t count);
 static ssize_t show_fan(struct device *dev, struct device_attribute *attr,
@@ -74,23 +71,6 @@ enum fan_data_index {
 	FAN_SPEED0,
 	FAN_SPEED1,
 	FAN_DATA_COUNT
-};
-
-struct ipmi_data {
-	struct completion read_complete;
-	struct ipmi_addr address;
-	struct ipmi_user *user;
-	int interface;
-
-	struct kernel_ipmi_msg tx_message;
-	long tx_msgid;
-
-	void *rx_msg_data;
-	unsigned short rx_msg_len;
-	unsigned char  rx_result;
-	int rx_recv_type;
-
-	struct ipmi_user_hndl ipmi_hndlrs;
 };
 
 struct as7946_74xkb_fan_data {
@@ -195,142 +175,6 @@ static struct attribute *as7946_74xkb_fan_attributes[] = {
 static const struct attribute_group as7946_74xkb_fan_group = {
 	.attrs = as7946_74xkb_fan_attributes,
 };
-
-/* Functions to talk to the IPMI layer */
-
-/* Initialize IPMI address, message buffers and user data */
-static int init_ipmi_data(struct ipmi_data *ipmi, int iface,
-				  struct device *dev)
-{
-	int err;
-
-	init_completion(&ipmi->read_complete);
-
-	/* Initialize IPMI address */
-	ipmi->address.addr_type = IPMI_SYSTEM_INTERFACE_ADDR_TYPE;
-	ipmi->address.channel = IPMI_BMC_CHANNEL;
-	ipmi->address.data[0] = 0;
-	ipmi->interface = iface;
-
-	/* Initialize message buffers */
-	ipmi->tx_msgid = 0;
-	ipmi->tx_message.netfn = ACCTON_IPMI_NETFN;
-
-	ipmi->ipmi_hndlrs.ipmi_recv_hndl = ipmi_msg_handler;
-
-	/* Create IPMI messaging interface user */
-	err = ipmi_create_user(ipmi->interface, &ipmi->ipmi_hndlrs,
-				   ipmi, &ipmi->user);
-	if (err < 0) {
-		dev_err(dev, "Unable to register user with IPMI "
-			"interface %d\n", ipmi->interface);
-		return -EACCES;
-	}
-
-	return 0;
-}
-
-/* Send an IPMI command */
-static int _ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-								unsigned char *tx_data, unsigned short tx_len,
-								unsigned char *rx_data, unsigned short rx_len)
-{
-	int err;
-
-	ipmi->tx_message.cmd	  = cmd;
-	ipmi->tx_message.data	 = tx_data;
-	ipmi->tx_message.data_len = tx_len;
-	ipmi->rx_msg_data		 = rx_data;
-	ipmi->rx_msg_len		  = rx_len;
-
-	err = ipmi_validate_addr(&ipmi->address, sizeof(ipmi->address));
-	if (err)
-		goto addr_err;
-
-	ipmi->tx_msgid++;
-	err = ipmi_request_settime(ipmi->user, &ipmi->address, ipmi->tx_msgid,
-				   &ipmi->tx_message, ipmi, 0, 0, 0);
-	if (err)
-		goto ipmi_req_err;
-
-	err = wait_for_completion_timeout(&ipmi->read_complete, IPMI_TIMEOUT);
-	if (!err)
-		goto ipmi_timeout_err;
-
-	return 0;
-
-ipmi_timeout_err:
-	err = -ETIMEDOUT;
-	dev_err(&data->pdev->dev, "request_timeout=%x\n", err);
-	return err;
-ipmi_req_err:
-	dev_err(&data->pdev->dev, "request_settime=%x\n", err);
-	return err;
-addr_err:
-	dev_err(&data->pdev->dev, "validate_addr=%x\n", err);
-	return err;
-}
-
-/* Send an IPMI command with retry */
-static int ipmi_send_message(struct ipmi_data *ipmi, unsigned char cmd,
-									 unsigned char *tx_data, unsigned short tx_len,
-									 unsigned char *rx_data, unsigned short rx_len)
-{
-	int status = 0, retry = 0;
-
-	for (retry = 0; retry <= IPMI_ERR_RETRY_TIMES; retry++) {
-		status = _ipmi_send_message(ipmi, cmd, tx_data, tx_len, rx_data, rx_len);
-		if (unlikely(status != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err status(%d)\r\n",
-										retry, status);
-			continue;
-		}
-
-		if (unlikely(ipmi->rx_result != 0)) {
-			dev_err(&data->pdev->dev, "ipmi_send_message_%d err result(%d)\r\n",
-										retry, ipmi->rx_result);
-			continue;
-		}
-
-		break;
-	}
-
-	return status;
-}
-
-/* Dispatch IPMI messages to callers */
-static void ipmi_msg_handler(struct ipmi_recv_msg *msg, void *user_msg_data)
-{
-	unsigned short rx_len;
-	struct ipmi_data *ipmi = user_msg_data;
-
-	if (msg->msgid != ipmi->tx_msgid) {
-		dev_err(&data->pdev->dev, "Mismatch between received msgid "
-			"(%02x) and transmitted msgid (%02x)!\n",
-			(int)msg->msgid,
-			(int)ipmi->tx_msgid);
-		ipmi_free_recv_msg(msg);
-		return;
-	}
-
-	ipmi->rx_recv_type = msg->recv_type;
-	if (msg->msg.data_len > 0)
-		ipmi->rx_result = msg->msg.data[0];
-	else
-		ipmi->rx_result = IPMI_UNKNOWN_ERR_COMPLETION_CODE;
-
-	if (msg->msg.data_len > 1) {
-		rx_len = msg->msg.data_len - 1;
-		if (ipmi->rx_msg_len < rx_len)
-			rx_len = ipmi->rx_msg_len;
-		ipmi->rx_msg_len = rx_len;
-		memcpy(ipmi->rx_msg_data, msg->msg.data + 1, ipmi->rx_msg_len);
-	} else
-		ipmi->rx_msg_len = 0;
-
-	ipmi_free_recv_msg(msg);
-	complete(&ipmi->read_complete);
-}
 
 static struct as7946_74xkb_fan_data *as7946_74xkb_fan_update_device(void)
 {
