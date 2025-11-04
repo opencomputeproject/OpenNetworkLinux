@@ -1,0 +1,9 @@
+obj-m += accton_ipmi_intf.o
+obj-m += x86-64-accton-as9817-32-fan.o
+obj-m += x86-64-accton-as9817-32-fpga.o
+obj-m += x86-64-accton-as9817-32-i2c-ocores.o
+obj-m += x86-64-accton-as9817-32-leds.o
+obj-m += x86-64-accton-as9817-32-psu.o
+obj-m += x86-64-accton-as9817-32-sys.o
+obj-m += x86-64-accton-as9817-32-thermal.o
+obj-m += x86-64-accton-as9817-32-mux.o
