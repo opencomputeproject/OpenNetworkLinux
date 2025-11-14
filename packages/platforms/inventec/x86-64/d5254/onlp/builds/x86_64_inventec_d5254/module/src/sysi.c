@@ -376,11 +376,11 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 
     rv = _sysi_version_parsing(INV_SYSLED_PREFIX"info", "The CPLD version is ", version);
     if( rv != ONLP_STATUS_OK ) { return rv; }
-    snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s ", cpld_str, version);
+    snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s ", version);
     rv = _sysi_version_parsing(INV_HWMON_PREFIX"version", "ver: ", version);
     if( rv != ONLP_STATUS_OK ) { return rv; }
-    snprintf(other_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s.%s "
-             ,other_str, "psoc", version);
+    snprintf(other_str, ONLP_CONFIG_INFO_STR_MAX, "%s.%s "
+             , "psoc", version);
 
     /*cpld version*/
     if(strlen(cpld_str) > 0) {

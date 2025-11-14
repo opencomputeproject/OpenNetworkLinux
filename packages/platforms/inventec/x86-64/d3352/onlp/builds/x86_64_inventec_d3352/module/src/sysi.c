@@ -118,13 +118,13 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
     if( rv != ONLP_STATUS_OK ) {
         return rv;
     }
-    snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s ", cpld_str, version);
+    snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s ", version);
     rv = _sysi_version_parsing(INV_PSOC_PREFIX"version", "ver: ", version);
     if( rv != ONLP_STATUS_OK ) {
         return rv;
     }
-    snprintf(other_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s%s "
-             ,other_str, "\n\t\tpsoc: ", version);
+    snprintf(other_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s "
+             , "\n\t\tpsoc: ", version);
 
     /*cpld version*/
     if(strlen(cpld_str) > 0) {

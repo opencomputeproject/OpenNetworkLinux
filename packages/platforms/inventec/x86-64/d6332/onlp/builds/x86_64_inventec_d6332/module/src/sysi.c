@@ -89,7 +89,8 @@ static int _sysi_version_parsing(char* file_str, char* str_buf, char* str_buf2, 
         AIM_LOG_ERROR("[ONLP][SYS] Unable to parse cpld2 version\n");
         return ONLP_STATUS_E_INVALID;
     }
-    snprintf(version, ONLP_CONFIG_INFO_STR_MAX, "c1_%s c2_%s", cpld_v1, cpld_v2);
+    /* Limit input strings to prevent truncation: "c1_" (3) + cpld_v1 + " c2_" (4) + cpld_v2 + null (1) */
+    snprintf(version, ONLP_CONFIG_INFO_STR_MAX, "c1_%.26s c2_%.26s", cpld_v1, cpld_v2);
 
     return rv;
 }
@@ -198,7 +199,6 @@ int
 onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
 {
     int rv = ONLP_STATUS_OK;
-    char cpld_str[ONLP_CONFIG_INFO_STR_MAX] = {0};
     char version[ONLP_CONFIG_INFO_STR_MAX];
     pi->cpld_versions = NULL;
 
@@ -206,10 +206,9 @@ onlp_sysi_platform_info_get(onlp_platform_info_t* pi)
     if ( rv != ONLP_STATUS_OK ) {
         return rv;
     }
-    snprintf(cpld_str, ONLP_CONFIG_INFO_STR_MAX, "%s%s ", cpld_str, version);
     /*cpld version*/
-    if (strlen(cpld_str) > 0) {
-        pi->cpld_versions = aim_fstrdup("%s", cpld_str);
+    if (strlen(version) > 0) {
+        pi->cpld_versions = aim_fstrdup("%s", version);
     }
     return rv;
 }
