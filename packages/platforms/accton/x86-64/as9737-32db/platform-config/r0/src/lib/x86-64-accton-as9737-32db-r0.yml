@@ -1,0 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for AS9737
+#
+######################################################################
+
+x86-64-accton-as9737-32db-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-5-4
+
+    args: >-
+      console=ttyS0,115200n8
+      intel_iommu=pt
+      pcie_aspm=off
+
+  ##network:
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:1c.0/0000:0a:00.0

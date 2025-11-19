@@ -1,0 +1,10 @@
+obj-m += accton_ipmi_intf.o
+obj-m += x86-64-accton-as9737-32db-cpld.o
+obj-m += x86-64-accton-as9737-32db-fan.o
+obj-m += x86-64-accton-as9737-32db-fpga.o
+obj-m += x86-64-accton-as9737-32db-i2c-ocores.o
+obj-m += x86-64-accton-as9737-32db-leds.o
+obj-m += x86-64-accton-as9737-32db-mux.o
+obj-m += x86-64-accton-as9737-32db-psu.o
+obj-m += x86-64-accton-as9737-32db-sys.o
+obj-m += x86-64-accton-as9737-32db-thermal.o
