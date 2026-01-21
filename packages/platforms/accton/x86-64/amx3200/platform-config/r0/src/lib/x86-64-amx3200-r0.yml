@@ -1,0 +1,32 @@
+---
+
+######################################################################
+#
+# platform-config for AMX3200
+#
+######################################################################
+
+x86-64-amx3200-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-5-4
+
+    args: >-
+      nopat
+      console=ttyS0,115200n8
+      intel_iommu=off
+
+  network:
+    interfaces:
+      ma1:
+       name: eth1
+
