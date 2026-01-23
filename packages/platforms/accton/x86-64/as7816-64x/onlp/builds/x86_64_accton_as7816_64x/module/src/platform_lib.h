@@ -83,6 +83,8 @@ typedef enum psu_type {
 	PSU_TYPE_AC_DPS850_B2F,
 	PSU_TYPE_DC_YM2851JER_F2B,
 	PSU_TYPE_DC_YM2851JFR_B2F,
+	PSU_TYPE_DC_G1441_0850WNB_F2B,
+	PSU_TYPE_DC_G1441_0850WNB_B2F,
 } psu_type_t;
 
 enum onlp_fan_dir {
@@ -98,7 +100,18 @@ int psu_serial_number_get(int id, char *serial, int serial_len);
 int psu_ym2651y_pmbus_info_get(int id, char *node, int *value);
 int psu_ym2651y_pmbus_info_set(int id, char *node, int value);
 int psu_dps850_pmbus_info_get(int id, char *node, int *value);
+int psu_g1441_pmbus_info_get(int id, char *node, int *value);
+
 char* psu_pmbus_path(int pid);
+
+#define AIM_FREE_IF_PTR(p) \
+            do \
+            { \
+                if (p) { \
+                    aim_free(p); \
+                    p = NULL; \
+                } \
+            } while (0)
 
 #define DEBUG_MODE 0
 

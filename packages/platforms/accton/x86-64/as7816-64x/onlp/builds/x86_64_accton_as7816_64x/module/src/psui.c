@@ -167,6 +167,59 @@ psu_dps850_info_get(onlp_psu_info_t* info)
     return ONLP_STATUS_OK;
 }
 
+static int
+psu_g1441_info_get(onlp_psu_info_t* info)
+{
+    int val   = 0;
+    int index = ONLP_OID_ID_GET(info->hdr.id);
+    
+    /* Set capability
+     */
+    info->caps = ONLP_PSU_CAPS_AC;   
+	if (info->status & ONLP_PSU_STATUS_FAILED) {
+	    return ONLP_STATUS_OK;
+	}
+
+    /* Set the associated oid_table */
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(index + CHASSIS_FAN_COUNT);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(index + CHASSIS_THERMAL_COUNT);
+
+    /* Read voltage, current and power */
+    if (psu_g1441_pmbus_info_get(index, "psu_v_out", &val) == 0) {
+        info->mvout = val;
+        info->caps |= ONLP_PSU_CAPS_VOUT;
+    }
+
+    if (psu_g1441_pmbus_info_get(index, "psu_v_in", &val) == 0) {
+        info->mvin  = val;
+        info->caps |= ONLP_PSU_CAPS_VIN;
+    }
+
+    if (psu_g1441_pmbus_info_get(index, "psu_i_out", &val) == 0) {
+        info->miout = val;
+        info->caps |= ONLP_PSU_CAPS_IOUT;
+    }
+
+    if (psu_g1441_pmbus_info_get(index, "psu_i_in", &val) == 0) {
+        info->miin = val;
+        info->caps |= ONLP_PSU_CAPS_IIN;
+    }
+
+    if (psu_g1441_pmbus_info_get(index, "psu_p_out", &val) == 0) {
+        info->mpout = val;
+        info->caps |= ONLP_PSU_CAPS_POUT;
+    }
+
+    if (psu_g1441_pmbus_info_get(index, "psu_p_in", &val) == 0) {
+        info->mpin  = val;
+        info->caps |= ONLP_PSU_CAPS_PIN;
+    }
+
+	psu_serial_number_get(index, info->serial, sizeof(info->serial));
+
+    return ONLP_STATUS_OK;
+}
+
 
 /*
  * Get all information about the given PSU oid.
@@ -225,6 +278,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         case PSU_TYPE_AC_DPS850_F2B:
         case PSU_TYPE_AC_DPS850_B2F:
             ret = psu_dps850_info_get(info);      
+            break;
+        case PSU_TYPE_DC_G1441_0850WNB_F2B:
+            ret = psu_g1441_info_get(info); 
             break;
         case PSU_TYPE_AC_YM2851FCR_F2B:
         case PSU_TYPE_AC_YM2851FDR_B2F:
