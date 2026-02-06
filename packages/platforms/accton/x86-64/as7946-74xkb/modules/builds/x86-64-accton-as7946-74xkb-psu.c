@@ -85,10 +85,6 @@ enum psu_data_index {
 	PSU_POUT3,
 	PSU_TEMP1_0,
 	PSU_TEMP1_1,
-	PSU_TEMP2_0,
-	PSU_TEMP2_1,
-	PSU_TEMP3_0,
-	PSU_TEMP3_1,
 	PSU_FAN0,
 	PSU_FAN1,
 	PSU_VOUT_MODE,
@@ -153,8 +149,6 @@ static struct platform_driver as7946_74xkb_psu_driver = {
 #define PSU_MODEL_ATTR_ID(index) PSU##index##_MODEL
 #define PSU_SERIAL_ATTR_ID(index) PSU##index##_SERIAL
 #define PSU_TEMP1_INPUT_ATTR_ID(index) PSU##index##_TEMP1_INPUT
-#define PSU_TEMP2_INPUT_ATTR_ID(index) PSU##index##_TEMP2_INPUT
-#define PSU_TEMP3_INPUT_ATTR_ID(index) PSU##index##_TEMP3_INPUT
 #define PSU_FAN_INPUT_ATTR_ID(index) PSU##index##_FAN_INPUT
 #define PSU_FAN_DIR_ATTR_ID(index) PSU##index##_FAN_DIR
 
@@ -170,8 +164,6 @@ static struct platform_driver as7946_74xkb_psu_driver = {
 	PSU_MODEL_ATTR_ID(psu_id), \
 	PSU_SERIAL_ATTR_ID(psu_id), \
 	PSU_TEMP1_INPUT_ATTR_ID(psu_id), \
-	PSU_TEMP2_INPUT_ATTR_ID(psu_id), \
-	PSU_TEMP3_INPUT_ATTR_ID(psu_id), \
 	PSU_FAN_INPUT_ATTR_ID(psu_id), \
 	PSU_FAN_DIR_ATTR_ID(psu_id)
 
@@ -207,10 +199,6 @@ enum as7946_74xkb_psu_sysfs_attrs {
 								PSU##index##_SERIAL);\
 	static SENSOR_DEVICE_ATTR(psu##index##_temp1_input, S_IRUGO, show_psu, NULL,\
 								PSU##index##_TEMP1_INPUT); \
-	static SENSOR_DEVICE_ATTR(psu##index##_temp2_input, S_IRUGO, show_psu, NULL,\
-								PSU##index##_TEMP2_INPUT); \
-	static SENSOR_DEVICE_ATTR(psu##index##_temp3_input, S_IRUGO, show_psu, NULL,\
-								PSU##index##_TEMP3_INPUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_fan1_input, S_IRUGO, show_psu, NULL,\
 								PSU##index##_FAN_INPUT); \
 	static SENSOR_DEVICE_ATTR(psu##index##_fan_dir, S_IRUGO, show_string, NULL,\
@@ -228,8 +216,6 @@ enum as7946_74xkb_psu_sysfs_attrs {
 	&sensor_dev_attr_psu##index##_model.dev_attr.attr, \
 	&sensor_dev_attr_psu##index##_serial.dev_attr.attr,\
 	&sensor_dev_attr_psu##index##_temp1_input.dev_attr.attr, \
-	&sensor_dev_attr_psu##index##_temp2_input.dev_attr.attr, \
-	&sensor_dev_attr_psu##index##_temp3_input.dev_attr.attr, \
 	&sensor_dev_attr_psu##index##_fan1_input.dev_attr.attr, \
 	&sensor_dev_attr_psu##index##_fan_dir.dev_attr.attr
 
@@ -548,18 +534,6 @@ static ssize_t show_psu(struct device *dev, struct device_attribute *da,
 		VALIDATE_PRESENT_RETURN(pid);
 		value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP1_0] |
 					(u32)data->ipmi_resp[pid].status[PSU_TEMP1_1] << 8);
-		break;
-	case PSU1_TEMP2_INPUT:
-	case PSU2_TEMP2_INPUT:
-		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP2_0] |
-					(u32)data->ipmi_resp[pid].status[PSU_TEMP2_1] << 8);
-		break;
-	case PSU1_TEMP3_INPUT:
-	case PSU2_TEMP3_INPUT:
-		VALIDATE_PRESENT_RETURN(pid);
-		value = ((u32)data->ipmi_resp[pid].status[PSU_TEMP3_0] |
-					(u32)data->ipmi_resp[pid].status[PSU_TEMP3_1] << 8);
 		break;
 	case PSU1_FAN_INPUT:
 	case PSU2_FAN_INPUT:

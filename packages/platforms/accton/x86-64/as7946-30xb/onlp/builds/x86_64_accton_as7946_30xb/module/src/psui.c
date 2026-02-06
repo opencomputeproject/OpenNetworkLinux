@@ -37,15 +37,6 @@
         }                                       \
     } while(0)
 
-#define AIM_FREE_IF_PTR(p) \
-    do \
-    { \
-        if (p) { \
-            aim_free(p); \
-            p = NULL; \
-        } \
-    } while (0)
-
 int
 onlp_psui_init(void)
 {
@@ -109,20 +100,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     info->status |= ONLP_PSU_STATUS_PRESENT;
 
-    /* Get power good status */
-    ret = onlp_file_read_int(&val, "%s""psu%d_power_good", PSU_SYSFS_PATH, pid);
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s""psu%d_power_good)\r\n", PSU_SYSFS_PATH, pid);
-        return ONLP_STATUS_E_INTERNAL;
-    }
-
-    if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
-    }
-
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
-        return ONLP_STATUS_OK;
-    }
+    /* Set the associated oid_table */
+    info->hdr.coids[0] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
+    info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(((pid-1) * CHASSIS_PSU_THERMAL_COUNT) + THERMAL_1_ON_PSU1);
 
     /* Read voltage, current and power */
     val = 0;
@@ -161,26 +141,6 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
         info->caps |= ONLP_PSU_CAPS_POUT;
     }
 
-    /* Set the associated oid_table */
-    val = 0;
-    if (onlp_file_read_int(&val, "%s""psu%d_fan1_input", PSU_SYSFS_PATH, pid) == 0 && val) {
-        info->hdr.coids[0] = ONLP_FAN_ID_CREATE(pid + CHASSIS_FAN_COUNT);
-    }
-
-    val = 0;
-    if (onlp_file_read_int(&val, "%s""psu%d_temp1_input", PSU_SYSFS_PATH, pid) == 0 && val) {
-        info->hdr.coids[1] = ONLP_THERMAL_ID_CREATE(((pid-1) * CHASSIS_PSU_THERMAL_COUNT) + THERMAL_1_ON_PSU1);
-    }
-
-    val = 0;
-    if (onlp_file_read_int(&val, "%s""psu%d_temp2_input", PSU_SYSFS_PATH, pid) == 0 && val) {
-        info->hdr.coids[2] = ONLP_THERMAL_ID_CREATE(((pid-1) * CHASSIS_PSU_THERMAL_COUNT) + THERMAL_2_ON_PSU1);
-    }
-
-    val = 0;
-    if (onlp_file_read_int(&val, "%s""psu%d_temp3_input", PSU_SYSFS_PATH, pid) == 0 && val) {
-        info->hdr.coids[3] = ONLP_THERMAL_ID_CREATE(((pid-1) * CHASSIS_PSU_THERMAL_COUNT) + THERMAL_3_ON_PSU1);
-    }
     /* Read model */
     char *string = NULL;
     int len = onlp_file_read_str(&string, "%s""psu%d_model", PSU_SYSFS_PATH, pid);
@@ -190,6 +150,9 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     AIM_FREE_IF_PTR(string);
 
+    /* Set capability */
+    info->caps |= get_DCorAC_cap(info->model);
+
     /* Read serial */
     len = onlp_file_read_str(&string, "%s""psu%d_serial", PSU_SYSFS_PATH, pid);
     if (string && len) {
@@ -198,8 +161,17 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
     AIM_FREE_IF_PTR(string);
 
-    /* Set capability */
-    info->caps |= get_DCorAC_cap(info->model);
+    /* Get power good status */
+    ret = onlp_file_read_int(&val, "%s""psu%d_power_good", PSU_SYSFS_PATH, pid);
+    if (ret < 0) {
+        AIM_LOG_ERROR("Unable to read status from (%s""psu%d_power_good)\r\n", PSU_SYSFS_PATH, pid);
+        return ONLP_STATUS_E_INTERNAL;
+    }
+
+    if (val != PSU_STATUS_POWER_GOOD) {
+        info->status |=  ONLP_PSU_STATUS_UNPLUGGED;
+        info->caps = 0;
+    }
 
     return ret;
 }

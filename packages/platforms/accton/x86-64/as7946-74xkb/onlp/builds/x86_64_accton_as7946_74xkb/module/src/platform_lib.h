@@ -31,16 +31,30 @@
 
 #define CHASSIS_FAN_COUNT     5
 #define CHASSIS_THERMAL_COUNT 10
-#define CHASSIS_PSU_THERMAL_COUNT 3
+#define CHASSIS_PSU_THERMAL_COUNT 1
 #define CHASSIS_LED_COUNT     5
 #define CHASSIS_PSU_COUNT     2
 
 #define PSU1_ID 1
 #define PSU2_ID 2
 
+#define PSU_NODE_MAX_PATH_LEN 64
+#define PSU_STATUS_POWER_GOOD 1
+
 #define PSU_SYSFS_PATH "/sys/devices/platform/as7946_74xkb_psu/"
 #define FAN_BOARD_PATH "/sys/devices/platform/as7946_74xkb_fan/"
 #define IDPROM_PATH    "/sys/devices/platform/as7946_74xkb_sys/eeprom"
+
+int psu_status_info_get(int id, char *node, int *value);
+
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
 
 enum onlp_led_id {
     LED_LOC = 1,
@@ -48,6 +62,12 @@ enum onlp_led_id {
     LED_PSU1,
     LED_PSU2,
     LED_FAN,
+};
+
+enum onlp_psu_fan_dir {
+    PSU_FAN_RESERVED = 0,
+    PSU_FAN_F2B,
+    PSU_FAN_B2F,
 };
 
 enum onlp_thermal_id {
@@ -63,11 +83,7 @@ enum onlp_thermal_id {
     THERMAL_1_ON_FANCPLD,    /* FAN_4D Temp */
     THERMAL_2_ON_FANCPLD,    /* FAN_4E Temp */
     THERMAL_1_ON_PSU1,
-    THERMAL_2_ON_PSU1,
-    THERMAL_3_ON_PSU1,
     THERMAL_1_ON_PSU2,
-    THERMAL_2_ON_PSU2,
-    THERMAL_3_ON_PSU2,
 };
 
 #endif  /* __PLATFORM_LIB_H__ */

@@ -62,15 +62,6 @@ enum fan_id {
         { 0 },\
     }
 
-#define AIM_FREE_IF_PTR(p) \
-    do \
-    { \
-        if (p) { \
-            aim_free(p); \
-            p = NULL; \
-        } \
-    } while (0)
-
 /* Static fan information */
 onlp_fan_info_t finfo[] = {
     { }, /* Not used */
@@ -169,38 +160,32 @@ _onlp_fani_info_get_fan(int fid, onlp_fan_info_t* info)
 static int
 _onlp_fani_info_get_fan_on_psu(int pid, onlp_fan_info_t* info)
 {
-    char *fandir = NULL;
-    int   len = 0;
     int   val = 0;
-    int   ret = 0;
 
     info->status |= ONLP_FAN_STATUS_PRESENT;
 
+    /* Get power good status */
+    if (psu_status_info_get(pid, "power_good", &val) == ONLP_STATUS_OK) {
+        info->status |= (val != PSU_STATUS_POWER_GOOD) ? ONLP_FAN_STATUS_FAILED : 0;
+    }
+
     /* get fan direction
      */
-    len = onlp_file_read_str(&fandir, "%s""psu%d_fan_dir", PSU_SYSFS_PATH, pid);
-    if (fandir && len) {
-        if (strncmp(fandir, "B2F", strlen("B2F")) == 0) {
+    if (psu_status_info_get(pid, "fan_dir", &val) == ONLP_STATUS_OK) {
+        if (val == PSU_FAN_B2F)
             info->status |= ONLP_FAN_STATUS_B2F;
-        }
-        else {
+        else if (val == PSU_FAN_F2B)
             info->status |= ONLP_FAN_STATUS_F2B;
-        }
     }
-    AIM_FREE_IF_PTR(fandir);
 
     /* get fan speed
      */
-    ret = onlp_file_read_int(&val, "%s""psu%d_fan1_input", PSU_SYSFS_PATH, pid);
-    if (ret < 0) {
-        AIM_LOG_ERROR("Unable to read status from (%s""psu%d_fan1_input)\r\n", PSU_SYSFS_PATH, pid);
-        return ONLP_STATUS_E_INTERNAL;
+    if (psu_status_info_get(pid, "fan1_input", &val) == ONLP_STATUS_OK) {
+        /* get speed percentage from rpm
+         */
+        info->rpm = val;
+        info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
     }
-
-    /* get speed percentage from rpm
-     */
-    info->rpm = val;
-    info->percentage = (info->rpm * 100)/MAX_PSU_FAN_SPEED;
 
     return ONLP_STATUS_OK;
 }

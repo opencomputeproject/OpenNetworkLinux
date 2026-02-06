@@ -47,11 +47,7 @@ static char* ipmi_devfiles__[] = { /* must map with onlp_thermal_id */
     "/sys/devices/platform/as7946_74xkb_thermal/temp8_input",
     "/sys/devices/platform/as7946_74xkb_thermal/temp9_input",
     "/sys/devices/platform/as7946_74xkb_psu/psu1_temp1_input",
-    "/sys/devices/platform/as7946_74xkb_psu/psu1_temp2_input",
-    "/sys/devices/platform/as7946_74xkb_psu/psu1_temp3_input",
     "/sys/devices/platform/as7946_74xkb_psu/psu2_temp1_input",
-    "/sys/devices/platform/as7946_74xkb_psu/psu2_temp2_input",
-    "/sys/devices/platform/as7946_74xkb_psu/psu2_temp3_input",
 };
 
 static char* cpu_coretemp_files[] = {
@@ -121,23 +117,7 @@ static onlp_thermal_info_t linfo[] = {
             ONLP_THERMAL_STATUS_PRESENT,
             AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU1), "PSU-1 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU1_ID), {0} },
-            ONLP_THERMAL_STATUS_PRESENT,
-            AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_PSU1), "PSU-1 Thermal Sensor 3", ONLP_PSU_ID_CREATE(PSU1_ID), {0} },
-            ONLP_THERMAL_STATUS_PRESENT,
-            AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
     { { ONLP_THERMAL_ID_CREATE(THERMAL_1_ON_PSU2), "PSU-2 Thermal Sensor 1", ONLP_PSU_ID_CREATE(PSU2_ID), {0} },
-            ONLP_THERMAL_STATUS_PRESENT,
-            AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_2_ON_PSU2), "PSU-2 Thermal Sensor 2", ONLP_PSU_ID_CREATE(PSU2_ID), {0} },
-            ONLP_THERMAL_STATUS_PRESENT,
-            AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
-        },
-    { { ONLP_THERMAL_ID_CREATE(THERMAL_3_ON_PSU2), "PSU-2 Thermal Sensor 3", ONLP_PSU_ID_CREATE(PSU2_ID), {0} },
             ONLP_THERMAL_STATUS_PRESENT,
             AS7946_74XKB_PSU_CAPS, 0, ONLP_THERMAL_THRESHOLD_INIT_DEFAULTS
         },
@@ -166,6 +146,9 @@ int
 onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
 {
     int tid;
+    int psu_id, psu_tid_start = 0;
+    int val = 0;
+    int ret = 0;
     VALIDATE(id);
 
     tid = ONLP_OID_ID_GET(id);
@@ -176,6 +159,22 @@ onlp_thermali_info_get(onlp_oid_t id, onlp_thermal_info_t* info)
     if(tid == THERMAL_CPU_CORE) {
         int rv = onlp_file_read_int_max(&info->mcelsius, cpu_coretemp_files);
         return rv;
+    }
+
+    psu_tid_start = CHASSIS_THERMAL_COUNT + 1;
+
+    if (tid >= psu_tid_start) {
+        psu_id = ( tid <= THERMAL_1_ON_PSU1 ) ? PSU1_ID : PSU2_ID;
+        /* Get power good status */
+        ret = onlp_file_read_int(&val, "%s""psu%d_power_good", PSU_SYSFS_PATH, psu_id);
+        if (ret < 0) {
+            AIM_LOG_ERROR("Unable to read status from (%s""psu%d_power_good)\r\n", PSU_SYSFS_PATH, psu_id);
+            return ONLP_STATUS_E_INTERNAL;
+        }
+
+        if(val != PSU_STATUS_POWER_GOOD) {
+            info->status |= ONLP_THERMAL_STATUS_FAILED;
+        }
     }
 
     return onlp_file_read_int(&info->mcelsius, ipmi_devfiles__[tid]);
