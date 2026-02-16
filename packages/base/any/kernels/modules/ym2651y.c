@@ -518,7 +518,9 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
         return show_vout_by_mode(dev, da, buf);
     }
     else if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
-            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
+            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0) ||
+            (strncmp(ptr, "UPD1501SA-1190G", strlen("UPD1501SA-1190G")) == 0) ||
+            (strncmp(ptr, "UPD1501SA-1290G", strlen("UPD1501SA-1290G")) == 0)) {
         return show_vout_by_mode(dev, da, buf);
     }
     else {

@@ -26,7 +26,7 @@ GLOBAL_CFLAGS += -g
 
 $(eval $(call onlpm_find_file,LIBONLP,onlp:$(ARCH),libonlp.so))
 
-GLOBAL_LINK_LIBS += -lpthread $(LIBONLP)
+GLOBAL_LINK_LIBS += -lm -lpthread $(LIBONLP)
 GLOBAL_LINK_LIBS += -Wl,--unresolved-symbols=ignore-in-shared-libs
 
 .DEFAULT_GOAL := onlp-snmpd

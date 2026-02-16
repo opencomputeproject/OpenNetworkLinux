@@ -81,3 +81,9 @@
 - sysstat
 - ipmitool
 - lm-sensors
+- curl
+- autoconf
+- libtool
+- libc6-dev
+- g++
+- git

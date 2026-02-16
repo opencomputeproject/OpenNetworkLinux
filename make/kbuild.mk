@@ -159,6 +159,7 @@ K_MAKE    := $(MAKE) -C $(K_SOURCE_DIR)
 # Build the kernel.
 #
 build: setup
+	+$(K_MAKE) olddefconfig
 	+$(K_MAKE) $(K_BUILD_TARGET)
 	+$(K_MAKE) modules
 	+$(K_MAKE) modules_install INSTALL_MOD_PATH=$(K_INSTALL_MOD_PATH)

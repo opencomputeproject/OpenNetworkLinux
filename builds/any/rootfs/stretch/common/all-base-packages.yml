@@ -16,7 +16,7 @@
 - less
 - sudo
 - openssh-server
-- iproute
+- iproute2
 - resolvconf
 - vim-tiny
 - zile
@@ -24,7 +24,6 @@
 - lsof
 - mingetty
 - traceroute
-- realpath
 - rsyslog
 - nfs-common
 - netbase
@@ -53,7 +52,6 @@
 - cpio
 - util-linux
 - dosfstools
-- rssh
 - u-boot-tools
 - ntpdate
 - onlp
@@ -63,7 +61,7 @@
 - binutils
 - file
 - smartmontools
-- realpath
+- coreutils
 - iptables
 - onl-faultd
 - onlp-snmpd
@@ -88,3 +86,10 @@
 - tree
 - memtester
 - ipmitool
+- curl
+- libcurl3-nss
+- autoconf
+- libtool
+- libc6-dev
+- g++
+- git
