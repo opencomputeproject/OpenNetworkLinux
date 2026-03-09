@@ -36,6 +36,7 @@ int sfp_map[] = {28,29,26,30,31,27};
 #define PORT_EEPROM_FORMAT              "/sys/bus/i2c/devices/%d-0050/eeprom"
 #define MODULE_PRESENT_FORMAT		    "/sys/bus/i2c/devices/3-0062/module_present_%d"
 #define MODULE_PRESENT_ALL_ATTR	        "/sys/bus/i2c/devices/3-0062/module_present_all"
+#define MODULE_RESET_FORMAT             "/sys/bus/i2c/devices/3-0062/module_reset_%d"
 
 /************************************************************
  *
@@ -214,13 +215,72 @@ onlp_sfpi_dev_writew(int port, uint8_t devaddr, uint8_t addr, uint16_t value)
 int
 onlp_sfpi_control_set(int port, onlp_sfp_control_t control, int value)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int rv;
+
+    if (port < 48 || port >= 54) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    switch(control)
+        {
+        case ONLP_SFP_CONTROL_RESET:
+            {
+                if(port>=48 && port<=53) {
+                    if (onlp_file_write_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+                        AIM_LOG_ERROR("Unable to write reset status to port(%d)\r\n", port);
+                        rv = ONLP_STATUS_E_INTERNAL;
+                    }
+                    else {
+                        rv = ONLP_STATUS_OK;
+                    }
+                }
+                else {
+                    rv = ONLP_STATUS_E_UNSUPPORTED;
+                }
+                break;
+            }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+            break;
+        }
+
+    return rv;
 }
 
 int
 onlp_sfpi_control_get(int port, onlp_sfp_control_t control, int* value)
 {
-    return ONLP_STATUS_E_UNSUPPORTED;
+    int rv;
+
+    if (port < 48 || port >= 54) {
+        return ONLP_STATUS_E_UNSUPPORTED;
+    }
+
+    switch(control)
+        {
+        case ONLP_SFP_CONTROL_RESET: 
+            {
+                if(port>=48 && port<=53) {
+                    if (onlp_file_read_int(value, MODULE_RESET_FORMAT, (port+1)) < 0) {
+                        AIM_LOG_ERROR("Unable to read reset status from port(%d)\r\n", port);
+                        rv = ONLP_STATUS_E_INTERNAL;
+                    }
+                    else {
+                        rv = ONLP_STATUS_OK;
+                    }
+                }
+                else {
+                    rv = ONLP_STATUS_E_UNSUPPORTED;
+                }
+                break;
+            }
+
+        default:
+            rv = ONLP_STATUS_E_UNSUPPORTED;
+        }
+
+    return rv;
 }
 
 int
