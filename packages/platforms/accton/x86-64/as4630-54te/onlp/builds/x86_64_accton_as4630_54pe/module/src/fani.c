@@ -150,14 +150,14 @@ _onlp_get_fan_direction_on_psu(void)
         }
 
         if (PSU_TYPE_YM1151D_F2B == psu_type ||
-            PSU_TYPE_YM1151F_F2B == psu_type) {
+            PSU_TYPE_YM1151F_F2B == psu_type ||
+            PSU_TYPE_UPD1501SA_1190G_F2B == psu_type) {
             return ONLP_FAN_STATUS_F2B;
         }
         else {
             return ONLP_FAN_STATUS_B2F;
         }
     }
-
     return 0;
 }
 

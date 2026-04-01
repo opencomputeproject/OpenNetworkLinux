@@ -41,6 +41,15 @@
 #define FAN_BOARD_PATH "/sys/devices/platform/as7926_40xfb_fan/"
 #define IDPROM_PATH "/sys/devices/platform/as7926_40xfb_sys/eeprom"
 
+#define AIM_FREE_IF_PTR(p) \
+    do \
+    { \
+        if (p) { \
+            aim_free(p); \
+            p = NULL; \
+        } \
+    } while (0)
+
 enum onlp_led_id
 {
     LED_RESERVED = 0,
@@ -66,6 +75,16 @@ enum onlp_thermal_id {
     THERMAL_10_ON_MAINBOARD,  /* QSFP-DD Board LM753 Temp */
     THERMAL_1_ON_PSU1,
     THERMAL_1_ON_PSU2,
+};
+
+enum reset_dev_type {
+    WARM_RESET_MAC = 1,
+    WARM_RESET_PHY, /* Not supported */
+    WARM_RESET_MUX,
+    WARM_RESET_OP2,
+    WARM_RESET_GB,
+    WARM_RESET_JR2,
+    WARM_RESET_MAX
 };
 
 #endif  /* __PLATFORM_LIB_H__ */

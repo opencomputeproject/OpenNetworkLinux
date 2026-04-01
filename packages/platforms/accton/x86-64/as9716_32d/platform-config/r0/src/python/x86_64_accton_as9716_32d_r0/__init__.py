@@ -1,31 +1,40 @@
 from onl.platform.base import *
 from onl.platform.accton import *
 
-import commands
-
-
 def eeprom_check():
     cmd = "i2cget -y 0 0x57"
-    status, output = commands.getstatusoutput(cmd)
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    status = process.returncode
+
     return status
 
 #IR3570A chip casue problem when read eeprom by i2c-block mode.
 #It happen when read 16th-byte offset that value is 0x8. So disable chip 
 def disable_i2c_ir3570a(addr):
     cmd = "i2cset -y 0 0x%x 0xE5 0x01" % addr
-    status, output = commands.getstatusoutput(cmd)
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.communicate()
+    if process.returncode != 0:
+        return process.returncode
+
     cmd = "i2cset -y 0 0x%x 0x12 0x02" % addr
-    status, output = commands.getstatusoutput(cmd)
-    return status
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process.communicate()
+
+    return process.returncode
 
 def ir3570_check():
     cmd = "i2cdump -y 0 0x42 s 0x9a"
     try:
-        status, output = commands.getstatusoutput(cmd)
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        output = stdout.strip()
+
         lines = output.split('\n')
         hn = re.findall(r'\w+', lines[-1])
         version = int(hn[1], 16)
-        if version == 0x24:  #Find IR3570A
+        if version == 0x24:  # Find IR3570A
             ret = disable_i2c_ir3570a(4)
         else:
             ret = 0
@@ -47,7 +56,9 @@ def config_sfp_retimer():
     for cmd in cmd_list:
         retimer_chips = [ "0x18", "0x19", "0x1a", "0x1b" ]
         for chip in retimer_chips:
-            status, output = commands.getstatusoutput(cmd.format(chip))
+            process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process.communicate()
+            status = process.returncode
             if status != 0:
                 return False
 
@@ -119,6 +130,9 @@ class OnlPlatform_x86_64_accton_as9716_32d_r0(OnlPlatformAccton,
             ('as9716_32d_psu1', 0x50, 9),
             ('acbel_fsh082', 0x58, 9),
          ])
+
+        # initialize pca9548 idle_state
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
 
         # initialize QSFP port 1~32. SFP port 33~34
         for port in range(1, 35):

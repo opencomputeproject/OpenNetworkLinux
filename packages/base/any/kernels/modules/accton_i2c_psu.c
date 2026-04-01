@@ -302,6 +302,38 @@ static const struct attribute_group accton_i2c_psu_group = {
     .attrs = accton_i2c_psu_attributes,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+static umode_t accton_i2c_psu_is_visible(const void *drvdata,
+                  enum hwmon_sensor_types type,
+                  u32 attr, int channel)
+{
+    return 0;
+}
+
+static u32 accton_i2c_psu_hwmon_config[] = {
+    HWMON_P_LABEL,
+};
+
+static const struct hwmon_channel_info accton_i2c_psu_hwmon_channel_info = {
+    .type = hwmon_power,
+    .config = accton_i2c_psu_hwmon_config,
+};
+
+static const struct hwmon_channel_info *accton_i2c_psu_hwmon_info[] = {
+    &accton_i2c_psu_hwmon_channel_info,
+    NULL,
+};
+
+static const struct hwmon_ops accton_i2c_psu_hwmon_ops = {
+    .is_visible = accton_i2c_psu_is_visible,
+};
+
+static const struct hwmon_chip_info accton_i2c_psu_chip_info = {
+    .ops = &accton_i2c_psu_hwmon_ops,
+    .info = accton_i2c_psu_hwmon_info,
+};
+#endif
+
 static int accton_i2c_psu_probe(struct i2c_client *client,
             const struct i2c_device_id *dev_id)
 {
@@ -334,7 +366,7 @@ static int accton_i2c_psu_probe(struct i2c_client *client,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
     data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "accton_i2c_psu",
-                                                      NULL, NULL, NULL);
+                                                NULL, &accton_i2c_psu_chip_info, NULL);
 #else
     data->hwmon_dev = hwmon_device_register(&client->dev);
 #endif
@@ -357,7 +389,11 @@ exit:
     return status;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 static int accton_i2c_psu_remove(struct i2c_client *client)
+#else
+static void accton_i2c_psu_remove(struct i2c_client *client)
+#endif
 {
     struct accton_i2c_psu_data *data = i2c_get_clientdata(client);
 
@@ -365,7 +401,10 @@ static int accton_i2c_psu_remove(struct i2c_client *client)
     sysfs_remove_group(&client->dev.kobj, &accton_i2c_psu_group);
     kfree(data);
     
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
     return 0;
+#endif
+
 }
 /* Support psu moduel
  */

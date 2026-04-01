@@ -42,6 +42,9 @@ class OnlPlatform_x86_64_accton_as4630_54te_r0(OnlPlatformAccton,
             ('ym1921', 0x59, 11),
             ])
 
+        # initialize pca9548 idle_state
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
+
         # initialize SFP port 49~52
         for port in range(49, 53):
             self.new_i2c_device('optoe2', 0x50, port-31)

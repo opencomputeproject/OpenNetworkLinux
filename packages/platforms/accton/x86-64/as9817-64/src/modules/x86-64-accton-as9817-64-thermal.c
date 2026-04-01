@@ -435,13 +435,36 @@ exit:
     return status;
 }
 
+static umode_t as9817_64_thermal_is_visible(const void *drvdata,
+                  enum hwmon_sensor_types type,
+                  u32 attr, int channel)
+{
+	return 0;
+}
+
+static const struct hwmon_channel_info *as9817_64_thermal_info[] = {
+	HWMON_CHANNEL_INFO(temp, HWMON_T_ENABLE),
+	NULL,
+};
+
+static const struct hwmon_ops as9817_64_thermal_hwmon_ops = {
+	.is_visible = as9817_64_thermal_is_visible,
+};
+
+static const struct hwmon_chip_info as9817_64_thermal_chip_info = {
+	.ops = &as9817_64_thermal_hwmon_ops,
+	.info = as9817_64_thermal_info,
+};
+
 static int as9817_64_thermal_probe(struct platform_device *pdev)
 {
     int status = 0;
     struct device *hwmon_dev;
 
-    hwmon_dev = hwmon_device_register_with_info(&pdev->dev, DRVNAME, 
-                    NULL, NULL, as9817_64_thermal_groups);
+    hwmon_dev = hwmon_device_register_with_info(&pdev->dev, DRVNAME,
+                                NULL, &as9817_64_thermal_chip_info, 
+                                as9817_64_thermal_groups);
+
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         return status;

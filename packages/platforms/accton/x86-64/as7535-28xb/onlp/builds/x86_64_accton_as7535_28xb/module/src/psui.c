@@ -90,13 +90,11 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     if (ret < 0) {
         AIM_LOG_ERROR("Unable to read status from (%s""psu%d_power_good)\r\n",
                       PSU_SYSFS_PATH, pid);
-        info->status |=  ONLP_PSU_STATUS_FAILED;
         return ONLP_STATUS_E_INTERNAL;
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
-        return ONLP_STATUS_OK;
+        info->status |=  ONLP_PSU_STATUS_UNPLUGGED;
     }
 
     /* Set capability

@@ -117,11 +117,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
     }
 
     if (val != PSU_STATUS_POWER_GOOD) {
-        info->status |=  ONLP_PSU_STATUS_FAILED;
-    }
-
-    if (info->status & ONLP_PSU_STATUS_FAILED) {
-        return ONLP_STATUS_OK;
+        info->status |=  ONLP_PSU_STATUS_UNPLUGGED;
     }
 
     /* Read voltage, current and power */

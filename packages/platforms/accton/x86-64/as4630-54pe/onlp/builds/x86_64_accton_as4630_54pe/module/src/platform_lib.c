@@ -90,7 +90,7 @@ int onlp_file_read_string(char *filename, char *buffer, int buf_size, int data_l
     return ret;
 }
 
-#define I2C_PSU_MODEL_NAME_LEN 11
+#define I2C_PSU_MODEL_NAME_LEN 14
 #define I2C_PSU_FAN_DIR_LEN    3
 
 psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
@@ -125,6 +125,13 @@ psu_type_t get_psu_type(int id, char* modelname, int modelname_len)
         if (modelname)
             aim_strlcpy(modelname, model_name, (modelname_len>strlen(model_name))?strlen(model_name):modelname_len-1);
         return PSU_TYPE_YPEB1200A;
+    }
+
+    if (!strncmp(model_name, "UP1K21R-1085G", strlen("UP1K21R-1085G")))
+    {
+        if (modelname)
+            aim_strlcpy(modelname, model_name, (modelname_len>strlen(model_name))?strlen(model_name):modelname_len-1);
+        return PSU_TYPE_UP1K21R_1085G;
     }
     return PSU_TYPE_UNKNOWN;
 }

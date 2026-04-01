@@ -43,15 +43,15 @@
 #define PSU_NODE_MAX_INT_LEN  8
 #define PSU_NODE_MAX_PATH_LEN 64
 
-#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/10-0059/"
-#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/9-0058/"
+#define PSU1_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/9-0058/"
+#define PSU2_AC_PMBUS_PREFIX "/sys/bus/i2c/devices/10-0059/"
 
 
 #define PSU1_AC_PMBUS_NODE(node) PSU1_AC_PMBUS_PREFIX#node
 #define PSU2_AC_PMBUS_NODE(node) PSU2_AC_PMBUS_PREFIX#node
 
-#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0051/"
-#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/9-0050/"
+#define PSU1_AC_HWMON_PREFIX "/sys/bus/i2c/devices/9-0050/"
+#define PSU2_AC_HWMON_PREFIX "/sys/bus/i2c/devices/10-0051/"
 
 
 

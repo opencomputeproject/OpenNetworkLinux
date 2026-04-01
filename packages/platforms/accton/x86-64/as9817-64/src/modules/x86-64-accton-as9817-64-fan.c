@@ -684,13 +684,36 @@ exit:
     return error;
 }
 
+static umode_t as9817_64_fan_is_visible(const void *drvdata,
+                  enum hwmon_sensor_types type,
+                  u32 attr, int channel)
+{
+	return 0;
+}
+
+static const struct hwmon_channel_info *as9817_64_fan_info[] = {
+	HWMON_CHANNEL_INFO(fan, HWMON_F_ENABLE),
+	NULL,
+};
+
+static const struct hwmon_ops as9817_64_fan_hwmon_ops = {
+	.is_visible = as9817_64_fan_is_visible,
+};
+
+static const struct hwmon_chip_info as9817_64_fan_chip_info = {
+	.ops = &as9817_64_fan_hwmon_ops,
+	.info = as9817_64_fan_info,
+};
+
 static int as9817_64_fan_probe(struct platform_device *pdev)
 {
     int status = 0;
     struct device *hwmon_dev;
 
     hwmon_dev = hwmon_device_register_with_info(&pdev->dev, DRVNAME,
-                    NULL, NULL, as9817_64_fan_groups);
+                                NULL, &as9817_64_fan_chip_info, 
+                                as9817_64_fan_groups);
+
     if (IS_ERR(data->hwmon_dev)) {
         status = PTR_ERR(data->hwmon_dev);
         return status;

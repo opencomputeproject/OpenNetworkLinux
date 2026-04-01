@@ -8,9 +8,9 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".7712.32"
 
     def baseconfig(self):
+        os.system("modprobe i2c-ismt")
         self.insmod('optoe')
         self.insmod('ym2651y')
-        self.insmod('accton_i2c_cpld')
         for m in [ 'fan', 'cpld1', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as7712-32x-%s.ko" % m)
 
@@ -30,8 +30,6 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton,
             ('lm75', 0x4b, 3),
 
             ('as7712_32x_cpld1', 0x60, 4),
-            ('accton_i2c_cpld', 0x62, 5),
-            ('accton_i2c_cpld', 0x64, 6),
             ])
 
         ########### initialize I2C bus 1 ###########
@@ -55,6 +53,9 @@ class OnlPlatform_x86_64_accton_as7712_32x_r0(OnlPlatformAccton,
                 ('pca9548', 0x75, 1),
                 ]
             )
+
+        # initialize pca9548 idle_state
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
 
         # initialize QSFP port 1~32
         self.new_i2c_devices([

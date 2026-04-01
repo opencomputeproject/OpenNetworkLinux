@@ -65,6 +65,13 @@ enum onlp_thermal_id {
     THERMAL_COUNT
 };
 
+enum reset_dev_type {
+    WARM_RESET_MAC = 1,
+    WARM_RESET_PHY, /* Not supported */
+    WARM_RESET_MUX,
+    WARM_RESET_MAX
+};
+
 enum onlp_led_id {
     LED_LOC = 1,
     LED_DIAG,

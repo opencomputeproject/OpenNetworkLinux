@@ -9,8 +9,10 @@ class OnlPlatform_x86_64_accton_as4630_54pe_r0(OnlPlatformAccton,
     SYS_OBJECT_ID=".4630.54"
 
     def baseconfig(self):
+        os.system("modprobe i2c-ismt")
         self.insmod('optoe')
         self.insmod('ym2651y')
+
         for m in [ 'cpld', 'psu', 'leds' ]:
             self.insmod("x86-64-accton-as4630-54pe-%s.ko" % m)
 
@@ -41,6 +43,9 @@ class OnlPlatform_x86_64_accton_as4630_54pe_r0(OnlPlatformAccton,
             ('as4630_54pe_psu2', 0x51, 11),
             ('ype1200am', 0x59, 11),
          ])
+
+        # initialize pca9548 idle_state
+        subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
 
         # initialize SFP port 49~52
         for port in range(49, 53):

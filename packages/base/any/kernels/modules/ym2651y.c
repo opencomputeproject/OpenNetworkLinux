@@ -518,7 +518,10 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
         return show_vout_by_mode(dev, da, buf);
     }
     else if ((strncmp(ptr, "DPS-850A", strlen("DPS-850A")) == 0)||
-            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0)) {
+            (strncmp(ptr, "YM-2851J", strlen("YM-2851J")) == 0) ||
+            (strncmp(ptr, "UPD1501SA-1190G", strlen("UPD1501SA-1190G")) == 0) ||
+            (strncmp(ptr, "UPD1501SA-1290G", strlen("UPD1501SA-1290G")) == 0)) {
+
         return show_vout_by_mode(dev, da, buf);
     }
     else {
@@ -529,6 +532,38 @@ static ssize_t show_vout(struct device *dev, struct device_attribute *da,
 static const struct attribute_group ym2651y_group = {
     .attrs = ym2651y_attributes,
 };
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
+static umode_t ym2651y_is_visible(const void *drvdata,
+                  enum hwmon_sensor_types type,
+                  u32 attr, int channel)
+{
+    return 0;
+}
+
+static u32 ym2651y_hwmon_config[] = {
+    HWMON_P_LABEL,
+};
+
+static const struct hwmon_channel_info ym2651y_hwmon_channel_info = {
+    .type = hwmon_power,
+    .config = ym2651y_hwmon_config,
+};
+
+static const struct hwmon_channel_info *ym2651y_hwmon_info[] = {
+    &ym2651y_hwmon_channel_info,
+    NULL,
+};
+
+static const struct hwmon_ops ym2651y_hwmon_ops = {
+    .is_visible = ym2651y_is_visible,
+};
+
+static const struct hwmon_chip_info ym2651y_chip_info = {
+    .ops = &ym2651y_hwmon_ops,
+    .info = ym2651y_hwmon_info,
+};
+#endif
 
 static int ym2651y_probe(struct i2c_client *client,
             const struct i2c_device_id *dev_id)
@@ -567,7 +602,7 @@ static int ym2651y_probe(struct i2c_client *client,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)
     data->hwmon_dev = hwmon_device_register_with_info(&client->dev, "ym2651y",
-                                                      NULL, NULL, NULL);
+                                        NULL, &ym2651y_chip_info, NULL);
 #else
     data->hwmon_dev = hwmon_device_register(&client->dev);
 #endif
@@ -590,7 +625,11 @@ exit:
     return status;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 static int ym2651y_remove(struct i2c_client *client)
+#else
+static void ym2651y_remove(struct i2c_client *client)
+#endif
 {
     struct ym2651y_data *data = i2c_get_clientdata(client);
 
@@ -598,7 +637,9 @@ static int ym2651y_remove(struct i2c_client *client)
     sysfs_remove_group(&client->dev.kobj, &ym2651y_group);
     kfree(data);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
     return 0;
+#endif
 }
 
 static const struct i2c_device_id ym2651y_id[] = {
@@ -819,6 +860,7 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 goto exit;
             }
 
+            buf = min_t(u8, buf, ARRAY_SIZE(data->mfr_model)-2);
             status = ym2651y_read_block(client, command, data->mfr_model, buf+1);
             data->mfr_model[buf+1] = '\0';
 
@@ -827,23 +869,31 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 goto exit;
             }
 
-            /* Read mfr_model_opt */
-            command = 0xd0;
-            length  = 1;
+            if ((strncmp((data->mfr_model+1), "YM-2851J", strlen("YM-2851J")) == 0)||
+                (strncmp((data->mfr_model+1), "YM-2651Y", strlen("YM-2651Y")) == 0)||
+                (strncmp((data->mfr_model+1), "YPEB1200AM", strlen("YPEB1200AM")) == 0)) {
+            
+                /* Read mfr_model_opt */
+                command = 0xd0;
+                length  = 1;
 
-            /* Read first byte to determine the length of data */
-            status = ym2651y_read_block(client, command, &buf, length);
-            if (status < 0) {
-                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
-                goto exit;
-            }
+                /* Read first byte to determine the length of data */
+                status = ym2651y_read_block(client, command, &buf, length);
+                if (status < 0) {
+                    dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                    goto exit;
+                }
 
-            status = ym2651y_read_block(client, command, data->mfr_model_opt, buf+1);
-            data->mfr_model_opt[buf+1] = '\0';
+                buf = min_t(u8, buf, ARRAY_SIZE(data->mfr_model_opt)-2);
+                status = ym2651y_read_block(
+                            client, command, data->mfr_model_opt, buf+1);
+                
+                data->mfr_model_opt[buf+1] = '\0';
 
-            if (status < 0) {
-                dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
-                goto exit;
+                if (status < 0) {
+                    dev_dbg(&client->dev, "reg %d, err %d\n", command, status);
+                    goto exit;
+                }
             }
 
             /* Read mfr_revsion */
@@ -873,13 +923,10 @@ static struct ym2651y_data *ym2651y_update_device(struct device *dev)
                 goto exit;
             }
 
+            buf = min_t(u8, buf, ARRAY_SIZE(data->mfr_serial)-2);
             status = ym2651y_read_block(client, command, data->mfr_serial, buf+1);
-            if (data->mfr_serial[0] < ARRAY_SIZE(data->mfr_serial)-2) {
-                data->mfr_serial[data->mfr_serial[0] + 1] = '\0';
-            }
-            else {
-                data->mfr_serial[ARRAY_SIZE(data->mfr_serial)-1] = '\0';
-            }
+
+            data->mfr_serial[buf+1] = '\0';
 
             if (status < 0) {
                 dev_dbg(&client->dev, "reg %d, err %d\n", command, status);

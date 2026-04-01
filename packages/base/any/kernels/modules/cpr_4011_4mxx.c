@@ -270,7 +270,11 @@ exit:
     return status;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 static int cpr_4011_4mxx_remove(struct i2c_client *client)
+#else
+static void cpr_4011_4mxx_remove(struct i2c_client *client)
+#endif
 {
     struct cpr_4011_4mxx_data *data = i2c_get_clientdata(client);
 
@@ -278,7 +282,9 @@ static int cpr_4011_4mxx_remove(struct i2c_client *client)
     sysfs_remove_group(&client->dev.kobj, &cpr_4011_4mxx_group);
     kfree(data);
     
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
     return 0;
+#endif
 }
 
 static const struct i2c_device_id cpr_4011_4mxx_id[] = {

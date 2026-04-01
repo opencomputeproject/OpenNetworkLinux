@@ -1,4 +1,3 @@
-import commands
 from itertools import chain
 from onl.platform.base import *
 from onl.platform.accton import *
@@ -20,7 +19,8 @@ def init_ipmi_dev_intf():
             return (True, (ATTEMPTS - attempts) * interval)
 
         for i in range(0, len(init_ipmi_dev)):
-            commands.getstatusoutput(init_ipmi_dev[i])
+            process = subprocess.Popen(init_ipmi_dev[i], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
 
         attempts -= 1
         sleep(interval)
@@ -32,7 +32,10 @@ def init_ipmi_oem_cmd():
     interval = INTERVAL
 
     while attempts:
-        status, output = commands.getstatusoutput('ipmitool raw 0x34 0x95')
+        cmd = "ipmitool raw 0x34 0x95"
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        status = process.returncode
         if status:
             attempts -= 1
             sleep(interval)
@@ -101,7 +104,7 @@ class OnlPlatform_x86_64_accton_as7946_30xb_r0(OnlPlatformAccton,
                 ('as7946_30xb_cpld2', 0x62, 13),
                 ])
 
-        # initialize pca9548 idle_state in kernel 5.4.40 version
+        # initialize pca9548 idle_state
         subprocess.call('echo -2 | tee /sys/bus/i2c/drivers/pca954x/*-00*/idle_state > /dev/null', shell=True)
         # initialize QSFP port(0-3), QSFP28 port(4-25), SFP port(26-29)
         port_i2c_bus = [ 25, 26, 27, 28, 29, 30, 31, 32, 33, 34,

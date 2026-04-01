@@ -125,6 +125,7 @@
 #include <linux/sysfs.h>
 #include <linux/jiffies.h>
 #include <linux/i2c.h>
+#include <linux/version.h>
 
 #ifdef EEPROM_CLASS
 #include <linux/eeprom_class.h>
@@ -801,7 +802,11 @@ static ssize_t optoe_bin_write(struct file *filp, struct kobject *kobj,
 	return optoe_read_write(optoe, buf, off, count, OPTOE_WRITE_OP);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 static int optoe_remove(struct i2c_client *client)
+#else
+static void optoe_remove(struct i2c_client *client)
+#endif
 {
 	struct optoe_data *optoe;
 	int i;
@@ -819,7 +824,10 @@ static int optoe_remove(struct i2c_client *client)
 
 	kfree(optoe->writebuf);
 	kfree(optoe);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 	return 0;
+#endif
 }
 
 static ssize_t show_dev_class(struct device *dev,
@@ -860,8 +868,13 @@ static ssize_t set_dev_class(struct device *dev,
 		/* SFP family */
 		/* if it doesn't exist, create 0x51 i2c address */
 		if (!optoe->client[1]) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0)
 			optoe->client[1] = i2c_new_dummy(client->adapter, 0x51);
 			if (!optoe->client[1]) {
+#else
+			optoe->client[1] = i2c_new_dummy_device(client->adapter, 0x51);
+			if (IS_ERR(optoe->client[1])) {
+#endif
 				dev_err(&client->dev,
 					"address 0x51 unavailable\n");
 				mutex_unlock(&optoe->lock);
@@ -1095,8 +1108,13 @@ static int optoe_probe(struct i2c_client *client,
 
 	/* SFF-8472 spec requires that the second I2C address be 0x51 */
 	if (num_addresses == 2) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,5,0)
 		optoe->client[1] = i2c_new_dummy(client->adapter, 0x51);
 		if (!optoe->client[1]) {
+#else
+		optoe->client[1] = i2c_new_dummy_device(client->adapter, 0x51);
+		if (IS_ERR(optoe->client[1])) {
+#endif
 			dev_err(&client->dev, "address 0x51 unavailable\n");
 			err = -EADDRINUSE;
 			goto err_struct;

@@ -1,4 +1,3 @@
-import commands
 from itertools import chain
 from onl.platform.base import *
 from onl.platform.accton import *
@@ -20,7 +19,8 @@ def init_ipmi_dev_intf():
             return (True, (ATTEMPTS - attempts) * interval)
 
         for i in range(0, len(init_ipmi_dev)):
-            commands.getstatusoutput(init_ipmi_dev[i])
+            process = subprocess.Popen(init_ipmi_dev[i], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
 
         attempts -= 1
         sleep(interval)
@@ -32,7 +32,10 @@ def init_ipmi_oem_cmd():
     interval = INTERVAL
 
     while attempts:
-        status, output = commands.getstatusoutput('ipmitool raw 0x34 0x95')
+        cmd = "ipmitool raw 0x34 0x95"
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        status = process.returncode
         if status:
             attempts -= 1
             sleep(interval)

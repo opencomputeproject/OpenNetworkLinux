@@ -222,6 +222,7 @@ onlp_psui_info_get(onlp_oid_t id, onlp_psu_info_t* info)
             break;
         case PSU_TYPE_YM2651Y:
         case PSU_TYPE_YPEB1200A:
+        case PSU_TYPE_UP1K21R_1085G:
             ret = psu_ym2651y_info_get(info);
             break;
         case PSU_TYPE_UNKNOWN:  /* User insert a unknown PSU or unplugged.*/
