@@ -1,0 +1,35 @@
+---
+
+######################################################################
+#
+# platform-config for AS7927
+#
+######################################################################
+
+x86-64-accton-as7927-50x-r0:
+
+  grub:
+
+    serial: >-
+      --port=0x3f8
+      --speed=115200
+      --word=8
+      --parity=no
+      --stop=1
+
+    kernel:
+      <<: *kernel-5-4
+
+    args: >-
+      nopat
+      console=ttyS0,115200n8
+      intel_iommu=off
+      pcie_aspm=off
+      intremap=off
+      modprobe.blacklist=fpga_device
+
+  ##network
+  ##  interfaces:
+  ##    ma1:
+  ##      name: ~
+  ##      syspath: pci0000:00/0000:00:14.0
